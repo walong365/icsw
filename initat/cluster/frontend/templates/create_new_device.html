@@ -1,0 +1,14 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Create a new device" %}{% endblock %}
+
+{% block content %}
+
+<div ng-cloack ng-controller="icswDeviceCreateCtrl">
+    <icsw-device-create-mask></icsw-device-create-mask>
+</div>
+
+{% endblock %}
+

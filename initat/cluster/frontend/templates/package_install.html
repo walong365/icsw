@@ -1,0 +1,13 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Package Install" %}{% endblock %}
+
+{% block content %}
+
+<div ng-cloack ng-controller="icswPackageInstallCtrl">
+    <icsw-package-install-overview/>
+</div>
+
+{% endblock %}

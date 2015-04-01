@@ -1,0 +1,95 @@
+<script type="text/ng-template" id="icsw.device.info">
+    <tabset>
+        <tab select="activate('general')" active="general_active">
+            <tab-heading>
+                General
+            </tab-heading>
+            <div ng-controller="deviceinfo_ctrl">
+                <icsw-simple-device-info icsw-sel-man="{{ singledevicemode }}" devicepk="devicepk">
+                </icsw-simple-device-info>
+                <div ng-show="show_uuid">
+                    <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
+                    <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
+                    <h4>and restart host-monitoring .</h4>
+                </div>
+            </div>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')" active="category_active">
+            <tab-heading>
+                Category{{ addon_text_nmd }}
+            </tab-heading>
+            <icsw-device-category-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['category']">
+            </icsw-device-category-overview>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')" active="location_active">
+            <tab-heading>
+                Location{{ addon_text_nmd }}
+            </tab-heading>
+            <icsw-device-location-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['location']">
+            </icsw-device-location-overview>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">
+            <tab-heading>
+                Network{{ addon_text_nmd }}
+            </tab-heading>
+            <icsw-device-network-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['network']">
+            </icsw-device-network-overview>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')" active="config_active">
+            <tab-heading>
+                Config{{ addon_text }}
+            </tab-heading>
+            <icsw-device-configuration-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['config']">
+            </icsw-device-configuration-overview>
+            <!-- only valid for corvus -->
+            <icsw-device-configuration-var-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['config']">
+            </icsw-device-configuration-var-overview>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_disk') && dev_pk_nmd_list.length" select="activate('partinfo')" active="partinfo_active">
+            <tab-heading>
+                Disk{{ addon_text_nmd }}
+            </tab-heading>
+            <icsw-device-partition-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['partinfo']">
+            </icsw-device-partition-overview>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('variables')" active="variables_active">
+            <tab-heading>
+                Vars{{ addon_text }}
+            </tab-heading>
+            <icsw-device-variable-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['variables']">
+            </icsw-device-variable-overview>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.show_status_history')" select="activate('status_history')" active="status_history_active">
+            <tab-heading>
+                Status History{{ addon_text_nmd }}
+            </tab-heading>
+            <div ng-controller="icswDeviceStatusHistoryCtrl">
+                <icsw-device-status-history-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['status_history']">
+                </icsw-device-status-history-overview>
+            </div>
+        </tab>
+        <!-- also check for md-config-server in service list -->
+        <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('livestatus')" active="livestatus_active">
+            <tab-heading>
+                Livestatus{{ addon_text_nmd }}
+            </tab-heading>
+            <icsw-device-livestatus icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['livestatus']">
+            </icsw-device-livestatus>
+        </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('monconfig')" active="monconfig_active">
+            <tab-heading>
+                MonConfig/hint{{ addon_text_nmd }}
+            </tab-heading>
+            <icsw-device-mon-config icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['monconfig']">
+            </icsw-device-mon-config>
+        </tab>
+        <!-- also check for grapher in service list -->
+        <tab ng-if="acl_read(null, 'backbone.device.show_graphs')" select="activate('graphing')" active="graphing_active">
+            <tab-heading>
+                Graph{{ addon_text }}
+            </tab-heading>
+            <icsw-rrd-graph icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['graphing']">
+            </icsw-rrd-graph>
+        </tab>
+    </tabset>
+</script>
