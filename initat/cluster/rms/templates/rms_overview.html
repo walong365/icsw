@@ -1,0 +1,48 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript %}
+
+{% block title %}{% trans "RMS Overview" %}{% endblock %}
+
+{% block angular %}{% include "angular/rms.cs" %}{% endblock %}
+
+{% block content %}
+
+{% verbatim %}
+
+<div id="icsw.rms">
+    <h2>RMS Overview</h2>
+    <div ng-controller="rms_ctrl">
+        <tabset>
+            <tab heading="running ({{ run_list.length }})">
+                <running></running>
+            </tab>
+            <tab heading="waiting ({{ wait_list.length }})">
+                <waiting></waiting>
+            </tab>
+            <tab heading="node ({{ node_list.length }})">
+                <node></node>
+            </tab>
+            <tab ng-repeat="io_struct in io_dict" heading="{{ io_struct.get_name() }}" active="io_struct.active">
+                <iostruct struct="io_struct"></iostruct>
+            </tab>
+        </tabset>
+    </div>
+</div>
+
+{% endverbatim %}
+
+ <script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.rms']"), ["icsw.rms"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}
+

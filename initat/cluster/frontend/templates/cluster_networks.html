@@ -1,0 +1,184 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/network.cs" %}{% endblock %}
+
+{% block title %}Cluster networks{% endblock %}
+
+{% block content %}
+
+<div id="icsw.network">
+
+<script type="text/ng-template" id="network.html">
+    {% crispy network_form network_form.helper %}
+</script>
+
+<script type="text/ng-template" id="network_type.html">
+    {% crispy network_type_form network_type_form.helper %}
+</script>
+
+<script type="text/ng-template" id="network_device_type.html">
+    {% crispy network_device_type_form network_device_type_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="network_type_head.html">
+    <tr>
+        <th>Type</th>   
+        <th>Description</th>   
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="network_type_row.html">
+    <td>{{ settings.network_types[obj.identifier] }}</td>
+    <td>{{ obj.description  }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="network_device_type_head.html">
+    <tr>
+        <th>Id</th>   
+        <th>Description</th>
+        <th>RegExp</th> 
+        <th>MAC</th>
+        <th>virtIF</th>   
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="network_device_type_row.html">
+    <td>{{ obj.identifier }}</td>
+    <td>{{ obj.description  }}</td>
+    <td>{{ obj.name_re }}</td>
+    <td>{{ obj.mac_bytes }}</td>
+    <td>{{ obj.allow_virtual_interfaces | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="network_head.html">
+    <tr>
+        <th>Id</th>
+        <th>Network definition</th>   
+        <th>Gateway</th>
+        <th>gw pri</th>
+        <th>#IPs</th>
+        <th>Pri</th>
+        <th>uniqueIP</th>
+        <th>Type</th>
+        <th>Master</th>
+        <th>devtype(s)</th>   
+        <th colspan="2" class="text-center">action</th>
+    </tr>
+</script>
+
+<script type="text/ng-template" id="network_row.html">
+    <td>{{ obj.identifier }}</td>
+    <td style="font-family:monospace;">
+        <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> / 
+        <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> / 
+        <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
+    </td>
+    <td style="font-family:monospace;">
+        <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
+    </td>
+    <td class="right">
+        {{ obj.gw_pri }}
+    </td>
+    <td class="text-right">{{ obj.num_ip }}</td>
+    <td>{{ obj.penalty }}</td>
+    <td>{{ obj.enforce_unique_ips | yesno1 }}</td>
+    <td>{{ obj.network_type | array_lookup:this.rest_data.network_types:'description' }}</td>
+    <td>{{ obj.master_network | array_lookup:this.entries:'identifier':'---' }}</td>
+    <td>{{ obj.network_device_type | resolve_n2m:this.rest_data.network_device_types:'identifier':'---' }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_mixin.edit(obj, $event)" value="modify"/></td>
+    <td>
+        <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0" ng-click="edit_mixin.delete_obj(obj)" value="delete"/>
+        <input type="button" class="btn btn-success btn-xs" ng-show="obj.num_ip > 0" ng-click="show_network(obj)" value="show"/>
+    </td>
+</script>
+
+<tabset>
+    <tab heading="Network device types">
+        <div ng-controller="network_device_type_base">
+            <h3>Network device types ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h3>
+            <table class="table table-condensed table-hover" style="width:auto;">
+                <thead networkdevicetypehead></thead>
+                <tbody>
+                    <tr networkdevicetyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                </tbody>
+            </table>
+        </div>
+    </tab>
+    <tab heading="Network types">
+        <div ng-controller="network_type_base">
+            <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h3>
+            <table class="table table-condensed table-hover" style="width:auto;">
+                <thead networktypehead></thead>
+                <tbody>
+                    <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true" ></tr>
+                </tbody>
+            </table>
+        </div>
+    </tab>
+    <tab heading="Networks">
+        <div ng-controller="network_base">
+            <h2>
+                Networks ({{entries.length}} entries),
+                <div class="btn-group">
+                    <input type="button" class="btn btn-primary btn-sm" value="create new" ng-click="edit_mixin.create($event)"/>
+                    <input type="button" class="btn btn-success btn-sm" value="reload" ng-click="reload()"/>
+                </div>
+            </h2>
+            <table class="table table-condensed table-hover" style="width:auto;">
+                <thead networkhead></thead>
+                <tbody>
+                    <tr><td colspan="12" paginator entries="entries" pag_settings="pagSettings" per_page="15"></td></tr>
+                    <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true | paginator:this"></tr>
+                </tbody>
+            </table>
+            <div ng-show="active_network">
+                <h3>Network {{ active_network.identifier }}, {{ active_network.num_ip }} IP addresses</h3>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>Netdevice</th>
+                            <th>Device</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="iplist" pag_settings="ippager" per_page="15"></td></tr>
+                        <tr ng-repeat="obj in iplist | paginator:this:'ippager'">
+                           <td>{{ obj.ip }}</td>
+                           <td>{{ obj.netdevice_name }}</td>
+                           <td>{{ obj.device_full_name }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+</tabset>
+
+</div>
+
+{% endverbatim %}
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.network']"), ["icsw.network"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

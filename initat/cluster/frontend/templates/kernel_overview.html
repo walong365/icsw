@@ -1,0 +1,76 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/kernel.cs" %}{% endblock %}
+
+{% block title %}{% trans "Kernel Overview" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.kernel">
+
+<script type="text/ng-template" id="kernel.html">
+    {% crispy kernel_form kernel_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="kernel_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Version</th>
+        <th>Comment</th>
+        <th>Enabled</th>
+        <th>Ver</th>   
+        <th>Bitcount</th>
+        <th>Usecount</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="kernel_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.kernel_version  }}</td>
+    <td>{{ obj.comment }}</td>
+    <td>{{ obj.enabled | yesno1 }}</td>
+    <td>{{ obj.version }}.{{ obj.release }}</td>
+    <td>{{ obj.bitcount }}</td>
+    <td class="text-center">{{ obj.act_kernel.length }} / {{ obj.new_kernel.length }}</td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<tabset>
+    <tab heading="Kernels">
+        <div ng-controller="kernel_base">
+            <div ng-controller="kernel">
+                <h2>Kernels ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="Scan for kernels" ng-click="scan_for_kernels()"/></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead kernelhead></thead>
+                    <tbody>
+                        <tr kernelrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+</tabset>
+
+</div>
+
+{% endverbatim %}
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.kernel']"), ["icsw.kernel"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

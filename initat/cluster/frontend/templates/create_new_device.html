@@ -1,0 +1,248 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/device_livestatus.cs" %}{% endblock %}
+
+{% block title %}{% trans "Create a new device" %}{% endblock %}
+
+{% block content %}
+
+{% verbatim %}
+
+<div id="icsw.monitoring.create" ng-cloack>
+
+<script type="text/ng-template" id="iconTemplate.html">
+    <a>
+        <img ng-src="{{ match.label.data_image }}" width="16"></img>
+        {{ match.label.name }}
+    </a>
+</script>
+
+<div ng-controller="create_base">
+    <h3>Create a new device</h3>
+    <form class="form-horizontal" name="baseForm" novalidate ng-controller="form_ctrl">
+        <accordion ng-cloack close-others="false">
+            <accordion-group heading="Base data" is-open="base_open">
+                <!-- {{ baseForm || json }} {{baseForm.$valid}} -->
+                <div class="form-group">
+                    <label class="control-label col-md-5">Fully qualified device name</label>
+                    <div class="controls col-md-6" ng-class="baseForm.full_name.$invalid && 'has-error'">
+                        <input name="full_name" class="form-control" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/" placeholder="device name" ng-blur="device_name_changed()"></input>
+                        <span ng-show="baseForm.full_name.$invalid" class="text-danger">
+                            Need name without any special characters or whitespace (for instance 'server.my.domain')
+                        </span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-5">Devicegroup</label>
+                    <div class="controls col-md-6" ng-class="baseForm.device_group.$invalid && 'has-error'">
+                        <input
+                            type="text"
+                            name="device_group"
+                            class="form-control"
+                            ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z][a-zA-Z0-9\-_]*$/"
+                            typeahead="value for value in device_groups() | filter:$viewValue"
+                            ng-change="new_dg()"
+                        ></input>
+                        <span ng-show="baseForm.device_group.$invalid" class="text-danger">
+                            Please enter a valid device group name (no spaces or dots allowed)
+                        </span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-5">IP Address</label>
+                    <div class="controls col-md-6" ng-class="baseForm.ip.$invalid && 'has-error'">
+                        <div class="form-inline">
+                            <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/" placeholder="IP Address"></input>
+                            <button class="btn btn-primary btn-sm" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
+                            <span ng-show="resolve_pending" class="glyphicon glyphicon-refresh"></span>
+                        </div>
+                        <span ng-show="baseForm.ip.$invalid" class="text-danger">
+                            Please enter a valid IP address
+                        </span>
+                    </div>
+                </div>
+                <div class="form-group" ng-show="rest_data.mon_ext_host">
+                    <label class="control-label col-md-5">Icon</label>
+                    <div class="controls col-md-6">
+                        <div class="form-inline">
+                            <img ng-src="{{ get_image_src() }}" width="16"></img>
+                            <input
+                                type="text"
+                                name="icon"
+                                class="form-control"
+                                ng-model="device_data.icon_name"
+                                typeahead="value.name as value for value in rest_data.mon_ext_host | filter:{name:$viewValue}"
+                                typeahead-template-url="iconTemplate.html"
+                                typeahead-append-to-body="true"
+                            ></input>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-5">Monitor host via</label>
+                    <div class="controls col-md-6">
+                        <div class="btn-group btn-sn">
+                            <button ng-class="device_data.resolve_via_ip && 'btn btn-success' || 'btn'" ng-click="device_data.resolve_via_ip=false">IP</button>
+                            <button ng-class="device_data.resolve_via_ip && 'btn' || 'btn btn-success'" ng-click="device_data.resolve_via_ip=true">Name</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-5">is routing capable (switch, firewall)</label>
+                    <div class="controls col-md-6">
+                        <div class="btn-group btn-sn">
+                            <button ng-class="device_data.routing_capable && 'btn btn-success' || 'btn'" ng-click="device_data.routing_capable=true">yes</button>
+                            <button ng-class="device_data.routing_capable && 'btn' || 'btn btn-success'" ng-click="device_data.routing_capable=false">no</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" ng-show="any_peers()">
+                    <label class="control-label col-md-5">Connect to</label>
+                    <div class="controls col-md-6">
+                        <select name="peer" class="form-control" ng-model="device_data.peer" ng-options="value.idx as value.info group by value.device_group_name for value in all_peers()"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-5">Comment</label>
+                    <div class="controls col-md-6" ng-class="baseForm.comment.$invalid && 'has-error'">
+                        <input name="comment" class="form-control" ng-model="device_data.comment"></input>
+                    </div>
+                </div>
+            </accordion-group>
+            <accordion-group heading="Optional data">
+            </accordion-group>
+        </accordion>
+        <input type="button" class="btn btn-sm btn-success" ng-show="baseForm.$valid" value="create device" ng-click="create_device()"></input>
+    </form>
+</div>
+
+</div>
+
+{% endverbatim %}
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular", "localytics.directives"])
+
+angular_module_setup([create_module])
+
+create_controller = create_module.controller("create_base", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q",
+    ($scope, $timeout, $window, $templateCache, restDataSource, $q) ->
+        $scope.base_open = true
+        $scope.resolve_pending = false
+        $scope.device_data = {
+            full_name        : ""
+            comment          : "new device"
+            device_group     : "newgroup"
+            ip               : ""
+            resolve_via_ip   : true
+            routing_capable  : false
+            peer             : 0
+            icon_name        : "linux40"
+        }
+        $scope.peers = []
+        $scope.rest_map = [
+            {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
+            {"short" : "device_type", "url" : "{% url 'rest:device_type_list' %}"}
+            {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
+            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
+            {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
+            {"short" : "peers", "url" : "{% url 'rest:netdevice_peer_list' %}" },
+            {"short" : "mon_ext_host"    , "url" : "{% url 'rest:mon_ext_host_list' %}"}
+        ]
+        $scope.rest_data = {}
+        $scope.reload = () ->
+            $.blockUI()
+            wait_list = []
+            for value, idx in $scope.rest_map
+                $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
+                wait_list.push($scope.rest_data[value.short])
+            $q.all(wait_list).then((data) ->
+                for value, idx in data
+                    $scope.rest_data[$scope.rest_map[idx].short] = value
+                # build image lut
+                $scope.img_lut = {}
+                for value in $scope.rest_data.mon_ext_host
+                    $scope.img_lut[value.name] = value.data_image
+                # create info strings
+                for entry in $scope.rest_data.peers
+                    entry.info = "#{entry.devname} on #{entry.device_name}"
+                $scope.peers = (entry for entry in $scope.rest_data.peers when entry.routing)
+                $.unblockUI()
+            )
+        $scope.get_image_src = () ->
+            img_url = ""
+            if $scope.img_lut?
+                if $scope.device_data.icon_name of $scope.img_lut
+                    img_url = $scope.img_lut[$scope.device_data.icon_name]
+            return img_url
+        $scope.device_name_changed = () ->
+            if not $scope.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
+                $scope.resolve_name()
+        $scope.resolve_name = () ->
+            # clear ip
+            $scope.device_data.ip = ""
+            $scope.resolve_pending = true
+            call_ajax
+                url  : "{% url 'mon:resolve_name' %}"
+                data : {
+                    "fqdn" : $scope.device_data.full_name
+                }
+                success : (xml) =>
+                    $scope.$apply(
+                        $scope.resolve_pending = false
+                    )
+                    if parse_xml_response(xml)
+                        if $(xml).find("value[name='ip']").length and not $scope.device_data.ip
+                            $scope.$apply(
+                                $scope.device_data.ip = $(xml).find("value[name='ip']").text()
+                            )
+        $scope.device_groups = () ->
+            return (entry.name for entry in $scope.rest_data.device_group when entry.cluster_device_group == false and entry.enabled)
+        $scope.any_peers = () ->
+            return if $scope.peers.length > 0 then true else false
+        $scope.all_peers = () ->
+            r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
+            for entry in $scope.peers 
+                r_list.push(entry)
+            return r_list
+        $scope.build_device_dict = () ->
+            return {
+                "full_name" : $scope.full_name
+                "comment"   : $scope.comment
+                "device_group" : $scope.device_group
+                "ip"           : $scope.ip
+            }
+        $scope.create_device = () ->
+            d_dict = $scope.device_data
+            $.blockUI()
+            call_ajax
+                url  : "{% url 'mon:create_device' %}"
+                data : {
+                    "device_data" : angular.toJson(d_dict)
+                }
+                success : (xml) =>
+                    parse_xml_response(xml)
+                    reload_sidebar_tree()
+                    $.unblockUI()
+                    $scope.reload()
+        $scope.reload()
+
+]).controller("form_ctrl", ["$scope",
+    ($scope) ->
+])
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring.create']"), ["icsw.monitoring.create"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}
+

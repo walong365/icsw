@@ -1,0 +1,42 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block title %}{% trans "Boot" %}{% endblock %}
+
+{% block angular %}{% include "angular/device_boot.cs" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.device.boot">
+
+    <script type="text/ng-template" id="boot_form.html">
+        {% crispy boot_form boot_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="boot_single_form.html">
+        {% crispy boot_single_form boot_single_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="boot_many_form.html">
+        {% crispy boot_many_form boot_many_form.helper %}
+    </script>
+
+    <div ng-controller="boot_ctrl">
+        <boottable></boottable>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.device.boot']"), ["icsw.device.boot"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,601 @@
+#!/bin/bash
+# -*-  indent-tabs-mode:nil;  -*- 
+#
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+BM_MESG="boot maintenance (stage1)"
+REBOOT_MSG="down to runlevel 6"
+STAGE2_ERROR="cannot receive/unpack stage2"
+STAGE3_ERROR="cannot receive/unpack stage3"
+MOUNTOPTS="-o nolock,rw,udp"
+S2_RDISK="/dev/ram1"
+PING_PACKETS="2"
+PING_TIMEOUT="60"
+# see hoststatus_zmq.c, stage1, stage2
+HOSTSTAT_FILE=/conf/.hoststat
+
+if [ true ] ; then
+    RED="\033[31m"
+    GREEN="\033[32m"
+    YELLOW="\033[33m"
+    OFF="\033[m"
+fi
+
+basedir="new"
+
+export LS_OPTIONS="-a -N --color=tty -T 0"
+#export TERM=linux
+
+# check for valid echo-command
+if [ "$(echo -e e)" = "-e e" ] ; then
+    echo_opt=""
+else
+    echo_opt="-e"
+fi
+
+start_shell () {
+    alias > /.bashrc
+    [ ! -d /proc ] && mkdir /proc
+    mount -t proc proc /proc
+    /bin/bash -i
+}
+
+set_hoststat () {
+    echo ${echo_opt} "setting hoststatus to "$@
+    [ ! -d /conf ] && mkdir /conf
+    echo $@ >> ${HOSTSTAT_FILE}
+    t_mother $@
+}
+t_mother () {
+    if [ ${motherserver:-0} = "0" ] ; then
+        echo ${echo_opt} "Server not set, can't connect to mother"
+    else
+        tell_mother_zmq -i $ipaddr -m $motherserver -p 8000 $@ || echo ${echo_opt} "Connection problem with mother"
+    fi
+}
+send_info () {
+    if [ ${motherserver:-0} = "0" ] ; then
+        echo ${echo_opt} "Server not set, can't connect to mother"
+    else
+        tell_mother_zmq -i $ipaddr -m $motherserver -p 8000 -w "*$@" || echo ${echo_opt} "Connection problem with mother"
+    fi
+}
+
+get_conf_str () {
+    num_retries=1
+    while true ; do 
+        ret=`tell_mother_zmq -i $ipaddr -m $motherserver -p 8005 $1 2>&1`  && {
+            state=`echo $ret | cut -d " " -f 1`
+            [ "$state" = "ok" ] && break
+        }
+        echo ${echo_opt} >&2 "${RED}error (server $motherserver, port 8005, command $1, $ret), will sleep for 10 seconds${OFF}"
+        num_retries=$(($num_retries + 1))
+        sleep 10
+    done
+    echo "$num_retries $ret"
+}
+err_exit () {
+    set_hoststat "Error $@"
+    set_hoststat "*Error $@"
+    echo ${echo_opt} "${RED}Some error occured ($@), executing /bin/bash ${OFF}"
+    echo "server root" > /root/.rhosts
+    echo "mounting /dev/pts "
+    [ ! -d /dev/pts ] && mkdir /dev/pts
+    logger $(mount -n -t devpts -o mode=0620,gid=5 devpts /dev/pts )
+    if [ -x /usr/sbin/xinetd ] ; then
+        /usr/sbin/xinetd & 
+    elif [ -x /usr/sbin/inetd ] ; then
+        /usr/sbin/inetd &
+    else
+        echo ${echo_opt} "${RED}Neither xinetd nor inetd found${OFF}"
+    fi
+    start_shell
+#  exit -1
+}
+
+boot_system () {
+    rpart=$1
+    shift
+    rparttype=$1
+    shift
+    set_hoststat "*booting partition $rpart (type $rparttype)"
+    set_hoststat "$@"
+    cd /$basedir
+    rm -rf initrd
+    mkdir -v initrd
+    [ ! -c /$basedir/dev/console ] && mknod /$basedir/dev/console -m 0640 c 5 1
+    if [ ! -x /$basedir/sbin/init ] ; then
+        err_exit "no executable /sbin/init in node-image" ;
+    #elif [ ! -f /$basedir/etc/inittab ] ; then
+    #    err_exit "no /etc/inittab in node-image" ;
+    elif [ ! -c /$basedir/dev/console ] ; then
+        err_exit "no /dev/console in node-image" ;
+    elif [ -x chroot ] ; then
+        echo ${echo_opt} "Shutting down ${valid_net}"
+        ifconfig ${valid_net} 0.0.0.0 down
+        cp -a /sbin/stage3 /$basedir/linuxrc
+        chmod +x /$basedir/linuxrc
+        # the exec is important
+        exec switch_root /$basedir linuxrc
+        # normally not reached if switch_root is working properly
+        pivot_root . initrd || {
+        echo ${echo_opt} "${RED}Fatal: pivot_root . initrd failed ($?), trying run-init code ${OFF}"
+        # run-init code
+        exec /lib/mkinitrd/bin/run-init -c ./dev/console /$basedir /linuxrc 
+        start_shell
+    }
+    cd /
+    umount initrd/proc
+    umount initrd/sys
+
+    exec /chroot . /linuxrc < dev/console > dev/console 2>&1
+    else
+        echo ${echo_opt} "${RED}Fatal: Could not find chroot in node-image.${OFF}"
+        err_exit "no chroot in node-image"
+    fi
+}
+
+generate_devicefiles () {
+    mknod /dev/tty c 5 0
+    # generate ptys for debian
+    for pty in $(seq 0 9) ; do 
+        mknod -m 0666 /dev/ttyp$pty c 3 $pty
+    done
+    # ptmx
+    [ ! -c /dev/ptmx ] && mknod -m 0666 /dev/ptmx c 5 2
+    [ ! -c /dev/random ] && mknod -m 0666 /dev/random c 1 8
+    [ ! -c /dev/urandom ] && mknod -m 0666 /dev/urandom c 1 9
+    # IDE hds
+    for dsk in hda:3:0 hdb:3:64 hdc:22:0 hdd:22:64 hde:33:0 hdf:33:64 hdg:34:0 hdh:34:64 ; do
+        bname=/dev/`echo $dsk | cut -d ":" -f 1`
+        major=`echo $dsk | cut -d ":" -f 2`
+        minor=`echo $dsk | cut -d ":" -f 3`
+        mknod -m 0600 $bname b $major $minor
+        for i in $(seq 31) ; do
+            minor=$(( $minor + 1 ))
+            mknod -m 0600 $bname$i b $major $minor
+        done
+    done
+    # SCSI
+    major=8
+    minor=0
+    for dsk in a b c d e f g h i j k l m n o p ; do
+        bname=/dev/sd$dsk
+        mknod -m 0600 $bname b $major $minor
+        for i in $(seq 15) ; do
+            minor=$(( $minor + 1 ))
+            mknod -m 0600 $bname$i b $major $minor
+        done
+        minor=$(( $minor + 1 ))
+    done
+    # Compaq CCISS
+    cpq=/dev/cciss
+    mkdir $cpq
+    major=104
+    for cac in 0 1 ; do
+        minor=0
+        bname=${cpq}/c${cac}
+        for dsk in $(seq 0 4) ; do 
+            dname=${bname}d${dsk}
+            mknod -m 0600 $dname b $major $minor
+            minor=$(( $minor + 1 ))
+            for i in $(seq 15) ; do
+                mknod -m 0600 ${dname}p$i b $major $minor
+                minor=$(( $minor + 1 ))
+            done
+        done
+        major=$(( $major + 1 ))
+    done
+    # Compat IDA
+    cpq=/dev/ida
+    mkdir $cpq
+    major=72
+    for cac in 0 1 ; do
+        minor=0
+        bname=${cpq}/c${cac}
+        for dsk in $(seq 0 4) ; do
+            dname=${bname}d${dsk}
+            mknod -m 0600 $dname b $major $minor
+            minor=$(( $minor + 1 ))
+            for i in $(seq 15) ; do
+                mknod -m 0600 ${dname}p$i b $major $minor
+                minor=$(( $minor + 1 ))
+            done
+        done
+        major=$(( $major + 1 ))
+    done
+}
+alias l='ls -alF'
+alias la='ls -la'
+alias ll='ls -l'
+alias ls='ls $LS_OPTIONS'
+alias ls-l='ls -l'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+mkdir -p /etc/sysconfig/cluster
+
+echo "/dev/ram0 / ext2 rw 0 0 " >> /etc/mtab
+
+export PATH=/sbin:/bin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/cluster/bin:/opt/cluster/sbin
+
+depmod -ae || depmod -ave
+
+echo ${echo_opt} "${GREEN}init.at ClusterNetInstall stage1 (c) 2001-2014 init.at (lang-nevyjel@init.at)${OFF}"
+
+echo ${echo_opt} "mounting /proc and /sys for stage1 "
+[ ! -d /proc ] && mkdir /proc
+mount -n proc  /proc -t proc
+[ ! -d /sys ] && mkdir /sys
+mount -n sysfs /sys  -t sysfs
+
+my_pid=$$
+logger "My ProcessID is $my_pid"
+
+if [ "$my_pid" != "1" ] ; then
+    echo ${echo_opt} "\n${RED}My ProcessID is $my_pid, exiting ...${OFF}"
+    err_exit "Wrong processID $my_pid"
+else
+    echo ${echo_opt} "\n${GREEN}My ProcessID is $my_pid, OK ...${OFF}"
+fi
+
+echo ${echo_opt} "generating device files"
+generate_devicefiles
+
+[ -r /proc/cmdline ] && {
+    for line in `cat /proc/cmdline` ; do
+        echo $line | grep "=" > /dev/null && eval $line ;
+    done
+}
+
+echo "system UUID is '$uuid'"
+
+echo urn:uuid:${uuid} > /etc/sysconfig/cluster/.cluster_device_uuid
+
+if [ ${ip:-0} = "0" ] ; then
+    boottype="NET"
+    echo "netboot"
+    ipaddr=`echo $nfsaddrs | cut -d ":" -f 1`
+    motherserver=`echo $nfsaddrs | cut -d ":" -f 2`
+    gw=`echo $nfsaddrs | cut -d ":" -f 3`
+    netmask=`echo $nfsaddrs | cut -d ":" -f 4`
+else
+    boottype="PXE"
+    echo "pxeboot"
+    ipaddr=`echo $ip | cut -d ":" -f 1`
+    motherserver=`echo $ip | cut -d ":" -f 2`
+    gw=`echo $ip | cut -d ":" -f 3`
+    netmask=`echo $ip | cut -d ":" -f 4`
+fi
+
+gw=${gw:-0.0.0.0}
+
+if [ "$netmask" = "A" ] ; then
+    netmask="255.0.0.0"
+elif [ "$netmask" = "B" ] ; then
+    netmask="255.255.0.0"
+elif [ "$netmask" = "C" ] ; then
+    netmask="255.255.255.0"
+fi
+
+echo ${echo_opt} "IP-Address is $ipaddr netmask $netmask from server $motherserver, gateway is $gw ($boottype)"
+net_driver=`echo $nbd | cut -d "," -f 2`
+ethtool_options=`echo $nbd | cut -d "," -f 3`
+net_options=`echo $nbd | cut -d "," -f 4- | tr "�" " "`
+nbd=`echo $nbd | cut -d "," -f 1 | cut -d ":" -f 1`
+
+eth_spd_o=$(($ethtool_options/16))
+eth_dpl_o=$((($ethtool_options-$((16*$eth_spd_o)))/4))
+eth_neg_o=$((($ethtool_options-$((16*$eth_spd_o+4*$eth_dpl_o)))))
+
+eto=""
+case $eth_neg_o in
+    1)
+        eto="$eto autoneg on"
+        ;;
+    3)
+        eto="$eto autoneg off"
+        ;;
+esac
+case $eth_dpl_o in
+    1)
+        eto="$eto duplex full"
+        ;;
+    3)
+        eto="$eto duplex half"
+        ;;
+esac
+case $eth_spd_o in
+    1)
+        eto="$eto speed 10"
+        ;;
+    3)
+        eto="$eto speed 100"
+        ;;
+    5)
+        eto="$eto speed 1000"
+        ;;
+    7)
+        eto="$eto speed 10000"
+        ;;
+esac
+
+echo ${echo_opt} " netdevice given by server is ${nbd} (driver '$net_driver', options '$net_options', ethtool_options '$eto')"
+
+initrd_mods=""
+
+# start load_firmware.sh
+/usr/bin/load_firmware.sh &
+
+depmod -ae || depmod -ave
+
+[ -n "$net_driver" ] &&  { 
+    echo ${echo_opt} " probing network kernel module $net_driver (options '$net_options')"
+    modprobe $net_driver $net_options 2>&1 | sed s/^/\ -\ /g ; 
+    initrd_mods="$initrd_mods $net_driver "; 
+    if [ "$net_driver" = "virtio_net" ] ; then
+        modprobe virtio_pci 2>&1 
+        initrd_mods="$initrd_mods virtio_pci"
+    fi
+}
+
+[ -r /proc/net/dev ] && {
+    avail_nets=$(cat /proc/net/dev | grep -v \| | cut -d ":" -f 1  | tr -d " " | grep "^eth" | tr "\n" " " )
+} || {
+    [ -d /sys/class/net ] && avail_nets=$(cd /sys/class/net;ls -1d * | egrep -v "^lo$")
+}
+
+
+if [ -z "$avail_nets" ] ; then
+    echo -n "No available netdevices found, rebooting in 10 seconds"
+    /sbin/lspci
+    for i in $(seq 10) ; do 
+        echo -n "."
+        sleep 1
+    done
+    /sbin/reboot -f
+fi
+
+# check for new ethernet mapping
+m_nbd=""
+if [ "${nbd}" == "em1" ] ; then
+    m_nbd=eth0
+elif [ "${nbd}" == "em2" ] ; then
+    m_nbd=eth1
+elif [ "${nbd}" == "em3" ] ; then
+    m_nbd=eth2
+elif [ "${nbd}" == "em4" ] ; then
+    m_nbd=eth3
+fi
+
+if [ "${m_nbd}" != "" ] ; then
+    echo "mapped ${nbd} to ${m_nbd}"
+    nbd=${m_nbd}
+fi
+
+if echo $avail_nets | grep "${nbd}" > /dev/null 2>&1 ; then
+    avail_nets=$(echo "${nbd} $(echo $nbd | sed -e "s/${nbd}//")")
+fi
+
+echo ${echo_opt} "Available netdevice: $avail_nets"
+
+num_iters=0
+wait_time=0
+while true ; do
+    num_iters=$(($num_iters + 1))
+    valid_net="None"
+# check for valid netdevice
+    for net in $avail_nets ; do
+        ifconfig ${net} ${ipaddr} netmask ${netmask} up
+        if [ $wait_time -gt 0 ] ; then
+            sleep $wait_time
+        fi
+        [ -n "$eto" ] && {
+            echo "applying ethtool-settings $eto to $net" ;
+            ethtool -s ${net} $eto ;
+            sleep $(($wait_time + 1)) ;
+        }
+        ping -c $PING_PACKETS -w $PING_TIMEOUT -I ${net} $motherserver >/dev/null && {
+            tell_mother_zmq -i $ipaddr -t 18 -m $motherserver -p 8000 "mother connection test" && {
+                echo ${echo_opt} "${GREEN}Server $motherserver reachable via ping and hoststatus over $net${OFF}" ;
+                valid_net=$net ;
+            } || {
+                echo ${echo_opt} "${WARN}Server $motherserver reachable via ping over $net but no response to hoststatus (mother running ?)${OFF}" ;
+            }
+        } || {
+            echo ${echo_opt} "${RED}Server $motherserver not reachable via ping over $net${OFF}" ;
+        }
+        [ "${valid_net}" = "${nbd}" ] && break
+        ifconfig ${net} 0.0.0.0 down
+    done
+    # in case no netdevices are defined
+    sleep 1
+
+    if [ "$valid_net" = "None" ] ; then
+        wait_time=$(($wait_time + 5))
+        echo ${echo_opt} "${WARN}no response, increasing wait_time for 5 seconds to ${wait_time} seconds, retry...${OFF}"
+    else
+        break
+    fi
+done
+
+echo ${echo_opt} "Found netdevice $valid_net (needed $num_iters iterations)"
+
+# init additional modules
+if [ -f /etc/add_modules ] ; then
+    echo ${echo_opt} "Loading additional modules specified in /etc/add_modules"
+    while read module mod_option ; do
+        echo ${echo_opt} "Module $module (option $mod_option):"
+        modprobe $module $mod_option
+    done < /etc/add_modules
+fi
+
+kill $(cat /.firmware_pid)
+
+# init /etc/hosts for hoststatus
+echo ${echo_opt} "127.0.0.1 localhost\n" > /etc/hosts
+
+logger "Found netdevice $valid_net"
+
+[ "${valid_net}" = "${nbd}" ] || ifconfig ${valid_net} $ipaddr netmask $netmask up
+
+if [ -n "$eto" ] ; then 
+    echo ${echo_opt} "sleep 2; setting ethtools-options to $eto ; sleep 2"
+    sleep 2
+    ethtool -s ${valid_net} $eto
+    sleep 2
+fi
+
+# initial ping
+ping -c 1 -w 1 $motherserver > /dev/null 2>&1
+
+echo ${echo_opt} "ARP-Cache:"
+arp -n
+
+echo ${echo_opt} "sending initial message "
+set_hoststat ${BM_MESG}
+
+[ "${valid_net}" != "${nbd}" ] && send_info "Attention! netdevice mismatch ${nbd} (system) != ${valid_net} (from database)"
+
+if [ -x "$(which sntp)" ] ; then
+    echo ${echo_opt} "trying to get time from $motherserver via sntp"
+    sntp -P no -r $motherserver
+elif [ -x "$(which ntpdate)" ] ; then
+    echo ${echo_opt} "trying to get time from $motherserver via ntpdate"
+    ntpdate $motherserver
+else
+    echo ${echo_opt} "no sntp or ntpdate command found"
+fi
+
+export motherserver ipaddr valid_net basedir eto
+
+[ ! -c /dev/null ] && mknod -m 0666 /dev/null c 1 3
+[ ! -c /dev/console ] && mknod -m 0600 /dev/console c 5 1
+[ ! -b /dev/ram0 ] && mknod /dev/ram0 b 0 0
+[ ! -b /dev/ram1 ] && mknod /dev/ram1 b 1 0
+
+# try direct ramfs mount
+
+modprobe ext2
+mkdir /stage2
+
+check_ram_fill=0
+ramfs_used=1
+mount -t ramfs /dev/ram1 /stage2 || {
+    ramfs_used=0
+    # first try, 32 MB
+    ram_size=32768
+    mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
+        # second try, 16 MB (sigh)
+    ram_size=16384
+    mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
+        err_exit "Cannot create stage2 RamDisc $(cat /tmp/errstr)" 
+    }
+    }
+
+    check_ram_fill=1
+    echo "'df -h' after creation of ramdisk:"
+    df -h
+
+    mount ${S2_RDISK} /stage2
+    set_hoststat "df -h: $(df -h | grep ram1)" ;
+}
+
+echo ${echo_opt} "Requesting stage 2 "
+mkfifo /tmp/tftpfifo
+
+kernel_str=$(get_conf_str "get_kernel_name")
+if [ "$(echo $kernel_str | cut -d " " -f 3)" = "NEW" ] ; then
+    kernel_server=$(echo  $kernel_str | cut -d " " -f 4)
+    kernel=$(echo  $kernel_str | cut -d " " -f 5)
+else
+    kernel_server=$motherserver
+    kernel=$(echo  $kernel_str | cut -d " " -f 3)
+fi
+
+# strange option-handling because of RH8.0 simple-tftp command
+echo ${echo_opt} "\n${GREEN}Fetching stage2 system ...${OFF}"
+# changes from Somhegyi Bence
+#echo ${echo_opt} "\r\nconnect ${motherserver}\r\n binary\r\n get kernels/$kernel/initrd_stage2.gz /tmp/tftpfifo " | tftp & tar xjf /tmp/tftpfifo -C stage2 2>&1 | grep -v "s in the future" | tee /s2_fetch
+tftp -m binary ${motherserver} -c get kernels/$kernel/initrd_stage2.gz /tmp/tftpfifo & tar xjf /tmp/tftpfifo -C stage2 2>&1 
+
+#set_hoststat "$(cat /s2_fetch)" ;
+
+num_files=$(ls -laR stage2 | wc -l)
+
+if [ $num_files -lt 100 ] ; then
+    set_hoststat ${STAGE2_ERROR} ; err_exit "stage2 system error (number of files in stage2 is only $num_files, $(df -h | grep ram1))" ;
+fi
+
+# get stage2 separately
+echo ${echo_opt} "\n${GREEN}Fetching stage2 linuxrc ...${OFF}"
+#echo ${echo_opt} "\r\nconnect ${motherserver}\r\n binary\r\n get etherboot/$ipaddr/stage2 /stage2/linuxrc " | tftp 2>&1 || {
+tftp -m binary ${motherserver} -c get etherboot/$ipaddr/stage2 /stage2/linuxrc || {
+    set_hoststat ${STAGE2_ERROR} ;
+    err_exit "stage2 linuxrc error" ;
+}
+
+# get stage3 separately
+echo ${echo_opt} "\n${GREEN}Fetching stage3 linuxrc ...${OFF}"
+#echo ${echo_opt} "\r\nconnect ${motherserver}\r\n binary\r\n get etherboot/$ipaddr/stage3 /sbin/stage3 " | tftp 2>&1 || {
+tftp -m binary ${motherserver} -c get etherboot/$ipaddr/stage3 /sbin/stage3 || {
+    set_hoststat ${STAGE3_ERROR} ;
+    err_exit "stage3 linuxrc error" ;
+}
+
+echo "${S2_RDISK} / ext2 rw 0 0 " >> stage2/etc/mtab
+echo $initrd_mods > /stage2/.initrd_mods
+chmod +x /stage2/linuxrc
+chmod +x /sbin/stage3
+
+rm -f /stage2_result
+
+if [ "$check_ram_fill" = "1" ] ; then
+    ram_fill=$(df ${S2_RDISK} | tail -1 | tr -s " " | cut -d " " -f 5 | tr -d "%")
+
+    [ $ram_fill -gt 98 ] && { err_exit "not enough space left in stage2: $ram_fill % full" ; }
+fi
+
+# copy UUID to stage2
+mkdir -p /stage2/etc/sysconfig/cluster
+cp -a /etc/sysconfig/cluster/.cluster_device_uuid /stage2/etc/sysconfig/cluster
+
+chroot /stage2 /linuxrc
+
+[ ! -f /stage2/success ] && {
+    err_exit "chroot problem" ;
+}
+
+rpart=`cat /stage2/tmp/mother | cut -d " " -f 1`
+rparttype=`cat /stage2/tmp/mother | cut -d " " -f 2`
+ACT_MSG=`cat /stage2/tmp/mother | cut -d " " -f 3-`
+
+mkdir /$basedir
+mount -t $rparttype $rpart /$basedir
+
+umount -l /stage2
+
+# set ROOTFS_BLKDEV for SLES
+export ROOTFS_BLKDEV=$rpart
+
+boot_system $rpart $rparttype ${ACT_MSG}
+
+err_exit "boot system"

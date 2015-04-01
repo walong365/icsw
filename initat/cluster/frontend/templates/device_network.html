@@ -1,0 +1,89 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript staticfiles crispy_forms_tags %}
+
+{% block title %}{% trans "Device network settings" %}{% endblock %}
+
+{% block angular %}{% endblock %}
+
+{% block tab_js %}
+
+    <style>
+    circle.fixed {
+        fill : #ffaaaa ;
+        stroke : #000000 ;
+    }
+    .connect_line {
+        stroke : #9999ff ;
+        stroke-width : 4;
+        pointer-events : none;
+    }
+    .connect_line_hidden {
+        stroke-width : 0
+    }
+    </style>
+    
+{% endblock %}
+
+{% block content %}
+
+<div id="icsw.network.device">
+
+    <div ng-controller="network_ctrl">
+        <devicenetworks></devicenetworks>
+{% if csw_perms.backbone.device.change_network.AC_MASK_CREATE %}
+{% verbatim %}
+        <div class="input-group-btn" ng-show="devices.length > 1">
+            <div class="btn-group">
+                <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
+                    Copy network from<span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
+                </ul>
+            </div>
+        </div>
+{% endverbatim %}
+{% endif %}
+    </div>
+    <div ng-controller="graph_ctrl">
+        <form class="form-inline">
+            Show network topology for
+            <div class="form-group">
+                <select ng-model="graph_sel" class="form-control" ng-change="fetch_data()">
+                    <option value="none">none</option>
+                    <option value="all">all</option>
+                    <option value="sel">selected</option>
+                    <option value="selp1">selected + 1 (next ring)</option>
+                    <option value="selp2">selected + 2</option>
+                    <option value="selp3">selected + 3</option>
+                    <option value="core">core (non-trivial)</option>
+                </select>, mode:
+            </div>
+            <div class="form-group"> 
+                <select ng-model="graph_mode" class="form-control">
+                    <option value="m">move</option>
+                    <option value="c">connect</option>
+                </select>,
+            </div>
+            <div class="form-group">
+                <input type="button" class="btn btn-sm btn-success" value="Redraw" ng-click="fetch_data()"/>
+            </div>              
+        </form>
+        <div networkgraph></div>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.network.device']"), ["icsw.network.device"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

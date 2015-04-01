@@ -1,0 +1,181 @@
+{% load i18n coffeescript %}
+
+{% if DJANGO_CLUSTER_LICENSE.boot.enabled %}
+
+<div id="icsw.config.gen">
+
+{% verbatim %}
+
+<div ng-controller="config_gen_ctrl">
+    <input type="button" class="btn btn-success btn-sm" value="generate device config" ng-show="devsel_list.length" ng-click="generate_config()"></input>
+    <span ng-show="devsel_list.length">
+        for {{ dev_names() }}
+    </span>
+    <div ng-show="result_trees.length">
+        <tabset>
+            <tab ng-repeat="dev_conf in result_trees" heading="{{ dev_conf.name }}">
+                <h4><span ng-class="get_info_class(dev_conf)">{{ dev_conf.info_str }}</span></h4>
+                <div class="row">
+                    <div class="col-md-5">
+                        <tree treeconfig="dev_conf.tree"></tree>
+                    </div>
+                    <div class="col-md-7">
+                        <div ng-show="dev_conf.active_error.length">
+                            <h4>Error Detail ({{ dev_conf.active_error.length}} lines)</h4>
+                            <div style="font-family:monospace;">
+                                <span ng-repeat="line in dev_conf.active_error track by $index">
+                                    <strong>{{ $index + 1 }} : </strong>{{ line }}<br>
+                                </span>
+                            </div>
+                        </div>
+                        <div ng-show="dev_conf.active_content.length">
+                            <h4>Content Detail ({{ dev_conf.active_content.length}} lines)</h4>
+                            <div style="font-family:monospace;">
+                                <span ng-repeat="line in dev_conf.active_content track by $index">
+                                    <strong>{{ $index + 1 }} : </strong>{{ line }}<br>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </tab>
+        </tabset>
+    </div>
+</div>
+
+{% endverbatim %}
+
+</div>
+
+{% endif %}
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+config_gen_module = angular.module("icsw.config.gen", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror"])
+
+angular_module_setup([config_gen_module])
+
+class config_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = true
+        @show_select = false
+        @show_descendants = false
+        @show_childs = false
+    get_name : (t_entry) ->
+        switch t_entry._node_type
+            when "eh"
+                return "errors"
+            when "e"
+                return "config " + t_entry.obj.attr("key")
+            when "c"
+                obj = t_entry.obj
+                content = obj.children("content")
+                node_str = obj.attr("name")
+                attr_list = []
+                for attr_name in ["uid", "gid", "mode"]
+                    if content.attr(attr_name)
+                        attr_value = content.attr(attr_name)
+                        if attr_name == "mode"
+                            attr_value = parseInt(attr_value).toString(8)
+                        attr_list.push("#{attr_name}=#{attr_value}")
+                if attr_list
+                    node_str = "#{node_str} (" + attr_list.join(", ") + ")"
+                return node_str
+            else
+                return "unknown _node_type '#{t_entry._node_type}'"
+    handle_click: (t_entry, event) =>
+        @clear_selected()
+        t_entry.selected = true
+        switch t_entry._node_type
+            when "eh"
+                @dev_conf.active_error = []
+            when "e"
+                @dev_conf.active_error = t_entry.obj.text().split("\n")
+            when "c"
+                content = t_entry.obj.children("content")
+                if content.length and content.text()
+                    @dev_conf.active_content = content.text().split("\n")
+                else
+                    @dev_conf.active_content = []
+
+config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+        $scope.devsel_list = []
+        $scope.result_trees = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.$apply(
+                $scope.devsel_list = _dev_sel
+            )
+        $scope.dev_names = () ->
+            return resolve_device_keys($scope.devsel_list)
+        $scope.generate_config = () ->
+            $scope.result_trees = []
+            $.blockUI()
+            call_ajax
+                url     : "{% url 'config:generate_config' %}"
+                data    : {
+                    "pk_list" : angular.toJson($scope.devsel_list)
+                },
+                success : (xml) =>
+                    $.unblockUI()
+                    cur_list = []
+                    if parse_xml_response(xml)
+                        $(xml).find("devices device").each (idx, cur_dev) =>
+                            cur_dev = $(cur_dev)
+                            new_tree = new config_tree($scope)
+                            new_conf = {
+                                state : parseInt(cur_dev.attr("state_level"))
+                                name : cur_dev.attr("name")
+                                tree : new_tree
+                                info_str : cur_dev.attr("info_str")
+                                active_error : []
+                                active_content : []
+                            }
+                            new_tree.dev_conf = new_conf
+                            if new_conf.state >= 40
+                                top_node = new_tree.new_node({folder:true, _node_type:"eh", expand:true})
+                                new_tree.add_root_node(top_node)
+                                # build error tree
+                                cur_dev.find("info_dict entry").each (idx, entry) =>
+                                    entry = $(entry)
+                                    t_entry = new_tree.new_node({folder:true, obj:entry, _node_type : "e", expand:true})
+                                    top_node.add_child(t_entry)
+                            else
+                                node_lut = {}
+                                cur_dev.find("tree").each (idx, entry) =>
+                                    entry = $(entry)
+                                    t_entry = new_tree.new_node({folder : parseInt(entry.attr("is_dir")), _node_type:"c", expand:parseInt(entry.attr("depth")) < 2, obj:entry})
+                                    node_id = entry.attr("node_id")
+                                    parent_id = entry.attr("parent_id")
+                                    node_lut[node_id] = t_entry
+                                    if parent_id != "0"
+                                        node_lut[parent_id].add_child(t_entry)
+                                    else
+                                        new_tree.add_root_node(t_entry)
+                            cur_list.push(new_conf)
+                    $scope.$apply(
+                        $scope.result_trees = cur_list
+                    )
+        $scope.get_info_class = (dev_conf) ->
+            if dev_conf.state == 40
+                return "text-danger"
+            else if dev_conf.state == 20
+                return "text-success"
+            else
+                return "text-warning"
+        install_devsel_link($scope.new_devsel, true)
+])
+
+add_tree_directive(config_gen_ctrl)
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.config.gen']"), ["icsw.config.gen"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>

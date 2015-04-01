@@ -1,0 +1,125 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript %}
+
+{% block title %}{% trans "Indexpage" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.index_app" ng-controller="index_base" ng-cloack ng-show="show_index">
+    <h2 class="center">Please select a device from the tree on the left side</h2>
+    <div class="well">
+        <h3>Quicklinks</h3>
+        <ul class="list-group">
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Change account settings (password, contact data)
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a>
+                    </div>
+                </div>
+            </li>
+            <li class="list-group-item" ng-show="check_perm('backbone.user.modify_tree')">
+                <div class="row">
+                    <div class="col-md-4">
+                        Add a new device
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'mon:create_device' %}">{% trans "Create device" %}</a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+        <h3>External links</h3>
+        <ul class="list-group">
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Changelog of the current development master
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >{% trans "Changelog" %}</a>
+                    </div>
+                </div>
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Software support forum (register, discuss and ask questions)
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.initat.org/phpBB3/index.php" target="_blank">{% trans "Forum" %}</a>
+                    </div>
+                </div>
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Mailing list (subscribe)
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.initat.org/mailman/listinfo" target="_blank">{% trans "Mailman" %}</a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="center_deviceinfo">
+</div>
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+root = exports ? this
+
+index_module = angular.module("icsw.index_app", ["ngSanitize", "ui.bootstrap"])
+
+index_controller = index_module.controller("index_base", ["$scope", "$timeout", "$window",
+    ($scope, $timeout, $window) ->
+        $scope.show_index = true
+        $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
+        $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
+        $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
+        $scope.check_perm = (p_name) ->
+            if p_name of GLOBAL_PERMISSIONS
+                return true
+            else if p_name of OBJECT_PERMISSIONS
+                return true
+            else
+                return false
+        $scope.set_visibility = (flag) ->
+            $scope.show_index = flag
+])
+
+use_devs = (dev_list, devg_list, md_list) ->
+    if dev_list.length
+        # only use when at least one device is selected
+        cur_di = new device_info(undefined, dev_list[0], (entry for entry in dev_list[1..]), md_list)
+        set_index_visibility(false)
+        $("div#center_deviceinfo").show()
+        cur_di.show()
+    else
+        # check for active device_info
+        if window.ICSW_DEV_INFO?
+            window.ICSW_DEV_INFO.close()
+        set_index_visibility(true)
+        $("div#center_deviceinfo").hide()
+
+add_config_handlers = ->
+    install_devsel_link(use_devs, true)
+    angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.index_app"])
+
+root.show_device_on_index = use_devs
+
+$(document).ready(add_config_handlers)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}
+

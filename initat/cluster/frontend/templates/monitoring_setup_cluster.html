@@ -1,0 +1,314 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/monitoring_extended.cs" %}{% endblock %}
+
+{% block title %}{% trans "Monitoring setup / Cluster / Dependencies" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.monitoring_extended">
+
+<script type="text/ng-template" id="mon_host_cluster.html">
+    {% crispy mon_host_cluster_form mon_host_cluster_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_service_cluster.html">
+    {% crispy mon_service_cluster_form mon_service_cluster_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_host_dependency_templ.html">
+    {% crispy mon_host_dependency_templ_form mon_host_dependency_templ_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_templ.html">
+    {% crispy mon_service_dependency_templ_form mon_service_dependency_templ_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_host_dependency.html">
+    {% crispy mon_host_dependency_form mon_host_dependency_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency.html">
+    {% crispy mon_service_dependency_form mon_service_dependency_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="mon_host_cluster_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Description</th>
+        <th>ServiceTemplate</th>
+        <th>Main device</th>
+        <th>Members</th>
+        <th>warn</th>
+        <th>error</th>
+        <th>Edit</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_host_cluster_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.description }}</td>
+    <td>{{ obj.mon_service_templ | array_lookup:this.rest_data.mon_service_templ:'name' }}</td>
+    <td>{{ obj.main_device | array_lookup:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.warn_value }}</td>
+    <td>{{ obj.error_value }}</td>
+    <td>{{ obj.user_editable | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_service_cluster_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Description</th>
+        <th>ServiceTemplate</th>
+        <th>Main device</th>
+        <th>Check command</th>
+        <th>Members</th>
+        <th>warn</th>
+        <th>error</th>
+        <th>Edit</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_service_cluster_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.description }}</td>
+    <td>{{ obj.mon_service_templ | array_lookup:this.rest_data.mon_service_templ:'name' }}</td>
+    <td>{{ obj.main_device | array_lookup:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.warn_value }}</td>
+    <td>{{ obj.error_value }}</td>
+    <td>{{ obj.user_editable | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_host_dependency_templ_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Inherits parent</th>
+        <th>Priority</th>
+        <th>Period</th>
+        <th>up/E</th>
+        <th>down/E</th>
+        <th>unreach/E</th>
+        <th>pend/E</th>
+        <th>up/N</th>
+        <th>down/N</th>
+        <th>unreach/N</th>
+        <th>pend/N</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_host_dependency_templ_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.inherits_parent | yesno1 }}</td>
+    <td>{{ obj.priority }}</td>
+    <td>{{ obj.dependency_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.efc_up | yesno1 }}</td>
+    <td>{{ obj.efc_down | yesno1 }}</td>
+    <td>{{ obj.efc_unreachable | yesno1 }}</td>
+    <td>{{ obj.efc_pending | yesno1 }}</td>
+    <td>{{ obj.nfc_up | yesno1 }}</td>
+    <td>{{ obj.nfc_down | yesno1 }}</td>
+    <td>{{ obj.nfc_unreachable | yesno1 }}</td>
+    <td>{{ obj.nfc_pending | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_templ_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Inherits parent</th>
+        <th>Priority</th>
+        <th>Period</th>
+        <th>ok/E</th>
+        <th>warn/E</th>
+        <th>unknown/E</th>
+        <th>critical/E</th>
+        <th>pend/E</th>
+        <th>ok/N</th>
+        <th>warn/N</th>
+        <th>unknown/N</th>
+        <th>critical/N</th>
+        <th>pend/N</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_templ_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.inherits_parent | yesno1 }}</td>
+    <td>{{ obj.priority }}</td>
+    <td>{{ obj.dependency_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.efc_ok | yesno1 }}</td>
+    <td>{{ obj.efc_warn | yesno1 }}</td>
+    <td>{{ obj.efc_unknown | yesno1 }}</td>
+    <td>{{ obj.efc_critical | yesno1 }}</td>
+    <td>{{ obj.efc_pending | yesno1 }}</td>
+    <td>{{ obj.nfc_ok | yesno1 }}</td>
+    <td>{{ obj.nfc_warn | yesno1 }}</td>
+    <td>{{ obj.nfc_unknown | yesno1 }}</td>
+    <td>{{ obj.nfc_critical | yesno1 }}</td>
+    <td>{{ obj.nfc_pending | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_host_dependency_head.html">
+    <tr>
+        <th>Devices</th>
+        <th>Dependent devices</th>
+        <th>Template</th>
+        <th>Cluster</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_host_dependency_row.html">
+    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.dependent_devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_host_dependency_templ | array_lookup:this.rest_data.mon_host_dependency_templ:'name' }}</td>
+    <td>{{ obj.mon_host_cluster | array_lookup:this.rest_data.mon_host_cluster:'name' }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_head.html">
+    <tr>
+        <th>Devices</th>
+        <th>Check</th>
+        <th>Dependent devices</th>
+        <th>Dependent check</th>
+        <th>Template</th>
+        <th>Cluster</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_row.html">
+    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.dependent_devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.dependent_mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.mon_service_dependency_templ | array_lookup:this.rest_data.mon_service_dependency_templ:'name' }}</td>
+    <td>{{ obj.mon_service_cluster | array_lookup:this.rest_data.mon_service_cluster:'name' }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<tabset ng-cloack>
+    <tab heading="Host Clusters">
+        <div ng-controller="mon_host_cluster_base">
+            <div ng-controller="mon_host_cluster">
+                <h2>Host Cluster ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead monhostclusterhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monhostclusterrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Service Clusters">
+        <div ng-controller="mon_service_cluster_base">
+            <div ng-controller="mon_service_cluster">
+                <h2>Service Cluster ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead monserviceclusterhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monserviceclusterrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Host dependency templates">
+        <div ng-controller="mon_host_dependency_templ_base">
+            <div ng-controller="mon_host_dependency_templ">
+                <h2>Host dependency templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead monhostdependencytemplhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monhostdependencytemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Service dependency templates">
+        <div ng-controller="mon_service_dependency_templ_base">
+            <div ng-controller="mon_service_dependency_templ">
+                <h2>Service dependency templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead monservicedependencytemplhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monservicedependencytemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Host dependencies">
+        <div ng-controller="mon_host_dependency_base">
+            <div ng-controller="mon_host_dependency">
+                <h2>Host dependencies ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead monhostdependencyhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monhostdependencyrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Service dependencies">
+        <div ng-controller="mon_service_dependency_base">
+            <div ng-controller="mon_service_dependency">
+                <h2>Service dependencies ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead monservicedependencyhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monservicedependencyrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+</tabset>
+
+{% endverbatim %}
+
+</div>
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring_extended']"), ["icsw.monitoring_extended"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

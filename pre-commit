@@ -1,0 +1,89 @@
+#!/bin/sh
+
+# pylint exit codes
+# status 1 to 16 will be bit-ORed so you can know which different
+# categories has been issued by analysing pylint output status code
+
+pylint_fine=0        # 0 if everything went fine
+pylint_fatal=1       # 1 if a fatal message was issued
+pylint_error=2       # 2 if an error message was issued
+pylint_warning=4     # 4 if a warning message was issued
+pylint_refactor=8    # 8 if a refactor message was issued
+pylint_convention=16 # 16 if a convention message was issued
+
+PYLINT="pylint"
+PYLINT_RETURN=$(($pylint_fatal | $pylint_error | $pylint_warning))
+PYLINT_RC=pylintrc-init
+PEP8="pep8"
+
+function check_command() {
+    if which $1 > /dev/null 2>&1 || [ -f $1 ]; then
+        :
+    else
+        echo "$0: Error: $1 not found" 1>&2
+        exit 1
+    fi
+}
+
+function do_pep8() {
+    if [ "" != "$1" ]; then
+        $PEP8 --count -r --ignore=E501 $1
+        return $?
+    fi
+    return 0
+}
+
+function do_pylint() {
+    if [ "" != "$1" ]; then
+        for i in $1; do
+            $PYLINT --rcfile=$PYLINT_RC -r n -i y $i
+            result=$?
+            if [ $(( $result & $PYLINT_RETURN)) -ne 0 ]; then
+                return 1
+            fi
+        done
+    fi
+    return 0
+}
+
+function do_unittest() {
+    $UNITTEST
+    return $?
+}
+
+# To make it work on empty repos
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+FILES_TO_CHECK=$(git diff --staged --name-only --diff-filter="AM" | grep ".py$")
+
+check_command $PEP8
+check_command $UNITTEST
+check_command $PYLINT
+
+# Pop stash back
+#trap "git stash pop" 0 2 15 # SIG_EXIT, SIG_INT, SIG_TERM
+# Stash so we don't test against unstaged changes
+#git stash --keep-index
+
+set -e # Fail if the following commands fail
+echo "Running pep8"
+do_pep8 "$FILES_TO_CHECK"
+set +e
+
+echo "Running pylint"
+do_pylint "$FILES_TO_CHECK"
+result=$?
+if [ $result -ne 0 ]; then
+    echo "PYLINT FAILED"
+    exit 1
+fi
+
+echo "Running unittests"
+do_unittest
+

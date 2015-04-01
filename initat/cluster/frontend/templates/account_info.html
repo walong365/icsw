@@ -1,0 +1,126 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/user.cs" %}{% endblock %}
+
+{% block title %}{% trans "Account info" %}{% endblock %}
+
+{% block content %}
+
+{% verbatim %}
+
+<div ng-app="icsw.user">
+    <div ng-controller="account_ctrl" ng-model="cur_user">
+        <div ng-controller="password_ctrl">
+            {% endverbatim %}
+                {% crispy form form.helper %}
+            {% verbatim %}
+        </div>
+        <hr></hr>
+        <div class="col-md-12" ng-show="edit_obj.user_permission_set.length || edit_obj.user_object_permissions_set.length">
+            <h2>Permissions</h2>
+            <table class="table table-condensed table-hover" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>type</th>
+                        <th>Name</th>
+                        <th>level</th>
+                        <th>object</th>
+                        <th>Application</th>
+                        <th>model</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="perm in edit_obj.user_permission_set">
+                        <td>global</td>
+                        <td>{{ perm.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
+                        <td>{{ get_perm_level(perm) }}</td>
+                        <td>&nbsp;</td>
+                        <td>{{ get_perm_app(perm) }}</td>
+                        <td>{{ get_perm_model(perm) }}</td>
+                    </tr>
+                    <tr ng-repeat="perm in edit_obj.user_object_permission_set">
+                        <td>local</td>
+                        <td>{{ perm.csw_object_permission.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
+                        <td>{{ get_perm_level(perm) }}</td>
+                        <td>{{ get_perm_object(perm) }}</td>
+                        <td>{{ get_perm_app(perm.csw_object_permission) }}</td>
+                        <td>{{ get_perm_model(perm.csw_object_permission) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endverbatim %}
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+
+angular_module_setup([user_module])
+
+angular_add_password_controller(user_module)
+
+user_module.controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+        $scope.ac_levels = [
+            {"level" : 0, "info" : "Read-only"},
+            {"level" : 1, "info" : "Modify"},
+            {"level" : 3, "info" : "Modify, Create"},
+            {"level" : 7, "info" : "Modify, Create, Delete"},
+        ]
+        wait_list = restDataSource.add_sources([
+            ["{% url 'rest:csw_permission_list' %}", {}]
+            ["{% url 'rest:csw_object_list' %}", {}]
+        ])
+        wait_list.push(Restangular.one("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2), {{ user.pk }}).get())
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.edit_obj = data[2]
+                $scope.csw_permission_list = data[0]
+                $scope.csw_permission_lut = {}
+                for entry in $scope.csw_permission_list
+                    $scope.csw_permission_lut[entry.idx] = entry
+                $scope.ct_dict = {}
+                for entry in data[1]
+                    $scope.ct_dict[entry.content_label] = entry.object_list
+        )
+        $scope.update_account = () ->
+            $scope.edit_obj.put().then(
+               (data) ->
+               (resp) ->
+            )
+        $scope.$on("icsw.set_password", (event, new_pwd) ->
+            $scope.edit_obj.password = new_pwd
+            $scope.update_account()
+        )
+        $scope.get_perm_app = (perm) ->
+            return $scope.csw_permission_lut[perm.csw_permission].content_type.app_label
+        $scope.get_obj_perm_app = (perm) ->
+            return $scope.csw_permission_lut[perm.csw_permission].content_type.app_label
+        $scope.get_perm_level = (perm) ->
+            level = perm.level
+            return (_v.info for _v in $scope.ac_levels when _v.level == level)[0]
+        $scope.get_perm_model = (perm) ->
+            return $scope.csw_permission_lut[perm.csw_permission].content_type.model
+        $scope.get_perm_type = (perm) ->
+            return if $scope.csw_permission_lut[perm.csw_permission].valid_for_object_level then "G / O" else "G"
+        $scope.get_perm_object = (perm) ->
+            obj_perm = perm.csw_object_permission
+            csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]
+            key = "#{csw_perm.content_type.app_label}.#{csw_perm.content_type.model}"
+            return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
+        $scope.change_password = () ->
+            $scope.$broadcast("icsw.enter_password")
+])
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

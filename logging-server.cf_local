@@ -1,0 +1,11 @@
+# from addr
+FROM_ADDR=pythonerror@localhost.localdomain
+# to addr
+TO_ADDR=root@localhost
+# mailserver
+MAILSERVER=localhost
+# out hanlde
+OUT_HANDLE=/tmp/py_out
+# error handle
+ERR_HANDLE=/tmp/py_err
+

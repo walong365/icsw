@@ -1,0 +1,318 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}
+{% include "angular/package.cs" %}
+{% include "angular/device.cs" %}
+{% endblock %}
+
+{% block title %}{% trans "Package Install" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.package" ng-cloack>
+
+<script type="text/ng-template" id="package_search.html">
+    {% crispy package_search_form package_search_form.helper %}
+</script>
+
+<script type="text/ng-template" id="package_action.html">
+    {% crispy package_action_form package_action_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="package_repo_head.html">
+    <tr>
+        <th>Name</th>
+        <th>Alias</th>
+        <th>Enabled</th>
+        <th>AutoRefresh</th>
+        <th>GPGcheck</th>
+        <th>publish</th>
+        <th>URL</th>
+        <th>Pri</th>
+        <th>Service</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="pdc_state.html">
+    <div>
+        <span ng-show="show_pdc()" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
+            <span ng-class="get_glyph_class(pdc.target_state)"></span>
+            <div class="btn-group btn-group-xs">
+                <input type="button" class="btn disabled" ng-class="get_btn_class()" value="{{ pdc.installed }}"></input>
+                <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"></input>
+                <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"></input>
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"></input>
+            </div>
+        </span>
+        <span ng-show="!show_pdc()">
+            <div class="btn-group btn-group-xs">
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"></input>
+            </div>
+        </span>
+    </div>
+</script>
+
+<script type="text/ng-template" id="pdc_version.html">
+    <div>
+        <span ng-show="show_pdc()" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
+            {{ get_installed_version() }}
+        </span>
+    </div>
+</script>
+
+<script type="text/ng-template" id="package_repo_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.alias }}</td>
+    <td>{{ obj.enabled | yesno1 }}</td>
+    <td>{{ obj.autorefresh | yesno1 }}</td>
+    <td>{{ obj.gpg_check | yesno1 }}</td>
+    <td>{{ obj.publish_to_nodes | yesno1 }}</td>
+    <td>{{ obj.url }}</td>
+    <td>{{ obj.priority }}</td>
+    <td>{{ fn.get_service_name(this, obj) }}</td>
+    <td><input type="button" class="btn btn-xs btn-primary" ng-click="fn.toggle(obj)" value="toggle publish"/></td>
+    <td><input type="button" class="btn btn-xs btn-danger" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="package_search_head.html">
+    <tr>
+        <th>Search string</th>
+        <th>User</th>
+        <th>repeat</th>
+        <th>State</th>
+        <th>results</th>
+        <th>search</th>
+        <th>last search</th>   
+        <th colspan="4" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="package_search_row.html">
+    <td>{{ obj.search_string }}</td>
+    <td>{{ obj.user | array_lookup:this.rest_data.user | show_user }}</td>
+    <td>{{ obj.num_searches }}</td>
+    <td>{{ obj.current_state }}</td>
+    <td>{{ obj.results }}</td>
+    <td>{{ obj.last_search_string }}</td>
+    <td class="text-right">{{ obj.last_search | datetime1 }}</td>
+    <td><input type="button" class="btn btn-success btn-xs" ng-show="obj.results > 0" ng-click="fn.show(this, obj)" value="show"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.current_state == 'done'" ng-click="fn.retry(this, obj)" value="retry"/></td>
+    <td><input type="button" class="btn btn-warning btn-xs" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="package_search_result_head.html">
+    <tr>
+        <th>name</th>
+        <th>version</th>
+        <th>kind</th>
+        <th>repo</th>
+        <th>arch</th>
+        <th colspan="3" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="package_search_result_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.version }}</td>
+    <td>{{ obj.kind }}</td>
+    <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
+    <td>{{ obj.arch }}</td>
+    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
+    <td>
+        <div ng-show="!obj.copied">
+        <input type="button" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/>
+        <div class="btn-group">
+            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+                from repo <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a href="#" ng-click="obj.target_repo=0">ignore</a></li>
+                <li ng-repeat="repo in rest_data.package_repo"><a href="#" ng-click="obj.target_repo=repo.idx"><span ng-show="repo.idx == obj.package_repo">(*) </span>{{ repo.name }}</a></li>
+            </ul>
+        </div>
+        {{ fn.show_repo(this, obj) }}
+        </div>
+    </td>
+    <td><input type="button" class="btn btn-xs btn-danger" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="package_head.html">
+    <tr>
+        <th>name</th>
+        <th>version</th>
+        <th>Repository</th>
+        <th>forced</th>
+        <th>kind</th>
+        <th>arch</th>
+        <th colspan="3" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="package_row.html">
+    <td>{{ obj.name }}</td>
+    <td ng-show="obj.always_latest == false">{{ obj.version }}</td>
+    <td ng-show="obj.always_latest == true">&lt;latest&gt;</td>
+    <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
+    <td>{{ obj.target_repo | array_lookup:this.rest_data.package_repo:"name":"---" }}</td>
+    <td>{{ obj.kind }}</td>
+    <td>{{ obj.arch }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
+    <td><input type="button" class="btn btn-warning btn-xs" ng-click="remove(obj)" value="remove" title="remove from selected devices"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+    <td>{{ get_pdc_list(obj) }}</td>
+</script>
+
+<tabset>
+    <tab heading="Package repositories">
+        <div ng-controller="package_repo_base">
+            <h3>Repositories ({{ entries.length }} entries, {{ rest_data.service.length }} services),
+                <input type="button" class="btn btn-primary" value="Rescan" ng-click="fn.rescan(this)"/>,
+                <input type="button" class="btn btn-warning" value="Sync to clients" ng-click="fn.sync(this)"/>,
+                <input type="button" class="btn btn-warning" value="Clear caches" ng-click="fn.clearcaches(this)"/>
+            </h3>
+            <table class="table table-condensed table-hover" style="width:auto;">
+                <thead packagerepohead></thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" paginator entries="entries" pag_settings="pagSettings" paginator-filter="func" paginator-filter-func="fn.filter_repo" per_page="10" paginator-epp="10,20,50,100">
+                        </td>
+                        <td>
+                            show:
+                            <input type="button" ng-class="show_enabled && 'btn btn-sm btn-success' || 'btn btn-sm'" value="enabled" ng-click="show_enabled =! show_enabled"></input> 
+                            <input type="button" ng-class="show_published && 'btn btn-sm btn-success' || 'btn btn-sm'" value="published" ng-click="show_published =! show_published"></input> 
+                        </td>
+                    </tr>
+                    <tr packagereporow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                </tbody>
+            </table>
+        </div>
+    </tab>
+    <tab heading="Package search">
+        <div ng-controller="package_search_base">
+            <h3>Searches ({{entries.length}} entries)</h3>
+            <div class="row">
+                <div class="form-inline col-md-8">
+                    <form class="form-inline" ng-submit="fn.create_search(this)">
+                        New search :
+                        <input class="form-control input-ms" placeholder="search string ..." type="text" ng-model="search_string" />
+                        <input type="submit" class="btn btn-sm btn-warning" value="create"/>  
+                    </form>
+                </div>
+            </div>
+            <table class="table table-condensed table-hover" style="width:auto;">
+                <thead packagesearchhead></thead>
+                <tbody>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                    <tr packagesearchrow ng-repeat="obj in entries | orderBy:'-search_string':true | paginator:this"></tr>
+                </tbody>
+            </table>
+        </div>
+        <div ng-controller="package_search_result_base">
+            <div ng-show="entries.length > 0">
+                <h3>Search results for '{{ shared_data.result_obj.last_search_string }}' ({{ entries | paginator_filter:this | array_length }} entries)</h3>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead packagesearchresulthead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator-filter="simple"></td></tr>
+                        <tr packagesearchresultrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Install">
+        <div ng-controller="package_base">
+            <div ng-controller="install">
+                <h3>
+                    <div class="form-inline">
+                        <!-- <input type="button" class="btn btn-success" ng-value="fn.get_grid_style(this)" ng-click="fn.toggle_grid_style(this)"></input> -->
+                        ({{ devices.length }} devices, {{ entries.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
+                        <div class="form-group">
+                            <input ng-model="package_filter" class="form-control input-sm"></input>
+                        </div>,
+                        <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>&nbsp;
+                        <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>,
+                        <input type="button" class="btn btn-warning btn-sm" value="Clear caches" ng-click="send_clear_caches()"/>,
+                        <div class="btn-group btn-group-sm">
+                            <input type="button" ng-class="is_mode == 'a' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'a'" value="action"/>
+                            <input type="button" ng-class="is_mode == 'v' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'v'" value="version"/>
+                        </div>
+                    </div>
+                </h3>
+                <table class="table table-condensed" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>&nbsp;</th>
+                            <th>Device</th>
+                            <th ng-repeat="dev in devices" class="text-center">{{ dev.name }}</th>
+                        </th>
+                        <tr>
+                            <th>&nbsp;</th>
+                            <th>contact (Vers)</th>
+                            <td ng-repeat="dev in devices">{{ latest_contact(dev) }} ({{ dev.client_version }})</td>
+                        </th>
+                        <tr>
+                            <th>Package</th>
+                            <th>action</th>
+                            <th ng-repeat="dev in devices" class="text-center">
+                                <div class="btn-group btn-group-xs">
+                                    <input type="button" class="btn btn-primary" ng-click="change_device_sel(dev, 1)" value="S"></input>
+                                    <input type="button" class="btn btn-success" ng-click="change_device_sel(dev, 0)" value="T"></input>
+                                    <input type="button" class="btn btn-warning" ng-click="change_device_sel(dev, -1)" value="C"></input>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="pack in entries | filter:{'name' : package_filter}">
+                            <td>
+                                {{ pack.name }}
+                                <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
+                                <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
+                                <span ng-show="pack.target_repo"> from {{ pack.target_repo | array_lookup:this.rest_data.package_repo:"name" }}</span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-xs">
+                                    <input type="button" class="btn btn-primary" ng-click="change_package_sel(pack, 1)" value="S"></input>
+                                    <input type="button" class="btn btn-success" ng-click="change_package_sel(pack, 0)" value="T"></input>
+                                    <input type="button" class="btn btn-warning" ng-click="change_package_sel(pack, -1)" value="C"></input>
+                                </div>
+                            </td>
+                            <td ng-repeat="device in devices" istate mode="is_mode" pdc="state_dict[device.idx][pack.idx]" parent="$parent.$parent" pdcs="$parent.selected_pdcs" ng-class="get_td_class(device.idx, pack.idx)"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <h3>Packages ({{ entries | paginator_filter:this | array_length }} entries)</h3>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead packagehead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10" paginator-filter="simple"></td></tr>
+                        <tr packagerow ng-repeat="obj in entries | orderBy:'-search_string':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+</tabset>
+
+{% endverbatim %}
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.package']"), ["icsw.package"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

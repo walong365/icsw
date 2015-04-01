@@ -1,0 +1,39 @@
+<colourizing>
+    <entry key="load">
+        <range colortable='dark28'/>
+    </entry>
+    <entry key="net">
+        <range colortable='bupu9'/>
+        <modify key_match=".*rx.*" attribute="draw_type" value="AREA1"/>
+        <modify key_match=".*rx.*" attribute="transparency" value="100"/>
+        <modify key_match=".*tx.*" attribute="invert" value="1"/>
+        <modify key_match=".*tx.*" attribute="draw_type" value="AREA1"/>
+        <modify key_match=".*tx.*" attribute="transparency" value="100"/>
+        <modify key_match=".*err.*" attribute="draw_type" value="LINE2"/>
+    </entry>
+    <entry key="vms">
+        <range colortable='paired12'/>
+        <!--<modify key_match=".*" attribute="draw_type" value="STACK"/>
+        <modify key_match=".*idle.*" attribute="draw_type" value="LINE"/>-->
+    </entry>
+    <entry key="df">
+        <range colortable='set19'/>
+    </entry>
+    <entry key="io">
+        <range colortable='prgn11'/>
+    </entry>
+    <entry key="mem">
+        <range colortable='rdgy11'/>
+        <modify key_match=".*bc$" attribute="draw_type" value="LINE2"/>
+    </entry>
+    <entry key="num" >
+        <range colortable='blues6'/>
+    </entry>
+    <entry key="ovpn" >
+        <range colortable='gnbu9'/>
+    </entry>
+    <entry key="proc" >
+        <range colortable='piyg8'/>
+        <modify key_match=".*" attribute="draw_type" value="LINE2"/>
+    </entry>
+ </colourizing>

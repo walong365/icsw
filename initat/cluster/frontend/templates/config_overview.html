@@ -1,0 +1,89 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript staticfiles crispy_forms_tags %}
+
+{% block angular %}{% include "angular/config.cs" %}{% endblock %}
+
+{% block title %}{% trans "Configurations" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.config">
+
+    <script type="text/ng-template" id="config_template.html">
+        {% crispy config_form config_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="config_catalog_template.html">
+        {% crispy config_catalog_form config_catalog_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="config_str_template.html">
+        {% crispy config_str_form config_str_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="config_int_template.html">
+        {% crispy config_int_form config_int_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="config_bool_template.html">
+        {% crispy config_bool_form config_bool_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="config_script_template.html">
+        {% crispy config_script_form config_script_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="mon_check_command_template.html">
+        {% crispy mon_check_command_form mon_check_command_form.helper %}
+    </script>
+
+    <div ng-controller="config_ctrl">
+        <tabset>
+            <tab heading="configurations">
+                <configtable></configtable>
+                <div class="row panel panel-default">
+                    {% verbatim %}
+                    <div class="col-md-4">
+                        <input type="button" class="btn btn-success btn-sm" value="download selected configs" ng-show="pagSettings.conf.filtered_len > 0" ng-click="download_selected()"></input>
+                    </div>
+                    <div class="col-md-4">
+                        <input ng-file-select type="file" name="config" class="btn btn-default btn-sm"></input>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="button" ng-show="uploader.queue.length "class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input>
+                    </div>
+                    {% endverbatim %}
+                </div>
+            </tab>
+            <tab heading="catalogs">
+                <catalogtable></catalogtable>
+            </tab>
+            {% verbatim %}
+            <tab heading="uploads ({{ cached_uploads.length }})" ng-show="cached_uploads.length">
+                <form class="form-inline">
+                    Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="catalog" ng-options="value.idx as value.name for value in config_catalogs"></select>
+                </form>
+                <uploadinfo ng-repeat="entry in cached_uploads" upload="entry" catalog="catalog">
+                </uploadinfo>
+            </tab>
+            {% endverbatim %}
+        </tabset>
+    </div>
+</div>
+
+{% include "generate_config.html" %}
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.config']"), ["icsw.config"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

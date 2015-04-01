@@ -1,0 +1,21 @@
+o Copy lic_SITES.con, actual_SITE and lic_<SITES>.src_config to /etc/sysconfig/licenses
+
+o modify the appropriate lic_<SITE>.src_config
+
+o call lic_fetch in /opt/cluster/bin to fetch the licenses from the License-server
+
+o modify the newly created /etc/sysconfig/licenses/lic_<SITE>.conf 
+
+o call lic_config in /opt/cluster/bin to modify the SGE-config
+
+o modify the configuration of the node running the loadsensor with
+
+    qconf -mconf <NODENAME>
+
+  and add 
+
+    load_sensor                  /opt/cluster/bin/loadsensor.py
+
+o restart the sge-execd on the node running the loadsensor
+
+o check permissions of /etc/sysconfig/licenses/* (should be world readable)

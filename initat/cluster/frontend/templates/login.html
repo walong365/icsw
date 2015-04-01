@@ -1,0 +1,88 @@
+{% extends "main.html" %}
+
+{% load i18n crispy_forms_tags staticfiles coffeescript %}
+
+{% block title %}{{ settings.INIT_PRODUCT_NAME }}&reg; {% trans " by init.at login" %}{% endblock %}
+
+{% block body %}
+
+<div id="icsw.login">
+    <div ng-controller="login_ctrl">
+        <div class="row" ng-if="medium_screen()">
+            <div class="col-xs-4" style="margin-top:60px;">
+                {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
+                <img width="100%;" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+                </img>
+                {% endwith %}
+            </div>
+            <div class="col-xs-6">
+                <div class="well"  style="margin-top:60px;"> 
+                    {% crispy login_form %}
+                 <p class="text-right">species : {{ settings.INIT_PRODUCT_FAMILY }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="row" ng-if="big_screen()">
+            <div class="col-md-offset-4 col-md-4">
+                {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
+                <img width="100%;" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+                </img>
+                {% endwith %}
+            </div>
+            <div class="col-md-offset-4 col-md-4">
+                <div class="well"  style="margin-top:60px;"> 
+                    {% crispy login_form %}
+                 <p class="text-right">species : {{ settings.INIT_PRODUCT_FAMILY }}</p>
+                </div>
+            </div>
+        </div>
+        <div ng-show="login_hints.length" class="row">
+            <div class="col-md-offset-2 col-md-8">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3>Login hints</h3>
+                    </div>
+                    <div class="panel-body">
+                <ul class="list-group">
+                    <li class="list-group-item" ng-repeat="entry in login_hints">
+                        {% verbatim %}
+                        <span ng-show="entry[2]">superuser </span>
+                        <span ng-show="!entry[2]">user </span>
+                        <tt><b>{{ entry[0] }}</b></tt> has password <tt>'{{ entry[1] }}'</tt>
+                        {% endverbatim %}
+                    </li>
+                </ul>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+login_module = angular.module("icsw.login", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap"])
+
+login_module.controller("login_ctrl", ["$scope",
+    ($scope) ->
+        $scope.login_hints = {{ login_hints | safe }}
+        $scope.medium_screen = () ->
+            $("input#id_username").focus()
+            return "{{ LOGIN_SCREEN_TYPE }}" == "medium"
+        $scope.big_screen = () ->
+            $("input#id_username").focus()
+            return "{{ LOGIN_SCREEN_TYPE }}" == "big"
+])
+
+# bootstrap angular
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.login']"), ["icsw.login"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

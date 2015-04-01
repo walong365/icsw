@@ -1,0 +1,97 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/user.cs" %}{% endblock %}
+
+{% block title %}{% trans "Global settings" %}{% endblock %}
+
+{% block content %}
+
+{% verbatim %}
+
+<div ng-app="icsw.settings">
+    <div ng-controller="settings_ctrl">
+        {% endverbatim %}
+            {% crispy form form.helper %}
+        {% verbatim %}
+        <h3>License settings</h3>
+        <table class="table table-condensed table-hover" style="width:auto;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Enabled</th>
+                    <th colspan="10">Services needed</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="lic in edit_obj.cluster_license_set">
+                    <td>{{ lic.name }}</td>
+                    <td>{{ lic.description }}</td>
+                    <td>
+                        <input type="button" ng-class="get_lic_class(lic)" ng-value="get_lic_value(lic)" ng-click="change_lic(lic)"></input>
+                    </td>
+                    <td ng-show="get_services(lic.name).length == 0">---</td>
+                    <td ng-repeat="srv in get_services(lic.name)" ng-class="get_service_state(srv)">{{ srv }}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+    </div>
+</div>
+
+{% endverbatim %}
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+settings_module = angular.module("icsw.settings", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+
+angular_module_setup([settings_module])
+
+angular_add_password_controller(settings_module)
+
+settings_module.controller("settings_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "$window", 
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, $window) ->
+        wait_list = restDataSource.add_sources([
+            ["{% url 'rest:cluster_setting_list' %}", {}]
+        ])
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.edit_obj = (entry for entry in data[0] when entry.name == "GLOBAL")[0]
+        )
+        $scope.update_settings = () ->
+            $scope.edit_obj.put().then(
+               (data) ->
+               (resp) ->
+            )
+        $scope.get_lic_class = (lic) ->
+            if lic.enabled
+                return "btn btn-xs btn-success"
+            else
+                return "btn btn-xs"
+        $scope.get_services = (lic) ->
+            if lic of $window.CLUSTER_LICENSE
+                return $window.CLUSTER_LICENSE[lic].services
+            else
+                return []
+        $scope.get_service_state = (srv) ->
+            if $window.SERVICE_TYPES[srv] ? false
+                return "success"
+            else
+                return "danger"
+        $scope.get_lic_value = (lic) ->
+            return if lic.enabled then "enabled" else "disabled"
+        $scope.change_lic = (lic) ->
+            Restangular.restangularizeElement(null, lic, "{% url 'rest:cluster_license_detail' 1 %}".slice(1).slice(0, -2))
+            lic.enabled = !lic.enabled
+            lic.put()
+])
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

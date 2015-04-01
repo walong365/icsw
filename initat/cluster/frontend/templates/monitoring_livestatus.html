@@ -1,0 +1,30 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/device_livestatus.cs" %}{% endblock %}
+
+{% block title %}{% trans "Monitoring - livestatus" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.monitoring_livestatus">
+    <div ng-controller='livestatus_ctrl'>
+        <livestatus>
+        </livestatus>
+    </div>
+</div>
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring_livestatus']"), ["icsw.device.livestatus"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

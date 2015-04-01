@@ -1,0 +1,41 @@
+[uwsgi]
+
+chdir=%(django_app_dir)
+pythonpath=%(django_app_dir)
+pidfile=/var/run/django.%(django_app).pid
+daemonize=/var/log/cluster/django-%(django_app).log
+
+env=NODE_PATH=/opt/cluster/lib/node_modules:/opt/cluster/lib/node_modules/npm/node_modules
+env=DJANGO_SETTINGS_MODULE=settings
+; needed for pre-start script
+env=DJANGO_APP_DIR=%(django_app_dir)
+env=DJANGO_APP=%(django_app)
+
+py-programname=python-init
+
+module=wsgi:application
+master=True
+; DO NOT use vacuum. It may introduce a race condition which will
+; leave instances in an unusable state after an emperor reload.
+vacuum=False
+max-requests=150
+harakiri-verbose=1
+processes=2
+post-buffering=1
+workers=8
+show-config=1
+; reduce mercy period to speed up reload
+worker-reload-mercy=10
+; be lazy (workers load application, not the master)
+lazy=1
+
+# buffer size
+buffer-size=32768
+
+; use chain reloading (workers are reloaded one after the other)
+; create/touch the files in the reload/ subdir to trigger a reload
+touch-chain-reload=%d/reload/%(django_app).touch
+; Statistics
+memory-report=1
+
+stats=/var/run/%(django_app)/stats.sock
