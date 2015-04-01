@@ -1,0 +1,13 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Global settings" %}{% endblock %}
+
+{% block content %}
+
+<div ng-controller="icswUserSettingsCtrl">
+    <icsw-user-settings-overview></icsw-user-settings-overview>
+</div>
+
+{% endblock %}

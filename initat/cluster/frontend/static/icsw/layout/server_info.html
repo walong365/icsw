@@ -1,0 +1,147 @@
+<script type="text/ng-template" id="icsw.layout.server.info.overview">
+    <accordion close-others="no">
+        <accordion-group is-open="is_open_roles">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_roles, 'glyphicon-chevron-right': !is_open_roles}"></i>
+                {{ num_roles() }} valid cluster roles defined (viewed from {{ local_device }})
+            </accordion-heading>
+            <table class="table table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>reachable IP</th>
+                        <th>cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat-start="role in get_roles()">
+                        <th colspan="4">{{ role }}, {{ get_num_servers(role) }} devices</th>
+                    </tr>
+                    <tr ng-repeat-end ng-repeat="server in get_servers(role)">
+                        <td>
+                            {{ server[0] }}
+                        </td>
+                        <td>
+                            {{ server[1] }}
+                        </td>
+                        <td>
+                            {{ server[3] }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </accordion-group>
+        <accordion-group is-open="is_open_list">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_list, 'glyphicon-chevron-right': !is_open_list}"></i>
+                <ng-pluralize count="server_info_list.length" when="{'0': 'No Server results', 'one': 'One Server result', 'other': '{} Server results'}"></ng-pluralize>
+            </accordion-heading>
+            <table class="table table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>valid</th>
+                        <th>Name</th>
+                        <th>Result</th>
+                        <th>max Memory</th>
+                        <th>total Memory</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="srv_info in server_info_list" ng-class="srv_info.get_tr_class()">
+                        <td>{{ srv_info.valid | yesno2 }}</td>
+                        <td>{{ srv_info.get_name() }}</td>
+                        <td>{{ srv_info.server_reply }}</td>
+                        <td class="text-right">{{ srv_info.max_mem | get_size:1:1024:"B":3 }}</td>
+                        <td class="text-right">{{ srv_info.sum_mem | get_size:1:1024:"B":3 }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </accordion-group>
+        <accordion-group is-open="is_open_detail">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_detail, 'glyphicon-chevron-right': !is_open_detail}"></i>
+                <ng-pluralize count="server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
+            </accordion-heading>
+            <table class="table table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>Instance</th>
+                        <th>Type</th>
+                        <th>Check</th>
+                        <th ng-repeat="srv_info in server_info_list">
+                            {{ srv_info.get_name() }},
+                            {{ srv_info.max_mem | get_size:1:1024:"B":3 }} max /
+                            {{ srv_info.sum_mem | get_size:1:1024:"B":3 }} total Memory
+                         </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="instance in instance_list">
+                        <td>{{ instance }}</td>
+                        <td>{{ get_runs_on(instance) }}</td>
+                        <td>{{ server_info_list[0].get_check_source(instance) }}</td>
+                        <td ng-repeat="srv_info in server_info_list">
+                            <icsw-layout-server-info-instance></icsw-layout-server-info-instance>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </accordion-group>
+    </accordion>
+</script>
+
+<script type="text/ng-template" id="icsw.layout.server.info.state">
+    <div ng-switch on="get_state()">
+        <div class="text-warning" ng-switch-when="0">
+            ---
+        </div>
+        <div class="row" style="width:520px;" ng-switch-when="1">
+            <div class="col-xs-3 text-right">
+                <span ng-class="get_version_class()" ng-bind-html="get_version()"></span>
+            </div>
+            <div class="col-xs-2 text-center" style="white-space:nowrap;">
+                <span ng-class="get_run_class()">{{ get_run_info() }}</span>
+            </div>
+            <div class="col-xs-2 text-right">{{ get_mem_info() | get_size:1:1024 }}</div>
+            <div class="col-xs-3" style="height:10px;">
+                <progressbar value="get_mem_value()" animate="false"></progressbar>
+            </div>
+            <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop()"">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs btn-warning dropdown-toggle" data-toggle="dropdown">
+                        Action <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-show="stop_allowed()" ng-click="action('stop')"><a href="#">Stop</a></li>
+                        <li ng-show="has_force_option()" ng-click="action('force-stop')"><a href="#">Force Stop</a></li>
+                        <li ng-click="action('restart')"><a href="#">Restart</a></li>
+                        <li ng-show="has_force_option()" ng-click="action('force-restart')"><a href="#">Force Restart</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="row" ng-switch-when="2">
+            <div class="col-xs-3 text-right">
+                <span ng-class="get_version_class()" ng-bind-html="get_version()"></span>
+            </div>
+            <div class="col-xs-7 text-danger">
+                not running
+            </div>
+            <div class="col-xs-2">
+                <div class="btn-group" ng-show="has_startstop()">
+                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
+                        Action <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-click="action('start')"><a href="#">Start</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="row" ng-switch-when="3">
+            <div class="col-xs-12 text-warning">
+                not installed
+            </div>
+        </div>
+    </div>
+</script>

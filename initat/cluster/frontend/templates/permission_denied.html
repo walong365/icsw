@@ -1,0 +1,16 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript %}
+
+{% block title %}{% trans "Permission denied" %}{% endblock %}
+
+{% block content %}
+
+<div class="jumbotron">
+    <h1>Permission denied</h1>
+    <p class="text-danger">
+        You have not the requested permissions to access the requested page.
+    </p>
+</div>
+
+{% endblock %}

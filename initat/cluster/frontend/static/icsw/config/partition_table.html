@@ -1,0 +1,112 @@
+<script type="text/ng-template" id="icsw.config.disk.layout">
+    <icsw-config-partition-table></icsw-config-partition-table>
+    <h4 ng-class="part.valid && 'text-success' || 'text-danger'">Problems: {{ error_list.length }}</h4>
+    <ul ng-show="error_list.length" class="list-group">
+        <li ng-repeat="error in error_list" class="list-group-item">
+            {{ error.msg }}
+        </li>
+    </ul>
+    <table class="table table-condensed table-hover" style="width:auto;">
+        <thead></thead>
+        <tbody>
+            <tr class="success">
+                <th colspan="10"></th>
+                <th>
+                    <input type="button" class="btn btn-success btn-xs" ng-click="layout_edit.create($event)" value="create disc"/>
+                </th>
+                <th colspan="2"></th>
+            </tr>
+            <tr icsw-config-partition-table-disc partition_fs="partition_fs" ng-repeat-start="disc in part.partition_disc_set"></tr>
+            <tr icsw-config-partition-table-partition ng-repeat-end ng-repeat="part in disc.partition_set"></tr>
+            <tr class="warning">
+                <th colspan="10">system partitions ({{ edit_obj.sys_partition_set.length }} defined)</th>
+                <th>
+                    <input type="button" class="btn btn-success btn-xs" ng-click="sys_edit.create($event)" value="create sys"/>
+                </th>
+                <th colspan="2"></th>
+            </tr>
+            <tr icsw-config-partition-table-system-partition ng-repeat="sys in edit_obj.sys_partition_set | orderBy:'mountpoint'"></tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.config.partition.table.system.partition">
+    <td colspan="2">{{ sys.name }}</td>
+    <td>{{ sys.mountpoint }}</td>
+    <td colspan="8">{{ sys.mount_options }}</td>
+    <td>
+        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="sys_edit.edit(sys, $event)"/>
+    </td>
+    <td>
+        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="sys_edit.delete_obj(sys)"/>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.config.partition.table.disc">
+    <th colspan="10">Disc: {{ disc.disc }}, {{ disc.partition_set.length }} partitions, label_type is {{ disc.label_type }}</th>
+    <th><input type="button" class="btn btn-success btn-xs" ng-click="disc_edit.create($event)" value="create part"/></th>
+    <th><input type="button" class="btn btn-primary btn-xs" ng-click="disc_edit.edit(disc, $event)" value="modify"/></th>
+    <th><input type="button" class="btn btn-danger btn-xs" ng-click="disc_edit.delete_obj(disc)" value="delete"/></th>
+</script>
+
+<script type="text/ng-template" id="icsw.config.partition.table.header">
+    <th>Part</th>
+    <th>hex</th>
+    <th>Mountpoint</th>
+    <th>options</th>
+    <th>boot</th>
+    <th>size</th>
+    <th>freq</th>
+    <th>passno</th>
+    <th>filesys</th>
+    <th class="text-center">limit</th>
+    <th class="text-center" colspan="3">Action</th>
+</script>
+
+<script type="text/ng-template" id="icsw.config.partition.table.partition">
+    <td>{{ disc.disc }}{{ part.pnum }}</td>
+    <td>0x{{ part.partition_hex }}</td>
+    <td>{{ part.mountpoint }}</td>
+    <td>{{ part.mount_options }}</td>
+    <td>{{ part.bootable | yesno1 }}</td>
+    <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+    <td>{{ part.fs_freq }}</td>
+    <td>{{ part.fs_passno }}</td>
+    <td>{{ part.partition_fs | array_lookup:partition_fs:'name' }}</td>
+    <td>
+        <span ng-if="part.warn_threshold || part.crit_threshold">{{ part.warn_threshold }} / {{ part.crit_threshold }}</span>
+        <span ng-if="!(part.warn_threshold && part.crit_threshold)">---</span>
+    </td>
+    <td>
+    </td>
+    <td>
+        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="part_edit.edit(part, $event)"/>
+    </td>
+    <td>
+        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="part_edit.delete_obj(part)"/>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.config.partition.table.system.header">
+    <tr>
+        <th>Name</th>   
+        <th>Description</th>
+        <th>enabled</th>
+        <th>valid</th>
+        <th>nodeboot</th>
+        <th>Usecount</th>
+        <th colspan="2" class="text-center">action</th>
+    </tr>
+</script>
+
+<script type="text/ng-template" id="icsw.config.partition.table.row">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.description }}</td>
+    <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.enabled | yesno1 }}</td>
+    <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.valid | yesno1  }}</td>
+    <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
+    <td class="text-center">{{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}</td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-show="not_open(obj)" ng-click="edit_part(obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+

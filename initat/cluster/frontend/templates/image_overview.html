@@ -1,0 +1,17 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Image Overview" %}{% endblock %}
+
+{% block content %}
+
+<tabset>
+    <tab heading="Images">
+        <div ng-controller="icswImageOverviewCtrl">
+            <icsw-image-overview></icsw-image-overview>
+        </div>
+    </tab>
+</tabset>
+
+{% endblock %}

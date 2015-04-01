@@ -1,0 +1,815 @@
+#!/bin/bash
+#
+# Copyright (C) 2001,2002,2006,2008,2009 Andreas Lang, init.at
+# Copyright (C) 2002,2003,2004,2006,2008 Bernhard Fischer, init.at
+#
+# Send feedback to: b.fischer at init dot at
+#
+# This file is part of rms-tools
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+# Return Codes:
+# 0 OK
+# 1 "help text requested"
+# 2 "Not a kernel Server"
+# 3 "kernel-source does not exist"
+# 4 "inappropriate calling"
+# 5 "filesystem/buildsystem/configuration (an unexpected) error"
+# 6 ""
+# 7 ""
+export LC_ALL=C
+
+file_list=$(cat /etc/sysconfig/cluster/db_access  | grep "=" | cut -d "=" -f 2 | grep "^/" | tr ";" "\n")
+
+for conf in $file_list ; do
+    [ -r $conf ] && break
+done
+
+if [ -r $conf ] ; then
+    source $conf
+    sql=1
+else
+    echo "No readable mysql-configfiles found"
+    unset sql
+fi
+
+starttime=$(date +%s)
+
+dbg () {
+    [ "x$dodebug" = "xyes" ] && echo "$1=$(eval echo \$$1)"
+}
+
+sql_query () {
+    [ "x$dodebug" = "xyes" ] && logger "# echo $* | mysql -s -u ${MYSQL_USER}  -h ${MYSQL_HOST} -p${MYSQL_PASSWD} -D ${MYSQL_DATABASE}"
+    echo $* | mysql -s -u ${MYSQL_USER}  -h ${MYSQL_HOST} -p${MYSQL_PASSWD} -D ${MYSQL_DATABASE}
+}
+
+init_sql () {
+    dev_idx=$(/usr/local/sbin/is_server.py kernel_server)
+    if [ $? -ne 0 ] ; then
+	echo "${HOSTNAME} is not a kernel-server"
+	exit 2
+    fi
+    echo $dev_idx
+    return 0
+}
+
+propagate_kernel () {
+    net_idx=$(sql_query SELECT n.netdevice_idx FROM netdevice n WHERE n.device=$dev_idx)
+    snet_str=""
+    for idx in $net_idx ; do
+	snet_str="$snet_str OR h.s_netdevice=$idx"
+    done
+    snet_str="("${snet_str:4}")"
+    server_copied="$server_name+"
+    mnt_dir=`mktemp -d /tmp/.mount_XXXXXX`
+    sql_query SELECT d.name, i.ip, h.value, i.alias FROM netip i INNER JOIN hopcount h INNER JOIN netdevice n INNER JOIN device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE i.netdevice=n.netdevice_idx AND d.device_group=dg.device_group_idx AND $snet_str AND n.netdevice_idx=h.d_netdevice AND n.device=d.device_idx AND \(dc.device=d2.device_idx OR dc.device=d.device_idx\) AND dc.new_config=c.new_config_idx AND \(c.name=\"kernel_server\"\) ORDER BY h.value, d.name|
+	    while read line ; do 
+		sname=`echo $line| cut -d " " -f 1`
+		mip=`echo $line| cut -d " " -f 2`
+		value=`echo $line| cut -d " " -f 3`
+		iname=`echo $line| cut -d " " -f 4`
+		iname=${iname:-$sname}
+		echo $server_copied | grep $sname\+ >/dev/null || {
+		    echo "Copying kernel '${kname}' to server $sname (ip $mip, interfacename $iname, cost $value)";
+		    server_copied="$server_copied $sname+"
+		    mount -t nfs -v $mip:${tbasedir} ${mnt_dir} && {
+			rm -rf "${mnt_dir}/${kname}/*"
+			mkdir -vp "${mnt_dir}/${kname}"
+			cp -a ${tdir} ${mnt_dir}/
+			umount ${mnt_dir}
+			false
+		    }
+		}
+	    done
+	    rmdir ${mnt_dir}
+}
+
+prepare_sensors () {
+    [ $MAJ -eq 2 -a $MIN -lt 5 ] && { echo "inappropriate kernel-version $MAj.$MIN.$PAT" ; return 0 ; }
+    echo "looking for lm_sensors in '${sdir}/sensors/2.6/'"
+    if [ -d "${sdir}/sensors/2.6" ] ; then
+	echo "preparing lm_sensors"
+	sensorstuff=$(ls -Fd1 $sdir/sensors/2.6/lm_sensors* 2> /dev/null| grep -v 'lm_sensors\*')
+	if [ ".$sensorstuff" != "." ] ; then
+	    for i in $(echo sensorstuff | tr " " "\n" | grep tar) ; do
+		[ ! -d "$( echo $i | sed -e 's�\.t[.arbgz2]*$��')" ] && {
+		    echo $i | egrep 'gz$' 2> /dev/null && tarflags="xzf"
+		    echo $i | egrep 'bz2$' 2> /dev/null && tarflags="xjf"
+		    echo $i | egrep 'tar$' 2> /dev/null && tarflags="xf"
+		    (cd $(dirname $i) ; tar $tarflags $i)
+		}
+	    done
+	fi
+	sensordir=$(ls -Fd1 $sdir/sensors/2.6/lm_sensors* 2> /dev/null| grep -v 'lm_sensors\*' | egrep "/$" | sort | tail -1)
+	[ "x$sensordir" = "x" -o \! -r $sensordir/version.h ] && { 
+	    echo "no dir '$sensordir' or no readable file '$sensordir/version.h'"
+	    return 1
+	} || echo "using $sensordir"
+    fi
+}
+
+apply_sensors () {
+  # get version
+    lmvers=`awk '/LM_VERS/{print $3;}' $sensordir/version.h | cut -d'"' -f2`
+    sensorfile="lm_sensors-$lmvers.diff"
+    
+    echo "lmvers='$lmvers'"
+    if [ \! -f $sensordir/$sensorfile.__LOG ] ; then
+	( cd $sensordir; mkpatch/mkpatch.pl $sensordir $kdir > $kdir/$sensorfile ; )
+	ls -ln $kdir/$sensorfile
+	echo "patching in lm_sensors-$lmver"
+	patch -p1 <$kdir/$sensorfile>&$kdir/$sensorfile.__LOG
+	echo "Wrote logfile: $kdir/$sensorfile.__LOG"
+    else
+	echo "sensors already patched in. (found $sensorfile.__LOG)"
+    fi
+}
+
+# XXXXXXXXXX temporary
+build_external_sensors () {
+    oocwd=$(pwd)
+    cd $sensordir/ || return 1
+    export I2C_HEADERS=$sdir/sensors/i2c/kernel
+    $makecmd clean 2>&1 >& /dev/null
+# blame them, not me
+    mv Makefile Makefile.nu
+    awk -v v=$kver -v t=$tdir/lib/modules/$kver '{if (/^KERNELVERSION/){print("KERNELVERSION := "v)}else if (/^MODPREF/){print("MODPREF := "t)}else if (/^PREFIX/){print("PREFIX := "t)}else{print $0};}' Makefile.nu >& Makefile
+    
+    if [ "$doquiet" = "yes" ] ; then
+	$makecmd clean all >& /dev/null
+	$makecmd -k install >& /dev/null
+    else
+	$makecmd clean all
+	$makecmd -k install
+    fi
+    cd $oocwd
+    unset oocwd
+}
+
+print_timestats () {
+    rest=$(( $endtime - $starttime ))
+    d=$(( $rest / 86400 ))
+    rest=$(( $rest - ( $d * 86400 )))
+    h=$(( $rest / 3600 ))
+    rest=$(( $rest - ( $h * 3600 )))
+    m=$(( $rest / 60 ))
+    rest=$(( $rest - ( $m * 60 )))
+    
+    echo "Took $d d $h h $m m $rest s"
+}
+
+# get MAJOR, MINOR, EXTRA versions of Makefile given as $1
+get_version_stuff () {
+    awk ' /^VERSION =/{ _MAJOR=$3; printf "MAJ=%s;\n", _MAJOR };
+	/^PATCHLEVEL =/{ _MINOR=$3; printf "MIN=%s;\n", _MINOR };
+	/^SUBLEVEL =/{ _PATCH=$3; printf "PAT=%s;\n", _PATCH };' ${1?}
+}
+
+get_cpu_count () {
+    [ "x$NCPU" = "x" ] || return
+    if [ -r /proc/cpuinfo ] ; then
+        NCPU=$((($(egrep ^process /proc/cpuinfo | awk 'END{print $3}') + 1 ) * 4 ))
+    else
+        NCPU=2
+    fi
+    export NCPU
+    echo "using ${NCPU?} make-jobs."
+}
+
+get_cpu_type () {
+    uname -m
+}
+
+testwrap () {
+    local _tmp
+    _tmp=$(unalias $1 2> /dev/null >&2 ; which 2> /dev/null $1 || type -p $1)
+
+    if [ "x${_tmp}" != "x" -a -x "${_tmp}" ] ; then
+	local ret
+	${_tmp} ls 2>&1 >& /dev/null
+	ret=$?
+	case "/$ret/" in
+	    /0/|/1/) basename ${_tmp} ; return ;;
+	    /127/|/126/|/*/) echo "" ; return ;;
+	esac
+    else
+	echo ""
+    fi
+}
+
+mark_buildarch () {
+    get_cpu_type | grep "$1" 2>&1 > /dev/null && echo "(default)" || echo ""
+}
+
+usage () {
+    echo "Usage: $progname [OPTIONS] <kernel-version> <config name> "
+    echo "	where:"
+    echo "	kernel-version is e.g. 1.3.96"
+    echo "	config name is the name of the configfile excluding <kernel-version>_"
+    echo "	-h this help"
+    echo "	-m is execute 'make menuconfig'; non-interactive if not specified"
+    echo "	-c continued build (don't make mrproper)"
+    echo "	-q quiet build (discard make's stdout)"
+    echo "	-d print some script-internal debug messages"
+    echo "	-r build RPM/debian package of sources"
+    echo "	-f force being a kernel-server"
+    echo "	-a <arch> build for target CPU-type <arch>"
+    echo -n "		i386 for i?86 " ; mark_buildarch "i.86"
+    echo -n "		x86_64 for amd64 " ; mark_buildarch "x86.64"
+    echo "		um<,subarch> where subarch is one of the above"
+    echo "				 (default is above default-arch)"
+    echo "	-i <path> to image to use for creating the initramfs, default is '/'"
+    echo ""
+    exit 1
+}
+
+
+parse_args () {
+    args=$(getopt hmcqdra:i: $*) || { usage ; exit -1 ; }
+    
+    set -- $args
+    
+    stageroot="/"
+    for i ; do
+	case "$i" in 
+	    -h) shift ; usage ;;
+	    -c) shift ; domrproper=no ;;
+	    -q) shift ; doquiet=yes ;;
+	    -d) shift ; dodebug=yes ; makeflags="$makeflags V=1" ;;
+	    -a) shift ; arch=$1 ; shift ;;
+	    -m) shift ; menuconfig=yes ;;
+	    -r) shift ; pack=$([ -r /etc/debian_version ] && echo deb-pkg || echo rpm-pkg) ;;
+	    -i) shift ; stageroot=$1 ; shift ;;
+	    --) shift ; break ;;
+	esac
+    done
+    if [ $# -ne 2 ] ; then
+	echo "Need kernel_version and config_name"
+	usage
+    fi
+    kver=$1
+    cname=$2
+}
+
+function check_buildlock () {
+    if [ "$build_lock" -ne $dev_idx ] && [ "$build_lock" -gt 0 ] ; then
+	lock_name=$(sql_query "SELECT d.name FROM device d WHERE d.device_idx=$build_lock") ;
+	echo "Kernel locked by other kernel server $lock_name ($build_lock)" ;
+	exit -2 ;
+    fi
+}
+
+function set_buildlock () {
+    echo "Setting build-lock"
+    sql_query "UPDATE kernel SET device=$dev_idx,build_lock=$dev_idx,build_machine='$server_name' WHERE kernel_idx=$kernel_idx"
+}
+
+function unset_lock () {
+    echo "Removing build-lock"
+    sql_query "UPDATE kernel SET build_lock=0 WHERE kernel_idx=$kernel_idx" 
+}
+
+function set_version_and_stuff () {
+    echo "Updating kernel"
+    sql_query "UPDATE kernel SET \`release\`=$1,builds=$2,config_name='$3',cpu_arch='$4',sub_cpu_arch='$5',target_dir='$6',major='$7',minor='$8',patchlevel='$9' WHERE kernel_idx=$kernel_idx"
+    echo "Kernel has now release $1, cpu_arch $4, sub_cpu_arch $5, locked by device $server_name"
+
+}
+
+function set_comment () {
+    echo "Updating comment"
+    sql_query "UPDATE kernel SET comment='$(cat $1)' WHERE kernel_idx=$kernel_idx"
+    echo "Kernel has now comment $(cat $1)"
+}
+
+has_config_modules () {
+    egrep -q "^CONFIG_MODULES=" $oconfig
+    return $?
+}
+
+##########################    M A I N    ###########################
+
+progname="$0"
+# some defaults:
+
+doquiet=no
+domrproper=yes
+menuconfig=no
+dodebug=no
+arch=$(get_cpu_type)
+parse_args $*
+get_cpu_count
+
+# local error state is OK
+err=0
+
+dbg kver
+dbg cname
+dbg menuconfig
+dbg arch
+dbg domrproper
+dbg pack
+dbg stageroot
+
+kdir=/usr/src/linux-$kver
+if [ \! -d $kdir ] ; then
+    echo "Error: kernel-source does not exist: $kdir"
+    exit 3
+fi
+
+unset ARCH
+case "$arch" in
+    i?86) cpuarch=i386 ; execwrap=$(testwrap linux32) ; export ARCH=i386 ;
+	makeflags="$makeflags ARCH=$ARCH CC=${CC:-gcc} CC+=-m32 " ;;
+    x86?64) cpuarch=x86_64 ; execwrap=$(testwrap linux64)
+	makeflags="$makeflags CC=${CC:-gcc} "
+	export ARCH=x86_64 ;;
+    ia64) cpuarch=$arch ;;
+    um*) cpuarch=$(echo $arch | cut -d',' -f1) ;
+	subcpuarch=$(echo $arch | cut -d',' -f2) ;
+	test "x$subcpuarch" = "x$cpuarch" && subcpuarch=$(get_cpu_type)
+	case "$subcpuarch" in
+	    i?86) subcpuarch=i386 ; execwrap=$(testwrap linux32) ;;
+	    
+	    x86?64) subcpuarch=x86_64 ; execwrap=$(testwrap linux64) ;;
+	    *) echo "Warning: unknown subcpuarch '$subcpuarch'. Exiting."
+		usage ;;
+	esac
+	export ARCH=$cpuarch ; export SUBARCH=$subcpuarch
+	makeflags="$makeflags ARCH=$cpuarch SUBARCH=$subcpuarch" ;;
+    *) echo "Warning: unknown cpuarch '$arch'. Exiting." ; usage ;;
+esac
+dbg cpuarch
+dbg subcpuarch
+dbg execwrap
+
+# check if the stageroot architecture is valid for the given cpuarch
+if [ "x$stageroot" = "x" ] ; then
+    echo "No stagedir given, using default for arch '$cpuarch'"
+    stageroot=$(sql_query "SELECT i.source FROM image i WHERE i.architecture=\"$cpuarch\"")
+    stageroot=$(for i in $stageroot ; do dirname $i ; done | sort | uniq ; )
+else
+    echo "Using stageroot '$stageroot'"
+fi
+
+if [ -z "$stageroot" -o ! -d "$stageroot" ] ; then
+    echo "Error: directory perused for building initramfs does not work"
+    echo "  stageroot='$stageroot'"
+    exit 1
+fi
+
+makecmd="$execwrap make $makeflags"
+dbg makecmd
+dbg stageroot
+
+kname=${kver}_${cname}
+
+sdir=/usr/src/configs
+oconfig=$sdir/.config_$kname
+if [ ! -f "$oconfig" ] ; then
+    echo "no config \"$oconfig\""
+    exit -1
+fi
+
+tbasedir=/tftpboot/kernels
+
+if [ ! -d "$tbasedir" ] ; then
+    echo "WARNING! installing kernel to (local!) /usr/src/kernels"
+    echo "WARNING! Create $tbasedir before running $0 in order to be able to"
+    echo "WARNING! provide $kname to the installation images."
+    echo
+    echo -n "continuing to build non-image kernel... "
+    for i in 7 6 5 4 3 2 1 ; do
+	echo -n "$i.."
+	sleep 1
+    done
+    echo
+    tbasedir=/usr/src/kernels
+fi
+tdir="$tbasedir/$kname"
+mkdir -p "$tdir"
+# create dir for logs if non-existant
+[ -d "$sdir/log" ] || mkdir -p "$sdir/log"
+
+kversfile=$tdir/.version
+
+if [ -f "$kversfile" ] ; then
+    #tmp="`egrep "^VERSION" "$kversfile" | sed -e 's/VERSION=//'`"
+    #VERSION="`echo "$tmp" | cut -d"." -f 1`"
+    #RELEASE="`echo "$tmp" | cut -d"." -f 2`"
+    RELEASE="`expr $RELEASE + 1`"
+else
+    VERSION=1
+    RELEASE=1
+fi
+
+cd $kdir
+
+eval $(get_version_stuff Makefile)
+#for i in MAJ MIN PAT; do echo "#### $i=$(eval echo -n \$$i)"; done
+
+if [ -n "$sql" ] ; then
+    dev_idx=$(init_sql)
+    server_name=`hostname`
+    stuff=$(sql_query "SELECT kernel_idx,name,build_lock,builds,version,\`release\`,builds FROM kernel WHERE name='${kname}'")
+    if [ "${stuff:-0}" = "0" ] ; then
+	echo "starting new kernel, inserting defaults..."
+	sql_query "INSERT INTO kernel SET name='${kname}',kernel_version='${kver}'" 
+	stuff=$(sql_query "SELECT kernel_idx,name,build_lock,builds,version,\`release\`,builds FROM kernel WHERE name='${kname}'")
+    fi
+    kernel_idx=`echo $stuff | cut -d " " -f 1`
+    build_lock=`echo $stuff | cut -d " " -f 3`
+    kernel_version=`echo $stuff | cut -d " " -f 5`
+    kernel_release=`echo $stuff | cut -d " " -f 6`
+    kernel_builds=`echo $stuff | cut -d " " -f 7`
+    kernel_release=$(( $kernel_release + 1 ))
+    kernel_builds=$(( $kernel_builds + 1 ))
+    VERSION=$kernel_version
+    RELEASE=$kernel_release
+fi
+
+
+if [ "$domrproper" = "yes" ] ; then
+    if [ "$doquiet" = "yes" ] ; then
+	echo "Doing: $makecmd mrproper"
+	$makecmd mrproper 2>&1 >& /dev/null
+	err=$?
+    else
+	$makecmd mrproper
+	err=$?
+    fi
+    if [ $err -ne 0 ] ; then
+	echo "Something went wrong during \"$makecmd mrproper\"."
+	exit 5
+    fi
+fi
+
+prepare_sensors && {
+    echo "preparing sensors done." 
+  # >= linux-2.6
+    touch $kdir/Rules.make
+#  apply_sensors && \
+#    echo "patching in sensors done." || \
+#    { echo "Something went wrong patching in sensors..." ; }
+#  rm -f $kdir/Rules.make
+} || \
+    echo "Warning: Something went wrong with sensors..."
+
+cp -va $oconfig .config || { echo "Something went wrong..." ; exit -1 ; }
+
+#only make menuconfig if "-m" specified; non-interactive config otherwise
+if [ "x$menuconfig" = "xyes" ] ; then
+    $makecmd menuconfig || {
+	echo "Something went wrong during menuconfig!"
+        echo ""
+        echo "ncurses-dev headers installed?"
+	echo "$0 output piped through 'tee'? (don't do that. make menuconfig doesn't like it)"
+	exit 4
+    }
+else
+    { yes 'y' | $makecmd oldconfig ; } >& $sdir/log/mk.oldconfig.${kver}_$cname.log
+fi
+check_buildlock
+set_buildlock
+diff $oconfig .config > /dev/null || {
+    echo "You have changed the configfile."
+    cp -va $oconfig ${oconfig}_backup
+    cp -va .config $oconfig
+}
+err=0
+if [ "$doquiet" = "yes" ] ; then
+    echo "Doing: $makecmd dep"
+    $makecmd dep 2>&1 >& $sdir/log/mk.dep.${kver}_$cname.log
+    err=$?
+    echo "Command '$makecmd dep': $sdir/log/mk.dep.${kver}_$cname.log"
+else
+    fail="$sdir/log/mk.dep.${kver}_$cname.fail"
+    rm -f $fail
+    ($makecmd dep ; echo $? > $fail) 2>&1 | tee $sdir/log/mk.dep.${kver}_$cname.log
+    #err=$(cat $fail)
+    rm -f $fail
+fi
+if [ $err -ne 0 ] ; then
+    echo "Error while '$makecmd dep'."
+fi
+
+# set build-# according to our RELEASE# and let kernel increment it again
+[ $RELEASE -eq 0 ] || echo "`expr $RELEASE - 1`" >& .version
+
+
+if [ "$doquiet" = "yes" ] ; then
+    echo "Doing: $makecmd -j $NCPU bzImage"
+    $makecmd -j $NCPU bzImage 2>&1 >& $sdir/log/mk.bzImage.${kver}_$cname.log
+    err=$?
+    echo "Command '$makecmd -j $NCPU bzImage': $sdir/log/mk.bzImage.${kver}_$cname.log"
+else
+    fail="$sdir/log/mk.bzImage.${kver}_$cname.fail"
+    rm -f $fail
+    ($makecmd -j $NCPU bzImage ; echo $? > $fail) 2>&1 | tee $sdir/log/mk.bzImage.${kver}_$cname.log
+    err=$(cat $fail)
+    rm -f $fail
+fi
+if [ $err -ne 0 ] ; then
+    echo "Something went wrong in '$makecmd -j $NCPU bzImage'"
+    echo "check $sdir/log/mk.bzImage.${kver}_$cname.log"
+    exit 1
+fi
+
+if [ -f System.map ] ; then
+    if has_config_modules; then
+	if [ "$doquiet" = "yes" ] ; then
+	    echo "Doing: $makecmd -j $NCPU modules"
+	    $makecmd -j $NCPU modules 2>&1 >& $sdir/log/mk.modules.${kver}_$cname.log
+	    err=$?
+	    echo "Command '$makecmd -j $NCPU modules': $sdir/log/mk.modules.${kver}_$cname.log"
+	else
+            fail="$sdir/log/mk.modules.${kver}_$cname.fail"
+	    rm -f $fail
+	    ($makecmd -j $NCPU modules ; echo $? > $fail) 2>&1 | tee $sdir/log/mk.modules.${kver}_$cname.log
+	    err=$(cat $fail)
+	    rm -f $fail
+	fi
+	if [ $err -ne 0 ] ; then
+	    echo "Something went wrong in '$makecmd -j $NCPU modules'"
+	    echo "check $sdir/log/mk.modules.${kver}_$cname.log"
+	    exit 5 
+	fi
+    fi
+else 
+    echo "Error: no System.map!"
+    echo "  Something went wrong, please check config $cname"
+    echo "  or check $sdir/log/mk.bzImage.${kver}_$cname.log for errors"
+    echo
+    exit 5
+fi
+
+# Copy misc informational files
+for f in .comment .modules ; do
+    echo -n "looking for \`$f: "
+    if [ -f $oconfig$f ] ; then
+	echo "found; copying..."
+	cp -a $oconfig$f $tdir/$f
+    else
+	echo "not found; skipping."
+    fi
+done
+has_config_modules || rm -f $tdir/.modules
+
+if [ -n "$sql" ] ; then
+    set_version_and_stuff $kernel_release $kernel_builds "$oconfig" "$cpuarch" "${subcpuarch:--}" "$tdir" "$MAJ" "$MIN" "$PAT"
+    if [ -f ${oconfig}.comment ] ; then
+	set_comment ${oconfig}.comment
+    fi
+    sql_query "INSERT INTO kernel_build SET kernel=$kernel_idx,build_machine='$server_name',device=$dev_idx,version=$kernel_version,\`release\`=$kernel_release"
+fi
+#now we have a complete kernel image+modules; delete old stuff
+rm -rf "$tdir"/*
+echo "VERSION=$VERSION.$RELEASE" > $kversfile
+echo "BUILDDATE=`date +%c`" >> $kversfile
+echo "KERNELVERSION=$kver" >> $kversfile
+echo "CONFIGNAME=$cname" >> $kversfile
+echo "BUILDMACHINE=`hostname -f`" >> $kversfile
+echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+echo "Actual contents of versionfile:"
+cat $kversfile
+echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+
+#$tdir is now clean; put new kernel+modules there
+export INSTALL_MOD_PATH=$tdir
+if has_config_modules ; then
+    #cp the new kernel to the tftpboot-dir and rm the "build" symlink linking back to the kernel builddir:
+    if [ "$doquiet" = "yes" ] ; then
+	echo "Doing: $makecmd -j 1 modules_install"
+	$makecmd -j 1 modules_install 2>&1 >& $sdir/log/mk.modules.${kver}_$cname.log
+	err=$?
+	echo "Command: '$makecmd -j 1 modules_install': $sdir/log/mk.modules.${kver}_$cname.log"
+    else
+	$makecmd -j 1 modules_install
+	err=$?
+    fi
+else
+  # No modules configured
+    err=0
+fi
+if [ -d firmware ] ; then
+    # copy firmware files
+    if [ "$doquiet" = "yes" ] ; then
+	echo "Doing: $makecmd -j 1 firmware_install"
+	$makecmd -j 1 firmware_install 2>&1 >& $sdir/log/mk.firmware.${kver}_$cname.log
+	err=$?
+	echo "Command: '$makecmd -j 1 firmware_install': $sdir/log/mk.firmware.${kver}_$cname.log"
+    else
+	$makecmd -j 1 firmware_install
+	err=$?
+    fi
+fi
+if [ $err -eq 0 ] ; then
+    cp -va System.map $tdir || err=5;#unexpected error
+    rm -vf "$tdir/lib/modules/$kver/build" || err=5;#unexpected error
+    cp -a "$oconfig" "$tdir/.config" || err=5;#unexpected error
+    cat arch/${cpuarch}/boot/bzImage > $tdir/bzImage || err=5;#unexpected error
+else
+    echo "Command: '$makecmd -j 1 modules_install' got error $err"
+fi
+if [ $err -ne 0 ] ; then
+    echo "Something went wrong in '$makecmd -j 1 modules_install': $err"
+    exit $err
+fi
+
+# set kver to the real UTS_NAME
+echo -e '#include <stdio.h>\n#include <linux/version.h>\nint main(void){printf("%s",UTS_RELEASE);return 0;}' > $sdir/print_utsrelease.c
+tmpfile="$sdir/print_utsrelease.$(date +%s)"
+${CC-cc} -I$kdir/include -o $tmpfile $sdir/print_utsrelease.c
+kver=$($tmpfile)
+rm -f "$tmpfile"
+
+if [ "x$kver" = "x" ] ; then
+    echo -e '#include <stdio.h>\n#include <linux/utsrelease.h>\nint main(void){printf("%s",UTS_RELEASE);return 0;}' > $sdir/print_utsrelease.c
+    tmpfile="$sdir/print_utsrelease.$(date +%s)"
+    ${CC-cc} -I$kdir/include -o $tmpfile $sdir/print_utsrelease.c
+    kver=$($tmpfile)
+    rm -f "$tmpfile"
+fi
+echo "using kver='$kver'"
+
+#override external prog: uname
+uname () {
+    case "/$1/" in
+	/-r/) echo "$kver" ;;
+	/-m/|/-p/) echo "$cpuarch" ;;
+	/*/) /bin/uname $1;;
+    esac
+}
+
+# generating link
+rm -vf /usr/src/linux || { echo "Error: could not delete symlink(?) /usr/src/linux exiting." ; exit 1 ; }
+#ln -vs /usr/src/linux-$kver /usr/src/linux
+ln -vs $kdir /usr/src/linux || exit 1
+
+#only build the e1000 driver when not already included
+
+e1000stuff=$(ls -Fd1 $sdir/e1000/e1000* 2> /dev/null| grep -v 'e1000\*')
+
+if [ ".$ e1000stuff" != "." ] ; then
+    for i in $(echo e1000stuff | tr " " "\n" | grep tar) ; do
+	[ ! -d "$( echo $i | sed -e 's�\.t[.arbgz2]*$��')" ] && {
+	    echo $i | egrep 'gz$' 2> /dev/null && tarflags="xzf"
+	    echo $i | egrep 'bz2$' 2> /dev/null && tarflags="xjf"
+	    echo $i | egrep 'tar$' 2> /dev/null && tarflags="xf"
+	    (cd $(dirname $i) ; tar $tarflags $i)
+	}
+    done
+fi
+
+e1000dirs=$(ls -Fd1 $sdir/e1000/e1000* 2> /dev/null| grep -v 'e1000\*' | egrep "/$")
+
+if [ ".$e1000dirs" != "." ] ; then
+    echo "Compiling kernel-external Intel e1000 driver sources..."
+    export KSP=$tdir/lib/modules/$kver/kernel/drivers/net
+    export KSRC=$kdir
+    export INSTDIR=$tdir/lib/modules/$kver/kernel/drivers/net
+    mkdir -p "$tdir/lib/modules/$kver/kernel/drivers/net"
+    for i in $e1000dirs ; do
+	eval e1000vers=$(awk '/e1000_driver_version\[\]/{print $4;}' $i/src/e1000_main.c)
+	if test "x$e1000vers" = "xDRV_VERSION"; then
+		eval e1000vers=$(awk '/define[[:space:]]*DRV_VERSION/{gsub("\"","");print $3;}' $i/src/e1000_main.c)
+	fi
+	test -f $i/src/Makefile.oorig || cp -a $i/src/Makefile $i/src/Makefile.oorig
+	mv $i/src/Makefile $i/src/Makefile.nu 
+	awk -v v=$e1000vers '{if (/^TARGET/){print("TARGET := e1000_"v".ko")}else if (/^MANFILE/){print("MANFILE = e1000.$(MANSECTION)")}else if(/e1000\.o/){sub("e1000.o","e1000_"v".o");print $0}else if(/e1000-obj/){sub("e1000-obj","e1000_"v"-obj");print $0}else {print $0};}' "$i/src/Makefile.nu" >& "$i/src/Makefile"
+	echo "Command: $makecmd -C $i/src install"
+
+	if [ "$doquiet" = "yes" ] ; then
+	    $makecmd -C $i/src clean 2>&1 >& /dev/null
+	    $makecmd -C $i/src install 2>&1 >& /dev/null
+	else
+	    $makecmd -C $i/src clean 
+	    $makecmd -C $i/src install
+	fi
+	
+	cp -vp $i/src/e1000_$e1000vers.ko $tdir/lib/modules/$kver/kernel/drivers/net/
+    done
+  #$makecmd install -C /usr/src/configs/e1000.src/src
+# removing usr stuff
+    rm -rf $tdir/usr
+else
+    echo "no additional e1000 drivers in $sdir/e1000/"
+fi
+
+
+#e100 driver Becker flavour and original Intel are included in >= 2.4.20
+if [ -f /usr/src/configs/e100.src/src/Makefile ] ; then
+    echo "Compiling Intel e100 driver..."
+    export KSP=$kdir
+    $makecmd clean -C /usr/src/configs/e100.src
+    $makecmd -C /usr/src/configs/e100.src
+    $makecmd install -C /usr/src/configs/e100.src
+    # removing usr stuff
+    rm -rf $tdir/usr
+else
+    echo "External Intel e100 driver NOT found; skipping"
+fi
+
+# for now, only build external lm_sensors on 2.4
+if [ $MAJ -eq 2 -a $MIN -lt 5 ] ; then
+    echo "looking for lm_sensors: ${sdir}/sensors/{lm_sensors2,i2c}/"
+    if [ -d "${sdir}/sensors/lm_sensors" ] && [ -d "${sdir}/sensors/i2c" ] ; then
+	echo "Compiling RPM's for sensors (i2c and lm_sensors2 from CVS) ..."
+	
+  # get version
+	lmvers=`awk '/LM_VERS/{print $3;}' $sdir/sensors/lm_sensors/version.h | cut -d'"' -f2`
+	export I2C_HEADERS=$sdir/sensors/i2c/kernel
+	cd $sdir/sensors
+	for i in i2c lm_sensors ; do
+	    cd $i
+	    $makecmd clean
+# blame them, not me
+	    mv Makefile Makefile.nu
+	    awk -v v=$kver -v t=$tdir/lib/modules/$kver '{if (/^KERNELVERSION/){print("KERNELVERSION := "v)}else if (/^MODPREF/){print("MODPREF := "t)}else if (/^PREFIX/){print("PREFIX := "t)}else{print $0};}' Makefile.nu >& Makefile
+	    if [ "$doquiet" = "yes" ] ; then
+      #watch some errors until i have to to fix sensors up once and for all..
+		echo "Doing: $makecmd clean ; $makecmd -k install"
+		$makecmd clean >& /dev/null
+		$makecmd -k install >& /dev/null
+	    else
+		$makecmd clean
+		$makecmd -k install
+	    fi
+	    cd ..
+	done
+    else
+	echo "${sdir}/sensors/lm_sensors-latest.tar.gz NOT found; skipping"
+    fi
+else
+    if [ "$doquiet" = "yes" ] ; then
+	build_external_sensors >& /dev/null
+	err=$?
+    else
+	build_external_sensors
+	err=$?
+    fi
+    [ "$err" -eq "0" ] && \
+	echo "building external sensors done." || echo "Something went wrong building external sensors..."
+fi
+
+# remove usr-stuff
+rm -rf ${tdir}/usr
+$execwrap depmod -b $tdir -F $tdir/System.map $kver
+
+echo "Compressing kernel image..."
+cd $tdir
+# copy vmlinux for kernel-debugging
+if egrep ^CONFIG_PROFILING=y .config ; then
+    rm -vf $tdir/lib/modules/$kver/build
+    [ \! -d $tdir/lib/modules/$kver/build ] && \
+	mkdir -v $tdir/lib/modules/$kver/build
+    cp -va $kdir/vmlinux $tdir/lib/modules/$kver/build/
+else
+    [ "x$dodebug" = "xyes" ] && echo "profiling support not enabled"
+fi
+
+tar --exclude="modules.*map" -cjf modules.tar.bz2 lib
+
+# create initrd
+#XXX INIT_MODS
+#[ -r $oconfig.modules ] && INIT_MODS="$(cat $oconfig.modules) $INIT_MODS"
+#INIT_MODS="${INIT_MODS}" $execwrap /usr/local/cluster/bin/populate_ramdisk.sh $tdir $kver
+
+# create the stage{1,2} initrds:
+[ -r $tdir/.modules ] && INIT_MODS="$(cat $tdir/.modules) $INIT_MODS"
+INIT_MODS=$(echo $INIT_MODS | sed -e "s/[[:space:]][[:space:]]*/,/g;s/,[,]*/,/g;s/,$//")
+if has_config_modules ; then
+    POPULATE_ARGS="$POPULATE_ARGS -m ${INIT_MODS}"
+else
+    POPULATE_ARGS="$POPULATE_ARGS -m ''"
+fi
+test "x$dodebug" = "xyes" && POPULATE_ARGS="$POPULATE_ARGS -v -v -v"
+
+echo "Performing: $execwrap /usr/local/cluster/bin/populate_ramdisk.py $POPULATE_ARGS -r $stageroot $tdir"
+$execwrap /usr/local/cluster/bin/populate_ramdisk.py $POPULATE_ARGS -r $stageroot $tdir
+
+# push to kernel_server(s)
+if [ -n "$sql" ] ; then
+    propagate_kernel
+    unset_lock
+else
+    echo "error initializing SQL connection"
+fi
+#sync && echo "done." || echo "error while doing final sync ?!" 
+endtime=$(date +%s)
+print_timestats
+echo "done."

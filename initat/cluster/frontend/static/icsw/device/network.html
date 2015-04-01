@@ -1,0 +1,469 @@
+<script type="text/ng-template" id="icsw.device.network.overview">
+    <h3>
+        Network config for {{ devices.length }} devices ({{ get_nd_objects().length }} netdevices, {{ get_ip_objects().length }} IPs, {{ get_peer_objects().length }} peers)
+    </h3>
+    <accordion close-others="no">
+        <accordion-group is-open="device_open">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
+                {{ devices.length }} devices
+            </accordion-heading>
+            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>ScanInfo</th>
+                        <th>BootInfo</th>
+                        <th>#Ports</th>
+                        <th>#IPs</th>
+                        <th>#peers</th>
+                        <th>SNMP schemes</th>
+                        <th colspan="2">action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr icsw-device-network-device-row ng-repeat="ndip_obj in devices"></tr>
+                </tbody>
+            </table>
+        </accordion-group>
+        <accordion-group is-open="netdevice_open">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
+                {{ get_nd_objects().length }} netdevices
+            </accordion-heading>
+            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge mac devtype mtu speed penalty flags status"></icsw-tools-show-hide-columns>
+            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th ng-show="show_column.idx">idx</th>
+                        <th ng-show="show_column.port">Port</th>
+                        <th ng-show="show_column.ips">#IPs</th>
+                        <th ng-show="show_column.peers">#peers</th>
+                        <th ng-show="show_column.bridge">Bridge</th>
+                        <th ng-show="show_column.mac">MAC</th>
+                        <th ng-show="show_column.devtype">Devtype</th>
+                        <th ng-show="show_column.mtu">MTU</th>
+                        <th ng-show="show_column.speed">speed</th>
+                        <th ng-show="show_column.penalty">penalty</th>
+                        <th ng-show="show_column.flags">flags</th>
+                        <th ng-show="show_column.status">status</th>
+                        <th colspan="4">action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in get_nd_objects()"></tr>
+                </tbody>
+            </table>
+        </accordion-group>
+        <accordion-group is-open="netip_open">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
+                {{ get_ip_objects().length }} IPs
+            </accordion-heading>
+            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Port</th>
+                        <th>IP</th>
+                        <th>Network</th>
+                        <th>DTN</th>
+                        <th>alias</th>
+                        <th colspan="2">action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr icsw-device-network-ip-row ng-repeat="ndip_obj in get_ip_objects()"></tr>
+                </tbody>
+            </table>
+        </accordion-group>
+        <accordion-group is-open="peer_open">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
+                {{ get_peer_objects().length }} peer connections
+            </accordion-heading>
+            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Port</th>
+                        <th>IPs</th>
+                        <th>cost</th>
+                        <th>Dest</th>
+                        <th>type</th>
+                        <th>Autocreated</th>
+                        <th>Info</th>
+                        <th colspan="2">action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr icsw-device-network-peer-row ng-repeat="ndip_obj in get_peer_objects()"></tr>
+                </tbody>
+            </table>
+        </accordion-group>
+    </accordion>
+    <div class="input-group-btn" ng-show="devices.length > 1 && show_copy_button " ng-if="acl_create(null, 'backbone.device.change_network')">
+        <div class="btn-group">
+            <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
+                Copy network from<span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
+            </ul>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.device.row">
+    <td>
+        {{ ndip_obj.full_name }}
+    </td>
+    <td>
+        {{ ndip_obj.active_scan || "---" }}
+    </td>
+    <td>
+        <input
+            type="button"
+            class="btn btn-xs btn-warning"
+            ng-class="get_bootdevice_info_class(ndip_obj)"
+            ng-show="get_num_bootips(ndip_obj)"
+            ng-value="get_boot_value(ndip_obj)"
+            ng-click="edit_boot_settings(ndip_obj, $event)">
+        </input>
+        <span ng-show="!get_num_bootips(ndip_obj)">N/A</span>
+        <!--<button class="btn btn-primary btn-xs" ladda="true" data-style="expand-left">xxx</button>-->
+    </td>
+    <td>
+        {{ get_num_netdevices(ndip_obj) }}
+    </td>
+    <td>
+        {{ get_num_netips_dev(ndip_obj) }}
+    </td>
+    <td>
+        {{ get_num_peers_dev(ndip_obj) }}
+    </td>
+    <td>
+        <span class="label label-info" ng-repeat="obj in ndip_obj.snmp_schemes">
+            {{ obj.full_name }}
+            <span class="glyphicon glyphicon-remove"></span>
+        </span>
+    </td>
+    <td>
+        <button type="button" class="btn btn-xs btn-success pull-right"
+            tooltip-placement="bottom"
+            tooltip-html-unsafe="<div class='text-left'>
+            devicegroup: {{ ndip_obj.device_group_name }}<br>
+            comment: {{ ndip_obj.comment }}<br>
+            </div>
+            ">
+            <span class="glyphicon glyphicon-info-sign"></span>
+        </button>
+    </td>
+    <td>
+        <div class="input-group-btn" ng-show="acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
+            <div class="btn-group btn-xs">
+
+                <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
+                    Create new
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-click="create_netdevice(ndip_obj, $event)"><a href="#">Netdevice</a></li>
+                    <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a href="#">IP Address</a></li>
+                    <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
+                </ul>
+            </div>
+            <icsw-tools-button type="reload" value="update network" size="xs"
+                ng-show="acl_create(obj, 'backbone.device.change_network')"
+                ng-click="scan_device_network(ndip_obj, $event)"/>
+        </div>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.netdevice.row">
+    <td>
+        {{ dev_lut[ndip_obj.device].full_name }}
+    </td>
+    <td ng-show="show_column.idx">
+        <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
+    <td ng-show="show_column.port">
+        <span ng-show="ndip_obj.enabled">
+            {{ get_netdevice_name(ndip_obj) }}
+        </span>
+        <span ng-show="!ndip_obj.enabled">
+            <em><strike>{{ get_netdevice_name(ndip_obj) }}</strike></em>
+        </span>
+    </td>
+    <td ng-show="show_column.ips">
+        {{ get_num_netips_nd(ndip_obj) }}
+    </td>
+    <td ng-show="show_column.peers">
+        {{ get_num_peers_nd(ndip_obj) }}
+    </td>
+    <td ng-show="show_column.bridge">{{ get_bridge_info(ndip_obj) }}</td>
+    <td ng-show="show_column.mac">{{ ndip_obj.macaddr }}</td>
+    <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
+    <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
+    <td ng-show="show_column.speed">{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}</td>
+    <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
+    <td ng-show="show_column.flags">{{ get_flags(ndip_obj) }}</td>
+    <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
+    <td>
+        <button type="button" class="btn btn-xs btn-success"
+         tooltip-placement="right"
+         tooltip-html-unsafe="<div class='text-left'>
+            device: {{ get_netdevice_name(ndip_obj) }}<br>
+            SNMP: {{ ndip_obj.snmp_idx && 'yes' || 'no' }}<span ng-show='ndip_obj.snmp'> ( {{ ndip_obj.snmp_idx }} )</span><br>
+            enabled: {{ ndip_obj.enabled | yesno2 }}<br>
+            <hr>
+            driver: {{ ndip_obj.driver }}<br>
+            driver options: {{ ndip_obj.driver_options }}<br>
+            fake MACAddress: {{ ndip_obj.fake_macaddr }}<br>
+            force write DHCP: {{ ndip_obj.dhcp_device | yesno2 }}
+            <hr>
+            Autonegotiation: {{ ethtool_options(ndip_obj, 'a')}}<br>
+            Duplex: {{ ethtool_options(ndip_obj, 'd')}}<br>
+            Speed: {{ ethtool_options(ndip_obj, 's')}}
+            <hr>
+            Monitoring: {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
+         </div>">
+         <span class="glyphicon glyphicon-info-sign"></span>
+         </button>
+    </td>
+    <td>
+        <div ng-show="!dev_lut[ndip_obj.device].active_scan">
+            <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event)" size="xs"
+                    ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
+        </div>
+    </td>
+    <td>
+        <div ng-show="!dev_lut[ndip_obj.device].active_scan">
+            <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
+        </div>
+    </td>
+    <td>
+        <div class="btn-group btn-xs" ng-show="acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
+            <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
+                Create new <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-show="networks.length" ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
+                <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
+            </ul>
+        </div>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.ip.row">
+    <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
+    <td>{{ get_netdevice_name(ndip_obj.netdevice) }}</td>
+    <td>{{ ndip_obj.ip }}</td>
+    <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
+    <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
+    <td>
+        <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
+    </td>
+    <td>
+        <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
+            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
+        </div>
+    </td>
+    <td>
+        <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
+            <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
+        </div>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.peer.row">
+    <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
+    <td>{{ get_netdevice_name(ndip_obj.netdevice) }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
+    <td>
+        <span ng-repeat="ip in get_ip_objects(nd_lut[ndip_obj.netdevice])">{{ ip.ip }}&nbsp;</span>
+    </td>
+    <td>
+        with cost {{ ndip_obj.peer.penalty }}
+        &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
+    </td>
+    <td>
+        to {{ get_peer_target(ndip_obj) }}
+    </td>
+    <td>
+        {{ get_peer_type(ndip_obj) }}
+    </td>
+    <td class="text-center">
+        {{ ndip_obj.peer.autocreated | yesno2 }}
+    </td>
+    <td>
+        {{ ndip_obj.peer.info }}
+    </td>
+    <td>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.cluster.info">
+    <div class="modal-header">
+        <h3 class="modal-title">Devices in cluster ({{ cluster.device_pks.length }})</h3>
+    </div>
+    <div class="modal-body">
+        <ul>
+            <li ng-repeat="device in devices">
+                {{ device.full_name }} ({{ device.device_group_name }})
+            </li>
+        </ul>
+        Selected: <b>{{ selected.item }}</b>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-primary" ng-click="ok()">close</button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.host.node">
+    <g class="node draggable" node_id="{{ node.id }}"
+        ng-mouseenter="mouse_enter()"
+        ng-mouseleave="mouse_leave()"
+        ng-click="mouse_click()"
+    >
+        <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
+        <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
+    </g>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.host.livestatus">
+    <g class="node draggable" node_id="{{ node.id }}">
+        <newburst
+            ls-filter="ls_filter"
+            device-pk="devicepk"
+            innerradius="20"
+            outerradius="30"
+            noninteractive="true"
+            zoom-level="d"
+        ></newburst>
+        <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
+    </g>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.host.link">
+    <line stroke="#ff7788" stroke-width="2" opacity="1">
+    </line>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.graph">
+    <div>
+        <h4>{{ zoom.factor | number:2 }}@({{ offset.x | number:0 }}, {{ offset.y | number:0 }})</h4>
+        <icsw-device-network-graph2 icsw-mouse-capture></icsw-device-network-graph2>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.graph2">
+    <svg
+        class="draggable"
+        ng-attr-width="{{ size.width }}"
+        ng-attr-height="{{ size.height }}"
+        ng-attr-viewBox="0 0 {{ size.width }} {{ size.height }}"
+        preserveAspectRatio="xMidYMid"
+        pointer-events="all"
+        msd-wheel="mouse_wheel($event, $delta, $deltax, $deltay)"
+        ng-mousedown="mouse_down($event)"
+    >
+        <!-- translate before scale: no need to scale offsets -->
+        <rect style="stroke:black;stroke-width:2px;fill-opacity:0" x="0" y="0" ng-attr-width="{{ size.width }}" ng-attr-height="{{ size.height }}"></rect>
+        <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }}) scale({{ zoom.factor }})">
+            <icsw-device-network-host-link ng-repeat="link in links" link="link" redraw="redraw_nodes"></icsw-device-network-host-link>
+            <icsw-device-network-host-livestatus
+                ng-if="show_livestatus"
+                devicepk="node.id"
+                icsw-device-network-node-transform="node"
+                icsw-device-network-node-dbl-click="node"
+                ng-repeat="node in nodes"
+                ls-filter="ls_filter"
+                redraw="redraw_nodes"
+                ng-dblclick="double_click($event)"
+            ></icsw-device-network-host-livestatus>
+            <icsw-device-network-host-node
+                icsw-device-network-node-transform="node"
+                icsw-device-network-node-dbl-click="node"
+                ng-repeat="node in nodes"
+                node="node"
+                redraw="redraw_nodes"
+                ng-dblclick="double_click($event)"
+            ></icsw-device-network-host-node>
+        </g>
+    </svg>
+</script>
+
+
+<script type="text/ng-template" id="icsw.device.network.total">
+    <tabset>
+        <tab heading="settings">
+            <icsw-device-network-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d" show-copy-button="1"></icsw-device-network-overview>
+        </tab>
+        <tab heading="network topology">
+            <div ng-controller="icswDeviceNetworkGraphCtrl">
+                <h3>
+                    Network topology for {{ devices.length }} devices
+                </h3>
+                <form class="form-inline">
+                    Show network topology for
+                    <div class="form-group">
+                        <select ng-model="graph_sel" class="form-control" ng-change="fetch_data()">
+                            <option value="none">none</option>
+                            <option value="all_with_peers" title="all devices with peers" ng-if="acl_read(null, 'backbone.network.show_clusters')">all peered</option>
+                            <option value="all" title="all devices">all</option>
+                            <option value="sel">selected</option>
+                            <option value="selp1" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 1 (next ring)</option>
+                            <option value="selp2" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 2</option>
+                            <option value="selp3" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 3</option>
+                            <option value="core" ng-if="acl_read(null, 'backbone.network.show_clusters')">core (non-trivial)</option>
+                        </select>, mode:
+                    </div>
+                    <div class="form-group">
+                        <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="fetch_data()"/>
+                    </div>
+                    <div class="form-group">
+                        ,
+                        <icsw-tools-button type="show" value="Show Livestatus" size="sm" is-show="!show_livestatus" ng-click="show_livestatus = !show_livestatus"></icsw-tools-button>
+                        livestatus
+                    </div>
+                    <icsw-device-livestatus-filter ng-show="show_livestatus" ls-filter="ls_filter"></icsw-device-livestatus-filter>
+                </form>
+                <icsw-device-network-graph ls-filter="ls_filter"></icsw-device-network-graph>
+            </div>
+        </tab>
+        <tab heading="clusters" ng-show="acl_read(null, 'backbone.network.show_clusters') && true || false" ng-controller="icswDeviceNetworkClusterCtrl">
+            <div>
+                <h3>
+                    Network clusters ({{ clusters.length }}), <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"/>
+                </h3>
+                <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>Index</th>
+                            <th>has netdevices</th>
+                            <th>devices</th>
+                            <th>netdevices</th>
+                            <th>selected</th>
+                            <th>action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="cluster in clusters">
+                            <td>{{ $index + 1 }}</td>
+                            <td>{{ cluster.with_netdevices | yesno2 }}</td>
+                            <td class="text-right">{{ cluster.devices }}</td>
+                            <td class="text-right">{{ cluster.net_devices }}</td>
+                            <td class="text-center">{{ is_selected(cluster) }}</td>
+                            <td>
+                                <input type="button" class="btn btn-xs btn-primary" value="show" ng-click="show_cluster(cluster)"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </tab>
+    </tabset>
+</script>

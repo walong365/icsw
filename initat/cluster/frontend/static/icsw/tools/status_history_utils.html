@@ -1,0 +1,75 @@
+
+<script type="text/ng-template" id="icsw.tools.device_hist_status">
+    <div ng-if="detailed_view"> <!-- use full layout -->
+        <div class="row">
+            <div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
+                <div style="float: right">
+                    <icsw-tools-piechart diameter="120" data="pie_data"></icsw-tools-piechart>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <table class="table table-condensed table-hover table-striped">
+                    <tbody>
+                        <tr ng-repeat="state in host_data">
+                            <td> {{ state.state }} </td>
+                            <td class="text-right"> {{ state.value }} </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-8 text-center">
+                <icsw-tools-hist-line-graph width="800" height="50" for-host="true" data="line_graph_data" click="log_viewer_enabled = !log_viewer_enabled"></icsw-tools-hist-line-graph>
+            </div>
+            <div class="col-md-12">
+                <icsw-tools-hist-log-viewer width="800" data="line_graph_data" enabled="log_viewer_enabled"></icsw-tools-hist-log-viewer>
+            </div>
+        </div>
+    </div>
+    <div ng-if="!detailed_view"> <!-- only chart -->
+        <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.tools.service_hist_status">
+    <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
+</script>
+
+<script type="text/ng-template" id="icsw.tools.hist_log_viewer">
+    <div ng-show="actual_data.length > 0">
+        Show
+        <button ng-class="view_mode == 'all' && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
+                ng-click="view_mode='all'">all events</button>
+        <button ng-class="view_mode == 'new' && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
+                ng-click="view_mode='new'">events with new messages</button>
+        <button ng-class="view_mode == 'state_change' && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
+                ng-click="view_mode='state_change'">state changing events</button>
+        <table class="table table-condensed table-striped" st-table="log_entries_displayed"
+               st-safe-src="actual_data">
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="99">
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                             possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <th style="width: 132px;" st-sort="date" st-sort-default="reverse">Date</th>
+                    <th style="width:  80px;">State</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="entry in log_entries_displayed" class="text-left">
+                    <td ng-bind="entry.date | datetime_concise"></td>
+                    <td ng-bind="entry.state"></td>
+                    <td ng-bind="entry.msg"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</script>
