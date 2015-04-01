@@ -11,13 +11,14 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx
+    category_tree, location_gfx, DeleteRequest
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import category_form, location_gfx_form
-from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImport
 import initat.cluster.backbone.models
 import json
@@ -220,7 +221,7 @@ class change_category(View):
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
 
 
-class check_delete_object(View):
+class CheckDeleteObject(View):
     """
     This is an advanced delete which handles further actions which might
     be necessary in order to delete an object
@@ -294,66 +295,49 @@ class check_delete_object(View):
         request.xml_response['related_objects'] = json.dumps(related_objects_info, default=formatter)
         request.xml_response['deletable_objects'] = json.dumps(deletable_objects)
 
+        #srv_com = server_command.srv_command(command="handle_delete_requests")
+        #result = contact_server(request, "server", srv_com)
+        #print 'res', result
 
-class do_delete_object(View):
+
+
+class AddDeleteRequest(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _post = request.POST
-        obj_pk = int(json.loads(_post.get("obj_pk")))
-        model = getattr(initat.cluster.backbone.models, _post.get("model"))
-        obj_to_delete = model.objects.get(pk=obj_pk)
-        logger.info("deleting obj {} with pk {} from {} directly".format(obj_to_delete, obj_pk, model))
-        model.delete(obj_to_delete)
+        obj_pk = int(request.POST.get("obj_pk"))
+        model_name = request.POST.get("model")
+        model = getattr(initat.cluster.backbone.models, model_name)
+
+        obj = model.objects.get(pk=obj_pk)
+
+        if hasattr(obj, "disabled"):
+            obj.disabled = True
+            obj.save()
+
+        del_req = DeleteRequest(
+            pk=obj_pk,
+            model=model_name,
+            delete_strategies=request.POST.get("delete_strategies", None)
+        )
+        del_req.save()
+
+        #TODO: finish transaction, delete request must be there right away for cluster server to see
+        #TODO # notify cluster server
+        # make cluster server do deletions on start?
 
 
-class force_delete_object(View):
-    """
-    Delete objects with references with delete strategies for each reference
-    """
+
+class CheckDeletionStatus(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _post = request.POST
-        obj_pk = int(json.loads(_post.get("obj_pk")))
-        model = getattr(initat.cluster.backbone.models, _post.get("model"))
-        delete_strategy_list = json.loads(_post.get("delete_strategies", "{}"))
-        delete_strategies = {}
-        for entry in delete_strategy_list:
-            delete_strategies[(entry['model'], entry['field_name'])] = entry['selected_action']
+        obj_pks = json.loads(request.POST.get("obj_pks"))
+        model = getattr(initat.cluster.backbone.models, request.POST.get("model"))
 
-        obj_to_delete = model.objects.get(pk=obj_pk)
+        num_remaining_objs = len(model.objects.filter(pk__in=obj_pks))
 
-        logger.info("deleting obj {} with pk {} from {} with strategy".format(obj_to_delete, obj_pk, model))
-        logger.info("deleting strategies: {}".format(delete_strategies))
+        request.xml_response['num_remaining'] = num_remaining_objs
+        request.xml_response['msg'] = "Deleted {} of {} objects".format(len(obj_pks) - num_remaining_objs, len(obj_pks))
 
-        can_delete_answer = can_delete_obj(obj_to_delete, logger)
-        for rel_obj in can_delete_answer.related_objects:
-            dict_key = (rel_obj.model._meta.object_name, rel_obj.field.name)
-            strat = delete_strategies.get(dict_key, None)
-            if strat == "set null":
-                logger.info("set null on {} ".format(rel_obj))
-                for db_obj in rel_obj.ref_list:
-                    setattr(db_obj, rel_obj.field.name, None)
-                    db_obj.save()
-            elif strat == "delete cascade":
-                for db_obj in rel_obj.ref_list:
-                    logger.info("delete cascade for {} ({})".format(db_obj, rel_obj))
-                    db_obj.delete()
-            elif strat == "delete object":
-                logger.info("delete object on {}".format(rel_obj))
-                for db_obj in rel_obj.ref_list:
-                    db_obj.delete()
-            else:
-                raise ValueError("Invalid strategy for {}: {}; available strategies: {}".format(
-                    dict_key, strat, delete_strategies
-                ))
-
-        logger.info("finished with refs")
-        can_delete_answer_after = can_delete_obj(obj_to_delete, logger)
-        if can_delete_answer_after:
-            # all references cleared
-            obj_to_delete.delete()
-        else:
-            request.xml_response.error(can_delete_answer_after.msg)
 
