@@ -167,8 +167,7 @@ angular.module(
 
 
             try_delete = () ->
-                objects_string = if objects_to_delete.length == 1 then objects_to_delete[0].name else objects_to_delete.length+" objects"
-                #icswToolsSimpleModalService("Really delete #{ objects_string }?").then(() ->
+                blockUI.start()  # this can take up to a few seconds in bad cases
                 icswCallAjaxService
                     url: ICSW_URLS.BASE_CHECK_DELETE_OBJECT
                     data: {
@@ -176,6 +175,7 @@ angular.module(
                         obj_pks: JSON.stringify((obj.idx for obj in objects_to_delete))
                     }
                     success: (xml) ->
+                        blockUI.stop()
                         if icswParseXMLResponseService(xml)
                             related_objects = JSON.parse($(xml).find("value[name='related_objects']").text())
                             deletable_objects = JSON.parse($(xml).find("value[name='deletable_objects']").text())
