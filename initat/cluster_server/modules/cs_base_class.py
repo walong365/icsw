@@ -23,6 +23,7 @@ from initat.cluster_server.config import global_config
 import config_tools
 import io_stream_helper
 import logging_tools
+# noinspection PyUnresolvedReferences
 import pprint  # @UnusedImport
 import process_tools
 import server_command
@@ -60,8 +61,9 @@ class BackgroundProcess(threading_tools.process_obj):
         self.log("starting command '{}'".format(com_name))
         # print [key for key in sys.modules.keys() if key.count("cluster_s")]
         import initat.cluster_server.modules
-        ex_code = initat.cluster_server.modules.command_dict[com_name]
-        loc_inst = com_instance(ex_code, self.srv_com, self.option_dict, self.Meta, self.zmq_context)
+        sc_obj = initat.cluster_server.modules.command_dict[com_name]
+        loc_inst = com_instance(sc_obj, self.srv_com, self.option_dict, self.Meta, self.zmq_context,
+                                executing_process=self)
         loc_inst.log = self.log
         loc_inst()
         del loc_inst.log
@@ -80,12 +82,16 @@ class BackgroundProcess(threading_tools.process_obj):
 class com_instance(object):
     bg_idx = 0
 
-    def __init__(self, sc_obj, srv_com, option_dict, meta_struct, zmq_context):
+    def __init__(self, sc_obj, srv_com, option_dict, meta_struct, zmq_context, executing_process=None):
+        """
+        :param executing_process: process_obj if executing in a BackgroundProcess
+        """
         self.sc_obj = sc_obj
         self.srv_com = srv_com
         self.option_dict = option_dict
         self.Meta = meta_struct
         self.zmq_context = zmq_context
+        self.executing_process = executing_process
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.sc_obj.log(u"[ci] {}".format(what), log_level)
@@ -203,7 +209,7 @@ class server_com(object):
         max_instances = 1
         # current number of instances
         cur_running = 0
-        # is disbaled
+        # is disabled
         disabled = False
 
     def __init__(self):

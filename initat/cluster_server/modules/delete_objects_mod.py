@@ -49,6 +49,14 @@ class handle_delete_requests(cs_base_class.server_com):
                     req.delete()
 
             if req is not None:
+                # check if we should terminate (only if we have reqs left)
+                if cur_inst.executing_process is not None:
+                    # handle msgs
+                    cur_inst.executing_process.step(blocking=False)
+                    if not cur_inst.executing_process["run_flag"]:
+                        cur_inst.log("Stopping deletions due to run_flag set to False")
+                        break
+
                 self.handle_deletion(req.obj_pk, req.model, req.delete_strategies, cur_inst)
                 deletions += 1
 

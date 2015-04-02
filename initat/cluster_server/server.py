@@ -29,7 +29,6 @@ import cluster_location
 import configfile
 import datetime
 import initat.cluster_server.modules
-from initat.cluster_server.modules.cs_base_class import BackgroundProcess
 import logging_tools
 import os
 import process_tools
