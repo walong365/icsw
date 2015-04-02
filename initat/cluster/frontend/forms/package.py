@@ -36,6 +36,7 @@ class package_search_form(ModelForm):
     )
 
     class Meta:
+        exclude = ()
         model = package_search
 
 

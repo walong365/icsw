@@ -91,7 +91,7 @@ class MVStructEntry(models.Model):
     # is active
     is_active = models.BooleanField(default=True)
     # last update
-    last_update = models.DateTimeField(auto_now=True, auto_now_add=True)
+    last_update = models.DateTimeField(auto_now=True)
     # was init_time
     date = models.DateTimeField(auto_now_add=True)
 

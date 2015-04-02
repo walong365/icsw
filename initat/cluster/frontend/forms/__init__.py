@@ -21,6 +21,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
     config_script, netdevice, net_ip, peer_information, config_catalog, cd_connection, \
     location_gfx
 import pprint
+from initat.cluster.frontend.forms.form_models import empty_query_set
 
 from initat.cluster.frontend.forms.boot import *
 from initat.cluster.frontend.forms.config import *
@@ -29,12 +30,6 @@ from initat.cluster.frontend.forms.package import *
 from initat.cluster.frontend.forms.partition import *
 from initat.cluster.frontend.forms.user import *
 from initat.cluster.frontend.forms.network import *
-
-
-# empty query set
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class domain_tree_node_form(ModelForm):
@@ -558,6 +553,7 @@ class device_tree_form(ModelForm):
 
     class Meta:
         model = device
+        exclude = ()
         widgets = {
             "device_type": ui_select_widget(),
             "device_group": ui_select_widget(),
@@ -687,6 +683,7 @@ class device_tree_many_form(ModelForm):
 
     class Meta:
         model = device
+        exclude = ()
         widgets = {
             "device_type": ui_select_widget(),
             "device_group": ui_select_widget(),
@@ -742,6 +739,7 @@ class device_group_tree_form(ModelForm):
 
     class Meta:
         model = device_group
+        exclude = ()
         widgets = {
             "domain_tree_node": ui_select_widget()
         }
@@ -777,6 +775,7 @@ class device_variable_form(ModelForm):
     )
 
     class Meta:
+        exclude = ()
         model = device_variable
 
 
@@ -838,6 +837,7 @@ class device_variable_new_form(ModelForm):
     )
 
     class Meta:
+        exclude = ()
         model = device_variable
 
 

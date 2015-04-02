@@ -88,7 +88,7 @@ class Command(BaseCommand):
             _result = _temp.render(Context(r_dict))
         except:
             print("Error rendering, trying to determine defective form")
-            for _key in _form_keys:
+            for _key_num, _key in enumerate(_form_keys, 1):
                 _render_template = [
                     "{% load i18n crispy_forms_tags coffeescript %}",
                 ]
@@ -103,10 +103,10 @@ class Command(BaseCommand):
                 try:
                     _result = _temp.render(Context(r_dict))
                 except:
-                    print("Error for key {}".format(_key))
+                    print("Error for key #{:d} {}".format(_key_num, _key))
                     raise
                 else:
-                    print("OK for key {}".format(_key))
+                    print("OK for key #{:d} {}".format(_key_num, _key))
         # remove all whitespaces
         _result = _result.replace("\t", " ")
         while True:

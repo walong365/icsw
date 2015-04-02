@@ -9,6 +9,7 @@ from django.forms import Form, ModelForm, CharField, ModelChoiceField, \
     ModelMultipleChoiceField, BooleanField
 from initat.cluster.backbone.models import device
 from initat.cluster.frontend.widgets import ui_select_widget
+from initat.cluster.frontend.forms.form_models import empty_query_set
 
 
 __all__ = [
@@ -17,11 +18,6 @@ __all__ = [
     "boot_single_form",
     "boot_many_form",
 ]
-
-
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class device_boot_form(ModelForm):
