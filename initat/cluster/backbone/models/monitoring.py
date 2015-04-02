@@ -1111,9 +1111,7 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
-
 class MonitoringHintEnabledManager(models.Manager):
-
     def get_queryset(self):
         return super(MonitoringHintEnabledManager, self).get_queryset().filter(enabled=True)
 

@@ -104,7 +104,13 @@ class zmq_connection(object):
                 new_sock.send_unicode(unicode(command))
             except:
                 _result = server_command.srv_command(source=unicode(command))
-                _result.set_result("error sending: {}".format(get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+                _result.set_result(
+                    "error sending to {}: {}".format(
+                        conn_str,
+                        get_except_info(),
+                    ),
+                    server_command.SRV_REPLY_STATE_CRITICAL
+                )
                 self.__results[sock_fd] = unicode(_result)
                 new_sock.close()
             else:
