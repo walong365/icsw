@@ -28,12 +28,12 @@ import logging_tools
 
 
 __all__ = [
-    "kpi",
-    "kpi_selected_device_monitoring_category_tuple",
+    "Kpi",
+    "KpiSelectedDeviceMonitoringCategoryTuple",
 ]
 
 
-class kpi(models.Model):
+class Kpi(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
 
@@ -49,11 +49,11 @@ class kpi(models.Model):
         app_label = "backbone"
 
 
-class kpi_selected_device_monitoring_category_tuple(models.Model):
+class KpiSelectedDeviceMonitoringCategoryTuple(models.Model):
     # Relevant (dev_cat x mon_cat) for a kpi.
     # Specifies the data actually relevant for kpi calculation.
     idx = models.AutoField(primary_key=True)
-    kpi = models.ForeignKey(kpi)
+    kpi = models.ForeignKey(Kpi)
     device_category = models.ForeignKey('category', related_name="device_cateogory")
     monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
 

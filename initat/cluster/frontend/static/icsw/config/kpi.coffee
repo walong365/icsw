@@ -189,7 +189,7 @@ angular.module(
 
     category = get_rest(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
     kpi = get_rest(ICSW_URLS.REST_KPI_LIST.slice(1))
-    selected_device_monitoring_category_tuple = get_rest(ICSW_URLS.REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE.slice(1))
+    selected_device_monitoring_category_tuple = get_rest(ICSW_URLS.REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE_LIST.slice(1))
 
     return {
         category: category

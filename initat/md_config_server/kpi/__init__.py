@@ -21,13 +21,15 @@ import json
 # noinspection PyUnresolvedReferences
 import pprint
 from django.db import connection
+import itertools
 import memcache
 import time
 import initat.collectd.aggregate
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.cluster.backbone.models.kpi import kpi_selected_device_monitoring_category_tuple
+from initat.cluster.backbone.models.kpi import KpiSelectedDeviceMonitoringCategoryTuple, Kpi
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.common import live_socket
+from initat.md_config_server.kpi.kpi_language import KpiObject
 import logging_tools
 import threading_tools
 
@@ -56,9 +58,10 @@ class kpi_process(threading_tools.process_obj):
         self.__log_template.close()
 
     def update(self):
-        self.get_memcached_data()
+        #self.get_memcached_data()
 
         self["run_flag"] = False
+        self["exit_requested"] = True
 
         # recalculate kpis
 
@@ -72,39 +75,49 @@ class kpi_process(threading_tools.process_obj):
 
             # get hosts and services of categories
             # get checks for kpis
-            queryset = kpi_selected_device_monitoring_category_tuple.objects.all()\
-                .select_related("monitoring_category", "device_category")
-            print 'query', queryset.query
+
+            if Kpi.objects.filter(uses_all_data=True).exists():
+                # TODO
+                pass
+
+            else:
+                queryset = KpiSelectedDeviceMonitoringCategoryTuple.objects.all()\
+                    .select_related("monitoring_category", "device_category")
 
             # TODO: uses_all_data
-
             # simulate distinct
             dev_mon_tuple_already_checked = dict()
             for item in queryset:
                 if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuple_already_checked:
+                    print 'gather for', item.monitoring_category, 'x', item.device_category
 
                     devices = item.device_category.device_set.values_list('name', flat=True)
                     checks = item.monitoring_category.mon_check_command_set.values_list('pk', flat=True)
 
-                    """
+                    kpi_objects = []
 
                     for dev_pk in devices:
                         for check_pk in checks:
-                            description = host_service_id_util.create_host_service_description(dev_pk, check_pk)
-                            TODO: check if we can reference special check commands this way
+                            description = host_service_id_util.create_host_service_description(dev_pk, check_pk, info="")
+                            # TODO: check if we can reference special check commands this way
                             service_query = icinga_socket.services.columns("host_name",
                                                                            "description",
                                                                            "check_type",
                                                                            "plugin_output",
                                                                            "state_type")
-                            service_query.filter("description", "=", description)
+                            service_query.filter("description", "~", description)  # ~ means regular expression match
                             result = json.loads(service_query.call())
+                            self.log('res {}'.format(result))
+                            print('res {}'.format(result))
 
-                            TODO: fill result in dict
+                            # TODO: fill result in dict
+                            properties = {}
 
+                            kpi_objects.append(
+                                KpiObject(properties=properties, result=None)
+                            )
 
-                    dev_mon_tuple_already_checked[(item.device_category_id, item.monitoring_category_id)] =
-                    """
+                    dev_mon_tuple_already_checked[(item.device_category_id, item.monitoring_category_id)] = kpi_objects
 
         # calculate kpis, such that drill down data is present
         pass

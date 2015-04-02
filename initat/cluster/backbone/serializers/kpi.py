@@ -23,21 +23,21 @@
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import kpi, kpi_selected_device_monitoring_category_tuple
+from initat.cluster.backbone.models import Kpi, KpiSelectedDeviceMonitoringCategoryTuple
 
 
 __all__ = [
-    "kpi_serializer",
-    "kpi_selected_device_monitoring_category_tuple_serializer",
+    "KpiSerializer",
+    "KpiSelectedDeviceMonitoringCategoryTupleSerializer",
 ]
 
 
-class kpi_serializer(serializers.ModelSerializer):
+class KpiSerializer(serializers.ModelSerializer):
     class Meta:
-        model = kpi
+        model = Kpi
 
 
-class kpi_selected_device_monitoring_category_tuple_serializer(serializers.ModelSerializer):
+class KpiSelectedDeviceMonitoringCategoryTupleSerializer(serializers.ModelSerializer):
     class Meta:
-        model = kpi_selected_device_monitoring_category_tuple
+        model = KpiSelectedDeviceMonitoringCategoryTuple
 
