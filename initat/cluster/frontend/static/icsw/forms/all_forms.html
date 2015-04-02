@@ -6,7 +6,7 @@
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" typeahead="hint for hint in get_config_hints() | filter:$viewValue" typeahead-min-length="1" typeahead-on-select="config_selected_vt($item, $model, $label)" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_hints() | filter:$viewValue" typeahead-min-length="1" typeahead-on-select="config_selected_vt($item, $model, $label)" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3">
@@ -21,7 +21,7 @@
  class="form-group 
  "
  ><label for="id_priority" class="control-label col-sm-3 requiredField">
- Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="_edit_obj.priority" type="number" value="0" required /> </div></div><div class="form-group"><div id="div_id_server_config"
+ Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="_edit_obj.priority" required="True" type="number" value="0" /> </div></div><div class="form-group"><div id="div_id_server_config"
  class="checkbox
  "
  ng_show="!_edit_obj.system_config &amp;&amp; !_edit_obj.parent_config"
@@ -177,7 +177,7 @@
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="254" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_author"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="254" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_author"
  class="form-group 
  "
  ><label for="id_author" class="control-label col-sm-3">
@@ -202,12 +202,12 @@
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div></fieldset><fieldset 
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Mount options</legend><div id="div_id_mountpoint"
  class="form-group 
  "
  ><label for="id_mountpoint" class="control-label col-sm-3 requiredField">
- Mountpoint<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mountpoint" maxlength="192" name="mountpoint" ng-model="_edit_obj.mountpoint" type="text" value="/" required /> </div></div><div id="div_id_mount_options"
+ Mountpoint<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mountpoint" maxlength="192" name="mountpoint" ng-model="_edit_obj.mountpoint" required="True" type="text" value="/" /> </div></div><div id="div_id_mount_options"
  class="form-group 
  "
  ><label for="id_mount_options" class="control-label col-sm-3">
@@ -227,15 +227,15 @@
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" placeholder="Name" type="text" required /> </div></div><div id="div_id_channel"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" placeholder="Name" required="True" type="text" /> </div></div><div id="div_id_channel"
  class="form-group 
  "
  ><label for="id_channel" class="control-label col-sm-3 requiredField">
- Channel<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_channel" name="channel" ng-model="edit_obj.channel" required><option value="mail">E-Mail</option><option value="sms">SMS</option></select></div></div><div id="div_id_not_type"
+ Channel<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_channel" name="channel" ng-model="edit_obj.channel" required="True"><option value="mail">E-Mail</option><option value="sms">SMS</option></select></div></div><div id="div_id_not_type"
  class="form-group 
  "
  ><label for="id_not_type" class="control-label col-sm-3 requiredField">
- Notification type<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_not_type" name="not_type" ng-model="edit_obj.not_type" required><option value="host">Host</option><option value="service">Service</option></select></div></div></fieldset><fieldset 
+ Notification type<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_not_type" name="not_type" ng-model="edit_obj.not_type" required="True"><option value="host">Host</option><option value="service">Service</option></select></div></div></fieldset><fieldset 
  ><legend>Flags and text</legend><div class="form-group"><div id="div_id_enabled"
  class="checkbox
  "
@@ -251,7 +251,7 @@
  class="form-group 
  "
  ><label for="id_content" class="control-label col-sm-3 requiredField">
- Content<span class="asteriskField">*</span></label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_content" name="content" ng-model="edit_obj.content" rows="10" required></textarea></div></div></fieldset><div class="form-actions"><input type="submit"
+ Content<span class="asteriskField">*</span></label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_content" name="content" ng-model="edit_obj.content" required="True" rows="10"></textarea></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -266,7 +266,7 @@
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_domain_tree_node"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_domain_tree_node"
  class="form-group 
  "
  ><label for="id_domain_tree_node" class="control-label col-sm-3 requiredField">
@@ -280,7 +280,7 @@
  "
  ng_show="is_device()"
  ><label for="id_curl" class="control-label col-sm-3 requiredField">
- CURL<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="_edit_obj.curl" type="text" value="ssh://" required /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
+ CURL<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="_edit_obj.curl" required="True" type="text" value="ssh://" /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
  IP Info
  </label><div class='col-sm-9 form-control-static'>
  {{ get_ip_info() }}
@@ -351,7 +351,7 @@
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" placeholder="Name" type="text" required /> </div></div><div id="div_id_alias"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" placeholder="Name" required="True" type="text" /> </div></div><div id="div_id_alias"
  class="form-group 
  ng-class:form_error(&#39;alias&#39;) 
  "
@@ -434,7 +434,7 @@
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="384" name="name" ng-model="edit_obj.name" readonly="True" type="text" required /> </div></div><div id="div_id_comment"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="384" name="name" ng-model="edit_obj.name" readonly="True" required="True" type="text" /> </div></div><div id="div_id_comment"
  class="form-group 
  "
  ><label for="id_comment" class="control-label col-sm-3">
@@ -501,7 +501,7 @@
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_mon_service_templ"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_mon_service_templ"
  class="form-group 
  "
  ><label for="id_mon_service_templ" class="control-label col-sm-3 requiredField">
@@ -518,11 +518,11 @@
  class="form-group 
  "
  ><label for="id_check_interval" class="control-label col-sm-3 requiredField">
- Check interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" type="number" value="1" required /> </div></div><div id="div_id_retry_interval"
+ Check interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="1" /> </div></div><div id="div_id_retry_interval"
  class="form-group 
  "
  ><label for="id_retry_interval" class="control-label col-sm-3 requiredField">
- Retry interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" type="number" value="1" required /> </div></div><div id="div_id_max_attempts"
+ Retry interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="1" /> </div></div><div id="div_id_max_attempts"
  class="form-group 
  "
  ><label for="id_max_attempts" class="control-label col-sm-3">
@@ -577,7 +577,7 @@
  "
  ng_show="edit_obj.check_freshness"
  ><label for="id_freshness_threshold" class="control-label col-sm-3 requiredField">
- Freshness threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" type="number" value="60" required /> </div></div></fieldset><fieldset 
+ Freshness threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" /> </div></div></fieldset><fieldset 
  ><legend>Flap settings</legend><div class="form-group"><div id="div_id_flap_detection_enabled"
  class="checkbox
  "
@@ -588,12 +588,12 @@
  "
  ng_show="edit_obj.flap_detection_enabled"
  ><label for="id_low_flap_threshold" class="control-label col-sm-3 requiredField">
- Low flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" type="number" value="0" required /> </div></div><div id="div_id_high_flap_threshold"
+ Low flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" /> </div></div><div id="div_id_high_flap_threshold"
  class="form-group 
  "
  ng_show="edit_obj.flap_detection_enabled"
  ><label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField">
- High flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" type="number" value="0" required /> </div></div></div><div 
+ High flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" /> </div></div></div><div 
  class="row" ><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_flap_detect_up"
  class="checkbox
@@ -629,27 +629,27 @@
  ng-class:form_error(&#39;identifier&#39;) 
  "
  ><label for="id_identifier" class="control-label col-sm-3 requiredField">
- Identifier<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_identifier" maxlength="255" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" type="text" required /> </div></div><div id="div_id_network"
+ Identifier<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_identifier" maxlength="255" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text" /> </div></div><div id="div_id_network"
  class="form-group 
  ng-class:form_error(&#39;network&#39;) 
  "
  ><label for="id_network" class="control-label col-sm-3 requiredField">
- Network<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" type="text" required /> </div></div><div id="div_id_netmask"
+ Network<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text" /> </div></div><div id="div_id_netmask"
  class="form-group 
  ng-class:form_error(&#39;netmask&#39;) 
  "
  ><label for="id_netmask" class="control-label col-sm-3 requiredField">
- Netmask<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" type="text" required /> </div></div><div id="div_id_broadcast"
+ Netmask<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text" /> </div></div><div id="div_id_broadcast"
  class="form-group 
  ng-class:form_error(&#39;broadcast&#39;) 
  "
  ><label for="id_broadcast" class="control-label col-sm-3 requiredField">
- Broadcast<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_broadcast" name="broadcast" ng-model="edit_obj.broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Broadcast" type="text" required /> </div></div><div id="div_id_gateway"
+ Broadcast<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_broadcast" name="broadcast" ng-model="edit_obj.broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Broadcast" required="True" type="text" /> </div></div><div id="div_id_gateway"
  class="form-group 
  ng-class:form_error(&#39;gateway&#39;) 
  "
  ><label for="id_gateway" class="control-label col-sm-3 requiredField">
- Gateway<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_gateway" name="gateway" ng-model="edit_obj.gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Gateway" type="text" required /> </div></div></fieldset><fieldset 
+ Gateway<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_gateway" name="gateway" ng-model="edit_obj.gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Gateway" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Additional settings</legend><div id="div_id_network_type"
  class="form-group 
  "
@@ -710,7 +710,7 @@
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_mon_service_esc_templ"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_mon_service_esc_templ"
  class="form-group 
  "
  ><label for="id_mon_service_esc_templ" class="control-label col-sm-3 requiredField">
@@ -719,11 +719,11 @@
  class="form-group 
  "
  ><label for="id_first_notification" class="control-label col-sm-3 requiredField">
- First notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" type="number" value="1" required /> </div></div><div id="div_id_last_notification"
+ First notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1" /> </div></div><div id="div_id_last_notification"
  class="form-group 
  "
  ><label for="id_last_notification" class="control-label col-sm-3 requiredField">
- Last notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" type="number" value="1" required /> </div></div><div id="div_id_esc_period"
+ Last notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1" /> </div></div><div id="div_id_esc_period"
  class="form-group 
  "
  ><label for="id_esc_period" class="control-label col-sm-3 requiredField">
@@ -731,7 +731,7 @@
  class="form-group 
  "
  ><label for="id_ninterval" class="control-label col-sm-3 requiredField">
- Ninterval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="60" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1" required /> </div></div></fieldset><fieldset 
+ Ninterval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="60" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1" /> </div></div></fieldset><fieldset 
  ><legend>Notification</legend></fieldset><div 
  class="row" ><div 
  class="col-md-4" ><div class="form-group"><div id="div_id_nrecovery"
@@ -789,7 +789,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_penalty" class="control-label col-sm-2 requiredField">
- Cost<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="numberinput form-control" id="id_penalty" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" type="number" value="0" required /> </div></div><div ng-if="source_is_local"><div class='form-group' ng-if="create_mode"><label class='control-label col-sm-2'>
+ Cost<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="numberinput form-control" id="id_penalty" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" required="True" type="number" value="0" /> </div></div><div ng-if="source_is_local"><div class='form-group' ng-if="create_mode"><label class='control-label col-sm-2'>
  Source
  </label><div class='col-sm-9'><ui-select ng-model="_edit_obj.s_netdevice" ng-required="true"><ui-select-match placeholder="select a netdevice">{{$select.selected.devname}}</ui-select-match><ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set | props_filter:{devname:$select.search}"><div ng-bind-html="value.devname | highlight: $select.search"></div></ui-select-choices></ui-select></div></div><div class='form-group'><label class='control-label col-sm-2'>
  Network topology central node
@@ -1076,11 +1076,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="384" name="description" ng-model="edit_obj.description" type="text" required /> </div></div></fieldset><fieldset 
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="384" name="description" ng-model="edit_obj.description" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Additional settings</legend><div id="div_id_domain_tree_node"
  class="form-group 
  "
@@ -1108,7 +1108,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_scan_address" class="control-label col-sm-3 requiredField">
- Scan address<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_scan_address" maxlength="128" name="scan_address" ng-model="_edit_obj.scan_address" type="text" required /> </div></div></fieldset><fieldset 
+ Scan address<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_scan_address" maxlength="128" name="scan_address" ng-model="_edit_obj.scan_address" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Flags</legend><div class="form-group"><div id="div_id_strict_mode"
  class="checkbox
  "
@@ -1169,7 +1169,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_pnum" class="control-label col-sm-3 requiredField">
- Pnum<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_pnum" max="16" min="1" name="pnum" ng-model="_edit_obj.pnum" placeholder="partition" type="number" required /> </div></div><div id="div_id_partition_fs"
+ Pnum<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_pnum" max="16" min="1" name="pnum" ng-model="_edit_obj.pnum" placeholder="partition" required="True" type="number" /> </div></div><div id="div_id_partition_fs"
  class="form-group 
  "
  ><label for="id_partition_fs" class="control-label col-sm-3 requiredField">
@@ -1241,16 +1241,16 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div></fieldset><fieldset 
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Notifications</legend><div id="div_id_first_notification"
  class="form-group 
  "
  ><label for="id_first_notification" class="control-label col-sm-3 requiredField">
- First notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" type="number" value="1" required /> </div></div><div id="div_id_last_notification"
+ First notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1" /> </div></div><div id="div_id_last_notification"
  class="form-group 
  "
  ><label for="id_last_notification" class="control-label col-sm-3 requiredField">
- Last notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" type="number" value="1" required /> </div></div><div id="div_id_esc_period"
+ Last notification<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1" /> </div></div><div id="div_id_esc_period"
  class="form-group 
  "
  ><label for="id_esc_period" class="control-label col-sm-3 requiredField">
@@ -1258,7 +1258,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_ninterval" class="control-label col-sm-3 requiredField">
- Ninterval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="60" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1" required /> </div></div></fieldset><div 
+ Ninterval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="60" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1" /> </div></div></fieldset><div 
  class="row" ><div 
  class="col-md-4" ><div class="form-group"><div id="div_id_nrecovery"
  class="checkbox
@@ -1312,7 +1312,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;devname&#39;) 
  "
  ><label for="id_ip" class="control-label col-sm-2 requiredField">
- Ip<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_ip" maxlength="48" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" type="text" required /> </div></div><div id="div_id_network"
+ Ip<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_ip" maxlength="48" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" required="True" type="text" /> </div></div><div id="div_id_network"
  class="form-group 
  "
  ><label for="id_network" class="control-label col-sm-2 requiredField">
@@ -1346,7 +1346,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_image" class="control-label col-sm-4">
  Image
- </label><div class="controls col-sm-7"><select multiple="multiple" class="selectmultiple form-control" id="id_image" name="image"></select></div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><select multiple="multiple" class="selectmultiple form-control" id="id_image" name="image"></select><p id="hint_id_image" class="help-block"> Hold down "Control", or "Command" on a Mac, to select more than one.</p></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -1360,11 +1360,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_command_line"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_command_line"
  class="form-group 
  "
  ><label for="id_command_line" class="control-label col-sm-3 requiredField">
- Command line<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_command_line" maxlength="128" name="command_line" ng-model="edit_obj.command_line" type="text" required /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ Command line<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_command_line" maxlength="128" name="command_line" ng-model="edit_obj.command_line" required="True" type="text" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -1380,7 +1380,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_name" maxlength="765" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_var_type"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_name" maxlength="765" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_var_type"
  class="form-group 
  "
  ><label for="id_var_type" class="control-label col-sm-3 requiredField">
@@ -1435,11 +1435,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" required /> </div></div><div id="div_id_value"
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div id="div_id_value"
  class="form-group 
  "
  ><label for="id_value" class="control-label col-sm-3">
@@ -1459,7 +1459,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;description&#39;) 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" type="text" required /> </div></div><div id="div_id_identifier"
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text" /> </div></div><div id="div_id_identifier"
  class="form-group 
  "
  ><label for="id_identifier" class="control-label col-sm-3 requiredField">
@@ -1479,11 +1479,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_login" class="control-label col-sm-2 requiredField">
- Login<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_login" maxlength="255" name="login" ng-model="_edit_obj.login" type="text" required /> </div></div><div id="div_id_uid"
+ Login<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_login" maxlength="255" name="login" ng-model="_edit_obj.login" required="True" type="text" /> </div></div><div id="div_id_uid"
  class="form-group 
  "
  ><label for="id_uid" class="control-label col-sm-2 requiredField">
- Uid<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_uid" name="uid" ng-model="_edit_obj.uid" type="number" required /> </div></div><div id="div_id_first_name"
+ Uid<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_uid" name="uid" ng-model="_edit_obj.uid" required="True" type="number" /> </div></div><div id="div_id_first_name"
  class="form-group 
  "
  ><label for="id_first_name" class="control-label col-sm-2">
@@ -1554,7 +1554,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_group" class="control-label col-sm-2 requiredField">
- Group<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_group" name="group" ng-model="_edit_obj.group" ng-options="value.idx as value.groupname for value in group_list" required></select></div></div><div id="div_id_secondary_groups"
+ Group<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_group" name="group" ng-model="_edit_obj.group" ng-options="value.idx as value.groupname for value in group_list" required="True"></select></div></div><div id="div_id_secondary_groups"
  class="form-group 
  "
  ><label for="id_secondary_groups" class="control-label col-sm-2">
@@ -1593,7 +1593,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ng_show="_edit_obj.scan_user_home"
  ><label for="id_scan_depth" class="control-label col-sm-2 requiredField">
- Scan depth<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_scan_depth" max="5" min="1" name="scan_depth" ng-model="_edit_obj.scan_depth" type="number" value="2" required /> </div></div></fieldset><fieldset 
+ Scan depth<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_scan_depth" max="5" min="1" name="scan_depth" ng-model="_edit_obj.scan_depth" required="True" type="number" value="2" /> </div></div></fieldset><fieldset 
  ><legend>Permissions</legend><div id="div_id_allowed_device_groups"
  class="form-group 
  "
@@ -1687,7 +1687,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:cur_edit.form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" placeholder="Name" type="text" required /> </div></div></div><div 
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" placeholder="Name" required="True" type="text" /> </div></div></div><div 
  class="col-md-6" ><div id="div_id_description"
  class="form-group 
  ng-class:cur_edit.form_error(&#39;description&#39;) 
@@ -1723,7 +1723,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_search_string" class="control-label col-sm-3 requiredField">
- Search string<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_search_string" maxlength="128" name="search_string" ng-model="edit_obj.search_string" type="text" required /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ Search string<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_search_string" maxlength="128" name="search_string" ng-model="edit_obj.search_string" required="True" type="text" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -1737,7 +1737,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_comment"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_comment"
  class="form-group 
  "
  ><label for="id_comment" class="control-label col-sm-3">
@@ -1755,7 +1755,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_curl" class="control-label col-sm-3 requiredField">
- CURL<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="edit_obj.curl" type="text" value="ssh://" required /> </div></div><div id="div_id_domain_tree_node"
+ CURL<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="edit_obj.curl" required="True" type="text" value="ssh://" /> </div></div><div id="div_id_domain_tree_node"
  class="form-group 
  "
  ><label for="id_domain_tree_node" class="control-label col-sm-3 requiredField">
@@ -1813,7 +1813,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_dependency_period"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_dependency_period"
  class="form-group 
  "
  ><label for="id_dependency_period" class="control-label col-sm-3 requiredField">
@@ -1821,7 +1821,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_priority" class="control-label col-sm-3 requiredField">
- Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" max="128" min="-128" name="priority" ng-model="edit_obj.priority" type="number" value="0" required /> </div></div><div class="form-group"><div id="div_id_inherits_parent"
+ Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" max="128" min="-128" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0" /> </div></div><div class="form-group"><div id="div_id_inherits_parent"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_inherits_parent" class=""><input class="checkboxinput checkbox" id="id_inherits_parent" name="inherits_parent" ng-model="edit_obj.inherits_parent" type="checkbox" />
@@ -1896,11 +1896,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_snmp_community" class="control-label col-sm-3 requiredField">
- Snmp community<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_snmp_community" maxlength="128" name="snmp_community" ng-model="_edit_obj.snmp_community" type="text" required /> </div></div><div id="div_id_snmp_version"
+ Snmp community<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_snmp_community" maxlength="128" name="snmp_community" ng-model="_edit_obj.snmp_community" required="True" type="text" /> </div></div><div id="div_id_snmp_version"
  class="form-group 
  "
  ><label for="id_snmp_version" class="control-label col-sm-3 requiredField">
- Snmp version<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_snmp_version" name="snmp_version" ng-model="_edit_obj.snmp_version" required><option value="1">1</option><option value="2">2</option></select></div></div></fieldset><fieldset 
+ Snmp version<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_snmp_version" name="snmp_version" ng-model="_edit_obj.snmp_version" required="True"><option value="1">1</option><option value="2">2</option></select></div></div></fieldset><fieldset 
  ><legend>Flags</legend><div class="form-group"><div id="div_id_remove_not_found"
  class="checkbox
  "
@@ -1926,7 +1926,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-2 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_parent"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_parent"
  class="form-group 
  "
  ><label for="id_parent" class="control-label col-sm-2 requiredField">
@@ -2058,7 +2058,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;devname&#39;) 
  "
  ><label for="id_devname" class="control-label col-sm-3 requiredField">
- Devname<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_devname" maxlength="64" name="devname" ng-model="_edit_obj.devname" placeholder="devicename" type="text" required /> </div></div><div id="div_id_description"
+ Devname<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_devname" maxlength="64" name="devname" ng-model="_edit_obj.devname" placeholder="devicename" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3">
@@ -2067,7 +2067,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_mtu" class="control-label col-sm-3 requiredField">
- Mtu<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_mtu" name="mtu" ng-model="_edit_obj.mtu" type="number" value="1500" required /> </div></div><div id="div_id_netdevice_speed"
+ Mtu<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_mtu" name="mtu" ng-model="_edit_obj.mtu" required="True" type="number" value="1500" /> </div></div><div id="div_id_netdevice_speed"
  class="form-group 
  "
  ><label for="id_netdevice_speed" class="control-label col-sm-3 requiredField">
@@ -2131,15 +2131,15 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_ethtool_autoneg" class="control-label col-sm-3 requiredField">
- Ethtool autoneg<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_ethtool_autoneg" name="ethtool_autoneg" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_autoneg" required><option value="0">default</option><option value="1">on</option><option value="2">off</option></select></div></div><div id="div_id_ethtool_duplex"
+ Ethtool autoneg<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_ethtool_autoneg" name="ethtool_autoneg" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_autoneg" required="True"><option value="0">default</option><option value="1">on</option><option value="2">off</option></select></div></div><div id="div_id_ethtool_duplex"
  class="form-group 
  "
  ><label for="id_ethtool_duplex" class="control-label col-sm-3 requiredField">
- Ethtool duplex<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_ethtool_duplex" name="ethtool_duplex" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_duplex" required><option value="0">default</option><option value="1">on</option><option value="2">off</option></select></div></div><div id="div_id_ethtool_speed"
+ Ethtool duplex<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_ethtool_duplex" name="ethtool_duplex" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_duplex" required="True"><option value="0">default</option><option value="1">on</option><option value="2">off</option></select></div></div><div id="div_id_ethtool_speed"
  class="form-group 
  "
  ><label for="id_ethtool_speed" class="control-label col-sm-3 requiredField">
- Ethtool speed<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_ethtool_speed" name="ethtool_speed" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_speed" required><option value="0">default</option><option value="1">10 MBit</option><option value="2">100 MBit</option><option value="3">1 GBit</option><option value="4">10 GBit</option></select></div></div></fieldset><fieldset 
+ Ethtool speed<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_ethtool_speed" name="ethtool_speed" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_speed" required="True"><option value="0">default</option><option value="1">10 MBit</option><option value="2">100 MBit</option><option value="3">1 GBit</option><option value="4">10 GBit</option></select></div></div></fieldset><fieldset 
  ><legend>MAC Address settings</legend><div 
  class="row" ><div 
  class="col-md-6" ><div id="div_id_macaddr"
@@ -2339,21 +2339,21 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;identifier&#39;) 
  "
  ><label for="id_identifier" class="control-label col-sm-3 requiredField">
- Identifier<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_identifier" maxlength="48" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" type="text" required /> </div></div><div id="div_id_description"
+ Identifier<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_identifier" maxlength="48" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  ng-class:form_error(&#39;description&#39;) 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" type="text" required /> </div></div><div id="div_id_name_re"
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text" /> </div></div><div id="div_id_name_re"
  class="form-group 
  ng-class:form_error(&#39;name_re&#39;) 
  "
  ><label for="id_name_re" class="control-label col-sm-3 requiredField">
- Name re<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name_re" maxlength="128" name="name_re" ng-model="edit_obj.name_re" placeholder="Regular expression" type="text" value="^.*$" required /> </div></div><div id="div_id_mac_bytes"
+ Name re<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name_re" maxlength="128" name="name_re" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$" /> </div></div><div id="div_id_mac_bytes"
  class="form-group 
  "
  ><label for="id_mac_bytes" class="control-label col-sm-3 requiredField">
- Mac bytes<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_mac_bytes" max="24" min="6" name="mac_bytes" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" type="number" value="6" required /> </div></div></fieldset><fieldset 
+ Mac bytes<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_mac_bytes" max="24" min="6" name="mac_bytes" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6" /> </div></div></fieldset><fieldset 
  ><legend>Flags</legend><div class="form-group"><div id="div_id_allow_virtual_interfaces"
  class="checkbox
  "
@@ -2374,7 +2374,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-2 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-2">
@@ -2392,7 +2392,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ng_show="!_edit_obj.mon_check_command_special &amp;&amp; _edit_obj.is_active"
  ><label for="id_command_line" class="control-label col-sm-2 requiredField">
- Command line<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_command_line" maxlength="765" name="command_line" ng-model="_edit_obj.command_line" type="text" required /> </div></div><div class='form-group' ng-show="_edit_obj.mon_check_command_special"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item">{{ get_mccs_info() }}</li><li class="list-group-item">{{ get_mccs_cmdline() }}</li></ul></div></div><div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active"><label class='control-label col-sm-2'>Tools</label><div class='controls col-sm-9'><div class="form-inline"><input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'></input>
+ Command line<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_command_line" maxlength="765" name="command_line" ng-model="_edit_obj.command_line" required="True" type="text" /> </div></div><div class='form-group' ng-show="_edit_obj.mon_check_command_special"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item">{{ get_mccs_info() }}</li><li class="list-group-item">{{ get_mccs_cmdline() }}</li></ul></div></div><div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active"><label class='control-label col-sm-2'>Tools</label><div class='controls col-sm-9'><div class="form-inline"><input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'></input>
  name:
  <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_name"></input>
  value:
@@ -2459,17 +2459,17 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:group_edit.form_error(&#39;groupname&#39;) 
  "
  ><label for="id_groupname" class="control-label col-sm-2 requiredField">
- Groupname<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_groupname" maxlength="48" name="groupname" ng-model="_edit_obj.groupname" ng-pattern="/^.+$/" type="text" required /> </div></div><div id="div_id_gid"
+ Groupname<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_groupname" maxlength="48" name="groupname" ng-model="_edit_obj.groupname" ng-pattern="/^.+$/" required="True" type="text" /> </div></div><div id="div_id_gid"
  class="form-group 
  ng-class:group_edit.form_error(&#39;gid&#39;) 
  "
  ><label for="id_gid" class="control-label col-sm-2 requiredField">
- Gid<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_gid" name="gid" ng-model="_edit_obj.gid" ng-pattern="/^\d+$/" type="number" required /> </div></div><div id="div_id_homestart"
+ Gid<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_gid" name="gid" ng-model="_edit_obj.gid" ng-pattern="/^\d+$/" required="True" type="number" /> </div></div><div id="div_id_homestart"
  class="form-group 
  ng-class:group_edit.form_error(&#39;homestart&#39;) 
  "
  ><label for="id_homestart" class="control-label col-sm-2 requiredField">
- Homestart<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_homestart" name="homestart" ng-model="_edit_obj.homestart" ng-pattern="/^\/.*/" type="text" required /> </div></div><div class="form-actions"><div class="form-group"><div id="div_id_active"
+ Homestart<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_homestart" name="homestart" ng-model="_edit_obj.homestart" ng-pattern="/^\/.*/" required="True" type="text" /> </div></div><div class="form-actions"><div class="form-group"><div id="div_id_active"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_active" class=""><input checked="checked" class="checkboxinput checkbox" id="id_active" name="active" ng-model="_edit_obj.active" type="checkbox" />
@@ -2574,11 +2574,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-2 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-2 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" required /> </div></div></fieldset><fieldset 
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Script</legend><textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea></fieldset><fieldset 
  ><legend>Flags</legend><div 
  class="row" ><div 
@@ -2607,7 +2607,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_dependency_period"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_dependency_period"
  class="form-group 
  "
  ><label for="id_dependency_period" class="control-label col-sm-3 requiredField">
@@ -2615,7 +2615,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_priority" class="control-label col-sm-3 requiredField">
- Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" max="128" min="-128" name="priority" ng-model="edit_obj.priority" type="number" value="0" required /> </div></div><div class="form-group"><div id="div_id_inherits_parent"
+ Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" max="128" min="-128" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0" /> </div></div><div class="form-group"><div id="div_id_inherits_parent"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_inherits_parent" class=""><input class="checkboxinput checkbox" id="id_inherits_parent" name="inherits_parent" ng-model="edit_obj.inherits_parent" type="checkbox" />
@@ -2692,7 +2692,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div class="form-group"><div id="div_id_volatile"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div class="form-group"><div id="div_id_volatile"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_volatile" class=""><input class="checkboxinput checkbox" id="id_volatile" name="volatile" ng-model="edit_obj.volatile" type="checkbox" />
@@ -2706,15 +2706,15 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_max_attempts" class="control-label col-sm-3 requiredField">
- Max attempts<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_max_attempts" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" type="number" value="1" required /> </div></div><div id="div_id_check_interval"
+ Max attempts<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_max_attempts" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" required="True" type="number" value="1" /> </div></div><div id="div_id_check_interval"
  class="form-group 
  "
  ><label for="id_check_interval" class="control-label col-sm-3 requiredField">
- Check interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" type="number" value="5" required /> </div></div><div id="div_id_retry_interval"
+ Check interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="5" /> </div></div><div id="div_id_retry_interval"
  class="form-group 
  "
  ><label for="id_retry_interval" class="control-label col-sm-3 requiredField">
- Retry interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" type="number" value="10" required /> </div></div></div><fieldset 
+ Retry interval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="10" /> </div></div></div><fieldset 
  ><legend>Notification</legend><div id="div_id_nsn_period"
  class="form-group 
  "
@@ -2723,7 +2723,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_ninterval" class="control-label col-sm-3 requiredField">
- Ninterval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="60" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="5" required /> </div></div></fieldset><div 
+ Ninterval<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="60" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="5" /> </div></div></fieldset><div 
  class="row" ><div 
  class="col-md-4" ><div class="form-group"><div id="div_id_nrecovery"
  class="checkbox
@@ -2768,7 +2768,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ng_show="edit_obj.check_freshness"
  ><label for="id_freshness_threshold" class="control-label col-sm-3 requiredField">
- Freshness threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" type="number" value="60" required /> </div></div></fieldset><fieldset 
+ Freshness threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" /> </div></div></fieldset><fieldset 
  ><legend>Flap settings</legend><div class="form-group"><div id="div_id_flap_detection_enabled"
  class="checkbox
  "
@@ -2779,12 +2779,12 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ng_show="edit_obj.flap_detection_enabled"
  ><label for="id_low_flap_threshold" class="control-label col-sm-3 requiredField">
- Low flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" type="number" value="0" required /> </div></div><div id="div_id_high_flap_threshold"
+ Low flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" /> </div></div><div id="div_id_high_flap_threshold"
  class="form-group 
  "
  ng_show="edit_obj.flap_detection_enabled"
  ><label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField">
- High flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" type="number" value="0" required /> </div></div></div><div 
+ High flap threshold<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" /> </div></div></div><div 
  class="row" ><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_flap_detect_ok"
  class="checkbox
@@ -2827,7 +2827,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_parent"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_parent"
  class="form-group 
  "
  ><label for="id_parent" class="control-label col-sm-3 requiredField">
@@ -2843,12 +2843,12 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;latitude&#39;) 
  "
  ><label for="id_latitude" class="control-label col-sm-3 requiredField">
- Latitude<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_latitude" name="latitude" ng-model="_edit_obj.latitude" ng-pattern="/^\d+(\.\d+)*$/" step="any" type="number" value="48.1" required /> </div></div><div id="div_id_longitude"
+ Latitude<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_latitude" name="latitude" ng-model="_edit_obj.latitude" ng-pattern="/^\d+(\.\d+)*$/" required="True" step="any" type="number" value="48.1" /> </div></div><div id="div_id_longitude"
  class="form-group 
  ng-class:form_error(&#39;longitude&#39;) 
  "
  ><label for="id_longitude" class="control-label col-sm-3 requiredField">
- Longitude<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_longitude" name="longitude" ng-model="_edit_obj.longitude" ng-pattern="/^\d+(\.\d+)*$/" step="any" type="number" value="16.3" required /> </div></div><div class="form-group"><div id="div_id_locked"
+ Longitude<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_longitude" name="longitude" ng-model="_edit_obj.longitude" ng-pattern="/^\d+(\.\d+)*$/" required="True" step="any" type="number" value="16.3" /> </div></div><div class="form-group"><div id="div_id_locked"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_locked" class=""><input class="checkboxinput checkbox" id="id_locked" name="locked" ng-model="_edit_obj.locked" type="checkbox" />
@@ -2886,11 +2886,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="255" name="description" ng-model="edit_obj.description" type="text" required /> </div></div></fieldset><fieldset 
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="255" name="description" ng-model="edit_obj.description" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Devices</legend><div id="div_id_main_device"
  class="form-group 
  "
@@ -2908,11 +2908,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_warn_value" class="control-label col-sm-3 requiredField">
- Warn value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_warn_value" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" type="number" value="0" required /> </div></div><div id="div_id_error_value"
+ Warn value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_warn_value" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" required="True" type="number" value="0" /> </div></div><div id="div_id_error_value"
  class="form-group 
  "
  ><label for="id_error_value" class="control-label col-sm-3 requiredField">
- Error value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_error_value" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" type="number" value="1" required /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ Error value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_error_value" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" required="True" type="number" value="1" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2926,11 +2926,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="255" name="description" ng-model="edit_obj.description" type="text" required /> </div></div></fieldset><fieldset 
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="255" name="description" ng-model="edit_obj.description" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Devices</legend><div id="div_id_main_device"
  class="form-group 
  "
@@ -2952,11 +2952,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_warn_value" class="control-label col-sm-3 requiredField">
- Warn value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_warn_value" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" type="number" value="0" required /> </div></div><div id="div_id_error_value"
+ Warn value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_warn_value" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" required="True" type="number" value="0" /> </div></div><div id="div_id_error_value"
  class="form-group 
  "
  ><label for="id_error_value" class="control-label col-sm-3 requiredField">
- Error value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_error_value" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" type="number" value="1" required /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ Error value<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_error_value" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" required="True" type="number" value="1" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2972,7 +2972,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_comment"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_comment"
  class="form-group 
  "
  ><label for="id_comment" class="control-label col-sm-3">
@@ -3007,11 +3007,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_username" class="control-label col-sm-2 requiredField">
- Username<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input autofocus="1" class="textinput textInput form-control" id="id_username" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" type="text" required /> </div></div><div id="div_id_password"
+ Username<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input autofocus="1" class="textinput textInput form-control" id="id_username" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text" /> </div></div><div id="div_id_password"
  class="form-group 
  "
  ><label for="id_password" class="control-label col-sm-2 requiredField">
- Password<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_password" name="password" ng-model="login_data.password" placeholder="password" type="password" required /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ Password<span class="asteriskField">*</span></label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_password" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value="Login"
  class="btn btn-primary btn btn-primary"
@@ -3026,12 +3026,12 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:cur_edit.form_error(&#39;disc&#39;) 
  "
  ><label for="id_disc" class="control-label col-sm-3 requiredField">
- Disc<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_disc" maxlength="192" name="disc" ng-model="_edit_obj.disc" placeholder="discname" type="text" required /> </div></div></fieldset><fieldset 
+ Disc<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_disc" maxlength="192" name="disc" ng-model="_edit_obj.disc" placeholder="discname" required="True" type="text" /> </div></div></fieldset><fieldset 
  ><legend>label type</legend><div id="div_id_label_type"
  class="form-group 
  "
  ><label for="id_label_type" class="control-label col-sm-3 requiredField">
- Label type<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_label_type" name="label_type" ng-model="_edit_obj.label_type" ng-options="value.label as value.info_string for value in valid_label_types" required><option value="gpt" selected="selected">GPT</option><option value="msdos">MSDOS</option></select></div></div></fieldset><div class="form-actions"><input type="submit"
+ Label type<span class="asteriskField">*</span></label><div class="controls col-sm-7"><select class="select form-control" id="id_label_type" name="label_type" ng-model="_edit_obj.label_type" ng-options="value.label as value.info_string for value in valid_label_types" required="True"><option value="gpt" selected="selected">GPT</option><option value="msdos">MSDOS</option></select></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3046,11 +3046,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" required /> </div></div><div id="div_id_value"
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div id="div_id_value"
  class="form-group 
  "
  ><label for="id_value" class="control-label col-sm-3">
@@ -3069,7 +3069,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="765" name="name" ng-model="_edit_obj.name" type="text" required /> </div></div><div id="div_id_val_str"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="765" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_val_str"
  class="form-group 
  "
  ng_show="_edit_obj.var_type == &#39;s&#39;"
@@ -3181,23 +3181,23 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_connection_info" class="control-label col-sm-4 requiredField">
- Connection info<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_connection_info" maxlength="256" name="connection_info" ng-model="_edit_obj.connection_info" type="text" value="not set" required /> </div></div><div id="div_id_parameter_i1"
+ Connection info<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_connection_info" maxlength="256" name="connection_info" ng-model="_edit_obj.connection_info" required="True" type="text" value="not set" /> </div></div><div id="div_id_parameter_i1"
  class="form-group 
  "
  ><label for="id_parameter_i1" class="control-label col-sm-4 requiredField">
- Parameter i1<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i1" max="256" min="0" name="parameter_i1" ng-model="_edit_obj.parameter_i1" type="number" value="0" required /> </div></div><div id="div_id_parameter_i2"
+ Parameter i1<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i1" max="256" min="0" name="parameter_i1" ng-model="_edit_obj.parameter_i1" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i2"
  class="form-group 
  "
  ><label for="id_parameter_i2" class="control-label col-sm-4 requiredField">
- Parameter i2<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i2" max="256" min="0" name="parameter_i2" ng-model="_edit_obj.parameter_i2" type="number" value="0" required /> </div></div><div id="div_id_parameter_i3"
+ Parameter i2<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i2" max="256" min="0" name="parameter_i2" ng-model="_edit_obj.parameter_i2" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i3"
  class="form-group 
  "
  ><label for="id_parameter_i3" class="control-label col-sm-4 requiredField">
- Parameter i3<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i3" max="256" min="0" name="parameter_i3" ng-model="_edit_obj.parameter_i3" type="number" value="0" required /> </div></div><div id="div_id_parameter_i4"
+ Parameter i3<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i3" max="256" min="0" name="parameter_i3" ng-model="_edit_obj.parameter_i3" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i4"
  class="form-group 
  "
  ><label for="id_parameter_i4" class="control-label col-sm-4 requiredField">
- Parameter i4<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i4" max="256" min="0" name="parameter_i4" ng-model="_edit_obj.parameter_i4" type="number" value="0" required /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ Parameter i4<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i4" max="256" min="0" name="parameter_i4" ng-model="_edit_obj.parameter_i4" required="True" type="number" value="0" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3211,7 +3211,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" type="text" required /> </div></div><div id="div_id_alias"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_alias"
  class="form-group 
  "
  ><label for="id_alias" class="control-label col-sm-3">
@@ -3247,11 +3247,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" required /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" required /> </div></div><div class='form-group'><label class='control-label col-sm-3'>Value</label><div class='controls col-sm-7'><input type='button'
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div class='form-group'><label class='control-label col-sm-3'>Value</label><div class='controls col-sm-7'><input type='button'
  ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
  ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'></input></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div><div class="form-actions"><input type="submit"
  name="submit"
