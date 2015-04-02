@@ -21,6 +21,7 @@ import json
 import time
 
 from django.db import transaction
+import logging_tools
 
 from initat.cluster_server.modules import cs_base_class
 from initat.cluster.backbone.models import DeleteRequest
@@ -32,7 +33,7 @@ class handle_delete_requests(cs_base_class.server_com):
 
     class Meta:
         background = True
-        max_instances = 8
+        max_instances = 4
 
     def _call(self, cur_inst):
         deletions = 0
@@ -51,7 +52,7 @@ class handle_delete_requests(cs_base_class.server_com):
                 self.handle_deletion(req.obj_pk, req.model, req.delete_strategies, cur_inst)
                 deletions += 1
 
-        result = "Deleted {} objects".format(deletions)
+        result = "Deleted {}".format(logging_tools.get_plural("object", deletions))
         cur_inst.log(result)
         cur_inst.srv_com.set_result(result)
 

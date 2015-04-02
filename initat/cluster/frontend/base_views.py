@@ -311,14 +311,17 @@ class AddDeleteRequest(View):
                 obj.disabled = True
                 obj.save()
 
-            del_req = DeleteRequest(
-                obj_pk=obj_pk,
-                model=model_name,
-                delete_strategies=request.POST.get("delete_strategies", None)
-            )
-            with transaction.atomic():
-                # save right away, not after request finishes, since cluster server is notified now
-                del_req.save()
+            if DeleteRequest.objects.filter(obj_pk=obj_pk, model=model_name).exists():
+                request.xml_response.error("This object is already in the deletion queue.")
+            else:
+                del_req = DeleteRequest(
+                    obj_pk=obj_pk,
+                    model=model_name,
+                    delete_strategies=request.POST.get("delete_strategies", None)
+                )
+                with transaction.atomic():
+                    # save right away, not after request finishes, since cluster server is notified now
+                    del_req.save()
 
         srv_com = server_command.srv_command(command="handle_delete_requests")
         contact_server(request, "server", srv_com, log_result=False)
@@ -337,9 +340,10 @@ class CheckDeletionStatus(View):
         request.xml_response['num_remaining'] = num_remaining_objs
 
         if num_remaining_objs == 0:
-            msg = "Finished deleting {} objects".format(len(obj_pks))
+            msg = "Finished deleting {}".format(logging_tools.get_plural("object", len(obj_pks)))
         else:
-            msg = "Deleting {} objects ({} remaining)".format(len(obj_pks), num_remaining_objs)
+            additional = " ({} remaining)".format(num_remaining_objs) if num_remaining_objs > 1 else ""
+            msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
 
         request.xml_response['msg'] = msg
 
