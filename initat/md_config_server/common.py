@@ -42,6 +42,7 @@ class live_query(object):
         if self._columns:
             r_field.append("Columns: {}".format(" ".join(self._columns)))
         r_field.extend(self._filters)
+        # print "\nQuery:\n" + "\n".join(r_field + ["", ""])
         return "\n".join(r_field + ["", ""])
 
     def columns(self, *args):

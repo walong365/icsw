@@ -29,7 +29,7 @@ from initat.md_config_server.icinga_log_reader.log_reader import host_service_id
 from initat.cluster.backbone.models.kpi import KpiSelectedDeviceMonitoringCategoryTuple, Kpi
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.common import live_socket
-from initat.md_config_server.kpi.kpi_language import KpiObject
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet
 import logging_tools
 import threading_tools
 
@@ -88,10 +88,10 @@ class kpi_process(threading_tools.process_obj):
 
             # TODO: uses_all_data
             # simulate distinct
-            dev_mon_tuple_already_checked = dict()
+            dev_mon_tuples = dict()
             print 'qs', len(queryset)
             for item in queryset:
-                if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuple_already_checked:
+                if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuples:
                     print 'gather for', item.monitoring_category, 'x', item.device_category
 
                     devices = item.device_category.device_set.all()
@@ -101,52 +101,63 @@ class kpi_process(threading_tools.process_obj):
 
                     print 'dev ch', checks, devices
 
+                    def create_kpi_obj(check_result):
+                        property_names = ('display_name', 'current_attempt', 'plugin_output', 'last_check', 'host_name',
+                                          'description', 'state_type')
+                        # TODO: if state type is supposed to be used, probably parse to something more readable
+
+                        properties = {prop_name: check_result[prop_name] for prop_name in property_names}
+                        return KpiObject(result=KpiResult.from_numeric_icinga_service_status(check_result['state']),
+                                         properties=properties)
+
                     for dev in devices:
                         for check in checks:
                             # this works because we match services by partial matches
 
-                            description = host_service_id_util.create_host_service_description_direct(
-                                dev.pk,
-                                check.pk,
-                                special_check_command_pk=check.mon_check_command_special_id,
-                                info=""
-                            )
-
-                            # TODO: check if we can reference special check commands this way
                             service_query = icinga_socket.services.columns("host_name",
                                                                            "description",
                                                                            "state",
-                                                                           "last_check"
+                                                                           "last_check",
                                                                            "check_type",
                                                                            "state_type",
                                                                            "plugin_output",
                                                                            "display_name",
-                                                                           "current_attempt")
+                                                                           "current_attempt",
+                                                                           )
+                            description = host_service_id_util.create_host_service_description_direct(
+                                dev.pk,
+                                check.pk,
+                                special_check_command_pk=check.mon_check_command_special_id,
+                                info=".*"
+                            )
+                            description = "^{}".format(description)
+
                             service_query.filter("description", "~", description)  # ~ means regular expression match
                             print 'fil', 'desc', description
-                            result = service_query.call()
-                            print('res {}'.format(result))
+                            icinga_result = service_query.call()
+                            print('res {}'.format(icinga_result))
 
-                            for check_result in result:
+                            for check_result in icinga_result:
                                 # can be multiple in case of special check commands
-                                pass
+                                kpi_objects.append(create_kpi_obj(check_result))
+
+                    dev_mon_tuples[(item.device_category_id, item.monitoring_category_id)] = kpi_objects
+
+            # TODO: data extraction in own function/class
+            # TODO: permissions for devices?
+
+            pprint.pprint(dev_mon_tuples)
+            # calculate kpis, such that drill down data is present
+
+            for kpi_db in Kpi.objects.all():
+                kpi_set = KpiSet(list(itertools.chain(
+                    dev_mon_tuples[(tup.device_category_id, tup.monitoring_category_id)]
+                    for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all()
+                )))
+
+                print eval(kpi_db.formula, globals=[], locals={'data': kpi_set})
 
 
-
-
-
-
-                            # TODO: fill result in dict
-                            properties = {}
-
-                            kpi_objects.append(
-                                KpiObject(properties=properties, result=None)
-                            )
-
-                    dev_mon_tuple_already_checked[(item.device_category_id, item.monitoring_category_id)] = kpi_objects
-
-        # calculate kpis, such that drill down data is present
-        pass
 
     def get_memcached_data(self):
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])

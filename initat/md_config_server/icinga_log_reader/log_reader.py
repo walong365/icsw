@@ -887,7 +887,6 @@ class host_service_id_util(object):
     @classmethod
     def create_host_service_description_direct(cls, host_pk, check_command_pk=None,
                                                special_check_command_pk=None, info=""):
-        # NOTE: kpi calculation currently assumed that info is the last parameter // BM 20150403
         retval = None
         if special_check_command_pk is not None:
             # special service check

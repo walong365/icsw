@@ -37,6 +37,8 @@ class Kpi(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
 
+    formula = models.TextField(blank=True)
+
     # pretend as if all device/monitoring tuples were checked
     # TODO: implement in gui
     uses_all_data = models.BooleanField(default=False)

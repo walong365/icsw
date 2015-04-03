@@ -29,6 +29,17 @@ class KpiResult(IntEnum):
     unknown = 30
     critical = 40
 
+    @classmethod
+    def from_numeric_icinga_service_status(cls, num):
+        if num == 0:
+            return KpiResult.ok
+        elif num == 1:
+            return KpiResult.warn
+        elif num == 2:
+            return KpiResult.critical
+        elif num == 3:
+            return KpiResult.unknown
+
 
 class KpiObject(object):
     def __init__(self, result=None, historical_data=None, rrd=None, **properties):
@@ -111,20 +122,21 @@ class KpiSet(object):
         return "KpiSet({})".format(self.objects)
 
 
-kpi = """ (
-    data
-    .filter(device_name='am-admin')
-    .filter(config='am_admin_checks')
-
-    +
-
-    data
-    .filter(device_name='am-directory')
-    .filter(config='am_directory_checks')
-).aggregate()
-"""
-
 if __name__ == "__main__":
+
+    kpi = """ (
+        data
+        .filter(device_name='am-admin')
+        .filter(config='am_admin_checks')
+
+        +
+
+        data
+        .filter(device_name='am-directory')
+        .filter(config='am_directory_checks')
+    ).aggregate()
+    """
+
     data = KpiSet([
         KpiObject(result=KpiResult.ok, device_name='am-admin', config='am_admin_checks', check='am_admin_check_1'),
         KpiObject(result=KpiResult.warn, device_name='am-admin', config='am_admin_checks', check='am_admin_check_2'),
@@ -134,6 +146,7 @@ if __name__ == "__main__":
     kpi = kpi.replace("\n \t", "").strip()
 
     print eval(compile(ast.parse(kpi, mode='eval'), '<string>', mode='eval'))
+    print eval(kpi)
 
     # TODO: check which operations we need to perform on this data (mostly drill-down probably)
 

@@ -1255,6 +1255,8 @@ class mon_icinga_log_raw_base(models.Model):
 
     STATE_TYPE_HARD = "H"
     STATE_TYPE_SOFT = "S"
+    # undetermined is the icsw view point of not knowing about a state.
+    # icinga sometimes says "unknown" (see services below)
     STATE_UNDETERMINED = "UD"  # state as well as state type
     STATE_UNDETERMINED_LONG = "UNDETERMINED"
     STATE_TYPES = [(STATE_TYPE_HARD, "HARD"), (STATE_TYPE_SOFT, "SOFT"), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
