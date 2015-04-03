@@ -61,13 +61,69 @@ class kpi_process(threading_tools.process_obj):
         self.__log_template.close()
 
     def update(self):
-        #self.get_memcached_data()
+        return
+        data = _KpiData(self.log)
+        host_rrd = data.get_memcached_data()
+        dev_mon_tuple_data = data.get_check_results()
 
         print 'kpi proc started'
         #self["run_flag"] = False
         #self["exit_requested"] = True
 
         # recalculate kpis
+
+
+            # TODO: data extraction in own function/class
+            # TODO: permissions for devices?
+
+            pprint.pprint(dev_mon_tuples)
+            # calculate kpis, such that drill down data is present
+
+            for kpi_db in Kpi.objects.all():
+                kpi_set = KpiSet(list(itertools.chain.from_iterable(
+                    dev_mon_tuples[(tup.device_category_id, tup.monitoring_category_id)]
+                    for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all()
+                )))
+
+                print 'evaluating', kpi_db.formula, type(kpi_db.formula), ' on '
+                pprint.pprint(kpi_set)
+                # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
+                print eval(kpi_db.formula, {'data': kpi_set})
+
+
+class _KpiData(object):
+    """Data retrieval methods (mostly functions actually)"""
+
+    def __init__(self, log):
+        self.log = log
+
+    def get_memcached_data(self):
+        mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
+        host_rrd_data = {}
+        try:
+            host_list = json.loads(mc.get("cc_hc_list"))
+        except Exception as e:
+            self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
+        else:
+
+            for host_uuid, host_data in host_list.iteritems():
+                if host_data[0] + 10*60 < time.time():
+                    self.log("data for {} is very old ({})".format(host_data[1], time.ctime(host_data[0])))
+
+                values_list = json.loads(mc.get("cc_hc_{}".format(host_uuid)))
+
+                host_rrd_data[host_data[1]] = \
+                    list(
+                        KpiObject(
+                            host_name=host_data[1],
+                            rrd=initat.collectd.aggregate.ve(*val)
+                        ) for val in values_list
+                    )
+
+        return host_rrd_data
+
+    def get_check_results(self):
+        kpi_objects = []
 
         # check db for kpi definitions
         # gather data
@@ -85,39 +141,36 @@ class kpi_process(threading_tools.process_obj):
                 pass
 
             else:
-                queryset = KpiSelectedDeviceMonitoringCategoryTuple.objects.all()\
+                queryset = KpiSelectedDeviceMonitoringCategoryTuple.objects.all() \
                     .select_related("monitoring_category", "device_category")
 
             # TODO: uses_all_data
             # simulate distinct
-            dev_mon_tuples = dict()
+            dev_mon_tuple_data = dict()
             print 'qs', len(queryset)
             for item in queryset:
-                if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuples:
+                if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuple_data:
                     print '\n\ngather for', item.monitoring_category, 'x', item.device_category
 
                     devices = item.device_category.device_set.all()
                     checks = item.monitoring_category.mon_check_command_set.all()
 
-                    kpi_objects = []
-
                     print 'dev ch', checks, devices
 
                     def create_kpi_obj(check_result):
-                        property_names = { # icinga names with renamings (currently none used)
-                            'display_name': None,
-                            'current_attempt': None,
-                            'plugin_output': None,
-                            'last_check': None,
-                            'host_name': None,
-                            'description': None,
-                            'state_type': None,
-                        }
+                        property_names = {  # icinga names with renamings (currently none used)
+                                            'display_name': None,
+                                            'current_attempt': None,
+                                            'plugin_output': None,
+                                            'last_check': None,
+                                            'description': None,
+                                            'state_type': None,
+                                            }
                         # TODO: if state type is supposed to be used, probably parse to something more readable
                         properties = {(our_name if our_name is not None else icinga_name): check_result[icinga_name]
                                       for icinga_name, our_name in property_names.iteritems()}
 
-                        host_pk, service_pk, info =\
+                        host_pk, service_pk, info = \
                             host_service_id_util.parse_host_service_description(check_result['description'])
 
                         try:
@@ -132,7 +185,8 @@ class kpi_process(threading_tools.process_obj):
 
                         return KpiObject(
                             result=KpiResult.from_numeric_icinga_service_status(int(check_result['state'])),
-                            properties=properties
+                            host_name=check_result['host_name'],
+                            properties=properties,
                         )
 
                     for dev in devices:
@@ -167,40 +221,6 @@ class kpi_process(threading_tools.process_obj):
                                 # can be multiple in case of special check commands
                                 kpi_objects.append(create_kpi_obj(check_result))
 
-                    dev_mon_tuples[(item.device_category_id, item.monitoring_category_id)] = kpi_objects
+                    dev_mon_tuple_data[(item.device_category_id, item.monitoring_category_id)] = kpi_objects
 
-            # TODO: data extraction in own function/class
-            # TODO: permissions for devices?
-
-            pprint.pprint(dev_mon_tuples)
-            # calculate kpis, such that drill down data is present
-
-            for kpi_db in Kpi.objects.all():
-                kpi_set = KpiSet(list(itertools.chain.from_iterable(
-                    dev_mon_tuples[(tup.device_category_id, tup.monitoring_category_id)]
-                    for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all()
-                )))
-
-                print 'evaluating', kpi_db.formula, type(kpi_db.formula), ' on '
-                pprint.pprint(kpi_set)
-                # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
-                print eval(kpi_db.formula, {'data': kpi_set})
-
-    def get_memcached_data(self):
-        mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
-        try:
-            host_list = json.loads(mc.get("cc_hc_list"))
-        except Exception as e:
-            self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            print 'hl', host_list
-
-            for host_uuid, host_data in host_list.iteritems():
-                if host_data[0] + 10*60 < time.time():
-                    self.log("data for {} is very old ({})".format(host_data[1], time.ctime(host_data[0])))
-
-                values_list = json.loads(mc.get("cc_hc_{}".format(host_uuid)))
-                print 'host', host_data[1]
-                for val in values_list:
-                    vector_entry = initat.collectd.aggregate.ve(*val)
-                    print vector_entry, vector_entry.get_value()
+        return dev_mon_tuple_data

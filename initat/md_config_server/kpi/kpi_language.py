@@ -47,10 +47,11 @@ class KpiResult(IntEnum):
 
 
 class KpiObject(object):
-    def __init__(self, result=None, historical_data=None, rrd=None, properties=None):
+    def __init__(self, result=None, historical_data=None, rrd=None, host_name=None, properties=None):
         self.result = result
         self.historical_data = historical_data
         self.rrd = rrd
+        self.host_name = host_name
         self.properties = properties if properties is not None else {}
 
     def __repr__(self):
@@ -90,6 +91,10 @@ class KpiSet(object):
     @property
     def result_objects(self):
         return [obj for obj in self.objects if obj.result is not None]
+
+    ########################################
+    # proper kpi language elements
+    #
 
     def filter(self, **kwargs):
         objects = self.objects
@@ -171,8 +176,6 @@ if __name__ == "__main__":
     print eval(kpi)
 
     # TODO: check which operations we need to perform on this data (mostly drill-down probably)
-
-
 
 
 
