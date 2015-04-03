@@ -56,6 +56,17 @@ class KpiObject(object):
 
     def __repr__(self):
         contents = ""
+        if self.rrd is not None:
+            contents += 'rrd={}:{};'.format(self.rrd.key, self.rrd.get_value())
+        if self.result is not None:
+            contents += 'result={}:{}'.format(self.properties.get('check_command', None), self.result)
+        if self.historical_data is not None:
+            raise NotImplementedError()
+
+        return "KpiObject(host_name={};{})".format(self.host_name, contents)
+
+    def full_repr(self):
+        contents = ""
         data = ("result", "historical_data", "rrd")
         for prop in data:
             val = getattr(self, prop, None)
@@ -63,6 +74,16 @@ class KpiObject(object):
                 contents += "{}={};".format(prop, val)
         contents += "properties={}".format({k: v for k, v in self.properties.iteritems()})
         return "KpiObject({})".format(contents)
+
+    # we use this to eliminate duplicates in the kpi set
+    def __hash_key(self):
+        return (self.result, self.historical_data, self.rrd, self.host_name, tuple(self.properties.items()))
+
+    def __eq__(self, other):
+        return isinstance(other, KpiObject) and self.__hash_key() == other.__hash_key()
+
+    def __hash__(self):
+        return hash(self.__hash_key())
 
 
 class KpiSet(object):
@@ -98,9 +119,9 @@ class KpiSet(object):
 
     def filter(self, **kwargs):
         objects = self.objects
-        print 'call filter arsg:', kwargs
-        print '    on objs:'
-        pprint.pprint(objects)
+        #print 'call filter arsg:', kwargs
+        #print '    on objs:', objects
+        #pprint.pprint(objects)
         for k, v in kwargs.iteritems():
             if isinstance(v, basestring):
                 match_re = re.compile(".*{}.*".format(v))
@@ -111,7 +132,7 @@ class KpiSet(object):
                        is_match(obj.properties.get(k, None)) or
                        is_match(getattr(obj, k, None))]
 
-        print '    results', objects
+        #print '    results', objects
 
         return KpiSet(objects)
 
@@ -136,9 +157,10 @@ class KpiSet(object):
 
     def aggregate(self):
         """
-        Calculate "worst" result, i.e. result is critical if at least one is critical or else warn if at least one is warn etc.
+        Calculate "worst" result, i.e. result is critical
+        if at least one is critical or else warn if at least one is warn etc.
         """
-        print 'call aggregate on ', self.result_objects
+        #print 'call aggregate on ', self.result_objects
         if not self.result_objects:
             return KpiSet.get_singleton_unknown()
         else:
@@ -164,6 +186,8 @@ if __name__ == "__main__":
     ).aggregate()
     """
 
+    # NOTE: this won't work any more
+
     data = KpiSet([
         KpiObject(result=KpiResult.ok, device_name='am-admin', config='am_admin_checks', check='am_admin_check_1'),
         KpiObject(result=KpiResult.warn, device_name='am-admin', config='am_admin_checks', check='am_admin_check_2'),
@@ -175,7 +199,37 @@ if __name__ == "__main__":
     print eval(compile(ast.parse(kpi, mode='eval'), '<string>', mode='eval'))
     print eval(kpi)
 
-    # TODO: check which operations we need to perform on this data (mostly drill-down probably)
 
-
-
+def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
+    """
+    Return a formatted dump of the tree in *node*.  This is mainly useful for
+    debugging purposes.  The returned string will show the names and the values
+    for fields.  This makes the code impossible to evaluate, so if evaluation is
+    wanted *annotate_fields* must be set to False.  Attributes such as line
+    numbers and column offsets are not dumped by default.  If this is wanted,
+    *include_attributes* can be set to True.
+    """
+    def _format(node, level=0):
+        if isinstance(node, ast.AST):
+            fields = [(a, _format(b, level)) for a, b in ast.iter_fields(node)]
+            if include_attributes and node._attributes:
+                fields.extend([(a, _format(getattr(node, a), level))
+                               for a in node._attributes])
+            return ''.join([
+                node.__class__.__name__,
+                '(',
+                ', '.join(('%s=%s' % field for field in fields) if annotate_fields else (b for a, b in fields)),
+                ')'])
+        elif isinstance(node, list):
+            lines = ['[']
+            lines.extend((indent * (level + 2) + _format(x, level + 2) + ','
+                         for x in node))
+            if len(lines) > 1:
+                lines.append(indent * (level + 1) + ']')
+            else:
+                lines[-1] += ']'
+            return '\n'.join(lines)
+        return repr(node)
+    if not isinstance(node, ast.AST):
+        raise TypeError('expected AST, got %r' % node.__class__.__name__)
+    return _format(node)
