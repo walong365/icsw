@@ -17,17 +17,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+# noinspection PyUnresolvedReferences
+import pprint
 import ast
 import re
-from enum import Enum, IntEnum
+from enum import IntEnum
 
 
 class KpiResult(IntEnum):
-    # this is ordered by badness
-    ok = 10
-    warn = 20
-    unknown = 30
-    critical = 40
+    # this is ordered by badness and also same as nagios convention
+    ok = 0
+    warn = 1
+    critical = 2
+    unknown = 3
 
     @classmethod
     def from_numeric_icinga_service_status(cls, num):
@@ -39,15 +42,16 @@ class KpiResult(IntEnum):
             return KpiResult.critical
         elif num == 3:
             return KpiResult.unknown
+        else:
+            raise ValueError("Invalid numeric icinga service status: {}".format(num))
 
 
 class KpiObject(object):
-    def __init__(self, result=None, historical_data=None, rrd=None, **properties):
+    def __init__(self, result=None, historical_data=None, rrd=None, properties=None):
         self.result = result
         self.historical_data = historical_data
         self.rrd = rrd
-        for k, v in properties.iteritems():
-            setattr(self, k, v)
+        self.properties = properties if properties is not None else {}
 
     def __repr__(self):
         contents = ""
@@ -56,7 +60,7 @@ class KpiObject(object):
             val = getattr(self, prop, None)
             if val is not None:
                 contents += "{}={};".format(prop, val)
-        contents += "properties={}".format({k: v for k, v in self.__dict__.iteritems() if k not in data})
+        contents += "properties={}".format({k: v for k, v in self.properties.iteritems()})
         return "KpiObject({})".format(contents)
 
 
@@ -73,7 +77,14 @@ class KpiSet(object):
     def get_singleton_critical(cls):
         return KpiSet([KpiObject(result=KpiResult.critical)])
 
+    @classmethod
+    def get_singleton_unknown(cls):
+        return KpiSet([KpiObject(result=KpiResult.unknown)])
+
     def __init__(self, objects):
+        """
+        :type objects: list of KpiObject
+        """
         self.objects = objects
 
     @property
@@ -82,13 +93,20 @@ class KpiSet(object):
 
     def filter(self, **kwargs):
         objects = self.objects
+        print 'call filter arsg:', kwargs
+        print '    on objs:'
+        pprint.pprint(objects)
         for k, v in kwargs.iteritems():
             if isinstance(v, basestring):
                 match_re = re.compile(".*{}.*".format(v))
-                is_match = lambda x: match_re.match(x)
+                is_match = lambda x: x is not None and match_re.match(x)
             else:
                 is_match = lambda x: x == v
-            objects = [obj for obj in objects if is_match(getattr(obj, k, None))]
+            objects = [obj for obj in objects if
+                       is_match(obj.properties.get(k, None)) or
+                       is_match(getattr(obj, k, None))]
+
+        print '    results', objects
 
         return KpiSet(objects)
 
@@ -115,8 +133,12 @@ class KpiSet(object):
         """
         Calculate "worst" result, i.e. result is critical if at least one is critical or else warn if at least one is warn etc.
         """
-        aggregated_result = max(obj.result for obj in self.result_objects)
-        return KpiSet([KpiObject(result=aggregated_result)])
+        print 'call aggregate on ', self.result_objects
+        if not self.result_objects:
+            return KpiSet.get_singleton_unknown()
+        else:
+            aggregated_result = max(obj.result for obj in self.result_objects)
+            return KpiSet([KpiObject(result=aggregated_result)])
 
     def __repr__(self):
         return "KpiSet({})".format(self.objects)

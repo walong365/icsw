@@ -24,6 +24,8 @@ from django.db import connection
 import itertools
 import memcache
 import time
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.monitoring import mon_check_command
 import initat.collectd.aggregate
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.cluster.backbone.models.kpi import KpiSelectedDeviceMonitoringCategoryTuple, Kpi
@@ -92,7 +94,7 @@ class kpi_process(threading_tools.process_obj):
             print 'qs', len(queryset)
             for item in queryset:
                 if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuples:
-                    print 'gather for', item.monitoring_category, 'x', item.device_category
+                    print '\n\ngather for', item.monitoring_category, 'x', item.device_category
 
                     devices = item.device_category.device_set.all()
                     checks = item.monitoring_category.mon_check_command_set.all()
@@ -102,17 +104,41 @@ class kpi_process(threading_tools.process_obj):
                     print 'dev ch', checks, devices
 
                     def create_kpi_obj(check_result):
-                        property_names = ('display_name', 'current_attempt', 'plugin_output', 'last_check', 'host_name',
-                                          'description', 'state_type')
+                        property_names = { # icinga names with renamings (currently none used)
+                            'display_name': None,
+                            'current_attempt': None,
+                            'plugin_output': None,
+                            'last_check': None,
+                            'host_name': None,
+                            'description': None,
+                            'state_type': None,
+                        }
                         # TODO: if state type is supposed to be used, probably parse to something more readable
+                        properties = {(our_name if our_name is not None else icinga_name): check_result[icinga_name]
+                                      for icinga_name, our_name in property_names.iteritems()}
 
-                        properties = {prop_name: check_result[prop_name] for prop_name in property_names}
-                        return KpiObject(result=KpiResult.from_numeric_icinga_service_status(check_result['state']),
-                                         properties=properties)
+                        host_pk, service_pk, info =\
+                            host_service_id_util.parse_host_service_description(check_result['description'])
+
+                        try:
+                            properties['host'] = device.objects.get(pk=host_pk).full_name
+                        except device.DoesNotExist:
+                            properties['host'] = None
+
+                        try:
+                            properties['check_command'] = mon_check_command.objects.get(pk=service_pk).name
+                        except mon_check_command.DoesNotExist:
+                            properties['check_command'] = None
+
+                        return KpiObject(
+                            result=KpiResult.from_numeric_icinga_service_status(int(check_result['state'])),
+                            properties=properties
+                        )
 
                     for dev in devices:
                         for check in checks:
                             # this works because we match services by partial matches
+                            print 'gather for', dev, check
 
                             service_query = icinga_socket.services.columns("host_name",
                                                                            "description",
@@ -150,14 +176,15 @@ class kpi_process(threading_tools.process_obj):
             # calculate kpis, such that drill down data is present
 
             for kpi_db in Kpi.objects.all():
-                kpi_set = KpiSet(list(itertools.chain(
+                kpi_set = KpiSet(list(itertools.chain.from_iterable(
                     dev_mon_tuples[(tup.device_category_id, tup.monitoring_category_id)]
                     for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all()
                 )))
 
-                print eval(kpi_db.formula, globals=[], locals={'data': kpi_set})
-
-
+                print 'evaluating', kpi_db.formula, type(kpi_db.formula), ' on '
+                pprint.pprint(kpi_set)
+                # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
+                print eval(kpi_db.formula, {'data': kpi_set})
 
     def get_memcached_data(self):
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])

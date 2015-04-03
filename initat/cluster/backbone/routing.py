@@ -313,6 +313,7 @@ class srv_type_routing(object):
             log_lines.append((log_level, log_str))
 
     def feed_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error):
+        # TODO: if log_error, log all msgs with log_level >= 40
         if result is None:
             if log_error:
                 _err_str = "error contacting server {}, {}".format(
