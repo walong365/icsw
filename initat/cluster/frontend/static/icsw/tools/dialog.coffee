@@ -73,7 +73,7 @@ angular.module(
                                 msg = $(xml).find("value[name='msg']").text()
                                 if async
                                     if last_msg != msg
-                                        toaster.pop("info", "", msg)
+                                        toaster.pop("success", "", msg)
                                 else
                                     blockUI.message(msg)
 
