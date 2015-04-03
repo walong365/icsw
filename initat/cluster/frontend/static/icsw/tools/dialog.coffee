@@ -195,16 +195,18 @@ angular.module(
                                 for ref in ref_list
                                     ref.actions = []
                                     # only have default action if it is a "safe" one
+
+                                    # actions are [logical name, name for user]
                                     if ref.null
-                                        ref.actions.push('set null')
-                                        ref.selected_action = ref.actions[0]
+                                        ref.actions.push(['set null', 'set reference to null'])
+                                        ref.selected_action = ref.actions[0][0]
 
                                     if ref.objects.num_refs_of_refs == 0
-                                        ref.actions.push('delete object')
+                                        ref.actions.push(['delete object', 'delete referenced object'])
                                         if ! ref.selected_action?
-                                            ref.selected_action = ref.actions[0]
+                                            ref.selected_action = ref.actions[0][0]
                                     else
-                                        ref.actions.push('delete cascade')
+                                        ref.actions.push(['delete cascade', 'delete cascade on referenced object'])
 
                             show_delete_dialog(related_objects, deletable_objects)
 

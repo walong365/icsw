@@ -100,7 +100,7 @@
                                 <td>
                                     <select class="select form-control"
                                             ng-model="entry.selected_action" required="true"
-                                            ng-options="value for value in entry.actions"></select>
+                                            ng-options="value[0] as value[1] for value in entry.actions"></select>
                                 </td>
                             </tr>
                             <tr ng-repeat-end ng-show="entry.show_details">
