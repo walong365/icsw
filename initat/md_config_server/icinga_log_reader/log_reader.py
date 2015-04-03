@@ -867,18 +867,38 @@ class host_service_id_util(object):
     def create_host_service_description(cls, host_pk, s_check, info):
         '''
         Create a string by which we can identify the service. Used to write to icinga log file.
+        Use create_host_service_description_direct if you don't have a check_command object
+        :param s_check: initat.md_config_server.config.check_command.check_command
         '''
-        retval = None
         if s_check.mccs_id is not None:
+            check_command_pk = s_check.check_command_pk
+            special_check_command_pk = s_check.mccs_id
+        elif s_check.check_command_pk is not None:
+            check_command_pk = s_check.check_command_pk
+            special_check_command_pk = None
+        else:
+            check_command_pk = None
+            special_check_command_pk = None
+
+        return cls.create_host_service_description_direct(host_pk, check_command_pk,
+                                                          special_check_command_pk=special_check_command_pk,
+                                                          info=info)
+
+    @classmethod
+    def create_host_service_description_direct(cls, host_pk, check_command_pk=None,
+                                               special_check_command_pk=None, info=""):
+        # NOTE: kpi calculation currently assumed that info is the last parameter // BM 20150403
+        retval = None
+        if special_check_command_pk is not None:
             # special service check
             # form is similar to regular service check, other prefix and we also set the pk of the special_command
-            retval = "s_host_check:{}:{}:{}:{}".format(host_pk, s_check.check_command_pk, s_check.mccs_id, info)
-        elif s_check.check_command_pk is not None:
+            retval = "s_host_check:{}:{}:{}:{}".format(host_pk, check_command_pk, special_check_command_pk, info)
+        elif check_command_pk is not None:
             # regular service check
             # format is: service_check:${mon_check_command_pk}:$info
             # since a mon_check_command_pk can have multiple actual service checks,
             # we add the info string to identify it as the services are created dynamically, we don't have a nice db pk
-            retval = "host_check:{}:{}:{}".format(host_pk, s_check.check_command_pk, info)
+            retval = "host_check:{}:{}:{}".format(host_pk, check_command_pk, info)
         else:
             retval = "unstructured:" + info
         return retval

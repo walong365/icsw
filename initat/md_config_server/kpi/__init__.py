@@ -49,7 +49,8 @@ class kpi_process(threading_tools.process_obj):
         # TODO: possibly like this:
         # self.register_func("update_kpi", self.update)
 
-        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        # self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -60,8 +61,9 @@ class kpi_process(threading_tools.process_obj):
     def update(self):
         #self.get_memcached_data()
 
-        self["run_flag"] = False
-        self["exit_requested"] = True
+        print 'kpi proc started'
+        #self["run_flag"] = False
+        #self["exit_requested"] = True
 
         # recalculate kpis
 
@@ -87,28 +89,52 @@ class kpi_process(threading_tools.process_obj):
             # TODO: uses_all_data
             # simulate distinct
             dev_mon_tuple_already_checked = dict()
+            print 'qs', len(queryset)
             for item in queryset:
                 if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuple_already_checked:
                     print 'gather for', item.monitoring_category, 'x', item.device_category
 
-                    devices = item.device_category.device_set.values_list('name', flat=True)
-                    checks = item.monitoring_category.mon_check_command_set.values_list('pk', flat=True)
+                    devices = item.device_category.device_set.all()
+                    checks = item.monitoring_category.mon_check_command_set.all()
 
                     kpi_objects = []
 
-                    for dev_pk in devices:
-                        for check_pk in checks:
-                            description = host_service_id_util.create_host_service_description(dev_pk, check_pk, info="")
+                    print 'dev ch', checks, devices
+
+                    for dev in devices:
+                        for check in checks:
+                            # this works because we match services by partial matches
+
+                            description = host_service_id_util.create_host_service_description_direct(
+                                dev.pk,
+                                check.pk,
+                                special_check_command_pk=check.mon_check_command_special_id,
+                                info=""
+                            )
+
                             # TODO: check if we can reference special check commands this way
                             service_query = icinga_socket.services.columns("host_name",
                                                                            "description",
+                                                                           "state",
+                                                                           "last_check"
                                                                            "check_type",
+                                                                           "state_type",
                                                                            "plugin_output",
-                                                                           "state_type")
+                                                                           "display_name",
+                                                                           "current_attempt")
                             service_query.filter("description", "~", description)  # ~ means regular expression match
-                            result = json.loads(service_query.call())
-                            self.log('res {}'.format(result))
+                            print 'fil', 'desc', description
+                            result = service_query.call()
                             print('res {}'.format(result))
+
+                            for check_result in result:
+                                # can be multiple in case of special check commands
+                                pass
+
+
+
+
+
 
                             # TODO: fill result in dict
                             properties = {}
