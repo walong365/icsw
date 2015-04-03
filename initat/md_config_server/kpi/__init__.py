@@ -63,8 +63,6 @@ class KpiProcess(threading_tools.process_obj):
 
     def update(self):
         data = _KpiData(self.log)
-        host_rrd_data = data.get_memcached_data()
-        dev_mon_tuple_data = data.get_check_results()
         # TODO: historic
 
         #self["run_flag"] = False
@@ -77,23 +75,7 @@ class KpiProcess(threading_tools.process_obj):
         # calculate kpis, such that drill down data is present
 
         for kpi_db in Kpi.objects.all():
-            # TODO: possibly assemble relevant device and monitoring ids here
-            #       and afterwards find all data.Then we wouldn't have duplicates in the first place.
-            #       also: we need those ids anyway for rrds/hist data
-            kpi_check_result_data = set(itertools.chain.from_iterable(
-                dev_mon_tuple_data[(tup.device_category_id, tup.monitoring_category_id)]
-                for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all()
-            ))
-
-            kpi_devices = set()
-            for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all():
-                kpi_devices.update(
-                    device.objects.filter(categories=tup.device_category_id).values_list("idx", flat=True)
-                )
-
-            kpi_rrd_data = itertools.chain.from_iterable(host_rrd_data[dev_pk] for dev_pk in kpi_devices)
-
-            kpi_set = KpiSet(list(itertools.chain(kpi_check_result_data, kpi_rrd_data)))
+            kpi_set = KpiSet(data.get_data_for_kpi(kpi_db))
 
             # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
             eval_globals = {'data': kpi_set}
@@ -133,10 +115,73 @@ class KpiProcess(threading_tools.process_obj):
 class _KpiData(object):
     """Data retrieval methods (mostly functions actually)"""
 
+    class HostData(object):  # TODO make into named tuple
+        def __init__(self, check_results, rrds, historic_data):
+            self.check_results = check_results
+            self.rrds = rrds
+            self.historic_data = historic_data
+
     def __init__(self, log):
         self.log = log
 
-    def get_memcached_data(self):
+        try:
+            self.icinga_socket = live_socket.get_icinga_live_socket()
+        except IOError as e:
+            self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
+            raise
+
+        host_rrd_data = self._get_memcached_data()
+
+        if Kpi.objects.filter(uses_all_data=True).exists():
+            self.kpi_device_categories = set(device.categories_set.all())
+            self.kpi_devices = list(device.objects.all())
+            self.kpi_mon_categories = list(mon_check_command.categories_set.all())
+        else:
+            self.kpi_device_categories = set(tup.device_category_id
+                                             for tup in KpiSelectedDeviceMonitoringCategoryTuple.objects.all())
+
+            self.kpi_devices = set(device.objects.filter(categories__in=self.kpi_device_categories))
+
+            self.kpi_mon_categories = set(tup.monitoring_category_id
+                                          for tup in KpiSelectedDeviceMonitoringCategoryTuple.objects.all())
+
+            self.kpi_mon_check_commands = set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
+
+        self.host_data = {}
+        for kpi_dev in self.kpi_devices:
+
+            # maybetodo: only get data if actual dev/mon combination is checked
+            check_results = {}
+            # TODO: historic. handle dynamic time ranges as function
+            for kpi_check in self.kpi_mon_check_commands:
+                check_results[kpi_check.pk] = self._get_check_results(kpi_dev, kpi_check)
+
+            self.host_data[kpi_dev.pk] = self.HostData(rrds=host_rrd_data[kpi_dev.pk],
+                                                       check_results=check_results,
+                                                       historic_data=None)
+
+    def get_data_for_kpi(self, kpi_db):
+        kpi_objects = []
+        dev_mon_tuples_checked = set()
+        devs_checked = set()
+        for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all():
+            for dev in tup.device_category.device_set.all():
+                # devs and mccs can be contained in multiple cats, only gather once though
+                if dev.pk not in devs_checked:
+                    devs_checked.add(dev.pk)
+                    kpi_objects.extend(
+                        self.host_data[dev.pk].rrds
+                    )
+
+                for mcc in tup.monitoring_category.mon_check_command_set.all():
+                    if (dev.pk, mcc.pk) not in dev_mon_tuples_checked:
+                        dev_mon_tuples_checked.add((dev.pk, mcc.pk))
+                        kpi_objects.extend(
+                            self.host_data[dev.pk].check_results[mcc.pk]
+                        )
+        return kpi_objects
+
+    def _get_memcached_data(self):
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
         host_rrd_data = {}
         try:
@@ -173,104 +218,71 @@ class _KpiData(object):
 
         return host_rrd_data
 
-    def get_check_results(self):
+    def _get_check_results(self, dev, check):
+        def create_kpi_obj(check_result):
+            property_names = {  # icinga names with renamings (currently none used)
+                                'display_name': None,
+                                'current_attempt': None,
+                                'plugin_output': None,
+                                'last_check': None,
+                                'description': None,
+                                'state_type': None,
+            }
+            # TODO: if state type is supposed to be used, probably parse to something more readable
+            properties = {(our_name if our_name is not None else icinga_name): check_result[icinga_name]
+                          for icinga_name, our_name in property_names.iteritems()}
+
+            host_pk, service_pk, info = \
+                host_service_id_util.parse_host_service_description(check_result['description'])
+
+            try:
+                properties['host'] = device.objects.get(pk=host_pk).name
+            except device.DoesNotExist:
+                properties['host'] = None
+
+            try:
+                properties['check_command'] = mon_check_command.objects.get(pk=service_pk).name
+            except mon_check_command.DoesNotExist:
+                properties['check_command'] = None
+
+            return KpiObject(
+                result=KpiResult.from_numeric_icinga_service_status(int(check_result['state'])),
+                host_name=check_result['host_name'],
+                properties=properties,
+            )
+
         kpi_objects = []
+        # this works because we match services by partial matches
+        # TODO HOSTS
 
-        try:
-            icinga_socket = live_socket.get_icinga_live_socket()
-        except IOError as e:
-            self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
-        else:
+        service_query = self.icinga_socket.services.columns("host_name",
+                                                            "description",
+                                                            "state",
+                                                            "last_check",
+                                                            "check_type",
+                                                            "state_type",
+                                                            "plugin_output",
+                                                            "display_name",
+                                                            "current_attempt",
+                                                            )
+        description = host_service_id_util.create_host_service_description_direct(
+            dev.pk,
+            check.pk,
+            special_check_command_pk=check.mon_check_command_special_id,
+            info=".*"
+        )
+        description = "^{}".format(description)  # need regex to force start to distinguish s_host_check and host_check
 
-            # get hosts and services of categories
-            # get checks for kpis
+        service_query.filter("description", "~", description)  # ~ means regular expression match
 
-            if Kpi.objects.filter(uses_all_data=True).exists():
-                # TODO
-                pass
+        icinga_result = service_query.call()
 
-            else:
-                queryset = KpiSelectedDeviceMonitoringCategoryTuple.objects.all() \
-                    .select_related("monitoring_category", "device_category")
+        for check_result in icinga_result:
+            # can be multiple in case of special check commands
+            kpi_objects.append(create_kpi_obj(check_result))
 
-            # TODO: uses_all_data
-            # simulate distinct
-            dev_mon_tuple_data = dict()
-            for item in queryset:
-                if not (item.device_category_id, item.monitoring_category_id) in dev_mon_tuple_data:
-                    #print '\n\ngather for', item.monitoring_category, 'x', item.device_category
+        return kpi_objects
 
-                    devices = item.device_category.device_set.all()
-                    checks = item.monitoring_category.mon_check_command_set.all()
+    def _get_historic_data(self):
+        pass
 
-                    #print 'dev ch', checks, devices
-
-                    def create_kpi_obj(check_result):
-                        property_names = {  # icinga names with renamings (currently none used)
-                                            'display_name': None,
-                                            'current_attempt': None,
-                                            'plugin_output': None,
-                                            'last_check': None,
-                                            'description': None,
-                                            'state_type': None,
-                                            }
-                        # TODO: if state type is supposed to be used, probably parse to something more readable
-                        properties = {(our_name if our_name is not None else icinga_name): check_result[icinga_name]
-                                      for icinga_name, our_name in property_names.iteritems()}
-
-                        host_pk, service_pk, info = \
-                            host_service_id_util.parse_host_service_description(check_result['description'])
-
-                        try:
-                            properties['host'] = device.objects.get(pk=host_pk).full_name
-                        except device.DoesNotExist:
-                            properties['host'] = None
-
-                        try:
-                            properties['check_command'] = mon_check_command.objects.get(pk=service_pk).name
-                        except mon_check_command.DoesNotExist:
-                            properties['check_command'] = None
-
-                        return KpiObject(
-                            result=KpiResult.from_numeric_icinga_service_status(int(check_result['state'])),
-                            host_name=check_result['host_name'],
-                            properties=properties,
-                        )
-
-                    for dev in devices:
-                        for check in checks:
-                            # this works because we match services by partial matches
-                            #print 'gather for', dev, check
-
-                            # TODO HOSTS
-
-                            service_query = icinga_socket.services.columns("host_name",
-                                                                           "description",
-                                                                           "state",
-                                                                           "last_check",
-                                                                           "check_type",
-                                                                           "state_type",
-                                                                           "plugin_output",
-                                                                           "display_name",
-                                                                           "current_attempt",
-                                                                           )
-                            description = host_service_id_util.create_host_service_description_direct(
-                                dev.pk,
-                                check.pk,
-                                special_check_command_pk=check.mon_check_command_special_id,
-                                info=".*"
-                            )
-                            description = "^{}".format(description)
-
-                            service_query.filter("description", "~", description)  # ~ means regular expression match
-                            #print 'fil', 'desc', description
-                            icinga_result = service_query.call()
-                            #print('res {}'.format(icinga_result))
-
-                            for check_result in icinga_result:
-                                # can be multiple in case of special check commands
-                                kpi_objects.append(create_kpi_obj(check_result))
-
-                    dev_mon_tuple_data[(item.device_category_id, item.monitoring_category_id)] = kpi_objects
-
-        return dev_mon_tuple_data
