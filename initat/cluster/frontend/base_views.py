@@ -342,7 +342,7 @@ class CheckDeletionStatus(View):
         if num_remaining_objs == 0:
             msg = "Finished deleting {}".format(logging_tools.get_plural("object", len(obj_pks)))
         else:
-            additional = " ({} remaining)".format(num_remaining_objs) if num_remaining_objs > 1 else ""
+            additional = " ({} remaining)".format(num_remaining_objs) if len(obj_pks) > 1 else ""
             msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
 
         request.xml_response['msg'] = msg
