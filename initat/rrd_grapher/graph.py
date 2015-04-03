@@ -22,7 +22,7 @@
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone
+from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, MVStructEntry, MVValue
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
@@ -1107,9 +1107,8 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
         )
         connection.close()
         self.register_func("graph_rrd", self._graph_rrd)
-        self.register_func("xml_info", self._xml_info)
-        self.vector_dict = {}
-        self.compound_dict = {}
+        # self.vector_dict = {}
+        # self.compound_dict = {}
         self.graph_root = global_config["GRAPH_ROOT"]
         self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]
         self.log("graphs go into {} for non-debug calls and into {} for debug calls".format(self.graph_root, self.graph_root_debug))
@@ -1176,17 +1175,20 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
         else:
             self.log("no file names given, skipping flush()", logging_tools.LOG_LEVEL_WARN)
 
-    def _xml_info(self, *args, **kwargs):
-        dev_id, xml_str = (args[0], etree.fromstring(args[1]))  # @UndefinedVariable
-        if args[2]:
-            self.compound_dict[dev_id] = etree.fromstring(args[2])  # @UndefinedVariable
-        else:
-            self.compound_dict[dev_id] = None
-        self.vector_dict[dev_id] = xml_str  # self._struct_vector(xml_str)
+    # def _xml_info(self, *args, **kwargs):
+    #    dev_id, xml_str = (args[0], etree.fromstring(args[1]))  # @UndefinedVariable
+    #    if args[2]:
+    #        self.compound_dict[dev_id] = etree.fromstring(args[2])  # @UndefinedVariable
+    #    else:
+    #    #    self.compound_dict[dev_id] = None
+    #    #self.vector_dict[dev_id] = xml_str  # self._struct_vector(xml_str)
 
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        dev_pks = [entry for entry in map(lambda x: int(x), srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) if entry in self.vector_dict]
+        dev_pks = device.objects.filter(
+            Q(pk__in=srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) &
+            Q(machinevector__pk__gt=0)
+        ).values_list("pk", flat=True)
         graph_keys = sorted(srv_com.xpath(".//graph_key_list/graph_key/text()", smart_strings=False))
         para_dict = {}
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
@@ -1208,18 +1210,27 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
         ]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
         self._open_rrdcached_socket()
-        graph_list = RRDGraph(
-            self.graph_root_debug if para_dict.get("debug_mode", False) else self.graph_root,
-            self.log,
-            self.colorizer,
-            para_dict,
-            self
-        ).graph(self.vector_dict, self.compound_dict, dev_pks, graph_keys)
+        try:
+            graph_list = RRDGraph(
+                self.graph_root_debug if para_dict.get("debug_mode", False) else self.graph_root,
+                self.log,
+                self.colorizer,
+                para_dict,
+                self
+            ).graph(self.vector_dict, self.compound_dict, dev_pks, graph_keys)
+        except:
+            for _line in process_tools.exception_info().log_lines:
+                self.log(_line, logging_tools.LOG_LEVEL_ERROR)
+            srv_com["graphs"] = []
+            srv_com.set_result(
+                "error generating graphs: {}".format(process_tools.get_except_info()),
+                server_command.SRV_REPLY_STATE_CRITICAL
+            )
+        else:
+            srv_com["graphs"] = graph_list
+            srv_com.set_result(
+                "generated {}".format(logging_tools.get_plural("graph", len(graph_list))),
+                server_command.SRV_REPLY_STATE_OK
+            )
         self._close_rrdcached_socket()
-        srv_com["graphs"] = graph_list
-        # print srv_com.pretty_print()
-        srv_com.set_result(
-            "generated {}".format(logging_tools.get_plural("graph", len(graph_list))),
-            server_command.SRV_REPLY_STATE_OK
-        )
         self.send_pool_message("send_command", src_id, unicode(srv_com))

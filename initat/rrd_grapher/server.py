@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,7 +21,7 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, MVStructEntry, MachineVector
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.graph import graph_process
@@ -35,14 +35,12 @@ import os
 import process_tools
 import server_command
 import server_mixins
+import pprint
 import stat
 import threading_tools
 import time
 import zmq
-try:
-    import rrdtool  # @UnresolvedImport
-except ImportError:
-    rrdtool = None
+import rrdtool  # @UnresolvedImport
 
 
 class server_process(threading_tools.process_pool, server_mixins.operational_error_mixin):
@@ -110,13 +108,12 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         # set stale after two hours
         MAX_DT = 3600 * 2
         num_changed = 0
-        for pk in data_store.present_pks():
-            _struct = data_store.get_instance(pk)
+        for mv in MachineVector.objects.all().prefetch_related("mvstructentry_set"):
             enabled, disabled = (0, 0)
             num_active = 0
-            for file_el in _struct.xml_vector.xpath(".//*[@file_name]", smart_strings=False):
-                f_name = file_el.attrib["file_name"]
-                is_active = True if int(file_el.get("active", "1")) else False
+            for mvs in mv.mvstructentry_set.all():
+                f_name = mvs.file_name
+                is_active = True if mvs.is_active else False
                 if os.path.isfile(f_name):
                     _stat = os.stat(f_name)
                     if _stat[stat.ST_SIZE] < 1024:
@@ -129,11 +126,13 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     else:
                         c_time = os.stat(f_name)[stat.ST_MTIME]
                         stale = abs(cur_time - c_time) > MAX_DT
-                        if stale and rrdtool:
+                        if stale:
                             # check via rrdtool
                             try:
-                                rrd_info = rrdtool.info(f_name)
+                                # important: cast to str
+                                rrd_info = rrdtool.info(str(f_name))
                             except:
+                                raise
                                 self.log(
                                     "cannot get info for {} via rrdtool: {}".format(
                                         f_name,
@@ -147,15 +146,18 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     if is_active:
                         num_active += 1
                     if is_active and stale:
-                        file_el.attrib["active"] = "0"
+                        mvs.is_active = False
+                        mvs.save(update_fields=["is_active"])
                         disabled += 1
                     elif not is_active and not stale:
-                        file_el.attrib["active"] = "1"
+                        mvs_active = True
+                        mvs.save(update_fields=["is_active"])
                         enabled += 1
                 else:
                     if is_active:
-                        self.log("file '{}' missing, disabling".format(file_el.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
-                        file_el.attrib["active"] = "0"
+                        self.log("file '{}' missing, disabling".format(mvs.file_name, logging_tools.LOG_LEVEL_ERROR))
+                        mvs.is_active = False
+                        mvs.save(update_fields=["is_active"])
                         disabled += 1
             if enabled or disabled:
                 num_changed += 1
@@ -164,9 +166,8 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     enabled,
                     disabled,
                     ))
-                _struct.store()
             try:
-                cur_dev = device.objects.get(Q(pk=pk))
+                cur_dev = mv.device
             except device.DoesNotExist:
                 self.log("device with pk no longer present", logging_tools.LOG_LEVEL_WARN)
             else:
@@ -243,42 +244,23 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         # collectd_hosts = ["127.0.0.1"]
         # [self._open_collectd_socket(_host) for _host in collectd_hosts]
 
-    def _interpret_mv_info(self, in_vector):
-        data_store.feed_vector(in_vector[0])
-
-    def _interpret_perfdata_info(self, host_name, pd_type, pd_info, file_name):
-        data_store.feed_perfdata(host_name, pd_type, pd_info, file_name)
-
     def _get_node_rrd(self, srv_com):
-        node_results = E.node_results()
+        node_results = []
         dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
         pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk", smart_strings=False)]
         for dev_pk in pk_list:
-            cur_res = E.node_result(pk="{:d}".format(dev_pk))
-            if data_store.has_rrd_xml(dev_pk):
+            cur_res = {"pk": dev_pk}
+            if data_store.has_machine_vector(dev_pk):
                 # web mode (sorts entries)
-                cur_res.append(data_store.get_instance(dev_pk).xml_vector)
-                _compound = data_store.get_instance(dev_pk).compound_xml_vector()
-                if _compound is not None:
-                    cur_res.append(_compound)
+                _struct = data_store.get_instance(dev_pk).vector_struct()
+                _struct.extend(data_store.compound_struct(_struct))
+                cur_res["struct"] = _struct
             else:
-                self.log("no rrd_xml found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
+                self.log("no machine_vector found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)
-        _json = self._to_json(node_results, set(["info", "active", "key", "name", "part", "pk"]))
-        # pprint.pprint(_json, depth=5)
-        srv_com["result"] = json.dumps(_json)
-
-    def _to_json(self, res, key_list):
-        _v_dict = {key: value for key, value in res.attrib.iteritems() if key in key_list}
-        _v_dict["_tag"] = res.tag
-        if res.text:
-            _v_dict["_text"] = res.text
-        if res.tail:
-            _v_dict["_tail"] = res.tail
-        if len(res):
-            _v_dict["_nodes"] = [self._to_json(node, key_list) for node in res]
-        # self._iter_level(res, _dict)
-        return _v_dict
+        # _json = self._to_json(node_results, set(["info", "active", "key", "name", "part", "pk"]))
+        # pprint.pprint(node_results, depth=5)
+        srv_com["result"] = json.dumps(node_results)
 
     # def _iter_level(self, start_el, _dict):
     #    for node in
@@ -314,19 +296,19 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     "ok processed command {}".format(cur_com),
                     server_command.SRV_REPLY_STATE_OK
                 )
-                if cur_com in ["mv_info"]:
-                    self.log("got mv_info")
-                    self._interpret_mv_info(srv_com["vector"])
-                    send_return = False
-                elif cur_com in ["perfdata_info"]:
-                    self._interpret_perfdata_info(
-                        srv_com["hostname"].text,
-                        srv_com["pd_type"].text,
-                        srv_com["info"][0],
-                        srv_com["file_name"].text
-                    )
-                    send_return = False
-                elif cur_com == "get_node_rrd":
+                # if cur_com in ["mv_info"]:
+                #    self.log("got mv_info")
+                #    self._interpret_mv_info(srv_com["vector"])
+                #    send_return = False
+                # elif cur_com in ["perfdata_info"]:
+                #    self._interpret_perfdata_info(
+                #        srv_com["hostname"].text,
+                #        srv_com["pd_type"].text,
+                #        srv_com["info"][0],
+                #        srv_com["file_name"].text
+                #    )
+                #    send_return = False
+                if cur_com == "get_node_rrd":
                     self._get_node_rrd(srv_com)
                 elif cur_com == "graph_rrd":
                     send_return = False

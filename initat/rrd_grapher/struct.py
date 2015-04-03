@@ -21,6 +21,7 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import MachineVector, MVStructEntry, MVValue
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
@@ -32,23 +33,10 @@ import re
 import time
 
 
-def resolve_key(dev_xml, key):
-    _type, _key = key.split(":", 1)
-    _split = _key.split(".")
-    if _type in ["pde", "mvl"]:
-        _node = dev_xml.xpath(".//{}[@name='{}']".format(_type, ".".join(_split[:len(_split) - 1])))[0]
-        return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
-    elif _type == "mve":
-        _node = dev_xml.xpath(".//mve[@name='{}']".format(_key))[0]
-        return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
-    else:
-        return {}
-
-
 class compound_entry(object):
     def __init__(self, _xml):
         self.__re_list = []
-        self.__name = _xml.attrib["name"]
+        self.__key = _xml.attrib["key"]
         self.__info = _xml.attrib["info"]
         self.__order_key = _xml.get("order_key", None)
         for _key in _xml.findall("key_list/key"):
@@ -61,6 +49,9 @@ class compound_entry(object):
                     _key
                 )
             )
+
+    def __unicode__(self):
+        return "compound {}".format(self.__key)
 
     def match(self, in_list):
         if self.__order_key:
@@ -115,39 +106,49 @@ class compound_entry(object):
             )
         raise StopIteration
 
-    def entry(self, result, dev_xml):
+    def entry(self, result, ref_dict):
         m_list, gd = result
         for _key in [key for key, _xml in m_list]:
-            # update dict with attribute dicts from the top-level nodes
-            gd.update(resolve_key(dev_xml, _key))
+            # update dict with attribute dicts from the top-level node
+            gd.update({_sk: _sv for _sk, _sv in ref_dict[key][0].iteritems() if _sk in ["info"]})
         # expand according to dict
-        _name = self.__name.format(**gd)
-        _info = self.__info.format(**gd)
-        # cve: compount vector entry
-        _node = E.cve(
-            *[
-                E.cve_entry(
-                    key=_key,
-                    color=_xml.attrib["color"],
-                    draw_type=_xml.get("draw_type", "LINE1"),
-                    invert=_xml.get("invert", "0"),
-                ) for _key, _xml in m_list
-            ],
-            # keys="||".join(m_list),
-            name="compound.{}".format(_name),
-            part=_name,
-            key=_name,
-            info="{} ({:d})".format(
-                _info,
-                len(m_list),
-            )
-        )
+        _key = self.__key.format(**gd)
+        _info = "{} ({:d})".format(self.__info.format(**gd), len(m_list))
+        _node = [
+            {
+                # should not be needed for display
+                # "type": "compound",
+                "fn": "",
+                "ti": "",
+                "key": _key,
+                "is_active": True,
+                "mvvs": [
+                    {
+                        "unit": "",
+                        "info": _info,
+                        "key": "",
+                        # "color": _xml.attrib["color"],
+                        # "draw_type": _xml.get("draw_type", "LINE1"),
+                        # "invert": _xml.get("invert", "0"),
+                    }  #
+                ],
+            }
+        ]
+        # build info, to be synced to the graphing process
+        _build_info = [
+            {
+                "key": _key,
+                "color": _xml.attrib["color"],
+                "draw_type": _xml.get("draw_type", "LINE1"),
+                "invert": _xml.get("invert", "0"),
+            } for _key, _xml, in m_list
+        ]
         return _node
 
 
 COMPOUND_NG = """
 <element name="compound" xmlns="http://relaxng.org/ns/structure/1.0">
-    <attribute name="name">
+    <attribute name="key">
     </attribute>
     <attribute name="info">
     </attribute>
@@ -186,65 +187,66 @@ COMPOUND_NG = """
 
 
 class compound_tree(object):
-    def __init__(self):
+    def __init__(self, log_com):
         self.__compounds = []
+        self.__log_com = log_com
         compound_xml = """
 <compounds>
-    <compound name="load" info="load">
+    <compound key="compound.load" info="load">
         <key_list>
-            <key match="^mve:load\.1$" required="1" color="#ff0000"></key>
-            <key match="^mve:load\.5$" color="#4444cc"></key>
-            <key match="^mve:load\.15$" required="1" color="#44aa44" draw_type="LINE2"></key>
+            <key match="^load\.1$" required="1" color="#ff0000"></key>
+            <key match="^load\.5$" color="#4444cc"></key>
+            <key match="^load\.15$" required="1" color="#44aa44" draw_type="LINE2"></key>
         </key_list>
     </compound>
-    <compound name="cpu" info="CPU">
+    <compound key="compound.cpu" info="CPU">
         <key_list>
-            <key match="^mve:vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1"></key>
-            <key match="^mve:vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
-            <key match="^mve:vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
-            <key match="^mve:vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
-            <key match="^mve:vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
-            <key match="^mve:vms\.steal$" required="0" color="#fbd462" draw_type="AREA1STACK"></key>
-            <key match="^mve:vms\.nice$" required="0" color="#fccde5" draw_type="AREA1STACK"></key>
-            <key match="^mve:vms\.idle$" required="1" color="#b3de69" draw_type="AREA1STACK"></key>
-            <key match="^mve:vms\.guest$" required="0" color="#ff0000" draw_type="LINE2"></key>
-            <key match="^mve:vms\.guest_nice$" required="0" color="#ffff00" draw_type="LINE2"></key>
+            <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1"></key>
+            <key match="^vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
+            <key match="^vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
+            <key match="^vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
+            <key match="^vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
+            <key match="^vms\.steal$" required="0" color="#fbd462" draw_type="AREA1STACK"></key>
+            <key match="^vms\.nice$" required="0" color="#fccde5" draw_type="AREA1STACK"></key>
+            <key match="^vms\.idle$" required="1" color="#b3de69" draw_type="AREA1STACK"></key>
+            <key match="^vms\.guest$" required="0" color="#ff0000" draw_type="LINE2"></key>
+            <key match="^vms\.guest_nice$" required="0" color="#ffff00" draw_type="LINE2"></key>
         </key_list>
     </compound>
-    <compound name="sys.processes" info="Processes">
+    <compound key="compound.sys.processes" info="Processes">
         <key_list>
-            <key match="^mve:proc\..*$" nomatch="proc\.(sleeping|total)" required="1" color="set312" draw_type="LINE1"></key>
+            <key match="^proc\..*$" nomatch="proc\.(sleeping|total)" required="1" color="set312" draw_type="LINE1"></key>
         </key_list>
     </compound>
-    <compound name="sys.memory" info="Memory">
+    <compound key="compound.sys.memory" info="System Memory">
         <key_list>
-            <key match="mve:mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
-            <key match="mve:mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
-            <key match="mve:mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
-            <key match="mve:mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
-            <!--<key match="mve:mem\.used\.swap$" required="0" color="#ff4444" draw_type="AREASTACK"></key>-->
-            <!--<key match="mve:mem\.free\.swap$" required="0" color="#55ee55" draw_type="AREA1STACK"></key>-->
-            <key match="mve:mem\.used\.swap$" required="0" color="#ff4444" draw_type="LINE2"></key>
+            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
+            <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
+            <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
+            <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
+            <!--<key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="AREASTACK"></key>-->
+            <!--<key match="mem\.free\.swap$" required="0" color="#55ee55" draw_type="AREA1STACK"></key>-->
+            <key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="LINE2"></key>
         </key_list>
     </compound>
-    <compound name="io" info="IO">
+    <compound key="compound.io" info="IO">
         <key_list>
-            <key match="^mve:net\.all\.rx$" required="1" color="#44ffffa0" draw_type="AREA1"></key>
-            <key match="^mve:net\.all\.tx$" required="1" invert="1" color="#ff4444a0" draw_type="AREA1"></key>
-            <key match="^mve:io\.total\.bytes\.read$" required="1" color="#4444ffa0" draw_type="AREA1"></key>
-            <key match="^mve:io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
+            <key match="^net\.all\.rx$" required="1" color="#44ffffa0" draw_type="AREA1"></key>
+            <key match="^net\.all\.tx$" required="1" invert="1" color="#ff4444a0" draw_type="AREA1"></key>
+            <key match="^io\.total\.bytes\.read$" required="1" color="#4444ffa0" draw_type="AREA1"></key>
+            <key match="^io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
         </key_list>
     </compound>
-    <compound name="icsw memory" info="CORVUS Memory">
+    <compound key="compound.icsw memory" info="CORVUS Memory">
         <key_list>
-            <key match="^mve:mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
+            <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
-    <compound name="net.snmp_{key}" info="SNMP {info}" order_key="key">
+    <compound key="compound.net.snmp_{key}" info="SNMP info for interface {key}" order_key="key">
         <key_list>
-            <key match="^mvl:net\.snmp_(?P&lt;key&gt;.*)\.rx$" required="1" color="#00dd00" draw_type="AREA"></key>
-            <key match="^mvl:net\.snmp_(?P&lt;key&gt;.*)\.tx$" required="1" color="#0000ff" draw_type="LINE1"></key>
-            <key match="^mvl:net\.snmp_(?P&lt;key&gt;.*)\.errors$" required="1" color="#ff0000" draw_type="LINE2"></key>
+            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.rx$" required="1" color="#00dd00" draw_type="AREA"></key>
+            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.tx$" required="1" color="#0000ff" draw_type="LINE1"></key>
+            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.errors$" required="1" color="#ff0000" draw_type="LINE2"></key>
         </key_list>
     </compound>
 </compounds>
@@ -254,280 +256,79 @@ class compound_tree(object):
         for _entry in comp_xml.findall("compound"):
             _valid = _ng.validate(_entry)
             if _valid:
-                self.__compounds.append(compound_entry(_entry))
+                new_comp = compound_entry(_entry)
+                self.__compounds.append(new_comp)
+                self.log("added {}".format(unicode(new_comp)))
             else:
-                print("compound is invalid: {}".format(str(_ng.error_log)))
+                self.log("compound is invalid: {}".format(str(_ng.error_log)), logging_tools.LOG_LEVEL_ERROR)
 
-    def append_compounds(self, dev_xml):
-        # machine vector entries
-        all_keys = set()
-        for _mve_entry in dev_xml.xpath(".//mve[@active='1']"):
-            all_keys.add(
-                "mve:{}".format(_mve_entry.attrib["name"])
-            )
-        # performance data or wide machine vector entries
-        for _pde_mvl_entry in dev_xml.xpath(".//pde[@active='1']|.//mvl[@active='1']"):
-            _name = _pde_mvl_entry.attrib["name"]
-            _info = _pde_mvl_entry.get("info")
-            for _value in _pde_mvl_entry.findall("value"):
-                # print _value.attrib
-                all_keys.add(
-                    "{}:{}.{}".format(
-                        _pde_mvl_entry.tag,
-                        _name,
-                        _value.attrib["key"],
-                    )
-                )
-        top_el = E.machine_vector()
-        _added = 0
-        # print "*", len(in_list)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[comp] {}".format(what), log_level)
+
+    def append_compounds(self, in_list):
+        # build key list
+        _refs = {}
+        for _entry in in_list:
+            for _sub in _entry["mvvs"]:
+                if _sub["key"]:
+                    _refs["{}.{}".format(_entry["key"], _sub["key"])] = (_entry, _sub)
+                else:
+                    _refs[_entry["key"]] = (_entry, _sub)
+        # all keys
+        all_keys = set(_refs.keys())
+        _compounds = []
         for _comp in self.__compounds:
             for _result in _comp.match(all_keys):
-                top_el.append(_comp.entry(_result, dev_xml))
-                _added += 1
-        if _added:
-            return top_el
-        else:
-            return None
+                _compounds.extend(_comp.entry(_result, _refs))
+        return _compounds
 
 
 class data_store(object):
-    def __init__(self, cur_dev):
-        self.pk = cur_dev.pk
-        self.name = unicode(cur_dev.full_name)
-        # name of rrd-files on disk
-        self.store_name = ""
-        self.xml_vector = E.machine_vector()
+    def __init__(self, machine_vector):
+        self.mv = machine_vector
+        self.pk = machine_vector.device.pk
+        self.name = unicode(machine_vector.device.full_name)
+        # self.xml_vector = E.machine_vector()
+        # link
+        data_store.__devices[self.pk] = self
 
-    def restore(self):
+    def vector_struct(self):
+        _struct = []
+        for mvs in MVStructEntry.objects.filter(Q(machine_vector=self.mv)).prefetch_related("mvvalue_set"):
+            mvv_list = []
+            for mvv in mvs.mvvalue_set.all():
+                mvv_list.append(
+                    {
+                        "unit": mvv.unit,
+                        "info": mvv.info,
+                        "key": mvv.key,
+                    }
+                )
+            _struct.append(
+                {
+                    # not needed for display
+                    # "type": mvs.se_type,
+                    "fn": mvs.file_name,
+                    "ti": mvs.type_instance,
+                    "key": mvs.key,
+                    "is_active": mvs.is_active,
+                    "mvvs": mvv_list,
+                }
+            )
+        return _struct
+
+    @staticmethod
+    def compound_struct(in_list):
         try:
-            self.xml_vector = etree.fromstring(file(self.data_file_name(), "r").read())  # @UndefinedVariable
+            _comps = data_store.compound_tree.append_compounds(in_list)
         except:
-            self.log("cannot interpret XML: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-            self.xml_vector = E.machine_vector()
+            for _line in process_tools.exception_info().log_lines:
+                data_store.g_log(_line, logging_tools.LOG_LEVEL_ERROR)
+            _comps = []
         else:
-            # for pure-pde vectors no store name is set
-            self.store_name = self.xml_vector.attrib.get("store_name", "")
-            all_mves = self.xml_vector.xpath(".//mve/@name", smart_strings=False)
-            changed = False
-            # check for duplicates
-            if len(all_mves) != len(set(all_mves)):
-                self.log("found duplicate entries, removing them")
-                removed = 0
-                for cur_mve in all_mves:
-                    sub_list = self.xml_vector.xpath(".//mve[@name='{}']".format(cur_mve), smart_strings=False)
-                    for sub_entry in sub_list[:-1]:
-                        sub_entry.getparent().remove(sub_entry)
-                        removed += 1
-                        changed = True
-                self.log("removed {}".format(logging_tools.get_plural("entry", removed)))
-            # check for entries ending with Perfdata
-            del_entries = [_entry for _entry in self.xml_vector.xpath(".//pde[@name]") if _entry.attrib["name"].endswith("Perfdata")]
-            if del_entries:
-                changed = True
-                self.log("removing {}".format(logging_tools.get_plural("stale Perfdata entries", len(del_entries))))
-                for _del in del_entries:
-                    _del.getparent().remove(_del)
-            for fix_el in self.xml_vector.xpath(".//*[@file_name and not(@active)]", smart_strings=False):
-                fix_el.attrib["active"] = "1"
-                changed = True
-            while True:
-                _cc = self.xml_vector.find(".//compound")
-                if _cc is not None:
-                    _cc.getparent().remove(_cc)
-                    self.log("remove compound entry from on-disk storage", logging_tools.LOG_LEVEL_WARN)
-                    changed = True
-                else:
-                    break
-            if changed:
-                self.log("vector was changed on load, storing")
-                self.store()
-            # changed
-        # send a copy to the grapher
-        self.sync_to_grapher()
-
-    def feed(self, in_vector):
-        # self.xml_vector = in_vector
-        if self.store_name != in_vector.attrib["name"]:
-            self.log(
-                "changing store_name from '{}' to '{}'".format(
-                    self.store_name,
-                    in_vector.attrib["name"]
-                )
-            )
-            self.store_name = in_vector.attrib["name"]
-            self.xml_vector.attrib["store_name"] = self.store_name
-        old_mve_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
-        old_mvl_keys = set(self.xml_vector.xpath(".//mvl/@name", smart_strings=False))
-        rrd_dir = global_config["RRD_DIR"]
-        # MVEs
-        for entry in in_vector.findall("mve"):
-            cur_name = entry.attrib["name"]
-            cur_entry = self.xml_vector.find(".//mve[@name='{}']".format(cur_name))
-            if cur_entry is None:
-                cur_entry = E.mve(
-                    name=cur_name,
-                    sane_name=cur_name.replace("/", "_sl_"),
-                    init_time="{:d}".format(int(time.time())),
-                )
-                self.xml_vector.append(cur_entry)
-            self._update_mve_entry(cur_entry, entry, rrd_dir)
-        # MVLs
-        for entry in in_vector.findall("mvl"):
-            cur_name = entry.attrib["name"]
-            cur_entry = self.xml_vector.find(".//mvl[@name='{}']".format(cur_name))
-            if cur_entry is None:
-                cur_entry = E.mvl(
-                    name=cur_name,
-                    sane_name=cur_name.replace("/", "_sl_"),
-                    init_time="{:d}".format(int(time.time())),
-                )
-                for _cur_idx, _value in enumerate(entry):
-                    cur_entry.append(
-                        E.value(
-                            key=_value.get("key"),
-                        )
-                    )
-                self.xml_vector.append(cur_entry)
-            self._update_mvl_entry(cur_entry, entry, rrd_dir)
-        new_mve_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
-        new_mvl_keys = set(self.xml_vector.xpath(".//mvl/@name", smart_strings=False))
-        self.log(
-            "mve: {:d} keys total {:d} changed, mvl: {:d} keys total, {:d} changed".format(
-                len(new_mve_keys),
-                len(new_mve_keys ^ old_mve_keys),
-                len(new_mvl_keys),
-                len(new_mvl_keys ^ old_mvl_keys),
-            )
-        )
-        self.store()
-
-    def feed_pd(self, host_name, pd_type, pd_info, file_name):
-        # we ignore the global store name for perfdata stores
-        old_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
-        rrd_dir = global_config["RRD_DIR"]
-        # print host_name, pd_type
-        # print etree.tostring(pd_info, pretty_print=True)
-        type_instance = pd_info.get("type_instance", "")
-        # only one entry
-        if type_instance:
-            cur_entry = self.xml_vector.xpath(".//pde[@name='{}' and @type_instance='{}']".format(pd_type, type_instance), smart_strings=False)
-        else:
-            cur_entry = self.xml_vector.xpath(".//pde[@name='{}']".format(pd_type), smart_strings=False)
-        cur_entry = cur_entry[0] if cur_entry else None
-        if cur_entry is None:
-            # create new entry
-            cur_entry = E.pde(
-                name=pd_type,
-                host=host_name,
-                type_instance=pd_info.get("type_instance", ""),
-                init_time="{:d}".format(int(time.time())),
-            )
-            for _cur_idx, entry in enumerate(pd_info):
-                cur_entry.append(
-                    E.value(
-                        name=entry.get("name"),
-                    )
-                )
-            self.xml_vector.append(cur_entry)
-        else:
-            cur_entry.attrib["type_instance"] = pd_info.get("type_instance", "")
-        self._update_pd_entry(cur_entry, pd_info, rrd_dir, file_name)
-        new_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
-        c_keys = old_keys ^ new_keys
-        if c_keys:
-            self.log("pde: {:d} keys total, {:d} keys changed".format(len(new_keys), len(c_keys)))
-        # else:
-        #    too verbose
-        #    self.log("pde: %d keys total" % (len(new_keys)))
-        self.store()
-
-    def _update_pd_entry(self, entry, src_entry, rrd_dir, file_name):
-        entry.attrib["last_update"] = "%d" % (time.time())
-        entry.attrib["active"] = "1"
-        entry.attrib["file_name"] = file_name
-        if len(entry) == len(src_entry):
-            for v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
-                for key, def_value in [
-                    ("info", "performance_data"),
-                    ("v_type", "f"),
-                    ("unit", "1"),
-                    ("name", None),
-                    ("index", "{:d}".format(v_idx))
-                ]:
-                    cur_value.attrib[key] = src_value.get(key, def_value)
-                cur_value.attrib["key"] = src_value.get("key", cur_value.attrib["name"])
-        else:
-            self.log("number of pd entries differ: {:d} != {:d}".format(len(entry), len(src_entry)), logging_tools.LOG_LEVEL_CRITICAL)
-
-    def _update_mve_entry(self, entry, src_entry, rrd_dir):
-        # last update time
-        entry.attrib["last_update"] = "{:d}".format(int(time.time()))
-        entry.attrib["active"] = "1"
-        # if "file_name" in src_entry.attrib:
-        entry.attrib["file_name"] = src_entry.attrib["file_name"]
-        for key, def_value in [
-            ("info", None),
-            ("v_type", None),
-            ("full", entry.get("name")),
-            ("unit", "1"),
-            ("base", "1"),
-            ("factor", "1")
-        ]:
-            entry.attrib[key] = src_entry.get(key, def_value)
-
-    def _update_mvl_entry(self, entry, src_entry, rrd_dir):
-        entry.attrib["last_update"] = "{:d}".format(int(time.time()))
-        entry.attrib["active"] = "1"
-        if "info" in src_entry.attrib:
-            entry.attrib["info"] = src_entry.attrib["info"]
-        else:
-            del entry.attrib["info"]
-        entry.attrib["file_name"] = src_entry.attrib["file_name"]
-        if len(entry) == len(src_entry):
-            for _v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
-                for key, def_value in [
-                    ("info", None),
-                    ("v_type", "f"),
-                    ("unit", "1"),
-                    ("key", None),
-                    ("base", "1"),
-                    ("factor", "1")
-                ]:
-                    cur_value.attrib[key] = src_value.get(key, def_value)
-                cur_value.attrib["key"] = src_value.attrib["key"]
-        else:
-            self.log(
-                "number of mvl entries differ: {:d} != {:d}, replacing childs".format(
-                    len(entry),
-                    len(src_entry)
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            for _val in entry:
-                entry.remove(_val)
-            for _val in src_entry:
-                entry.append(_val)
-
-    def store(self):
-        file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))  # @UndefinedVariable
-        # sync XML to grapher
-        self.sync_to_grapher()
-
-    def sync_to_grapher(self):
-        _compound = self.compound_xml_vector()
-        if _compound is not None:
-            _compound = etree.tostring(_compound)  # @UndefinedVariable
-        data_store.process.send_to_process(
-            "graph",
-            "xml_info",
-            self.pk,
-            etree.tostring(self.xml_vector),  # @UndefinedVariable
-            _compound  # @UndefinedVariable
-        )
-
-    def data_file_name(self):
-        return os.path.join(data_store.store_dir, "{}_{:d}.info.xml".format(self.name, self.pk))
+            # pprint.pprint(_comps)
+            pass
+        return _comps
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log(
@@ -539,41 +340,12 @@ class data_store(object):
         )
 
     @staticmethod
-    def has_rrd_xml(dev_pk):
+    def has_machine_vector(dev_pk):
         return dev_pk in data_store.__devices
 
     @staticmethod
     def present_pks():
         return data_store.__devices.keys()
-
-    def compound_xml_vector(self):
-        cur_xml = self.xml_vector
-        # remove current compound, should never happen (only when wrong data is written to disk)
-        while True:
-            _cc = cur_xml.find(".//compound")
-            if _cc is not None:
-                _cc.getparent().remove(_cc)
-            else:
-                break
-        return compound_tree().append_compounds(cur_xml)
-
-    def _create_struct(self, top_node, full_key):
-        parts = full_key.split(".")[:-1]
-        cur_node = top_node
-        for part_idx, part in enumerate(parts):
-            cur_node = top_node.find("*[@part='{}']".format(part))
-            if cur_node is None:
-                cur_node = E.entry(name=".".join(parts[:part_idx + 1]), part=part)
-                top_node.append(cur_node)
-            top_node = cur_node
-        return cur_node
-
-    def _expand_info(self, entry):
-        info = entry.attrib["info"]
-        parts = entry.attrib["name"].split(".")
-        for idx in xrange(len(parts)):
-            info = info.replace("$%d" % (idx + 1), parts[idx])
-        return info
 
     @staticmethod
     def get_instance(pk):
@@ -586,138 +358,15 @@ class data_store(object):
         data_store.debug = global_config["DEBUG"]
         # pk -> data_store
         data_store.__devices = {}
-        data_store.store_dir = os.path.join(global_config["RRD_DIR"], "data_store")
-        if not os.path.isdir(data_store.store_dir):
-            os.mkdir(data_store.store_dir)
-        entry_re = re.compile("^(?P<full_name>.*)_(?P<pk>\d+).info.xml$")
-        for entry in os.listdir(data_store.store_dir):
-            entry_m = entry_re.match(entry)
-            if entry_m:
-                full_name, pk = (entry_m.group("full_name"), int(entry_m.group("pk")))
-                try:
-                    new_ds = data_store(device.objects.get(Q(pk=pk)))
-                    new_ds.restore()
-                except:
-                    data_store.g_log(
-                        "cannot initialize data_store for {}: {}".format(
-                            full_name,
-                            process_tools.get_except_info()
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-                else:
-                    data_store.__devices[pk] = new_ds
-                    data_store.g_log(
-                        "recovered info for {} from disk (pk {:d}, memory usage now {})".format(
-                            full_name,
-                            pk,
-                            logging_tools.get_size_str(process_tools.get_mem_info())
-                        )
-                    )
-            else:
-                data_store.g_log(
-                    "ignoring dir entry '{}'".format(
-                        entry
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
-                )
+        # data_store.store_dir = os.path.join(global_config["RRD_DIR"], "data_store")
+        # if not os.path.isdir(data_store.store_dir):
+        #     os.mkdir(data_store.store_dir)
+        # entry_re = re.compile("^(?P<full_name>.*)_(?P<pk>\d+).info.xml$")
+        for mv in MachineVector.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)):
+            data_store.g_log("building structure for {}".format(unicode(mv.device)))
+            new_ds = data_store(mv)
+        data_store.compound_tree = compound_tree(data_store.g_log)
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log("[ds] {}".format(what), log_level)
-
-    @staticmethod
-    def feed_perfdata(name, pd_type, pd_info, file_name):
-        match_dev = None
-        if name.count("."):
-            full_name, short_name, dom_name = (name, name.split(".")[0], name.split(".", 1)[1])
-        else:
-            full_name, short_name, dom_name = (None, name, None)
-        if full_name:
-            # try according to full_name
-            try:
-                match_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node__full_name=dom_name))
-            except device.DoesNotExist:
-                pass
-            else:
-                match_mode = "fqdn"
-        if match_dev is None:
-            try:
-                match_dev = device.objects.get(Q(name=short_name))
-            except device.DoesNotExist:
-                pass
-            except device.MultipleObjectsReturned:
-                pass
-            else:
-                match_mode = "name"
-        if match_dev:
-            if data_store.debug:
-                data_store.g_log(
-                    "found device {} ({}) for pd_type={}".format(
-                        unicode(match_dev),
-                        match_mode,
-                        pd_type
-                    )
-                )
-            if match_dev.pk not in data_store.__devices:
-                data_store.__devices[match_dev.pk] = data_store(match_dev)
-            data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info, file_name)
-        else:
-            data_store.g_log(
-                "no device found (name={}, pd_type={})".format(name, pd_type),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-
-    @staticmethod
-    def feed_vector(in_vector):
-        # print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
-        # at first check for uuid
-        match_dev = None
-        if "uuid" in in_vector.attrib:
-            uuid = in_vector.attrib["uuid"]
-            try:
-                match_dev = device.objects.get(Q(uuid=uuid))
-            except device.DoesNotExist:
-                pass
-            else:
-                match_mode = "uuid"
-        if match_dev is None and "name" in in_vector.attrib:
-            name = in_vector.attrib["name"]
-            if name.count("."):
-                full_name, short_name, dom_name = (name, name.split(".")[0], name.split(".", 1)[1])
-            else:
-                full_name, short_name, dom_name = (None, name, None)
-            if full_name:
-                # try according to full_name
-                try:
-                    match_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node__full_name=dom_name))
-                except device.DoesNotExist:
-                    pass
-                else:
-                    match_mode = "fqdn"
-            if match_dev is None:
-                try:
-                    match_dev = device.objects.get(Q(name=short_name))
-                except device.DoesNotExist:
-                    pass
-                except device.MultipleObjectsReturned:
-                    pass
-                else:
-                    match_mode = "name"
-        if match_dev:
-            if data_store.debug:
-                data_store.g_log("found device %s (%s)" % (unicode(match_dev), match_mode))
-            if "name" in in_vector.attrib:
-                if match_dev.pk not in data_store.__devices:
-                    data_store.__devices[match_dev.pk] = data_store(match_dev)
-                data_store.__devices[match_dev.pk].feed(in_vector)
-            else:
-                data_store.g_log("no name in vector for %s, discarding" % (unicode(match_dev)), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            data_store.g_log(
-                "no device found (%s: %s)" % (
-                    logging_tools.get_plural("key", len(in_vector.attrib)),
-                    ", ".join(["{}={}".format(key, str(value)) for key, value in in_vector.attrib.iteritems()])
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )

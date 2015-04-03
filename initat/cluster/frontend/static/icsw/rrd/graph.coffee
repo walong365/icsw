@@ -244,14 +244,14 @@ angular.module(
                 root_node = $scope.init_machine_vector()
                 $scope.num_struct = 0
                 $scope.num_mve = 0
-                for dev in json._nodes
-                    if dev._nodes?
-                        mv = dev._nodes[0]
-                        $scope.add_machine_vector(root_node, dev.pk, mv)
-                        if dev._nodes.length > 1
-                            # compound
-                            $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
+                for dev in json
+                    if dev.struct.length
+                        $scope.add_machine_vector(root_node, dev.pk, dev.struct)
+                        #if dev._nodes.length > 1
+                        #    # compound
+                        #    $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
                         $scope.num_devices++
+                $scope.g_tree.recalc()
                 $scope.is_loading = false
                 $scope.$apply(
                     $scope.vector_valid = if $scope.num_struct then true else false
@@ -269,8 +269,7 @@ angular.module(
                 )
 
         $scope._add_structural_entry = (entry, lut, parent) =>
-            _latest_is_entry = entry._tag in ["mve", "cve"]
-            parts = entry.name.split(".")
+            parts = entry.key.split(".")
             _pn = ""
             for _part in parts
                 if pn
@@ -284,29 +283,23 @@ angular.module(
                     if pn == entry.name and _latest_is_entry
                         true
                 else
-                    if pn == entry.name and _latest_is_entry
-                        # value entry
-                        $scope._add_value_entry(entry, lut, parent)
-                    else
-                        # override name if display_name is set and this is the structural entry at the bottom
-                        if entry.display_name? and pn == entry.name
-                            display_name = entry.display_name
-                        else
-                            display_name = _part
-                        # structural
-                        cur_node = $scope.g_tree.new_node({
+                    # override name if display_name is set and this is the structural entry at the bottom
+                    # structural
+                    cur_node = $scope.g_tree.new_node(
+                        {
                             folder : true,
                             expand : false
                             _name  : _part
-                            _display_name: display_name
+                            _display_name: _part
                             _mult : 1
                             _dev_pks : [$scope.mv_dev_pk]
                             _node_type : "s"
                             _show_select: false
-                        })
-                        $scope.num_struct++
-                        lut[pn] = cur_node
-                        parent.add_child(cur_node, $scope._child_sort)
+                        }
+                    )
+                    $scope.num_struct++
+                    lut[pn] = cur_node
+                    parent.add_child(cur_node, $scope._child_sort)
                 parent = cur_node
             return parent
         
@@ -320,19 +313,17 @@ angular.module(
             
         $scope._expand_info = (info, g_key) =>
             _num = 0
-            for _var in g_key.split(":")[1].split(".")
+            for _var in g_key.split(".")
                 _num++
                 info = info.replace("$#{_num}", _var)
             return info
             
         $scope._add_value_entry = (entry, lut, parent, top) =>
-            # top is the parent node from the machine vector (or undefined)
-            if top?
-                # pde or mvl, graph_key is top.name + local node name
-                g_key = "#{top._tag}:#{top.name}.#{entry.key}"
+            # top is the parent node from the value entry (== mvstructentry)
+            if entry.key
+                g_key = "#{top.key}.#{entry.key}"
             else
-                # mve or cve, graph_key is entry.name
-                g_key = "#{entry._tag}:#{entry.name}"
+                g_key = top.key
             if $scope.cur_selected.length
                 _sel = g_key in $scope.cur_selected
             else if $scope.auto_select_re
@@ -341,24 +332,31 @@ angular.module(
                 _sel = false
             if g_key of lut
                 cur_node = lut[g_key]
+                $scope.num_struct--
+                $scope.num_mve++
+                cur_node._dev_pks = []
             else
-                cur_node = $scope.g_tree.new_node({
-                    folder : false
-                    expand : false
-                    node   : entry
-                    selected: _sel
-                    _dev_pks: []
-                    _name  : entry.info
-                    _display_name: $scope._expand_info(entry.info, g_key)
-                    _node_type : "e"
-                    _show_select: true
-                    _g_key : g_key
-                })
+                cur_node = $scope.g_tree.new_node(
+                    {
+                        expand : false
+                        selected: _sel
+                        _dev_pks: []
+                    }
+                )
                 $scope.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, $scope._child_sort)
+            cur_node.node= entry
+            cur_node._name = entry.name
+            cur_node._display_name = $scope._expand_info(entry.info, g_key)
             cur_node._dev_pks.push($scope.mv_dev_pk)
-        
+            cur_node._node_type = "e"
+            cur_node.folder = false
+            cur_node._show_select = true
+            cur_node._g_key = g_key
+            cur_node.node = entry
+            cur_node.selected = _sel
+
         $scope.init_machine_vector = () =>
             $scope.lut = {}
             $scope.g_tree.clear_root_nodes()
@@ -374,23 +372,27 @@ angular.module(
         $scope.add_machine_vector = (root_node, dev_pk, mv) =>
             $scope.mv_dev_pk = dev_pk
             lut = $scope.lut
-            for entry in mv._nodes
-                _tag = entry._tag
-                if _tag in ["mve", "cve"]
-                    # add machine vector entry or compound data
-                    $scope._add_structural_entry(entry, lut, root_node)
-                else if _tag in ["pde", "mvl"]
-                    # add performance data header
-                    if _tag == "mvl" and entry.info and entry.name.match(/\.snmp_/g)
-                        # hack to beautify snmp network entries
-                        entry.display_name = "[S] #{entry.info}"
-                    _pde_mvl = $scope._add_structural_entry(entry, lut, root_node)
-                    # add performance data values
-                    for _sub in entry._nodes
-                        $scope._add_value_entry(_sub, lut, _pde_mvl, entry)
-                else
-                    # unhandled entry
-                    true
+            for entry in mv
+                _struct = $scope._add_structural_entry(entry, lut, root_node)
+                for _sub in entry.mvvs
+                    $scope._add_value_entry(_sub, lut, _struct, entry)
+
+                #_tag = entry._tag
+                #if _tag in ["mve", "cve"]
+                #    # add machine vector entry or compound data
+                #    $scope._add_structural_entry(entry, lut, root_node)
+                #else if _tag in ["pde", "mvl"]
+                #    # add performance data header
+                #    if _tag == "mvl" and entry.info and entry.name.match(/\.snmp_/g)
+                #        # hack to beautify snmp network entries
+                #        entry.display_name = "[S] #{entry.info}"
+                #    _pde_mvl = $scope._add_structural_entry(entry, lut, root_node)
+                #    # add performance data values
+                #    for _sub in entry._nodes
+                #        $scope._add_value_entry(_sub, lut, _pde_mvl, entry)
+                #else
+                #    # unhandled entry
+                #    true
 
         $scope.update_search = () ->
             if $scope.cur_search_to
