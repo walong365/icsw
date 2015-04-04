@@ -101,7 +101,7 @@ class graph_rrds(View):
             *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list + cd_pks]
         )
         srv_com["graph_key_list"] = E.graph_key_list(
-            *[E.graph_key(graph_key) for graph_key in graph_keys if not graph_key.startswith("_")]
+            *[E.graph_key(struct_key=graph_key[0], value_key=graph_key[1]) for graph_key in graph_keys]
         )
         if "start_time" in _post:
             start_time = dateutil.parser.parse(_post["start_time"])

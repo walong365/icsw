@@ -162,7 +162,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             if enabled or disabled:
                 num_changed += 1
                 self.log("updated active info for {}: {:d} enabled, {:d} disabled".format(
-                    _struct.name,
+                    unicode(mvs),
                     enabled,
                     disabled,
                     ))

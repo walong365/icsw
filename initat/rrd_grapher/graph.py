@@ -47,6 +47,19 @@ import uuid
 FLOAT_FMT = "{:.6f}"
 
 
+def full_graph_key(*args, **kwargs):
+    if type(args[0]) == tuple:
+        s_key, v_key = args[0]
+    else:
+        s_key, v_key = args
+    return "{}{}".format(
+        s_key,
+        ".{}".format(
+            v_key
+        ) if v_key else ""
+    )
+
+
 def rrd_escape(in_str):
     return in_str.replace(":", "\:")
 
@@ -132,16 +145,16 @@ class Colorizer(object):
         else:
             return SimpleColorTable(self.color_tables[self.color_tables.keys()[0]])
 
-    def get_color_and_style(self, entry):
-        if "color" in entry.attrib:
+    def get_color_and_style(self, mvs_entry, mvv_entry):
+        if hasattr(mvv_entry, "color"):
             # specified in entry
-            _clr = entry.get("color")
+            _clr = getattr(mvv_entry, "color")
             s_dict = {}
             for _attr in["draw_type", "invert"]:
-                if _attr in entry.attrib:
-                    s_dict[_attr] = entry.get(_attr)
+                if hasattr(mvv_entry, _attr):
+                    s_dict[_attr] = getattr(mvv_entry, _attr)
         else:
-            t_name, s_dict = self.get_table_name(entry)
+            t_name, s_dict = self.get_table_name(mvs_entry, mvv_entry)
             if t_name not in self.table_offset:
                 self.table_offset[t_name] = 0
             self.table_offset[t_name] += 1
@@ -152,9 +165,10 @@ class Colorizer(object):
                 _clr = "{}{:02x}".format(_clr, int(s_dict["transparency"]))
         return _clr, s_dict
 
-    def get_table_name(self, entry):
+    def get_table_name(self, mvs_entry, mvv_entry):
         s_dict = {}
-        key_name = entry.get("full", entry.get("name"))
+        key_name = full_graph_key(mvs_entry.key, mvv_entry.key)
+        # print "* key for get_table_name(): ", key_name
         # already cached in fast_lut ?
         if key_name not in self.fast_lut:
             # no, iterate over files
@@ -172,10 +186,11 @@ class Colorizer(object):
         return t_name, s_dict
 
 
-class graph_var(object):
-    def __init__(self, rrd_graph, graph_target, entry, key, dev_name=""):
-        # XML entry
-        self.entry = entry
+class GraphVar(object):
+    def __init__(self, rrd_graph, graph_target, mvs_entry, mvv_entry, key, dev_name=""):
+        # mvs / mvv entry
+        self.mvs_entry = mvs_entry
+        self.mvv_entry = mvv_entry
         # graph key (load.1)
         self.key = key
         # device name
@@ -198,8 +213,8 @@ class graph_var(object):
         return self.entry.attrib.get(key, default)
 
     def info(self, timeshift, forecast):
-        info = self["info"]
-        parts = self["name"].split(".")
+        info = self.mvv_entry.info
+        parts = full_graph_key(self.mvs_entry.key, self.mvv_entry.key).split(".")
         for idx in xrange(len(parts)):
             info = info.replace("${:d}".format(idx + 1), parts[idx])
         info_parts = []
@@ -217,12 +232,12 @@ class graph_var(object):
         )
 
     def get_color_and_style(self):
-        self.color, self.style_dict = self.rrd_graph.colorizer.get_color_and_style(self.entry)
+        self.color, self.style_dict = self.rrd_graph.colorizer.get_color_and_style(self.mvs_entry, self.mvv_entry)
 
     @property
     def create_total(self):
-        if self.entry is not None:
-            return True if self.entry.get("unit", "").endswith("/s") else False
+        if self.mvs_entry is not None:
+            return True if self.mvv_entry.unit.endswith("/s") else False
         else:
             return True
 
@@ -231,12 +246,12 @@ class graph_var(object):
         timeshift = kwargs.get("timeshift", 0)
         self.get_color_and_style()
         src_cf = "AVERAGE"
-        if self.entry.tag == "value":
+        if self.mvs_entry.se_type in ["pde", "mvl"]:
             # pde entry
-            _src_str = "{}:{}:{}".format(self["file_name"], self["part"], src_cf)
+            _src_str = "{}:{}:{}".format(self.mvs_entry.file_name, self.mvv_entry.key, src_cf)
         else:
             # machvector entry
-            _src_str = "{}:v:{}".format(self["file_name"], src_cf)
+            _src_str = "{}:v:{}".format(self.mvs_entry.file_name, src_cf)
         c_lines = [
             "DEF:{}={}".format(self.name, _src_str)
         ]
@@ -360,7 +375,7 @@ class graph_var(object):
             )
         # legend list
         l_list = self.get_legend_list()
-        _unit = self.entry.get("unit", "").replace("%", "%%")
+        _unit = self.mvv_entry.unit.replace("%", "%%")
         # simplify some units
         _unit = {"1": ""}.get(_unit, _unit)
         _sum_unit = _unit
@@ -382,11 +397,13 @@ class graph_var(object):
                 [
                     "VDEF:{}{}={},{}".format(self.name, rep_name, self.name, cf),
                     # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
-                    "PRINT:{}{}:{:d}.{}.{}=%.4lf".format(
+                    # use 3 dots to separate struct from value key, oh boy ...
+                    "PRINT:{}{}:{:d}.{}...{}.{}=%.4lf".format(
                         self.name,
                         rep_name,
                         unique_id,
-                        rrd_escape(self.key),
+                        rrd_escape(self.mvs_entry.key),
+                        rrd_escape(self.mvv_entry.key),
                         cf,
                     ),
                 ]
@@ -469,11 +486,7 @@ class GraphTarget(object):
     def header(self):
         # hacky but working
         if self.graph_keys:
-            if self.graph_keys[0].startswith("mve"):
-                # top-level key for machine vector entries
-                return self.graph_keys[0].split(":")[1].split(".")[0]
-            else:
-                return self.__headers[0]
+            return self.graph_keys[0][0].split(".")[0]
         else:
             return "???"
 
@@ -521,7 +534,7 @@ class GraphTarget(object):
         self.__draw_keys.append((self.__unique, key))
         self.__headers.append(header_str)
         self.defs[(self.__unique, key)] = g_var.graph_def(self.__unique, **kwargs)
-        self.file_names.add(g_var["file_name"])
+        self.file_names.add(g_var.mvs_entry.file_name)
 
     def set_y_mm(self, _min, _max):
         # set min / max values for ordinate
@@ -532,7 +545,11 @@ class GraphTarget(object):
     def removed_key_xml(self):
         return E.removed_keys(
             *[
-                E.removed_key(_key, device="{:d}".format(_pk)) for _pk, _key in self.removed_keys
+                E.removed_key(
+                    struct_key=_key[0],
+                    value_key=_key[1],
+                    device="{:d}".format(_pk)
+                ) for _pk, _key in self.removed_keys
             ]
         )
 
@@ -572,6 +589,46 @@ class GraphTarget(object):
         return _xml
 
 
+class DataSource(object):
+    def __init__(self, log_com, dev_pks, graph_keys):
+        self.__log_com = log_com
+        # lut machinevector_id -> device_id
+        _mv_lut = {_v[1]: _v[0] for _v in MachineVector.objects.filter(Q(device__in=dev_pks)).values_list("device_id", "pk")}
+        _mvs_keys = [_v[0] for _v in graph_keys]
+        _mvv_keys = [_v[1] for _v in graph_keys]
+        # get mvs
+        _mvs_list = MVStructEntry.objects.filter(
+            Q(machine_vector__device__pk__in=dev_pks) &
+            Q(key__in=_mvs_keys)
+        ).prefetch_related("mvvalue_set")
+        self.log(
+            "init datasource for {} / {}, found {}".format(
+                logging_tools.get_plural("device", len(dev_pks)),
+                logging_tools.get_plural("graph key", len(graph_keys)),
+                logging_tools.get_plural("MVStructEntry", _mvs_list.count()),
+            )
+        )
+
+        self.__dict = {}
+        _mvs_dict = {_mvs.key: _mvs for _mvs in _mvs_list}
+
+        for _mvs in _mvs_list:
+            _dev_pk = _mv_lut[_mvs.machine_vector_id]
+            for _mvv in _mvs.mvvalue_set.all():
+                _key = (_mvs.key, _mvv.key)
+                if _key in graph_keys:
+                    self.__dict[(_dev_pk, _key)] = (_mvs, _mvv)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[DS] {}".format(what), log_level)
+
+    def __contains__(self, key):
+        return key in self.__dict
+
+    def __getitem__(self, key):
+        return self.__dict.get(key, None)
+
+
 class RRDGraph(object):
     def __init__(self, graph_root, log_com, colorizer, para_dict, proc):
         self.log_com = log_com
@@ -596,16 +653,23 @@ class RRDGraph(object):
         self.log_com(u"[RRDG] {}".format(what), log_level)
 
     def _create_graph_keys(self, graph_keys):
-        # graph_keys ... list of keys
-        _compounds = False
+        g_key_dict = {}
         first_level_keys = set()
-        top_level_types = set()
+        for s_key, v_key in graph_keys:
+            _flk = s_key.split(".")[0]
+            first_level_keys.add(_flk)
+            # no compound, one graph per top level key
+            g_key_dict.setdefault(_flk, []).append((s_key, v_key))
+        return g_key_dict
+
+    def _create_graph_keys_old(self, graph_keys):
+        # graph_keys ... list of keys
+        first_level_keys = set()
         g_key_dict = {}
         for key in graph_keys:
             _type, _key = key.split(":", 1)
             _flk = _key.split(".")[0]
             first_level_keys.add(_flk)
-            top_level_types.add(_type)
             if _flk == "compound":
                 # compound, one graph per key
                 g_key_dict.setdefault(key, [key])
@@ -754,77 +818,29 @@ class RRDGraph(object):
                     )
         return _ext_args
 
-    def _expand_gk(self, cve_xml, vector, compound):
-        # expand compund vector entry
-        # print etree.tostring(cve_xml, pretty_print=True)
-        _color_tables = {}
-        for _entry in cve_xml:
-            for _info_str, _ref_xml in self._resolve_key(_entry.get("key"), vector, compound):
-                # print "*", _ref_xml
-                # _ref_xml = vector.find(".//mve[@name='{}']".format(_entry.get("key").split(":")[1]))
-                # if _ref_xml is not None:
-                _new_entry = copy.deepcopy(_ref_xml)
-                for _attr in ["color", "draw_type", "invert"]:
-                    _val = _entry.attrib[_attr]
-                    if _attr == "color" and not _val.startswith("#"):
-                        if _val not in _color_tables:
-                            _color_tables[_val] = self.colorizer.simple_color_table(_val)
-                        _val = _color_tables[_val].color
-                    _new_entry.attrib[_attr] = _val
-                yield _new_entry
-        raise StopIteration
+    # def _expand_gk(self, cve_xml, vector, compound):
+    #    # expand compund vector entry
+    #    # print etree.tostring(cve_xml, pretty_print=True)
+    #    _color_tables = {}
+    #    for _entry in cve_xml:
+    #        for _info_str, _ref_xml in self._resolve_key(_entry.get("key"), vector, compound):
+    #            # print "*", _ref_xml
+    #            # _ref_xml = vector.find(".//mve[@name='{}']".format(_entry.get("key").split(":")[1]))
+    #            # if _ref_xml is not None:
+    #            _new_entry = copy.deepcopy(_ref_xml)
+    #            for _attr in ["color", "draw_type", "invert"]:
+    #                _val = _entry.attrib[_attr]
+    #                if _attr == "color" and not _val.startswith("#"):
+    #                    if _val not in _color_tables:
+    #                        _color_tables[_val] = self.colorizer.simple_color_table(_val)
+    #                    _val = _color_tables[_val].color
+    #                _new_entry.attrib[_attr] = _val
+    #            yield _new_entry
+    #    raise StopIteration
 
-    def _resolve_key(self, graph_key, vector, compound):
-        _type, _key = graph_key.split(":", 1)
-        _split = _key.split(".")
-        if _type in ["pde", "mvl"]:
-            # performance data from icinga or vector list data
-            if _type == "pde":
-                _xpath_str = ".//{}[@name='{}']/value[@key='{}']".format(
-                    _type,
-                    ".".join(_split[:1]),
-                    ".".join(_split[1:]),
-                )
-            else:
-                _xpath_str = ".//{}[@name='{}']/value[@key='{}']".format(
-                    _type,
-                    ".".join(_split[:-1]),
-                    ".".join(_split[-1:]),
-                )
-            def_xmls = vector.xpath(
-                _xpath_str,
-                smart_strings=False
-            )
-            if len(def_xmls):
-                _parent = def_xmls[0].getparent()
-                # needed ?
-                def_xml = copy.deepcopy(def_xmls[0])
-                def_xml.attrib["file_name"] = _parent.get("file_name")
-                # copy name to part
-                if _type == "pde":
-                    def_xml.attrib["part"] = def_xml.attrib["name"]
-                else:
-                    def_xml.attrib["part"] = def_xml.attrib["key"].split(".")[-1]
-                # overwrite name
-                def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
-                yield (_parent.get("info"), def_xml)
-            else:
-                self.log("no elements found for XPath('{}')".format(_xpath_str), logging_tools.LOG_LEVEL_WARN)
-        elif _type == "cve":
-            if compound is not None:
-                def_xml = compound.find(".//cve[@name='{}']".format(_key))
-                if def_xml is not None:
-                    for sub_xml in self._expand_gk(def_xml, vector, compound):
-                        yield (def_xml.attrib["info"], sub_xml)
-        else:
-            # machine vector entry
-            def_xml = vector.find(".//mve[@name='{}']".format(_key))
-            if def_xml is not None:
-                yield (def_xml.attrib["info"], def_xml)
-        raise StopIteration
-
-    def graph(self, vector_dict, compound_dict, dev_pks, graph_keys):
+    def graph(self, dev_pks, graph_keys):
         # end time with forecast
+        local_ds = DataSource(self.log_com, dev_pks, graph_keys)
         self.para_dict["end_time_fc"] = self.para_dict["end_time"]
         if self.para_dict["show_forecast"]:
             self.para_dict["end_time_fc"] += self.para_dict["end_time"] - self.para_dict["start_time"]
@@ -853,7 +869,7 @@ class RRDGraph(object):
         )
         self.log(
             "graph keys: {}".format(
-                ", ".join(graph_keys)
+                ", ".join([full_graph_key(_v) for _v in graph_keys])
             )
         )
         self.log(
@@ -939,48 +955,47 @@ class RRDGraph(object):
                         "-cBACK#ffffff",
                         "--end", "{:d}".format(self.abs_end_time),  # end
                         "--start", "{:d}".format(self.abs_start_time),  # start
-                        graph_var(self, _graph_target, None, "").header_line,
+                        GraphVar(self, _graph_target, None, None, "").header_line,
                     ]
                     # reset graph keys
                     _graph_target.reset_keys()
                     for graph_key in sorted(_graph_target.graph_keys):
                         for _cur_id, cur_pk in _graph_target.dev_list:
-                            # improvement: resolve iteratively (for compounds), beautify code
-                            dev_vector = vector_dict[cur_pk]
-                            dev_compound = compound_dict[cur_pk]
-                            for header_str, def_xml in self._resolve_key(graph_key, dev_vector, dev_compound):
+                            if (cur_pk, graph_key) in local_ds:
+                                # resolve
+                                _mvs, _mvv = local_ds[(cur_pk, graph_key)]
                                 _take = True
-                                if "file_name" in def_xml.attrib:
-                                    try:
-                                        if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
-                                            self.log(
-                                                "skipping {} (file is too small)".format(
-                                                    def_xml.attrib["file_name"]
-                                                ),
-                                                logging_tools.LOG_LEVEL_ERROR
-                                            )
-                                            _take = False
-                                    except:
+                                try:
+                                    if os.stat(_mvs.file_name)[stat.ST_SIZE] < 100:
                                         self.log(
-                                            "RRD file {} not accessible: {}".format(
-                                                def_xml.attrib["file_name"],
-                                                process_tools.get_except_info(),
+                                            "skipping {} (file is too small)".format(
+                                                _mvs.file_name,
                                             ),
                                             logging_tools.LOG_LEVEL_ERROR
                                         )
                                         _take = False
+                                except:
+                                    self.log(
+                                        "RRD file {} not accessible: {}".format(
+                                            _mvs.file_name,
+                                            process_tools.get_except_info(),
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
+                                    _take = False
                                 if _take:
                                     # store def
                                     _graph_target.add_def(
                                         graph_key,
-                                        graph_var(
+                                        GraphVar(
                                             self,
                                             _graph_target,
-                                            def_xml,
+                                            _mvs,
+                                            _mvv,
                                             graph_key,
                                             dev_dict[cur_pk]
                                         ),
-                                        header_str,
+                                        "header_str",
                                         timeshift=self.para_dict["timeshift"]
                                     )
                     if _graph_target.defs:
@@ -1036,9 +1051,10 @@ class RRDGraph(object):
                                         value = None if value == 0.0 else value
                                     # extract device pk from key
                                     _unique_id = int(_split.pop(0))
-                                    _key = ".".join(_split)
+                                    _sum_key = ".".join(_split)
+                                    _s_key, _v_key = _sum_key.split("...")
                                     if value is not None:
-                                        val_dict.setdefault((_unique_id, _key), {})[cf] = value
+                                        val_dict.setdefault((_unique_id, (_s_key, _v_key)), {})[cf] = value
                                 # check if the graphs shall always include y=0
                                 draw_it = False
                                 if self.para_dict["include_zero"]:
@@ -1107,8 +1123,6 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
         )
         connection.close()
         self.register_func("graph_rrd", self._graph_rrd)
-        # self.vector_dict = {}
-        # self.compound_dict = {}
         self.graph_root = global_config["GRAPH_ROOT"]
         self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]
         self.log("graphs go into {} for non-debug calls and into {} for debug calls".format(self.graph_root, self.graph_root_debug))
@@ -1175,21 +1189,17 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
         else:
             self.log("no file names given, skipping flush()", logging_tools.LOG_LEVEL_WARN)
 
-    # def _xml_info(self, *args, **kwargs):
-    #    dev_id, xml_str = (args[0], etree.fromstring(args[1]))  # @UndefinedVariable
-    #    if args[2]:
-    #        self.compound_dict[dev_id] = etree.fromstring(args[2])  # @UndefinedVariable
-    #    else:
-    #    #    self.compound_dict[dev_id] = None
-    #    #self.vector_dict[dev_id] = xml_str  # self._struct_vector(xml_str)
-
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks = device.objects.filter(
             Q(pk__in=srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) &
             Q(machinevector__pk__gt=0)
         ).values_list("pk", flat=True)
-        graph_keys = sorted(srv_com.xpath(".//graph_key_list/graph_key/text()", smart_strings=False))
+        graph_keys = sorted(
+            [
+                (_el.get("struct_key"), _el.get("value_key")) for _el in srv_com.xpath(".//graph_key_list/graph_key[@struct_key]", smart_strings=False)
+            ]
+        )
         para_dict = {}
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text
@@ -1217,7 +1227,7 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
                 self.colorizer,
                 para_dict,
                 self
-            ).graph(self.vector_dict, self.compound_dict, dev_pks, graph_keys)
+            ).graph(dev_pks, graph_keys)
         except:
             for _line in process_tools.exception_info().log_lines:
                 self.log(_line, logging_tools.LOG_LEVEL_ERROR)

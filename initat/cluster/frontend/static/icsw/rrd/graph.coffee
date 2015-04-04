@@ -346,6 +346,7 @@ angular.module(
                 $scope.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, $scope._child_sort)
+            cur_node._key_pair = [top.key, entry.key]
             cur_node.node= entry
             cur_node._name = entry.name
             cur_node._display_name = $scope._expand_info(entry.info, g_key)
@@ -441,7 +442,7 @@ angular.module(
                 icswCallAjaxService
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
-                        "keys"       : angular.toJson($scope.cur_selected)
+                        "keys"       : angular.toJson(($scope.lut[key]._key_pair for key in $scope.cur_selected))
                         "pks"        : angular.toJson($scope.devsel_list)
                         "start_time" : moment($scope.from_date_mom).format(DT_FORM)
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
