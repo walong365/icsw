@@ -25,7 +25,7 @@ from initat.cluster.backbone.models import device, MVStructEntry, MachineVector
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.graph import graph_process
-from initat.rrd_grapher.struct import data_store
+from initat.rrd_grapher.struct import DataStore
 from lxml.builder import E  # @UnresolvedImport
 import cluster_location
 import configfile
@@ -65,7 +65,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
         self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
-        data_store.setup(self)
+        DataStore.setup(self)
 
     def _log_config(self):
         self.log("Config info:")
@@ -250,10 +250,10 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk", smart_strings=False)]
         for dev_pk in pk_list:
             cur_res = {"pk": dev_pk}
-            if data_store.has_machine_vector(dev_pk):
+            if DataStore.has_machine_vector(dev_pk):
                 # web mode (sorts entries)
-                _struct = data_store.get_instance(dev_pk).vector_struct()
-                _struct.extend(data_store.compound_struct(_struct))
+                _struct = DataStore.get_instance(dev_pk).vector_struct()
+                _struct.extend(DataStore.compound_struct(_struct))
                 cur_res["struct"] = _struct
             else:
                 self.log("no machine_vector found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)

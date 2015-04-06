@@ -42,7 +42,7 @@ class d_graph
         @cropped = false
         @removed_keys = []
         for entry in @xml.find("removed_keys removed_key")
-            @removed_keys.push($(entry).text())
+            @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
     get_devices: () ->
         dev_names = ($(entry).text() for entry in @xml.find("devices device"))
         return dev_names.join(", ")
@@ -73,6 +73,19 @@ class d_graph
       
 DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
+full_draw_key = (s_key, v_key) ->
+    _key = s_key
+    if v_key
+        _key = "#{_key}.#{v_key}"
+    return _key
+
+get_node_keys = (node) ->
+    # mapping for graph.py
+    return {
+        "struct_key": node._key_pair[0]
+        "value_key": node._key_pair[1]
+        "build_info": if node.build_info? then node.build_info else "",
+    }
 class pd_timerange
     constructor: (@name, @from, @to) ->
     get_from: (cur_from, cur_to) =>
@@ -245,7 +258,7 @@ angular.module(
                 $scope.num_struct = 0
                 $scope.num_mve = 0
                 for dev in json
-                    if dev.struct.length
+                    if dev.struct? and dev.struct.length
                         $scope.add_machine_vector(root_node, dev.pk, dev.struct)
                         #if dev._nodes.length > 1
                         #    # compound
@@ -289,12 +302,12 @@ angular.module(
                         {
                             folder : true,
                             expand : false
-                            _name  : _part
                             _display_name: _part
                             _mult : 1
                             _dev_pks : [$scope.mv_dev_pk]
                             _node_type : "s"
                             _show_select: false
+                            build_info: ""
                         }
                     )
                     $scope.num_struct++
@@ -348,10 +361,10 @@ angular.module(
                 parent.add_child(cur_node, $scope._child_sort)
             cur_node._key_pair = [top.key, entry.key]
             cur_node.node= entry
-            cur_node._name = entry.name
             cur_node._display_name = $scope._expand_info(entry.info, g_key)
             cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
+            cur_node.build_info = entry.build_info
             cur_node.folder = false
             cur_node._show_select = true
             cur_node._g_key = g_key
@@ -414,7 +427,7 @@ angular.module(
             $scope.g_tree.iter(
                 (entry, cur_re) ->
                     if entry._node_type in ["e"]
-                        entry.set_selected(if (entry._name.match(cur_re) or entry._g_key.match(cur_re)) then true else false)
+                        entry.set_selected(if (entry._display_name.match(cur_re) or entry._g_key.match(cur_re)) then true else false)
                 cur_re
             )
             $scope.g_tree.show_selected(false)
@@ -442,7 +455,7 @@ angular.module(
                 icswCallAjaxService
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
-                        "keys"       : angular.toJson(($scope.lut[key]._key_pair for key in $scope.cur_selected))
+                        "keys"       : angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
                         "pks"        : angular.toJson($scope.devsel_list)
                         "start_time" : moment($scope.from_date_mom).format(DT_FORM)
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)

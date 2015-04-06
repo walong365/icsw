@@ -100,9 +100,11 @@ class graph_rrds(View):
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list + cd_pks]
         )
-        srv_com["graph_key_list"] = E.graph_key_list(
-            *[E.graph_key(struct_key=graph_key[0], value_key=graph_key[1]) for graph_key in graph_keys]
-        )
+        # simply copy the graph-keys as a json dump
+        srv_com["graph_key_list"] = json.dumps(graph_keys)
+        # E.graph_key_list(
+        #     *[E.graph_key(**graph_attrs) for graph_attrs in graph_keys]
+        # )
         if "start_time" in _post:
             start_time = dateutil.parser.parse(_post["start_time"])
             end_time = dateutil.parser.parse(_post["end_time"])

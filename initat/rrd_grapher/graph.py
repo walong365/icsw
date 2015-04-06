@@ -22,7 +22,8 @@
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, MVStructEntry, MVValue
+from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
+    MVStructEntry, MVValueEntry
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
@@ -37,6 +38,7 @@ import re
 import rrdtool  # @UnresolvedImport
 import select
 import server_command
+import json
 import server_mixins
 import socket
 import stat
@@ -47,9 +49,12 @@ import uuid
 FLOAT_FMT = "{:.6f}"
 
 
-def full_graph_key(*args, **kwargs):
+def full_graph_key(*args):
+    # create a string representation
     if type(args[0]) == tuple:
         s_key, v_key = args[0]
+    elif type(args[0]) == dict:
+        s_key, v_key = (args[0]["struct_key"], args[0]["value_key"])
     else:
         s_key, v_key = args
     return "{}{}".format(
@@ -188,6 +193,7 @@ class Colorizer(object):
 
 class GraphVar(object):
     def __init__(self, rrd_graph, graph_target, mvs_entry, mvv_entry, key, dev_name=""):
+        # print key, mvs_entry, mvv_entry
         # mvs / mvv entry
         self.mvs_entry = mvs_entry
         self.mvv_entry = mvv_entry
@@ -590,34 +596,77 @@ class GraphTarget(object):
 
 
 class DataSource(object):
-    def __init__(self, log_com, dev_pks, graph_keys):
+    def __init__(self, log_com, dev_pks, graph_keys, colorizer):
         self.__log_com = log_com
+        self.__colorizer = colorizer
         # lut machinevector_id -> device_id
         _mv_lut = {_v[1]: _v[0] for _v in MachineVector.objects.filter(Q(device__in=dev_pks)).values_list("device_id", "pk")}
-        _mvs_keys = [_v[0] for _v in graph_keys]
-        _mvv_keys = [_v[1] for _v in graph_keys]
-        # get mvs
-        _mvs_list = MVStructEntry.objects.filter(
-            Q(machine_vector__device__pk__in=dev_pks) &
-            Q(key__in=_mvs_keys)
-        ).prefetch_related("mvvalue_set")
+        self.__flat_keys = [(_v["struct_key"], _v["value_key"]) for _v in graph_keys]
+        _query_keys = set([full_graph_key(_key) for _key in self.__flat_keys])
+        # expand compounds
+        _compound_dict = {}
+        for _req in graph_keys:
+            if _req.get("build_info", ""):
+                _key = (_req["struct_key"], _req["value_key"])
+                _full_key = full_graph_key(_key)
+                _build_info = process_tools.decompress_struct(_req["build_info"])
+                _compound_dict[_key] = []
+                for _entry in _build_info:
+                    _query_keys.add(_entry["key"])
+                    _compound_dict[_key].append(_entry)
+        # pprint.pprint(_compound_dict)
+        # get mvv_list
+        _mvv_list = MVValueEntry.objects.filter(
+            Q(full_key__in=_query_keys) &
+            Q(mv_struct_entry__machine_vector__device__in=dev_pks)
+        ).select_related("mvstructentry")
+        _mvv_dict = {_mvv.full_key: _mvv for _mvv in _mvv_list}
         self.log(
             "init datasource for {} / {}, found {}".format(
                 logging_tools.get_plural("device", len(dev_pks)),
                 logging_tools.get_plural("graph key", len(graph_keys)),
-                logging_tools.get_plural("MVStructEntry", _mvs_list.count()),
+                logging_tools.get_plural("MVValueEntry", _mvv_list.count()),
             )
         )
-
+        # format: key = (dev_pk, (struct_key, value_key)); value = (mvs, mvv)
         self.__dict = {}
-        _mvs_dict = {_mvs.key: _mvs for _mvs in _mvs_list}
+        # first step: check for flat (non-compound) keys
+        for _flat in self.flat_keys:
+            _fk = full_graph_key(_flat)
+            if _fk in _mvv_dict:
+                _mvv = _mvv_dict[_fk]
+                _mvs = _mvv.mv_struct_entry
+                _dev_pk = _mv_lut[_mvs.machine_vector_id]
+                self.__dict[(_dev_pk, _flat)] = [(_mvs, _mvv)]
+        # color tables
+        _color_tables = {}
+        # second step: resolve compounds (its important to keep the order)
+        for _c_key, _cs in _compound_dict.iteritems():
+            # reset colorizer
+            self.__colorizer.reset()
+            for _entry in _cs:
+                if _entry["key"] in _mvv_dict:
+                    _mvv = _mvv_dict[_entry["key"]]
+                    _mvs = _mvv.mv_struct_entry
+                    _dev_pk = _mv_lut[_mvs.machine_vector_id]
+                    if "color" in _entry and not _entry["color"].startswith("#"):
+                        # lookup color table
+                        _clr = _entry["color"]
+                        if _clr not in _color_tables:
+                            _color_tables[_clr] = self.__colorizer.simple_color_table(_clr)
+                        _entry["color"] = _color_tables[_clr].color
+                    self.__dict.setdefault((_dev_pk, _c_key), []).append(
+                        (
+                            _mvs,
+                            _mvv.copy_and_modify(_entry),
+                        )
+                    )
 
-        for _mvs in _mvs_list:
-            _dev_pk = _mv_lut[_mvs.machine_vector_id]
-            for _mvv in _mvs.mvvalue_set.all():
-                _key = (_mvs.key, _mvv.key)
-                if _key in graph_keys:
-                    self.__dict[(_dev_pk, _key)] = (_mvs, _mvv)
+
+    @property
+    def flat_keys(self):
+        # list of a tuple of all requested (not expanded) (mvs, mvv) keys
+        return self.__flat_keys
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[DS] {}".format(what), log_level)
@@ -626,7 +675,8 @@ class DataSource(object):
         return key in self.__dict
 
     def __getitem__(self, key):
-        return self.__dict.get(key, None)
+        # return a list of values
+        return self.__dict.get(key, [])
 
 
 class RRDGraph(object):
@@ -654,12 +704,15 @@ class RRDGraph(object):
 
     def _create_graph_keys(self, graph_keys):
         g_key_dict = {}
-        first_level_keys = set()
-        for s_key, v_key in graph_keys:
-            _flk = s_key.split(".")[0]
-            first_level_keys.add(_flk)
-            # no compound, one graph per top level key
-            g_key_dict.setdefault(_flk, []).append((s_key, v_key))
+        for key_dict in graph_keys:
+            s_key, v_key = (key_dict["struct_key"], key_dict["value_key"])
+            if key_dict.get("build_info", ""):
+                # is a compound (has build info)
+                g_key_dict.setdefault(full_graph_key(key_dict), []).append((s_key, v_key))
+            else:
+                _flk = s_key.split(".")[0]
+                # no compound, one graph per top level key
+                g_key_dict.setdefault(_flk, []).append((s_key, v_key))
         return g_key_dict
 
     def _create_graph_keys_old(self, graph_keys):
@@ -818,29 +871,9 @@ class RRDGraph(object):
                     )
         return _ext_args
 
-    # def _expand_gk(self, cve_xml, vector, compound):
-    #    # expand compund vector entry
-    #    # print etree.tostring(cve_xml, pretty_print=True)
-    #    _color_tables = {}
-    #    for _entry in cve_xml:
-    #        for _info_str, _ref_xml in self._resolve_key(_entry.get("key"), vector, compound):
-    #            # print "*", _ref_xml
-    #            # _ref_xml = vector.find(".//mve[@name='{}']".format(_entry.get("key").split(":")[1]))
-    #            # if _ref_xml is not None:
-    #            _new_entry = copy.deepcopy(_ref_xml)
-    #            for _attr in ["color", "draw_type", "invert"]:
-    #                _val = _entry.attrib[_attr]
-    #                if _attr == "color" and not _val.startswith("#"):
-    #                    if _val not in _color_tables:
-    #                        _color_tables[_val] = self.colorizer.simple_color_table(_val)
-    #                    _val = _color_tables[_val].color
-    #                _new_entry.attrib[_attr] = _val
-    #            yield _new_entry
-    #    raise StopIteration
-
     def graph(self, dev_pks, graph_keys):
         # end time with forecast
-        local_ds = DataSource(self.log_com, dev_pks, graph_keys)
+        local_ds = DataSource(self.log_com, dev_pks, graph_keys, self.colorizer)
         self.para_dict["end_time_fc"] = self.para_dict["end_time"]
         if self.para_dict["show_forecast"]:
             self.para_dict["end_time_fc"] += self.para_dict["end_time"] - self.para_dict["start_time"]
@@ -959,45 +992,49 @@ class RRDGraph(object):
                     ]
                     # reset graph keys
                     _graph_target.reset_keys()
+                    # outer loop: iterate over all keys for the graph
                     for graph_key in sorted(_graph_target.graph_keys):
+                        # inner loop: iterate over all dev ids for the graph
                         for _cur_id, cur_pk in _graph_target.dev_list:
+                            # print "***", _cur_id, cur_pk
                             if (cur_pk, graph_key) in local_ds:
                                 # resolve
-                                _mvs, _mvv = local_ds[(cur_pk, graph_key)]
-                                _take = True
-                                try:
-                                    if os.stat(_mvs.file_name)[stat.ST_SIZE] < 100:
+                                for _mvs, _mvv in local_ds[(cur_pk, graph_key)]:
+                                    _take = True
+                                    try:
+                                        if os.stat(_mvs.file_name)[stat.ST_SIZE] < 100:
+                                            self.log(
+                                                "skipping {} (file is too small)".format(
+                                                    _mvs.file_name,
+                                                ),
+                                                logging_tools.LOG_LEVEL_ERROR
+                                            )
+                                            _take = False
+                                    except:
                                         self.log(
-                                            "skipping {} (file is too small)".format(
+                                            "RRD file {} not accessible: {}".format(
                                                 _mvs.file_name,
+                                                process_tools.get_except_info(),
                                             ),
                                             logging_tools.LOG_LEVEL_ERROR
                                         )
                                         _take = False
-                                except:
-                                    self.log(
-                                        "RRD file {} not accessible: {}".format(
-                                            _mvs.file_name,
-                                            process_tools.get_except_info(),
-                                        ),
-                                        logging_tools.LOG_LEVEL_ERROR
-                                    )
-                                    _take = False
-                                if _take:
-                                    # store def
-                                    _graph_target.add_def(
-                                        graph_key,
-                                        GraphVar(
-                                            self,
-                                            _graph_target,
-                                            _mvs,
-                                            _mvv,
-                                            graph_key,
-                                            dev_dict[cur_pk]
-                                        ),
-                                        "header_str",
-                                        timeshift=self.para_dict["timeshift"]
-                                    )
+                                    if _take:
+                                        # print "**", graph_key, _mvs.key, _mvv.key
+                                        # store def
+                                        _graph_target.add_def(
+                                            (_mvs.key, _mvv.key),
+                                            GraphVar(
+                                                self,
+                                                _graph_target,
+                                                _mvs,
+                                                _mvv,
+                                                graph_key,
+                                                dev_dict[cur_pk]
+                                            ),
+                                            "header_str",
+                                            timeshift=self.para_dict["timeshift"]
+                                        )
                     if _graph_target.defs:
                         draw_it = True
                         removed_keys = set()
@@ -1055,6 +1092,7 @@ class RRDGraph(object):
                                     _s_key, _v_key = _sum_key.split("...")
                                     if value is not None:
                                         val_dict.setdefault((_unique_id, (_s_key, _v_key)), {})[cf] = value
+                                # pprint.pprint(val_dict)
                                 # check if the graphs shall always include y=0
                                 draw_it = False
                                 if self.para_dict["include_zero"]:
@@ -1195,11 +1233,11 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
             Q(pk__in=srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) &
             Q(machinevector__pk__gt=0)
         ).values_list("pk", flat=True)
-        graph_keys = sorted(
-            [
-                (_el.get("struct_key"), _el.get("value_key")) for _el in srv_com.xpath(".//graph_key_list/graph_key[@struct_key]", smart_strings=False)
-            ]
-        )
+        graph_keys = json.loads(srv_com["*graph_key_list"])
+        #    [
+        #        (_el.get("struct_key"), _el.get("value_key")) for _el in srv_com.xpath(".//graph_key_list/graph_key[@struct_key]", smart_strings=False)
+        #    ]
+        # )
         para_dict = {}
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text

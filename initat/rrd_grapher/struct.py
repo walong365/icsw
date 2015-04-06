@@ -21,7 +21,7 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models import MachineVector, MVStructEntry, MVValue
+from initat.cluster.backbone.models import MachineVector, MVStructEntry, MVValueEntry
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
@@ -112,36 +112,38 @@ class compound_entry(object):
             # update dict with attribute dicts from the top-level node
             gd.update({_sk: _sv for _sk, _sv in ref_dict[key][0].iteritems() if _sk in ["info"]})
         # expand according to dict
-        _key = self.__key.format(**gd)
+        compound_key = self.__key.format(**gd)
         _info = "{} ({:d})".format(self.__info.format(**gd), len(m_list))
+        # build info
+        _build_info = [
+            {
+                "key": _s_key,
+                "color": _xml.attrib["color"],
+                "draw_type": _xml.get("draw_type", "LINE1"),
+                "invert": _xml.get("invert", "0"),
+            } for _s_key, _xml, in m_list
+        ]
         _node = [
             {
                 # should not be needed for display
                 # "type": "compound",
                 "fn": "",
                 "ti": "",
-                "key": _key,
+                "key": compound_key,
                 "is_active": True,
+                "is_compound": True,
                 "mvvs": [
                     {
                         "unit": "",
                         "info": _info,
                         "key": "",
+                        "build_info": process_tools.compress_struct(_build_info),
                         # "color": _xml.attrib["color"],
                         # "draw_type": _xml.get("draw_type", "LINE1"),
                         # "invert": _xml.get("invert", "0"),
                     }  #
                 ],
             }
-        ]
-        # build info, to be synced to the graphing process
-        _build_info = [
-            {
-                "key": _key,
-                "color": _xml.attrib["color"],
-                "draw_type": _xml.get("draw_type", "LINE1"),
-                "invert": _xml.get("invert", "0"),
-            } for _key, _xml, in m_list
         ]
         return _node
 
@@ -283,25 +285,30 @@ class compound_tree(object):
         return _compounds
 
 
-class data_store(object):
+class DataStore(object):
     def __init__(self, machine_vector):
         self.mv = machine_vector
         self.pk = machine_vector.device.pk
         self.name = unicode(machine_vector.device.full_name)
         # self.xml_vector = E.machine_vector()
         # link
-        data_store.__devices[self.pk] = self
+        DataStore.__devices[self.pk] = self
 
     def vector_struct(self):
         _struct = []
-        for mvs in MVStructEntry.objects.filter(Q(machine_vector=self.mv)).prefetch_related("mvvalue_set"):
+        for mvs in MVStructEntry.objects.filter(Q(machine_vector=self.mv)).prefetch_related("mvvalueentry_set"):
             mvv_list = []
-            for mvv in mvs.mvvalue_set.all():
+            for mvv in mvs.mvvalueentry_set.all():
+                if not mvv.full_key:
+                    mvv.full_key = "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")
+                    mvv.save(update_fields=["full_key"])
+                    self.log("correcting full_key of {}".format(unicode(mvv)), logging_tools.LOG_LEVEL_WARN)
                 mvv_list.append(
                     {
                         "unit": mvv.unit,
                         "info": mvv.info,
                         "key": mvv.key,
+                        "build_info": "",
                     }
                 )
             _struct.append(
@@ -320,10 +327,10 @@ class data_store(object):
     @staticmethod
     def compound_struct(in_list):
         try:
-            _comps = data_store.compound_tree.append_compounds(in_list)
+            _comps = DataStore.compound_tree.append_compounds(in_list)
         except:
             for _line in process_tools.exception_info().log_lines:
-                data_store.g_log(_line, logging_tools.LOG_LEVEL_ERROR)
+                DataStore.g_log(_line, logging_tools.LOG_LEVEL_ERROR)
             _comps = []
         else:
             # pprint.pprint(_comps)
@@ -331,7 +338,7 @@ class data_store(object):
         return _comps
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        data_store.process.log(
+        DataStore.process.log(
             "[ds {}] {}".format(
                 self.name,
                 what
@@ -341,32 +348,32 @@ class data_store(object):
 
     @staticmethod
     def has_machine_vector(dev_pk):
-        return dev_pk in data_store.__devices
+        return dev_pk in DataStore.__devices
 
     @staticmethod
     def present_pks():
-        return data_store.__devices.keys()
+        return DataStore.__devices.keys()
 
     @staticmethod
     def get_instance(pk):
-        return data_store.__devices[pk]
+        return DataStore.__devices[pk]
 
     @staticmethod
     def setup(srv_proc):
-        data_store.process = srv_proc
-        data_store.g_log("init")
-        data_store.debug = global_config["DEBUG"]
-        # pk -> data_store
-        data_store.__devices = {}
-        # data_store.store_dir = os.path.join(global_config["RRD_DIR"], "data_store")
+        DataStore.process = srv_proc
+        DataStore.g_log("init")
+        DataStore.debug = global_config["DEBUG"]
+        # pk -> DataStore
+        DataStore.__devices = {}
+        # DataStore.store_dir = os.path.join(global_config["RRD_DIR"], "DataStore")
         # if not os.path.isdir(data_store.store_dir):
         #     os.mkdir(data_store.store_dir)
         # entry_re = re.compile("^(?P<full_name>.*)_(?P<pk>\d+).info.xml$")
         for mv in MachineVector.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)):
-            data_store.g_log("building structure for {}".format(unicode(mv.device)))
-            new_ds = data_store(mv)
-        data_store.compound_tree = compound_tree(data_store.g_log)
+            DataStore.g_log("building structure for {}".format(unicode(mv.device)))
+            new_ds = DataStore(mv)
+        DataStore.compound_tree = compound_tree(DataStore.g_log)
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        data_store.process.log("[ds] {}".format(what), log_level)
+        DataStore.process.log("[ds] {}".format(what), log_level)
