@@ -174,7 +174,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
 def can_delete_obj(obj, logger=None):
     """
     Check is obj is referenced in models which are not in fk_ignore_list
-    NOTE: references with SET_NULL are not returned.
+    NOTE: references which are set to NULL on delete are considered deletable
     :return: Response obj which can be evaluated to bool and contains a "msg"-field
     """
     from initat.cluster.backbone.models import device

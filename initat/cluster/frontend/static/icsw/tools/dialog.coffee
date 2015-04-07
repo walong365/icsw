@@ -10,6 +10,11 @@ angular.module(
     $compile, $templateCache, toaster, blockUI, $interval) ->
         # Ask whether to delete object, then deal with references (show popup querying user for actions)
 
+        # we have 3 functions here:
+        # - try_delete: initial contact with server, check which references the objs have
+        # - show_delete_dlg: shows dlg to select how to deal with references
+        # - actual_delete: handles asynchr./synchr. delete
+
         return (objects_to_delete, model, after_delete) ->
             # objects_to_delete: list of things which have 'idx' and 'name'
             # model: name in initat.cluster.backbone.models which contains the objects
@@ -101,6 +106,8 @@ angular.module(
 
                 _check_dialog_empty = () ->
                     if child_scope.deletable_objects.length == 0 && Object.keys(child_scope.related_objects).length == 0
+                        if after_delete?
+                            after_delete()
                         child_scope.modal.close()
 
                 child_scope.async_delete = true

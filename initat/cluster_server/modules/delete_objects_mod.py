@@ -83,6 +83,7 @@ class handle_delete_requests(cs_base_class.server_com):
                 for entry in delete_strategy_list:
                     delete_strategies[(entry['model'], entry['field_name'])] = entry['selected_action']
 
+                # get references again and apply the selected strategy for each according to delete_strategies
                 can_delete_answer = can_delete_obj(obj_to_delete)
                 for rel_obj in can_delete_answer.related_objects:
                     dict_key = (rel_obj.model._meta.object_name, rel_obj.field.name)

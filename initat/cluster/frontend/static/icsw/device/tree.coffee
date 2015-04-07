@@ -198,10 +198,10 @@ device_module = angular.module(
                             $scope.reload()
                             reload_sidebar_tree()
         $scope.delete = (a_name, obj) ->
-            icswDialogDeleteObjects([obj], a_name, () -> $scope.reload(false))
+            icswDialogDeleteObjects([obj], a_name, () -> $scope.reload(false))  # set blocking to false because it might happen in background of the delete dlg
         $scope.delete_many = (event) ->
             to_delete_list = (entry for entry in $scope.entries when entry.is_meta_device == false and entry.selected)
-            icswDialogDeleteObjects(to_delete_list, "device", () -> $scope.reload(false))
+            icswDialogDeleteObjects(to_delete_list, "device", () -> $scope.reload(false)) # set blocking to false because it might happen in background of the delete dlg
         $scope.get_action_string = () ->
             return if $scope.create_mode then "Create" else "Modify"
         $scope.rest_data_set = () ->

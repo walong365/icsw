@@ -329,7 +329,6 @@ class detail_view(mixins.RetrieveModelMixin,
             raise ValueError(can_delete_answer.msg)
 
 
-
 class list_view(mixins.ListModelMixin,
                 mixins.CreateModelMixin,
                 generics.MultipleObjectAPIView,

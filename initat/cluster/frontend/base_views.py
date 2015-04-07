@@ -283,7 +283,7 @@ class CheckDeleteObject(View):
                 # print 'build 2nd level rel list', time.time() - a
             # print 'obj', obj_pk, ' took ', time.time() - a
 
-        # json can't deal with datetime
+        # json can't deal with datetime, django formatter doesn't have nice dates
         def formatter(x):
             if isinstance(x, datetime.datetime):
                 return x.strftime("%Y-%m-%d %H:%M")
@@ -307,8 +307,8 @@ class AddDeleteRequest(View):
         for obj_pk in obj_pks:
             obj = model.objects.get(pk=obj_pk)
 
-            if hasattr(obj, "disabled"):
-                obj.disabled = True
+            if hasattr(obj, "enabled"):
+                obj.enabled = False
                 obj.save()
 
             if DeleteRequest.objects.filter(obj_pk=obj_pk, model=model_name).exists():

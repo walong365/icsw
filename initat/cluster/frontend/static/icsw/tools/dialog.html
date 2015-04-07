@@ -11,19 +11,11 @@
 
             <p>&nbsp;</p>
         </div>
-        <!--
-    </div>
-        <div class="well well-sm form" style="margin-bottom: 10px">
-        -->
 
         <div ng-show="deletable_objects.length > 0">
             <legend>
                 Deletable without deleting hard references
             </legend>
-
-            <!--
-            <h3> Only following devices are deletable without deleting references: </h3>
-            -->
 
             <div class="form">
                 <div class="checkbox" ng-repeat="del_obj_pk in deletable_objects">
@@ -40,11 +32,6 @@
 
             <p>&nbsp;</p>
         </div>
-        <!--
-
-        <div ng-show="deletable_objects.length > 0" class="well well-sm" style="margin-bottom: 10px">
-    </div>
-    -->
 
         <div ng-show="!is_empty_object(related_objects)">
 
@@ -55,19 +42,9 @@
             cascades.
             Please select actions for each of these devices.
 
-            <!--
-            <div class="panel panel-default" ng-repeat="(obj_pk, ref_list) in related_objects">
-            -->
             <tabset>
                 <tab ng-repeat="(obj_pk, ref_list) in related_objects" heading="{{ get_object_by_idx(obj_pk).name }}">
                     <!-- obj_pk is string! -->
-                    <!--
-                    <div class="panel-heading">
-                        <strong style="margin-top: 4px; margin-bottom: 0px;">
-                            Hard references of {{ get_object_by_idx(obj_pk).name }}
-                        </strong>
-                    </div>
-                    -->
 
                     <div class="panel-body">
 
