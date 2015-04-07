@@ -779,6 +779,7 @@ class device_mon_location(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Monitoring location"
 
 
 @receiver(signals.pre_save, sender=device_mon_location)

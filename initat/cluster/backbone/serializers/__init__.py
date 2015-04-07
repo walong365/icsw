@@ -54,7 +54,7 @@ from initat.cluster.backbone.models import device, device_selection, device_conf
     LogSource, LogLevel, device_group, cluster_license, device_type, mac_ignore, \
     macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
     quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting, \
-    DeviceSNMPInfo
+    DeviceSNMPInfo, DeleteRequest
 
 from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
@@ -206,6 +206,7 @@ class device_serializer(serializers.ModelSerializer):
     monitor_type = serializers.Field(source="get_monitor_type")
     snmp_schemes = snmp_scheme_serializer(many=True, read_only=True)
     DeviceSNMPInfo = DeviceSNMPInfoSerializer(read_only=True)
+    is_deleting = serializers.SerializerMethodField("get_is_deleting")
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
@@ -226,6 +227,9 @@ class device_serializer(serializers.ModelSerializer):
 
     def get_access_levels(self, obj):
         return {key: value for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()}
+
+    def get_is_deleting(self, obj):
+        return DeleteRequest.objects.filter(model=device.__name__, obj_pk=obj.pk).exists()
 
     class Meta:
         model = device
@@ -265,6 +269,7 @@ class device_serializer(serializers.ModelSerializer):
             "uuid",
             # active_scan
             "active_scan",
+            "is_deleting",
         )
         read_only_fields = ("uuid",)
 

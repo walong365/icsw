@@ -23,6 +23,7 @@ from initat.cluster_server.config import global_config
 import config_tools
 import io_stream_helper
 import logging_tools
+# noinspection PyUnresolvedReferences
 import pprint  # @UnusedImport
 import process_tools
 import server_command
@@ -30,7 +31,7 @@ import threading_tools
 import time
 
 
-class bg_process(threading_tools.process_obj):
+class BackgroundProcess(threading_tools.process_obj):
     class Meta:
         background = False
         show_execution_time = True
@@ -60,8 +61,9 @@ class bg_process(threading_tools.process_obj):
         self.log("starting command '{}'".format(com_name))
         # print [key for key in sys.modules.keys() if key.count("cluster_s")]
         import initat.cluster_server.modules
-        ex_code = initat.cluster_server.modules.command_dict[com_name]
-        loc_inst = com_instance(ex_code, self.srv_com, self.option_dict, self.Meta, self.zmq_context)
+        sc_obj = initat.cluster_server.modules.command_dict[com_name]
+        loc_inst = com_instance(sc_obj, self.srv_com, self.option_dict, self.Meta, self.zmq_context,
+                                executing_process=self)
         loc_inst.log = self.log
         loc_inst()
         del loc_inst.log
@@ -71,7 +73,7 @@ class bg_process(threading_tools.process_obj):
         )
         self.log("state ({:d}): {}".format(ret_state, ret_str))
         self.send_pool_message("bg_finished", com_name)
-        self._exit_process()
+        self["run_flag"] = False
 
     def loop_post(self):
         self.__log_template.close()
@@ -80,12 +82,16 @@ class bg_process(threading_tools.process_obj):
 class com_instance(object):
     bg_idx = 0
 
-    def __init__(self, sc_obj, srv_com, option_dict, meta_struct, zmq_context):
+    def __init__(self, sc_obj, srv_com, option_dict, meta_struct, zmq_context, executing_process=None):
+        """
+        :param executing_process: process_obj if executing in a BackgroundProcess
+        """
         self.sc_obj = sc_obj
         self.srv_com = srv_com
         self.option_dict = option_dict
         self.Meta = meta_struct
         self.zmq_context = zmq_context
+        self.executing_process = executing_process
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.sc_obj.log(u"[ci] {}".format(what), log_level)
@@ -108,6 +114,9 @@ class com_instance(object):
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
                 new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, com_instance.bg_idx)
+
+                self.sc_obj.main_proc.add_process(BackgroundProcess(new_bg_name), start=True)
+
                 self.sc_obj.main_proc.send_to_process(
                     new_bg_name,
                     "set_option_dict",
@@ -200,7 +209,7 @@ class server_com(object):
         max_instances = 1
         # current number of instances
         cur_running = 0
-        # is disbaled
+        # is disabled
         disabled = False
 
     def __init__(self):
