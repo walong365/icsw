@@ -23,6 +23,7 @@
 
 
 from django.db import models
+import django.utils.timezone
 from django.db.models import Q, signals
 import logging_tools
 
@@ -36,6 +37,8 @@ __all__ = [
 class Kpi(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
+
+    date = models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now())  # default for migration
 
     formula = models.TextField(blank=True)
 

@@ -13,9 +13,6 @@
     <div class="alert alert-danger"><strong>TODO</strong>: only one rest notification when creating a kpi
     </div>
 
-    <div class="alert alert-danger"><strong>TODO</strong>: default name for kpi: kpi-1
-    </div>
-
     <div class="alert alert-danger"><strong>TODO</strong>: don't save available_..dev..mon.. as hard index but list of integers serialized;
 
 <p>
@@ -25,10 +22,31 @@
 
     <icsw-tools-button type="create" ng-click="create_new_kpi()"></icsw-tools-button>
 
+    <icsw-config-kpi-show-kpis></icsw-config-kpi-show-kpis>
+
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.edit_dialog">
+
     <tabset>
+        <tab heading="Basic">
+            kpi: {{cur_edit_kpi}}
+
+            <accordion close-others="false">
+                <accordion-group heading="Basic properties" is-open="true">
+                    <form class="form-inline">
+                        <div class="form-group">
+                            <label class="control-label col-sm-3">Name:</label>
+
+                            <div class="controls col-sm-7">
+                                <input class="form-control" ng-model="cur_edit_kpi.name" type="text"
+                                       placeholder="name"/>
+                            </div>
+                        </div>
+                    </form>
+                </accordion-group>
+            </accordion>
+        </tab>
         <tab heading="Data source">
             <icsw-config-kpi-configure></icsw-config-kpi-configure>
         </tab>
@@ -41,22 +59,6 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.configure">
-    kpi: {{cur_edit_kpi}}
-
-        <accordion close-others="false">
-            <accordion-group heading="Basic properties" is-open="true">
-                <form class="form-inline">
-                    <div class="form-group">
-                        <label class="control-label col-sm-3">Name:</label>
-
-                        <div class="controls col-sm-7">
-                            <input class="form-control" ng-model="cur_edit_kpi.name" type="text"
-                                   placeholder="name"/>
-                        </div>
-                    </div>
-                </form>
-            </accordion-group>
-        </accordion>
 
         <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
 
@@ -124,4 +126,21 @@
 
         </accordion-group>
     </accordion>
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.show_kpis">
+
+    <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto">
+        <tr>
+            <th st-sort="name">Name</th>
+            <th>actions</th>
+        <tr ng-repeat="entry in entries_displayed">
+            <td>{{entry.name}}</td>
+            <td>
+                <icsw-tools-button type="modify" ng-click="modify_kpi(entry)"
+            </td>
+            <td>{{entry}}</td>
+        </tr>
+    </table>
+
 </script>
