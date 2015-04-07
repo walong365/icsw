@@ -33,7 +33,7 @@ from initat.md_config_server.icinga_log_reader.log_reader import host_service_id
 from initat.cluster.backbone.models.kpi import KpiSelectedDeviceMonitoringCategoryTuple, Kpi
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.common import live_socket
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, astdump
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, astdump, print_tree
 import logging_tools
 import threading_tools
 
@@ -95,14 +95,24 @@ class KpiProcess(threading_tools.process_obj):
                 def show_node(self, node):
                     import codegen
                     # print '\ncall node', node, node.func, node.args, node.kwargs, node.starargs
-                    print '\n node', codegen.to_source(node)
+                    print '\n node', node, codegen.to_source(node)
                     res = eval(compile(ast.Expression(node), '<string>', mode='eval'), eval_globals)
                     print 'eval:', res
 
-            kpi_ast = ast.parse(kpi_db.formula, mode='eval')
-            print 'x', kpi_db.formula
-            MyNV().visit(kpi_ast)
-            print '\nast dump:', astdump(kpi_ast)
+            print 'gonna eval: '
+            print "\"" * 3
+            print kpi_db.formula
+            print "\"" * 3
+            if True:
+                d = {}
+                exec(kpi_db.formula, eval_globals, d)
+                print 'kpi', d
+                print_tree(d['kpi'])
+            else:
+                kpi_ast = ast.parse(kpi_db.formula, mode='exec')
+                print 'before visit'
+                MyNV().visit(kpi_ast)
+                print '\nast dump:', astdump(kpi_ast)
             """
             print 'chil'
             for i in ast.iter_fields(kpi_ast):
@@ -119,7 +129,7 @@ class _KpiData(object):
         try:
             self.icinga_socket = live_socket.get_icinga_live_socket()
         except IOError as e:
-            self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
+            self.log(u"error when opening icinga socket: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
             raise
 
         host_rrd_data = self._get_memcached_data()
@@ -139,7 +149,7 @@ class _KpiData(object):
 
             self.kpi_mon_check_commands = set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
 
-        HostData = collections.namedtuple('HostData', ('rrds', 'host_check_results', 'service_check_results',
+        HostData = collections.namedtuple('HostData', ('rrd_data', 'host_check_results', 'service_check_results',
                                                        'historic_data'))
         self.host_data = {}
         for kpi_dev in self.kpi_devices:
@@ -150,7 +160,7 @@ class _KpiData(object):
             for kpi_check in self.kpi_mon_check_commands:
                 service_check_results[kpi_check.pk] = self._get_service_check_results(kpi_dev, kpi_check)
 
-            self.host_data[kpi_dev.pk] = HostData(rrds=host_rrd_data[kpi_dev.pk],
+            self.host_data[kpi_dev.pk] = HostData(rrd_data=host_rrd_data.get(kpi_dev.pk, None),
                                                   host_check_results=self._get_host_check_results(kpi_dev),
                                                   service_check_results=service_check_results,
                                                   historic_data=None)
@@ -164,9 +174,8 @@ class _KpiData(object):
                 # devs and mccs can be contained in multiple cats, only gather once though
                 if dev.pk not in devs_checked:
                     devs_checked.add(dev.pk)
-                    kpi_objects.extend(
-                        self.host_data[dev.pk].rrds
-                    )
+                    if self.host_data[dev.pk].rrd_data is not None:
+                        kpi_objects.extend(self.host_data[dev.pk].rrd_data)
                     kpi_objects.extend(
                         self.host_data[dev.pk].host_check_results
                     )
@@ -183,36 +192,44 @@ class _KpiData(object):
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
         host_rrd_data = {}
         try:
-            host_list = json.loads(mc.get("cc_hc_list"))
+            host_list_mc = mc.get("cc_hc_list")
+            print 'host list', host_list_mc
+            if host_list_mc is None:
+                raise Exception("host list is None")
         except Exception as e:
-            self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
+            self.log(u"error when loading memcache host list: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
         else:
+            host_list = json.loads(host_list_mc)
 
             for host_uuid, host_data in host_list.iteritems():
 
                 try:
                     host_db = device.objects.get(name=host_data[1])
                 except device.DoesNotExist:
-                    self.log("Device {} does not exist but is referenced in rrd data".format(host_data[1]),
+                    self.log(u"device {} does not exist but is referenced in rrd data".format(host_data[1]),
                              logging_tools.LOG_LEVEL_WARN)
                 else:
-                    if host_data[0] + 10*60 < time.time():
-                        self.log("data for {} is very old ({})".format(host_data[1], time.ctime(host_data[0])))
+                    if (host_data[0] + 60 * 60) < time.time():
+                        self.log(u"data for {} is very old ({})".format(host_data[1], time.ctime(host_data[0])))
 
-                    values_list = json.loads(mc.get("cc_hc_{}".format(host_uuid)))
+                    host_mc = mc.get("cc_hc_{}".format(host_uuid))
+                    if host_mc is not None:
+                        values_list = json.loads(host_mc)
 
-                    vector_entries = (initat.collectd.aggregate.ve(*val) for val in values_list)
+                        vector_entries = (initat.collectd.aggregate.ve(*val) for val in values_list)
 
-                    host_rrd_data[host_db.pk] = list(
-                        KpiObject(
-                            host_name=host_data[1],
-                            rrd=ve,
-                            properties={
-                                'rrd_key': ve.key,
-                                'rrd_value': ve.get_value(),
-                            }
-                        ) for ve in vector_entries
-                    )
+                        host_rrd_data[host_db.pk] = list(
+                            KpiObject(
+                                host_name=host_data[1],
+                                rrd=ve,
+                                properties={
+                                    'rrd_key': ve.key,
+                                    'rrd_value': ve.get_value(),
+                                }
+                            ) for ve in vector_entries
+                        )
+                    else:
+                        self.log("no memcache data for {} ({})".format(host_data[1], host_uuid))
 
         return host_rrd_data
 
@@ -240,7 +257,9 @@ class _KpiData(object):
         icinga_result = service_query.call()
 
         # this is usually only one except in case of special check commands
-        return list(self.__create_kpi_obj(r, is_service=True) for r in icinga_result)
+        ret = list(self.__create_kpi_obj(r, is_service=True) for r in icinga_result)
+        self.log("got service check results: {}".format(ret))
+        return ret
 
     def _get_host_check_results(self, dev):
         host_query = self.icinga_socket.hosts.columns("host_name",
@@ -257,7 +276,9 @@ class _KpiData(object):
         host_query.filter("host_name", "~", dev.name)
         icinga_result = host_query.call()
 
-        return list(self.__create_kpi_obj(r, is_service=False) for r in icinga_result)
+        ret = list(self.__create_kpi_obj(r, is_service=False) for r in icinga_result)
+        self.log("got host check results: {}".format(ret))
+        return ret
 
     def __create_kpi_obj(self, check_result, is_service):
             property_names = {  # icinga names with renamings (currently none used)

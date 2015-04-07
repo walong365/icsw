@@ -59,7 +59,9 @@ class KpiObject(object):
         if self.rrd is not None:
             contents += 'rrd={}:{};'.format(self.rrd.key, self.rrd.get_value())
         if self.result is not None:
-            contents += 'result={}:{}'.format(self.properties.get('check_command', None), self.result)
+            cc = self.properties.get('check_command', None)
+            res_type = "{}:".format(cc) if cc is not None else ""
+            contents += 'result={}{}'.format(res_type, self.result)
         if self.historical_data is not None:
             raise NotImplementedError()
 
@@ -75,7 +77,7 @@ class KpiObject(object):
         contents += "properties={}".format({k: v for k, v in self.properties.iteritems()})
         return "KpiObject({})".format(contents)
 
-    # we use this to eliminate duplicates in the kpi set
+    # we use this to eliminate duplicates in the kpi set, but only for initial data currently
     def __hash_key(self):
         return (self.result, self.historical_data, self.rrd, self.host_name, tuple(self.properties.items()))
 
@@ -88,26 +90,28 @@ class KpiObject(object):
 
 class KpiSet(object):
     @classmethod
-    def get_singleton_ok(cls):
-        return KpiSet([KpiObject(result=KpiResult.ok)])
+    def get_singleton_ok(cls, **kwargs):
+        return KpiSet([KpiObject(result=KpiResult.ok)], **kwargs)
 
     @classmethod
-    def get_singleton_warn(cls):
-        return KpiSet([KpiObject(result=KpiResult.warn)])
+    def get_singleton_warn(cls, **kwargs):
+        return KpiSet([KpiObject(result=KpiResult.warn)], **kwargs)
 
     @classmethod
-    def get_singleton_critical(cls):
-        return KpiSet([KpiObject(result=KpiResult.critical)])
+    def get_singleton_critical(cls, **kwargs):
+        return KpiSet([KpiObject(result=KpiResult.critical)], **kwargs)
 
     @classmethod
-    def get_singleton_unknown(cls):
-        return KpiSet([KpiObject(result=KpiResult.unknown)])
+    def get_singleton_unknown(cls, **kwargs):
+        return KpiSet([KpiObject(result=KpiResult.unknown)], **kwargs)
 
-    def __init__(self, objects):
+    def __init__(self, objects, parents=None):
         """
         :type objects: list of KpiObject
+        :type parents: list of KpiSet
         """
         self.objects = objects
+        self.parents = parents
 
     @property
     def result_objects(self):
@@ -134,10 +138,10 @@ class KpiSet(object):
 
         #print '    results', objects
 
-        return KpiSet(objects)
+        return KpiSet(objects, parents=[self])
 
     def union(self, kpiSet):
-        return KpiSet(self.objects + kpiSet.objects)
+        return KpiSet(self.objects + kpiSet.objects, parents=[self, kpiSet])
 
     __add__ = union
 
@@ -149,11 +153,11 @@ class KpiSet(object):
             raise ValueError("num_warn is higher than num_ok ({} > {})".format(num_warn, num_ok))
         num = sum(1 for obj in self.result_objects if obj.result == result)
         if num > num_ok:
-            return KpiSet.get_singleton_ok()
+            return KpiSet.get_singleton_ok(parents=[self])
         elif num > num_warn:
-            return KpiSet.get_singleton_warn()
+            return KpiSet.get_singleton_warn(parents=[self])
         else:
-            return KpiSet.get_singleton_critical()
+            return KpiSet.get_singleton_critical(parents=[self])
 
     def aggregate(self):
         """
@@ -162,42 +166,20 @@ class KpiSet(object):
         """
         #print 'call aggregate on ', self.result_objects
         if not self.result_objects:
-            return KpiSet.get_singleton_unknown()
+            return KpiSet.get_singleton_unknown(parents=[self])
         else:
             aggregated_result = max(obj.result for obj in self.result_objects)
-            return KpiSet([KpiObject(result=aggregated_result)])
+            return KpiSet([KpiObject(result=aggregated_result)], parents=[self])
+
+    def dump(self):
+        """Debug function: Log set contents and return itself"""
+        print "DUMP:", self.objects
+        return self
 
     def __repr__(self):
-        return "KpiSet({})".format(self.objects)
-
-
-if __name__ == "__main__":
-
-    kpi = """ (
-        data
-        .filter(device_name='am-admin')
-        .filter(config='am_admin_checks')
-
-        +
-
-        data
-        .filter(device_name='am-directory')
-        .filter(config='am_directory_checks')
-    ).aggregate()
-    """
-
-    # NOTE: this won't work any more
-
-    data = KpiSet([
-        KpiObject(result=KpiResult.ok, device_name='am-admin', config='am_admin_checks', check='am_admin_check_1'),
-        KpiObject(result=KpiResult.warn, device_name='am-admin', config='am_admin_checks', check='am_admin_check_2'),
-        KpiObject(result=KpiResult.ok, device_name='am-directory', config='am_directory_checks', check='some_check'),
-    ])
-
-    kpi = kpi.replace("\n \t", "").strip()
-
-    print eval(compile(ast.parse(kpi, mode='eval'), '<string>', mode='eval'))
-    print eval(kpi)
+        magic = 3
+        return "KpiSet({})".format(self.objects if len(self.objects) <= magic else
+                                   repr(self.objects[:magic]) + "... ({} more)".format(len(self.objects) - magic))
 
 
 def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
@@ -233,3 +215,10 @@ def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
     if not isinstance(node, ast.AST):
         raise TypeError('expected AST, got %r' % node.__class__.__name__)
     return _format(node)
+
+
+def print_tree(t, i=0):
+    print " " * i, t
+    if t.parents:
+        for p in t.parents:
+            print_tree(p, i + 8)
