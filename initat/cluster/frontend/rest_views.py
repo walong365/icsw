@@ -341,7 +341,8 @@ class list_view(mixins.ListModelMixin,
     @rest_logging
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
-        if resp.status_code in [200, 201, 202, 203]:
+        silent = int(request.GET.get('silent', 0))
+        if not silent and resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '{}'".format(unicode(self.object))]
         return resp
 
