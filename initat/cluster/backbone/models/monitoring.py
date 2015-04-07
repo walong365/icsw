@@ -216,6 +216,7 @@ class mon_dist_slave(mon_dist_base):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Config builds as slave"
 
 
 class mon_dist_master(mon_dist_base):
@@ -228,6 +229,7 @@ class mon_dist_master(mon_dist_base):
     class Meta:
         app_label = "backbone"
         ordering = ("-idx",)
+        verbose_name = "Config builds as master"
 
 
 class mon_build_unreachable(models.Model):
@@ -263,6 +265,7 @@ class mon_host_cluster(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Host Cluster"
 
 
 @receiver(signals.pre_save, sender=mon_host_cluster)
@@ -296,6 +299,7 @@ class mon_service_cluster(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Service Cluster"
 
 
 @receiver(signals.pre_save, sender=mon_service_cluster)
@@ -1239,6 +1243,7 @@ class monitoring_hint(models.Model):
     class Meta:
         app_label = "backbone"
         ordering = ("m_type", "key",)
+        verbose_name = "Monitoring hint"
 
 
 ########################################

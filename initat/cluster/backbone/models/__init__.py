@@ -931,6 +931,7 @@ class cd_connection(models.Model):
 
     class Meta:
         ordering = ("parent__name", "child__name",)
+        verbose_name = "Controlling device connection"
 
 
 @receiver(signals.pre_save, sender=cd_connection)
@@ -1317,6 +1318,7 @@ class log_source(models.Model):
 
     class Meta:
         db_table = u'log_source'
+        verbose_name = u"Log source (old)"
 
 
 class log_status(models.Model):
@@ -1476,3 +1478,16 @@ class quota_capable_blockdevice(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+
+class DeleteRequest(models.Model):
+    idx = models.AutoField(primary_key=True)
+    obj_pk = models.IntegerField()
+    model = models.TextField()
+    delete_strategies = models.TextField(null=True, blank=True)
+
+    class Meta:
+        app_label = "backbone"
+        unique_together = ("obj_pk", "model")
+
+
