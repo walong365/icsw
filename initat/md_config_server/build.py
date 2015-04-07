@@ -489,10 +489,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 _bc.single_build = single_build
                 _bc.debug = self.gc["DEBUG"]
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                self.log("create host")
-                self.log("bc {}".format(_bc))
-                self.log("cur gc {}".format(cur_gc))
-                self.log("cur_dmap {}".format(cur_dmap))
                 self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if not single_build:
