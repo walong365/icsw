@@ -21,7 +21,7 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, MachineVector, MVStructEntry, MVValue
+from initat.cluster.backbone.models import device, MachineVector, MVStructEntry, MVValueEntry
 from initat.collectd.config import global_config
 import logging_tools
 import server_mixins
@@ -99,7 +99,7 @@ class MachineVectorCache(GenCache):
             _mv.save()
             self.log("created MachineVector for {}".format(unicode(in_value)))
         # install caching instance
-        _mv.mvse_cache = MVStructEntryCache(self.log_com, parent=_mv)
+        _mv.mvs_cache = MVStructEntryCache(self.log_com, parent=_mv)
         self[in_value] = _mv
 
 
@@ -120,21 +120,21 @@ class MVStructEntryCache(GenCache):
             )
             _mvs.save()
         # install caching instance
-        _mvs.mvv_cache = MVValueCache(self.log_com, parent=_mvs)
+        _mvs.mvv_cache = MVValueEntryCache(self.log_com, parent=_mvs)
         self[key] = _mvs
 
 
-class MVValueCache(GenCache):
+class MVValueEntryCache(GenCache):
     class Meta:
-        name = "MVValueCache"
+        name = "MVValueEntryCache"
 
     def resolve(self, key):
         try:
-            _mvv = MVValue.objects.get(
+            _mvv = MVValueEntry.objects.get(
                 Q(mv_struct_entry=self.parent) & Q(key=key[0])
             )
-        except MVValue.DoesNotExist:
-            _mvv = MVValue(
+        except MVValueEntry.DoesNotExist:
+            _mvv = MVValueEntry(
                 mv_struct_entry=self.parent,
                 key=key[0],
             )
@@ -193,7 +193,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.operational_error_m
             _key = (entry.attrib["key"],)
         return _key
 
-    def update_mvse(self, mvse, entry, parent_entry):
+    def update_mvs(self, mvs, entry, parent_entry):
         # compare MVStructEntry with XML
         # list to compare
         if entry.tag == "mve":
@@ -213,14 +213,14 @@ class SyncProcess(threading_tools.process_obj, server_mixins.operational_error_m
             ]
         _changed = False
         for _key, _value in _list:
-            if getattr(mvse, _key) != _value:
-                setattr(mvse, _key, _value)
+            if getattr(mvs, _key) != _value:
+                setattr(mvs, _key, _value)
                 _changed = True
         if _changed:
-            self.mvse_changed += 1
-            mvse.save()
+            self.mvs_changed += 1
+            mvs.save()
 
-    def update_mvv(self, mvv, entry):
+    def update_mvv(self, mvv, mvs, entry):
         # compare MVValue with XML
         # list to compare
         # print entry.attrib
@@ -230,6 +230,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.operational_error_m
             ("unit", entry.get("unit", "")),
             ("v_type", entry.get("v_type")),
             ("info", entry.get("info", "")),
+            ("full_key", "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")),
         ]
         _changed = False
         for _key, _value in _list:
@@ -257,29 +258,29 @@ class SyncProcess(threading_tools.process_obj, server_mixins.operational_error_m
         self._handle_xml(_xml)
 
     def _handle_xml(self, _xml):
-        self.mvse_changed = 0
+        self.mvs_changed = 0
         self.mvv_changed = 0
         mv = self.get_machine_vector(_xml.attrib["uuid"])
         if mv:
             for entry in _xml:
                 _mvs_key = self._get_mvs_key(entry, _xml)
-                mvse = mv.mvse_cache[_mvs_key]
-                self.update_mvse(mvse, entry, _xml)
+                mvs = mv.mvs_cache[_mvs_key]
+                self.update_mvs(mvs, entry, _xml)
                 for sub_entry in self.get_sub_entry(entry):
                     _mvv_key = self._get_mvv_key(sub_entry, entry)
-                    mvv = mvse.mvv_cache[_mvv_key]
-                    self.update_mvv(mvv, sub_entry)
-            if self.mvse_changed:
+                    mvv = mvs.mvv_cache[_mvv_key]
+                    self.update_mvv(mvv, mvs, sub_entry)
+            if self.mvs_changed:
                 self.log(
                     "changed {} for {}".format(
-                        logging_tools.get_plural("MVStructEntry", self.mvse_changed),
+                        logging_tools.get_plural("MVStructEntry", self.mvs_changed),
                         unicode(mv),
                     )
                 )
             if self.mvv_changed:
                 self.log(
                     "changed {} for {}".format(
-                        logging_tools.get_plural("MVValue", self.mvv_changed),
+                        logging_tools.get_plural("MVValueEntry", self.mvv_changed),
                         unicode(mv),
                     )
                 )

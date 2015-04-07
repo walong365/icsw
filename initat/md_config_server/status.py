@@ -70,48 +70,82 @@ class status_process(threading_tools.process_obj):
 
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        pk_list = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
-        dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
+        # overview mode if overview is a top-level element
+        _host_overview = True if "host_overview" in srv_com else False
+        _service_overview = True if "service_overview" in srv_com else False
+        if not _host_overview:
+            pk_list = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
+            dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
         s_time = time.time()
         try:
             cur_sock = self._open()
             if cur_sock:
-                if dev_names:
-                    service_query = cur_sock.services.columns(
-                        "host_name",
-                        "description",
-                        "state",
-                        "plugin_output",
-                        "last_check",
-                        "check_type",
-                        "state_type",
-                        "last_state_change",
-                        "max_check_attempts",
-                        "display_name",
-                        "current_attempt",
-                        "custom_variables",
-                        "acknowledged",
-                        "acknowledgement_type",
-                    ).filter("host_name", "=", dev_names)
-                    service_result = service_query.call()
+                if _host_overview:
                     host_query = cur_sock.hosts.columns(
                         "host_name",
                         "address",
                         "state",
                         "plugin_output",
-                        "last_check",
-                        "check_type",
-                        "state_type",
-                        "last_state_change",
-                        "max_check_attempts",
-                        "current_attempt",
                         "custom_variables",
-                        "acknowledged",
-                        "acknowledgement_type",
-                    ).filter("host_name", "=", dev_names)
+                    )
+                    if _service_overview:
+                        service_query = cur_sock.services.columns(
+                            "host_name",
+                            "description",
+                            "state",
+                            "plugin_output",
+                            "custom_variables",
+                        )
+                    else:
+                        service_query = None
+                else:
+                    if dev_names:
+                        service_query = cur_sock.services.columns(
+                            "host_name",
+                            "description",
+                            "state",
+                            "plugin_output",
+                            "last_check",
+                            "check_type",
+                            "state_type",
+                            "last_state_change",
+                            "max_check_attempts",
+                            "display_name",
+                            "current_attempt",
+                            "custom_variables",
+                            "acknowledged",
+                            "acknowledgement_type",
+                        )
+                        host_query = cur_sock.hosts.columns(
+                            "host_name",
+                            "address",
+                            "state",
+                            "plugin_output",
+                            "last_check",
+                            "check_type",
+                            "state_type",
+                            "last_state_change",
+                            "max_check_attempts",
+                            "current_attempt",
+                            "custom_variables",
+                            "acknowledged",
+                            "acknowledgement_type",
+                        )
+                        service_query = service_query.filter("host_name", "=", dev_names)
+                        host_query = host_query.filter("host_name", "=", dev_names)
+                    else:
+                        service_query, host_query = (None, None)
+                if host_query is not None:
                     host_result = host_query.call()
                 else:
-                    service_result, host_result = ([], [])
+                    host_result = []
+                if service_query is not None:
+                    service_result = service_query.call()
+                else:
+                    service_result = []
+                if _host_overview:
+                    # get dev_names from result
+                    dev_names = [_entry["host_name"] for _entry in host_result]
                 srv_com["service_result"] = json.dumps([_line for _line in service_result if _line.get("host_name", "")])
                 srv_com["host_result"] = json.dumps(host_result)
                 srv_com.set_result(

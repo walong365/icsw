@@ -1,13 +1,15 @@
 # Django settings for cluster project.
 # -*- coding: utf-8 -*-
 import glob
-
-from django.core.exceptions import ImproperlyConfigured
-from django.utils.crypto import get_random_string
-import logging_tools
 import os
 import sys
 from lxml import etree
+
+from django.utils.translation import ugettext_lazy as _
+from django.core.exceptions import ImproperlyConfigured
+from django.utils.crypto import get_random_string
+import logging_tools
+
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
@@ -144,6 +146,10 @@ TIME_ZONE = "Europe/Vienna"
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = "en-us"
+
+LANGUAGES = (
+    ("en", _("English")),
+)
 
 ANONYMOUS_USER_ID = -1
 

@@ -178,6 +178,7 @@ class LogWatcher(object):
         for _line in content.split("\n"):
             _line = _line.strip()
             if _line:
+                # print _line
                 try:
                     _ll = LogLine(self.name, self.device, self.node, _line)
                 except:
