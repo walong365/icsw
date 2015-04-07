@@ -2,21 +2,17 @@
 <script type="text/ng-template" id="icsw.config.kpi">
 
     <h2>Key performance indicators</h2>
- <div class="alert alert-danger"><strong>TODO</strong>: show current kpis with modify btn in 'Show KPIs'
+
+    <div class="alert alert-danger"><strong>TODO</strong>:
+        show full list of selected tuples (support changing checkbox selection without hard selection of tuples changing)
+        <br />
+        possibly button: show all checked categories
     </div>
 
-    <div class="alert alert-danger"><strong>TODO</strong>: make this into a modal dialog with 2 tabs: configure data source and configure expression.
-        <p>
-        handle create and edit nicely -> edit mixin? (how do we deal with tuple selection table with custom save code?)
+    <div class="alert alert-danger"><strong>TODO</strong>: add to reversion in future
     </div>
 
-    <div class="alert alert-danger"><strong>TODO</strong>: only one rest notification when creating a kpi
-    </div>
-
-    <div class="alert alert-danger"><strong>TODO</strong>: don't save available_..dev..mon.. as hard index but list of integers serialized;
-
-<p>
-    show full list of selected tuples (support changing checkbox selection without hard selection of tuples changing)
+    <div class="alert alert-danger"><strong>TODO</strong>: uses all (available) data
     </div>
 
 
@@ -91,15 +87,15 @@
         <accordion-group heading="Select which monitoring categories apply to which device categories" is-open="true">
 
             <div class="alert alert-warning"
-                 ng-show="get_cur_device_categories().length == 0 && get_cur_monitoring_categories().length == 0">
+                 ng-show="cur_edit_kpi.available_device_categories.length == 0 && cur_edit_kpi.available_monitoring_categories.length == 0">
                 Please select device and monitoring categories.
             </div>
             <div class="alert alert-warning"
-                 ng-show="get_cur_device_categories().length == 0 && get_cur_monitoring_categories().length >  0">
+                 ng-show="cur_edit_kpi.available_device_categories.length == 0 && cur_edit_kpi.available_monitoring_categories.length >  0">
                 Please select device categories.
             </div>
             <div class="alert alert-warning"
-                 ng-show="get_cur_device_categories().length >  0 && get_cur_monitoring_categories().length == 0">
+                 ng-show="cur_edit_kpi.available_device_categories.length >  0 && cur_edit_kpi.available_monitoring_categories.length == 0">
                 Please select monitoring categories.
             </div>
             <!--
@@ -111,13 +107,13 @@
             <table class="table table-condensed table-hover" style="width: auto;">
                 <tr>
                     <td></td>
-                    <th ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories">
-                        {{get_mon_cat(mon_cat).name}}
+                    <th ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories | orderBy:get_cat_name">
+                        {{get_cat_name(mon_cat)}}
                     </th>
                 </tr>
-                <tr ng-repeat="dev_cat in cur_edit_kpi.available_device_categories">
-                    <th>{{get_dev_cat(dev_cat).name}}</th>
-                    <td ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories"
+                <tr ng-repeat="dev_cat in cur_edit_kpi.available_device_categories | orderBy:get_cat_name">
+                    <th>{{get_cat_name(dev_cat)}}</th>
+                    <td ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories | orderBy:get_cat_name"
                         icsw-tools-td-checkbox is-checked="is_checked(dev_cat, mon_cat)"
                         on-click="toggle_dev_mon_cat(dev_cat, mon_cat)">
                     </td>
@@ -137,7 +133,8 @@
         <tr ng-repeat="entry in entries_displayed">
             <td>{{entry.name}}</td>
             <td>
-                <icsw-tools-button type="modify" ng-click="modify_kpi(entry)"
+                <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)"></icsw-tools-button>
+                <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)"></icsw-tools-button>
             </td>
             <td>{{entry}}</td>
         </tr>

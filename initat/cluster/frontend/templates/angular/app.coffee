@@ -257,7 +257,7 @@ ics_app = angular.module(
     "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
     "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
     "REST_KPI_LIST": "{% url 'rest:KpiList' %}"
-    "REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE_LIST": "{% url 'rest:KpiSelectedDeviceMonitoringCategoryTupleList' %}"
+    "REST_KPI_DATA_SOURCE_TUPLE_LIST": "{% url 'rest:KpiDataSourceTupleList' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
     "REST_LOG_SOURCE_LIST": "{% url 'rest:LogSourceList' %}"

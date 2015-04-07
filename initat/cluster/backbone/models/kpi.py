@@ -30,7 +30,7 @@ import logging_tools
 
 __all__ = [
     "Kpi",
-    "KpiSelectedDeviceMonitoringCategoryTuple",
+    "KpiDataSourceTuple",
 ]
 
 
@@ -38,7 +38,8 @@ class Kpi(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
 
-    date = models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now())  # default for migration
+    date = models.DateTimeField(auto_now_add=True,
+                                default=lambda: django.utils.timezone.now())  # some default for migration
 
     formula = models.TextField(blank=True)
 
@@ -46,20 +47,24 @@ class Kpi(models.Model):
     # TODO: implement in gui
     uses_all_data = models.BooleanField(default=False)
 
-    # TODO: make this into jsonified lists or something else with no hard reference
-    available_device_categories = models.ManyToManyField('category', related_name="available_device_category")
-    available_monitoring_categories = models.ManyToManyField('category', related_name="available_monitoring_category")
+    gui_selected_categories = models.TextField(blank=True)  # json
+
+    def __unicode__(self):
+        return u"KPI {}".format(self.name)
 
     class Meta:
         app_label = "backbone"
 
+    class CSW_Meta:
+        fk_ignore_list = ["KpiDataSourceTuple"]
 
-class KpiSelectedDeviceMonitoringCategoryTuple(models.Model):
+
+class KpiDataSourceTuple(models.Model):
     # Relevant (dev_cat x mon_cat) for a kpi.
     # Specifies the data actually relevant for kpi calculation.
     idx = models.AutoField(primary_key=True)
     kpi = models.ForeignKey(Kpi)
-    device_category = models.ForeignKey('category', related_name="device_cateogory")
+    device_category = models.ForeignKey('category', related_name="device_category")
     monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
 
     class Meta:

@@ -30,7 +30,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.monitoring import mon_check_command
 import initat.collectd.aggregate
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.cluster.backbone.models.kpi import KpiSelectedDeviceMonitoringCategoryTuple, Kpi
+from initat.cluster.backbone.models.kpi import KpiDataSourceTuple, Kpi
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, astdump, print_tree
@@ -140,12 +140,12 @@ class _KpiData(object):
             self.kpi_mon_categories = list(mon_check_command.categories_set.all())
         else:
             self.kpi_device_categories = set(tup.device_category_id
-                                             for tup in KpiSelectedDeviceMonitoringCategoryTuple.objects.all())
+                                             for tup in KpiDataSourceTuple.objects.all())
 
             self.kpi_devices = set(device.objects.filter(categories__in=self.kpi_device_categories))
 
             self.kpi_mon_categories = set(tup.monitoring_category_id
-                                          for tup in KpiSelectedDeviceMonitoringCategoryTuple.objects.all())
+                                          for tup in KpiDataSourceTuple.objects.all())
 
             self.kpi_mon_check_commands = set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
 
@@ -169,7 +169,7 @@ class _KpiData(object):
         kpi_objects = []
         dev_mon_tuples_checked = set()
         devs_checked = set()
-        for tup in kpi_db.kpiselecteddevicemonitoringcategorytuple_set.all():
+        for tup in kpi_db.kpidatasourcetuple_set.all():
             for dev in tup.device_category.device_set.all():
                 # devs and mccs can be contained in multiple cats, only gather once though
                 if dev.pk not in devs_checked:
@@ -193,7 +193,6 @@ class _KpiData(object):
         host_rrd_data = {}
         try:
             host_list_mc = mc.get("cc_hc_list")
-            print 'host list', host_list_mc
             if host_list_mc is None:
                 raise Exception("host list is None")
         except Exception as e:

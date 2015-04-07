@@ -31,8 +31,6 @@ angular.module(
 
         icswConfigKpiDataService.add_to_scope($scope)
 
-
-
 ]).directive("icswConfigKpi",
     ["$compile", "$templateCache", "icswConfigKpiDataService", "icswConfigKpiDialogService",
     ($compile, $templateCache, icswConfigKpiDataService, icswConfigKpiDialogService) ->
@@ -41,23 +39,8 @@ angular.module(
             templateUrl: "icsw.config.kpi"
             controller: 'icswConfigKpiCtrl'
             link: (scope, el, attrs) ->
-
                 scope.create_new_kpi = () ->
-                    base_name = "kpi-"
-                    is_unique = false
-                    num = 0
-                    while ! is_unique
-                        num++
-                        unique_name = base_name + num
-                        is_unique = _.find(icswConfigKpiDataService.kpi, (elem) -> return elem.name == unique_name)
-
-                    new_edit_kpi = {
-                        name: unique_name
-                        available_device_categories: []
-                        available_monitoring_categories: []
-                        selected_device_monitoring_category_tuple: []
-                    }
-                    icswConfigKpiDialogService.show_kpi_dlg(scope, new_edit_kpi, icswConfigKpiDialogService.KPI_DLG_MODE_CREATE)
+                    icswConfigKpiDialogService.show_create_kpi_dlg(scope)
     }
 ]).directive("icswConfigKpiConfigure", [() ->
     return {
@@ -65,8 +48,6 @@ angular.module(
         templateUrl: "icsw.config.kpi.configure"
         scope: false
         link: (scope, el, attrs) ->
-            scope.monitoring_categories = ["base", "http", "mail"]
-            scope.device_categories = ["firewall devices", "ökotex devices"]
     }
 ]).directive("icswConfigKpiDevMonSelection", ['icswConfigKpiDataService', (icswConfigKpiDataService) ->
     return {
@@ -153,21 +134,36 @@ angular.module(
         templateUrl: "icsw.config.kpi.dev_mon_linker"
         link: (scope, el, attrs) ->
     }
-]).directive("icswConfigKpiShowKpis", ["icswConfigKpiDataService", "icswConfigKpiDialogService", (icswConfigKpiDataService, icswConfigKpiDialogService) ->
-    return {
-        restrict : "E"
-        templateUrl: "icsw.config.kpi.show_kpis"
-        link: (scope, el, attrs) ->
-            icswConfigKpiDataService.add_to_scope(scope)
-            scope.modify_kpi = (kpi) ->
-                icswConfigKpiDialogService.show_kpi_dlg(scope, kpi, icswConfigKpiDialogService.KPI_DLG_MODE_MODIFY)
-    }
+]).directive("icswConfigKpiShowKpis",
+    ["icswConfigKpiDataService", "icswConfigKpiDialogService", "icswToolsSimpleModalService",
+    (icswConfigKpiDataService, icswConfigKpiDialogService, icswToolsSimpleModalService) ->
+        return {
+            restrict : "E"
+            templateUrl: "icsw.config.kpi.show_kpis"
+            link: (scope, el, attrs) ->
+                icswConfigKpiDataService.add_to_scope(scope)
+                scope.modify_kpi = (kpi) ->
+                    icswConfigKpiDialogService.show_modify_kpi_dlg(scope, kpi)
+                scope.delete_kpi = (kpi) ->
+                    icswToolsSimpleModalService("Do you really want to delete the kpi #{kpi.name}?").then(() ->
+                        kpi.remove().then(() ->
+                            _.remove(icswConfigKpiDataService.kpi, kpi)
+                        )
+                    )
+        }
 
 ]).service("icswConfigKpiDialogService", ["$compile", "$templateCache", "icswConfigKpiDataService", ($compile, $templateCache, icswConfigKpiDataService) ->
-    ret = {}
-    ret.KPI_DLG_MODE_CREATE = 1
-    ret.KPI_DLG_MODE_MODIFY = 2
-    ret.show_kpi_dlg = (scope, cur_edit_kpi, mode) ->
+    KPI_DLG_MODE_CREATE = 'create'
+    KPI_DLG_MODE_MODIFY = 'modify'
+
+    show_kpi_dlg = (scope, orig_kpi, mode) ->
+        if mode == KPI_DLG_MODE_CREATE
+            cur_edit_kpi = orig_kpi
+        else if mode == KPI_DLG_MODE_MODIFY
+            cur_edit_kpi = angular.copy(orig_kpi)
+        else
+            console.error 'invalid mode', mode
+
         child_scope = scope.$new()
         child_scope.mode = mode
         child_scope.cur_edit_kpi = cur_edit_kpi
@@ -182,24 +178,54 @@ angular.module(
                 cur_edit_kpi.selected_device_monitoring_category_tuple.push(elem)
 
         child_scope.submit_kpi = () ->
-            if mode == ret.KPI_DLG_MODE_CREATE
+            create_data_source_tuple = (obj, tup) ->
+                return {
+                    kpi: obj.idx
+                    device_category: tup[0]
+                    monitoring_category: tup[1]
+                }
+
+            cur_edit_kpi.gui_selected_categories = JSON.stringify({
+                dev_cat: cur_edit_kpi.available_device_categories
+                mon_cat: cur_edit_kpi.available_monitoring_categories
+            })
+
+            if mode == KPI_DLG_MODE_CREATE
                 icswConfigKpiDataService.kpi.post(cur_edit_kpi).then((obj) ->
                     icswConfigKpiDataService.kpi.push(obj)
+
                     for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
-                        entry = {
-                            kpi: obj.idx
-                            device_category: tup[0]
-                            monitoring_category: tup[1]
-                        }
-                        icswConfigKpiDataService.selected_device_monitoring_category_tuple.post(entry).then(
-                            (obj) -> icswConfigKpiDataService.selected_device_monitoring_category_tuple.push(obj)
+                        entry = create_data_source_tuple(obj, tup)
+                        icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
+                            (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
                         )
                 )
-            else if mode == ret.KPI_DLG_MODE_MODIFY
-                alert("modify not implemented yet")
+            else if mode == KPI_DLG_MODE_MODIFY
+                for new_tup in cur_edit_kpi.selected_device_monitoring_category_tuple
+                    if _.find(orig_kpi.selected_device_monitoring_category_tuple, new_tup) == undefined
+                        entry = create_data_source_tuple(cur_edit_kpi, new_tup)
+                        icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
+                            (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
+                        )
+
+                for old_tup in orig_kpi.selected_device_monitoring_category_tuple
+                    if _.find(cur_edit_kpi.selected_device_monitoring_category_tuple, old_tup) == undefined
+                        rest_elem = _.find(icswConfigKpiDataService.kpi_data_source_tuple,
+                                          (elem) -> return elem.device_category == old_tup[0] && elem.monitoring_category == old_tup[1])
+                        if rest_elem?
+                            rest_elem.remove()
+                            _.remove(icswConfigKpiDataService.kpi_data_source_tuple, rest_elem)
+
+                # put seems to only work on original obj, but we want to update data here anyway
+                for k, v of cur_edit_kpi
+                    orig_kpi[k] = v
+
+                orig_kpi.put()
+
             else
                 console.error "invalid mode: ", mode
 
+            child_scope.modal.close()
 
         edit_div = $compile($templateCache.get("icsw.config.kpi.edit_dialog"))(child_scope)
 
@@ -215,6 +241,35 @@ angular.module(
                 height = $(window).height() - 100
                 modal.getModal().find(".modal-body").css("max-height", height)
         child_scope.modal = modal
+    ret = {}
+    ret.show_create_kpi_dlg = (scope) ->
+        base_name = "kpi-"
+        is_unique = false
+        num = 0
+        while ! is_unique
+            num++
+            unique_name = base_name + num
+            is_unique = _.find(icswConfigKpiDataService.kpi, (elem) -> return elem.name == unique_name) == undefined
+
+        new_edit_kpi = {
+            name: unique_name
+            available_device_categories: []
+            available_monitoring_categories: []
+            selected_device_monitoring_category_tuple: []
+        }
+        show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
+    ret.show_modify_kpi_dlg = (scope, kpi) ->
+        if kpi.gui_selected_categories != ""
+            sel_cat = JSON.parse(kpi.gui_selected_categories)
+            kpi.available_device_categories = sel_cat.dev_cat
+            kpi.available_monitoring_categories = sel_cat.mon_cat
+
+        kpi.selected_device_monitoring_category_tuple = []
+        for entry in _.filter(icswConfigKpiDataService.kpi_data_source_tuple, (elem) -> return elem.kpi == kpi.idx)
+            kpi.selected_device_monitoring_category_tuple.push(
+                [entry.device_category, entry.monitoring_category]
+            )
+        show_kpi_dlg(scope, kpi, KPI_DLG_MODE_MODIFY)
     return ret
 ]).service("icswConfigKpiDataService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
@@ -222,15 +277,15 @@ angular.module(
     ret = {
         category: get_rest(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
         kpi: get_rest(ICSW_URLS.REST_KPI_LIST.slice(1))
-        selected_device_monitoring_category_tuple: get_rest(ICSW_URLS.REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE_LIST.slice(1))
+        kpi_data_source_tuple: get_rest(ICSW_URLS.REST_KPI_DATA_SOURCE_TUPLE_LIST.slice(1))
     }
 
     ret.get_kpi = (idx) ->
         return _.find(ret.kpi, (elem) -> return elem.idx == idx)
-    ret.get_dev_cat = (idx) ->
+    ret.get_cat = (idx) ->
         return _.find(ret.category, (elem) -> return elem.idx == idx)
-    ret.get_mon_cat = (idx) ->
-        return _.find(ret.category, (elem) -> return elem.idx == idx)
+    ret.get_cat_name = (idx) ->
+         return ret.get_cat(idx).name
 
     regular_keys = Object.keys(ret)
 
