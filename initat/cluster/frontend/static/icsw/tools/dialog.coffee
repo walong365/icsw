@@ -25,7 +25,7 @@ angular.module(
                     #toaster.pop("info", "", "Deleting #{objs_to_delete.length} objects in background")
                     true  # just show msgs from server
                 else
-                    blockUI.start("Deleting #{objs_to_delete.length} objects")
+                    blockUI.start("Deleting")
 
                 del_pks = []
                 regular_deletion_pks = []
@@ -96,6 +96,9 @@ angular.module(
                                     $interval.cancel(interval_promise)
                 interval_promise = $interval(interval_fn, 1000)
 
+                if async && after_delete?
+                    after_delete()
+
                 interval_fn()  # check right away as well
 
             show_delete_dialog = (related_objects, deletable_objects) ->
@@ -106,8 +109,6 @@ angular.module(
 
                 _check_dialog_empty = () ->
                     if child_scope.deletable_objects.length == 0 && Object.keys(child_scope.related_objects).length == 0
-                        if after_delete?
-                            after_delete()
                         child_scope.modal.close()
 
                 child_scope.async_delete = true
