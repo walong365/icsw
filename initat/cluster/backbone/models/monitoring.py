@@ -805,7 +805,7 @@ def mon_host_dependency_templ_pre_save(sender, **kwargs):
 
 class mon_host_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
-    devices = models.ManyToManyField("device", related_name="mhd_devices", null=True, blank=True)
+    devices = models.ManyToManyField("device", related_name="mhd_devices", blank=True)
     dependent_devices = models.ManyToManyField("device", related_name="mhd_dependent_devices")
     mon_host_dependency_templ = models.ForeignKey("backbone.mon_host_dependency_templ")
     mon_host_cluster = models.ForeignKey("backbone.mon_host_cluster", null=True, blank=True)
@@ -1165,7 +1165,7 @@ class monitoring_hint(models.Model):
     enabled = models.BooleanField(default=True)
     # used in monitoring
     check_created = models.BooleanField(default=False)
-    changed = models.DateTimeField(auto_now_add=True, auto_now=True)  # , default=datetime.datetime.now())
+    changed = models.DateTimeField(auto_now=True)  # , default=datetime.datetime.now())
     # persistent: do not remove even when missing from server (for instance openvpn)
     persistent = models.BooleanField(default=False)
     # is check active ?

@@ -13,6 +13,7 @@ from django.forms.widgets import TextInput, PasswordInput, NumberInput, Checkbox
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import user, group, home_export_list
 from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
+from initat.cluster.frontend.forms.form_models import empty_query_set
 
 
 __all__ = [
@@ -21,12 +22,6 @@ __all__ = [
     "user_detail_form",
     "account_detail_form",
 ]
-
-
-# empty query set
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class authentication_form(Form):

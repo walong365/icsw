@@ -10,7 +10,7 @@ from django.forms import Form, ModelForm, CharField, ModelChoiceField, \
 from initat.cluster.backbone.models import network, network_type, network_device_type, \
     netdevice, net_ip, peer_information
 from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
-
+from initat.cluster.frontend.forms.form_models import empty_query_set
 
 __all__ = [
     "network_form",
@@ -21,12 +21,6 @@ __all__ = [
     "peer_information_form",
     "device_network_scan_form",
 ]
-
-
-# empty query set
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class network_form(ModelForm):

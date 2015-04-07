@@ -694,7 +694,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
             signal.SIGINT,
             signal.SIGTSTP,
             signal.SIGALRM,
-            signal.SIGHUP
+            signal.SIGHUP,
         ]:
             signal.signal(sig_num, signal.SIG_IGN)
 
