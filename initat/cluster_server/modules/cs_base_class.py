@@ -158,13 +158,18 @@ class com_instance(object):
                 # write to logging-server
                 err_h = io_stream_helper.io_stream(
                     "/var/lib/logging-server/py_err_zmq",
-                    zmq_context=self.zmq_context)
+                    zmq_context=self.zmq_context
+                )
                 err_h.write("\n".join(exc_info.log_lines))
                 err_h.close()
             else:
                 if result is not None:
-                    self.log("command got an (unexpected) result: '{}'".format(str(result)),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "command got an (unexpected) result: '{}'".format(
+                            str(result)
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
             self.end_time = time.time()
             if int(self.srv_com["result"].attrib["state"]):
                 self.log(
@@ -178,7 +183,8 @@ class com_instance(object):
                 self.log("run took {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
                 self.srv_com["result"].attrib["reply"] = u"{} in {}".format(
                     self.srv_com["result"].attrib["reply"],
-                    logging_tools.get_diff_time_str(self.end_time - self.start_time))
+                    logging_tools.get_diff_time_str(self.end_time - self.start_time)
+                )
             if db_debug:
                 self.log("queries executed : {:d}".format(len(connection.queries) - pre_queries))
 

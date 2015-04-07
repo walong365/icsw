@@ -35,10 +35,14 @@ import argparse
 import logging_tools
 import process_tools
 import pwd
+import bz2
+import base64
 import subprocess
 import sys
 import termios
+import net_tools
 import time
+import server_command
 
 
 def list_mode(options):
@@ -175,16 +179,56 @@ def get_pass(prompt=">"):
     except EOFError:
         passwd = ""
     termios.tcsetattr(fd, termios.TCSADRAIN, old)
-    print
+    print()
     return passwd
 
 
+def modify_password(options):
+    srv_com = server_command.srv_command(command="modify_password")
+    srv_com["server_key:user_name"] = options.username
+    print("changing password for user '{}'".format(options.username))
+    srv_com["server_key:old_password"] = base64.b64encode(bz2.compress(get_pass("please enter current password:")))
+    srv_com["server_key:new_password_1"] = base64.b64encode(bz2.compress(get_pass("please enter the new password:")))
+    srv_com["server_key:new_password_2"] = base64.b64encode(bz2.compress(get_pass("please reenter the new password:")))
+    _conn = net_tools.zmq_connection(
+        "pwd_change_request",
+        timeout=options.timeout,
+    )
+    _conn.add_connection("tcp://localhost:8004", srv_com, immediate=True)
+    _result = _conn.loop()[0]
+    _res_str, _res_state = _result.get_log_tuple()
+    # _res_str, _res_state = ("ok", logging_tools.LOG_LEVEL_OK)
+    print("change gave [{}]: {}".format(logging_tools.get_log_level_str(_res_state), _res_str))
+    if _res_state == logging_tools.LOG_LEVEL_OK:
+        _conn = net_tools.zmq_connection(
+            "ldap_update_request",
+            timeout=options.timeout,
+        )
+        upd_com = server_command.srv_command(command="sync_ldap_config")
+        _conn.add_connection("tcp://localhost:8004", upd_com, immediate=True)
+        _res_str, _res_state = _conn.loop()[0].get_log_tuple()
+        print(
+            "syncing the LDAP tree returned ({}) {}".format(
+                logging_tools.get_log_level_str(_res_state),
+                _res_str,
+            )
+        )
+    # print(_result.pretty_print())
+    return 0
+
+
 def main():
+    _user_name = pwd.getpwuid(os.getuid())[0]
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--mode", dest="mode", choices=["info", "list", "change"], default="info", help="set mode [%(default)s]")
     my_parser.add_argument("-Q", "--system-wide-quota", default=False, action="store_true", help="show system-wide quota [%(default)s]")
-    my_parser.add_argument("username", nargs="*", default=[pwd.getpwuid(os.getuid())[0]], help="set username [%(default)s]")
-    # my_parser.add_arguemnt("-p", dest="set_password", default=False, action="store_true", help="set password of given account(s) [%(default)s]")
+    my_parser.add_argument(
+        "--username",
+        default=_user_name,
+        choices=user.objects.filter(Q(active=True) & Q(group__active=True)).values_list("login", flat=True),
+        help="set username [%(default)s]"
+    )
+    my_parser.add_argument("--timeout", default=10, type=int, help="timeout for server connections [%(default)d]")
     options = my_parser.parse_args()
     if options.mode in ["info", "change"] and not options.username:
         print("Need username for {} mode".format(options.mode))
@@ -193,8 +237,10 @@ def main():
         ret_code = list_mode(options)
     elif options.mode == "info":
         ret_code = 0
-        for _user in options.username:
-            ret_code = max(ret_code, info_mode(options, _user))
+        _user = options.username
+        ret_code = max(ret_code, info_mode(options, _user))
+    elif options.mode == "change":
+        ret_code = modify_password(options)
     else:
         ret_code = 1
     sys.exit(ret_code)

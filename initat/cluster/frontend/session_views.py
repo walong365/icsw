@@ -80,10 +80,6 @@ def login_page(request, **kwargs):
         request,
         "login.html",
         {
-            #"login_form": kwargs.get(
-            #    "login_form",
-            #    authentication_form(next=kwargs.get("next", ""))
-            #),
             "from_logout": kwargs.get("from_logout", False),
             # "login_hints": _get_login_hints(),
             # "app_path": reverse("session:login"),
@@ -141,7 +137,6 @@ class sess_login(View):
                         _login(request, first_user)
                         return HttpResponseRedirect(reverse("user:account_info"))
             return login_page(request, next=request.GET.get("next", ""))
-
 
     @method_decorator(xml_wrapper)
     def post(self, request):

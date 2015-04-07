@@ -38,11 +38,13 @@ class write_dhcpd_config(cs_base_class.server_com):
         if len(boot_ips) > 1:
             cur_inst.srv_com.set_result(
                 "error more than one boot-net found for '{}".format(global_config["SERVER_SHORT_NAME"]),
-                server_command.SRV_REPLY_STATE_ERROR)
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         elif not boot_ips:
             cur_inst.srv_com.set_result(
                 "error no boot-net found for '{}'".forat(global_config["SERVER_SHORT_NAME"]),
-                server_command.SRV_REPLY_STATE_ERROR)
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         else:
             boot_ip = boot_ips[0]
             boot_net = boot_ip.network
