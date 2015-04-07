@@ -13,29 +13,9 @@ angular.module(
         $scope.get_cur_edit_kpi = () ->
             return cur_edit_kpi
         this.get_cur_edit_kpi = $scope.get_cur_edit_kpi
-        $scope.create_new = () ->
-            cur_edit_kpi = {
-                available_device_categories: []
-                available_monitoring_categories: []
-                selected_device_monitoring_category_tuple: []
-            }
 
-        $scope.on_submit = () ->
-            # only create code here for now
-             icswConfigKpiDataService.kpi.post(cur_edit_kpi).then(
-                 (obj) ->
-                     icswConfigKpiDataService.kpi.push(obj)
-                     console.log cur_edit_kpi.selected_device_monitoring_category_tuple
-                     for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
-                         entry = {
-                             kpi: obj.idx
-                             device_category: tup[0]
-                             monitoring_category: tup[1]
-                         }
-                         icswConfigKpiDataService.selected_device_monitoring_category_tuple.post(entry).then(
-                             (obj) -> icswConfigKpiDataService.selected_device_monitoring_category_tuple.push(obj)
-                         )
-             )
+
+
 
         $scope.load_kpi = (idx) ->
             # load kpi from db into cur_edit_kpi
@@ -52,52 +32,88 @@ angular.module(
         #    2000
         #)
 
-        $scope.get_cur_device_categories = () ->
-            return if cur_edit_kpi? then cur_edit_kpi.available_device_categories else []
-        this.get_cur_device_categories = $scope.get_cur_device_categories
-        $scope.get_cur_monitoring_categories = () ->
-            return if cur_edit_kpi? then cur_edit_kpi.available_monitoring_categories else []
-        this.get_cur_monitoring_categories = $scope.get_cur_monitoring_categories
-
-        $scope.get_kpi = (idx) ->
-            return _.find(icswConfigKpiDataService.kpi, (elem) -> return elem.idx == idx)
-        $scope.get_dev_cat = (idx) ->
-            return _.find(icswConfigKpiDataService.category, (elem) -> return elem.idx == idx)
-        $scope.get_mon_cat = (idx) ->
-            return _.find(icswConfigKpiDataService.category, (elem) -> return elem.idx == idx)
+        icswConfigKpiDataService.add_to_scope($scope)
 
 
-        $scope.is_checked = (dev_cat_id, mon_cat_id) ->
-            return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> elem[0] == dev_cat_id and elem[1] == mon_cat_id)
-        $scope.toggle_dev_mon_cat = (dev_cat_id, mon_cat_id) ->
-            elem = [dev_cat_id, mon_cat_id]
-            if $scope.is_checked(dev_cat_id, mon_cat_id)
-                _.remove(cur_edit_kpi.selected_device_monitoring_category_tuple, elem)
-            else
-                cur_edit_kpi.selected_device_monitoring_category_tuple.push(elem)
 
-
-]).directive("icswConfigKpi", [() ->
+]).directive("icswConfigKpi", ["$compile", "$templateCache", "icswConfigKpiDataService", ($compile, $templateCache, icswConfigKpiDataService) ->
     return {
         restrict : "E"
         templateUrl: "icsw.config.kpi"
         controller: 'icswConfigKpiCtrl'
+        link: (scope, el, attrs) ->
+
+            scope.create_new_kpi = () ->
+                new_edit_kpi = {
+                    name: "kpi-2323"  # TODO: uniquify
+                    available_device_categories: []
+                    available_monitoring_categories: []
+                    selected_device_monitoring_category_tuple: []
+                }
+                scope.show_kpi_dlg(new_edit_kpi, 'create')
+
+            scope.show_kpi_dlg = (cur_edit_kpi, mode) ->
+                child_scope = scope.$new()
+                child_scope.mode = mode
+                child_scope.cur_edit_kpi = cur_edit_kpi
+
+                child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
+                    return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> elem[0] == dev_cat_id and elem[1] == mon_cat_id)
+                child_scope.toggle_dev_mon_cat = (dev_cat_id, mon_cat_id) ->
+                    elem = [dev_cat_id, mon_cat_id]
+                    if child_scope.is_checked(dev_cat_id, mon_cat_id)
+                        _.remove(cur_edit_kpi.selected_device_monitoring_category_tuple, elem)
+                    else
+                        cur_edit_kpi.selected_device_monitoring_category_tuple.push(elem)
+
+                child_scope.submit_kpi = () ->
+                    if mode == 'create'
+                        console.log 'create'
+                        icswConfigKpiDataService.kpi.post(cur_edit_kpi).then((obj) ->
+                            icswConfigKpiDataService.kpi.push(obj)
+                            for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
+                                entry = {
+                                    kpi: obj.idx
+                                    device_category: tup[0]
+                                    monitoring_category: tup[1]
+                                }
+                                icswConfigKpiDataService.selected_device_monitoring_category_tuple.post(entry).then(
+                                    (obj) -> icswConfigKpiDataService.selected_device_monitoring_category_tuple.push(obj)
+                                )
+                        )
+                    else
+                        alert("modify not implemented yet")
+
+                edit_div = $compile($templateCache.get("icsw.config.kpi.edit_dialog"))(child_scope)
+
+                modal = BootstrapDialog.show
+                    title: if mode == 'create' then "Create KPI" else "Edit KPI"
+                    message: edit_div
+                    draggable: true
+                    closable: true
+                    closeByBackdrop: false
+                    size: BootstrapDialog.SIZE_WIDE
+                    type: BootstrapDialog.TYPE_DANGER
+                    onshow: (modal) =>
+                        height = $(window).height() - 100
+                        modal.getModal().find(".modal-body").css("max-height", height)
+                child_scope.modal = modal
     }
 ]).directive("icswConfigKpiConfigure", [() ->
     return {
         restrict : "E"
         templateUrl: "icsw.config.kpi.configure"
-        require: "^icswConfigKpi"
-        link: (scope, el, attrs, kpi_ctrl) ->
+        scope: false
+        link: (scope, el, attrs) ->
             scope.monitoring_categories = ["base", "http", "mail"]
             scope.device_categories = ["firewall devices", "ökotex devices"]
     }
 ]).directive("icswConfigKpiDevMonSelection", ['icswConfigKpiDataService', (icswConfigKpiDataService) ->
     return {
         restrict : "E"
-        require  : "^icswConfigKpi"
         templateUrl: "icsw.config.kpi.dev_mon_selection"
-        link: (scope, el, attrs, kpi_ctrl) ->
+        scope: false
+        link: (scope, el, attrs) ->
 
             class base_tree_config extends tree_config
                 constructor: (@scope, args) ->
@@ -127,10 +143,10 @@ angular.module(
 
             class device_category_tree_config extends base_tree_config
                 get_category_list: () ->
-                    return kpi_ctrl.get_cur_device_categories()
+                    return scope.cur_edit_kpi.available_device_categories
             class monitoring_category_tree_config extends base_tree_config
                 get_category_list: () ->
-                    return kpi_ctrl.get_cur_monitoring_categories()
+                    return scope.cur_edit_kpi.available_monitoring_categories
 
             scope.device_category_tree = new device_category_tree_config()
             scope.monitoring_category_tree = new monitoring_category_tree_config()
@@ -140,13 +156,7 @@ angular.module(
                 () -> scope._rebuild_tree()
             )
 
-            scope.$watch(
-                () -> return kpi_ctrl.get_cur_edit_kpi()
-                () -> scope._rebuild_tree()
-            )
-
             scope._rebuild_tree = () ->
-
                 scope.device_category_tree.clear_root_nodes()
                 scope.monitoring_category_tree = new monitoring_category_tree_config()
                 roots = []
@@ -173,28 +183,39 @@ angular.module(
                     # first level of children are relevant 'roots', i.e. devices, mon, loc, etc
                     for entry in root.children
                         if entry.name == 'device'
-                            add_to_tree_rec(scope.device_category_tree, entry, kpi_ctrl.get_cur_device_categories())
+                            add_to_tree_rec(scope.device_category_tree, entry, scope.cur_edit_kpi.available_device_categories)
                         if entry.name == 'mon'
-                            add_to_tree_rec(scope.monitoring_category_tree, entry, kpi_ctrl.get_cur_monitoring_categories())
+                            add_to_tree_rec(scope.monitoring_category_tree, entry, scope.cur_edit_kpi.available_monitoring_categories)
     }
 ]).directive("icswConfigKpiDevMonLinker", ['icswConfigKpiDataService', (icswConfigKpiDataService) ->
     return {
         restrict : "E"
-        require  : "^icswConfigKpi"
         templateUrl: "icsw.config.kpi.dev_mon_linker"
-        link: (scope, el, attrs, kpi_ctrl) ->
+        link: (scope, el, attrs) ->
     }
 ]).service("icswConfigKpiDataService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
 
-    category = get_rest(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
-    kpi = get_rest(ICSW_URLS.REST_KPI_LIST.slice(1))
-    selected_device_monitoring_category_tuple = get_rest(ICSW_URLS.REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE_LIST.slice(1))
-
-    return {
-        category: category
-        kpi: kpi
-        selected_device_monitoring_category_tuple: selected_device_monitoring_category_tuple
+    ret = {
+        category: get_rest(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
+        kpi: get_rest(ICSW_URLS.REST_KPI_LIST.slice(1))
+        selected_device_monitoring_category_tuple: get_rest(ICSW_URLS.REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE_LIST.slice(1))
     }
+
+
+    ret.get_kpi = (idx) ->
+        return _.find(ret.kpi, (elem) -> return elem.idx == idx)
+    ret.get_dev_cat = (idx) ->
+        return _.find(ret.category, (elem) -> return elem.idx == idx)
+    ret.get_mon_cat = (idx) ->
+        return _.find(ret.category, (elem) -> return elem.idx == idx)
+
+    regular_keys = Object.keys(ret)
+
+    ret.add_to_scope = (scope) ->
+        for f in regular_keys
+            scope[f] = ret[f]
+
+    return ret
 ])
 
