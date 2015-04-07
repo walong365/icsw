@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -37,18 +37,20 @@ class write_dhcpd_config(cs_base_class.server_com):
         boot_ips = my_c.identifier_ip_lut.get("b", [])
         if len(boot_ips) > 1:
             cur_inst.srv_com.set_result(
-                "error more than one boot-net found for '%s'" % (global_config["SERVER_SHORT_NAME"]),
+                "error more than one boot-net found for '{}".format(global_config["SERVER_SHORT_NAME"]),
                 server_command.SRV_REPLY_STATE_ERROR)
         elif not boot_ips:
             cur_inst.srv_com.set_result(
-                "error no boot-net found for '%s'" % (global_config["SERVER_SHORT_NAME"]),
+                "error no boot-net found for '{}'".forat(global_config["SERVER_SHORT_NAME"]),
                 server_command.SRV_REPLY_STATE_ERROR)
         else:
             boot_ip = boot_ips[0]
             boot_net = boot_ip.network
             add_nets = list(
                 [
-                    (cur_net.network_type.identifier, cur_net) for cur_net in network.objects.exclude(
+                    (
+                        cur_net.network_type.identifier, cur_net
+                    ) for cur_net in network.objects.exclude(
                         pk=boot_net.pk
                     ).filter(
                         Q(net_ip__netdevice__device=my_c.effective_device) &
@@ -60,7 +62,7 @@ class write_dhcpd_config(cs_base_class.server_com):
             dhcpd_c = [
                 "ddns-update-style none;",
                 "omapi-port 7911;",
-                "ddns-domainname \"%s\";" % (global_config["SERVER_SHORT_NAME"]),
+                "ddns-domainname \"{}\";".format(global_config["SERVER_SHORT_NAME"]),
                 "allow booting;\nallow bootp;",
                 ""
             ]
@@ -79,7 +81,7 @@ class write_dhcpd_config(cs_base_class.server_com):
                 for key, configs, _add_dict in [
                     ("domain-name-servers", ["name_server", "name_slave"], {}),
                     ("ntp-servers", ["xntp_server"], {}),
-                    ("nis-servers", ["yp_server"], {"domainname" : "nis-domain"})
+                    ("nis-servers", ["yp_server"], {"domainname": "nis-domain"})
                 ]:
                     found_confs = set(cur_dc.keys()) & set(configs)
                     if found_confs:
@@ -90,8 +92,8 @@ class write_dhcpd_config(cs_base_class.server_com):
                                 if match_list:
                                     found_dict.setdefault(act_net.pk, {}).setdefault(key, []).append((cur_srv.device, match_list))
             dhcpd_c.extend([
-                "shared-network %s {" % (global_config["SERVER_SHORT_NAME"]),
-                "    option routers %s;" % (gateway)
+                "shared-network {} {".format(global_config["SERVER_SHORT_NAME"]),
+                "    option routers {};".format(gateway)
                 ])
             for act_net in [boot_net] + add_nets:
                 comment_sign = "" if act_net.network_type.identifier == "b" else "#"
@@ -134,28 +136,31 @@ class write_dhcpd_config(cs_base_class.server_com):
                 "}",
                 "",
             ])
-            if os.path.isdir("/etc/dhp3"):
+            if os.path.isdir("/etc/dhcp3"):
                 file("/etc/dhcp3/dhcpd.conf", "w").write("\n".join(dhcpd_c))
             else:
                 file("/etc/dhcpd.conf", "w").write("\n".join(dhcpd_c))
             ret_state = None
             for s_name in ["dhcp3-server", "dhcpd"]:
-                if os.path.isfile("/etc/init.d/%s" % (s_name)):
-                    cstat, log_f = process_tools.submit_at_command("/etc/init.d/%s restart" % (s_name), 1)
+                if os.path.isfile("/etc/init.d/{}".format(s_name)):
+                    cstat, log_f = process_tools.submit_at_command("/etc/init.d/{} restart".format(s_name), 1)
                     for log_line in log_f:
                         self.log(log_line)
                     if cstat:
                         ret_state, ret_str = (
                             server_command.SRV_REPLY_STATE_ERROR,
-                            "error wrote dhcpd-config, unable to submit at-command (%d, please check logs)" % (cstat))
+                            "error wrote dhcpd-config, unable to submit at-command ({:d}, please check logs)".format(cstat)
+                        )
                     else:
                         ret_state, ret_str = (
                             server_command.SRV_REPLY_STATE_OK,
-                            "ok wrote dhcpd-config and successfully submitted configuration")
+                            "ok wrote dhcpd-config and successfully submitted configuration"
+                        )
             if ret_state is None:
                 ret_state, ret_str = (
                     server_command.SRV_REPLY_STATE_ERROR,
-                    "error no valid dhcp-server found (packages like dhcp-server missing ?)")
+                    "error no valid dhcp-server found (packages like dhcp-server missing ?)"
+                )
             cur_inst.srv_com.set_result(
                 ret_str,
                 ret_state,

@@ -1328,3 +1328,5 @@ umount /proc
 hostname ""
 
 touch /success
+
+echo "stage2 finished"

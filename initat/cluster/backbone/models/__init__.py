@@ -224,7 +224,7 @@ class home_export_list(object):
             dev_name, dev_name_full, act_pk = (
                 entry.device.name,
                 entry.device.full_name,
-                entry.pk
+                entry.pk,
             )
             home_exp_dict[act_pk] = {
                 "key": act_pk,

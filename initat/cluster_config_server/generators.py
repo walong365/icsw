@@ -207,7 +207,11 @@ def do_nets(conf):
                 "NETMASK": cur_net.netmask,
                 "NETWORK": cur_net.network,
                 "DEVICE": cur_nd.devname,
-                "ONBOOT": "yes"
+                "ONBOOT": "yes",
+                "USERCTL": "no",
+                "PEERDNS": "no",
+                "TYPE": "Ethernet",
+                "IPV6INIT": "no",
             }
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
                 if cur_nd.macaddr.replace(":", "").replace("0", "").strip():
