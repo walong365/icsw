@@ -4,17 +4,21 @@
 """ base views """
 
 from PIL import Image
+import datetime
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+import server_command
+import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx
+    category_tree, location_gfx, DeleteRequest
+from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import category_form, location_gfx_form
-from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImport
 import initat.cluster.backbone.models
 import json
@@ -22,6 +26,7 @@ import PIL
 import logging
 import logging_tools
 import process_tools
+import pprint
 
 logger = logging.getLogger("cluster.base")
 
@@ -137,6 +142,8 @@ class modify_location_gfx(View):
             _changed = True
             if _post["mode"] == "rotate":
                 _loc.rotate(int(_post["degrees"]))
+            elif _post["mode"] == "resize":
+                _loc.resize(float(_post["factor"]))
             elif _post["mode"] == "brightness":
                 _loc.brightness(float(_post["factor"]))
             elif _post["mode"] == "sharpen":
@@ -153,6 +160,8 @@ class modify_location_gfx(View):
             if _changed:
                 request.xml_response["image_url"] = _loc.get_image_url()
                 request.xml_response["icon_url"] = _loc.get_icon_url()
+                request.xml_response["width"] = "{:d}".format(_loc.width)
+                request.xml_response["height"] = "{:d}".format(_loc.height)
 
 
 class change_category(View):
@@ -210,3 +219,131 @@ class change_category(View):
                 )
             )
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
+
+
+class CheckDeleteObject(View):
+    """
+    This is an advanced delete which handles further actions which might
+    be necessary in order to delete an object
+
+    Does not actually delete yet as this can take very long (>30 seconds) but returns
+    data about which objects can be deleted for the client to delete and data about object references.
+    """
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        # returns:
+        # - related_objs: {obj_ok : [related_obj_info] } for objects which have related objects
+        # - deletable_objects: [obj_pk]
+        _post = request.POST
+        obj_pks = json.loads(_post.get("obj_pks"))
+        model = getattr(initat.cluster.backbone.models, _post.get("model"))
+
+        objs_to_delete = model.objects.filter(pk__in=obj_pks)
+
+        if len(objs_to_delete) < len(obj_pks):
+            request.xml_response.error("Could not find all objects to delete.")
+            logger.warn("To delete: {}; found only: {}".format(obj_pks, [o.pk for o in objs_to_delete]))
+
+        related_objects_info = {}
+        deletable_objects = []
+        # import time
+        for obj_to_delete in objs_to_delete:
+            # a = time.time()
+
+            can_delete_answer = can_delete_obj(obj_to_delete, logger)
+            # print 'can del took ', time.time() - a, bool(can_delete_answer), len(can_delete_answer.related_objects)
+            if can_delete_answer:
+                deletable_objects.append(obj_to_delete.pk)
+            else:
+                info = []
+                # there are django related objects, which describe the fields that are related
+                # and there are referenced objects, which are the actual db objects having these fields
+                for related_object in can_delete_answer.related_objects:
+                    referenced_objects_list = []
+                    refs_of_refs = set()
+                    for referenced_object in related_object.ref_list:
+                        referenced_objects_list.append(
+                            {k: v for (k, v) in referenced_object.__dict__.iteritems() if k != '_state'}
+                        )
+                        refs_of_refs.update(get_related_models(referenced_object, detail=True))
+
+                    info.append({
+                        'model': related_object.model._meta.object_name,
+                        'model_verbose_name': related_object.model._meta.verbose_name.capitalize(),
+                        'field_name': related_object.field.name,
+                        'field_verbose_name': related_object.field.verbose_name.capitalize(),
+                        'null': related_object.field.null,
+                        'objects': {
+                            'num_refs_of_refs': len(refs_of_refs),
+                            'list': referenced_objects_list,
+                        },
+                    })
+                related_objects_info[obj_to_delete.pk] = info
+                # print 'build 2nd level rel list', time.time() - a
+            # print 'obj', obj_pk, ' took ', time.time() - a
+
+        # json can't deal with datetime, django formatter doesn't have nice dates
+        def formatter(x):
+            if isinstance(x, datetime.datetime):
+                return x.strftime("%Y-%m-%d %H:%M")
+            elif isinstance(x, datetime.date):
+                # NOTE: datetime is instance of date, so check datetime first
+                return x.isoformat()
+            else:
+                return x
+        request.xml_response['related_objects'] = json.dumps(related_objects_info, default=formatter)
+        request.xml_response['deletable_objects'] = json.dumps(deletable_objects)
+
+
+class AddDeleteRequest(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        obj_pks = json.loads(request.POST.get("obj_pks"))
+        model_name = request.POST.get("model")
+        model = getattr(initat.cluster.backbone.models, model_name)
+
+        for obj_pk in obj_pks:
+            obj = model.objects.get(pk=obj_pk)
+
+            if hasattr(obj, "enabled"):
+                obj.enabled = False
+                obj.save()
+
+            if DeleteRequest.objects.filter(obj_pk=obj_pk, model=model_name).exists():
+                request.xml_response.error("This object is already in the deletion queue.")
+            else:
+                del_req = DeleteRequest(
+                    obj_pk=obj_pk,
+                    model=model_name,
+                    delete_strategies=request.POST.get("delete_strategies", None)
+                )
+                with transaction.atomic():
+                    # save right away, not after request finishes, since cluster server is notified now
+                    del_req.save()
+
+        srv_com = server_command.srv_command(command="handle_delete_requests")
+        contact_server(request, "server", srv_com, log_result=False)
+
+
+class CheckDeletionStatus(View):
+    # Returns how many of certain objects are already deleted
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        obj_pks = json.loads(request.POST.get("obj_pks"))
+        model = getattr(initat.cluster.backbone.models, request.POST.get("model"))
+
+        num_remaining_objs = len(model.objects.filter(pk__in=obj_pks))
+
+        request.xml_response['num_remaining'] = num_remaining_objs
+
+        if num_remaining_objs == 0:
+            msg = "Finished deleting {}".format(logging_tools.get_plural("object", len(obj_pks)))
+        else:
+            additional = " ({} remaining)".format(num_remaining_objs) if len(obj_pks) > 1 else ""
+            msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
+
+        request.xml_response['msg'] = msg
+

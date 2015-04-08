@@ -25,14 +25,17 @@
 import json
 import logging
 import re
+import pprint
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from lxml.builder import E
 from initat.cluster.backbone.models import device_type, device_group, device, \
-    cd_connection, domain_tree_node
+    cd_connection, domain_tree_node, category
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
@@ -67,12 +70,12 @@ class change_devices(View):
             error_msgs = []
             for pk in pk_list:
                 obj = device.objects.get(Q(pk=pk))
-                try:
-                    if can_delete_obj(obj, logger):
-                        obj.delete()
-                        num_deleted += 1
-                except ValueError as e:
-                    error_msgs.append((obj.name, unicode(e.message)))
+                can_delete_answer = can_delete_obj(obj, logger)
+                if can_delete_answer:
+                    obj.delete()
+                    num_deleted += 1
+                else:
+                    error_msgs.append((obj.name, can_delete_answer.msg))
             if num_deleted > 0:
                 request.xml_response.info("delete {}".format(logging_tools.get_plural("device", num_deleted)))
             for pk, msg in error_msgs:
@@ -270,3 +273,14 @@ class device_info(View):
         request.session["sel_list"] = ["dev__{}".format(kwargs["device_pk"])]
         request.session.save()
         return render_me(request, "index.html", {"index_view": True, "doc_page": "index", "DEVICE_MODE": kwargs.get("mode", "")})()
+
+
+class get_device_location(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        if "devices" in request.GET:
+            _dev_pks = json.loads(request.GET["devices"])
+            _mapping_list = list(category.objects.filter(Q(device__in=_dev_pks) & Q(full_name__startswith="/location/")).values_list("device__pk", "pk"))
+        else:
+            _mapping_list = list(category.objects.filter(Q(full_name__startswith="/location/")).values_list("device__pk", "pk"))
+        return HttpResponse(json.dumps(_mapping_list), content_type="application/json")

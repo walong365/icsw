@@ -1,0 +1,6 @@
+# config-file for host-monitoring
+# should we also start the relay-daemon ?
+
+# server arguments
+
+SERVER_ARGS=" "

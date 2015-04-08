@@ -51,6 +51,7 @@ from initat.cluster.frontend.forms import mon_period_form, mon_notification_form
     device_group
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImports
+from lxml import etree
 import base64
 import itertools
 import json
@@ -132,7 +133,8 @@ class call_icinga(View):
     @method_decorator(login_required)
     def get(self, request):
         resp = HttpResponseRedirect(
-            u"http://{}:{}@{}/icinga/".format(
+            u"http{}://{}:{}@{}/icinga/".format(
+                "s" if request.is_secure() else "",
                 request.user.login,
                 # fixme, if no password is set (due to automatic login) use no_passwd
                 base64.b64decode(request.session.get("password", "no_passwd")),
@@ -725,20 +727,31 @@ class get_hist_service_line_graph_data(ListAPIView):
 class svg_to_png(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
+        parser = etree.XMLParser(remove_comments=True)
         _post = request.POST
+        _bytes = _post["svg"]
         _out = StringIO.StringIO()
-        cairosvg.svg2png(bytestring=_post["svg"], write_to=_out)
-        _png_content = _out.getvalue()
-        _cache_key = "SVG2PNG_{}".format(uuid.uuid4().get_urn().split("-")[-1])
-        cache.set(_cache_key, _png_content, 60)
-        logger.info(
-            "converting svg with {} to png with {} (cache_key is {})".format(
-                logging_tools.get_size_str(len(_post["svg"])),
-                logging_tools.get_size_str(len(_png_content)),
-                _cache_key,
+        #_xml = etree.fromstring(_post["svg"], parser)
+        #for _el in _xml.iter():
+        #    for _key, _value in _el.attrib.iteritems():
+        #        if _key.startswith("ng-"):
+        #            del _el.attrib[_key]
+        try:
+            cairosvg.svg2png(bytestring=_bytes.strip(), write_to=_out)
+        except:
+            request.xml_response.error("error converting svg to png")
+        else:
+            _png_content = _out.getvalue()
+            _cache_key = "SVG2PNG_{}".format(uuid.uuid4().get_urn().split("-")[-1])
+            cache.set(_cache_key, _png_content, 60)
+            logger.info(
+                "converting svg with {} to png with {} (cache_key is {})".format(
+                    logging_tools.get_size_str(len(_post["svg"])),
+                    logging_tools.get_size_str(len(_png_content)),
+                    _cache_key,
+                )
             )
-        )
-        request.xml_response["cache_key"] = _cache_key
+            request.xml_response["cache_key"] = _cache_key
 
 
 class fetch_png_from_cache(View):

@@ -1,0 +1,125 @@
+#!/bin/bash
+#
+# Copyright (c) 2002-2006,2012,2014-2015 Andreas Lang-Nevyjel init.at
+#
+# RedHat stuff
+# chkconfig: 2345 14 86
+# description: host-relay services
+#
+### BEGIN INIT INFO
+# Provides:      host-relay
+# Required-Start: $network $syslog logging-server
+# Required-Stop: $network $syslog logging-server
+# Should-Start: mysql
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
+# Description:   start host-relay services
+### END INIT INFO
+
+export SYSTEMD_NO_WRAP="1"
+if [ -f /etc/rc.status ] ; then
+    . /etc/rc.status
+else
+    . /etc/rc.status_suse
+fi
+. /etc/sysconfig/host-relay
+. /etc/init.d/ics_tools.sh
+
+HOSTMON_BIN=/opt/cluster/sbin/host-monitoring-zmq.py
+RELAY_BIN=/opt/cluster/sbin/collrelay.py
+PYTHON_BIN=/opt/python-init/bin/python
+META_FILE=/var/lib/meta-server/collrelay
+RELAY_PID=/var/run/collrelay/collrelay.pid
+SERVER_DIRS="/var/run/collrelay"
+
+test -x ${HOSTMON_BIN} || exit 5
+test -x ${RELAY_BIN} || exit 5
+test -x ${PYTHON_BIN} || exit 5
+
+rc_reset
+
+export HOSTNAME=`/bin/hostname`
+case "$1" in
+    start)
+        echo -n "Starting collrelay.py"
+        if [ -f ${RELAY_PID} ] ; then
+            echo -n " ... already running"
+        else
+            for dir in $SERVER_DIRS ; do
+                [ ! -d "${dir}" ] && mkdir -p ${dir}
+            done
+            ${RELAY_BIN} ${RELAY_ARGS}
+        fi
+        rc_status -v
+        ;;
+    stop)      
+        echo -n "Stopping collrelay.py"
+        if [ -f ${RELAY_PID} ] ; then
+            if [ -f ${META_FILE} ] ; then
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collrelay.py --signal 15 --proc-name main
+            else
+                kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
+	        fi
+            if [ -f ${RELAY_PID} ] ; then
+                for i in $(seq 40) ; do
+                    echo -n "."
+                    if [ -x /bin/usleep ] ; then
+                        usleep 250000
+                    else
+                        sleep 1
+                    fi
+                    [ ! -f ${RELAY_PID} ] && break
+                done
+            fi
+            [ $i -gt 18 ] && rc_failed || rc_reset
+        else
+            rc_failed
+        fi
+        rc_status -v
+        ;;
+    force-stop)
+        echo -n "Force stopping collrelay.py"
+        if [ -f ${RELAY_PID} ] ; then
+            if [ -f ${META_FILE} ] ; then
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collrelay.py --signal 9
+            else
+                kill -9 `cat ${RELAY_PID} ` || rc_failed
+            fi
+        else
+            rc_failed
+        fi
+        rm -f ${RELAY_PID} ${META_FILE}
+        rc_status -v
+        ;;
+    status)
+        echo -n "Checking collrelay.py..."
+        check_threads_ok ${RELAY_PID} || {
+            check_threads ${RELAY_PID} || rc_failed 
+        } 
+        rc_status -v
+        ;;
+    restart)
+        echo "Restarting $(basename $RELAY_BIN)"
+        $0 stop && sleep 2 ; $0 start || return=$rc_failed
+        ;;
+    force-restart)
+        echo "Restarting $(basename $RELAY_BIN)"
+        $0 force-stop && sleep 2 ; $0 start || return=$rc_failed
+        ;;
+    reload)
+        echo -n "Reloading collrelay.py"
+        if [ -f ${META_FILE} ] ; then
+	        /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collrelay.py --signal 1 --proc-name main
+	    else
+	        rc_failed
+        fi
+        rc_status -v
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status|force-stop|force-restart|reload}"
+        exit 1
+        ;;
+esac
+
+rc_exit
+

@@ -51,6 +51,7 @@ ics_app = angular.module(
         "ngCookies",
         "ngSanitize",
         "ui.bootstrap",
+        "ui.router",
         "restangular",
         "blockUI",
         "toaster",
@@ -61,6 +62,7 @@ ics_app = angular.module(
         "icsw.network",
         "icsw.tools",
         "icsw.login",
+        "icsw.layout.routing",
         "icsw.user",
         "icsw.user.password",
         "icsw.user.dashboard",
@@ -119,8 +121,11 @@ ics_app = angular.module(
     "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}"
     "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"
+    "BASE_ADD_DELETE_REQUEST": "{% url 'base:add_delete_request' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
+    "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"
+    "BASE_CHECK_DELETION_STATUS": "{% url 'base:check_deletion_status' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
     "BASE_MODIFY_LOCATION_GFX": "{% url 'base:modify_location_gfx' %}"
     "BASE_PRUNE_CATEGORIES": "{% url 'base:prune_categories' %}"
@@ -143,6 +148,7 @@ ics_app = angular.module(
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
+    "DEVICE_GET_DEVICE_LOCATION": "{% url 'device:get_device_location' %}"
     "DEVICE_MANUAL_CONNECTION": "{% url 'device:manual_connection' %}"
     "DEVICE_SCAN_DEVICE_NETWORK": "{% url 'device:scan_device_network' %}"
     "DEVICE_SET_SELECTION": "{% url 'device:set_selection' %}"

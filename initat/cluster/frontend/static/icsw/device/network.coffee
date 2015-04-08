@@ -394,13 +394,17 @@ angular.module(
                         if dev.active_scan != dev.previous_scan
                             if not dev.active_scan
                                 # scan finished
-                                Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"}).then(
-                                    (dev_data) ->
-                                        Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList().then((data) ->
-                                            $scope.networks = data
-                                            $scope.network_lut = icswTools.build_lut($scope.networks)
-                                            $scope.update_device(dev_data[0])
-                                        )
+                                $q.all(
+                                    [
+                                        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"})
+                                        Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1)).getList(),
+                                        Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList(),
+                                    ]
+                                ).then((data) ->
+                                    $scope.networks = data[2]
+                                    $scope.peers = data[1]
+                                    $scope.network_lut = icswTools.build_lut($scope.networks)
+                                    $scope.update_device(data[0][0])
                                 )
                         if obj.active_scan
                             any_scans_running = true

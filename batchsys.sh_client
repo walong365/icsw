@@ -1,0 +1,34 @@
+#!/bin/bash
+# Copyright (C) 2005-2007,2014 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+# 
+# This file is part of rms-tools
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+# deprecated script, please use the module system
+
+if [ -f /etc/sge_root ] && [ -f /etc/sge_cell ] && [ -f /etc/sge_server ] ; then
+    export SGE_ROOT=`cat /etc/sge_root`
+    export SGE_CELL=`cat /etc/sge_cell`
+    export SGE_SERVER=`cat /etc/sge_server`
+    if [ -f $SGE_ROOT/util/arch ] ; then
+        export SGE_ARCH=`$SGE_ROOT/util/arch`
+    fi
+    export PATH=$PATH:${SGE_ROOT}/bin/${SGE_ARCH}
+    export MANPATH=$MANPATH:${SGE_ROOT}/man
+fi
+

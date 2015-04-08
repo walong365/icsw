@@ -1,0 +1,27 @@
+1.2
+---
+
+* Moved to new namespace initat.core
+* Several PEP8 and pylint fixes
+
+1.1.1
+-----
+
+* Added dumpdatafast with postgres_dump serializer
+
+1.1.0
+-----
+
+* Major rewrite - HTML5 base template, alfresco tools
+
+1.0.1
+-----
+
+* inspectdb_schema now understands date annotations
+  with ISO date strings
+
+1.0.0
+-----
+
+* Initial release
+

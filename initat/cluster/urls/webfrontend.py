@@ -61,6 +61,9 @@ base_patterns = patterns(
     url("^modify_loc_gfx$", base_views.modify_location_gfx.as_view(), name="modify_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
     url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
+    url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
+    url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
+    url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
 )
 
 setup_patterns = patterns(
@@ -105,11 +108,12 @@ device_patterns = patterns(
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^config$", device_views.show_configs.as_view(), name="show_configs"),
     url("^connections", device_views.connections.as_view(), name="connections"),
-    url("manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
-    url("variables$", device_views.variables.as_view(), name="variables"),
-    url("change_devices$", device_views.change_devices.as_view(), name="change_devices"),
-    url("scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
-    url("device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
+    url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
+    url("^variables$", device_views.variables.as_view(), name="variables"),
+    url("^change_devices$", device_views.change_devices.as_view(), name="change_devices"),
+    url("^scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
+    url("^device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
+    url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
 )
 
 network_patterns = patterns(
