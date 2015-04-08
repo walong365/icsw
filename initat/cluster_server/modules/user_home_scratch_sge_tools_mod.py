@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -39,7 +39,7 @@ class create_user_home(cs_base_class.server_com):
         def change_own(arg, act_dir, entries):
             uid, gid = arg
             for entry in entries:
-                fname = "%s/%s" % (act_dir, entry)
+                fname = os.path.join(act_dir, entry)
                 os.chown(fname, uid, gid)
         # to entries possible:
         # homeexport: used for automounter maps
@@ -76,7 +76,7 @@ class create_user_home(cs_base_class.server_com):
                 )
             else:
                 exp_dict = dict([(hd_export.name, hd_export.value) for hd_export in hd_exports])
-                self.log("export dict: %s" % (", ".join(["%s='%s'" % (key, value) for key, value in exp_dict.iteritems()])))
+                self.log("export dict: {}".format(", ".join(["{}='{}'".format(key, value) for key, value in exp_dict.iteritems()])))
                 homestart = exp_dict.get("createdir", exp_dict["homeexport"])
                 # check for skeleton directory
                 skel_dir = None
@@ -91,19 +91,23 @@ class create_user_home(cs_base_class.server_com):
                     homestart,
                 )
                 uid, gid = (cur_user.uid, cur_user.group.gid)
-                self.log("homestart is '%s', skel_dir '%s', uid/gid is %d/%d" % (
-                    home_start,
-                    skel_dir,
-                    uid,
-                    gid,
-                ))
+                self.log(
+                    "homestart is '{}', skel_dir '{}', uid/gid is {:d}/{:d}".format(
+                        home_start,
+                        skel_dir,
+                        uid,
+                        gid,
+                    )
+                )
                 if not os.path.isdir(home_start):
                     try:
                         os.makedirs(home_start)
                     except:
                         pass
                 if os.path.isdir(home_start):
-                    full_home = os.path.normpath("%s/%s" % (home_start, cur_user.home or cur_user.login))
+                    full_home = os.path.normpath(
+                        os.path.join(home_start, cur_user.home or cur_user.login)
+                    )
                     create_hdir, hdir_exists = (True, False)
                     if os.path.exists(full_home):
                         create_hdir, hdir_exists, hdir_err_str = (
@@ -193,13 +197,8 @@ class create_sge_user(cs_base_class.server_com):
 
     def _call(self, cur_inst):
         # get fairshare-value
-        self.dc.execute("SELECT ci.value FROM new_config c, config_int ci, device_config dc WHERE ci.new_config=c.new_config_idx AND ci.name='fairshare' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='sge_server'" % (global_config["SERVER_IDX"]))
-        if self.dc.rowcount == 1:
-            fshare = self.dc.fetchone()["value"]
-            f_str = "fairshare-value"
-        else:
-            fshare = 30
-            f_str = "default fairshare-value"
+        fshare = 30
+        f_str = "default fairshare-value"
         f_str += " %s" % (str(fshare))
         user = cur_inst.option_dict["username"]
         try:
@@ -226,15 +225,14 @@ class create_sge_user(cs_base_class.server_com):
             os.environ["SGE_CELL"] = sge_cell
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
             if cstat:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply": "error cannot create SGE user %s: '%s'" % (user, cout)
-                })
+                cur_inst.srv_com.set_result(
+                    "error cannot create SGE user {}: '{}'".format(user, cout),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             else:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state": "%d" % (server_command.SRV_REPLY_STATE_OK),
-                    "reply": "ok created user %s for SGE (%s)" % (user, f_str)
-                })
+                cur_inst.srv_com.set_result(
+                    "ok created user {} for SGE ({})".format(user, f_str),
+                )
             try:
                 os.unlink(tmp_name)
             except:
@@ -285,19 +283,23 @@ class rename_sge_user(cs_base_class.server_com):
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
             _sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
-            cur_inst.srv_com["result"].attrib.update({
-                "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply": "error sge-/etc/files not found"
-            })
+            cur_inst.srv_com.set_result(
+                "error sge-/etc/files not found",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -suser %s" % (sge_root, sge_arch, old_user))
             if cstat:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply": "error cannot fetch info for SGE user %s: %s" % (old_user, cout)
-                })
+                cur_inst.srv_com.set_result(
+                    "error cannot fetch info for SGE user %s: %s" % (old_user, cout),
+                    server_command.SRV_REPLY_STATE_ERROR,
+                )
             else:
-                user_dict = dict([(a, b) for a, b in [x.strip().split(None, 1) for x in cout.strip().split("\n")] if a != "name"])
+                user_dict = {
+                    a: b for a, b in [
+                        _line.strip().split(None, 1) for _line in cout.strip().split("\n")
+                    ] if a != "name"
+                }
                 user_dict["name"] = user
                 tmp_name = tempfile.mktemp("sge")
                 _tf = file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.iteritems()]))

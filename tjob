@@ -1,3 +1,0 @@
-#$ -N test
-hostname
-sleep 60000
