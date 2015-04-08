@@ -391,6 +391,8 @@ install:
 	${LN} -s ${PYTHON_SITE}/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
 	# remove deprecated
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
+	# remove pyc
+	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
 
 
 
