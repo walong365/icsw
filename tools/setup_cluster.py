@@ -51,7 +51,7 @@ SYNC_APPS = ["liebherr", "licadmin"]
 NEEDED_DIRS = ["/var/log/cluster"]
 
 BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models16")
+PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
 
 try:
     import psycopg2  # @UnresolvedImport
@@ -410,14 +410,14 @@ def get_pw(size=10):
 
 def check_for_pre17(opts):
     # BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-    if os.path.isdir(PRE_MODELES_DIR):
-        print("pre-1.7 models dir {} found".format(PRE_MODELES_DIR))
+    if os.path.isdir(PRE_MODELS_DIR):
+        print("pre-1.7 models dir {} found".format(PRE_MODELS_DIR))
         # first step: move 1.7 models / serializers away
         _move_dirs = ["models", "serializers"]
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
         # next step: move pre-models to current models
-        os.rename(PRE_MODELES_DIR, os.path.join(BACKBONE_DIR, "models"))
+        os.rename(PRE_MODELS_DIR, os.path.join(BACKBONE_DIR, "models"))
         # next step: remove all serializer relations from model files
         for _entry in os.listdir(os.path.join(BACKBONE_DIR, "models")):
             if _entry.endswith(".py"):
@@ -498,15 +498,6 @@ def migrate_db(opts):
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
             if os.path.isdir(_app_dir):
                 print("found app {}".format(_sync_app))
-                # _mig_dir = os.path.join(_app_dir, "migrations")
-                # if not os.path.isdir(_mig_dir):
-                #    print("initial migration for {}".format(_sync_app))
-                #    call_manage(["migrate", _sync_app, "--noinput"])
-                # if os.path.isdir(_mig_dir):
-                # _py_files = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py")]
-                # if _py_files == ["__init__.py"]:
-                #    # initial schema migration call
-                #    call_manage(["schemamigration", _sync_app, "--initial"])
                 call_manage(["makemigrations", _sync_app, "--noinput"])
                 call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
