@@ -115,6 +115,7 @@ install_old: install_cluster_backbone install_cluster_backbone_sql install_clust
 install:
 	# Copy the main source code
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYINIT_SITE}/
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
 	cp -a initat ${DESTDIR}/${PYINIT_SITE}/
 	# setup.py
 	${PYTHON} ./cbc-tools_setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
