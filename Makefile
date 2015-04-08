@@ -52,34 +52,34 @@ LN=ln
 # Dynamic settings
 ###############################################################################
 ifeq ($(shell getconf LONG_BIT), 64)
-  LIB_DIR=lib64
+    LIB_DIR=lib64
 else
-  LIB_DIR=lib
+    LIB_DIR=lib
 endif
 
 ifneq ($(wildcard /etc/debian_version), )
-  WWW_USER=www-data
-  WWW_GROUP=www-data
-  WEB_PREFIX=/var/www/
-  DIST_TYPE:=debian
-  WSGI_INI:=webfrontend.wsgi.ini-deb
-else
-  ifeq ($(findstring SuSE-release, $(wildcard /etc/*)), )
-    WWW_USER=apache
-    WWW_GROUP=apache
+    WWW_USER=www-data
+    WWW_GROUP=www-data
     WEB_PREFIX=/var/www/
-    DIST_TYPE:=centos
-    WSGI_INI:=webfrontend.wsgi.ini-centos
-  else
-    WWW_USER=wwwrun
-    WWW_GROUP=www
-    WEB_PREFIX=/srv/www/
-    SUSE_MAJOR:=$(shell grep VERSION /etc/SuSE-release | cut -d '=' -f 2 | sed 's/ *//g' | cut -d '.' -f 1)
-    SUSE_MINOR:=$(shell grep VERSION /etc/SuSE-release | cut -d '=' -f 2 | sed 's/ *//g' | cut -d '.' -f 2)
-    SUSE_FULL:=${SUSE_MAJOR}${SUSE_MINOR}
-    DIST_TYPE:=suse
-    WSGI_INI:=webfrontend.wsgi.ini-suse
-  endif
+    DIST_TYPE:=debian
+    WSGI_INI:=webfrontend.wsgi.ini-deb
+else
+    ifeq ($(findstring SuSE-release, $(wildcard /etc/*)), )
+        WWW_USER=apache
+        WWW_GROUP=apache
+        WEB_PREFIX=/var/www/
+        DIST_TYPE:=centos
+        WSGI_INI:=webfrontend.wsgi.ini-centos
+    else
+         WWW_USER=wwwrun
+         WWW_GROUP=www
+         WEB_PREFIX=/srv/www/
+         SUSE_MAJOR:=$(shell grep VERSION /etc/SuSE-release | cut -d '=' -f 2 | sed 's/ *//g' | cut -d '.' -f 1)
+         SUSE_MINOR:=$(shell grep VERSION /etc/SuSE-release | cut -d '=' -f 2 | sed 's/ *//g' | cut -d '.' -f 2)
+         SUSE_FULL:=${SUSE_MAJOR}${SUSE_MINOR}
+         DIST_TYPE:=suse
+         WSGI_INI:=webfrontend.wsgi.ini-suse
+    endif
 endif
 
 ###############################################################################
@@ -93,7 +93,7 @@ MEMTEST_VERSION=86+-5.01
 ###############################################################################
 
 build:
-	${MAKE} -C c_progs_collectd
+    ${MAKE} -C c_progs_collectd
 	${MAKE} -C c_progs
 	${MAKE} -C c_clients
 	${PYTHON} ./cbc-tools_setup.py build
