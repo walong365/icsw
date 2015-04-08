@@ -1,6 +1,0 @@
-was brauchen wir:
-
- o Gesamtstatistik (Jobs/Slots running/waiting)
- o Accounting pro Job (aus qacct), wird einmail pro Stunde (oder so) gemacht
- o direkte Statistik aus dem SGE-Server: was läuft auf welchem Node
-
