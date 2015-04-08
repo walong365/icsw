@@ -38,6 +38,8 @@ SPREFIX=${ICSW_BASE}/sbin
 SYSCONF=/etc/sysconfig
 USRSBIN=/usr/sbin
 VARDIR=/var/lib/cluster/package-client
+# list of target systems
+TARGET_SYS_LIST="snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install package_install meta_server md_config_server"
 
 SGE_FILES=sge_editor_conf.py modify_sge_config.sh add_logtail.sh sge_request sge_qstat create_sge_links.py build_sge6x.sh post_install.sh
 
@@ -110,6 +112,10 @@ build:
 		syslinux-${VERSION_SYSLINUX}/bios/com32/elflink/ldlinux/ldlinux.c32 \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32
 	unzip memtest*zip
+	# create version files
+	for tsys in ${TARGET_SYS_LIST} ; do ; \
+	    ./create_version_file.py --version ${VERSION} --release --target ${RELEASE} ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
+	done
 
 install:
 	# Copy the main source code

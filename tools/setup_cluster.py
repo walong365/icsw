@@ -498,15 +498,6 @@ def migrate_db(opts):
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
             if os.path.isdir(_app_dir):
                 print("found app {}".format(_sync_app))
-                # _mig_dir = os.path.join(_app_dir, "migrations")
-                # if not os.path.isdir(_mig_dir):
-                #    print("initial migration for {}".format(_sync_app))
-                #    call_manage(["migrate", _sync_app, "--noinput"])
-                # if os.path.isdir(_mig_dir):
-                # _py_files = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py")]
-                # if _py_files == ["__init__.py"]:
-                #    # initial schema migration call
-                #    call_manage(["schemamigration", _sync_app, "--initial"])
                 call_manage(["makemigrations", _sync_app, "--noinput"])
                 call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
