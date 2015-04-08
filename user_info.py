@@ -172,12 +172,22 @@ def get_pass(prompt=">"):
     new = termios.tcgetattr(fd)
     new[3] = new[3] & ~termios.ECHO
     termios.tcsetattr(fd, termios.TCSADRAIN, new)
-    try:
-        passwd = raw_input(prompt)
-    except KeyboardInterrupt:
-        passwd = ""
-    except EOFError:
-        passwd = ""
+    while True:
+        try:
+            passwd = raw_input(prompt)
+        except KeyboardInterrupt:
+            print("press <CTRL-d> to exit")
+            passwd = ""
+        except EOFError:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            print("\nterminating")
+            sys.exit(-1)
+            passwd = ""
+        else:
+            if passwd:
+                break
+            else:
+                print("password is empty")
     termios.tcsetattr(fd, termios.TCSADRAIN, old)
     print()
     return passwd
