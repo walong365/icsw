@@ -1,0 +1,124 @@
+<script type="text/ng-template" id="icsw.dialog.delete_popup">
+
+    <div style="font-size: 12px"> <!-- bootstrap dialog would otherwise increase font size to 14px -->
+
+        <legend>Delete settings</legend>
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" ng-model="async_delete"/>
+                Delete asynchronously
+            </label>
+
+            <p>&nbsp;</p>
+        </div>
+
+        <div ng-show="deletable_objects.length > 0">
+            <legend>
+                Deletable without deleting hard references
+            </legend>
+
+            <div class="form">
+                <div class="checkbox" ng-repeat="del_obj_pk in deletable_objects">
+                    <label>
+                        <input type="checkbox" ng-model="delete_deletable_dict[del_obj_pk]"/>
+                        {{ get_object_by_idx(del_obj_pk).name }}
+                    </label>
+                </div>
+            </div>
+
+            <icsw-tools-button type="delete" value="delete" ng-click="delete_deletable_action()"
+                               disabled="!some_deletable_object_checked()"></icsw-tools-button>
+
+
+            <p>&nbsp;</p>
+        </div>
+
+        <div ng-show="!is_empty_object(related_objects)">
+
+            <legend>
+                Deletable with deleting hard references
+            </legend>
+            The following devices can only be deleted if references of them are also deleted, which can cause delete
+            cascades.
+            Please select actions for each of these devices.
+
+            <tabset>
+                <tab ng-repeat="(obj_pk, ref_list) in related_objects" heading="{{ get_object_by_idx(obj_pk).name }}">
+                    <!-- obj_pk is string! -->
+
+                    <div class="panel-body">
+
+                        <table st-table="entries_displayed" st-safe-src="ref_list"
+                               class="table icsw-striped-4 table-condensed">
+                            <tr>
+                                <th>Table</th>
+                                <th>Field</th>
+                                <th>First level references</th>
+                                <th>Second level references</th>
+                                <th>Action</th>
+                            </tr>
+
+                            <tr ng-repeat-start="entry in entries_displayed">
+                                <td>
+                                    {{entry.model_verbose_name}}
+                                </td>
+                                <td>
+                                    {{entry.field_verbose_name}}
+                                </td>
+                                <td class="text-right">
+                                    <icsw-tools-button type="show" size="xs" is-show="!entry.show_details"
+                                                       ng-click="entry.show_details = !entry.show_details"
+                                                       show-value="show ({{ entry.objects.list.length }})"
+                                                       hide-value="hide ({{ entry.objects.list.length }})"></icsw-tools-button>
+                                </td>
+                                <td ng-class="(entry.objects.num_refs_of_refs == 0) ? 'text-right' : 'text-right text-danger'">
+                                    {{entry.objects.num_refs_of_refs}}
+                                </td>
+                                <td>
+                                    <select class="select form-control"
+                                            ng-model="entry.selected_action" required="true"
+                                            ng-options="value[0] as value[1] for value in entry.actions"></select>
+                                </td>
+                            </tr>
+                            <tr ng-repeat-end ng-show="entry.show_details">
+                                <td colspan="99">
+                                    <div style="width: 825px; max-height: 450px; overflow: scroll;">
+
+                                        <table st-table="refs_displayed" st-safe-src="entry.objects.list"
+                                               class="table table-condensed table-striped">
+                                            <tr>
+                                                <td colspan="99">
+                                                    <div icsw-tools-pagination st-items-by-page="5"
+                                                         possible-items-by-page="5,10,20,50,100">
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th ng-repeat="(k, v) in entry.objects.list[0]">{{k}}</th>
+                                            </tr>
+                                            <tr ng-repeat="obj in refs_displayed">
+                                                <td ng-repeat="(k, v) in obj">{{v}}</td>
+                                            </tr>
+                                        </table>
+
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <div>
+                            <div ng-show="!all_actions_defined(obj_pk)" class="text-danger">
+                                Please select actions for all references.
+                            </div>
+
+                            <icsw-tools-button type="delete" value="force delete"
+                                               disabled="!all_actions_defined(obj_pk)"
+                                               ng-click="force_delete(obj_pk)"></icsw-tools-button>
+                        </div>
+
+                    </div>
+                </tab>
+            </tabset>
+        </div>
+    </div>
+</script>
