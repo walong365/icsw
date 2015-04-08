@@ -197,6 +197,8 @@ class write_etc_hosts(cs_base_class.server_com):
                     pass
             # get all devices with netips
             all_devs = device.objects.filter(
+                Q(enabled=True) &
+                Q(device_group__enabled=True) &
                 Q(netdevice__net_ip__ip__contains=".")
             ).values_list("name", "device_group__name").order_by("device_group__name", "name")
             dg_dict = {}
