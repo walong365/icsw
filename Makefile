@@ -42,7 +42,7 @@ SYSCONF=/etc/sysconfig
 USRSBIN=/usr/sbin
 VARDIR=/var/lib/cluster/package-client
 # list of target systems
-TARGET_SYS_LIST="snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install package_install meta_server md_config_server"
+TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install package_install meta_server md_config_server
 
 SGE_FILES=sge_editor_conf.py modify_sge_config.sh add_logtail.sh sge_request sge_qstat create_sge_links.py build_sge6x.sh post_install.sh
 
