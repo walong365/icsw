@@ -124,9 +124,19 @@
     <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto">
         <tr>
             <th st-sort="name">Name</th>
+            <th st-sort="formula">Formula</th>
+            <th>Result</th>
+            <th>Last calculation</th>
             <th>actions</th>
         <tr ng-repeat="entry in entries_displayed">
             <td>{{entry.name}}</td>
+            <td><pre>{{entry.formula }}</pre></td>
+            <td>{{get_result_from_kpi_entry(entry)}}</td>
+            <td>
+                <div ng-show="entry.result">
+                    {{entry.result.date | datetime_concise}}
+                </div>
+            </td>
             <td>
                 <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)"></icsw-tools-button>
                 <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)"></icsw-tools-button>

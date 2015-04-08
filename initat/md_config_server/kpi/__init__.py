@@ -87,12 +87,15 @@ class KpiProcess(threading_tools.process_obj):
 
                 result = locals['kpi']
 
+                result_str = json.dumps(result.serialize())
+                date = django.utils.timezone.now()
+
                 try:
-                    kpi_db.kpistoredresult.result = result.to_json()
-                    kpi_db.kpistoredresult.date = django.utils.timezone.now()
+                    kpi_db.kpistoredresult.result = result_str
+                    kpi_db.kpistoredresult.date = date
                     kpi_db.kpistoredresult.save()
                 except KpiStoredResult.DoesNotExist:
-                    KpiStoredResult(kpi=kpi_db, result=result.to_json(), date=django.utils.timezone.now()).save()
+                    KpiStoredResult(kpi=kpi_db, result=result_str, date=date).save()
 
                 print 'kpi', kpi_db
                 print_tree(result)

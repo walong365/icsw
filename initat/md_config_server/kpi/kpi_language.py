@@ -33,6 +33,9 @@ class KpiResult(IntEnum):
     critical = 2
     unknown = 3
 
+    def get_numeric_icinga_service_status(self):
+        return self.value
+
     @classmethod
     def from_numeric_icinga_service_status(cls, num):
         if num == 0:
@@ -49,24 +52,24 @@ class KpiResult(IntEnum):
 
 class KpiObject(object):
     def __init__(self, result=None, historical_data=None, rrd=None, host_name=None, properties=None):
-        self.result = result
+        self.result = result if isinstance(result, KpiResult) else KpiResult.from_numeric_icinga_service_status(result)
         self.historical_data = historical_data
         # self.rrd = rrd
         self.host_name = host_name
         self.properties = properties if properties is not None else {}
 
     @classmethod
-    def from_json(cls, json_data):
-        return KpiObject(**json.loads(json_data))
+    def deserialize(cls, data):
+        return KpiObject(**data)
 
-    def to_json(self):
-        return json.dumps({
-            'result': self.result,
+    def serialize(self):
+        return {
+            'result': self.result.get_numeric_icinga_service_status(),
             'historical_data': self.historical_data,
             # 'rrd': self.rrd,
             'host_name': self.host_name,
             'properties': self.properties,
-        })
+        }
 
     def __repr__(self):
         contents = ""
@@ -132,17 +135,16 @@ class KpiSet(object):
         self.parents = parents
 
     @classmethod
-    def from_json(cls, json_data):
-        parsed = json.loads(json_data)
-        objects = [KpiObject.from_json(obj_json) for obj_json in parsed['objects']]
-        parents = [KpiSet.from_json(set_json) for set_json in parsed['parents']]
+    def deserialize(cls, data):
+        objects = [KpiObject.deserialize(obj_json) for obj_json in data['objects']]
+        parents = [KpiSet.deserialize(set_json) for set_json in data['parents']] if data['parents'] is not None else None
         return KpiSet(objects, parents)
 
-    def to_json(self):
-        return json.dumps({
-            "objects": [obj.to_json() for obj in self.objects],
-            "parents": [par.to_json() for par in self.parents] if self.parents is not None else None,
-        })
+    def serialize(self):
+        return {
+            "objects": [obj.serialize() for obj in self.objects],
+            "parents": [par.serialize() for par in self.parents] if self.parents is not None else None,
+        }
 
     @property
     def result_objects(self):
