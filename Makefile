@@ -7,6 +7,9 @@ KERNEL_CONFIGS=/usr/src/configs/
 INIT=/etc/init.d
 PROFDIR=/etc/profile.d
 
+VERSION=$${VERSION}
+RELEASE=$${RELEASE}
+
 # ICSW
 ICSW_BASE=/opt/cluster/
 ICSW_ETC=${ICSW_BASE}/etc
