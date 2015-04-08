@@ -51,7 +51,7 @@ SYNC_APPS = ["liebherr", "licadmin"]
 NEEDED_DIRS = ["/var/log/cluster"]
 
 BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models16")
+PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
 
 try:
     import psycopg2  # @UnresolvedImport
@@ -410,14 +410,14 @@ def get_pw(size=10):
 
 def check_for_pre17(opts):
     # BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-    if os.path.isdir(PRE_MODELES_DIR):
-        print("pre-1.7 models dir {} found".format(PRE_MODELES_DIR))
+    if os.path.isdir(PRE_MODELS_DIR):
+        print("pre-1.7 models dir {} found".format(PRE_MODELS_DIR))
         # first step: move 1.7 models / serializers away
         _move_dirs = ["models", "serializers"]
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
         # next step: move pre-models to current models
-        os.rename(PRE_MODELES_DIR, os.path.join(BACKBONE_DIR, "models"))
+        os.rename(PRE_MODELS_DIR, os.path.join(BACKBONE_DIR, "models"))
         # next step: remove all serializer relations from model files
         for _entry in os.listdir(os.path.join(BACKBONE_DIR, "models")):
             if _entry.endswith(".py"):
