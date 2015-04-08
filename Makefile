@@ -125,8 +125,6 @@ install:
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
-	# check scripts
-	${LN} -s ${PYTHON_SITE}/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
 	# Makefiles
 	make -C c_progs DESTDIR=${DESTDIR} install
 	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
@@ -387,6 +385,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} scripts/register_file_watch ${DESTDIR}/${SCRIPTDIR}
 	${INSTALL} ${INSTALL_OPTS} scripts/unregister_file_watch ${DESTDIR}/${SCRIPTDIR}
 	./init_proprietary.py ${DESTDIR}
+	# check scripts
+	${LN} -s ${PYTHON_SITE}/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
 
 
 
