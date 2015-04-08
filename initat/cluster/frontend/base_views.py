@@ -17,7 +17,7 @@ from rest_framework.response import Response
 import sys
 from initat.cluster.backbone.models.kpi import Kpi
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.md_config_server.kpi import KpiData
+from initat.md_config_server.kpi.kpi_data import KpiData
 import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
