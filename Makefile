@@ -117,7 +117,7 @@ build:
 	unzip memtest*zip
 	# create version files
 	for tsys in ${TARGET_SYS_LIST} ; do \
-	    ./create_version_file.py --version ${VERSION} --release --target ${RELEASE} ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
+	    ./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
 	done
 
 install:
