@@ -13,6 +13,7 @@ from initat.cluster.backbone.models import device, mon_check_command, mon_servic
     mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, mon_service_esc_templ, \
     mon_device_esc_templ, mon_service_dependency_templ, mon_service_dependency, mon_host_dependency, monitoring_hint
 from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
+from initat.cluster.frontend.forms.form_models import empty_query_set
 
 
 __all__ = [
@@ -36,12 +37,6 @@ __all__ = [
     "mon_check_command_form",
     "monitoring_hint_form",
 ]
-
-
-# empty query set
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class mon_period_form(ModelForm):
@@ -320,6 +315,7 @@ class mon_service_templ_form(ModelForm):
 
     class Meta:
         model = mon_service_templ
+        exclude = ()
         widgets = {
             "nsc_period": ui_select_widget(),
             "nsn_period": ui_select_widget(),
@@ -378,6 +374,7 @@ class mon_service_esc_templ_form(ModelForm):
 
     class Meta:
         model = mon_service_esc_templ
+        exclude = ()
         widgets = {
             "esc_period": ui_select_widget(),
         }
@@ -404,6 +401,7 @@ class host_check_command_form(ModelForm):
     )
 
     class Meta:
+        exclude = ()
         model = host_check_command
 
 
@@ -453,6 +451,7 @@ class mon_contactgroup_form(ModelForm):
 
     class Meta:
         model = mon_contactgroup
+        exclude = ()
         widgets = {
             "members": ui_select_multiple_widget(),
             "device_groups": ui_select_multiple_widget(),
@@ -563,6 +562,7 @@ class mon_device_templ_form(ModelForm):
 
     class Meta:
         model = mon_device_templ
+        exclude = ()
         widgets = {
             "mon_service_templ": ui_select_widget(),
             "host_check_command": ui_select_widget(),
@@ -632,6 +632,7 @@ class mon_device_esc_templ_form(ModelForm):
 
     class Meta:
         model = mon_device_esc_templ
+        exclude = ()
         widgets = {
             "mon_service_esc_templ": ui_select_widget(),
             "esc_period": ui_select_widget(),
@@ -689,6 +690,7 @@ class mon_host_cluster_form(ModelForm):
 
     class Meta:
         model = mon_host_cluster
+        exclude = ()
         widgets = {
             "main_device": ui_select_widget(),
             "mon_service_templ": ui_select_widget(),
@@ -754,6 +756,7 @@ class mon_service_cluster_form(ModelForm):
 
     class Meta:
         model = mon_service_cluster
+        exclude = ()
         widgets = {
             "main_device": ui_select_widget(),
             "mon_service_templ": ui_select_widget(),
@@ -824,6 +827,7 @@ class mon_host_dependency_templ_form(ModelForm):
 
     class Meta:
         model = mon_host_dependency_templ
+        exclude = ()
         widgets = {
             "dependency_period": ui_select_widget(),
         }
@@ -886,6 +890,7 @@ class mon_host_dependency_form(ModelForm):
 
     class Meta:
         model = mon_host_dependency
+        exclude = ()
         widgets = {
             "mon_host_dependency_templ": ui_select_widget(),
             "devices": ui_select_multiple_widget(),
@@ -958,6 +963,7 @@ class mon_service_dependency_templ_form(ModelForm):
 
     class Meta:
         model = mon_service_dependency_templ
+        exclude = ()
         widgets = {
             "dependency_period": ui_select_widget(),
         }
@@ -1034,6 +1040,7 @@ class mon_service_dependency_form(ModelForm):
 
     class Meta:
         model = mon_service_dependency
+        exclude = ()
         widgets = {
             "mon_service_dependency_templ": ui_select_widget(),
             "devices": ui_select_multiple_widget(),
@@ -1134,6 +1141,7 @@ class device_monitoring_form(ModelForm):
 
     class Meta:
         model = device
+        exclude = ()
         widgets = {
             "mon_device_templ": ui_select_widget(),
             "mon_ext_host": ui_select_widget(),
@@ -1357,3 +1365,4 @@ class monitoring_hint_form(ModelForm):
 
     class Meta:
         model = monitoring_hint
+        exclude = ()

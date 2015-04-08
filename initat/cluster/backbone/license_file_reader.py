@@ -161,6 +161,7 @@ class LicenseFileReader(object):
         def extract_package_data(pack_xml):
             return {
                 'name': pack_xml.findtext("icsw:package-meta/icsw:package-name", namespaces=ICSW_XML_NS_MAP),
+                'date': pack_xml.findtext("icsw:package-meta/icsw:package-date", namespaces=ICSW_XML_NS_MAP),
                 'customer': package_customer_map[pack_xml].findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
                 'type_name': pack_xml.findtext("icsw:package-meta/icsw:package-type-name", namespaces=ICSW_XML_NS_MAP),
                 'cluster_licenses': {cluster_xml.get("id"): extract_cluster_data(cluster_xml) for cluster_xml in

@@ -18,6 +18,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+class MonitoringResult
+    constructor: () ->
+        @generation = 0
+        @hosts = []
+        @services = []
+        @host_lut = {}
+        @used_cats = []
+
+    update: (hosts, services, host_lut, used_cats) =>
+        @generation++
+        @hosts = hosts
+        @services = services
+        @host_lut = host_lut
+        @used_cats = used_cats
+
+
 class hs_node
     # hierarchical structure node
     constructor: (@name, @check, @filter=false, @placeholder=false, @dummy=false) ->
@@ -295,6 +311,7 @@ angular.module(
             $scope.cur_layout = name
             $state.go($scope.cur_layout)
         $scope.activate_layout($scope.layouts[0])
+        $scope.data_timeout = undefined
         $scope.$watch(
             $scope.ls_filter.changed
             (new_filter) ->
@@ -302,6 +319,11 @@ angular.module(
         )
         # selected categories
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.dev_sel = _dev_sel
+            # cancel data_timeout if set
+            if $scope.data_timeout
+                $timeout.cancel($scope.data_timeout)
+                $scope.data_timeout = undefined
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
             wait_list = [
@@ -311,15 +333,26 @@ angular.module(
             $q.all(wait_list).then((data) ->
                 $scope.ls_devsel.set(_dev_sel)
                 $scope.dev_tree_lut = icswTools.build_lut(data[0][0])
-                host_entries = data[1][0]
-                service_entries = data[1][1]
-                used_cats = data[1][3]
-                $scope.host_entries = host_entries
-                $scope.service_entries = service_entries
-                $scope.ls_filter.set_total_num(host_entries.length, service_entries.length)
-                $scope.ls_filter.set_used_cats(used_cats)
-                $scope.apply_filter()
+                $scope.new_data(data[1])
+                #console.log "gen", data[1][4]
+                # console.log "watch for", data[1]
+                $scope.$watch(
+                    () ->
+                        return data[1].generation
+                    () ->
+                        # console.log "Changed", data[1].generation
+                        $scope.new_data(data[1])
+                )
             )
+        $scope.new_data = (mres) ->
+            host_entries = mres.hosts
+            service_entries = mres.services
+            used_cats = mres.used_cats
+            $scope.host_entries = host_entries
+            $scope.service_entries = service_entries
+            $scope.ls_filter.set_total_num(host_entries.length, service_entries.length)
+            $scope.ls_filter.set_used_cats(used_cats)
+            $scope.apply_filter()
         $scope.apply_filter = () ->
             # filter entries for table
             $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
@@ -472,6 +505,7 @@ angular.module(
 ]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", "icswParseXMLResponseService", "$q", "icswDeviceTreeService", (ICSW_URLS, $interval, $timeout, icswCallAjaxService, icswParseXMLResponseService, $q, icswDeviceTreeService) ->
     watch_list = {}
     defer_list = {}
+    result_list = {}
     _host_lut = {}
     destroyed_list = []
     cur_interval = undefined
@@ -608,6 +642,7 @@ angular.module(
                             _host_lut = host_lut
 
                             for client, _defer of defer_list
+                                _result = result_list[client]
                                 hosts_client = []
                                 services_client = []
                                 host_lut_client = {}
@@ -619,7 +654,8 @@ angular.module(
                                             services_client.push(check)
                                         host_lut_client[dev] = entry
                                         host_lut_client[entry.host_name] = entry
-                                _defer.resolve([hosts_client, services_client, host_lut_client, used_cats])
+                                _result.update(hosts_client, services_client, host_lut_client, used_cats)
+                                _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
                         )
 
     remove_watchers_by_client = (client) ->
@@ -627,6 +663,7 @@ angular.module(
         for dev, watchers of watch_list
             _.remove(watchers, (elem) -> return elem == client)
         delete defer_list[client]
+        delete result_list[client]
 
     return {
         resolve_host: (name) ->
@@ -652,10 +689,11 @@ angular.module(
                         if not _.some(watch_list[dev], (elem) -> return elem == dev)
                             watch_list[dev].push(client)
 
+                        result_list[client] = new MonitoringResult()
                         defer_list[client] = _defer
                 else
                     # resolve to empty list(s) if no devices are required
-                    _defer.resolve([[], [], [], []])
+                    _defer.resolve(new MonitoringResult())
 
                 schedule_load()
             return _defer.promise
@@ -754,12 +792,20 @@ angular.module(
         ]
         $q.all(wait_list).then((data) ->
             $scope.dev_tree_lut = data[0][4]
-            $scope.host_entries = data[1][0]
-            $scope.service_entries = data[1][1]
-            $scope.host_lut = data[1][2]
+            $scope.new_data(data[1])
+            $scope.$watch(
+                () ->
+                    return data[1].generation
+                () ->
+                    $scope.new_data(data[1])
+            )
+        )
+        $scope.new_data = (mres) ->
+            $scope.host_entries = mres.hosts
+            $scope.service_entries = mres.services
+            $scope.host_lut = mres.host_lut
             $scope.burst_data = $scope.build_sunburst($scope.host_entries, $scope.service_entries)
             $scope.md_filter_changed()
-        )
         $scope.$watch("ls_filter", (new_val) ->
             if new_val
                 # wait until ls_filter is set

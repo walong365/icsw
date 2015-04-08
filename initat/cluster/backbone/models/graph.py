@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" graph models for NOCTUA and CORVUS """
+""" graph models for NOCTUA, CORVUS and NESTOR """
 
 from django.db import models
 from django.db.models import Q, signals
@@ -29,7 +29,7 @@ import logging_tools
 __all__ = [
     "MachineVector",
     "MVStructEntry",
-    "MVValue",
+    "MVValueEntry",
 ]
 
 
@@ -64,7 +64,7 @@ class MachineVector(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "machine_vector"
+        return u"MachineVector for device {}".format(unicode(self.device))
 
 
 class MVStructEntry(models.Model):
@@ -72,6 +72,7 @@ class MVStructEntry(models.Model):
     idx = models.AutoField(primary_key=True)
     machine_vector = models.ForeignKey("MachineVector")
     file_name = models.CharField(max_length=256, default="")
+    # needed ?
     se_type = models.CharField(
         max_length=6,
         choices=[
@@ -81,8 +82,8 @@ class MVStructEntry(models.Model):
         ],
     )
     # we ignore the 'host' field for pdes because it seems to be a relict from the original PerformanceData sent from icinga
-    # info is set for mvl structural entries
-    info = models.CharField(max_length=256, default="")
+    # info is set for mvl structural entries, is now ignored
+    # info = models.CharField(max_length=256, default="")
     # type instance is set for certains PDEs (for instance windows disk [C,D,E,...], SNMP netifaces [eth0,eth1,...])
     type_instance = models.CharField(max_length=16, default="")
     # position in RRD-tree this nodes resides in, was name
@@ -90,12 +91,22 @@ class MVStructEntry(models.Model):
     # is active
     is_active = models.BooleanField(default=True)
     # last update
-    last_update = models.DateTimeField(auto_now=True, auto_now_add=True)
+    last_update = models.DateTimeField(auto_now=True)
     # was init_time
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return u"MVStructEntry ({}, {}), file is {}".format(
+            self.se_type,
+            self.key,
+            self.file_name,
+        )
 
-class MVValue(models.Model):
+    class Meta:
+        ordering = ("key",)
+
+
+class MVValueEntry(models.Model):
     # value entry for machine_vector
     idx = models.AutoField(primary_key=True)
     mv_struct_entry = models.ForeignKey("MVStructEntry")
@@ -114,8 +125,41 @@ class MVValue(models.Model):
     # the full key is mv_struct_entry.key + "." + mv_value.key
     # may be empty in case of mve entries (full key is stored in mv_struct_entry)
     key = models.CharField(max_length=128, default="")
+    # full key for this value, stored for faster reference
+    full_key = models.CharField(max_length=128, default="")
     # we don't store the name which was the last part of key
     # we also don't store the index because this fields was omitted some time ago (still present in some XMLs)
     # full is also not stored because full is always equal to name
     # sane_name is also ignored because this is handled by collectd to generate filesystem-safe filenames ('/' -> '_sl_')
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return u"MVValue ({}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
+            self.key or "NONE",
+            self.info,
+            self.unit,
+            self.base,
+            self.factor,
+            self.v_type,
+        )
+
+    def copy_and_modify(self, mod_dict):
+        # return a copy of the current MVValueEntry and set the attributes according to mod_dict
+        new_mv = MVValueEntry(
+            mv_struct_entry=self.mv_struct_entry,
+            base=self.base,
+            factor=self.factor,
+            unit=self.unit,
+            v_type=self.v_type,
+            info=self.info,
+            key=self.key,
+            full_key=self.full_key,
+            date=self.date
+        )
+        for _key, _value in mod_dict.iteritems():
+            if _key not in set(["key", "full_key"]):
+                setattr(new_mv, _key, _value)
+        return new_mv
+
+    class Meta:
+        ordering = ("key",)

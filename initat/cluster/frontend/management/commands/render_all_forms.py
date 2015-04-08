@@ -69,9 +69,11 @@ class Command(BaseCommand):
         r_dict = {}
         _forms = []
         s_time = time.time()
+        _form_keys = []
         for _key, _value in _check_list:
             if inspect.isclass(_value):
                 if (issubclass(_value, Form) or issubclass(_value, ModelForm)) and _value != Form and _value != ModelForm:
+                    _form_keys.append(_key)
                     render_template.extend(
                         [
                             "<script type='text/ng-template' id='{}'>".format(_key.lower().replace("_", ".")),
@@ -82,7 +84,29 @@ class Command(BaseCommand):
                     r_dict[_key] = _value()
         _temp_str = "\n".join(render_template)
         _temp = Template(_temp_str)
-        _result = _temp.render(Context(r_dict))
+        try:
+            _result = _temp.render(Context(r_dict))
+        except:
+            print("Error rendering, trying to determine defective form")
+            for _key_num, _key in enumerate(_form_keys, 1):
+                _render_template = [
+                    "{% load i18n crispy_forms_tags coffeescript %}",
+                ]
+                _render_template.extend(
+                    [
+                        "<script type='text/ng-template' id='{}'>".format(_key.lower().replace("_", ".")),
+                        "    {{% crispy {0} {0}.helper %}}".format(_key),
+                        "</script>",
+                    ]
+                )
+                _temp = Template("\n".join(_render_template))
+                try:
+                    _result = _temp.render(Context(r_dict))
+                except:
+                    print("Error for key #{:d} {}".format(_key_num, _key))
+                    raise
+                else:
+                    print("OK for key #{:d} {}".format(_key_num, _key))
         # remove all whitespaces
         _result = _result.replace("\t", " ")
         while True:

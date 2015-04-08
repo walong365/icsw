@@ -1,0 +1,4 @@
+Defaults:idnagios !requiretty
+idnagios ALL=(ALL) NOPASSWD: ALL
+
+

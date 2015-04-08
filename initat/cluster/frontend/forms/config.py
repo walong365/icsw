@@ -80,8 +80,10 @@ class config_form(ModelForm):
 
     class Meta:
         model = config
-        fields = ("name", "description", "enabled", "priority",  # "parent_config",
-                  "config_catalog", "server_config",)
+        fields = (
+            "name", "description", "enabled", "priority",  # "parent_config",
+            "config_catalog", "server_config",
+        )
         widgets = {
             "parent_config": ui_select_widget(),
             "config_catalog": ui_select_widget(),

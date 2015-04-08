@@ -216,6 +216,7 @@ class mon_dist_slave(mon_dist_base):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Config builds as slave"
 
 
 class mon_dist_master(mon_dist_base):
@@ -228,6 +229,7 @@ class mon_dist_master(mon_dist_base):
     class Meta:
         app_label = "backbone"
         ordering = ("-idx",)
+        verbose_name = "Config builds as master"
 
 
 class mon_build_unreachable(models.Model):
@@ -263,6 +265,7 @@ class mon_host_cluster(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Host Cluster"
 
 
 @receiver(signals.pre_save, sender=mon_host_cluster)
@@ -296,6 +299,7 @@ class mon_service_cluster(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Service Cluster"
 
 
 @receiver(signals.pre_save, sender=mon_service_cluster)
@@ -459,7 +463,7 @@ class mon_check_command(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
     volatile = models.BooleanField(default=False)
-    # categories for this device
+    # categories for this check
     categories = models.ManyToManyField("backbone.category", blank=True)
     # device to exclude
     exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
@@ -803,7 +807,7 @@ def mon_host_dependency_templ_pre_save(sender, **kwargs):
 
 class mon_host_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
-    devices = models.ManyToManyField("device", related_name="mhd_devices", null=True, blank=True)
+    devices = models.ManyToManyField("device", related_name="mhd_devices", blank=True)
     dependent_devices = models.ManyToManyField("device", related_name="mhd_dependent_devices")
     mon_host_dependency_templ = models.ForeignKey("backbone.mon_host_dependency_templ")
     mon_host_cluster = models.ForeignKey("backbone.mon_host_cluster", null=True, blank=True)
@@ -1109,9 +1113,7 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
-
 class MonitoringHintEnabledManager(models.Manager):
-
     def get_queryset(self):
         return super(MonitoringHintEnabledManager, self).get_queryset().filter(enabled=True)
 
@@ -1165,7 +1167,7 @@ class monitoring_hint(models.Model):
     enabled = models.BooleanField(default=True)
     # used in monitoring
     check_created = models.BooleanField(default=False)
-    changed = models.DateTimeField(auto_now_add=True, auto_now=True)  # , default=datetime.datetime.now())
+    changed = models.DateTimeField(auto_now=True)  # , default=datetime.datetime.now())
     # persistent: do not remove even when missing from server (for instance openvpn)
     persistent = models.BooleanField(default=False)
     # is check active ?
@@ -1243,6 +1245,7 @@ class monitoring_hint(models.Model):
     class Meta:
         app_label = "backbone"
         ordering = ("m_type", "key",)
+        verbose_name = "Monitoring hint"
 
 
 ########################################
