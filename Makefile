@@ -115,10 +115,6 @@ build:
 		syslinux-${VERSION_SYSLINUX}/bios/com32/elflink/ldlinux/ldlinux.c32 \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32
 	unzip memtest*zip
-	# create version files
-	for tsys in ${TARGET_SYS_LIST} ; do \
-	    ./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
-	done
 
 install:
 	# Copy the main source code
@@ -400,6 +396,10 @@ install:
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc
 	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
+	# create version files
+	for tsys in ${TARGET_SYS_LIST} ; do \
+	    ./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
+	done
 
 clean:
 	rm -f gpxelinux.0
