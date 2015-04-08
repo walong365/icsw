@@ -1,8 +1,7 @@
 #! /bin/bash
 #
-# Copyright (c) 2001-2004,2006-2007,2012-2014 init.at
+# Copyright (c) 2001-2004,2006-2007,2012-2015 init.at
 #
-
 #
 # RedHat stuff
 # chkconfig: 2345 14 86
@@ -63,14 +62,18 @@ case "$1" in
         echo -n "Starting hoststatus (${HOSTSTAT_ARG})"
         ${HOSTSTAT_BIN} ${HOSTSTAT_ARG}
         rc_status -v
-        echo -n "Sending start message to mother ${MOTHER_SERVER} "
-        ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "up ${CRL_MESG} $runlevel" >/dev/null
-    rc_status -v
+        grep localhost /etc/motherserver > /dev/null || [ ! -f /etc/init.d/mother ] || {
+            echo -n "Sending start message to mother ${MOTHER_SERVER} "
+            ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "up ${CRL_MESG} $runlevel" >/dev/null
+            rc_status -v
+        }
         ;;
     stop)
-        echo -n "Sending stop message to mother ${MOTHER_SERVER} "
-        ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "down ${CRL_MESG} $runlevel" >/dev/null || rc_failed
-        rc_status -v
+        grep localhost /etc/motherserver > /dev/null || [ ! -f /etc/init.d/mother ] || {
+            echo -n "Sending stop message to mother ${MOTHER_SERVER} "
+            ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "down ${CRL_MESG} $runlevel" >/dev/null || rc_failed
+            rc_status -v
+        }
         echo -n "Stopping hoststatus"
         kill_instances || rc_failed
         rc_status -v
