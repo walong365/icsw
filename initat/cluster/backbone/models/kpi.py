@@ -31,6 +31,7 @@ import logging_tools
 __all__ = [
     "Kpi",
     "KpiDataSourceTuple",
+    "KpiStoredResult",
 ]
 
 
@@ -39,7 +40,7 @@ class Kpi(models.Model):
     name = models.TextField(blank=False)
 
     date = models.DateTimeField(auto_now_add=True,
-                                default=lambda: django.utils.timezone.now())  # some default for migration
+                                default=django.utils.timezone.now)  # some default for migration
 
     formula = models.TextField(blank=True)
 
@@ -66,6 +67,17 @@ class KpiDataSourceTuple(models.Model):
     kpi = models.ForeignKey(Kpi)
     device_category = models.ForeignKey('category', related_name="device_category")
     monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
+
+    class Meta:
+        app_label = "backbone"
+
+
+class KpiStoredResult(models.Model):
+    idx = models.AutoField(primary_key=True)
+    kpi = models.OneToOneField(Kpi)
+    date = models.DateTimeField()
+
+    result = models.TextField()  # json
 
     class Meta:
         app_label = "backbone"

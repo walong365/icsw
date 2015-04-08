@@ -23,14 +23,14 @@ import json
 # noinspection PyUnresolvedReferences
 import pprint
 from django.db import connection
-import itertools
+import django.utils.timezone
 import memcache
 import time
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.monitoring import mon_check_command
 import initat.collectd.aggregate
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.cluster.backbone.models.kpi import KpiDataSourceTuple, Kpi
+from initat.cluster.backbone.models import KpiDataSourceTuple, Kpi, KpiStoredResult
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, astdump, print_tree
@@ -53,8 +53,8 @@ class KpiProcess(threading_tools.process_obj):
         # TODO: possibly like this:
         # self.register_func("update_kpi", self.update)
 
-        # self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
-        self.update()
+        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        # self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -78,6 +78,26 @@ class KpiProcess(threading_tools.process_obj):
             # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
             eval_globals = {'data': kpi_set}
             # print eval(kpi_db.formula, eval_globals)
+            locals = {}
+            exec(kpi_db.formula, eval_globals, locals)
+
+            if 'kpi' not in locals:
+                self.log("Kpi {} does not define result".format(kpi_db))
+            else:
+
+                result = locals['kpi']
+
+                try:
+                    kpi_db.kpistoredresult.result = result.to_json()
+                    kpi_db.kpistoredresult.date = django.utils.timezone.now()
+                    kpi_db.kpistoredresult.save()
+                except KpiStoredResult.DoesNotExist:
+                    KpiStoredResult(kpi=kpi_db, result=result.to_json(), date=django.utils.timezone.now()).save()
+
+                print 'kpi', kpi_db
+                print_tree(result)
+
+            continue
 
             class MyNV(ast.NodeVisitor):
                 def visit_BinOp(self, node):
@@ -199,6 +219,7 @@ class KpiData(object):
                 for mcc in tup.monitoring_category.mon_check_command_set.all():
                     if (dev.pk, mcc.pk) not in dev_mon_tuples_checked:
                         dev_mon_tuples_checked.add((dev.pk, mcc.pk))
+
                         kpi_objects.extend(
                             self.host_data[dev.pk].service_check_results[mcc.pk]
                         )

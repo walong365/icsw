@@ -22,6 +22,7 @@
 import pprint
 import ast
 import re
+import json
 from enum import IntEnum
 
 
@@ -50,18 +51,33 @@ class KpiObject(object):
     def __init__(self, result=None, historical_data=None, rrd=None, host_name=None, properties=None):
         self.result = result
         self.historical_data = historical_data
-        self.rrd = rrd
+        # self.rrd = rrd
         self.host_name = host_name
         self.properties = properties if properties is not None else {}
 
+    @classmethod
+    def from_json(cls, json_data):
+        return KpiObject(**json.loads(json_data))
+
+    def to_json(self):
+        return json.dumps({
+            'result': self.result,
+            'historical_data': self.historical_data,
+            # 'rrd': self.rrd,
+            'host_name': self.host_name,
+            'properties': self.properties,
+        })
+
     def __repr__(self):
         contents = ""
-        if self.rrd is not None:
-            contents += 'rrd={}:{};'.format(self.rrd.key, self.rrd.get_value())
+        # if self.rrd is not None:
+        #    contents += 'rrd={}:{};'.format(self.rrd.key, self.rrd.get_value())
         if self.result is not None:
             cc = self.properties.get('check_command', None)
             res_type = "{}:".format(cc) if cc is not None else ""
             contents += 'result={}{}'.format(res_type, self.result)
+        if 'rrd_key' in self.properties:
+            contents += 'rrd={}:{};'.format(self.properties['rrd_key'], self.properties['rrd_value'])
         if self.historical_data is not None:
             raise NotImplementedError()
 
@@ -79,7 +95,9 @@ class KpiObject(object):
 
     # we use this to eliminate duplicates in the kpi set, but only for initial data currently
     def __hash_key(self):
-        return (self.result, self.historical_data, self.rrd, self.host_name, tuple(self.properties.items()))
+        return (self.result, self.historical_data,
+                # self.rrd,
+                self.host_name, tuple(self.properties.items()))
 
     def __eq__(self, other):
         return isinstance(other, KpiObject) and self.__hash_key() == other.__hash_key()
@@ -113,6 +131,19 @@ class KpiSet(object):
         self.objects = objects
         self.parents = parents
 
+    @classmethod
+    def from_json(cls, json_data):
+        parsed = json.loads(json_data)
+        objects = [KpiObject.from_json(obj_json) for obj_json in parsed['objects']]
+        parents = [KpiSet.from_json(set_json) for set_json in parsed['parents']]
+        return KpiSet(objects, parents)
+
+    def to_json(self):
+        return json.dumps({
+            "objects": [obj.to_json() for obj in self.objects],
+            "parents": [par.to_json() for par in self.parents] if self.parents is not None else None,
+        })
+
     @property
     def result_objects(self):
         return [obj for obj in self.objects if obj.result is not None]
@@ -123,9 +154,9 @@ class KpiSet(object):
 
     def filter(self, **kwargs):
         objects = self.objects
-        #print 'call filter arsg:', kwargs
-        #print '    on objs:', objects
-        #pprint.pprint(objects)
+        # print 'call filter args:', kwargs
+        # print '    on objs:', objects
+        # pprint.pprint(objects)
         for k, v in kwargs.iteritems():
             if isinstance(v, basestring):
                 match_re = re.compile(".*{}.*".format(v))
@@ -136,12 +167,12 @@ class KpiSet(object):
                        is_match(obj.properties.get(k, None)) or
                        is_match(getattr(obj, k, None))]
 
-        #print '    results', objects
+        # print '    results', objects
 
         return KpiSet(objects, parents=[self])
 
-    def union(self, kpiSet):
-        return KpiSet(self.objects + kpiSet.objects, parents=[self, kpiSet])
+    def union(self, kpi_set):
+        return KpiSet(self.objects + kpi_set.objects, parents=[self, kpi_set])
 
     __add__ = union
 
@@ -164,7 +195,7 @@ class KpiSet(object):
         Calculate "worst" result, i.e. result is critical
         if at least one is critical or else warn if at least one is warn etc.
         """
-        #print 'call aggregate on ', self.result_objects
+        # print 'call aggregate on ', self.result_objects
         if not self.result_objects:
             return KpiSet.get_singleton_unknown(parents=[self])
         else:
