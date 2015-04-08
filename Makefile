@@ -9,6 +9,7 @@ PROFDIR=/etc/profile.d
 
 # ICSW
 ICSW_BASE=/opt/cluster/
+ICSW_ETC=${ICSW_BASE}/etc
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_SGE=${ICSW_BASE}/sge
@@ -116,6 +117,7 @@ install:
 	# Copy the main source code
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYINIT_SITE}/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/extra_servers.d
 	cp -a initat ${DESTDIR}/${PYINIT_SITE}/
 	# setup.py
 	${PYTHON} ./cbc-tools_setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
