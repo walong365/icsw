@@ -42,19 +42,18 @@ angular.module(
                 scope.create_new_kpi = () ->
                     icswConfigKpiDialogService.show_create_kpi_dlg(scope)
     }
-]).directive("icswConfigKpiConfigure", [() ->
-    return {
-        restrict : "E"
-        templateUrl: "icsw.config.kpi.configure"
-        scope: false
-        link: (scope, el, attrs) ->
-    }
 ]).directive("icswConfigKpiDevMonSelection", ['icswConfigKpiDataService', (icswConfigKpiDataService) ->
     return {
         restrict : "E"
         templateUrl: "icsw.config.kpi.dev_mon_selection"
         scope: false
         link: (scope, el, attrs) ->
+            scope.show_all_selected_categories = () ->
+                for tup in scope.cur_edit_kpi.selected_device_monitoring_category_tuple
+                    if ! _.contains(scope.cur_edit_kpi.available_device_categories, tup[0])
+                        scope.cur_edit_kpi.available_device_categories.push(tup[0])
+                    if ! _.contains(scope.cur_edit_kpi.available_monitoring_categories, tup[1])
+                        scope.cur_edit_kpi.available_monitoring_categories.push(tup[1])
 
             class base_tree_config extends tree_config
                 constructor: (@scope, args) ->
@@ -152,7 +151,8 @@ angular.module(
                     )
         }
 
-]).service("icswConfigKpiDialogService", ["$compile", "$templateCache", "icswConfigKpiDataService", ($compile, $templateCache, icswConfigKpiDataService) ->
+]).service("icswConfigKpiDialogService", ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS) ->
+
     KPI_DLG_MODE_CREATE = 'create'
     KPI_DLG_MODE_MODIFY = 'modify'
 
@@ -167,6 +167,17 @@ angular.module(
         child_scope = scope.$new()
         child_scope.mode = mode
         child_scope.cur_edit_kpi = cur_edit_kpi
+
+        child_scope.editorOptions = {
+            lineWrapping : false
+            lineNumbers: true
+            mode:
+                name : "python"
+                version : 2
+            matchBrackets: true
+            styleActiveLine: true
+            indentUnit : 4
+        }
 
         child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
             return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> return elem[0] == dev_cat_id and elem[1] == mon_cat_id)
@@ -226,6 +237,22 @@ angular.module(
                 console.error "invalid mode: ", mode
 
             child_scope.modal.close()
+
+        child_scope.kpi_set = undefined
+        child_scope.on_kpi_calculation_selected = () ->
+            # does not work yet, see server side
+            #if !child_scope.kpi_set?
+            #    child_scope.kpi_set = null # set to sth other than undefined to not trigger this path again
+            #    icswCallAjaxService
+            #        url: ICSW_URLS.BASE_GET_KPI_SET
+            #        data:
+            #            tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
+            #        dataType: "json"
+            #        success: (kpi_set) ->
+            #            console.log 'ret', kpi_set
+            #            scope.$apply(
+            #                child_scope.kpi_set = kpi_set
+            #            )
 
         edit_div = $compile($templateCache.get("icsw.config.kpi.edit_dialog"))(child_scope)
 

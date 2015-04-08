@@ -64,6 +64,8 @@ base_patterns = patterns(
     url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
     url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
     url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
+    url("^kpi$", base_views.KpiView.as_view(), name="kpi"),
+    url("^get_kpi_set$", base_views.GetKpiSet.as_view(), name="get_kpi_set"),
 )
 
 setup_patterns = patterns(
@@ -89,7 +91,6 @@ config_patterns = patterns(
     url("^xml/delete_objects$", config_views.delete_objects.as_view(), name="delete_objects"),
     url("^get_cached_uploads$", config_views.get_cached_uploads.as_view(), name="get_cached_uploads"),
     url("^handle_cached_config$", config_views.handle_cached_config.as_view(), name="handle_cached_config"),
-    url("^kpi$", base_views.kpi.as_view(), name="kpi"),
 )
 
 boot_patterns = patterns(

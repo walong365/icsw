@@ -26,8 +26,6 @@
 
     <tabset>
         <tab heading="Basic">
-            kpi: {{cur_edit_kpi}}
-
             <accordion close-others="false">
                 <accordion-group heading="Basic properties" is-open="true">
                     <form class="form-inline">
@@ -44,22 +42,18 @@
             </accordion>
         </tab>
         <tab heading="Data source">
-            <icsw-config-kpi-configure></icsw-config-kpi-configure>
+            <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
+
+            <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
         </tab>
-        <tab heading="KPI calculation">
+
+        <tab heading="KPI calculation" select="on_kpi_calculation_selected()">
+            <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
         </tab>
     </tabset>
 
     <icsw-tools-button type="create" ng-show="mode == 'create'" ng-click="submit_kpi()"></icsw-tools-button>
     <icsw-tools-button type="modify" ng-show="mode != 'create'" ng-click="submit_kpi()"></icsw-tools-button>
-</script>
-
-<script type="text/ng-template" id="icsw.config.kpi.configure">
-
-        <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
-
-        <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
-
 </script>
 
 
@@ -76,6 +70,7 @@
                     <tree treeconfig="monitoring_category_tree"></tree>
                 </div>
             </div>
+            <button class="btn btn-default btn-xs" ng-click="show_all_selected_categories()">Show all categories selected below</button>
         </accordion-group>
     </accordion>
 </script>
@@ -136,7 +131,6 @@
                 <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)"></icsw-tools-button>
                 <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)"></icsw-tools-button>
             </td>
-            <td>{{entry}}</td>
         </tr>
     </table>
 

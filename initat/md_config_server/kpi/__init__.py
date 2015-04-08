@@ -63,7 +63,7 @@ class KpiProcess(threading_tools.process_obj):
         self.__log_template.close()
 
     def update(self):
-        data = _KpiData(self.log)
+        data = KpiData(self.log)
         # TODO: historic
 
         # recalculate kpis
@@ -120,7 +120,7 @@ class KpiProcess(threading_tools.process_obj):
             """
 
 
-class _KpiData(object):
+class KpiData(object):
     """Data retrieval methods (mostly functions actually)"""
 
     def __init__(self, log):
@@ -149,6 +149,7 @@ class _KpiData(object):
 
             self.kpi_mon_check_commands = set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
 
+        # this is merely internal to this class
         HostData = collections.namedtuple('HostData', ('rrd_data', 'host_check_results', 'service_check_results',
                                                        'historic_data'))
         self.host_data = {}
@@ -166,10 +167,25 @@ class _KpiData(object):
                                                   historic_data=None)
 
     def get_data_for_kpi(self, kpi_db):
+        return self.get_data_for_dev_mon_tuples(kpi_db.kpidatasourcetuple_set.all())
+
+    def get_data_for_dev_mon_tuples(self, tuples):
+        """
+        :rtype: list of KpiObject
+        """
+        # NOTE: only used through get_data_for_kpi as of now
         kpi_objects = []
         dev_mon_tuples_checked = set()
         devs_checked = set()
-        for tup in kpi_db.kpidatasourcetuple_set.all():
+        #some_kpi = Kpi.objects.all().first()
+        for tup in tuples:
+            #if isinstance(tup, tuple):
+            #    # support this input
+            #    tup = KpiDataSourceTuple(
+            #        kpi=some_kpi,
+            #        device_category_id=tup[0],
+            #        monitoring_category_id=tup[1],
+            #    )
             for dev in tup.device_category.device_set.all():
                 # devs and mccs can be contained in multiple cats, only gather once though
                 if dev.pk not in devs_checked:

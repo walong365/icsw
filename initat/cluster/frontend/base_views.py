@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """ base views """
+import traceback
 
 from PIL import Image
 import datetime
@@ -11,6 +12,12 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+import sys
+from initat.cluster.backbone.models.kpi import Kpi
+from initat.cluster.frontend.rest_views import rest_logging
+from initat.md_config_server.kpi import KpiData
 import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
@@ -221,7 +228,7 @@ class change_category(View):
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
 
 
-class kpi(View):
+class KpiView(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
@@ -229,6 +236,19 @@ class kpi(View):
             "kpi.html",
             {}
         )()
+
+
+class GetKpiSet(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def post(self, request):
+        raise NotImplementedError("Does not work yet")
+        # we would need to contact the md-config-server and let it do the work because only it can
+        # talk to icinga and memcached. Since it's not sure if we actually need this code, implement it later if required then.
+        dev_mon_tuples = json.loads(request.POST['tuples'])
+        kpi_objects = KpiData(logger).get_data_for_dev_mon_tuples(dev_mon_tuples)
+        repr_list = [repr(obj) for obj in kpi_objects]
+        return HttpResponse(json.dumps(repr_list), content_type="application/json")
 
 
 class CheckDeleteObject(View):
