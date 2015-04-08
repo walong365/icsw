@@ -113,7 +113,7 @@ build:
 		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32
 	unzip memtest*zip
 	# create version files
-	for tsys in ${TARGET_SYS_LIST} ; do ; \
+	for tsys in ${TARGET_SYS_LIST} ; do \
 	    ./create_version_file.py --version ${VERSION} --release --target ${RELEASE} ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
 	done
 
