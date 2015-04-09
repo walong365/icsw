@@ -487,25 +487,25 @@ def check_for_0800(opts):
         _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry[0:4].isdigit() and int(_entry[0:4]) >= 800]
         print("moving away new migrations ({})".format(logging_tools.get_plural("file", len(_move_files))))
         for _move_file in _move_files:
-            file(os.path.join(tmp_dir, _move_file), "w").write(file(os.path.join(CMIG_DIR, _move_file), "r").read())
-            os.unlink(os.path.join(CMIG_DIR, _move_file))
+            shutil.move(os.path.join(CMIG_DIR, _move_file), os.path.join(tmp_dir, _move_file))
         # rename models dir
         os.rename(MODELS_DIR, MODELS_DIR_SAVE)
         os.rename(Z800_MODELS_DIR, MODELS_DIR)
         # migrate
         migrate_app("backbone")
         # move back
+        os.rename(MODELS_DIR, Z800_MODELS_DIR)
         os.rename(MODELS_DIR_SAVE, MODELS_DIR)
         # move all files back from tmp_dir
         base_mig = [_entry for _entry in _move_files if _entry[0:4] == "0800"][0]
         _move_files.remove(base_mig)
         print("moving back base file {}".format(base_mig))
-        file(os.path.join(CMIG_DIR, base_mig), "w").write(file(os.path.join(tmp_dir, base_mig), "r").read())
+        shutil.move(os.path.join(tmp_dir, base_mig), os.path.join(CMIG_DIR, base_mig))
         # fake migration
         call_manage(["migrate", "backbone", "--fake"])
         print("moving back migrations")
         for _move_file in _move_files:
-            file(os.path.join(CMIG_DIR, _move_file), "w").write(file(os.path.join(tmp_dir, _move_file), "r").read())
+            shutil.move(os.path.join(tmp_dir, _move_file), os.path.join(CMIG_DIR, _move_file))
         sys.exit(6)
 
 
