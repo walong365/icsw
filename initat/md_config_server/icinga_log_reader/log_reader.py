@@ -35,8 +35,7 @@ import threading_tools
 import codecs
 
 from django.db import connection
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.monitoring import mon_check_command, \
+from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_service_notification_data, \

@@ -32,14 +32,13 @@ from django.db import connection
 from django.db.models.aggregates import Max
 
 from initat.md_config_server.config import global_config
-from initat.cluster.backbone.models.monitoring import mon_check_command,\
+from initat.cluster.backbone.models import mon_check_command,\
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
     mon_icinga_log_raw_service_notification_data,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
     mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump
-from initat.cluster.backbone.models import duration
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, duration
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.middleware import show_database_calls
 
