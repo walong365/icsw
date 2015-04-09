@@ -19,22 +19,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" database setup for NOCTUA / CORVUS """
+""" database setup for NOCTUA / CORVUS / NESTOR """
 
-from django.utils.crypto import get_random_string
 import argparse
 import commands
-import logging_tools
 import os
 import pwd
 import grp
-import process_tools
 import random
 import shutil
 import stat
 import string
 import sys
 import time
+
+from django.utils.crypto import get_random_string
+import logging_tools
+import process_tools
+
 
 DB_PRESENT = {}
 LIB_DIR = "/opt/python-init/lib/python/site-packages"
@@ -45,7 +47,10 @@ MIGRATION_DIRS = [
     "initat/cluster/backbone",
     "initat/cluster/liebherr",
 ]
+# flag for autoupdate
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
+# flag for synchronous database (no makemigrations)
+# DSYNC_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 SYNC_APPS = ["liebherr", "licadmin"]
 
 NEEDED_DIRS = ["/var/log/cluster"]
@@ -90,12 +95,14 @@ def check_local_settings():
         print("creating file {} with secret key".format(LS_FILE))
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
-        file(LS_FILE, "w").write("\n".join(
-            [
-                "SECRET_KEY = \"%s\"" % (SECRET_KEY),
-                "",
-            ]
-            ))
+        file(LS_FILE, "w").write(
+            "\n".join(
+                [
+                    "SECRET_KEY = \"{}\"".format(SECRET_KEY),
+                    "",
+                ]
+            )
+        )
     sys.path.remove(LS_DIR)
 
 
@@ -462,19 +469,22 @@ def migrate_app(_app, **kwargs):
     call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
 
 
+def apply_migration(_app, **kwargs):
+    call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
+
+
 def create_db(opts):
     if os.getuid():
         print("need to be root to create database")
         sys.exit(0)
-    if opts.clear_migrations:
-        clear_migrations()
-    check_migrations()
-    # NOTE: This does not create migrations for e.g. backbone since migrations/__init__.py does not exist.
-    #       it does however create migrations which are needed by the apps migrated explicitly below
-    migrate_app("")
+    # for fixed migration we do not touch existing migration files
+    # if opts.clear_migrations:
+    #     clear_migrations()
+    # check_migrations()
     # schemamigrations
     for _app in ["django.contrib.contenttypes", "django.contrib.sites", "django.contrib.auth", "reversion", "backbone"]:
-        migrate_app(_app)
+        # migrate_app(_app)
+        apply_migration(_app)
 
     if opts.no_initial_data:
         print("")
@@ -497,12 +507,14 @@ def migrate_db(opts):
         for _sync_app in SYNC_APPS:
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
             if os.path.isdir(_app_dir):
-                print("found app {}".format(_sync_app))
-                call_manage(["makemigrations", _sync_app, "--noinput"])
-                call_manage(["migrate", _sync_app, "--noinput"])
+                print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
+                # call_manage(["makemigrations", _sync_app, "--noinput"])
+                # call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
         for _app in ["backbone", "django.contrib.auth", "reversion"]:
-            migrate_app(_app)
+            print("migrating app {}".format(_app))
+            apply_migration(_app)
+        print("")
         call_update_funcs(opts)
     else:
         print("cluster migration dir {} not present, please create database".format(CMIG_DIR))

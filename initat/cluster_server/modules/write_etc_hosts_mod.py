@@ -62,9 +62,13 @@ class write_etc_hosts(cs_base_class.server_com):
         for s_ndev in my_idxs:
             all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())
         # pprint.pprint(all_paths)
-        nd_lut = {cur_nd.pk: cur_nd for cur_nd in netdevice.objects.all().select_related(
-            "device"
-        ).prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node")}
+        nd_lut = {
+            cur_nd.pk: cur_nd for cur_nd in netdevice.objects.all().select_related(
+                "device"
+            ).prefetch_related(
+                "net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node"
+            )
+        }
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
         rsa_key_dict = {}
@@ -207,22 +211,37 @@ class write_etc_hosts(cs_base_class.server_com):
             for file_name, content in dg_dict.iteritems():
                 codecs.open(os.path.join(GROUP_DIR, file_name), "w", "utf-8").write("\n".join(sorted(set(content)) + [""]))
         file_list.append(ETC_HOSTS_FILENAME)
-        codecs.open(ETC_HOSTS_FILENAME, "w+", "utf-8").write("\n".join(
-            ["### AEH-START-PRE insert pre-host lines below"] +
-            pre_host_lines +
-            ["### AEH-END-PRE insert pre-host lines above",
-             ""] +
-            out_file +
-            ["",
-             "### AEH-START-POST insert post-host lines below"] +
-            post_host_lines +
-            ["### AEH-END-POST insert post-host lines above",
-             ""]))
+        codecs.open(ETC_HOSTS_FILENAME, "w+", "utf-8").write(
+            "\n".join(
+                [
+                    "### AEH-START-PRE insert pre-host lines below"
+                ] +
+                pre_host_lines +
+                [
+                    "### AEH-END-PRE insert pre-host lines above",
+                    ""
+                ] +
+                out_file +
+                [
+                    "",
+                    "### AEH-START-POST insert post-host lines below"
+                ] +
+                post_host_lines +
+                [
+                    "### AEH-END-POST insert post-host lines above",
+                    ""
+                ]
+            )
+        )
         # write known_hosts_file
         if os.path.isdir(os.path.dirname(SSH_KNOWN_HOSTS_FILENAME)):
             skh_f = file(SSH_KNOWN_HOSTS_FILENAME, "w")
             for ssh_key_node in sorted(rsa_key_dict.keys()):
-                skh_f.write("{} {}\n".format(",".join(name_dict.get(ssh_key_node, [ssh_key_node])), rsa_key_dict[ssh_key_node]))
+                skh_f.write(
+                    "{} {}\n".format(
+                        ",".join(name_dict.get(ssh_key_node, [ssh_key_node])), rsa_key_dict[ssh_key_node]
+                    )
+                )
             skh_f.close()
             file_list.append(SSH_KNOWN_HOSTS_FILENAME)
         cur_inst.srv_com.set_result(
