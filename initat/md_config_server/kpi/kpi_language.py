@@ -192,6 +192,16 @@ class KpiSet(object):
         else:
             return KpiSet.get_singleton_critical(parents=[self])
 
+    def interpret_historic(self, num_ok, num_warn, result=KpiResult.ok):
+        """
+        Check if at_least a number of objects have a certain result.
+        """
+        # group historic data per dev and service
+
+        # need filter for only host / only service hist data
+
+        #
+
     def aggregate(self):
         """
         Calculate "worst" result, i.e. result is critical

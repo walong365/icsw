@@ -50,6 +50,14 @@ class Kpi(models.Model):
 
     gui_selected_categories = models.TextField(blank=True)  # json
 
+    def set_result(self, result_str, date):
+        try:
+            self.kpistoredresult.result = result_str
+            self.kpistoredresult.date = date
+            self.kpistoredresult.save()
+        except KpiStoredResult.DoesNotExist:
+            KpiStoredResult(kpi=self, result=result_str, date=date).save()
+
     def __unicode__(self):
         return u"KPI {}".format(self.name)
 
@@ -57,7 +65,7 @@ class Kpi(models.Model):
         app_label = "backbone"
 
     class CSW_Meta:
-        fk_ignore_list = ["KpiDataSourceTuple"]
+        fk_ignore_list = ["KpiDataSourceTuple", "KpiStoredResult"]
 
 
 class KpiDataSourceTuple(models.Model):
@@ -77,7 +85,7 @@ class KpiStoredResult(models.Model):
     kpi = models.OneToOneField(Kpi)
     date = models.DateTimeField()
 
-    result = models.TextField()  # json
+    result = models.TextField(null=True)  # json
 
     class Meta:
         app_label = "backbone"

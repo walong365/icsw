@@ -21,7 +21,8 @@ import collections
 import json
 import time
 import memcache
-from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple
+from initat.cluster.backbone.middleware import show_database_calls
+from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
 import initat.collectd
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.config.objects import global_config
@@ -43,27 +44,31 @@ class KpiData(object):
             raise
 
         host_rrd_data = self._get_memcached_data()
-        historic = self._get_historic_data()
 
         if Kpi.objects.filter(uses_all_data=True).exists():
-            self.kpi_device_categories = set(device.categories_set.all())
-            self.kpi_devices = list(device.objects.all())
-            self.kpi_mon_categories = list(mon_check_command.categories_set.all())
-        else:
-            self.kpi_device_categories = set(tup.device_category_id
-                                             for tup in KpiDataSourceTuple.objects.all())
-
-            self.kpi_devices = set(device.objects.filter(categories__in=self.kpi_device_categories))
-
-            self.kpi_mon_categories = set(tup.monitoring_category_id
-                                          for tup in KpiDataSourceTuple.objects.all())
-
-            self.kpi_mon_check_commands = set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
-
-            self.kpi_mon_check_commands_per_device = collections.defaultdict(lambda: set())
+            # self.kpi_device_categories = set(device.categories_set.all())
+            # self.kpi_devices = list(device.objects.all())
+            # self.kpi_mon_categories = list(mon_check_command.categories_set.all())
 
             dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(
-                KpiDataSourceTuple.objects.all().prefetch_related("category")
+                [
+                    KpiDataSourceTuple(kpi=None, device_category=dev_cat, monitoring_category=mon_cat)
+                    for dev_cat in category.objects.get_device_categories()
+                    for mon_cat in category.objects.get_monitoring_categories()
+                ]
+            )
+
+        else:
+            # self.kpi_device_categories = set(tup.device_category_id for tup in KpiDataSourceTuple.objects.all())
+
+            # self.kpi_devices = set(device.objects.filter(categories__in=self.kpi_device_categories))
+
+            # self.kpi_mon_categories = set(tup.monitoring_category_id for tup in KpiDataSourceTuple.objects.all())
+
+            # self.kpi_mon_check_commands = set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
+
+            dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(
+                KpiDataSourceTuple.objects.all().prefetch_related("device_category")
             )
 
         # this is merely internal to this class
@@ -71,19 +76,20 @@ class KpiData(object):
                                                        'historic_data'))
         self.host_data = {}
 
+        service_check_results = collections.defaultdict(lambda: {})
         for dev, mcc in dev_mon_tuples:
 
-            service_check_results = {}
             # TODO: historic. handle dynamic time ranges as function
-            service_check_results[mcc.pk] = self._get_service_check_results(dev, mcc)
+            service_check_results[dev.pk][mcc.pk] = self._get_service_check_results(dev, mcc)
 
+        for dev in {dev for (dev, _) in dev_mon_tuples}:
             self.host_data[dev.pk] = HostData(rrd_data=host_rrd_data.get(dev.pk, None),
-                                              host_check_results=self._get_host_check_results(dev.pk),
-                                              service_check_results=service_check_results,
+                                              host_check_results=self._get_host_check_results(dev),
+                                              service_check_results=service_check_results[dev.pk],
                                               historic_data=None)
 
     def get_data_for_kpi(self, kpi_db):
-        return self.get_data_for_dev_mon_tuples(kpi_db.kpidatasourcetuple_set.all().prefetch_related("category"))
+        return self.get_data_for_dev_mon_tuples(kpi_db.kpidatasourcetuple_set.all())
 
     def get_data_for_dev_mon_tuples(self, tuples):
         """
@@ -101,17 +107,19 @@ class KpiData(object):
             )
         for dev, mcc in dev_mon_tuples:
             kpi_objects.extend(
-                self.host_data[dev.pk].service_check_results[mcc]
+                self.host_data[dev.pk].service_check_results[mcc.pk]
             )
         return kpi_objects
 
     def _get_dev_mon_tuples_from_category_tuples(self, queryset):
+        queryset = queryset.prefetch_related('device_category').prefetch_related('monitoring_category')
         dev_mon_tuples = set()
         for tup in queryset:
-            for dev in tup.device_category.device_set():
-                for mcc in tup.monitoring_category.mon_check_command_set():
+            for dev in tup.device_category.device_set.all():
+                for mcc in tup.monitoring_category.mon_check_command_set.all():
                     if (dev, mcc) not in dev_mon_tuples:
                         dev_mon_tuples.add((dev, mcc))
+        show_database_calls()
         return dev_mon_tuples
 
     def _get_memcached_data(self):

@@ -60,7 +60,6 @@ class KpiSerializer(serializers.ModelSerializer):
                     'date': stored_result.date
                 }
 
-
     class Meta:
         model = Kpi
 

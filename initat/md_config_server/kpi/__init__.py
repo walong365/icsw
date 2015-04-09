@@ -21,6 +21,7 @@ import ast
 import json
 # noinspection PyUnresolvedReferences
 import pprint
+import traceback
 from django.db import connection
 import django.utils.timezone
 from initat.cluster.backbone.models import Kpi, KpiStoredResult
@@ -43,11 +44,7 @@ class KpiProcess(threading_tools.process_obj):
         )
         connection.close()
 
-        # TODO: possibly like this:
-        # self.register_func("update_kpi", self.update)
-
         self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
-        # self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -71,29 +68,29 @@ class KpiProcess(threading_tools.process_obj):
             # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
             eval_globals = {'data': kpi_set}
             # print eval(kpi_db.formula, eval_globals)
-            locals = {}
-            exec(kpi_db.formula, eval_globals, locals)
-
-            if 'kpi' not in locals:
-                self.log("Kpi {} does not define result".format(kpi_db))
+            eval_locals = {}
+            result_str = None
+            try:
+                exec(kpi_db.formula, eval_globals, eval_locals)
+            except Exception as e:
+                self.log("Exception while executing kpi {} with formula {}:".format(kpi_db, kpi_db.formula))
+                self.log(traceback.format_exc())
             else:
+                if 'kpi' not in eval_locals:
+                    self.log("Kpi {} does not define result".format(kpi_db))
+                else:
+                    result = eval_locals['kpi']
 
-                result = locals['kpi']
+                    print 'kpi', kpi_db
+                    print_tree(result)
 
-                result_str = json.dumps(result.serialize())
-                date = django.utils.timezone.now()
+                    result_str = json.dumps(result.serialize())
 
-                try:
-                    kpi_db.kpistoredresult.result = result_str
-                    kpi_db.kpistoredresult.date = date
-                    kpi_db.kpistoredresult.save()
-                except KpiStoredResult.DoesNotExist:
-                    KpiStoredResult(kpi=kpi_db, result=result_str, date=date).save()
+            date = django.utils.timezone.now()
 
-                print 'kpi', kpi_db
-                print_tree(result)
+            kpi_db.set_result(result_str, date)
 
-            continue
+            """
 
             class MyNV(ast.NodeVisitor):
                 def visit_BinOp(self, node):
@@ -129,10 +126,10 @@ class KpiProcess(threading_tools.process_obj):
                 print 'before visit'
                 MyNV().visit(kpi_ast)
                 print '\nast dump:', astdump(kpi_ast)
+
+            """
             """
             print 'chil'
             for i in ast.iter_fields(kpi_ast):
                 print i
             """
-
-

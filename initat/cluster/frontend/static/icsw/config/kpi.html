@@ -1,22 +1,16 @@
 
 <script type="text/ng-template" id="icsw.config.kpi">
 
-    <h2>Key performance indicators</h2>
-
-    <div class="alert alert-danger"><strong>TODO</strong>:
-        show full list of selected tuples (support changing checkbox selection without hard selection of tuples changing)
-        <br />
-        possibly button: show all checked categories
-    </div>
+    <h2>
+        Key performance indicators
+        <icsw-tools-button type="create" ng-click="create_new_kpi()"></icsw-tools-button>
+        </h2>
 
     <div class="alert alert-danger"><strong>TODO</strong>: add to reversion in future
     </div>
 
     <div class="alert alert-danger"><strong>TODO</strong>: uses all (available) data
     </div>
-
-
-    <icsw-tools-button type="create" ng-click="create_new_kpi()"></icsw-tools-button>
 
     <icsw-config-kpi-show-kpis></icsw-config-kpi-show-kpis>
 
