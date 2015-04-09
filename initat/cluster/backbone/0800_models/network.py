@@ -86,11 +86,9 @@ class network(models.Model):
     network_device_type = models.ManyToManyField("backbone.network_device_type")
     enforce_unique_ips = models.BooleanField(default=False)
 
-    class CSW_Meta:
-        permissions = (
-            ("modify_network", "modify global network settings", False),
-            ("show_clusters", "show network clustering", False),
-        )
+    class Meta:
+        db_table = u'network'
+        app_label = "backbone"
 
 
 class net_ip(models.Model):

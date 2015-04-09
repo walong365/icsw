@@ -477,14 +477,14 @@ def check_for_0800(opts):
     _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
     if not _list_stat:
         sys.exit(7)
-    applied = True if _list_out.count("0800_base") else False
+    applied = True if _list_out.count("[X] 0800_base") else False
     if applied:
         print("0800_base already applied")
     else:
         tmp_dir = tempfile.mkdtemp()
         print("0800_base not reached, migrating to stable 0800 (tmp_dir is {})".format(tmp_dir))
         # move away all migrations >= 0800
-        _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry[0:4].isdigit() and int(_entry[0:4]) >= 800]
+        _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry.endswith(".py") and _entry[0:4].isdigit() and int(_entry[0:4]) >= 800]
         print("moving away new migrations ({})".format(logging_tools.get_plural("file", len(_move_files))))
         for _move_file in _move_files:
             shutil.move(os.path.join(CMIG_DIR, _move_file), os.path.join(tmp_dir, _move_file))
@@ -502,7 +502,8 @@ def check_for_0800(opts):
         print("moving back base file {}".format(base_mig))
         shutil.move(os.path.join(tmp_dir, base_mig), os.path.join(CMIG_DIR, base_mig))
         # fake migration
-        call_manage(["migrate", "backbone", "--fake"])
+        call_manage(["makemigrations", "backbone", "--merge", "--noinput"])
+        call_manage(["migrate", "backbone", "--noinput"])
         print("moving back migrations")
         for _move_file in _move_files:
             shutil.move(os.path.join(tmp_dir, _move_file), os.path.join(CMIG_DIR, _move_file))

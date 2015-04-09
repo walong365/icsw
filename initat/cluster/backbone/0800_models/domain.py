@@ -17,12 +17,8 @@ import re
 import uuid
 
 __all__ = [
-    "domain_name_tree", "valid_domain_re",
     "domain_tree_node",
-    "category_tree",
     "category",
-    "TOP_LOCATIONS",
-    "TOP_MONITORING_CATEGORY",
     "location_gfx",
     "device_mon_location",
 ]
