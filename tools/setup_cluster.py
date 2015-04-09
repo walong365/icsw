@@ -50,8 +50,8 @@ MIGRATION_DIRS = [
 ]
 # flag for autoupdate
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
-# flag for synchronous database (no makemigrations)
-# DSYNC_FLAG = "/etc/sysconfig/cluster/db_auto_update"
+
+# which apps needs syncing
 SYNC_APPS = ["liebherr", "licadmin"]
 
 NEEDED_DIRS = ["/var/log/cluster"]
