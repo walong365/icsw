@@ -32,6 +32,7 @@ import stat
 import string
 import sys
 import time
+import tempfile
 
 from django.utils.crypto import get_random_string
 import logging_tools
@@ -57,6 +58,9 @@ NEEDED_DIRS = ["/var/log/cluster"]
 
 BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
 PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
+MODELS_DIR = os.path.join(BACKBONE_DIR, "models")
+MODELS_DIR_SAVE = os.path.join(BACKBONE_DIR, ".models_save")
+Z800_MODELS_DIR = os.path.join(BACKBONE_DIR, "0800_models")
 
 try:
     import psycopg2  # @UnresolvedImport
@@ -106,7 +110,8 @@ def check_local_settings():
     sys.path.remove(LS_DIR)
 
 
-def call_manage(args):
+def call_manage(args, **kwargs):
+    _output = kwargs.get("output", False)
     com_str = " ".join([os.path.join(LIB_DIR, "initat", "cluster", "manage.py")] + args)
     s_time = time.time()
     c_stat, c_out = commands.getstatusoutput(com_str)
@@ -120,14 +125,22 @@ def call_manage(args):
             c_stat))
         for _line in c_out.split("\n"):
             print("  {}".format(_line))
-        return False
+        if _output:
+            return False, c_out
+        else:
+            return False
     else:
-        print("success calling '{}' in {}".format(
-            com_str,
-            logging_tools.get_diff_time_str(e_time - s_time),
-            ))
+        print(
+            "success calling '{}' in {}".format(
+                com_str,
+                logging_tools.get_diff_time_str(e_time - s_time),
+            )
+        )
         # print c_out
-        return True
+        if _output:
+            return True, c_out
+        else:
+            return True
 
 
 def _input(in_str, default, **kwargs):
@@ -424,11 +437,11 @@ def check_for_pre17(opts):
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
         # next step: move pre-models to current models
-        os.rename(PRE_MODELS_DIR, os.path.join(BACKBONE_DIR, "models"))
+        os.rename(PRE_MODELS_DIR, MODELS_DIR)
         # next step: remove all serializer relations from model files
-        for _entry in os.listdir(os.path.join(BACKBONE_DIR, "models")):
+        for _entry in os.listdir(MODELS_DIR):
             if _entry.endswith(".py"):
-                _path = os.path.join(BACKBONE_DIR, "models", _entry)
+                _path = os.path.join(MODELS_DIR, _entry)
                 new_lines = []
                 _add = True
                 for _line in file(_path, "r").readlines():
@@ -454,10 +467,46 @@ def check_for_pre17(opts):
         # next step: migrate backbone
         migrate_app("backbone", migrate_args=["--fake"])
         # next step: move pre-1.7 models dir away
-        os.rename(os.path.join(BACKBONE_DIR, "models"), os.path.join(BACKBONE_DIR, ".models_pre17"))
+        os.rename(os.path.join(MODELS_DIR), os.path.join(BACKBONE_DIR, ".models_pre17"))
         # next step: move 1.7 models back in place
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
+
+
+def check_for_0800(opts):
+    _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
+    if not _list_stat:
+        sys.exit(7)
+    applied = True if _list_out.count("0800_base") else False
+    if applied:
+        print("0800_base already applied")
+    else:
+        tmp_dir = tempfile.mkdtemp()
+        print("0800_base not reached, migrating to stable 0800 (tmp_dir is {})".format(tmp_dir))
+        # move away all migrations >= 0800
+        _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry[0:4].isdigit() and int(_entry[0:4]) >= 800]
+        print("moving away new migrations ({})".format(logging_tools.get_plural("file", len(_move_files))))
+        for _move_file in _move_files:
+            file(os.path.join(tmp_dir, _move_file), "w").write(file(os.path.join(CMIG_DIR, _move_file), "r").read())
+            os.unlink(os.path.join(CMIG_DIR, _move_file))
+        # rename models dir
+        os.rename(MODELS_DIR, MODELS_DIR_SAVE)
+        os.rename(Z800_MODELS_DIR, MODELS_DIR)
+        # migrate
+        migrate_app("backbone")
+        # move back
+        os.rename(MODELS_DIR_SAVE, MODELS_DIR)
+        # move all files back from tmp_dir
+        base_mig = [_entry for _entry in _move_files if _entry[0:4] == "0800"][0]
+        _move_files.remove(base_mig)
+        print("moving back base file {}".format(base_mig))
+        file(os.path.join(CMIG_DIR, base_mig), "w").write(file(os.path.join(tmp_dir, base_mig), "r").read())
+        # fake migration
+        call_manage(["migrate", "backbone", "--fake"])
+        print("moving back migrations")
+        for _move_file in _move_files:
+            file(os.path.join(CMIG_DIR, _move_file), "w").write(file(os.path.join(tmp_dir, _move_file), "r").read())
+        sys.exit(6)
 
 
 def migrate_app(_app, **kwargs):
@@ -503,6 +552,7 @@ def create_db(opts):
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
         check_for_pre17(opts)
+        check_for_0800(opts)
         print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
