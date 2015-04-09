@@ -243,7 +243,11 @@ class raw_service_alert_manager(models.Manager):
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_UNDETERMINED = "UD"
-    STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL"),
+    STATE_OK = "O"
+    STATE_CHOICES = [(STATE_OK, "OK"),
+                     ("W", "WARNING"),
+                     ("U", "UNKNOWN"),
+                     ("C", "CRITICAL"),
                      (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
@@ -425,8 +429,13 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
         :param devices: either [device_pk] (meaning all services of these) or {device_pk: (service_pk, service_info)}
         :param use_client_name: whether to refer to services the way the cs code does or as (serv_pk, serv_info)
         """
-
-        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+        if use_client_name:
+            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+        else:
+            class dummy_dict(dict):
+                def __getitem__(self, item):
+                    return item
+            trans = dummy_dict()
 
         def get_data_per_device(devices, timespans):
 
