@@ -19,11 +19,17 @@
 #
 
 # noinspection PyUnresolvedReferences
+import collections
 import pprint
 import ast
 import re
 import json
+import datetime
+from types import NoneType
 from enum import IntEnum
+import django.utils.timezone
+from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, duration, \
+    mon_icinga_log_aggregated_timespan
 
 
 class KpiResult(IntEnum):
@@ -52,11 +58,18 @@ class KpiResult(IntEnum):
 
 class KpiObject(object):
     def __init__(self, result=None, historical_data=None, rrd=None, host_name=None, properties=None):
-        self.result = result if isinstance(result, KpiResult) else KpiResult.from_numeric_icinga_service_status(result)
+        self.result = result if isinstance(result, (KpiResult, NoneType)) \
+                             else KpiResult.from_numeric_icinga_service_status(result)
         self.historical_data = historical_data
         # self.rrd = rrd
         self.host_name = host_name
         self.properties = properties if properties is not None else {}
+
+        # current state of properties (make this into proper data structures):
+        # rrd: host_name, key, value (also scale, etc). NO SERVICE
+        # check result: description string, hence check command pk, service_info and device
+        # historic: nothing
+
 
     @classmethod
     def deserialize(cls, data):
@@ -64,7 +77,7 @@ class KpiObject(object):
 
     def serialize(self):
         return {
-            'result': self.result.get_numeric_icinga_service_status(),
+            'result': None if self.result is None else self.result.get_numeric_icinga_service_status(),
             'historical_data': self.historical_data,
             # 'rrd': self.rrd,
             'host_name': self.host_name,
@@ -150,6 +163,10 @@ class KpiSet(object):
     def result_objects(self):
         return [obj for obj in self.objects if obj.result is not None]
 
+    @property
+    def check_command_objects(self):
+        return [obj for obj in self.objects if 'check_command_pk' in obj.properties]  # TODO
+
     ########################################
     # proper kpi language elements
     #
@@ -192,15 +209,36 @@ class KpiSet(object):
         else:
             return KpiSet.get_singleton_critical(parents=[self])
 
-    def interpret_historic(self, num_ok, num_warn, result=KpiResult.ok):
+    def interpret_historic(self, num_ok, num_warn):
         """
-        Check if at_least a number of objects have a certain result.
         """
         # group historic data per dev and service
+        devices = collections.defaultdict(lambda: [])
+        for obj in self.check_command_objects:
+            devices[obj.properties['host_pk']].append(
+                (obj.properties['check_command_pk'], obj.properties['service_info'])
+            )
 
-        # need filter for only host / only service hist data
+        if not devices:
+            retval = KpiSet.get_singleton_unknown(parents=[self])
+        else:
+            retval = KpiSet.get_singleton_unknown(parents=[self])
 
-        #
+            end = django.utils.timezone.now()
+            start = end - datetime.timedelta(days=7*4)
+
+            # TODO: handle case where len(timespans) is too small (this will depend on the kind of dates we support)
+
+            timespans = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration.Day.ID,
+                                                                          start_date__range=(start, end))
+
+            hist_data = mon_icinga_log_aggregated_service_data.objects.get_data(devices=devices, timespans=timespans)
+
+            # TODO: HANDLE DATA
+
+            pprint.pprint(hist_data)
+
+        return retval
 
     def aggregate(self):
         """
@@ -217,6 +255,9 @@ class KpiSet(object):
     def dump(self):
         """Debug function: Log set contents and return itself"""
         print "DUMP:", self.objects
+        for obj in self.objects:
+            print obj.full_repr()
+
         return self
 
     def __repr__(self):

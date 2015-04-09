@@ -87,7 +87,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.add_process(KpiProcess("KpiProcess"), start=True)
             # wait for the processes to start
             time.sleep(0.5)
-            self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
+            self.register_timer(self._check_for_redistribute, 60 if global_config["DEBUG"] else 300)
             self.register_timer(self._update, 30, instant=True)
         else:
             self._int_error("no MD found")

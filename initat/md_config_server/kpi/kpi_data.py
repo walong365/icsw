@@ -20,15 +20,19 @@
 import collections
 import json
 import time
+from django.db import connection
 import memcache
+import initat.collectd
+import logging_tools
+import pprint
+import initat.collectd.aggregate
+
 from initat.cluster.backbone.middleware import show_database_calls
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
-import initat.collectd
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult
-import logging_tools
 
 
 class KpiData(object):
@@ -112,14 +116,15 @@ class KpiData(object):
         return kpi_objects
 
     def _get_dev_mon_tuples_from_category_tuples(self, queryset):
-        queryset = queryset.prefetch_related('device_category').prefetch_related('monitoring_category')
+        queryset = queryset.prefetch_related('device_category', 'device_category__device_set')
+        queryset = queryset.prefetch_related('monitoring_category', 'monitoring_category__mon_check_command_set')
         dev_mon_tuples = set()
         for tup in queryset:
             for dev in tup.device_category.device_set.all():
                 for mcc in tup.monitoring_category.mon_check_command_set.all():
                     if (dev, mcc) not in dev_mon_tuples:
                         dev_mon_tuples.add((dev, mcc))
-        show_database_calls()
+
         return dev_mon_tuples
 
     def _get_memcached_data(self):
@@ -229,13 +234,18 @@ class KpiData(object):
                           for icinga_name, our_name in property_names.iteritems() if icinga_name in check_result}
 
             if is_service:
-                host_pk, service_pk, info = \
+                host_pk, service_pk, service_info = \
                     host_service_id_util.parse_host_service_description(check_result['description'])
 
                 try:
+                    # TODO: cache if this becomes slow
                     properties['check_command'] = mon_check_command.objects.get(pk=service_pk).name
                 except mon_check_command.DoesNotExist:
                     properties['check_command'] = None
+
+                properties['service_info'] = service_info
+                properties['check_command_pk'] = service_pk
+                properties['host_pk'] = host_pk
 
             return KpiObject(
                 result=KpiResult.from_numeric_icinga_service_status(int(check_result['state'])),
@@ -243,5 +253,4 @@ class KpiData(object):
                 properties=properties,
             )
 
-    def _get_historic_data(self):
-        pass
+

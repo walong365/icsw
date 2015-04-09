@@ -44,6 +44,8 @@ class Kpi(models.Model):
 
     formula = models.TextField(blank=True)
 
+    enabled = models.BooleanField(default=True)
+
     # pretend as if all device/monitoring tuples were checked
     # TODO: implement in gui
     uses_all_data = models.BooleanField(default=False)

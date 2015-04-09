@@ -62,7 +62,7 @@ class KpiProcess(threading_tools.process_obj):
 
         # calculate kpis, such that drill down data is present
 
-        for kpi_db in Kpi.objects.all():
+        for kpi_db in Kpi.objects.filter(enabled=True):
             kpi_set = KpiSet(data.get_data_for_kpi(kpi_db))
 
             # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
@@ -74,7 +74,8 @@ class KpiProcess(threading_tools.process_obj):
                 exec(kpi_db.formula, eval_globals, eval_locals)
             except Exception as e:
                 self.log("Exception while executing kpi {} with formula {}:".format(kpi_db, kpi_db.formula))
-                self.log(traceback.format_exc())
+                for line in traceback.format_exc().split("\n"):
+                    self.log(line)
             else:
                 if 'kpi' not in eval_locals:
                     self.log("Kpi {} does not define result".format(kpi_db))

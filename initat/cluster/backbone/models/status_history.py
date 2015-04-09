@@ -20,6 +20,7 @@
 """ database definitions for recording icinga events and aggregating them """
 
 from collections import defaultdict
+import collections
 import operator
 
 from django.db import models
@@ -399,21 +400,30 @@ class mon_icinga_log_aggregated_host_data(models.Model):
 class mon_icinga_log_aggregated_service_data_manager(models.Manager):
 
     @staticmethod
-    def merge_state_types(data, undetermined_state):
+    def merge_state_types(data, undetermined_state, normalize=False):
         # data is list of dicts {'state': state, 'value': value, 'state_type': state_type}
         # this merges soft and hard states, but also supports multiple entries per state
         data_merged_state_types = []
         # merge state_types (soft/hard)
+
         for state in set(d['state'] for d in data):
-            data_merged_state_types.append({'state': state, 'value': sum(d['value'] for d in data if d['state'] == state)})
+            data_merged_state_types.append({'state': state,
+                                            'value': sum(d['value'] for d in data if d['state'] == state)})
+
+        if normalize:
+            # normalize to 1.0 (useful if the data is from multiple aggregated timespans)
+            total_value = sum(d['value'] for d in data_merged_state_types)
+            for d in data_merged_state_types:
+                d['value'] /= total_value
 
         if not data_merged_state_types:
             data_merged_state_types.append({'state': undetermined_state, 'value': 1})
         return data_merged_state_types
 
-    def get_data(self, devices, timespans, merge_services=False):
+    def get_data(self, devices, timespans, merge_services=False, use_client_name=True):
         """
         :param devices: either [device_pk] (meaning all services of these) or {device_pk: (service_pk, service_info)}
+        :param use_client_name: whether to refer to services the way the cs code does or as (serv_pk, serv_info)
         """
 
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
@@ -421,20 +431,24 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
         def get_data_per_device(devices, timespans):
 
             if isinstance(devices, dict):
-                # query for each
-                queries = (Q(device_id=dev_id, service_pk=serv_pk, service_info=service_info)
-                           for dev_id, (serv_pk, service_info) in devices.iteritems())
-                query_filter = reduce(lambda x, y: x | y, queries),
+                _queries = []
+                for dev_id, service_list in devices.iteritems():
+                    # query: device_pk matches as well as one service_pk/service_info combination
+                    service_qs = ((Q(service_id=serv_pk) & Q(service_info=service_info))
+                                  for serv_pk, service_info in service_list)
+                    _queries.append(Q(device_id=dev_id) & reduce(lambda x, y: x | y, service_qs))
+                # or around all queries
+                query_filter = reduce(lambda x, y: x | y, _queries)
                 device_ids = devices.keys()
             else:
                 query_filter = Q(device_id__in=devices)
                 device_ids = devices
 
-            queryset = mon_icinga_log_aggregated_service_data.objects.filter(query_filter,
-                                                                             timespan__in=timespans)
+            queryset = mon_icinga_log_aggregated_service_data.objects.filter(query_filter & Q(timespan__in=timespans))
 
             data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
             # can't do regular prefetch_related for queryset, this seems to work
+            device_service_timespans = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
             for entry in queryset.prefetch_related(Prefetch("service")):
 
                 relevant_data_from_entry = {
@@ -443,11 +457,29 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                     'value': entry.value
                 }
 
-                client_service_name = mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
+                if use_client_name:
+                    service_key = mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
+                else:
+                    service_key = (entry.service_id, entry.service_info)
+
+                device_service_timespans[entry.device_id][service_key].add(entry.timespan)
 
                 # there can be more than one entry for each state and state type per service
                 # if there are multiple timespans
-                data_per_device[entry.device_id][client_service_name].append(relevant_data_from_entry)
+                data_per_device[entry.device_id][service_key].append(relevant_data_from_entry)
+
+            if len(timespans) > 1:
+                # now for each service, we should have len(timespans) entries.
+                # if not, we don't have data for that, so fill it up
+                for device_id, service_name_timespans in device_service_timespans.iteritems():
+                    for service_key, timespans_present in service_name_timespans.iteritems():
+                        num_missing = len(timespans) - len(timespans_present)
+                        if num_missing > 0:
+                            data_per_device[device_id][service_key].append({
+                                'state': trans[mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED],
+                                'state_type': mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+                                'value': 1 * num_missing,  # this works since we normalize afterwards
+                            })
 
             return data_per_device
 
@@ -458,13 +490,9 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                 # we now just add the values, but we could e.g. also use the most common state of a service as it's state
                 # then we could say "4 services were ok, 3 were critical".
                 data_concat = list(itertools.chain.from_iterable(service_data for service_data in device_data.itervalues()))
-                device_data = self.merge_state_types(data_concat, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
-
-                # normalize to 1.0, else the values are meaningless
-                total = sum(entry['value'] for entry in device_data)
-                for entry in device_data:
-                    entry['value'] /= total
-                return_data[device_id] = device_data
+                return_data[device_id] = self.merge_state_types(data_concat,
+                                                                trans[mon_icinga_log_raw_base.STATE_UNDETERMINED],
+                                                                normalize=True)
             return return_data
 
         def merge_service_state_types_per_device(data_per_device):
@@ -474,9 +502,11 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                 return_data[device_id] = {
                     service_key: self.merge_state_types(
                         service_data,
-                        trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+                        trans[mon_icinga_log_raw_base.STATE_UNDETERMINED],
+                        normalize=len(timespans) > 1  # don't need to normalize if only 1
                     ) for service_key, service_data in device_service_data.iteritems()
                 }
+
             return return_data
 
         data_per_device = get_data_per_device(devices, timespans)
@@ -486,7 +516,6 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             return merge_all_services_of_devices(data_per_device)
         else:
             return merge_service_state_types_per_device(data_per_device)
-
 
 
 class mon_icinga_log_aggregated_service_data(models.Model):
