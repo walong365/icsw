@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from django.db.models import Q
 from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data
 
 
@@ -24,14 +25,15 @@ class TimeLine(list):
     pass
 
     @staticmethod
-    def calculate_time_lines(devices, start, end):
+    def calculate_time_lines(device_service_identifiers, start, end):
         """
-        :param devices: {dev_id: (serv_pk, serv_info)}
+        :param device_service_identifiers: [(dev_id, serv_pk, serv_info)]
         :return: {dev_id: {(serv_pk, serv_info) : TimeLine}}
         """
         # TODO: hosts
-        mon_icinga_log_raw_service_alert_data.objects.calc_limit_alerts(start, mode='last before')
-        mon_icinga_log_raw_service_alert_data.objects.calc_alerts(start, end)
+        additional_filter = Q()
+        mon_icinga_log_raw_service_alert_data.objects.calc_limit_alerts(start, mode='last before', additional_filter=additional_filter)
+        mon_icinga_log_raw_service_alert_data.objects.calc_alerts(start, end, additional_filter=additional_filter)
 
 
 class TimeLineEntry(object):

@@ -60,14 +60,13 @@ class mon_icinga_log_raw_base(models.Model):
 
 
 class raw_host_alert_manager(models.Manager):
-    def calc_alerts(self, start_time, end_time, device_ids=None):
+    def calc_alerts(self, start_time, end_time, additional_filter=None):
         host_alerts = defaultdict(lambda: [])
 
-        additional_device_filter = {}
-        if device_ids is not None:
-            additional_device_filter = {'device__in': device_ids}
-        for entry in self.filter(device_independent=False, date__range=(start_time, end_time),
-                                 **additional_device_filter):
+        queryset = self
+        if additional_filter is not None:
+            queryset = queryset.filter(additional_filter)
+        for entry in queryset.filter(Q(device_independent=False) & Q(date__range=(start_time, end_time))):
             host_alerts[entry.device_id].append(entry)
         # calc dev independent afterwards and add to all keys
         for entry in mon_icinga_log_raw_host_alert_data.objects \
@@ -79,13 +78,12 @@ class raw_host_alert_manager(models.Manager):
             l.sort(key=operator.attrgetter('date'))
         return host_alerts
 
-    def calc_limit_alerts(self, time, mode='last before', device_ids=None):
+    def calc_limit_alerts(self, time, mode='last before', **kwargs):
         """
         Find last alert before or first alert after some point in time for some devices
         :param mode: 'last before' or 'first after'
         """
-        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=True, time=time, mode=mode,
-                                                              device_ids=device_ids)
+        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=True, time=time, mode=mode, **kwargs)
 
 
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
@@ -100,21 +98,23 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
 
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
-    log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
-    initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
+    # whether this is an entry at the beginning of a fresh archive file.
+    log_rotation_state = models.BooleanField(default=False)
+    # whether this is an entry after icinga restart
+    initial_state = models.BooleanField(default=False)
 
     class CSW_Meta:
         backup = False
 
 
 class raw_service_alert_manager(models.Manager):
-    def calc_alerts(self, start_time, end_time, device_ids=None):
+    def calc_alerts(self, start_time, end_time, additional_filter=None):
         service_alerts = defaultdict(lambda: [])
 
-        additional_device_filter = {}
-        if device_ids is not None:
-            additional_device_filter = {'device__in': device_ids}
-        queryset = self.filter(device_independent=False, date__range=(start_time, end_time), **additional_device_filter)
+        queryset = self.filter(device_independent=False, date__range=(start_time, end_time))
+        if additional_filter is not None:
+            queryset = queryset.filter(additional_filter)
+
         for entry in queryset:
             key = entry.device_id, entry.service_id, entry.service_info
             service_alerts[key].append(entry)
@@ -127,16 +127,15 @@ class raw_service_alert_manager(models.Manager):
             l.sort(key=operator.attrgetter('date'))
         return service_alerts
 
-    def calc_limit_alerts(self, time, mode='last before', device_ids=None):
+    def calc_limit_alerts(self, time, mode='last before', **kwargs):
         """
         Find last alert before or first alert after some point in time for some devices
         :param mode: 'last before' or 'first after'
         """
-        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=False, time=time, mode=mode,
-                                                              device_ids=device_ids)
+        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=False, time=time, mode=mode, **kwargs)
 
     @staticmethod
-    def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', device_ids=None):
+    def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', additional_filter=None):
         assert mode in ('last before', 'first after')
 
         group_by_fields = ['device_id', 'state', 'state_type']
@@ -160,14 +159,14 @@ class raw_service_alert_manager(models.Manager):
             latest_dev_independent_service_alert = None
 
         # get last service alert of each service before the start time
-        additional_device_filter = {}
-        if device_ids is not None:
-            additional_device_filter = {'device__in': device_ids}
         last_service_alert_cache = {}
         if mode == 'last before':
-            queryset = obj_man.filter(date__lte=time, device_independent=False, **additional_device_filter)
+            queryset = obj_man.filter(Q(date__lte=time) & Q(device_independent=False))
         else:
-            queryset = obj_man.filter(date__gte=time, device_independent=False, **additional_device_filter)
+            queryset = obj_man.filter(Q(date__gte=time) & Q(device_independent=False))
+
+        if additional_filter is not None:
+            queryset = queryset.filter(additional_filter)
 
         queryset = queryset.values(*group_by_fields)
 
