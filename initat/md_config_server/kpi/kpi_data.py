@@ -119,6 +119,7 @@ class KpiData(object):
         queryset = queryset.prefetch_related('monitoring_category', 'monitoring_category__mon_check_command_set')
         dev_mon_tuples = set()
         for tup in queryset:
+
             for dev in tup.device_category.device_set.all():
                 for mcc in tup.monitoring_category.mon_check_command_set.all():
                     if (dev, mcc) not in dev_mon_tuples:

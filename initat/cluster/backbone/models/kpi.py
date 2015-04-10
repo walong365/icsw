@@ -78,6 +78,11 @@ class KpiDataSourceTuple(models.Model):
     device_category = models.ForeignKey('category', related_name="device_category")
     monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
 
+    def __repr__(self):
+        return "KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(self.kpi,
+                                                                           self.device_category,
+                                                                           self.monitoring_category)
+
     class Meta:
         app_label = "backbone"
 

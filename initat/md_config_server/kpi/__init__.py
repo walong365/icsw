@@ -44,7 +44,8 @@ class KpiProcess(threading_tools.process_obj):
         )
         connection.close()
 
-        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        #self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -68,14 +69,15 @@ class KpiProcess(threading_tools.process_obj):
             kpi_set = KpiSet(data.get_data_for_kpi(kpi_db))
 
             # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
-            eval_globals = {'data': kpi_set}
+            eval_globals = {'data': kpi_set, 'KpiSet': KpiSet, 'KpiObject': KpiObject}
             # print eval(kpi_db.formula, eval_globals)
             eval_locals = {}
             result_str = None
             try:
                 exec(kpi_db.formula, eval_globals, eval_locals)
             except Exception as e:
-                self.log("Exception while executing kpi {} with formula {}:".format(kpi_db, kpi_db.formula))
+                self.log(e)
+                self.log("Exception while executing kpi {} with formula {}: {}".format(kpi_db, kpi_db.formula, e))
                 for line in traceback.format_exc().split("\n"):
                     self.log(line)
             else:
@@ -85,6 +87,8 @@ class KpiProcess(threading_tools.process_obj):
                     result = eval_locals['kpi']
 
                     print '\nkpi', kpi_db
+                    print 'full result',
+                    result.dump()
                     print_tree(result)
 
                     result_str = json.dumps(result.serialize())

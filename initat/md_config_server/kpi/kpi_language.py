@@ -144,13 +144,15 @@ class KpiSet(object):
     def get_singleton_unknown(cls, **kwargs):
         return KpiSet([KpiObject(result=KpiResult.unknown)], **kwargs)
 
-    def __init__(self, objects, parents=None):
+    def __init__(self, objects, parents=None, explanation=None):
         """
         :type objects: list of KpiObject
         :type parents: list of KpiSet
+        :type explanation: KpiSet
         """
         self.objects = objects
         self.parents = parents
+        self.explanation = explanation
 
     @classmethod
     def deserialize(cls, data):
@@ -164,13 +166,23 @@ class KpiSet(object):
             "parents": [par.serialize() for par in self.parents] if self.parents is not None else None,
         }
 
+    def __iter__(self):
+        return iter(self.objects)
+
+    def __len__(self):
+        return len(self.objects)
+
     @property
     def result_objects(self):
         return [obj for obj in self.objects if obj.result is not None]
 
     @property
     def check_command_objects(self):
-        return [obj for obj in self.objects if 'check_command_pk' in obj.properties]  # TODO
+        return [obj for obj in self.objects if 'check_command_pk' in obj.properties]  # TODO: make into nice obj
+
+    @property
+    def historical_data_objects(self):
+        return [obj for obj in self.objects if 'hist_data' in obj.properties]  # TODO: make into nice obj
 
     ########################################
     # proper kpi language elements
@@ -214,9 +226,9 @@ class KpiSet(object):
         else:
             return KpiSet.get_singleton_critical(parents=[self])
 
-    def interpret_historic(self, ratio_ok, ratio_warn):
+    def get_historic(self):
         """
-        Currently we check if up percentage is at least
+        Retrieve historical data and returns set of only those which have it
         """
         # group historic data per dev and service
         devices = collections.defaultdict(lambda: [])
@@ -225,12 +237,13 @@ class KpiSet(object):
                 (obj.properties['check_command_pk'], obj.properties['service_info'])
             )
 
-        if not devices:
-            retval = KpiSet.get_singleton_unknown(parents=[self])
-        else:
+        objects = []
+        if devices:
 
-            end = django.utils.timezone.now()
-            start = end - datetime.timedelta(days=7*4)
+            # end = django.utils.timezone.now()
+            # start = end - datetime.timedelta(days=7*4)
+            start = datetime.date(2014, 01, 01)
+            end = datetime.date(2014, 12, 31)
 
             # TODO: handle case where len(timespans) is too small (this will depend on the kind of dates we support)
 
@@ -241,8 +254,29 @@ class KpiSet(object):
                                                                                 timespans=timespans,
                                                                                 use_client_name=False)
 
-            objects = []
             for dev_id, service_data in hist_data.iteritems():
+                for (service_id, service_info), state_list in service_data.iteritems():
+                    for kpi_obj in self.check_command_objects:
+                        if kpi_obj.properties['host_pk'] == dev_id \
+                                and kpi_obj.properties['check_command_pk'] == service_id \
+                                and kpi_obj.properties['service_info'] == service_info:
+                            kpi_obj.properties['hist_data'] = "{}, {}, {}".format(dev_id, service_id, service_info)
+                            kpi_obj.properties['hist_detail'] = state_list
+                            objects.append(kpi_obj)
+                            break
+                    else:
+                        print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+                        # TODO: logging is broken in this context
+                        # logger.warn("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+        return KpiSet(objects=objects, parents=[self])
+
+    def interpret_historic(self, ratio_ok, ratio_warn):
+        """
+        Currently we check if up percentage is at least
+        """
+        objects = []
+        for obj in self.historical_data_objects:
+            for dev_id, service_data in obj.properties['hist_data'].iteritems():
                 for (service_id, service_info), state_list in service_data.iteritems():
                     # TODO: create nice KpiHistoricObject, also KpiCheckObject, make both inherit _KpiCheckObjectBase
                     # the hist obj has additional date info containing actual date used
@@ -267,16 +301,10 @@ class KpiSet(object):
                     objects.append(
                         KpiObject(
                             result=result,
-                            properties={
-                                'hist_data': "{}, {}, {}".format(dev_id, service_id, service_info),
-                                'hist_detail': unicode(state_list),
-                            }
                         )
                     )
 
-            retval = KpiSet(objects=objects, parents=[self])
-
-        return retval
+        return KpiSet(objects=objects, parents=[self])
 
     def aggregate(self):
         """
@@ -288,7 +316,8 @@ class KpiSet(object):
             return KpiSet.get_singleton_unknown(parents=[self])
         else:
             aggregated_result = max(obj.result for obj in self.result_objects)
-            return KpiSet([KpiObject(result=aggregated_result)], parents=[self])
+            causes = list(obj for obj in self.result_objects if obj.result == aggregated_result)
+            return KpiSet([KpiObject(result=aggregated_result)], parents=[self], explanation=KpiSet(objects=causes))
 
     def dump(self):
         """Debug function: Log set contents and return itself"""
@@ -340,7 +369,7 @@ def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
 
 
 def print_tree(t, i=0):
-    print " " * i, t
+    print " " * i, t, t.explanation
     if t.parents:
         for p in t.parents:
             print_tree(p, i + 8)
