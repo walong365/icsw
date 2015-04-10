@@ -29,6 +29,7 @@ from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, astdump, print_tree
 import logging_tools
+import process_tools
 import threading_tools
 
 
@@ -54,75 +55,81 @@ class KpiProcess(threading_tools.process_obj):
         self.__log_template.close()
 
     def update(self):
-        data = KpiData(self.log)
-        # TODO: historic
+        try:
+            data = KpiData(self.log)
+        except Exception as e:
+            self.log("Exception when gathering kpi data: {}".format(process_tools.get_except_info()))
+            for line in traceback.format_exc().split("\n"):
+                self.log(line)
+        else:
 
-        # recalculate kpis
+            # recalculate kpis
 
-        # TODO: permissions for devices?
+            # TODO: permissions for devices?
 
-        # calculate kpis, such that drill down data is present
+            # calculate kpis, such that drill down data is present
 
-        print '\n\nkpi evaluation\n'
+            print '\n\nkpi evaluation\n'
 
-        for kpi_db in Kpi.objects.filter(enabled=True):
-            kpi_set = KpiSet(data.get_data_for_kpi(kpi_db))
+            for kpi_db in Kpi.objects.filter(enabled=True):
 
-            # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
-            eval_globals = {'data': kpi_set, 'KpiSet': KpiSet, 'KpiObject': KpiObject}
-            # print eval(kpi_db.formula, eval_globals)
-            eval_locals = {}
-            result_str = None
-            try:
-                exec(kpi_db.formula, eval_globals, eval_locals)
-            except Exception as e:
-                self.log(e)
-                self.log("Exception while executing kpi {} with formula {}: {}".format(kpi_db, kpi_db.formula, e))
-                for line in traceback.format_exc().split("\n"):
-                    self.log(line)
-            else:
-                if 'kpi' not in eval_locals:
-                    self.log("Kpi {} does not define result".format(kpi_db))
+                print '\nevaluating kpi', kpi_db
+                kpi_set = KpiSet(data.get_data_for_kpi(kpi_db))
+
+                # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
+                eval_globals = {'data': kpi_set, 'KpiSet': KpiSet, 'KpiObject': KpiObject}
+                # print eval(kpi_db.formula, eval_globals)
+                eval_locals = {}
+                result_str = None
+                try:
+                    exec(kpi_db.formula, eval_globals, eval_locals)
+                except Exception as e:
+                    self.log(e)
+                    self.log("Exception while executing kpi {} with formula {}: {}".format(kpi_db, kpi_db.formula, e))
+                    for line in traceback.format_exc().split("\n"):
+                        self.log(line)
                 else:
-                    result = eval_locals['kpi']
+                    if 'kpi' not in eval_locals:
+                        self.log("Kpi {} does not define result".format(kpi_db))
+                    else:
+                        result = eval_locals['kpi']
 
-                    print '\nkpi', kpi_db
-                    print 'full result',
-                    result.dump()
-                    print_tree(result)
+                        print 'full result',
+                        result.dump()
+                        print_tree(result)
 
-                    result_str = json.dumps(result.serialize())
+                        result_str = json.dumps(result.serialize())
 
-            date = django.utils.timezone.now()
+                date = django.utils.timezone.now()
 
-            kpi_db.set_result(result_str, date)
+                kpi_db.set_result(result_str, date)
 
-            """
+                """
 
-            class MyNV(ast.NodeVisitor):
-                def visit_BinOp(self, node):
-                    self.generic_visit(node)
-                    self.show_node(node)
+                class MyNV(ast.NodeVisitor):
+                    def visit_BinOp(self, node):
+                        self.generic_visit(node)
+                        self.show_node(node)
 
-                def visit_Name(self, node):
-                    self.generic_visit(node)
-                    self.show_node(node)
+                    def visit_Name(self, node):
+                        self.generic_visit(node)
+                        self.show_node(node)
 
-                def visit_Call(self, node):
-                    self.generic_visit(node)
-                    self.show_node(node)
+                    def visit_Call(self, node):
+                        self.generic_visit(node)
+                        self.show_node(node)
 
-                def show_node(self, node):
-                    import codegen
-                    # print '\ncall node', node, node.func, node.args, node.kwargs, node.starargs
-                    print '\n node', node, codegen.to_source(node)
-                    res = eval(compile(ast.Expression(node), '<string>', mode='eval'), eval_globals)
-                    print 'eval:', res
+                    def show_node(self, node):
+                        import codegen
+                        # print '\ncall node', node, node.func, node.args, node.kwargs, node.starargs
+                        print '\n node', node, codegen.to_source(node)
+                        res = eval(compile(ast.Expression(node), '<string>', mode='eval'), eval_globals)
+                        print 'eval:', res
 
-            print 'gonna eval: '
-            print "\"" * 3
-            print kpi_db.formula
-            print "\"" * 3
+                print 'gonna eval: '
+                print "\"" * 3
+                print kpi_db.formula
+                print "\"" * 3
             if True:
                 d = {}
                 exec(kpi_db.formula, eval_globals, d)

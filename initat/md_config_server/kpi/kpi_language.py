@@ -28,6 +28,7 @@ import datetime
 from types import NoneType
 from enum import IntEnum
 import django.utils.timezone
+from initat.md_config_server.kpi.kpi_historic import TimeLineEntry, TimeLine
 import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
 from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, duration, \
@@ -181,6 +182,10 @@ class KpiSet(object):
         return [obj for obj in self.objects if 'check_command_pk' in obj.properties]  # TODO: make into nice obj
 
     @property
+    def host_check_objects(self):
+        return [obj for obj in self.objects if True]  # TODO: make into nice obj
+
+    @property
     def historical_data_objects(self):
         return [obj for obj in self.objects if 'hist_data' in obj.properties]  # TODO: make into nice obj
 
@@ -226,7 +231,95 @@ class KpiSet(object):
         else:
             return KpiSet.get_singleton_critical(parents=[self])
 
+    def aggregate_historic(self, method):
+        """
+        :param method: "or" or "and"
+        """
+        if not self.historical_data_objects:
+            retval = KpiSet.get_singleton_unknown(parents=[self])
+        else:
+            # work on copies
+            time_lines = [collections.deque(obj.properties['time_line']) for obj in self.historical_data_objects]
+
+            compound_time_line = TimeLine()
+
+            def add_to_compound_tl(date, states):
+                if method == 'or':
+                    next_state = states
+                elif method == 'and':
+                    next_state = states
+                else:
+                    raise RuntimeError("Invalid aggregate_historic method: {}".format(method) +
+                                       "(must be either 'or' or 'and')")
+
+                if compound_time_line[-1].state != next_state:  # only update on state change
+                    compound_time_line.append(TimeLineEntry(date, next_state))
+
+            states = [tl[0].state for tl in time_lines]
+
+            add_to_compound_tl(time_lines[0][0].date, states)
+
+            while any(time_lines):
+                # find queue with next event
+                next_queue = min(xrange(len(time_lines)), key=lambda x: time_lines[x][0].date)
+
+                next_entry = time_lines[next_queue].popleft()
+                states[next_queue] = next_entry.state
+
+                add_to_compound_tl(next_entry.date, states)
+
+            # no final event, this is the convention
+
+            retval = KpiSet(
+                objects=[KpiObject(properties={'time_line': compound_time_line})],
+                parents=[self],
+            )
+
+        return retval
+
+    def historic_or(self):
+        return self.aggregate_historic(method='or')
+
+    def historic_and(self):
+        return self.aggregate_historic(method='and')
+
     def get_historic(self):
+        # group historic data per dev and service
+        devices = collections.defaultdict(lambda: [])
+        # TODO: host check results
+        for obj in self.check_command_objects:
+            devices[obj.properties['host_pk']].append(
+                (obj.properties['check_command_pk'], obj.properties['service_info'])
+            )
+
+        objects = []
+        if devices:
+
+            # end = django.utils.timezone.now()
+            # start = end - datetime.timedelta(days=7*4)
+            start = datetime.date(2014, 01, 25)  # django change
+            end = datetime.date(2015, 01, 01)
+
+            time_lines = TimeLine.calculate_time_lines(devices, start, end)
+
+            for dev_id, service_time_line_of_device in time_lines.iteritems():
+                for (service_id, service_info), service_time_line in service_time_line_of_device.iteritems():
+                    for kpi_obj in self.check_command_objects:
+                        if kpi_obj.properties['host_pk'] == dev_id \
+                                and kpi_obj.properties['check_command_pk'] == service_id \
+                                and kpi_obj.properties['service_info'] == service_info:
+                            kpi_obj.properties['time_line'] = service_time_line_of_device
+                            # NOTE: we reuse the objects here
+                            objects.append(kpi_obj)
+                            break
+                    else:
+                        print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+                        # TODO: logging is broken in this context
+
+        return KpiSet(objects=objects, parents=[self])
+
+    def get_historic_only_aggregated_data(self):
+        # deprecate?
         """
         Retrieve historical data and returns set of only those which have it
         """
@@ -242,7 +335,7 @@ class KpiSet(object):
 
             # end = django.utils.timezone.now()
             # start = end - datetime.timedelta(days=7*4)
-            start = datetime.date(2014, 01, 01)
+            start = datetime.date(2014, 01, 25)  # django change
             end = datetime.date(2014, 12, 31)
 
             # TODO: handle case where len(timespans) is too small (this will depend on the kind of dates we support)
@@ -306,11 +399,12 @@ class KpiSet(object):
 
         return KpiSet(objects=objects, parents=[self])
 
-    def aggregate(self):
+    def evaluate(self):
         """
         Calculate "worst" result, i.e. result is critical
         if at least one is critical or else warn if at least one is warn etc.
         """
+        # TODO: have parameter method
         # print 'call aggregate on ', self.result_objects
         if not self.result_objects:
             return KpiSet.get_singleton_unknown(parents=[self])
