@@ -291,6 +291,7 @@ angular.module(
             available_device_categories: []
             available_monitoring_categories: []
             selected_device_monitoring_category_tuple: []
+            enabled: true
         }
         show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
     ret.show_modify_kpi_dlg = (scope, kpi) ->

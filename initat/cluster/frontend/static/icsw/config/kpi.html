@@ -121,7 +121,12 @@
 
 <script type="text/ng-template" id="icsw.config.kpi.show_kpis">
 
-    <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto">
+    <div ng-show="kpi.length == 0">
+        <alert type="info">
+            No KPIs defined. Please define one using the 'create' button.
+        </alert>
+    </div>
+    <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto" ng-show="kpi.length>0">
         <tr>
             <th st-sort="name">Name</th>
             <th st-sort="enabled">Enabled</th>

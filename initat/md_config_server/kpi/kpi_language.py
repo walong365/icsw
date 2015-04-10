@@ -73,7 +73,7 @@ class KpiObject(object):
         # current state of properties (make this into proper data structures):
         # rrd: host_name, key, value (also scale, etc). NO SERVICE
         # check result: description string, hence check command pk, service_info and device
-        # historic: nothing
+        # historic: same as check result plus time range
 
 
     @classmethod

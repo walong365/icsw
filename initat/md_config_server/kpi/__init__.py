@@ -62,6 +62,8 @@ class KpiProcess(threading_tools.process_obj):
 
         # calculate kpis, such that drill down data is present
 
+        print '\n\nkpi evaluation\n'
+
         for kpi_db in Kpi.objects.filter(enabled=True):
             kpi_set = KpiSet(data.get_data_for_kpi(kpi_db))
 
@@ -82,7 +84,7 @@ class KpiProcess(threading_tools.process_obj):
                 else:
                     result = eval_locals['kpi']
 
-                    print 'kpi', kpi_db
+                    print '\nkpi', kpi_db
                     print_tree(result)
 
                     result_str = json.dumps(result.serialize())

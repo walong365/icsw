@@ -20,7 +20,6 @@
 import collections
 import json
 import time
-from django.db import connection
 import memcache
 import initat.collectd
 import logging_tools
