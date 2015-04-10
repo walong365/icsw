@@ -50,8 +50,7 @@ def run_code():
 
 def main():
     global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
-    #long_host_name, mach_name = process_tools.get_fqdn()
-    long_host_name, mach_name = "a", "b"
+    long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
