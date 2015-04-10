@@ -30,7 +30,6 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.response import Response
 import reversion
-from reversion.helpers import generate_patch
 import initat
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
 from rest_framework.generics import ListAPIView, RetrieveAPIView
