@@ -594,7 +594,6 @@ angular.module(
                         bounds = this.getBounds()
                         boundx = bounds[0]
                         boundy = bounds[1]
-
                     )
                     myImg.bind("error", () ->
                         scope.$apply(() ->
