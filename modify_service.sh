@@ -4,6 +4,7 @@ ACTION=$1
 SRV_NAME=$2
 
 if [ -f /etc/corosync/corosync.conf ] ; then
+    echo "HA-setup detected, skipping automatic activation and deactivation"
     export HA=1
 else
     export HA=0
