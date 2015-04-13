@@ -44,6 +44,101 @@ class KpiData(object):
 
     def __init__(self, log):
         self.log = log
+        self._mccs = {mcc.pk: mcc for mcc in mon_check_command.objects.all()}
+        self._load_data()
+
+    def get_data_for_kpi(self, kpi_db):
+        dev_mon_tuples = kpi_db.kpidatasourcetuple_set.all()
+
+        if kpi_db.has_historic_data():
+            start, end = KpiUtils.parse_kpi_time_range_from_kpi(kpi_db)
+        else:
+            start, end = None, None
+
+        return self.get_data_for_dev_mon_tuples(dev_mon_tuples, start, end)
+
+    def get_data_for_dev_mon_tuples(self, tuples, start=None, end=None):
+        """
+        Retrieves current results for (dev, mon)
+        :rtype: list of KpiObject
+        """
+        # NOTE: only used through get_data_for_kpi as of now
+        dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(tuples)
+
+        device_id_set = {dev for (dev, _) in dev_mon_tuples}
+
+        if start is not None:
+
+            timespan_hosts_qs, timespan_services_qs =\
+                icinga_log_aggregator.get_active_hosts_and_services_in_timespan_queryset(start, end)
+
+            timespan_hosts_qs = timespan_hosts_qs.filter(device_id__in=device_id_set)
+
+            timespan_hosts = set(timespan_hosts_qs)
+
+            timespan_services_qs = timespan_services_qs.filter(
+                reduce(operator.or_, (Q(device_id=dev_id, service_id=mcc.pk) for (dev_id, mcc) in dev_mon_tuples))
+            )
+
+            timespan_services = set(timespan_services_qs)
+        else:
+            timespan_hosts, timespan_services = set(), set()
+
+        # add kpi objects to result list, check off historical data which is present there
+        kpi_objects = []
+        for dev in device_id_set:
+            if self.host_data[dev.pk].rrd_data is not None:
+                kpi_objects.extend(self.host_data[dev.pk].rrd_data)
+            kpi_objects.extend(
+                self.host_data[dev.pk].host_check_results
+            )
+            timespan_hosts.discard(dev.pk)
+
+        for dev, mcc in dev_mon_tuples:
+            service_kpi_objects = self.host_data[dev.pk].service_check_results[mcc.pk]
+            kpi_objects.extend(service_kpi_objects)
+
+            for service_kpi_obj in service_kpi_objects:
+                timespan_services.discard((service_kpi_obj.host_pk,
+                                           service_kpi_obj.service_id,
+                                           service_kpi_obj.service_info))
+
+        # now  timespan_hosts and timespan_services_qs contain historical data, which is currently not present anymore
+        for missing_dev_pk in timespan_hosts:
+            try:
+                dev_obj = device.objects.get(pk=missing_dev_pk)
+            except device.DoesNotExist:
+                self.log("device {} has historical data but does not exist any more".format(missing_dev_pk))
+            else:
+                kpi_objects.append(
+                    KpiObject(
+                        host_pk=missing_dev_pk,
+                        host_name=dev_obj.full_name,
+                    )
+                )
+
+        for missing_dev_pk, missing_serv_pk, missing_serv_info in timespan_services:
+            try:
+                dev_obj = device.objects.get(pk=missing_dev_pk)
+            except device.DoesNotExist:
+                self.log("device {} has historical data but does not exist any more".format(missing_dev_pk))
+            else:
+                kpi_objects.append(
+                    KpiServiceObject(
+                        host_pk=missing_dev_pk,
+                        host_name=dev_obj.full_name,
+                        service_id=missing_serv_pk,
+                        service_info=missing_serv_info,
+                        mcc=self._mccs.get(missing_serv_pk, None),
+                    )
+                )
+
+        return kpi_objects
+
+    ##########################
+    # private methods
+
+    def _load_data(self):
 
         try:
             self.icinga_socket = live_socket.get_icinga_live_socket()
@@ -94,53 +189,6 @@ class KpiData(object):
             self.host_data[dev.pk] = HostData(rrd_data=host_rrd_data.get(dev.pk, None),
                                               host_check_results=self._get_host_check_results(dev),
                                               service_check_results=service_check_results[dev.pk])
-
-    def get_data_for_kpi(self, kpi_db):
-        dev_mon_tuples = kpi_db.kpidatasourcetuple_set.all()
-
-        if kpi_db.has_historic_data():
-            start, end = KpiUtils.parse_kpi_time_range_from_kpi(kpi_db)
-        else:
-            start, end = None, None
-
-        return self.get_data_for_dev_mon_tuples(dev_mon_tuples, start, end)
-
-    def get_data_for_dev_mon_tuples(self, tuples, start=None, end=None):
-        """
-        Retrieves current results for (dev, mon)
-        :rtype: list of KpiObject
-        """
-        # NOTE: only used through get_data_for_kpi as of now
-        kpi_objects = []
-        dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(tuples)
-
-        device_id_set = {dev for (dev, _) in dev_mon_tuples}
-
-        if start is not None:
-
-            timespan_hosts_qs, timespan_services_qs =\
-                icinga_log_aggregator.get_active_hosts_and_services_in_timespan_queryset(start, end)
-
-            timespan_hosts_qs = timespan_hosts_qs.filter(device_id__in=device_id_set)
-
-            timespan_services_qs = timespan_services_qs.filter(
-                reduce(operator.or_, (Q(device_id=dev_id, service_id=mcc.pk) for (dev_id, mcc) in dev_mon_tuples))
-            )
-
-            # TODO: add those timespan/hosts data which don't have current sets
-            # possibly use set hashing for somewhat reasonable approach (OR NOT, can there reasonable be more than a million dev/mon tuples?)
-
-        for dev in device_id_set:
-            if self.host_data[dev.pk].rrd_data is not None:
-                kpi_objects.extend(self.host_data[dev.pk].rrd_data)
-            kpi_objects.extend(
-                self.host_data[dev.pk].host_check_results
-            )
-        for dev, mcc in dev_mon_tuples:
-            kpi_objects.extend(
-                self.host_data[dev.pk].service_check_results[mcc.pk]
-            )
-        return kpi_objects
 
     def _get_dev_mon_tuples_from_category_tuples(self, queryset):
         queryset = queryset.prefetch_related('device_category', 'device_category__device_set')
@@ -198,7 +246,7 @@ class KpiData(object):
 
         return host_rrd_data
 
-    def _get_service_check_results(self, dev, check):
+    def _get_service_check_results(self, dev, mcc):
         service_query = self.icinga_socket.services.columns(
             # "host_name",
             "description",
@@ -213,8 +261,8 @@ class KpiData(object):
         )
         description = host_service_id_util.create_host_service_description_direct(
             dev.pk,
-            check.pk,
-            special_check_command_pk=check.mon_check_command_special_id,
+            mcc.pk,
+            special_check_command_pk=mcc.mon_check_command_special_id,
             info=".*"
         )
         description = "^{}".format(description)  # need regex to force start to distinguish s_host_check and host_check
@@ -234,8 +282,9 @@ class KpiData(object):
                     result=KpiResult.from_numeric_icinga_service_status(int(ir['state'])),
                     host_name=dev.full_name,
                     host_pk=dev.pk,
-                    service_id=check.pk,
+                    service_id=mcc.pk,
                     service_info=service_info,
+                    mcc=mcc,
                 )
             )
         # self.log("got service check results: {}".format(ret))

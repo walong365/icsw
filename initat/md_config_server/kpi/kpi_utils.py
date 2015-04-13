@@ -17,9 +17,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import operator
 import ast
+# noinspection PyUnresolvedReferences
+import pytz
 import datetime
+# noinspection PyUnresolvedReferences
 from django.db.models import Q
 import django.utils.timezone
 from initat.cluster.backbone.models import duration
@@ -42,6 +44,12 @@ class KpiUtils(object):
 
     @staticmethod
     def parse_kpi_time_range(time_range, time_range_parameter):
+        """
+        return datetime.datetime.combine(datetime.date(2014, 01, 18),
+                                         datetime.datetime.min.time()).replace(tzinfo=pytz.utc),\
+               datetime.datetime.combine(datetime.date(2014, 02, 01),
+                                         datetime.datetime.min.time()).replace(tzinfo=pytz.utc)
+        # """
 
         def get_duration_class_start_end(duration_class, time_point):
             start = duration_class.get_time_frame_start(

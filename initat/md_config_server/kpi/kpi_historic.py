@@ -18,13 +18,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import collections
+import pprint
 import django.utils.timezone
 from django.db.models import Q
 import operator
 from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base
 
 
-class TimeLine(list):
+class TimeLineUtils(list):
     @staticmethod
     def calculate_time_lines(device_service_identifiers, start, end):
         """
@@ -40,15 +41,25 @@ class TimeLine(list):
         alerts =\
             mon_icinga_log_raw_service_alert_data.objects.calc_alerts(start, end, additional_filter=additional_filter)
 
-        time_lines = collections.defaultdict(lambda: TimeLine())
+        time_lines = {}
 
         for (dev_id, serv_id, service_info), entry in initial_values.iteritems():
-            time_lines[(dev_id, serv_id, service_info)].append(
+            time_lines[(dev_id, serv_id, service_info)] = [
                 TimeLineEntry(date=start, state=(entry['state'], entry['state_type']))
-            )
+            ]
 
         for (dev_id, serv_id, service_info), alert_list in alerts.iteritems():
-            tl = time_lines[(dev_id, serv_id, service_info)]
+            key = (dev_id, serv_id, service_info)
+            if key not in time_lines:
+                # couldn't find initial state, it has not existed at the time of start
+                tl = time_lines[key] = [
+                    TimeLineEntry(date=start,
+                                  state=(mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+                                         mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED))
+                ]
+            else:
+                tl = time_lines[key]
+
             last_alert = None
             for alert in alert_list:
                 if last_alert is None or alert.state != last_alert.state or alert.state_type != last_alert.state_type:
@@ -66,7 +77,7 @@ class TimeLine(list):
         """
         # work on copies
         time_lines = [collections.deque(tl) for tl in time_lines]
-        compound_time_line = TimeLine()
+        compound_time_line = []
         state_ordering = {
             mon_icinga_log_raw_service_alert_data.STATE_OK: 0,
             mon_icinga_log_raw_service_alert_data.STATE_WARNING: 1,
@@ -75,6 +86,10 @@ class TimeLine(list):
             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED: 4,
         }
         state_type_ordering = {
+            # prefer soft:
+            # soft critical is better than hard critical
+            # note that hard ok would be better than soft ok, but soft ok usually doesn't ok because
+            # if a check runs through, it's hard ok anyways
             mon_icinga_log_raw_base.STATE_TYPE_SOFT: 0,
             mon_icinga_log_raw_base.STATE_TYPE_HARD: 1,
             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED: 2,

@@ -26,7 +26,7 @@ from types import NoneType
 
 from enum import IntEnum
 
-from initat.md_config_server.kpi.kpi_historic import TimeLine
+from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
@@ -132,7 +132,7 @@ class KpiRRDObject(KpiObject):
 
 
 class KpiServiceObject(KpiObject):
-    def __init__(self, service_id=None, service_info=None, **kwargs):
+    def __init__(self, service_id=None, service_info=None, mcc=None, **kwargs):
         if service_id is None:
             raise ValueError("service_id is None")
         if service_info is None:
@@ -143,7 +143,8 @@ class KpiServiceObject(KpiObject):
         self.service_id = service_id
         self.service_info = service_info
         try:
-            mcc = mon_check_command.objects.get(pk=service_id)
+            if mcc is None:
+                mcc = mon_check_command.objects.get(pk=service_id)
         except mon_check_command.DoesNotExist:
             logger.debug("referenced check command which does not exist: {}".format(service_id))
             self.check_command = None
@@ -311,7 +312,7 @@ class KpiSet(object):
             retval = KpiSet.get_singleton_unknown(parents=[self])
         else:
             # work on copies
-            compound_time_line = TimeLine.calculate_compound_time_line(
+            compound_time_line = TimeLineUtils.calculate_compound_time_line(
                 method,
                 [obj.time_line for obj in self.time_line_objects],
             )
@@ -329,7 +330,7 @@ class KpiSet(object):
     def historic_and(self):
         return self.aggregate_historic(method='and')
 
-    def get_historic(self):
+    def get_historic_data(self):
         # group historic data per dev and service
         device_service_identifiers = []
         # TODO: host check results
@@ -352,7 +353,7 @@ class KpiSet(object):
 
             start, end = KpiUtils.parse_kpi_time_range_from_kpi(self._get_current_kpi())
 
-            time_lines = TimeLine.calculate_time_lines(device_service_identifiers, start, end)
+            time_lines = TimeLineUtils.calculate_time_lines(device_service_identifiers, start, end)
 
             for (dev_id, service_id, service_info), time_line in time_lines.iteritems():
                 for kpi_obj in self.service_objects:
