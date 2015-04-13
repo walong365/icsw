@@ -170,6 +170,13 @@ class icinga_log_aggregator(object):
                                                                                                            flat=True)
         )
 
+        if not dump_times:
+            # this happens if there are log entries, but no proper icinga start message
+            # this is not really a valid state, but take the next dump to have something reasonable
+            dump_times.append(
+                mon_icinga_log_full_system_dump.objects.filter(date__gte=(start_time)).earliest('date').date
+            )
+
         def build_dump_times_filters(dump_times):
             cur = dump_times.pop()
             cur_filter = Q(date__range=(cur - datetime.timedelta(seconds=5), cur + datetime.timedelta(seconds=5)))

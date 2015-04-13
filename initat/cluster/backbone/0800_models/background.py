@@ -66,24 +66,10 @@ class background_job(models.Model):
     # number of servers to contact
     num_servers = models.IntegerField(default=0)
 
-    def __unicode__(self):
-        return "background_job {:d}".format(self.idx)
-
-    def initiator_name(self):
-        return self.initiator.full_name
-
-    def user_name(self):
-        return unicode(self.user) if self.user_id else "---"
-
     class Meta:
         ordering = ("-date",)
         app_label = "backbone"
         verbose_name = "Background jobs"
-
-    class CSW_Meta:
-        permissions = (
-            ("show_background", "Show background jobs", False),
-        )
 
 
 class background_job_run(models.Model):

@@ -844,18 +844,21 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                             )
                             diff_time = max(1, abs(cur_time - self.__cached_time))
                             for _key in sorted(_dict.iterkeys()):
-                                _value = abs(self.__cached_stats[_key] - _dict[_key]) / diff_time
-                                _tree.append(
-                                    E.mve(
-                                        info="RRD {}".format(_key),
-                                        unit="1/s",
-                                        base="1",
-                                        v_type="f",
-                                        factor="1",
-                                        value="{:.2f}".format(_value),
-                                        name="rrd.operations.{}".format(_key),
-                                    ),
-                                )
+                                if _key not in self.__cached_stats:
+                                    self.log("key {} missing in previous run, ignoring ...".format(_key), logging_tools.LOG_LEVEL_WARN)
+                                else:
+                                    _value = abs(self.__cached_stats[_key] - _dict[_key]) / diff_time
+                                    _tree.append(
+                                        E.mve(
+                                            info="RRD {}".format(_key),
+                                            unit="1/s",
+                                            base="1",
+                                            v_type="f",
+                                            factor="1",
+                                            value="{:.2f}".format(_value),
+                                            name="rrd.operations.{}".format(_key),
+                                        ),
+                                    )
                             self.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         self.__cached_stats, self.__cached_time = (_dict, cur_time)
                 if _dict is None:

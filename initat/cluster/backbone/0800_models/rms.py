@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,7 +24,6 @@
 # from django.db.models import Q, signals, get_model
 # from django.dispatch import receiver
 from django.db import models
-from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
 import datetime
 import time
 
@@ -61,9 +60,6 @@ class rms_project(models.Model):
     # fshare = models.FloatField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
-        return self.name
-
     class Meta:
         app_label = "backbone"
 
@@ -75,9 +71,6 @@ class rms_department(models.Model):
     # fshare = models.FloatField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
-        return self.name
-
     class Meta:
         app_label = "backbone"
 
@@ -87,9 +80,6 @@ class rms_queue(models.Model):
     name = models.CharField(unique=True, max_length=255)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
-        return "queue {}".format(self.name)
-
     class Meta:
         app_label = "backbone"
 
@@ -98,9 +88,6 @@ class rms_pe(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=255)
     date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "pe {}".format(self.name)
 
     class Meta:
         app_label = "backbone"
@@ -115,40 +102,6 @@ class rms_job(models.Model):
     owner = models.CharField(max_length=255, default="")
     user = models.ForeignKey("backbone.user", null=True)
     date = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def full_id(self):
-        return "{:d}{}".format(
-            self.jobid,
-            ".{:d}".format(self.taskid) if self.taskid else "",
-        )
-
-    def add_job_run(self, _dev_name, _dev):
-        new_run = rms_job_run(
-            rms_job=self,
-            device=_dev,
-            hostname=_dev_name,
-            start_time_py=cluster_timezone.localize(datetime.datetime.now()),
-        )
-        return new_run
-
-    def get_latest_job_run(self):
-        _runs = self.rms_job_run_set.all().order_by("-pk")
-        if _runs.count():
-            _latest_run = _runs[0]
-        else:
-            _latest_run = None
-        return _latest_run
-
-    def close_job_run(self):
-        _latest_run = self.get_latest_job_run()
-        if _latest_run:
-            _latest_run.end_time_py = cluster_timezone.localize(datetime.datetime.now())
-            _latest_run.save(update_fields=["end_time_py"])
-        return _latest_run
-
-    def __unicode__(self):
-        return "job {}".format(self.full_id)
 
     class Meta:
         app_label = "backbone"
@@ -183,62 +136,6 @@ class rms_job_run(models.Model):
     # data set via qacct ?
     qacct_called = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-
-    def rms_pe_info(self):
-        # used by serializer and rrd-grapher.initat.graph"
-        return [
-            {
-                "device": _pe_info.device_id,
-                "hostname": _pe_info.hostname,
-                "slots": _pe_info.slots,
-            } for _pe_info in self.rms_pe_info_set.all()
-        ]
-
-    def get_queue_time(self):
-        return time.mktime(cluster_timezone.normalize(self.queue_time).timetuple()) if self.queue_time else ""
-
-    def get_start_time(self):
-        return time.mktime(cluster_timezone.normalize(self.start_time).timetuple()) if self.start_time else ""
-
-    def get_end_time(self):
-        return time.mktime(cluster_timezone.normalize(self.end_time).timetuple()) if self.end_time else ""
-
-    def get_start_time_py(self):
-        return time.mktime(cluster_timezone.normalize(self.start_time_py).timetuple()) if self.start_time_py else ""
-
-    def get_end_time_py(self):
-        return time.mktime(cluster_timezone.normalize(self.end_time_py).timetuple()) if self.end_time_py else ""
-
-    def __unicode__(self):
-        return "run for {} in {}".format(
-            unicode(self.rms_job),
-            unicode(self.rms_queue),
-        )
-
-    def _set_is_value(self, attr_name, value):
-        if type(value) in [int, long]:
-            setattr(self, attr_name, value)
-            setattr(self, "{}_str".format(attr_name), "")
-        else:
-            _int, _str = value.strip().split(None, 1)
-            setattr(self, attr_name, int(_int))
-            setattr(self, "{}_str".format(attr_name), _str.strip())
-
-    def feed_qacct_data(self, in_dict):
-        self.priority = in_dict["priority"]
-        self.rms_project = in_dict["project"]
-        self.rms_department = in_dict["department"]
-        self.account = in_dict["account"]
-        self._set_is_value("failed", in_dict["failed"])
-        self._set_is_value("exit_status", in_dict["exit_status"])
-        if in_dict["start_time"]:
-            self.start_time = in_dict["start_time"]
-        if in_dict["end_time"]:
-            self.end_time = in_dict["end_time"]
-        if in_dict["qsub_time"]:
-            self.queue_time = in_dict["qsub_time"]
-        self.qacct_called = True
-        self.save()
 
     class Meta:
         app_label = "backbone"
@@ -320,9 +217,6 @@ class ext_license_state(models.Model):
     class Meta:
         app_label = "backbone"
 
-    class CSW_Meta:
-        backup = False
-
 
 class ext_license_version_state(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -335,9 +229,6 @@ class ext_license_version_state(models.Model):
     class Meta:
         app_label = "backbone"
 
-    class CSW_Meta:
-        backup = False
-
 
 class ext_license_client_version(ext_license_base):
     '''
@@ -345,9 +236,6 @@ class ext_license_client_version(ext_license_base):
     '''
     ext_license = models.ForeignKey("backbone.ext_license")
     client_version = models.CharField(default="", max_length=64)
-
-    class CSW_Meta:
-        backup = False
 
 
 class ext_license_usage(models.Model):
@@ -361,9 +249,6 @@ class ext_license_usage(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-    class CSW_Meta:
-        backup = False
 
 
 '''
@@ -380,16 +265,8 @@ class ext_license_check_coarse(models.Model):
     duration_type = models.IntegerField()  # duration pseudo enum from functions
     ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
 
-    def get_display_date(self):
-        klass = duration_types.get_class(self.duration_type)
-        # border values easily create problems with timezones etc, hence use central values
-        return klass.get_display_date(self.start_date + ((self.end_date - self.start_date)/2))  # @IgnorePep8
-
     class Meta:
         app_label = "backbone"
-
-    class CSW_Meta:
-        backup = False
 
 
 class ext_license_state_coarse(models.Model):
@@ -410,12 +287,6 @@ class ext_license_state_coarse(models.Model):
     class Meta:
         app_label = "backbone"
 
-    class CSW_Meta:
-        backup = False
-
-    def get_display_date(self):
-        return self.ext_license_check_coarse.get_display_date()
-
 
 class ext_license_version_state_coarse(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -429,12 +300,6 @@ class ext_license_version_state_coarse(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-    class CSW_Meta:
-        backup = False
-
-    def get_display_date(self):
-        return self.ext_license_check_coarse.get_display_date()
 
 
 class ext_license_usage_coarse(models.Model):
@@ -452,5 +317,3 @@ class ext_license_usage_coarse(models.Model):
     class Meta:
         app_label = "backbone"
 
-    class CSW_Meta:
-        backup = False

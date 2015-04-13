@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2011-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,7 +27,7 @@ django.setup()
 
 from initat.rms.config_static import COM_PORT
 from initat.rms.functions import call_command
-from initat.rms.rms_server_version import VERSION_STRING
+from initat.rms.version import VERSION_STRING
 from io_stream_helper import io_stream
 import cluster_location
 import config_tools
