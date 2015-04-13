@@ -35,7 +35,7 @@ from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDa
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 
 
@@ -52,6 +52,8 @@ class KpiData(object):
             raise
 
         host_rrd_data = self._get_memcached_data()
+
+        self.log("got rrd_data for {} hosts".format(len(host_rrd_data)))
 
         if Kpi.objects.filter(uses_all_data=True).exists():
             # self.kpi_device_categories = set(device.categories_set.all())
@@ -153,6 +155,9 @@ class KpiData(object):
         return dev_mon_tuples
 
     def _get_memcached_data(self):
+
+        device_full_names = {entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')}
+
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
         host_rrd_data = {}
         try:
@@ -165,10 +170,9 @@ class KpiData(object):
             host_list = json.loads(host_list_mc)
 
             for host_uuid, host_data in host_list.iteritems():
-
                 try:
-                    host_db = device.objects.get(name=host_data[1])
-                except device.DoesNotExist:
+                    host_db = device_full_names[host_data[1]]
+                except KeyError:
                     self.log(u"device {} does not exist but is referenced in rrd data".format(host_data[1]),
                              logging_tools.LOG_LEVEL_WARN)
                 else:
@@ -182,13 +186,11 @@ class KpiData(object):
                         vector_entries = (initat.collectd.aggregate.ve(*val) for val in values_list)
 
                         host_rrd_data[host_db.pk] = list(
-                            KpiObject(
+                            KpiRRDObject(
                                 host_name=host_data[1],
-                                rrd=ve,
-                                properties={
-                                    'rrd_key': ve.key,
-                                    'rrd_value': ve.get_value(),
-                                }
+                                host_pk=host_db.pk,
+                                rrd_key=ve.key,
+                                rrd_value=ve.get_value(),
                             ) for ve in vector_entries
                         )
                     else:
@@ -197,17 +199,18 @@ class KpiData(object):
         return host_rrd_data
 
     def _get_service_check_results(self, dev, check):
-        service_query = self.icinga_socket.services.columns("host_name",
-                                                            "description",
-                                                            "state",
-                                                            "last_check",
-                                                            "check_type",
-                                                            "state_type",
-                                                            "last_state_change",
-                                                            "plugin_output",
-                                                            "display_name",
-                                                            "current_attempt",
-                                                            )
+        service_query = self.icinga_socket.services.columns(
+            # "host_name",
+            "description",
+            "state",
+            # "last_check",
+            # "check_type",
+            # "state_type",
+            # "last_state_change",
+            # "plugin_output",
+            # "display_name",
+            # "current_attempt",
+        )
         description = host_service_id_util.create_host_service_description_direct(
             dev.pk,
             check.pk,
@@ -219,63 +222,50 @@ class KpiData(object):
         service_query.filter("description", "~", description)  # ~ means regular expression match
         icinga_result = service_query.call()
 
+        ret = []
         # this is usually only one except in case of special check commands
-        ret = list(self.__create_kpi_obj(r, is_service=True) for r in icinga_result)
+        for ir in icinga_result:
+            try:
+                service_info = host_service_id_util.parse_host_service_description(ir['description'])[2]
+            except IndexError:
+                service_info = None
+            ret.append(
+                KpiServiceObject(
+                    result=KpiResult.from_numeric_icinga_service_status(int(ir['state'])),
+                    host_name=dev.full_name,
+                    host_pk=dev.pk,
+                    service_id=check.pk,
+                    service_info=service_info,
+                )
+            )
         # self.log("got service check results: {}".format(ret))
         return ret
 
     def _get_host_check_results(self, dev):
-        host_query = self.icinga_socket.hosts.columns("host_name",
-                                                      "address",
-                                                      "state",
-                                                      "last_check",
-                                                      "check_type",
-                                                      "state_type",
-                                                      "last_state_change",
-                                                      "plugin_output",
-                                                      "display_name",
-                                                      "current_attempt",
-                                                      )
+        host_query = self.icinga_socket.hosts.columns(
+            "host_name",
+            "state",
+            # "address",
+            # "last_check",
+            # "check_type",
+            # "state_type",
+            # "last_state_change",
+            # "plugin_output",
+            # "display_name",
+            # "current_attempt",
+        )
         host_query.filter("host_name", "~", dev.name)
         icinga_result = host_query.call()
 
-        ret = list(self.__create_kpi_obj(r, is_service=False) for r in icinga_result)
+        ret = list(
+            KpiObject(
+                result=KpiResult.from_numeric_icinga_service_status(int(ir['state'])),
+                host_name=dev.full_name,
+                host_pk=dev.pk,
+            )
+            for ir in icinga_result
+        )
+
         # self.log("got host check results: {}".format(ret))
         return ret
-
-    def __create_kpi_obj(self, check_result, is_service):
-            property_names = {  # icinga names with renamings (currently none used)
-                                'display_name': None,
-                                'current_attempt': None,
-                                'last_state_change': None,
-                                'plugin_output': None,
-                                'last_check': None,
-                                'description': None,
-                                'state_type': None,
-                                'address': None,
-            }
-            # TODO: if state type is supposed to be used, probably parse to something more readable
-            properties = {(our_name if our_name is not None else icinga_name): check_result[icinga_name]
-                          for icinga_name, our_name in property_names.iteritems() if icinga_name in check_result}
-
-            if is_service:
-                host_pk, service_pk, service_info = \
-                    host_service_id_util.parse_host_service_description(check_result['description'])
-
-                try:
-                    # TODO: cache if this becomes slow
-                    properties['check_command'] = mon_check_command.objects.get(pk=service_pk).name
-                except mon_check_command.DoesNotExist:
-                    properties['check_command'] = None
-
-                properties['service_info'] = service_info
-                properties['check_command_pk'] = service_pk
-                properties['host_pk'] = host_pk
-
-            return KpiObject(
-                result=KpiResult.from_numeric_icinga_service_status(int(check_result['state'])),
-                host_name=check_result['host_name'],
-                properties=properties,
-            )
-
 

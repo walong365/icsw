@@ -31,7 +31,7 @@ from initat.md_config_server.kpi.kpi_utils import KpiUtils
 import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
 from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, duration, \
-    mon_icinga_log_aggregated_timespan
+    mon_icinga_log_aggregated_timespan, mon_check_command, device
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
@@ -62,71 +62,116 @@ class KpiResult(IntEnum):
 
 
 class KpiObject(object):
-    def __init__(self, result=None, historical_data=None, rrd=None, host_name=None, properties=None):
+    def __init__(self, result=None, host_name=None, host_pk=None):
+        if (host_name is None) != (host_pk is None):
+            raise ValueError("host_name is {} but host_pk is {}".format(host_name, host_pk))
+
         self.result = result if isinstance(result, (KpiResult, NoneType)) \
-                             else KpiResult.from_numeric_icinga_service_status(result)
-        self.historical_data = historical_data
-        # self.rrd = rrd
+            else KpiResult.from_numeric_icinga_service_status(result)
         self.host_name = host_name
-        self.properties = properties if properties is not None else {}
-
-        # current state of properties (make this into proper data structures):
-        # rrd: host_name, key, value (also scale, etc). NO SERVICE
-        # check result: description string, hence check command pk, service_info and device
-        # historic: same as check result plus time range
-
+        self.host_pk = host_pk
 
     @classmethod
     def deserialize(cls, data):
         return KpiObject(**data)
 
-    SERIALIZE_BLACKLIST = ["time_line"]
-
     def serialize(self):
         return {
             'result': None if self.result is None else self.result.get_numeric_icinga_service_status(),
-            'historical_data': self.historical_data,
-            # 'rrd': self.rrd,
             'host_name': self.host_name,
-            'properties': {k: v for k, v in self.properties.iteritems() if k not in self.__class__.SERIALIZE_BLACKLIST},
+            'host_pk': self.host_pk,
         }
 
-    def __repr__(self):
+    def __repr__(self, child_repr=""):
         contents = ""
         # if self.rrd is not None:
         #    contents += 'rrd={}:{};'.format(self.rrd.key, self.rrd.get_value())
         if self.result is not None:
-            cc = self.properties.get('check_command', None)
-            res_type = "{}:".format(cc) if cc is not None else ""
-            contents += 'result={}{}'.format(res_type, self.result)
-        if 'rrd_key' in self.properties:
-            contents += 'rrd={}:{};'.format(self.properties['rrd_key'], self.properties['rrd_value'])
-        if self.historical_data is not None:
-            raise NotImplementedError()
+            contents += 'result={}'.format(self.result)
 
-        return "KpiObject(host_name={};{})".format(self.host_name, contents)
+        return "KpiObject(host={}:{};{}{})".format(self.host_name, self.host_pk, contents, child_repr)
 
     def full_repr(self):
-        contents = ""
-        data = ("result", "historical_data", "rrd")
-        for prop in data:
-            val = getattr(self, prop, None)
-            if val is not None:
-                contents += "{}={};".format(prop, val)
-        contents += "properties={}".format({k: v for k, v in self.properties.iteritems()})
-        return "KpiObject({})".format(contents)
+        return self.__repr__()
 
-    # we use this to eliminate duplicates in the kpi set, but only for initial data currently
-    def __hash_key(self):
-        return (self.result, self.historical_data,
-                # self.rrd,
-                self.host_name, tuple(self.properties.items()))
 
-    def __eq__(self, other):
-        return isinstance(other, KpiObject) and self.__hash_key() == other.__hash_key()
+# all object types:
 
-    def __hash__(self):
-        return hash(self.__hash_key())
+# rrd_key, rrd_value, host
+
+# result, host
+
+# result, host, serv_id, service_info
+
+# host (historic host)
+
+# host, serv_id, service_info (historic service)
+
+# host, serv_id, service_info, time line
+
+# compound time line
+
+# result
+
+
+# TODO: implement full_repr as needed
+
+
+class KpiRRDObject(KpiObject):
+    def __init__(self, rrd_key, rrd_value, **kwargs):
+        if rrd_key is None:
+            raise ValueError("rrd_key is None")
+        if rrd_value is None:
+            raise ValueError("rrd_value is None")
+        super(KpiRRDObject, self).__init__(**kwargs)
+        self.rrd_key = rrd_key
+        self.rrd_value = rrd_value
+
+    def __repr__(self, child_repr=""):
+        return super(KpiRRDObject, self).__repr__(child_repr=child_repr + "rrd:{}:{}".format(self.rrd_key, self.rrd_value))
+
+
+class KpiServiceObject(KpiObject):
+    def __init__(self, service_id=None, service_info=None, **kwargs):
+        if service_id is None:
+            raise ValueError("service_id is None")
+        if service_info is None:
+            raise ValueError("service_info is None")
+        super(KpiServiceObject, self).__init__(**kwargs)
+        if self.host_pk is None:
+            logger.warn("KpiServiceObject without host pk: {} {}".format(service_id, service_info))
+        self.service_id = service_id
+        self.service_info = service_info
+        try:
+            mcc = mon_check_command.objects.get(pk=service_id)
+        except mon_check_command.DoesNotExist:
+            logger.debug("referenced check command which does not exist: {}".format(service_id))
+            self.check_command = None
+            self.check_command_description = None
+            self.config = None
+            self.config_description = None
+        else:
+            self.check_command = mcc.name
+            self.check_command_description = mcc.description
+            self.config = mcc.config.name
+            self.config_description = mcc.config.description
+
+    def __repr__(self, child_repr=""):
+        my_repr = ";service:{}:{}".format(self.check_command if self.check_command is not None else self.service_id,
+                                          self.service_info)
+        return super(KpiServiceObject, self).__repr__(child_repr=child_repr + my_repr)
+
+
+class KpiTimeLineObject(KpiObject):
+    def __init__(self, time_line=None, **kwargs):
+        if time_line is None:
+            raise ValueError("time_line is None")
+        super(KpiTimeLineObject, self).__init__(**kwargs)
+        self.time_line = time_line
+
+
+class KpiServiceTimeLineObject(KpiServiceObject, KpiTimeLineObject):
+    pass
 
 
 class KpiSet(object):
@@ -204,17 +249,18 @@ class KpiSet(object):
         return [obj for obj in self.objects if obj.result is not None]
 
     @property
-    def check_command_objects(self):
-        return [obj for obj in self.objects if 'check_command_pk' in obj.properties]  # TODO: make into nice obj
+    def service_objects(self):
+        """
+        :rtype : list of KpiServiceObject
+        """
+        return [obj for obj in self.objects if isinstance(obj, KpiServiceObject)]
 
     @property
-    def host_check_objects(self):
-        return [obj for obj in self.objects if True]  # TODO: make into nice obj
-
-    @property
-    def historical_data_objects(self):
-        # TODO: there is hist_data for aggregated and time_line currently
-        return [obj for obj in self.objects if 'time_line' in obj.properties]  # TODO: make into nice obj
+    def time_line_objects(self):
+        """
+        :rtype : list of KpiTimeLineObject
+        """
+        return [obj for obj in self.objects if isinstance(obj, KpiTimeLineObject)]
 
     ########################################
     # proper kpi language elements
@@ -232,7 +278,6 @@ class KpiSet(object):
             else:
                 is_match = lambda x: x == v
             objects = [obj for obj in objects if
-                       is_match(obj.properties.get(k, None)) or
                        is_match(getattr(obj, k, None))]
 
         # print '    results', objects
@@ -262,17 +307,17 @@ class KpiSet(object):
         """
         :param method: "or" or "and"
         """
-        if not self.historical_data_objects:
+        if not self.time_line_objects:
             retval = KpiSet.get_singleton_unknown(parents=[self])
         else:
             # work on copies
             compound_time_line = TimeLine.calculate_compound_time_line(
                 method,
-                [(obj.properties['time_line']) for obj in self.historical_data_objects],
+                [obj.time_line for obj in self.time_line_objects],
             )
 
             retval = KpiSet(
-                objects=[KpiObject(properties={'time_line': compound_time_line})],
+                objects=[KpiTimeLineObject(time_line=compound_time_line)],
                 parents=[self],
             )
 
@@ -288,10 +333,11 @@ class KpiSet(object):
         # group historic data per dev and service
         device_service_identifiers = []
         # TODO: host check results
-        for obj in self.check_command_objects:
-            device_service_identifiers.append(
-                (obj.properties['host_pk'], obj.properties['check_command_pk'], obj.properties['service_info'])
-            )
+        for obj in self.service_objects:
+            if obj.host_pk is not None:
+                device_service_identifiers.append(
+                    (obj.host_pk, obj.service_id, obj.service_info)
+                )
 
         objects = []
         if device_service_identifiers:
@@ -309,13 +355,19 @@ class KpiSet(object):
             time_lines = TimeLine.calculate_time_lines(device_service_identifiers, start, end)
 
             for (dev_id, service_id, service_info), time_line in time_lines.iteritems():
-                for kpi_obj in self.check_command_objects:
-                    if kpi_obj.properties['host_pk'] == dev_id \
-                            and kpi_obj.properties['check_command_pk'] == service_id \
-                            and kpi_obj.properties['service_info'] == service_info:
-                        kpi_obj.properties['time_line'] = time_line
-                        # NOTE: we reuse the objects here
-                        objects.append(kpi_obj)
+                for kpi_obj in self.service_objects:
+                    if kpi_obj.host_pk == dev_id \
+                            and kpi_obj.service_id == service_id \
+                            and kpi_obj.service_info == service_info:
+                        objects.append(
+                            KpiServiceTimeLineObject(
+                                host_name=kpi_obj.host_name,
+                                host_pk=kpi_obj.host_pk,
+                                service_id=kpi_obj.service_id,
+                                service_info=kpi_obj.service_info,
+                                time_line=time_line
+                            )
+                        )
                         break
                 else:
                     print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
@@ -323,11 +375,12 @@ class KpiSet(object):
 
         return KpiSet(objects=objects, parents=[self])
 
+    """
     def get_historic_only_aggregated_data(self):
         # TODO: deprecate?
-        """
+        ""
         Retrieve historical data and returns set of only those which have it
-        """
+        ""
         # group historic data per dev and service
         devices = collections.defaultdict(lambda: [])
         for obj in self.check_command_objects:
@@ -367,13 +420,17 @@ class KpiSet(object):
                         # TODO: logging is broken in this context
                         # logger.warn("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
         return KpiSet(objects=objects, parents=[self])
+    """
 
     def interpret_historic(self, ratio_ok, ratio_warn):
         """
         Currently we check if up percentage is at least
         """
+
+        raise Exception("This is still only written for aggregated code")
+
         objects = []
-        for obj in self.historical_data_objects:
+        for obj in self.time_line_objects:
             for dev_id, service_data in obj.properties['hist_data'].iteritems():
                 for (service_id, service_info), state_list in service_data.iteritems():
                     # TODO: create nice KpiHistoricObject, also KpiCheckObject, make both inherit _KpiCheckObjectBase
@@ -397,9 +454,7 @@ class KpiSet(object):
                         result = KpiResult.critical
 
                     objects.append(
-                        KpiObject(
-                            result=result,
-                        )
+                        KpiObject(result=result)
                     )
 
         return KpiSet(objects=objects, parents=[self])
@@ -409,7 +464,7 @@ class KpiSet(object):
         Calculate "worst" result, i.e. result is critical
         if at least one is critical or else warn if at least one is warn etc.
         """
-        # TODO: have parameter method
+        # TODO: have parameter: method
         # print 'call aggregate on ', self.result_objects
         if not self.result_objects:
             return KpiSet.get_singleton_unknown(parents=[self])
@@ -423,8 +478,8 @@ class KpiSet(object):
         print "\nDUMP {}:".format("" if msg is None else msg), self.objects
         for obj in self.objects:
             print obj.full_repr()
-            if 'time_line' in obj.properties:
-                print "TL:", obj.properties['time_line']
+            if 'time_line' in obj.__dict__:
+                print "TL:", obj.time_line
         print "DUMP END"
 
         return self
