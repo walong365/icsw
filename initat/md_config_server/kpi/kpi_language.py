@@ -20,13 +20,16 @@
 
 # noinspection PyUnresolvedReferences
 import collections
+# noinspection PyUnresolvedReferences
+import pprint
 import ast
 import re
 from types import NoneType
 
 from enum import IntEnum
+import itertools
 
-from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
+from initat.md_config_server.kpi.kpi_historic import TimeLineUtils, TimeLineEntry
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
@@ -35,6 +38,14 @@ from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_dat
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
+
+
+# itertools recipe
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return itertools.izip(a, b)
 
 
 class KpiResult(IntEnum):
@@ -98,23 +109,13 @@ class KpiObject(object):
 # all object types:
 
 # rrd_key, rrd_value, host
-
 # result, host
-
 # result, host, serv_id, service_info
-
 # host (historic host)
-
 # host, serv_id, service_info (historic service)
-
 # host, serv_id, service_info, time line
-
 # compound time line
-
 # result
-
-
-# TODO: implement full_repr as needed
 
 
 class KpiRRDObject(KpiObject):
@@ -128,7 +129,8 @@ class KpiRRDObject(KpiObject):
         self.rrd_value = rrd_value
 
     def __repr__(self, child_repr=""):
-        return super(KpiRRDObject, self).__repr__(child_repr=child_repr + "rrd:{}:{}".format(self.rrd_key, self.rrd_value))
+        return super(KpiRRDObject, self).__repr__(child_repr=child_repr +
+                                                  "rrd:{}:{}".format(self.rrd_key, self.rrd_value))
 
 
 class KpiServiceObject(KpiObject):
@@ -208,7 +210,8 @@ class KpiSet(object):
     @classmethod
     def deserialize(cls, data):
         objects = [KpiObject.deserialize(obj_json) for obj_json in data['objects']]
-        parents = [KpiSet.deserialize(set_json) for set_json in data['parents']] if data['parents'] is not None else None
+        parents = [KpiSet.deserialize(set_json) for set_json in data['parents']]\
+            if data['parents'] is not None else None
         return KpiSet(objects, parents)
 
     def serialize(self):
@@ -343,10 +346,10 @@ class KpiSet(object):
         objects = []
         if device_service_identifiers:
 
-            #end = django.utils.timezone.now()
-            #start = end - datetime.timedelta(days=7)
-            #start = datetime.date(2014, 01, 25)  # django change
-            #end = datetime.date(2015, 01, 01)
+            # end = django.utils.timezone.now()
+            # start = end - datetime.timedelta(days=7)
+            # start = datetime.date(2014, 01, 25)  # django change
+            # end = datetime.date(2015, 01, 01)
 
             # start = datetime.date(2014, 01, 06)
             # end = datetime.date(2014, 01, 30)
@@ -376,89 +379,48 @@ class KpiSet(object):
 
         return KpiSet(objects=objects, parents=[self])
 
-    """
-    def get_historic_only_aggregated_data(self):
-        # TODO: deprecate?
-        ""
-        Retrieve historical data and returns set of only those which have it
-        ""
-        # group historic data per dev and service
-        devices = collections.defaultdict(lambda: [])
-        for obj in self.check_command_objects:
-            devices[obj.properties['host_pk']].append(
-                (obj.properties['check_command_pk'], obj.properties['service_info'])
-            )
-
-        objects = []
-        if devices:
-
-            # end = django.utils.timezone.now()
-            # start = end - datetime.timedelta(days=7*4)
-            # start = datetime.date(2014, 01, 25)  # django change
-            # end = datetime.date(2014, 12, 31)
-
-            # TODO: handle case where len(timespans) is too small (this will depend on the kind of dates we support)
-
-            timespans = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration.Day.ID,
-                                                                          start_date__range=(start, end))
-
-            hist_data = mon_icinga_log_aggregated_service_data.objects.get_data(devices=devices,
-                                                                                timespans=timespans,
-                                                                                use_client_name=False)
-
-            for dev_id, service_data in hist_data.iteritems():
-                for (service_id, service_info), state_list in service_data.iteritems():
-                    for kpi_obj in self.check_command_objects:
-                        if kpi_obj.properties['host_pk'] == dev_id \
-                                and kpi_obj.properties['check_command_pk'] == service_id \
-                                and kpi_obj.properties['service_info'] == service_info:
-                            kpi_obj.properties['hist_data'] = "{}, {}, {}".format(dev_id, service_id, service_info)
-                            kpi_obj.properties['hist_detail'] = state_list
-                            objects.append(kpi_obj)
-                            break
-                    else:
-                        print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
-                        # TODO: logging is broken in this context
-                        # logger.warn("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
-        return KpiSet(objects=objects, parents=[self])
-    """
-
-    def interpret_historic(self, ratio_ok, ratio_warn):
+    def evaluate_historic(self, ratio_ok, ratio_warn):
         """
-        Currently we check if up percentage is at least
+        Check if up percentage is at least some value
         """
+        if not self.time_line_objects:
+            return KpiSet.get_singleton_unknown(parents=[self])
+        else:
+            objects = []
 
-        raise Exception("This is still only written for aggregated code")
+            start, end = KpiUtils.parse_kpi_time_range_from_kpi(self._get_current_kpi())
 
-        objects = []
-        for obj in self.time_line_objects:
-            for dev_id, service_data in obj.properties['hist_data'].iteritems():
-                for (service_id, service_info), state_list in service_data.iteritems():
-                    # TODO: create nice KpiHistoricObject, also KpiCheckObject, make both inherit _KpiCheckObjectBase
-                    # the hist obj has additional date info containing actual date used
+            for tl_obj in self.time_line_objects:
 
-                    ok_states = [state_entry for state_entry in state_list
-                                 if state_entry['state'] == mon_icinga_log_raw_service_alert_data.STATE_OK]
-                    if not ok_states:
-                        ok_value = 0
-                    else:
-                        ok_value = ok_states[0]['value']
-                        if len(ok_states) > 1:
-                            logger.warn("Multiple ok states for {} {} {}: {}".format(dev_id, service_id,
-                                                                                     service_data, state_list))
+                states_accumulator = collections.defaultdict(lambda: 0)
 
-                    if ok_value >= ratio_ok:
-                        result = KpiResult.ok
-                    elif ok_value >= ratio_warn:
-                        result = KpiResult.warn
-                    else:
-                        result = KpiResult.critical
+                for entry1, entry2 in pairwise(itertools.chain(tl_obj.time_line,
+                                                               [TimeLineEntry(date=end, state=None)])):
+                    time_span = entry2.date - entry1.date
+                    states_accumulator[entry1.state] += time_span.total_seconds()
 
-                    objects.append(
-                        KpiObject(result=result)
-                    )
+                total_time_span = sum(states_accumulator.itervalues())
 
-        return KpiSet(objects=objects, parents=[self])
+                amount_ok = sum(v for k, v in states_accumulator.iteritems()
+                                if k[0] == mon_icinga_log_raw_service_alert_data.STATE_OK)
+
+                amount_warn = sum(v for k, v in states_accumulator.iteritems()
+                                  if k[0] == mon_icinga_log_raw_service_alert_data.STATE_WARNING)
+
+                # pprint.pprint({k: (v / total_time_span) for k, v in states_accumulator.iteritems()})
+
+                if amount_ok / total_time_span >= ratio_ok:
+                    result = KpiResult.ok
+                elif amount_warn / total_time_span >= ratio_warn:
+                    result = KpiResult.warn
+                else:
+                    result = KpiResult.critical
+
+                objects.append(
+                    KpiObject(result=result)
+                )
+
+            return KpiSet(objects=objects, parents=[self])
 
     def evaluate(self):
         """
@@ -466,7 +428,6 @@ class KpiSet(object):
         if at least one is critical or else warn if at least one is warn etc.
         """
         # TODO: have parameter: method
-        # print 'call aggregate on ', self.result_objects
         if not self.result_objects:
             return KpiSet.get_singleton_unknown(parents=[self])
         else:
@@ -491,4 +452,84 @@ class KpiSet(object):
                                    repr(self.objects[:magic]) + "... ({} more)".format(len(self.objects) - magic))
 
 
+"""
+ def get_historic_only_aggregated_data(self):
+     # TODO: deprecate?
+     ""
+     Retrieve historical data and returns set of only those which have it
+     ""
+     # group historic data per dev and service
+     devices = collections.defaultdict(lambda: [])
+     for obj in self.check_command_objects:
+         devices[obj.properties['host_pk']].append(
+             (obj.properties['check_command_pk'], obj.properties['service_info'])
+         )
 
+     objects = []
+     if devices:
+
+         # end = django.utils.timezone.now()
+         # start = end - datetime.timedelta(days=7*4)
+         # start = datetime.date(2014, 01, 25)  # django change
+         # end = datetime.date(2014, 12, 31)
+
+         # TODO: handle case where len(timespans) is too small (this will depend on the kind of dates we support)
+
+         timespans = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration.Day.ID,
+                                                                       start_date__range=(start, end))
+
+         hist_data = mon_icinga_log_aggregated_service_data.objects.get_data(devices=devices,
+                                                                             timespans=timespans,
+                                                                             use_client_name=False)
+
+         for dev_id, service_data in hist_data.iteritems():
+             for (service_id, service_info), state_list in service_data.iteritems():
+                 for kpi_obj in self.check_command_objects:
+                     if kpi_obj.properties['host_pk'] == dev_id \
+                             and kpi_obj.properties['check_command_pk'] == service_id \
+                             and kpi_obj.properties['service_info'] == service_info:
+                         kpi_obj.properties['hist_data'] = "{}, {}, {}".format(dev_id, service_id, service_info)
+                         kpi_obj.properties['hist_detail'] = state_list
+                         objects.append(kpi_obj)
+                         break
+                 else:
+                     print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+                     # TODO: logging is broken in this context
+                     # logger.warn("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+     return KpiSet(objects=objects, parents=[self])
+
+def evaluate_historic(self, ratio_ok, ratio_warn):
+    ""
+    Currently we check if up percentage is at least
+    ""
+
+    objects = []
+    for obj in self.time_line_objects:
+        for dev_id, service_data in obj.properties['hist_data'].iteritems():
+            for (service_id, service_info), state_list in service_data.iteritems():
+                # TODO: create nice KpiHistoricObject, also KpiCheckObject, make both inherit _KpiCheckObjectBase
+                # the hist obj has additional date info containing actual date used
+
+                ok_states = [state_entry for state_entry in state_list
+                             if state_entry['state'] == mon_icinga_log_raw_service_alert_data.STATE_OK]
+                if not ok_states:
+                    ok_value = 0
+                else:
+                    ok_value = ok_states[0]['value']
+                    if len(ok_states) > 1:
+                        logger.warn("Multiple ok states for {} {} {}: {}".format(dev_id, service_id,
+                                                                                 service_data, state_list))
+
+                if ok_value >= ratio_ok:
+                    result = KpiResult.ok
+                elif ok_value >= ratio_warn:
+                    result = KpiResult.warn
+                else:
+                    result = KpiResult.critical
+
+                objects.append(
+                    KpiObject(result=result)
+                )
+
+    return KpiSet(objects=objects, parents=[self])
+    #"""
