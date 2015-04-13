@@ -270,7 +270,11 @@ class csw_object_permission(models.Model):
     object_pk = models.IntegerField(default=0)
 
     def __unicode__(self):
-        obj = self.csw_permission.content_type.model_class().objects.get(pk=self.object_pk)
+        model_class = self.csw_permission.content_type.model_class()
+        try:
+            obj = model_class.objects.get(pk=self.object_pk)
+        except model_class.DoesNotExist:
+            obj = "deleted object (pk: {})".format(self.object_pk)
         return "{} on {}".format(unicode(self.csw_permission), obj)
 
     class Meta:
