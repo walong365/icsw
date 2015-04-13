@@ -323,7 +323,7 @@ class server_process(threading_tools.process_pool):
         parameter_ok = False
         xml_input = body.startswith("<")
         if self.__verbose > 3:
-            self.log("received %d bytes, xml_input is %s" % (len(body), str(xml_input)))
+            self.log("received {:d} bytes, xml_input is {}".format(len(body), str(xml_input)))
         if xml_input:
             srv_com = server_command.srv_command(source=body)
             srv_com.set_result("no reply set", server_command.SRV_REPLY_STATE_UNSET)
@@ -334,7 +334,7 @@ class server_process(threading_tools.process_pool):
                 comline = srv_com.xpath(".//ns:command", smart_strings=False)[0].text
                 timeout = int(srv_com.get(".//ns:timeout", "10"))
             except:
-                self._send_return(body, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
+                self._send_return(body, limits.nag_STATE_CRITICAL, "message format error: {}".format(process_tools.get_except_info()))
             else:
                 envelope = srv_com["identity"].text
                 parameter_ok = True
@@ -392,7 +392,39 @@ class server_process(threading_tools.process_pool):
                     act_scheme, s_type = (self.__local_schemes[scheme], "L")
                 elif scheme in self.__gen_schemes:
                     act_handler, s_type = (self.__gen_schemes[scheme], "G")
+                elif scheme == "list_schemes":
+                    _out_list = logging_tools.new_form_list()
+                    for _s_name in sorted(self.__local_schemes):
+                        try:
+                            _scheme = self.__local_schemes[_s_name](dummy_init=True, options="")
+                        except:
+                            pass
+                        else:
+                            _out_list.append(
+                                [
+                                    logging_tools.form_entry("local", header="type"),
+                                    logging_tools.form_entry(_s_name, header="name"),
+                                    logging_tools.form_entry(len(_scheme.requests), header="#reqs"),
+                                    logging_tools.form_entry(", ".join(sorted([repr(_req) for _req in _scheme.requests])), header="requests"),
+                                ]
+                            )
+                    for _s_name in sorted(self.__gen_schemes):
+                        _scheme = self.__gen_schemes[_s_name]
+                        _out_list.append(
+                            [
+                                logging_tools.form_entry("generic", header="type"),
+                                logging_tools.form_entry(_s_name, header="name"),
+                            ]
+                        )
+                    self._send_return(envelope, limits.nag_STATE_OK, unicode(_out_list))
+                    s_type = None
                 else:
+                    guess_list = ", ".join(difflib.get_close_matches(scheme, self.__local_schemes.keys() + self.__gen_schemes.keys()))
+                    err_str = "got unknown scheme '{}'{}".format(
+                        scheme,
+                        ", maybe one of {}".format(guess_list) if guess_list else ", no similar scheme found"
+                    )
+                    self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
                     s_type = None
                 if s_type:
                     host = self._resolve_address(host)
@@ -446,13 +478,6 @@ class server_process(threading_tools.process_pool):
                         else:
                             self._start_snmp_fetch(act_scheme)
 
-                else:
-                    guess_list = ", ".join(difflib.get_close_matches(scheme, self.__local_schemes.keys() + self.__gen_schemes.keys()))
-                    err_str = "got unknown scheme '{}'{}".format(
-                        scheme,
-                        ", maybe one of {}".format(guess_list) if guess_list else ", no similar scheme found"
-                    )
-                    self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
         elif not xml_input:
             self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error")
         self.__num_messages += 1
@@ -506,7 +531,7 @@ class server_process(threading_tools.process_pool):
             if del_keys:
                 if self.__verbose > 2:
                     self.log(
-                        "removing %s" % (
+                        "removing {}".format(
                             logging_tools.get_plural("timed-out key", len(del_keys))
                         ),
                         logging_tools.LOG_LEVEL_ERROR
