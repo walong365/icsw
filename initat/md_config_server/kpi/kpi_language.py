@@ -187,7 +187,8 @@ class KpiSet(object):
 
     @property
     def historical_data_objects(self):
-        return [obj for obj in self.objects if 'hist_data' in obj.properties]  # TODO: make into nice obj
+        # TODO: there is hist_data for aggregated and time_line currently
+        return [obj for obj in self.objects if 'time_line' in obj.properties]  # TODO: make into nice obj
 
     ########################################
     # proper kpi language elements
@@ -239,51 +240,10 @@ class KpiSet(object):
             retval = KpiSet.get_singleton_unknown(parents=[self])
         else:
             # work on copies
-            time_lines = [collections.deque(obj.properties['time_line']) for obj in self.historical_data_objects]
-
-            compound_time_line = TimeLine()
-
-            state_ordering = {
-                mon_icinga_log_raw_service_alert_data.STATE_OK: 0,
-                mon_icinga_log_raw_service_alert_data.STATE_WARNING: 1,
-                mon_icinga_log_raw_service_alert_data.STATE_CRITICAL: 2,
-                mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN: 3,
-                mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED: 4,
-            }
-
-            state_type_ordering = {
-                mon_icinga_log_raw_base.STATE_TYPE_SOFT: 0,
-                mon_icinga_log_raw_base.STATE_TYPE_HARD: 1,
-            }
-
-            def add_to_compound_tl(date, states):
-                if method == 'or':
-                    next_state = min(states,
-                                     key=lambda state: (state_ordering[state[0]], state_type_ordering[state[1]]))
-                elif method == 'and':
-                    next_state = max(states,
-                                     key=lambda state: (state_ordering[state[0]], state_type_ordering[state[1]]))
-                else:
-                    raise RuntimeError("Invalid aggregate_historic method: {}".format(method) +
-                                       "(must be either 'or' or 'and')")
-
-                if compound_time_line[-1].state != next_state:  # only update on state change
-                    compound_time_line.append(TimeLineEntry(date, next_state))
-
-            states = [tl[0].state for tl in time_lines]
-
-            add_to_compound_tl(time_lines[0][0].date, states)
-
-            while any(time_lines):
-                # find queue with next event
-                next_queue = min(xrange(len(time_lines)), key=lambda x: time_lines[x][0].date)
-
-                next_entry = time_lines[next_queue].popleft()
-                states[next_queue] = next_entry.state
-
-                add_to_compound_tl(next_entry.date, states)
-
-            # no final event, this is the convention
+            compound_time_line = TimeLine.calculate_compound_time_line(
+                method,
+                [(obj.properties['time_line']) for obj in self.historical_data_objects],
+            )
 
             retval = KpiSet(
                 objects=[KpiObject(properties={'time_line': compound_time_line})],
@@ -435,6 +395,7 @@ class KpiSet(object):
         print "\nDUMP {}:".format("" if msg is None else msg), self.objects
         for obj in self.objects:
             print obj.full_repr()
+            print obj.properties['time_line']
         print "DUMP END"
 
         return self
