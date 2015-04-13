@@ -81,13 +81,15 @@ class KpiObject(object):
     def deserialize(cls, data):
         return KpiObject(**data)
 
+    SERIALIZE_BLACKLIST = ["time_line"]
+
     def serialize(self):
         return {
             'result': None if self.result is None else self.result.get_numeric_icinga_service_status(),
             'historical_data': self.historical_data,
             # 'rrd': self.rrd,
             'host_name': self.host_name,
-            'properties': self.properties,
+            'properties': {k: v for k, v in self.properties.iteritems() if k not in self.__class__.SERIALIZE_BLACKLIST},
         }
 
     def __repr__(self):
@@ -395,7 +397,8 @@ class KpiSet(object):
         print "\nDUMP {}:".format("" if msg is None else msg), self.objects
         for obj in self.objects:
             print obj.full_repr()
-            print obj.properties['time_line']
+            if 'time_line' in obj.properties:
+                print "TL:", obj.properties['time_line']
         print "DUMP END"
 
         return self

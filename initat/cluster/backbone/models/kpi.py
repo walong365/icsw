@@ -65,6 +65,7 @@ class Kpi(models.Model):
 
     class Meta:
         app_label = "backbone"
+        ordering = ('idx', )  # rest view in order of creation
 
     class CSW_Meta:
         fk_ignore_list = ["KpiDataSourceTuple", "KpiStoredResult"]

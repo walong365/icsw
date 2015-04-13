@@ -166,7 +166,7 @@ class KpiData(object):
                             ) for ve in vector_entries
                         )
                     else:
-                        self.log("no memcache data for {} ({})".format(host_data[1], host_uuid))
+                        self.log(u"no memcache data for {} ({})".format(host_data[1], host_uuid))
 
         return host_rrd_data
 
@@ -195,7 +195,7 @@ class KpiData(object):
 
         # this is usually only one except in case of special check commands
         ret = list(self.__create_kpi_obj(r, is_service=True) for r in icinga_result)
-        self.log("got service check results: {}".format(ret))
+        # self.log("got service check results: {}".format(ret))
         return ret
 
     def _get_host_check_results(self, dev):
@@ -214,7 +214,7 @@ class KpiData(object):
         icinga_result = host_query.call()
 
         ret = list(self.__create_kpi_obj(r, is_service=False) for r in icinga_result)
-        self.log("got host check results: {}".format(ret))
+        # self.log("got host check results: {}".format(ret))
         return ret
 
     def __create_kpi_obj(self, check_result, is_service):

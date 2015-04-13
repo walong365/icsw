@@ -150,13 +150,15 @@ angular.module(
                         )
                     )
                 scope.get_result_from_kpi_entry = (kpi) ->
-                    if kpi.result?
-                        return ({
+                    if kpi.result? and kpi.result.values.length > 0
+                        return  ({
                             0: 'ok'
                             1: 'warn'
                             2: 'critical'
                             3: 'unknown'
                         }[val] for val in kpi.result.values).join(", ")
+                    else
+                        return "unknown"
         }
 
 ]).service("icswConfigKpiDialogService", ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS) ->
