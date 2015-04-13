@@ -726,7 +726,7 @@ class thread_pool(object):
                             self.stop_thread(t_name)
                             prev_threads_dead = False
                         else:
-                            self.log("Thread %s seams to be dead" % (t_name),
+                            self.log("Thread %s seems to be dead" % (t_name),
                                      logging_tools.LOG_LEVEL_ERROR)
                             self._thread_exit((t_name, 0))
                     elif t_stuff.isAlive():
