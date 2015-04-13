@@ -27,7 +27,7 @@ SHARE_DIR = "/opt/cluster/share"
 
 VERS_DIR = os.path.join(SHARE_DIR, "source-versions")
 
-SYSTEM_LIST = ["hpl", "libgoto", "mpich", "openmpi"]
+SYSTEM_LIST = ["hpl", "libgoto", "mpich", "openmpi", "sge"]
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
         if _entry in ["mpich_version", "openmpi_versions"]:
             os.unlink(os.path.join(SHARE_DIR, _entry))
     for _sys in SYSTEM_LIST:
-        _sys_dir = os.path.join(SHARE_DIR, "{}-sources".format(_sys))
+        _sys_dir = os.path.join(SHARE_DIR, "source", _sys)
         _entries = []
         _search_str = {"libgoto": "gotoblas"}.get(_sys, _sys)
         for _entry in os.listdir(_sys_dir):
