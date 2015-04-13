@@ -74,7 +74,7 @@ class KpiProcess(threading_tools.process_obj):
             for kpi_db in Kpi.objects.filter(enabled=True):
 
                 print '\nevaluating kpi', kpi_db
-                kpi_set = KpiSet(data.get_data_for_kpi(kpi_db))
+                kpi_set = KpiSet(data.get_data_for_kpi(kpi_db), kpi=kpi_db)
 
                 # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
                 eval_globals = {'data': kpi_set, 'KpiSet': KpiSet, 'KpiObject': KpiObject, 'KpiResult': KpiResult}

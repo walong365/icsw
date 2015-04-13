@@ -50,6 +50,11 @@ class Kpi(models.Model):
     # TODO: implement in gui
     uses_all_data = models.BooleanField(default=False)
 
+    # 'last_week', 'yesterday', etc.
+    time_range = models.TextField(blank=True, default='none')
+    # parameter for 'last_n_days'
+    time_range_parameter = models.IntegerField(default=0)
+
     gui_selected_categories = models.TextField(blank=True)  # json
 
     def set_result(self, result_str, date):

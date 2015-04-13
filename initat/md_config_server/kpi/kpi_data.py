@@ -20,14 +20,15 @@
 import collections
 import json
 import time
+
 import memcache
 import initat.collectd
 import logging_tools
+# noinspection PyUnresolvedReferences
 import pprint
 import initat.collectd.aggregate
 
-from initat.cluster.backbone.middleware import show_database_calls
-from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
+from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category, duration
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util

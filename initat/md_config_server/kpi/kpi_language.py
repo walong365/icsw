@@ -147,15 +147,18 @@ class KpiSet(object):
     def get_singleton_unknown(cls, **kwargs):
         return KpiSet([KpiObject(result=KpiResult.unknown)], **kwargs)
 
-    def __init__(self, objects, parents=None, explanation=None):
+    def __init__(self, objects, parents=None, explanation=None, kpi=None):
         """
         :type objects: list of KpiObject
         :type parents: list of KpiSet
+        :param explanation: KpiSet of objects which explain the current state, e.g. services which are critical
         :type explanation: KpiSet
+        :param kpi: Kpi object we are calculating. Only set for first KpiSet, with which the calculations start.
         """
         self.objects = objects
         self.parents = parents
         self.explanation = explanation
+        self.kpi = kpi
 
     @classmethod
     def deserialize(cls, data):
@@ -168,6 +171,24 @@ class KpiSet(object):
             "objects": [obj.serialize() for obj in self.objects],
             "parents": [par.serialize() for par in self.parents] if self.parents is not None else None,
         }
+
+    def _get_current_kpi(self):
+        """
+        Get Kpi object from original kpi set. Assumes that parent-chain is valid!
+        :rtype : Kpi
+        """
+        if self.kpi is not None:
+            kpi = self.kpi
+        else:
+            kpi = None
+            if self.parents is not None:
+                for par in self.parents:
+                    kpi = par._get_current_kpi()
+                    if kpi is not None:
+                        break
+                else:
+                    raise ValueError("Failed to find top level kpi set.")
+        return kpi
 
     def __iter__(self):
         return iter(self.objects)
@@ -277,8 +298,13 @@ class KpiSet(object):
             #start = datetime.date(2014, 01, 25)  # django change
             #end = datetime.date(2015, 01, 01)
 
-            start = datetime.date(2014, 01, 06)
-            end = datetime.date(2014, 01, 30)
+            # start = datetime.date(2014, 01, 06)
+            # end = datetime.date(2014, 01, 30)
+
+            kpi_db = self._get_current_kpi()
+            start, end = _KpiUtil.parse_kpi_time_range(kpi_db.time_range, kpi_db.time_range_parameter)
+            if start is None:
+                raise RuntimeError("get_historic called for kpi with no defined time range.")
 
             time_lines = TimeLine.calculate_time_lines(device_service_identifiers, start, end)
 
@@ -314,8 +340,8 @@ class KpiSet(object):
 
             # end = django.utils.timezone.now()
             # start = end - datetime.timedelta(days=7*4)
-            start = datetime.date(2014, 01, 25)  # django change
-            end = datetime.date(2014, 12, 31)
+            # start = datetime.date(2014, 01, 25)  # django change
+            # end = datetime.date(2014, 12, 31)
 
             # TODO: handle case where len(timespans) is too small (this will depend on the kind of dates we support)
 
@@ -408,6 +434,49 @@ class KpiSet(object):
         return "KpiSet({})".format(self.objects if len(self.objects) <= magic else
                                    repr(self.objects[:magic]) + "... ({} more)".format(len(self.objects) - magic))
 
+
+class _KpiUtil(object):
+    @staticmethod
+    def parse_kpi_time_range(time_range, time_range_parameter):
+
+        def get_duration_class_start_end(duration_class, time_point):
+            start = duration_class.get_time_frame_start(
+                time_point
+            )
+            end = duration_class.get_end_time_for_start(start)
+            return start, end
+
+        start, end = None, None
+
+        if time_range == 'none':
+            pass
+        elif time_range == 'yesterday':
+            start, end = get_duration_class_start_end(
+                duration.Day,
+                django.utils.timezone.now() - datetime.timedelta(days=1),
+                )
+        elif time_range == 'last week':
+            start, end = get_duration_class_start_end(
+                duration.Week,
+                django.utils.timezone.now() - datetime.timedelta(days=7),
+                )
+        elif time_range == 'last month':
+            start, end = get_duration_class_start_end(
+                duration.Month,
+                django.utils.timezone.now().replace(day=1) - datetime.timedelta(days=1)
+            )
+        elif time_range == 'last year':
+            start, end = get_duration_class_start_end(
+                duration.Year,
+                django.utils.timezone.now().replace(day=1, month=1) - datetime.timedelta(days=1)
+            )
+        elif time_range == 'last n days':
+            start = duration.Day.get_time_frame_start(
+                django.utils.timezone.now() - datetime.timedelta(days=time_range_parameter)
+            )
+            end = start + datetime.timedelta(days=time_range_parameter)
+
+        return (start, end)
 
 def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
     """

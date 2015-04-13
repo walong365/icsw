@@ -264,6 +264,16 @@ angular.module(
             #                child_scope.kpi_set = kpi_set
             #            )
 
+        # parameters as understood by KpiData.parse_kpi_time_range
+        child_scope.kpi_time_ranges = [
+            {id_str: 'none', display_str: 'Only current data'},
+            {id_str: 'yesterday', display_str: 'Yesterday'},
+            {id_str: 'last week', display_str: 'Last week'},
+            {id_str: 'last month', display_str: 'Last month'},
+            {id_str: 'last year', display_str: 'Last year'},
+            {id_str: 'last n days', display_str: 'Last days ...'},
+        ]
+
         edit_div = $compile($templateCache.get("icsw.config.kpi.edit_dialog"))(child_scope)
 
         modal = BootstrapDialog.show

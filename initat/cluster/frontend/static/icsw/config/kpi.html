@@ -31,6 +31,28 @@
                                        placeholder="name"/>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label class="control-label col-sm-2">Time range:</label>
+
+                            <div class="controls col-sm-6">
+                                <ui-select ng-model="cur_edit_kpi.time_range">
+                                    <ui-select-match placeholder="select a time range">{{$select.selected.display_str}}</ui-select-match>
+                                    <ui-select-choices repeat="value.id_str as value in kpi_time_ranges | props_filter:{display_str:$select.search}">
+                                        <div ng-bind-html="value.display_str | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+
+                                <div ng-show="cur_edit_kpi.time_range == 'last_n_days'" class="controls form-inline">
+                                    <div style="margin-top: 10px">
+                                    Last
+                                    <input class="form-control " type="number" ng-model="cur_edit_kpi.time_range_parameter"/>
+                                    days
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div>
                         <div class="checkbox">
                             <label>
                                 <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
@@ -138,7 +160,17 @@
         <tr ng-repeat="entry in entries_displayed">
             <td>{{entry.name}}</td>
             <td>{{entry.enabled | yesno2}}</td>
-            <td><pre>{{entry.formula }}</pre></td>
+            <td>
+                <div ng-show="!entry._show_full_formula">
+                    <pre>{{entry.formula | limit_text:100:false }} <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = true"
+                        ng-show="entry.formula.length > 100" >show full formula</button> </pre>
+                </div>
+
+                <div ng-show="entry._show_full_formula">
+                    <pre>{{entry.formula}}</pre>
+                    <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
+                </div>
+            </td>
             <td>{{get_result_from_kpi_entry(entry)}}</td>
             <td>
                 <div ng-show="entry.result">
