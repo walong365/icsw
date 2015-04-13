@@ -324,11 +324,11 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/lcs
 	cp -a cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs
 	# mibs
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SHARE_DIR}/mibs/cluster
-	${INSTALL} ${INSTALL_OPTS} mibs/powernet385-mib ${DESTDIR}/${SHARE_DIR}/mibs/cluster
-	${INSTALL} ${INSTALL_OPTS} mibs/powernet396-mib ${DESTDIR}/${SHARE_DIR}/mibs/cluster
-	${INSTALL} ${INSTALL_OPTS} mibs/mmblade-mib ${DESTDIR}/${SHARE_DIR}/mibs/cluster
-	${INSTALL} ${INSTALL_OPTS} mibs/eonstore-mib ${DESTDIR}/${SHARE_DIR}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/powernet385-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/powernet396-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/mmblade-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/eonstore-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
 	# /opt/cluster/share/mother
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${MOTHER_DIR}/syslinux
 	${INSTALL} ${INSTALL_OPTS} *pxelinux.0 ${DESTDIR}/${MOTHER_DIR}/syslinux
