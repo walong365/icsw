@@ -150,9 +150,8 @@ class icinga_log_aggregator(object):
             next_last_service_alert_cache = None  # we don't get this here, but also don't need it
         return next_last_service_alert_cache
 
-    def _create_timespan_entry_from_raw_data(self, timespan_db, start_time, end_time, duration_type,
-                                             next_last_service_alert_cache=None):
-        timespan_seconds = timespan_db.duration
+    @staticmethod
+    def get_active_hosts_and_services_in_timespan_queryset(start_time, end_time):
 
         # get latest full system dump plus all in the timespan. these entries define the relevant hosts and services
         # of this time span
@@ -192,6 +191,15 @@ class icinga_log_aggregator(object):
         timespan_services = mon_icinga_log_raw_service_alert_data.objects.filter(dump_times_filters, device_independent=False)\
             .distinct("device_id", "service_id", "service_info")\
             .values_list("device_id", "service_id", "service_info")
+
+        return timespan_hosts, timespan_services
+
+    def _create_timespan_entry_from_raw_data(self, timespan_db, start_time, end_time, duration_type,
+                                             next_last_service_alert_cache=None):
+        timespan_seconds = timespan_db.duration
+
+        timespan_hosts, timespan_services =\
+            self.get_active_hosts_and_services_in_timespan_queryset(start_time, end_time)
 
         # get flappings of timespan (can't use db in inner loop)
         def preprocess_flapping_data(flapping_cache, key_fun):

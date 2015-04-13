@@ -65,6 +65,9 @@ class Kpi(models.Model):
         except KpiStoredResult.DoesNotExist:
             KpiStoredResult(kpi=self, result=result_str, date=date).save()
 
+    def has_historic_data(self):
+        return self.time_range != 'none'
+
     def __unicode__(self):
         return u"KPI {}".format(self.name)
 

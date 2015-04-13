@@ -20,9 +20,12 @@
 import collections
 import json
 import time
+from django.db.models import Q
 
 import memcache
+import operator
 import initat.collectd
+from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 import logging_tools
 # noinspection PyUnresolvedReferences
 import pprint
@@ -33,6 +36,7 @@ from initat.md_config_server.common import live_socket
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult
+from initat.md_config_server.kpi.kpi_utils import KpiUtils
 
 
 class KpiData(object):
@@ -76,34 +80,55 @@ class KpiData(object):
             )
 
         # this is merely internal to this class
-        HostData = collections.namedtuple('HostData', ('rrd_data', 'host_check_results', 'service_check_results',
-                                                       'historic_data'))
+        HostData = collections.namedtuple('HostData', ('rrd_data', 'host_check_results', 'service_check_results'))
         self.host_data = {}
 
         service_check_results = collections.defaultdict(lambda: {})
         for dev, mcc in dev_mon_tuples:
 
-            # TODO: historic. handle dynamic time ranges as function
             service_check_results[dev.pk][mcc.pk] = self._get_service_check_results(dev, mcc)
 
         for dev in {dev for (dev, _) in dev_mon_tuples}:
             self.host_data[dev.pk] = HostData(rrd_data=host_rrd_data.get(dev.pk, None),
                                               host_check_results=self._get_host_check_results(dev),
-                                              service_check_results=service_check_results[dev.pk],
-                                              historic_data=None)
+                                              service_check_results=service_check_results[dev.pk])
 
     def get_data_for_kpi(self, kpi_db):
-        return self.get_data_for_dev_mon_tuples(kpi_db.kpidatasourcetuple_set.all())
+        dev_mon_tuples = kpi_db.kpidatasourcetuple_set.all()
 
-    def get_data_for_dev_mon_tuples(self, tuples):
+        if kpi_db.has_historic_data():
+            start, end = KpiUtils.parse_kpi_time_range_from_kpi(kpi_db)
+        else:
+            start, end = None, None
+
+        return self.get_data_for_dev_mon_tuples(dev_mon_tuples, start, end)
+
+    def get_data_for_dev_mon_tuples(self, tuples, start=None, end=None):
         """
+        Retrieves current results for (dev, mon)
         :rtype: list of KpiObject
         """
         # NOTE: only used through get_data_for_kpi as of now
         kpi_objects = []
         dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(tuples)
 
-        for dev in {dev for (dev, _) in dev_mon_tuples}:
+        device_id_set = {dev for (dev, _) in dev_mon_tuples}
+
+        if start is not None:
+
+            timespan_hosts_qs, timespan_services_qs =\
+                icinga_log_aggregator.get_active_hosts_and_services_in_timespan_queryset(start, end)
+
+            timespan_hosts_qs = timespan_hosts_qs.filter(device_id__in=device_id_set)
+
+            timespan_services_qs = timespan_services_qs.filter(
+                reduce(operator.or_, (Q(device_id=dev_id, service_id=mcc.pk) for (dev_id, mcc) in dev_mon_tuples))
+            )
+
+            # TODO: add those timespan/hosts data which don't have current sets
+            # possibly use set hashing for somewhat reasonable approach (OR NOT, can there reasonable be more than a million dev/mon tuples?)
+
+        for dev in device_id_set:
             if self.host_data[dev.pk].rrd_data is not None:
                 kpi_objects.extend(self.host_data[dev.pk].rrd_data)
             kpi_objects.extend(

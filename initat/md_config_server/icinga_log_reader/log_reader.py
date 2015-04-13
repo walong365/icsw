@@ -96,7 +96,7 @@ class icinga_log_reader(threading_tools.process_obj):
         )
         connection.close()
 
-        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=False)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
