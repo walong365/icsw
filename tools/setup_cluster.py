@@ -536,6 +536,7 @@ def create_db(opts):
         # migrate_app(_app)
         apply_migration(_app)
 
+    call_manage(["createinitialrevisions"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -566,6 +567,7 @@ def migrate_db(opts):
             print("migrating app {}".format(_app))
             apply_migration(_app)
         print("")
+        call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
     else:
         print("cluster migration dir {} not present, please create database".format(CMIG_DIR))
