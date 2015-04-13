@@ -109,6 +109,7 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
 
 class raw_service_alert_manager(models.Manager):
     def calc_alerts(self, start_time, end_time, additional_filter=None):
+        # result is ordered by date
         service_alerts = defaultdict(lambda: [])
 
         queryset = self.filter(device_independent=False, date__range=(start_time, end_time))
@@ -241,13 +242,16 @@ class raw_service_alert_manager(models.Manager):
 
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
-    STATE_UNDETERMINED = "UD"
     STATE_OK = "O"
+    STATE_WARNING = "W"
+    STATE_UNKNOWN = "U"
+    STATE_CRITICAL = "C"
+    STATE_UNDETERMINED = mon_icinga_log_raw_base.STATE_UNDETERMINED
     STATE_CHOICES = [(STATE_OK, "OK"),
-                     ("W", "WARNING"),
-                     ("U", "UNKNOWN"),
-                     ("C", "CRITICAL"),
-                     (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
+                     (STATE_WARNING, "WARNING"),
+                     (STATE_UNKNOWN, "UNKNOWN"),
+                     (STATE_CRITICAL, "CRITICAL"),
+                     (STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     objects = raw_service_alert_manager()

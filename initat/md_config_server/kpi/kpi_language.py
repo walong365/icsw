@@ -32,7 +32,7 @@ from initat.md_config_server.kpi.kpi_historic import TimeLineEntry, TimeLine
 import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
 from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, duration, \
-    mon_icinga_log_aggregated_timespan
+    mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
@@ -243,11 +243,26 @@ class KpiSet(object):
 
             compound_time_line = TimeLine()
 
+            state_ordering = {
+                mon_icinga_log_raw_service_alert_data.STATE_OK: 0,
+                mon_icinga_log_raw_service_alert_data.STATE_WARNING: 1,
+                mon_icinga_log_raw_service_alert_data.STATE_CRITICAL: 2,
+                mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN: 3,
+                mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED: 4,
+            }
+
+            state_type_ordering = {
+                mon_icinga_log_raw_base.STATE_TYPE_SOFT: 0,
+                mon_icinga_log_raw_base.STATE_TYPE_HARD: 1,
+            }
+
             def add_to_compound_tl(date, states):
                 if method == 'or':
-                    next_state = states
+                    next_state = min(states,
+                                     key=lambda state: (state_ordering[state[0]], state_type_ordering[state[1]]))
                 elif method == 'and':
-                    next_state = states
+                    next_state = max(states,
+                                     key=lambda state: (state_ordering[state[0]], state_type_ordering[state[1]]))
                 else:
                     raise RuntimeError("Invalid aggregate_historic method: {}".format(method) +
                                        "(must be either 'or' or 'and')")
@@ -285,41 +300,43 @@ class KpiSet(object):
 
     def get_historic(self):
         # group historic data per dev and service
-        devices = collections.defaultdict(lambda: [])
+        device_service_identifiers = []
         # TODO: host check results
         for obj in self.check_command_objects:
-            devices[obj.properties['host_pk']].append(
-                (obj.properties['check_command_pk'], obj.properties['service_info'])
+            device_service_identifiers.append(
+                (obj.properties['host_pk'], obj.properties['check_command_pk'], obj.properties['service_info'])
             )
 
         objects = []
-        if devices:
+        if device_service_identifiers:
 
-            # end = django.utils.timezone.now()
-            # start = end - datetime.timedelta(days=7*4)
-            start = datetime.date(2014, 01, 25)  # django change
-            end = datetime.date(2015, 01, 01)
+            #end = django.utils.timezone.now()
+            #start = end - datetime.timedelta(days=7)
+            #start = datetime.date(2014, 01, 25)  # django change
+            #end = datetime.date(2015, 01, 01)
 
-            time_lines = TimeLine.calculate_time_lines(devices, start, end)
+            start = datetime.date(2014, 01, 06)
+            end = datetime.date(2014, 01, 30)
 
-            for dev_id, service_time_line_of_device in time_lines.iteritems():
-                for (service_id, service_info), service_time_line in service_time_line_of_device.iteritems():
-                    for kpi_obj in self.check_command_objects:
-                        if kpi_obj.properties['host_pk'] == dev_id \
-                                and kpi_obj.properties['check_command_pk'] == service_id \
-                                and kpi_obj.properties['service_info'] == service_info:
-                            kpi_obj.properties['time_line'] = service_time_line_of_device
-                            # NOTE: we reuse the objects here
-                            objects.append(kpi_obj)
-                            break
-                    else:
-                        print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
-                        # TODO: logging is broken in this context
+            time_lines = TimeLine.calculate_time_lines(device_service_identifiers, start, end)
+
+            for (dev_id, service_id, service_info), time_line in time_lines.iteritems():
+                for kpi_obj in self.check_command_objects:
+                    if kpi_obj.properties['host_pk'] == dev_id \
+                            and kpi_obj.properties['check_command_pk'] == service_id \
+                            and kpi_obj.properties['service_info'] == service_info:
+                        kpi_obj.properties['time_line'] = time_line
+                        # NOTE: we reuse the objects here
+                        objects.append(kpi_obj)
+                        break
+                else:
+                    print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+                    # TODO: logging is broken in this context
 
         return KpiSet(objects=objects, parents=[self])
 
     def get_historic_only_aggregated_data(self):
-        # deprecate?
+        # TODO: deprecate?
         """
         Retrieve historical data and returns set of only those which have it
         """
@@ -413,11 +430,12 @@ class KpiSet(object):
             causes = list(obj for obj in self.result_objects if obj.result == aggregated_result)
             return KpiSet([KpiObject(result=aggregated_result)], parents=[self], explanation=KpiSet(objects=causes))
 
-    def dump(self):
+    def dump(self, msg=None):
         """Debug function: Log set contents and return itself"""
-        print "DUMP:", self.objects
+        print "\nDUMP {}:".format("" if msg is None else msg), self.objects
         for obj in self.objects:
             print obj.full_repr()
+        print "DUMP END"
 
         return self
 
