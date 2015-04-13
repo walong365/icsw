@@ -17,6 +17,6 @@ setup(
         "config_tools", "check_scripts", "drbd_tools",
         "partition_tools", "rsync_tools", "io_stream_helper",
         "libvirt_tools", "affinity_tools",
-        "server_mixins",
+        "server_mixins", "inotify_tools",
     ]
 )

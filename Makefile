@@ -13,6 +13,7 @@ RELEASE=$${RELEASE}
 # ICSW
 ICSW_BASE=/opt/cluster/
 ICSW_ETC=${ICSW_BASE}/etc
+ICSW_SHARE=${ICSW_BASE}/share
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_SGE=${ICSW_BASE}/sge
@@ -27,7 +28,7 @@ INITAT=${PYTHON_LIB_LD}/python/site-packages/initat
 LOCALBIN=/usr/local/bin
 LOCALSBIN=/usr/local/sbin
 META_DIR=/var/lib/meta-server
-MOTHER_DIR=${ICSW_BASE}/share/mother
+MOTHER_DIR=${ICSW_SHARE}/mother
 NGINX_CONF=/etc/nginx/sites-enabled/localhost
 PREFIX_PYTHON3=/opt/python3-init
 PREFIX_PYTHON=/opt/python-init
@@ -322,6 +323,12 @@ install:
 	# /opt/cluster/lcs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/lcs
 	cp -a cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs
+	# mibs
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/powernet385-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/powernet396-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/mmblade-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
+	${INSTALL} ${INSTALL_OPTS} mibs/eonstore-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
 	# /opt/cluster/share/mother
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${MOTHER_DIR}/syslinux
 	${INSTALL} ${INSTALL_OPTS} *pxelinux.0 ${DESTDIR}/${MOTHER_DIR}/syslinux
@@ -400,6 +407,7 @@ install:
 	for tsys in ${TARGET_SYS_LIST} ; do \
 	    ./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
 	done
+	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/opt/cluster/sbin/_hoststatus_version.py ; \
 
 clean:
 	rm -f gpxelinux.0
