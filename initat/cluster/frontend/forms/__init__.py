@@ -167,7 +167,6 @@ class device_info_form(ModelForm):
                     Div(
                         Field("monitor_checks"),
                         Field("enable_perfdata"),
-                        Field("ipmi_enabled"),
                         css_class="col-md-6",
                     ),
                     Div(
