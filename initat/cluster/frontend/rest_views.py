@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -181,7 +181,7 @@ class db_prefetch_mixin(object):
         return ["service_check_period"]
 
     def _device_related(self):
-        return ["domain_tree_node", "device_type", "device_group", "mon_ext_host"]
+        return ["domain_tree_node", "device_group", "mon_ext_host"]
 
     def _device_prefetch(self):
         return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set"]
@@ -533,16 +533,16 @@ class csw_object_list(viewsets.ViewSet):
         _q = cur_model.objects
         _key = "{}.{}".format(cur_ct.app_label, cur_ct.name)
         if _key == "backbone.device":
-            _q = _q.select_related("device_type", "device_group"). \
+            _q = _q.select_related("device_group"). \
                 filter(Q(enabled=True, device_group__enabled=True)). \
-                order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
+                order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
         if _key == "backbone.user":
             _q = _q.select_related("group")
         return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
 
     def _get_name(self, _key, cur_obj):
         if _key == "backbone.device":
-            if cur_obj.device_type.identifier == "MD":
+            if cur_obj.is_meta_device:
                 return unicode(cur_obj)[8:] + (" [CDG]" if cur_obj.device_group.cluster_device_group else " [MD]")
         return unicode(cur_obj)
 
@@ -557,7 +557,7 @@ class csw_object_list(viewsets.ViewSet):
     def _tr_class(self, _key, cur_obj):
         _lt = ""
         if _key == "backbone.device":
-            if cur_obj.device_type.identifier == "MD":
+            if cur_obj.is_meta_device:
                 _lt = "warning"
         return _lt
 
@@ -661,12 +661,12 @@ class device_tree_list(mixins.ListModelMixin,
                 dg_list = list(
                     device.objects.filter(
                         Q(pk__in=allowed_pks)
-                    ).values_list("pk", "device_group", "device_group__device", "device_type__identifier")
+                    ).values_list("pk", "device_group", "device_group__device")
                 )
                 # meta_list, device group selected
-                meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt == "MD"])
+                meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt])
                 # device list, direct selected
-                device_list = Q(pk__in=set(sum([[dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if dt != "MD"], [])))
+                device_list = Q(pk__in=set(sum([[dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if not dt], [])))
                 _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
@@ -689,7 +689,16 @@ class device_tree_list(mixins.ListModelMixin,
             if "pks" in self.request.QUERY_PARAMS:
                 dev_keys = json.loads(self.request.QUERY_PARAMS["pks"])
                 if self._get_post_boolean("cd_connections", False):
-                    cd_con_pks = set(sum([[_v[0], _v[1]] for _v in cd_connection.objects.all().values_list("parent", "child")], []))
+                    cd_con_pks = set(
+                        sum(
+                            [
+                                [
+                                    _v[0], _v[1]
+                                ] for _v in cd_connection.objects.all().values_list("parent", "child")
+                            ],
+                            []
+                        )
+                    )
                     dev_keys = list(set(dev_keys) | cd_con_pks)
             else:
                 # only selected ones
@@ -706,7 +715,7 @@ class device_tree_list(mixins.ListModelMixin,
                 _q = _q.exclude(Q(device_group__cluster_device_group=True))
             if ignore_md:
                 # ignore all meta-devices
-                _q = _q.exclude(Q(device_type__identifier="MD"))
+                _q = _q.exclude(Q(is_meta_device=True))
             if with_md:
                 md_pks = set(device.objects.filter(Q(pk__in=dev_keys)).values_list("device_group__device", flat=True))
                 dev_keys.extend(md_pks)
@@ -717,7 +726,6 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
         _q = _q.select_related(
             "domain_tree_node",
-            "device_type",
             "device_group",
         ).prefetch_related(
             "snmp_schemes__snmp_scheme_vendor",
@@ -754,13 +762,17 @@ class device_tree_list(mixins.ListModelMixin,
                 "act_partition_table__new_partition_table",
                 "act_partition_table__act_partition_table",
             )
+        if self._get_post_boolean("mark_cd_devices", False):
+            _q = _q.prefetch_related(
+                "snmp_schemes",
+            )
         if self._get_post_boolean("with_network", False):
             _q = _q.prefetch_related(
                 "netdevice_set__net_ip_set__network__network_type",
                 "netdevice_set__net_ip_set__network__network_device_type",
                 )
-        # ordering: at first cluster device group, then by group / device_type / name
-        _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
+        # ordering: at first cluster device group, then by group / is_meta_device / name
+        _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])
         return _q
 

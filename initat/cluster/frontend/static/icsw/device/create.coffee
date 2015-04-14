@@ -39,7 +39,6 @@ create_module = angular.module(
         $scope.peers = []
         $scope.rest_map = [
             {"short" : "device_group", "url" : ICSW_URLS.REST_DEVICE_GROUP_LIST}
-            {"short" : "device_type", "url" : ICSW_URLS.REST_DEVICE_TYPE_LIST}
             {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
             {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}

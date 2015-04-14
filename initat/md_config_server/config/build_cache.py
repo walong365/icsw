@@ -77,7 +77,6 @@ class build_cache(object):
             cur_dev.pk: cur_dev for cur_dev in device.objects.filter(
                 Q(device_group__enabled=True) & Q(enabled=True)
             ).select_related(
-                "device_type",
                 "domain_tree_node",
                 "device_group"
             ).prefetch_related("mon_trace_set")

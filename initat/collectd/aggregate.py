@@ -501,16 +501,16 @@ class aggregate_process(threading_tools.process_obj, server_mixins.operational_e
         cur_time = time.time()
         if self.__struct_update is None or abs(cur_time - self.__struct_update) > global_config["AGGREGATE_STRUCT_UPDATE"]:
             self.log("updating aggregate structure")
-            all_groups = device_group.objects.all().prefetch_related("device_group__device_type", "device_group__domain_tree_node")
+            all_groups = device_group.objects.all().prefetch_related("device_group__domain_tree_node")
             _sys_group = [group for group in all_groups if group.cluster_device_group][0]
-            _sys_md = [_dev for _dev in _sys_group.device_group.all() if _dev.device_type.identifier == "MD"][0]
+            _sys_md = [_dev for _dev in _sys_group.device_group.all() if _dev.is_meta_device][0]
             _ags = ag_struct(self.log)
             _ags.set_system_group(_sys_group, _sys_md.uuid, _sys_md.full_name)
             for _group in all_groups:
                 if _group.cluster_device_group:
                     continue
-                _devs = [_dev for _dev in _group.device_group.all() if _dev.device_type.identifier not in ["MD"]]
-                _meta_dev = [_dev for _dev in _group.device_group.all() if _dev.device_type.identifier == "MD"][0]
+                _devs = [_dev for _dev in _group.device_group.all() if not _dev.is_meta_device]
+                _meta_dev = [_dev for _dev in _group.device_group.all() if _dev.is_meta_device][0]
                 cur_agg = ag_device_group(_group.name, _meta_dev.uuid, _meta_dev.full_name)
                 _ags.add_group(cur_agg)
                 for _dev in _devs:

@@ -63,7 +63,7 @@ class machine(object):
             zmq=True,
             context=machine.process.zmq_context,
             init_logger=True)
-        self.log("added client, type is {}".format(self.device.device_type.identifier))
+        self.log("added client, type is {}".format("META" if self.device.is_meta_device else "real"))
         self.additional_lut_keys = set()
         self.ip_dict = {}
         self.init()
@@ -94,14 +94,6 @@ class machine(object):
         machine.ping_id = 0
 
     @staticmethod
-    def get_all_names(**kwargs):
-        type_filter = kwargs.get("node_type", [])
-        all_names = sorted(machine.__unique_names)
-        if type_filter:
-            all_names = [name for name in all_names if machine.get_device(name).device.device_type.identifier in type_filter]
-        return all_names
-
-    @staticmethod
     def shutdown():
         while machine.__lut:
             machine.delete_device(machine.__lut.keys()[0])
@@ -112,7 +104,7 @@ class machine(object):
 
     @staticmethod
     def get_query(names=[], ips=[]):
-        query = device.objects.filter(Q(bootserver=machine.process.sc.effective_device)).select_related("device_type").prefetch_related(
+        query = device.objects.filter(Q(bootserver=machine.process.sc.effective_device)).prefetch_related(
             "netdevice_set",
             "netdevice_set__net_ip_set",
             "netdevice_set__net_ip_set__network",
@@ -1876,28 +1868,6 @@ class node_control_process(threading_tools.process_obj):
         simple_command.check()
         if simple_command.idle():
             self.set_loop_timer(1000)
-    # def alter_macaddr(self, *args, **kwargs):
-    #    if len(args):
-    #        id_str, in_com = args
-    #        in_com = server_command.srv_command(source=in_com)
-    #        dev_list = in_com.xpath(".//ns:device/@name", smart_strings=False)
-    #        # print dev_list
-    #        self._adw_macaddr("alter", nodes=dev_list)
-    #        self.send_pool_message("send_return", id_str, unicode(in_com))
-    #    else:
-    #        self._adw_macaddr("alter")
-    # def _adw_macaddr(self, com_name, *args, **kwargs):
-    #    # print "adw_macaddr", args, kwargs
-    #    nodes = kwargs.get("nodes", machine.get_all_names(node_type=["H"]))
-    #    self.log("got %s command for %s%s" % (
-    #        com_name,
-    #        logging_tools.get_plural("node", len(nodes)),
-    #        nodes and ": %s" % (logging_tools.compress_list(nodes)) or ""))
-    #    for mach_name in nodes:
-    #        cur_dev = machine.get_device(mach_name)
-    #        # print "***", mach_name, cur_dev, type(cur_dev)
-    #        if cur_dev:
-    #            cur_dev.handle_mac_command(com_name)
 
     def _syslog_line(self, *args, **kwargs):
         in_line = args[0]

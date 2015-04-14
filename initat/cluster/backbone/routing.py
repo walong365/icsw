@@ -189,13 +189,14 @@ class srv_type_routing(object):
             if _conf_name in _sc:
                 for _dev in _sc[_conf_name]:
                     # routing info
-                    if _dev.effective_device.device_type.identifier == "MD":
+                    if _dev.effective_device.is_meta_device:
                         # server-like config is set for an md-device, not good
-                        self.logger.error("device '{}' (srv_type {}) has an illegal device_type {}".format(
-                            _dev.effective_device.full_name,
-                            _srv_type,
-                            _dev.effective_device.device_type.identifier,
-                            ))
+                        self.logger.error(
+                            "device '{}' (srv_type {}) is a meta-device".format(
+                                _dev.effective_device.full_name,
+                                _srv_type,
+                            )
+                        )
                     else:
                         if _myself.device and _dev.effective_device.pk == _myself.device.pk:
                             _first_ip = "127.0.0.1"
@@ -280,10 +281,12 @@ class srv_type_routing(object):
                 _cl_dict.setdefault(_bs_hints[_value[0]], []).append(_value[0])
             else:
                 self.__no_bootserver_devices.add((_value[0], _value[2]))
-                self.logger.warning("device {:d} ({}) has no bootserver associated".format(
-                    _value[0],
-                    _value[2],
-                ))
+                self.logger.warning(
+                    "device {:d} ({}) has no bootserver associated".format(
+                        _value[0],
+                        _value[2],
+                    )
+                )
         # do we need more than one server connection ?
         if len(_cl_dict) > 1:
             _srv_keys = _cl_dict.keys()

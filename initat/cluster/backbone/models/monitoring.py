@@ -102,6 +102,8 @@ class snmp_scheme(models.Model):
     initial = models.BooleanField(default=False)
     # moncheck
     mon_check = models.BooleanField(default=False)
+    # power_control
+    power_control = models.BooleanField(default=False)
     # priority for handling, schemes with higher priority will be handled first
     priority = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)

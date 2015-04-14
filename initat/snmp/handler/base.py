@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -51,6 +51,7 @@ class SNMPHandler(object):
         # set flags
         self.Meta.collect = hasattr(self, "collect_fetch")
         self.Meta.mon_check = hasattr(self, "config_mon_check")
+        self.Meta.power_control = hasattr(self, "power_control")
         # set lookup keys
         self.Meta.lookup_keys = [
             "{}.{}_v{:d}".format(
@@ -89,3 +90,6 @@ class SNMPHandler(object):
             return {
                 _oid_lut[oid]: in_dict[_oid_lut[oid]] for oid in oids if oid in _oid_lut
             }
+
+    def __unicode__(self):
+        return "SNMPHandler {}".format(self.Meta.full_name)

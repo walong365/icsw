@@ -179,7 +179,7 @@ def can_delete_obj(obj, logger=None):
     """
     from initat.cluster.backbone.models import device
     ignore_objs = {
-        "device_group": list(device.objects.filter(Q(device_group=obj.idx) & Q(device_type__identifier="MD")))
+        "device_group": list(device.objects.filter(Q(device_group=obj.idx) & Q(is_meta_device=True)))
     }.get(obj._meta.object_name, [])
     related_objects = []
     num_refs = get_related_models(obj, ignore_objs=ignore_objs, related_objects=related_objects)
@@ -188,14 +188,19 @@ def can_delete_obj(obj, logger=None):
     msg = u''
     if num_refs:
         if logger:
-            logger.error("lock_list for {} contains {}:".format(unicode(obj),
-                                                                logging_tools.get_plural("entry", len(obj._lock_list))))
+            logger.error(
+                "lock_list for {} contains {}:".format(
+                    unicode(obj),
+                    logging_tools.get_plural("entry", len(obj._lock_list))
+                )
+            )
         for _num, _entry in enumerate(obj._lock_list, 1):
             if logger:
                 logger.error(" - {:2d}: {}".format(_num, _entry))
         msg = "cannot delete {}: referenced {}".format(
             obj._meta.object_name,
-            logging_tools.get_plural("time", num_refs))
+            logging_tools.get_plural("time", num_refs)
+        )
     else:
         delete_ok = True
 

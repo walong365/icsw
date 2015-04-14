@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -30,7 +30,7 @@ class show_exportfs(cs_base_class.server_com):
         # normal exports
         exp_entries = device_config.objects.filter(
             Q(config__name__icontains="export") &
-            Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+            Q(device__is_meta_device=False)).prefetch_related("config__config_str_set").select_related("device")
         ei_dict = {}
         for entry in exp_entries:
             dev_pk, act_pk = (entry.device.pk,

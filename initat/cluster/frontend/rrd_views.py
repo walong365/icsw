@@ -55,6 +55,7 @@ class merge_cds(View):
         # return the RRD tree with selected controlling devices
         dev_pks = [_pk for _pk in request.POST.getlist("pks[]")]
         devs = device.objects.filter(Q(pk__in=dev_pks))
+        # FIXME
         cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=devs)).values_list("pk", flat=True))
         return _get_node_rrd(request, dev_pks + cd_pks)
 
@@ -94,6 +95,7 @@ class graph_rrds(View):
             json.loads(_post["keys"])
         )
         if int(self._parse_post_boolean(_post, "cds_already_merged", "0")):
+            # FIXME
             cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=pk_list)).values_list("pk", flat=True))
         else:
             cd_pks = []

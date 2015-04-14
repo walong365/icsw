@@ -45,8 +45,8 @@ class var_cache(dict):
         }
 
     def _prefill(self):
-        for _var in device_variable.objects.all().select_related("device__device_type"):
-            if _var.device.device_type.identifier == "MD":
+        for _var in device_variable.objects.all().select_related("device"):
+            if _var.device.is_meta_device:
                 if _var.device.device_group_id == self.__cdg.pk:
                     _key = "GLOBAL"
                     if _key not in self:

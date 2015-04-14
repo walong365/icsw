@@ -145,7 +145,7 @@ angular.module(
                     if entry.idx in $scope.devsel_list
                         $scope.devices.push(entry)
                         $scope.device_lut[entry.idx] = entry
-                    if entry.device_type_identifier == "MD"
+                    if entry.is_meta_device
                         $scope.meta_devices[entry.idx] = entry
                         $scope.devg_md_lut[entry.device_group] = entry.idx
                     $scope.all_devices.push(entry)
@@ -165,12 +165,12 @@ angular.module(
                 $scope.reload()
             )
         $scope.get_tr_class = (obj) ->
-            if obj.device_type_identifier == "MD"
+            if obj.is_meta_device
                 return "success"
             else
                 return ""
         $scope.get_name = (obj) ->
-            if obj.device_type_identifier == "MD"
+            if obj.is_meta_device
                 return obj.full_name.slice(8) + " [Group]"
             else
                 return obj.full_name
@@ -255,7 +255,7 @@ angular.module(
                 for dev in $scope.devices
                     #dev.expanded = if (true for _loc_c in dev.local_selected when _loc_c in active_ids).length then true else false
                     dev.expanded = if num_show > 0 then true else false
-                    if not dev.expanded and dev.device_type_identifier != "MD"
+                    if not dev.expanded and not dev.is_meta_device
                         dev.expanded = $scope.meta_devices[$scope.devg_md_lut[dev.device_group]].expanded
             $scope.set_line_list()
         $scope.get_config_info = (conf_idx) ->
@@ -286,14 +286,14 @@ angular.module(
         link: (scope, el, attrs) ->
             scope.get_th_class = (dev) ->
                 _cls = ""
-                is_meta_dev = dev.device_type_identifier == "MD"
+                is_meta_dev = dev.is_meta_device
                 if is_meta_dev
                     return "warning"
                 else
                     return ""
             scope.get_td_class = (dev, conf_idx, single_line) ->
                 _cls = ""
-                is_meta_dev = dev.device_type_identifier == "MD"
+                is_meta_dev = dev.is_meta_device
                 meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
                 if single_line and not scope.show_config(dev, conf_idx) and scope.config_exists(conf_idx)
                     _cls = "danger"
@@ -306,7 +306,7 @@ angular.module(
             scope.show_config = (dev, conf_idx) ->
                 if conf_idx != null
                     cur_conf = scope.configs_lut[conf_idx]
-                    if dev.device_type_identifier == "MD" and cur_conf.server_config
+                    if dev.is_meta_device and cur_conf.server_config
                         return false
                     else
                         return true
@@ -356,7 +356,7 @@ angular.module(
                     _cls = "glyphicon glyphicon-minus"
                 else
                     _cls = "glyphicon"
-                is_meta_dev = dev.device_type_identifier == "MD"
+                is_meta_dev = dev.is_meta_device
                 meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
                 if conf_idx != null
                     if conf_idx in dev.local_selected

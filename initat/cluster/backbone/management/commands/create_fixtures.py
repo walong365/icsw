@@ -337,6 +337,7 @@ def _add_snmp_fixtures():
                 collect=_handler.Meta.collect,
                 initial=_handler.Meta.initial,
                 priority=_handler.Meta.priority,
+                power_control=_handler.Meta.power_control,
                 mon_check=getattr(_handler.Meta, "mon_check", False),
                 snmp_scheme_vendor=factories.SNMPSchemeVendor(name=_handler.Meta.vendor_name),
             )
