@@ -424,7 +424,14 @@ class DeviceSNMPInfo(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
+class DeviceEnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(DeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True))
+
+
 class device(models.Model):
+    objects = models.Manager()
+    all_enabled = DeviceEnabledManager()
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
     # no dots allowed (these parts are now in domain_tree_node)
@@ -493,8 +500,8 @@ class device(models.Model):
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64)  # , unique=True)
-    # cluster url
-    curl = models.CharField(default="ssh://", max_length=512, verbose_name="cURL")
+    # cluster url, no longer in use, will be removed in a few months
+    curl = models.CharField(default="ssh://", max_length=512)
     # , choices=[
     #    ("ssh://", "ssh://"),
     #    ("snmp://", "snmp://"),
@@ -527,6 +534,8 @@ class device(models.Model):
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
+    # has an IPMI interface
+    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple")
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
     # scan active ?
