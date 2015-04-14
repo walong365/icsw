@@ -98,7 +98,7 @@ class Command(BaseCommand):
                 errors = []
                 if hasattr(model, "CSW_Meta") and hasattr(model.CSW_Meta, "permissions"):
                     app_label = model._meta.app_label
-                    cur_ct = ContentType.objects.get(app_label=app_label, model=model._meta.object_name)
+                    cur_ct = ContentType.objects.get_for_model(model)
                     for code_name, name, valid_for_object_level in model.CSW_Meta.permissions:
                         found_perms_list.append((app_label, code_name))
                         found_perms.add((app_label, code_name))
