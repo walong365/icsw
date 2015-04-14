@@ -150,7 +150,7 @@ class KpiData(object):
 
         self.log("got rrd_data for {} hosts".format(len(host_rrd_data)))
 
-        if Kpi.objects.filter(uses_all_data=True).exists():
+        if False and Kpi.objects.filter(uses_all_data=True).exists():  # DISABLED
             # self.kpi_device_categories = set(device.categories_set.all())
             # self.kpi_devices = list(device.objects.all())
             # self.kpi_mon_categories = list(mon_check_command.categories_set.all())

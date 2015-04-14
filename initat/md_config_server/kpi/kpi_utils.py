@@ -28,7 +28,7 @@ from initat.cluster.backbone.models import duration
 
 
 def print_tree(t, i=0):
-    print " " * i, t, t.explanation
+    print " " * i, t
     if t.parents:
         for p in t.parents:
             print_tree(p, i + 8)

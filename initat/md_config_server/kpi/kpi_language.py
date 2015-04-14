@@ -116,9 +116,23 @@ class KpiObject(object):
 # host, serv_id, service_info, time line
 # compound time line
 # result
+# detail
+
+
+class KpiDetailObject(KpiObject):
+    """Kpi Object with some misc data attached"""
+    def __init__(self, detail, **kwargs):
+        if detail is None:
+            raise ValueError("detail is None")
+        super(KpiDetailObject, self).__init__(**kwargs)
+        self.detail = detail
+
+    def __repr__(self, child_repr=""):
+        return super(KpiDetailObject, self).__repr__(child_repr=child_repr + ";detail:{}".format(self.detail))
 
 
 class KpiRRDObject(KpiObject):
+    """Kpi Object with rrd data"""
     def __init__(self, rrd_key, rrd_value, **kwargs):
         if rrd_key is None:
             raise ValueError("rrd_key is None")
@@ -134,6 +148,7 @@ class KpiRRDObject(KpiObject):
 
 
 class KpiServiceObject(KpiObject):
+    """Kpi Object which references a particular service"""
     def __init__(self, service_id=None, service_info=None, mcc=None, **kwargs):
         if service_id is None:
             raise ValueError("service_id is None")
@@ -166,6 +181,7 @@ class KpiServiceObject(KpiObject):
 
 
 class KpiTimeLineObject(KpiObject):
+    """Kpi Object which has a time line"""
     def __init__(self, time_line=None, **kwargs):
         if time_line is None:
             raise ValueError("time_line is None")
@@ -387,27 +403,23 @@ class KpiSet(object):
             return KpiSet.get_singleton_unknown(parents=[self])
         else:
             objects = []
-
             start, end = KpiUtils.parse_kpi_time_range_from_kpi(self._get_current_kpi())
 
             for tl_obj in self.time_line_objects:
 
                 states_accumulator = collections.defaultdict(lambda: 0)
-
                 for entry1, entry2 in pairwise(itertools.chain(tl_obj.time_line,
                                                                [TimeLineEntry(date=end, state=None)])):
                     time_span = entry2.date - entry1.date
                     states_accumulator[entry1.state] += time_span.total_seconds()
 
                 total_time_span = sum(states_accumulator.itervalues())
-
                 amount_ok = sum(v for k, v in states_accumulator.iteritems()
                                 if k[0] == mon_icinga_log_raw_service_alert_data.STATE_OK)
 
                 amount_warn = sum(v for k, v in states_accumulator.iteritems()
                                   if k[0] == mon_icinga_log_raw_service_alert_data.STATE_WARNING)
-
-                # pprint.pprint({k: (v / total_time_span) for k, v in states_accumulator.iteritems()})
+                detail = {k: v / total_time_span for k, v in states_accumulator.iteritems()}
 
                 if amount_ok / total_time_span >= ratio_ok:
                     result = KpiResult.ok
@@ -417,7 +429,7 @@ class KpiSet(object):
                     result = KpiResult.critical
 
                 objects.append(
-                    KpiObject(result=result)
+                    KpiDetailObject(result=result, detail=detail)
                 )
 
             return KpiSet(objects=objects, parents=[self])
@@ -440,8 +452,7 @@ class KpiSet(object):
         print "\nDUMP {}:".format("" if msg is None else msg), self.objects
         for obj in self.objects:
             print obj.full_repr()
-            if 'time_line' in obj.__dict__:
-                print "TL:", obj.time_line
+            # if 'time_line' in obj.__dict__: print "TL:", obj.time_line
         print "DUMP END"
 
         return self
