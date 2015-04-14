@@ -22,13 +22,26 @@ import pprint
 import django.utils.timezone
 from django.db.models import Q
 import operator
+import itertools
 from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base
+
+
+# itertools recipe
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return itertools.izip(a, b)
 
 
 class TimeLineUtils(list):
     @staticmethod
     def calculate_time_lines(device_service_identifiers, start, end):
         """
+        Calculate time line, i.e. list of states with a date ordered chronologically.
+        First entry has date start, last one has end
+        (last date does not actually mean anything since this state is valid for 0 seconds, but
+        it implicitly includes info about when the time span ends)
         :param device_service_identifiers: [(dev_id, serv_pk, serv_info)]
         :return: {(dev_id, serv_pk, serv_info) : TimeLine}
         """
@@ -66,6 +79,11 @@ class TimeLineUtils(list):
                     tl.append(
                         TimeLineEntry(date=alert.date, state=(alert.state, alert.state_type))
                     )
+
+        # add final entry
+        for tl in time_lines.itervalues():
+            last_state = tl[-1].state
+            tl.append(TimeLineEntry(date=end, state=last_state))
 
         return time_lines
 
@@ -122,8 +140,17 @@ class TimeLineUtils(list):
 
             add_to_compound_tl(next_entry.date, current_tl_states)
 
-        # no final event, this is the convention
         return compound_time_line
+
+    @staticmethod
+    def aggregate_time_line(tl_obj):
+        states_accumulator = collections.defaultdict(lambda: 0)
+        for entry1, entry2 in pairwise(tl_obj.time_line):
+            time_span = entry2.date - entry1.date
+            states_accumulator[entry1.state] += time_span.total_seconds()
+
+        total_time_span = sum(states_accumulator.itervalues())
+        return {k: v / total_time_span for k, v in states_accumulator.iteritems()}
 
 
 class TimeLineEntry(object):

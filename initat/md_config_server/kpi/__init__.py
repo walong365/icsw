@@ -99,7 +99,9 @@ class KpiProcess(threading_tools.process_obj):
                         result.dump()
                         print_tree(result)
 
-                        result_str = json.dumps(result.serialize())
+                        serialized = result.serialize()
+                        # print 'serialized:', serialized
+                        result_str = json.dumps(serialized)
 
                 date = django.utils.timezone.now()
 

@@ -174,6 +174,7 @@ angular.module(
                         )
                     )
                 scope.get_result_from_kpi_entry = (kpi) ->
+                    return "CURRENTLY DISABLED"
                     if kpi.result? and kpi.result.values.length > 0
                         return  ({
                             0: 'ok'

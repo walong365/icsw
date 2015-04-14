@@ -28,24 +28,18 @@ from types import NoneType
 
 from enum import IntEnum
 import itertools
+import json
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils, TimeLineEntry
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 import logging_tools
-from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
+from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
+    raw_service_alert_manager
 from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, duration, \
     mon_icinga_log_aggregated_timespan, mon_check_command, device
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
-
-
-# itertools recipe
-def pairwise(iterable):
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return itertools.izip(a, b)
 
 
 class KpiResult(IntEnum):
@@ -87,6 +81,7 @@ class KpiObject(object):
         return KpiObject(**data)
 
     def serialize(self):
+        # we serialize for the client to show something, not for a functional representation
         return {
             'result': None if self.result is None else self.result.get_numeric_icinga_service_status(),
             'host_name': self.host_name,
@@ -130,6 +125,13 @@ class KpiDetailObject(KpiObject):
     def __repr__(self, child_repr=""):
         return super(KpiDetailObject, self).__repr__(child_repr=child_repr + ";detail:{}".format(self.detail))
 
+    def serialize(self):
+        trans = mon_icinga_log_aggregated_service_data.STATE_CHOICES_READABLE
+        return dict(
+            detail={"{};{}".format(trans[k[0]], k[1]): v for k, v in self.detail.iteritems()},
+            **super(KpiDetailObject, self).serialize()
+        )
+
 
 class KpiRRDObject(KpiObject):
     """Kpi Object with rrd data"""
@@ -145,6 +147,13 @@ class KpiRRDObject(KpiObject):
     def __repr__(self, child_repr=""):
         return super(KpiRRDObject, self).__repr__(child_repr=child_repr +
                                                   "rrd:{}:{}".format(self.rrd_key, self.rrd_value))
+
+    def serialize(self):
+        return dict(
+            rrd_key=self.rrd_key,
+            rrd_value=self.rrd_value,
+            **super(KpiRRDObject, self).serialize()
+        )
 
 
 class KpiServiceObject(KpiObject):
@@ -179,6 +188,13 @@ class KpiServiceObject(KpiObject):
                                           self.service_info)
         return super(KpiServiceObject, self).__repr__(child_repr=child_repr + my_repr)
 
+    def serialize(self):
+        return dict(
+            service_name=self.check_command,
+            service_info=self.service_info,
+            **super(KpiServiceObject, self).serialize()
+        )
+
 
 class KpiTimeLineObject(KpiObject):
     """Kpi Object which has a time line"""
@@ -187,6 +203,14 @@ class KpiTimeLineObject(KpiObject):
             raise ValueError("time_line is None")
         super(KpiTimeLineObject, self).__init__(**kwargs)
         self.time_line = time_line
+
+    def serialize(self):
+        trans = mon_icinga_log_aggregated_service_data.STATE_CHOICES_READABLE
+        return dict(
+            aggregated_tl={"{};{}".format(trans[k[0]], k[1]): v
+                           for k, v in TimeLineUtils.aggregate_time_line(self).iteritems()},
+            **super(KpiTimeLineObject, self).serialize()
+        )
 
 
 class KpiServiceTimeLineObject(KpiServiceObject, KpiTimeLineObject):
@@ -231,6 +255,8 @@ class KpiSet(object):
         return KpiSet(objects, parents)
 
     def serialize(self):
+
+        # for obj in self.objects: print obj.serialize() json.dumps(obj.serialize())
         return {
             "objects": [obj.serialize() for obj in self.objects],
             "parents": [par.serialize() for par in self.parents] if self.parents is not None else None,
@@ -403,33 +429,26 @@ class KpiSet(object):
             return KpiSet.get_singleton_unknown(parents=[self])
         else:
             objects = []
-            start, end = KpiUtils.parse_kpi_time_range_from_kpi(self._get_current_kpi())
 
             for tl_obj in self.time_line_objects:
 
-                states_accumulator = collections.defaultdict(lambda: 0)
-                for entry1, entry2 in pairwise(itertools.chain(tl_obj.time_line,
-                                                               [TimeLineEntry(date=end, state=None)])):
-                    time_span = entry2.date - entry1.date
-                    states_accumulator[entry1.state] += time_span.total_seconds()
+                aggregated_tl = TimeLineUtils.aggregate_time_line(tl_obj)
 
-                total_time_span = sum(states_accumulator.itervalues())
-                amount_ok = sum(v for k, v in states_accumulator.iteritems()
+                amount_ok = sum(v for k, v in aggregated_tl.iteritems()
                                 if k[0] == mon_icinga_log_raw_service_alert_data.STATE_OK)
 
-                amount_warn = sum(v for k, v in states_accumulator.iteritems()
+                amount_warn = sum(v for k, v in aggregated_tl.iteritems()
                                   if k[0] == mon_icinga_log_raw_service_alert_data.STATE_WARNING)
-                detail = {k: v / total_time_span for k, v in states_accumulator.iteritems()}
 
-                if amount_ok / total_time_span >= ratio_ok:
+                if amount_ok >= ratio_ok:
                     result = KpiResult.ok
-                elif amount_warn / total_time_span >= ratio_warn:
+                elif amount_warn >= ratio_warn:
                     result = KpiResult.warn
                 else:
                     result = KpiResult.critical
 
                 objects.append(
-                    KpiDetailObject(result=result, detail=detail)
+                    KpiDetailObject(result=result, detail=aggregated_tl)
                 )
 
             return KpiSet(objects=objects, parents=[self])

@@ -385,6 +385,8 @@ class mon_icinga_log_aggregated_host_data(models.Model):
     STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
+    STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
+
     STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
 
     idx = models.AutoField(primary_key=True)
@@ -433,7 +435,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
         :param use_client_name: whether to refer to services the way the cs code does or as (serv_pk, serv_info)
         """
         if use_client_name:
-            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+            trans = mon_icinga_log_aggregated_service_data.STATE_CHOICES_READABLE
         else:
             class dummy_dict(dict):
                 def __getitem__(self, item):
@@ -537,6 +539,8 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     STATE_FLAPPING = "FL"
     STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+
+    STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
 
     idx = models.AutoField(primary_key=True)
     timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)

@@ -582,15 +582,17 @@ class get_hist_device_data(ListAPIView):
                 timespan=timespan_db
             ).values('device_id', 'state', 'state_type', 'value')
 
-        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
         data_per_device = {device_id: [] for device_id in device_ids}
         for d in data:
-            d['state'] = trans[d['state']].capitalize()
+            d['state'] = mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[d['state']].capitalize()
             data_per_device[d['device_id']].append(d)
 
         data_merged_state_types = {}
         for device_id, device_data in data_per_device.iteritems():
-            data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(device_data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
+            data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
+                device_data,
+                mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+            )
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
 

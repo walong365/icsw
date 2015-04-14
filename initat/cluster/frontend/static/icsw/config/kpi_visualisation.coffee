@@ -63,7 +63,7 @@ angular.module(
                     else
                         if scope.kpiIdx()?
                             kpi = icswConfigKpiDataService.get_kpi(scope.kpiIdx())
-                            if kpi.enabled  # only for enabled's
+                            if kpi.enabled and kpi.result?  # only for enabled's
                                 data = JSON.parse(kpi.result.json)
                                 console.log 'drawing', scope.kpiIdx(), kpi, data
                                 nodes = scope.tree.nodes(data)
