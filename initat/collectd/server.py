@@ -396,15 +396,13 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
     def _get_snmp_hosts(self, _router):
         # var cache
         _vc = var_cache(
-            device.objects.get(
+            device.all_enabled.get(
                 Q(device_group__cluster_device_group=True)
             ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public"}
         )
-        snmp_hosts = device.objects.exclude(
+        snmp_hosts = device.all_enabled.exclude(
             Q(snmp_schemes=None)
         ).filter(
-            Q(enabled=True) &
-            Q(device_group__enabled=True) &
             Q(enable_perfdata=True) &
             Q(snmp_schemes__collect=True)
         ).prefetch_related(
@@ -439,11 +437,12 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
     def _get_ipmi_hosts(self, _router):
         # var cache
         _vc = var_cache(
-            device.objects.get(
+            device.all_enabled.get(
                 Q(device_group__cluster_device_group=True)
-            ), {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
+            ),
+            {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
         )
-        ipmi_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="ipmi://") & Q(enable_perfdata=True))
+        ipmi_hosts = device.all_enabled.filter(Q(enable_perfdata=True) & Q(ipmi_capable=True))
         _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")
         ipmi_com = server_command.srv_command(command="ipmi_hosts")
         _bld = ipmi_com.builder()

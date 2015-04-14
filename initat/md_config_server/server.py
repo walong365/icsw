@@ -528,8 +528,10 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.log(
                 "wrong count of input data frames: {:d}, first one is {}".format(
                     len(in_data),
-                    in_data[0]),
-                logging_tools.LOG_LEVEL_ERROR)
+                    in_data[0]
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)

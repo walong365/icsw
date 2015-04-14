@@ -275,12 +275,7 @@
  "
  ><label for="id_comment" class="control-label col-sm-3">
  Comment
- </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="_edit_obj.comment" type="text" /> </div></div><div id="div_id_curl"
- class="form-group 
- "
- ng_show="is_device()"
- ><label for="id_curl" class="control-label col-sm-3 requiredField">
- CURL<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="_edit_obj.curl" required="True" type="text" value="ssh://" /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
+ </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="_edit_obj.comment" type="text" /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
  IP Info
  </label><div class='col-sm-9 form-control-static'>
  {{ get_ip_info() }}
@@ -332,6 +327,12 @@
  "
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="_edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
+ </label></div></div></div></fieldset><fieldset 
+ ><legend>IPMI settings</legend><div class="form-group"><div id="div_id_ipmi_capable"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="_edit_obj.ipmi_capable" type="checkbox" />
+ IPMI cabaple
  </label></div></div></div></fieldset><fieldset 
  ><legend>Info</legend><div 
  class="row" ><div 
@@ -952,20 +953,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  Device group<span class="asteriskField">*</span></label><div class="controls col-sm-8"><ui-select ng-model='edit_obj.device_group' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select the device group'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in rest_data.device_group | filter:ignore_cdg| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></div></div></fieldset><fieldset 
  ><legend>Additional settings</legend><div 
  class="row" ><div 
- class="col-md-2" ><div class="form-group"><div id="div_id_change_curl"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_curl" class=""><input class="checkboxinput checkbox" id="id_change_curl" name="change_curl" ng-model="edit_obj.change_curl" type="checkbox" />
- Curl
- </label></div></div></div></div><div 
- class="col-md-10" ><div id="div_id_curl"
- class="form-group 
- "
- ng_show="edit_obj.change_curl"
- ><label for="id_curl" class="control-label col-sm-3">
- Curl
- </label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_curl" name="curl" ng-model="edit_obj.curl" type="text" /> </div></div></div></div><div 
- class="row" ><div 
  class="col-md-2" ><div class="form-group"><div id="div_id_change_domain_tree_node"
  class="checkbox
  "
@@ -1063,6 +1050,20 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="edit_obj.change_store_rrd_data"
  ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
+ </label></div></div></div></div></div><div 
+ class="row" ><div 
+ class="col-md-2" ><div class="form-group"><div id="div_id_change_ipmi_capable"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_change_ipmi_capable" name="change_ipmi_capable" ng-model="edit_obj.change_ipmi_capable" type="checkbox" />
+ IPMI capable
+ </label></div></div></div></div><div 
+ class="col-md-10" ><div class="form-group"><div id="div_id_ipmi_capable"
+ class="checkbox
+ "
+ ng_show="edit_obj.change_ipmi_capable"
+ ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
+ IPMI cabaple
  </label></div></div></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value="Modify many"
@@ -1751,11 +1752,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_device_group" class="control-label col-sm-3 requiredField">
  Device group<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.device_group' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select the device group'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in rest_data.device_group | filter:ignore_cdg| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset><fieldset 
- ><legend>Additional settings</legend><div id="div_id_curl"
- class="form-group 
- "
- ><label for="id_curl" class="control-label col-sm-3 requiredField">
- CURL<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="edit_obj.curl" required="True" type="text" value="ssh://" /> </div></div><div id="div_id_domain_tree_node"
+ ><legend>Additional settings</legend><div id="div_id_domain_tree_node"
  class="form-group 
  "
  ><label for="id_domain_tree_node" class="control-label col-sm-3 requiredField">
@@ -1788,6 +1785,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enable_perfdata" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox" />
  Enable perfdata, check IPMI and SNMP
+ </label></div></div></div><div class="form-group"><div id="div_id_ipmi_capable"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
+ IPMI cabaple
  </label></div></div></div></div><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_store_rrd_data"
  class="checkbox

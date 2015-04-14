@@ -28,8 +28,8 @@ device_module = angular.module(
      "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout,
-     $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
-     icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects) ->
+    $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
+    icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
@@ -46,10 +46,10 @@ device_module = angular.module(
             # short, full, default
             ["tln", "TLN", false, "Show top level node"]
             ["rrd_store", "RRD store", false, "Show if sensor data is store on disk"]
+            ["ipmi_capable", "IPMI capable", false, "Device is IPMI capable"],
             ["passwd", "Password", false, "Show if a password is set"]
             ["mon_master", "MonMaster", false, "Show monitoring master"]
             ["boot_master", "BootMaster", false, "Show boot master"]
-            ["curl", "cURL", false, "Show cluster URL"]
         ]
         $scope.column_list = [
             ['name', 'Name'],
@@ -74,7 +74,7 @@ device_module = angular.module(
         $scope.$watch(
                 () -> $scope.entries,
                 () ->
-                    $scope.entries_filtered = (entry for entry in $scope.entries when entry._show == true) 
+                    $scope.entries_filtered = (entry for entry in $scope.entries when entry._show == true)
                 true)
         $scope.new_devsel = (_dev_sel) ->
             $scope.sel_cache = _dev_sel
@@ -117,7 +117,7 @@ device_module = angular.module(
                     else
                         cur_f = $scope.rest_data[$scope._array_name]
                     $scope.edit_obj.put(rest_entry.options).then(
-                        (data) -> 
+                        (data) ->
                             $scope.my_modal.close()
                             icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                             if $scope.edit_obj.root_passwd
@@ -161,18 +161,6 @@ device_module = angular.module(
                     modal.getModal().find(".modal-body").css("max-height", height)
                 onshown: () =>
                     $scope.modal_active = true
-            #$scope.edit_div.simplemodal
-            #    #opacity      : 50
-            #    position     : [event.pageY, event.pageX]
-            #    #autoResize   : true
-            #    #autoPosition : true
-            #    onShow: (dialog) =>
-            #        dialog.container.draggable()
-            #        $("#simplemodal-container").css("height", "auto")
-            #        $scope.modal_active = true
-            #    onClose: (dialog) =>
-            #        $.simplemodal.close()
-            #        $scope.modal_active = false
         $scope.edit_many = (event) ->
             $scope._array_name = "device_many"
             edit_obj = {
@@ -251,7 +239,7 @@ device_module = angular.module(
             if $scope._array_name == "device"
                 new_obj.selected = true
                 md_obj = _.find($scope.entries, (obj) ->
-                    return (obj.is_meta_device == true) and (obj.device_group == new_obj.device_group) 
+                    return (obj.is_meta_device == true) and (obj.device_group == new_obj.device_group)
                 )
                 # hm, fishy code, sometimes strange behaviour
                 $scope.entries.splice(_.indexOf($scope.entries, md_obj) + 1, 0, new_obj)
@@ -274,6 +262,7 @@ device_module = angular.module(
                 "enabled" : true
                 "enable_perfdata": true
                 "store_rrd_data": true
+                "ipmi_capable": false
                 "flap_detection_enabled": true
             }
             if a_name == "device_group"
@@ -283,7 +272,6 @@ device_module = angular.module(
             else
                 new_obj.name = "dev"
                 new_obj.comment = "new device"
-                new_obj.curl = "ssh://"
                 new_obj.device_type = (entry.idx for entry in $scope.rest_data.device_type when entry.identifier == "H")[0]
                 if parent_obj
                     new_obj.device_group = parent_obj.idx
@@ -300,7 +288,7 @@ device_module = angular.module(
                 }
                 success : (xml) ->
                     icswParseXMLResponseService(xml)
-                   
+
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.new_devsel(args[0])
@@ -315,7 +303,6 @@ device_module = angular.module(
                         st_attrs['passwd'] = ""
                         st_attrs['mon_master'] = ""
                         st_attrs['boot_master'] = ""
-                        st_attrs['curl'] = ""
                         if obj.device_group_obj.cluster_device_group
                             new_el = $compile($templateCache.get("device_tree_cdg_row.html"))
                             st_attrs['name'] = obj.device_group_obj.name
@@ -339,10 +326,10 @@ device_module = angular.module(
                         st_attrs['type'] = array_lookupFilter(obj.device_type, $scope.rest_data.device_type, "description")
                         st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.domain_tree_node, $scope.rest_data.domain_tree_node))
                         st_attrs['rrd_store'] = obj.store_rrd_data
+                        st_attrs['ipmi_capable'] = obj.ipmi_capable
                         st_attrs['passwd'] = obj.root_passwd_set
                         st_attrs['mon_master'] = array_lookupFilter(obj.monitor_server, $scope.rest_data.monitor_server, "full_name_wt")
                         st_attrs['boot_master'] = array_lookupFilter(obj.bootserver, $scope.rest_data.mother_server, "full_name")
-                        st_attrs['curl'] = obj.curl
                 obj.st_attrs = st_attrs
 ]).directive("icswDeviceTreeOverview", ["$templateCache", ($templateCache) ->
     return {
