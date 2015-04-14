@@ -28,17 +28,23 @@ angular.module(
     (icswConfigKpiDataService, d3_service, $timeout) ->
         return {
             restrict: "E"
-            templateNamespace: "svg"
-            replace: true
+            #templateNamespace: "svg"
+            #replace: true
             template: """
-<svg width="800" height="600"></svg>
+<div>
+    <svg width="600" height="600" class="kpi-visualisation-svg" style="float: left"></svg>
+    <div style="float: left">
+        obj:
+        {{a}}
+    </div>
+</div>
 """
             scope:
                 kpiIdx: '&kpiIdx'
             link: (scope, el, attrs) ->
 
                 d3_service.d3().then((d3) ->
-                    scope.svg_el = el[0]
+                    scope.svg_el = el[0].getElementsByClassName("kpi-visualisation-svg")[0]
                     scope.svg = d3.select(scope.svg_el)
                         .append("g")
                         .attr("transform", "translate(10,-30)")
@@ -83,25 +89,46 @@ angular.module(
                                     .enter()
                                     .append("g")
                                     .attr("class", "node")
+                                    .style("cursor", "pointer")
                                     # diagonal:
                                     #.attr("transform", (d) -> return "translate(" + d.y + "," + d.x + ")")
                                     .attr("transform", (d) -> return "translate(" + d.x + "," + (height - d.y) + ")")
 
-                                node.append("circle")
-                                    .attr("r", 4.5)
+                                #node.append("circle")
+                                #    .attr("r", 4.5)
 
-                                node.append("text")
-                                    #.attr("dx", (d) -> return if d.children then -8 else 8)
-                                    .attr("dx", (d) -> return 8)
-                                    .attr("dy", 3)
-                                    #.style("text-anchor", (d) -> return if d.children then "end" else "start")
-                                    .style("text-anchor", (d) -> return "start")
-                                    .text((d) ->
-                                        if d.objects.length > 3
-                                            return "#{d.objects.length} objects"
-                                        else
-                                            return "{" + (d.host_name for d in d.objects).join("\n") + "}"
+                                #node.append("text")
+                                #    #.attr("dx", (d) -> return if d.children then -8 else 8)
+                                #    .attr("dx", (d) -> return 8)
+                                #    .attr("dy", 3)
+                                #    #.style("text-anchor", (d) -> return if d.children then "end" else "start")
+                                #    .style("text-anchor", (d) -> return "start")
+
+                                node.html((d) ->
+                                        res = "<circle r=\"4.5\"></circle>"
+                                        cur_height = 3
+                                        i = 0
+                                        for ch in d.objects
+                                            if i > 2 # only 3 elems
+                                                res += "<text dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
+                                                break
+                                            res += "<text dx=\"8\" dy=\"#{cur_height}\"> #{ch} </text>"
+                                            cur_height += 14
+                                            i += 1
+                                        return res
                                     )
+                                    #.text((d) ->
+                                    #    if d.objects.length > 3
+                                    #        return "#{d.objects.length} objects"
+                                    #    else
+                                    #        return "{" + (d.host_name for d in d.objects).join("\n") + "}"
+                                    #).each((d) ->
+                                    #    for ch in d.objects
+                                    #        d.append("text")
+                                    #             .text((e) -> e)
+                                    #)
+
+
 
                                 node.on("click", scope.on_node_click)
                                 node.on("mouseenter", scope.on_mouse_enter)
@@ -111,8 +138,10 @@ angular.module(
                     console.log 'click', node
                 scope.on_mouse_enter = (node) ->
                     console.log 'enter', node
+                    scope.a = node.objects
                 scope.on_mouse_leave = (node) ->
                     console.log 'leave', node
+                    scope.a = undefined
 
                 scope.$watch(
                     () -> return scope.kpiIdx()
