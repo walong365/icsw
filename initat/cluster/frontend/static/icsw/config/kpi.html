@@ -3,7 +3,7 @@
 
     <h2>
         Key performance indicators
-        <icsw-tools-button type="create" ng-click="create_new_kpi()"></icsw-tools-button>
+        <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
         </h2>
 
     <div class="alert alert-danger"><strong>TODO</strong>: add to reversion in future
@@ -142,7 +142,8 @@
 
     <div ng-show="kpi.length == 0">
         <alert type="info">
-            No KPIs defined. Please define one using the 'create' button.
+            No KPIs defined.
+            <span ng-show="acl_create(null, 'backbone.kpi.kpi')">Please define one using the 'create' button.</span>
         </alert>
     </div>
     <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto" ng-show="kpi.length>0">
@@ -175,8 +176,8 @@
                 </div>
             </td>
             <td>
-                <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)"></icsw-tools-button>
-                <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)"></icsw-tools-button>
+                <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)" ng-show="acl_modify(null, 'backbone.kpi.kpi')"></icsw-tools-button>
+                <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)" ng-show="acl_delete(null, 'backbone.kpi.kpi')"></icsw-tools-button>
             </td>
         </tr>
     </table>

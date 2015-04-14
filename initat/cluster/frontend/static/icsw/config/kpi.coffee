@@ -5,8 +5,9 @@ angular.module(
         "icsw.config.category_tree", "icsw.tools.utils",
     ]
 ).controller("icswConfigKpiCtrl", [
-    "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout",
-    ($scope, ICSW_URLS, icswConfigKpiDataService, $timeout) ->
+    "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "access_level_service"
+    ($scope, ICSW_URLS, icswConfigKpiDataService, $timeout, access_level_service) ->
+        access_level_service.install($scope)
 
         cur_edit_kpi = undefined
 
@@ -134,13 +135,17 @@ angular.module(
         link: (scope, el, attrs) ->
     }
 ]).directive("icswConfigKpiShowKpis",
-    ["icswConfigKpiDataService", "icswConfigKpiDialogService", "icswToolsSimpleModalService",
-    (icswConfigKpiDataService, icswConfigKpiDialogService, icswToolsSimpleModalService) ->
+    ["icswConfigKpiDataService", "icswConfigKpiDialogService", "icswToolsSimpleModalService", "blockUI",
+    (icswConfigKpiDataService, icswConfigKpiDialogService, icswToolsSimpleModalService, blockUI) ->
         return {
             restrict : "E"
             templateUrl: "icsw.config.kpi.show_kpis"
             link: (scope, el, attrs) ->
                 icswConfigKpiDataService.add_to_scope(scope)
+                blockUI.start()
+                icswConfigKpiDataService.get_initial_load_promise().then(() ->
+                    blockUI.stop()
+                )
                 scope.modify_kpi = (kpi) ->
                     icswConfigKpiDialogService.show_modify_kpi_dlg(scope, kpi)
                 scope.delete_kpi = (kpi) ->
@@ -303,6 +308,7 @@ angular.module(
             available_device_categories: []
             available_monitoring_categories: []
             selected_device_monitoring_category_tuple: []
+            time_range: 'none'
             enabled: true
         }
         show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
@@ -319,8 +325,12 @@ angular.module(
             )
         show_kpi_dlg(scope, kpi, KPI_DLG_MODE_MODIFY)
     return ret
-]).service("icswConfigKpiDataService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
-    get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
+]).service("icswConfigKpiDataService", ["Restangular", "ICSW_URLS", "$q", (Restangular, ICSW_URLS, $q) ->
+    promises = []
+    get_rest = (url, opts={}) ->
+        promise = Restangular.all(url).getList(opts)
+        promises.push(promise)
+        return promise.$object
 
     ret = {
         category: get_rest(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
@@ -328,6 +338,8 @@ angular.module(
         kpi_data_source_tuple: get_rest(ICSW_URLS.REST_KPI_DATA_SOURCE_TUPLE_LIST.slice(1))
     }
 
+    ret.get_initial_load_promise = () ->
+        return $q.all(promises)
     ret.get_kpi = (idx) ->
         return _.find(ret.kpi, (elem) -> return elem.idx == idx)
     ret.get_cat = (idx) ->
