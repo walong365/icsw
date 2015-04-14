@@ -4,12 +4,21 @@
     <h2>
         Key performance indicators
         <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
-        </h2>
+    </h2>
 
-    <div class="alert alert-danger"><strong>TODO</strong>: add to reversion in future
-    </div>
 
-    <icsw-config-kpi-show-kpis></icsw-config-kpi-show-kpis>
+    <tabset>
+        <tab heading="Configuration">
+            <div class="alert alert-danger"><strong>TODO</strong>: add to reversion in future
+            </div>
+
+            <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
+        </tab>
+        <tab heading="Evaluation" active="true">
+            <icsw-config-kpi-evaluation-table></icsw-config-kpi-evaluation-table>
+        </tab>
+    </tabset>
+
 
 </script>
 
@@ -138,7 +147,7 @@
     </accordion>
 </script>
 
-<script type="text/ng-template" id="icsw.config.kpi.show_kpis">
+<script type="text/ng-template" id="icsw.config.kpi.configuration_table">
 
     <div ng-show="kpi.length == 0">
         <alert type="info">
@@ -182,4 +191,45 @@
         </tr>
     </table>
 
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.evaluation_table">
+    <div ng-show="kpi.length == 0">
+        <alert type="info">
+            No KPIs defined.
+        </alert>
+    </div>
+    <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed icsw-table-striped-4" style="width: auto" ng-show="kpi.length>0">
+        <tr>
+            <th st-sort="name">Name</th>
+            <th st-sort="formula">Formula</th>
+            <th>Result</th>
+            <th>Last calculation</th>
+        </tr>
+        <tr ng-repeat-start="entry in entries_displayed" ng-show="entry.enabled">
+            <td>{{entry.name}}</td>
+            <td>
+                <div ng-show="!entry._show_full_formula">
+                    <pre>{{entry.formula | limit_text:100:false }} <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = true"
+                        ng-show="entry.formula.length > 100" >show full formula</button> </pre>
+                </div>
+
+                <div ng-show="entry._show_full_formula">
+                    <pre>{{entry.formula}}</pre>
+                    <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
+                </div>
+            </td>
+            <td>{{get_result_from_kpi_entry(entry)}}</td>
+            <td>
+                <div ng-show="entry.result">
+                    {{entry.result.date | datetime_concise}}
+                </div>
+            </td>
+        </tr>
+        <tr ng-repeat-end ng-show="entry.enabled">
+            <td colspan="99" style="border-top-width: 0">
+                <icsw-config-kpi-evaluation-graph kpi-idx="entry.idx"></icsw-config-kpi-evaluation-graph>
+            </td>
+        </tr>
+    </table>
 </script>

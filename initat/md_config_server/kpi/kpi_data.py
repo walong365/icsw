@@ -76,9 +76,12 @@ class KpiData(object):
 
             timespan_hosts = set(timespan_hosts_qs)
 
-            timespan_services_qs = timespan_services_qs.filter(
-                reduce(operator.or_, (Q(device_id=dev_id, service_id=mcc.pk) for (dev_id, mcc) in dev_mon_tuples))
-            )
+            if dev_mon_tuples:
+                timespan_services_qs = timespan_services_qs.filter(
+                    reduce(operator.or_, (Q(device_id=dev_id, service_id=mcc.pk) for (dev_id, mcc) in dev_mon_tuples))
+                )
+            else:
+                timespan_services_qs = []
 
             timespan_services = set(timespan_services_qs)
         else:
@@ -204,7 +207,8 @@ class KpiData(object):
 
     def _get_memcached_data(self):
 
-        device_full_names = {entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')}
+        device_full_names = \
+            {entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')}
 
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
         host_rrd_data = {}
@@ -317,4 +321,3 @@ class KpiData(object):
 
         # self.log("got host check results: {}".format(ret))
         return ret
-

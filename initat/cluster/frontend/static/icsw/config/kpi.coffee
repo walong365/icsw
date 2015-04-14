@@ -2,7 +2,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.config.category_tree", "icsw.tools.utils",
+        "icsw.config.category_tree", "icsw.tools.utils", "icsw.d3",
     ]
 ).controller("icswConfigKpiCtrl", [
     "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "access_level_service"
@@ -134,12 +134,12 @@ angular.module(
         templateUrl: "icsw.config.kpi.dev_mon_linker"
         link: (scope, el, attrs) ->
     }
-]).directive("icswConfigKpiShowKpis",
+]).directive("icswConfigKpiConfigurationTable",
     ["icswConfigKpiDataService", "icswConfigKpiDialogService", "icswToolsSimpleModalService", "blockUI",
     (icswConfigKpiDataService, icswConfigKpiDialogService, icswToolsSimpleModalService, blockUI) ->
         return {
             restrict : "E"
-            templateUrl: "icsw.config.kpi.show_kpis"
+            templateUrl: "icsw.config.kpi.configuration_table"
             link: (scope, el, attrs) ->
                 icswConfigKpiDataService.add_to_scope(scope)
                 blockUI.start()
@@ -325,6 +325,113 @@ angular.module(
             )
         show_kpi_dlg(scope, kpi, KPI_DLG_MODE_MODIFY)
     return ret
+
+]).directive("icswConfigKpiEvaluationTable",
+    ["icswConfigKpiDataService", "icswConfigKpiDialogService",  "d3_service",
+    (icswConfigKpiDataService, icswConfigKpiDialogService, d3_service) ->
+        return {
+            restrict : "E"
+            templateUrl: "icsw.config.kpi.evaluation_table"
+            link: (scope, el, attrs) ->
+                icswConfigKpiDataService.add_to_scope(scope)
+        }
+]).directive("icswConfigKpiEvaluationGraph",
+    ["icswConfigKpiDataService", "d3_service", "$timeout",
+    (icswConfigKpiDataService, d3_service, $timeout) ->
+        return {
+            restrict: "E"
+            templateNamespace: "svg"
+            replace: true
+            template: """
+<svg width="800" height="600"></svg>
+"""
+            scope:
+                kpiIdx: '&kpiIdx'
+            link: (scope, el, attrs) ->
+
+                d3_service.d3().then((d3) ->
+                    scope.svg_el = el[0]
+                    scope.svg = d3.select(scope.svg_el)
+                        .append("g")
+                        .attr("transform", "translate(10,-30)")
+                    scope.tree = d3.layout.tree()
+                        .size([400, 550])
+                        .children((node) -> return if node.parents? then node.parents else null)
+
+                )
+                scope.tree = undefined
+
+                height = 600
+
+                scope.redraw = () ->
+                    if !scope.tree?
+                        $timeout(scope.redraw, 200)
+                    else
+                        if scope.kpiIdx()?
+                            kpi = icswConfigKpiDataService.get_kpi(scope.kpiIdx())
+                            if kpi.enabled  # only for enabled's
+                                data = JSON.parse(kpi.result.json)
+                                console.log 'drawing', kpi, data
+                                nodes = scope.tree.nodes(data)
+                                links = scope.tree.links(nodes)
+
+                                diagonal = d3.svg.diagonal()
+                                    .projection((d) -> return [d.x, height - d.y])
+
+                                link = scope.svg.selectAll(".link")
+                                    .data(links)
+                                    .enter()
+                                    .append("g")
+                                    .attr("class", "link")
+
+                                link.append("path")
+                                    .attr("fill", "none")
+                                    .attr("stroke", "#ff8888")
+                                    .attr("stroke-width", "1.5px")
+                                    .attr("d", diagonal);
+
+                                node = scope.svg.selectAll(".node")
+                                    .data(nodes)
+                                    .enter()
+                                    .append("g")
+                                    .attr("class", "node")
+                                    # diagonal:
+                                    #.attr("transform", (d) -> return "translate(" + d.y + "," + d.x + ")")
+                                    .attr("transform", (d) -> return "translate(" + d.x + "," + (height - d.y) + ")")
+
+                                node.append("circle")
+                                    .attr("r", 4.5)
+
+                                node.append("text")
+                                    #.attr("dx", (d) -> return if d.children then -8 else 8)
+                                    .attr("dx", (d) -> return 8)
+                                    .attr("dy", 3)
+                                    #.style("text-anchor", (d) -> return if d.children then "end" else "start")
+                                    .style("text-anchor", (d) -> return "start")
+                                    .text((d) ->
+                                        if d.objects.length > 3
+                                            return "#{d.objects.length} objects"
+                                        else
+                                            return "{" + (d.host_name for d in d.objects).join("\n") + "}"
+                                    )
+
+                                node.on("click", scope.on_node_click)
+                                node.on("mouseenter", scope.on_mouse_enter)
+                                node.on("mouseleave", scope.on_mouse_leave)
+
+                scope.on_node_click = (node) ->
+                    console.log 'click', node
+                scope.on_mouse_enter = (node) ->
+                    console.log 'enter', node
+                scope.on_mouse_leave = (node) ->
+                    console.log 'leave', node
+
+
+                scope.$watch(
+                    () -> return scope.kpiIdx()
+                    () -> scope.redraw()
+                )
+        }
 ]).service("icswConfigKpiDataService", ["Restangular", "ICSW_URLS", "$q", (Restangular, ICSW_URLS, $q) ->
     promises = []
     get_rest = (url, opts={}) ->
