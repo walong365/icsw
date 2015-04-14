@@ -1429,7 +1429,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.str.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>String var '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>String var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -1444,7 +1444,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_value" class="control-label col-sm-3">
  Value
- </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_value" name="value" ng-model="_edit_obj.value" rows="10"></textarea></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_value" name="value" ng-model="_edit_obj.value" rows="10"></textarea></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_str'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2368,7 +2368,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='mon.check.command.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Check command '{{ _edit_obj.name }}'</h2><tabset><tab heading='basic setup'><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Check command '{{ _edit_obj.name }}'</h2><tabset><tab heading='Basic setup'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -2442,7 +2442,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_event_handler" class=""><input class="checkboxinput checkbox" id="id_is_event_handler" name="is_event_handler" ng-model="_edit_obj.is_event_handler" type="checkbox" />
  Is event handler
  </label></div></div></div></div></div></fieldset></tab><tab heading='Categories ({{ num_cats }})' ng-show='num_cats'><fieldset 
- ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{_edit_obj }}' mode='mon'></div></fieldset></tab></tabset><div class="form-actions"><input type="submit"
+ ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{_edit_obj }}' mode='mon'></div></fieldset></tab><tab heading='History'><icsw-history-model-history style='config' model="'mon_check_command'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2568,7 +2568,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.script.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Config script '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Config script '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -2593,7 +2593,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="_edit_obj.enabled" type="checkbox" />
  Enabled
- </label></div></div></div></div></div></fieldset><div class="form-actions"><input type="submit"
+ </label></div></div></div></div></div></fieldset></tab><tab heading='History'><icsw-history-model-history on-revert='on_script_revert(get_change_list)'style='config' model="'config_script'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3040,7 +3040,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></div></form>
 </script>
 <script type='text/ng-template' id='config.int.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Integer var '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Integer var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -3055,7 +3055,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_value" class="control-label col-sm-3">
  Value
- </label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_value" name="value" ng-model="_edit_obj.value" type="number" /> </div></div></fieldset><div ng-bind-html='show_config_var_help()'></div><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_value" name="value" ng-model="_edit_obj.value" type="number" /> </div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_int'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3241,7 +3241,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.bool.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Bool var '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Bool var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -3253,7 +3253,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ><label for="id_description" class="control-label col-sm-3 requiredField">
  Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div class='form-group'><label class='control-label col-sm-3'>Value</label><div class='controls col-sm-7'><input type='button'
  ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
- ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'></input></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div><div class="form-actions"><input type="submit"
+ ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'></input></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_bool'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"

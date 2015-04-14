@@ -143,7 +143,7 @@ class tree_node
         for child in @children
             @_sel_descendants += child.recalc_sel_descendants()
         return @_sel_descendants
-    recalc_sel_childs: () => 
+    recalc_sel_childs: () =>
         @_sel_childs = (true for entry in @children when entry.selected).length
         (child.recalc_sel_childs() for child in @children)
     get_label_class: () =>
@@ -156,10 +156,16 @@ class tree_node
     all_selectable_descendant_and_self_selected: () =>
         if @is_selectable() and not @selected
             return false
-        for child in @children
-            if ! child.all_selectable_descendant_and_self_selected()
+        if not @children.length
+            if @is_selectable and @selected
+                return true
+            else
                 return false
-        return true
+        else
+            for child in @children
+                if !child.all_selectable_descendant_and_self_selected()
+                    return false
+            return true
 
 
 class tree_config

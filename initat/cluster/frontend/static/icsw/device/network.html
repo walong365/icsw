@@ -120,7 +120,9 @@
         {{ ndip_obj.full_name }}
     </td>
     <td>
-        {{ ndip_obj.active_scan || "---" }}
+        <button type="button" class="btn btn-xs btn-warning" data-spinner-size="12" ng-show="ndip_obj.active_scan" ladda="ndip_obj.active_scan" data-style="expand-left">
+            <span>{{ ndip_obj.active_scan }}</span>
+        </button>
     </td>
     <td>
         <input
@@ -144,9 +146,8 @@
         {{ get_num_peers_dev(ndip_obj) }}
     </td>
     <td>
-        <span class="label label-info" ng-repeat="obj in ndip_obj.snmp_schemes">
-            {{ obj.full_name }}
-            <span class="glyphicon glyphicon-remove"></span>
+        <span ng-repeat="obj in ndip_obj.snmp_schemes">
+            <span class="label label-info">{{ obj.full_name }}</span>
         </span>
     </td>
     <td>

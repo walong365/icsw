@@ -648,6 +648,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                 )
                 raise StopIteration
             else:
+                _xml.attrib["uuid"] = _dev.uuid
                 # store values in host_info (and memcached)
                 # host_uuid is uuid or name
                 if simple:

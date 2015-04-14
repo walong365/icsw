@@ -155,7 +155,7 @@ install:
 	for file in rms-server.py ; do \
 	    install ${INSTALL_OPTS} $${file} ${DESTDIR}/${SPREFIX}; \
 	done
-	${INSTALL} ${INSTALL_OPTS} openmpi_source_post_install.py ${DESTDIR}/${ICSW_BASE}/sbin/pis
+	${INSTALL} ${INSTALL_OPTS} hpc_library_post_install.py ${DESTDIR}/${ICSW_BASE}/sbin/pis
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_pre_start.sh ${DESTDIR}/opt/cluster/sbin
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_post_install.sh ${DESTDIR}/opt/cluster/sbin
 	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_BASE}/sbin
@@ -196,7 +196,6 @@ install:
 	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collserver.py
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_BASE}/sbin/clustermanage.py
-	${LN} -s ${ICSW_BASE}/sbin/pis/openmpi_source_post_install.py ${DESTDIR}/${ICSW_BASE}/sbin/pis/mpich_source_post_install.py
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}

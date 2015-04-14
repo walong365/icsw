@@ -293,8 +293,6 @@ angular.module(
                     cur_node = lut[pn]
                     if $scope.mv_dev_pk not in cur_node._dev_pks
                         cur_node._dev_pks.push($scope.mv_dev_pk)
-                    if pn == entry.name and _latest_is_entry
-                        true
                 else
                     # override name if display_name is set and this is the structural entry at the bottom
                     # structural
@@ -308,6 +306,8 @@ angular.module(
                             _node_type : "s"
                             _show_select: false
                             build_info: ""
+                            # marker: this is not an mve entry
+                            _is_mve: false
                         }
                     )
                     $scope.num_struct++
@@ -344,25 +344,30 @@ angular.module(
             else
                 _sel = false
             if g_key of lut
+                # rewrite structural entry as mve
                 cur_node = lut[g_key]
-                $scope.num_struct--
-                $scope.num_mve++
-                cur_node._dev_pks = []
+                if not cur_node._is_mve
+                    # change marker
+                    cur_node._is_mve = true
+                    cur_node._dev_pks = []
+                    $scope.num_struct--
+                    $scope.num_mve++
             else
                 cur_node = $scope.g_tree.new_node(
                     {
                         expand : false
                         selected: _sel
                         _dev_pks: []
+                        _is_mve: true
                     }
                 )
                 $scope.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, $scope._child_sort)
             cur_node._key_pair = [top.key, entry.key]
-            cur_node.node= entry
             cur_node._display_name = $scope._expand_info(entry.info, g_key)
-            cur_node._dev_pks.push($scope.mv_dev_pk)
+            if $scope.mv_dev_pk not in cur_node._dev_pks
+                cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
             cur_node.build_info = entry.build_info
             cur_node.folder = false
@@ -391,30 +396,15 @@ angular.module(
                 for _sub in entry.mvvs
                     $scope._add_value_entry(_sub, lut, _struct, entry)
 
-                #_tag = entry._tag
-                #if _tag in ["mve", "cve"]
-                #    # add machine vector entry or compound data
-                #    $scope._add_structural_entry(entry, lut, root_node)
-                #else if _tag in ["pde", "mvl"]
-                #    # add performance data header
-                #    if _tag == "mvl" and entry.info and entry.name.match(/\.snmp_/g)
-                #        # hack to beautify snmp network entries
-                #        entry.display_name = "[S] #{entry.info}"
-                #    _pde_mvl = $scope._add_structural_entry(entry, lut, root_node)
-                #    # add performance data values
-                #    for _sub in entry._nodes
-                #        $scope._add_value_entry(_sub, lut, _pde_mvl, entry)
-                #else
-                #    # unhandled entry
-                #    true
-
         $scope.update_search = () ->
             if $scope.cur_search_to
                 $timeout.cancel($scope.cur_search_to)
             $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
+
         $scope.clear_selection = () =>
             $scope.searchstr = ""
             $scope.set_search_filter()
+
         $scope.set_search_filter = () =>
             if $scope.searchstr
                 try

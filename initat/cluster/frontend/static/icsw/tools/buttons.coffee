@@ -59,6 +59,10 @@ angular.module(
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = "download"
             ret_obj.icon_class = "fa fa-download"
+        else if type == "revert"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = "revert"
+            ret_obj.icon_class = "fa fa-undo"
         else
             console.error "Invalid button type: #{type}"
         return ret_obj
