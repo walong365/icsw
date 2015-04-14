@@ -24,13 +24,22 @@
 
 import json
 import logging
+import datetime
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q, ForeignKey
 from django.apps import apps
+from django.forms import model_to_dict
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.http.response import HttpResponse
+import itertools
+from initat.cluster.backbone.models.model_history import icsw_deletion_record
+from rest_framework.response import Response
+import reversion
+from rest_framework.generics import ListAPIView
+import initat.cluster
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
     user_object_permission, device
@@ -41,6 +50,8 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 import config_tools
 import server_command
+from initat.cluster.frontend.rest_views import rest_logging
+from initat.cluster.frontend.common import duration_utils
 
 
 logger = logging.getLogger("cluster.user")
@@ -297,3 +308,5 @@ class get_device_ip(View):
             ip = "127.0.0.1"  # try fallback (it might not work, but it will not make things more broken)
 
         return HttpResponse(json.dumps({"ip": ip}), content_type="application/json")
+
+

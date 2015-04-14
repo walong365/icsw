@@ -141,7 +141,7 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server" version_file="%{INIT_BASE}/rms/sge_server_version.py">
+    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server" version_file="%{INIT_BASE}/rms/version.py">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
@@ -435,7 +435,19 @@ def check_system(opt_ns):
 
 def get_default_ns():
     def_ns = argparse.Namespace(
-        all=True, instance=[], system=[], server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True, no_database=False, version=True,
+        all=True,
+        instance=[],
+        system=[],
+        server=[],
+        node=[],
+        runlevel=True,
+        memory=True,
+        database=True,
+        pid=True,
+        time=True,
+        thread=True,
+        no_database=False,
+        version=True,
     )
     return def_ns
 

@@ -247,6 +247,8 @@ MIDDLEWARE_CLASSES = (
     "backbone.middleware.database_debug",
     # "django.middleware.gzip.GZipMiddleware",
     "pipeline.middleware.MinifyHTMLMiddleware",
+
+    "reversion.middleware.RevisionMiddleware",
 )
 
 if not DEBUG:
@@ -541,7 +543,8 @@ if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
     try:
-        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY, PASSWORD_CHARACTER_COUNT, AUTO_CREATE_NEW_DOMAINS, LOGIN_SCREEN_TYPE  # @UnresolvedImport
+        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY,\
+            PASSWORD_CHARACTER_COUNT, AUTO_CREATE_NEW_DOMAINS, LOGIN_SCREEN_TYPE  # @UnresolvedImport
     except:
         pass
     else:

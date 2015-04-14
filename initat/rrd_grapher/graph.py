@@ -620,7 +620,9 @@ class DataSource(object):
             Q(full_key__in=_query_keys) &
             Q(mv_struct_entry__machine_vector__device__in=dev_pks)
         ).select_related("mvstructentry")
-        _mvv_dict = {_mvv.full_key: _mvv for _mvv in _mvv_list}
+        _mvv_dict = {}
+        for _mvv in _mvv_list:
+            _mvv_dict.setdefault(_mvv.full_key, []).append(_mvv)
         self.log(
             "init datasource for {} / {}, found {}".format(
                 logging_tools.get_plural("device", len(dev_pks)),
@@ -634,10 +636,10 @@ class DataSource(object):
         for _flat in self.flat_keys:
             _fk = full_graph_key(_flat)
             if _fk in _mvv_dict:
-                _mvv = _mvv_dict[_fk]
-                _mvs = _mvv.mv_struct_entry
-                _dev_pk = _mv_lut[_mvs.machine_vector_id]
-                self.__dict[(_dev_pk, _flat)] = [(_mvs, _mvv)]
+                for _mvv in _mvv_dict[_fk]:
+                    _mvs = _mvv.mv_struct_entry
+                    _dev_pk = _mv_lut[_mvs.machine_vector_id]
+                    self.__dict[(_dev_pk, _flat)] = [(_mvs, _mvv)]
         # color tables
         _color_tables = {}
         # second step: resolve compounds (its important to keep the order)
@@ -646,21 +648,21 @@ class DataSource(object):
             self.__colorizer.reset()
             for _entry in _cs:
                 if _entry["key"] in _mvv_dict:
-                    _mvv = _mvv_dict[_entry["key"]]
-                    _mvs = _mvv.mv_struct_entry
-                    _dev_pk = _mv_lut[_mvs.machine_vector_id]
                     if "color" in _entry and not _entry["color"].startswith("#"):
                         # lookup color table
                         _clr = _entry["color"]
                         if _clr not in _color_tables:
                             _color_tables[_clr] = self.__colorizer.simple_color_table(_clr)
                         _entry["color"] = _color_tables[_clr].color
-                    self.__dict.setdefault((_dev_pk, _c_key), []).append(
-                        (
-                            _mvs,
-                            _mvv.copy_and_modify(_entry),
+                    for _mvv in _mvv_dict[_entry["key"]]:
+                        _mvs = _mvv.mv_struct_entry
+                        _dev_pk = _mv_lut[_mvs.machine_vector_id]
+                        self.__dict.setdefault((_dev_pk, _c_key), []).append(
+                            (
+                                _mvs,
+                                _mvv.copy_and_modify(_entry),
+                            )
                         )
-                    )
 
     @property
     def flat_keys(self):
@@ -960,6 +962,7 @@ class RRDGraph(object):
         graph_list = E.graph_list()
         _job_add_dict = self._get_jobs(dev_dict)
         for _graph_line in graph_key_list:
+            self.log("starting graph_line")
             # iterate in case scale_y is True
             _iterate_line, _line_iteration = (True, 0)
             while _iterate_line:

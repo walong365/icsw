@@ -128,6 +128,7 @@ class config_str_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>String var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
@@ -137,6 +138,10 @@ class config_str_form(ModelForm):
         HTML(
             "<div ng-bind-html='show_config_var_help()'></div>",
         ),
+        HTML("</tab><tab heading='History'>"),
+        HTML("<icsw-history-model-history style='config' model=\"'config_str'\""
+             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+        HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
@@ -158,6 +163,7 @@ class config_int_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Integer var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
@@ -167,6 +173,10 @@ class config_int_form(ModelForm):
         HTML(
             "<div ng-bind-html='show_config_var_help()'></div>",
         ),
+        HTML("</tab><tab heading='History'>"),
+        HTML("<icsw-history-model-history style='config' model=\"'config_int'\""
+             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+        HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
@@ -188,6 +198,7 @@ class config_bool_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Bool var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
@@ -208,6 +219,10 @@ class config_bool_form(ModelForm):
         HTML(
             "<div ng-bind-html='show_config_var_help()'></div>",
         ),
+        HTML("</tab><tab heading='History'>"),
+        HTML("<icsw-history-model-history style='config' model=\"'config_bool'\""
+             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+        HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
@@ -229,6 +244,7 @@ class config_script_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Config script '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')"),
@@ -253,6 +269,11 @@ class config_script_form(ModelForm):
                 css_class="row",
             ),
         ),
+        HTML("</tab><tab heading='History'>"),
+        HTML("<icsw-history-model-history on-revert='on_script_revert(get_change_list)'"
+             "style='config' model=\"'config_script'\""
+             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+        HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )

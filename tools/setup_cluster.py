@@ -19,22 +19,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" database setup for NOCTUA / CORVUS """
+""" database setup for NOCTUA / CORVUS / NESTOR """
 
-from django.utils.crypto import get_random_string
 import argparse
 import commands
-import logging_tools
 import os
 import pwd
 import grp
-import process_tools
 import random
 import shutil
 import stat
 import string
 import sys
 import time
+import tempfile
+
+from django.utils.crypto import get_random_string
+import logging_tools
+import process_tools
+
 
 DB_PRESENT = {}
 LIB_DIR = "/opt/python-init/lib/python/site-packages"
@@ -45,13 +48,19 @@ MIGRATION_DIRS = [
     "initat/cluster/backbone",
     "initat/cluster/liebherr",
 ]
+# flag for autoupdate
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
+
+# which apps needs syncing
 SYNC_APPS = ["liebherr", "licadmin"]
 
 NEEDED_DIRS = ["/var/log/cluster"]
 
 BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models16")
+PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
+MODELS_DIR = os.path.join(BACKBONE_DIR, "models")
+MODELS_DIR_SAVE = os.path.join(BACKBONE_DIR, ".models_save")
+Z800_MODELS_DIR = os.path.join(BACKBONE_DIR, "0800_models")
 
 try:
     import psycopg2  # @UnresolvedImport
@@ -90,16 +99,19 @@ def check_local_settings():
         print("creating file {} with secret key".format(LS_FILE))
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
-        file(LS_FILE, "w").write("\n".join(
-            [
-                "SECRET_KEY = \"%s\"" % (SECRET_KEY),
-                "",
-            ]
-            ))
+        file(LS_FILE, "w").write(
+            "\n".join(
+                [
+                    "SECRET_KEY = \"{}\"".format(SECRET_KEY),
+                    "",
+                ]
+            )
+        )
     sys.path.remove(LS_DIR)
 
 
-def call_manage(args):
+def call_manage(args, **kwargs):
+    _output = kwargs.get("output", False)
     com_str = " ".join([os.path.join(LIB_DIR, "initat", "cluster", "manage.py")] + args)
     s_time = time.time()
     c_stat, c_out = commands.getstatusoutput(com_str)
@@ -113,14 +125,22 @@ def call_manage(args):
             c_stat))
         for _line in c_out.split("\n"):
             print("  {}".format(_line))
-        return False
+        if _output:
+            return False, c_out
+        else:
+            return False
     else:
-        print("success calling '{}' in {}".format(
-            com_str,
-            logging_tools.get_diff_time_str(e_time - s_time),
-            ))
+        print(
+            "success calling '{}' in {}".format(
+                com_str,
+                logging_tools.get_diff_time_str(e_time - s_time),
+            )
+        )
         # print c_out
-        return True
+        if _output:
+            return True, c_out
+        else:
+            return True
 
 
 def _input(in_str, default, **kwargs):
@@ -410,18 +430,18 @@ def get_pw(size=10):
 
 def check_for_pre17(opts):
     # BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-    if os.path.isdir(PRE_MODELES_DIR):
-        print("pre-1.7 models dir {} found".format(PRE_MODELES_DIR))
+    if os.path.isdir(PRE_MODELS_DIR):
+        print("pre-1.7 models dir {} found".format(PRE_MODELS_DIR))
         # first step: move 1.7 models / serializers away
         _move_dirs = ["models", "serializers"]
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
         # next step: move pre-models to current models
-        os.rename(PRE_MODELES_DIR, os.path.join(BACKBONE_DIR, "models"))
+        os.rename(PRE_MODELS_DIR, MODELS_DIR)
         # next step: remove all serializer relations from model files
-        for _entry in os.listdir(os.path.join(BACKBONE_DIR, "models")):
+        for _entry in os.listdir(MODELS_DIR):
             if _entry.endswith(".py"):
-                _path = os.path.join(BACKBONE_DIR, "models", _entry)
+                _path = os.path.join(MODELS_DIR, _entry)
                 new_lines = []
                 _add = True
                 for _line in file(_path, "r").readlines():
@@ -447,10 +467,47 @@ def check_for_pre17(opts):
         # next step: migrate backbone
         migrate_app("backbone", migrate_args=["--fake"])
         # next step: move pre-1.7 models dir away
-        os.rename(os.path.join(BACKBONE_DIR, "models"), os.path.join(BACKBONE_DIR, ".models_pre17"))
+        os.rename(os.path.join(MODELS_DIR), os.path.join(BACKBONE_DIR, ".models_pre17"))
         # next step: move 1.7 models back in place
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
+
+
+def check_for_0800(opts):
+    _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
+    if not _list_stat:
+        sys.exit(7)
+    applied = True if _list_out.count("[X] 0800_base") else False
+    if applied:
+        print("0800_base already applied")
+    else:
+        tmp_dir = tempfile.mkdtemp()
+        print("0800_base not reached, migrating to stable 0800 (tmp_dir is {})".format(tmp_dir))
+        # move away all migrations >= 0800
+        _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry.endswith(".py") and _entry[0:4].isdigit() and int(_entry[0:4]) >= 800]
+        print("moving away new migrations ({})".format(logging_tools.get_plural("file", len(_move_files))))
+        for _move_file in _move_files:
+            shutil.move(os.path.join(CMIG_DIR, _move_file), os.path.join(tmp_dir, _move_file))
+        # rename models dir
+        os.rename(MODELS_DIR, MODELS_DIR_SAVE)
+        os.rename(Z800_MODELS_DIR, MODELS_DIR)
+        # migrate
+        migrate_app("backbone")
+        # move back
+        os.rename(MODELS_DIR, Z800_MODELS_DIR)
+        os.rename(MODELS_DIR_SAVE, MODELS_DIR)
+        # move all files back from tmp_dir
+        base_mig = [_entry for _entry in _move_files if _entry[0:4] == "0800"][0]
+        _move_files.remove(base_mig)
+        print("moving back base file {}".format(base_mig))
+        shutil.move(os.path.join(tmp_dir, base_mig), os.path.join(CMIG_DIR, base_mig))
+        # fake migration
+        call_manage(["makemigrations", "backbone", "--merge", "--noinput"])
+        call_manage(["migrate", "backbone", "--noinput"])
+        print("moving back migrations")
+        for _move_file in _move_files:
+            shutil.move(os.path.join(tmp_dir, _move_file), os.path.join(CMIG_DIR, _move_file))
+        sys.exit(6)
 
 
 def migrate_app(_app, **kwargs):
@@ -462,20 +519,24 @@ def migrate_app(_app, **kwargs):
     call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
 
 
+def apply_migration(_app, **kwargs):
+    call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
+
+
 def create_db(opts):
     if os.getuid():
         print("need to be root to create database")
         sys.exit(0)
-    if opts.clear_migrations:
-        clear_migrations()
-    check_migrations()
-    # NOTE: This does not create migrations for e.g. backbone since migrations/__init__.py does not exist.
-    #       it does however create migrations which are needed by the apps migrated explicitly below
-    migrate_app("")
+    # for fixed migration we do not touch existing migration files
+    # if opts.clear_migrations:
+    #     clear_migrations()
+    # check_migrations()
     # schemamigrations
     for _app in ["django.contrib.contenttypes", "django.contrib.sites", "django.contrib.auth", "reversion", "backbone"]:
-        migrate_app(_app)
+        # migrate_app(_app)
+        apply_migration(_app)
 
+    call_manage(["createinitialrevisions"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -493,25 +554,20 @@ def create_db(opts):
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
         check_for_pre17(opts)
+        check_for_0800(opts)
         print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
             if os.path.isdir(_app_dir):
-                print("found app {}".format(_sync_app))
-                # _mig_dir = os.path.join(_app_dir, "migrations")
-                # if not os.path.isdir(_mig_dir):
-                #    print("initial migration for {}".format(_sync_app))
-                #    call_manage(["migrate", _sync_app, "--noinput"])
-                # if os.path.isdir(_mig_dir):
-                # _py_files = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py")]
-                # if _py_files == ["__init__.py"]:
-                #    # initial schema migration call
-                #    call_manage(["schemamigration", _sync_app, "--initial"])
-                call_manage(["makemigrations", _sync_app, "--noinput"])
-                call_manage(["migrate", _sync_app, "--noinput"])
+                print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
+                # call_manage(["makemigrations", _sync_app, "--noinput"])
+                # call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
         for _app in ["backbone", "django.contrib.auth", "reversion"]:
-            migrate_app(_app)
+            print("migrating app {}".format(_app))
+            apply_migration(_app)
+        print("")
+        call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
     else:
         print("cluster migration dir {} not present, please create database".format(CMIG_DIR))
@@ -525,6 +581,7 @@ def call_update_funcs(opts):
     call_manage(["migrate_to_new_logging_scheme"])
     call_manage(["migrate_to_config_catalog"])
     call_manage(["ensure_cluster_id"])
+    call_manage(["rewrite_curl"])
 
 
 def create_fixtures():

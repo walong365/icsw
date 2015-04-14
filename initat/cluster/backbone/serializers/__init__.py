@@ -241,7 +241,7 @@ class device_serializer(serializers.ModelSerializer):
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
             "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
+            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data", "ipmi_capable",
             "access_level", "access_levels", "store_rrd_data",
             # disk info
             "partition_table", "act_partition_table",

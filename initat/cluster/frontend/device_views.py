@@ -82,7 +82,6 @@ class change_devices(View):
                 request.xml_response.error("Failed to delete {}: {}".format(pk, msg))
         else:
             def_dict = {
-                "curl": "",
                 "bootserver": None,
                 "monitor_server": None,
                 "enabled": False,

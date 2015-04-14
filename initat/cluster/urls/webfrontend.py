@@ -2,11 +2,10 @@
 
 from django.conf.urls import patterns, include, url
 from django.conf import settings
-from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views, doc_views
+    base_views, setup_views, doc_views, model_history_views
 from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
@@ -43,11 +42,14 @@ lic_patterns = patterns(
     "initat.cluster.rms",
     url(r"overview$", lic_views.overview.as_view(), name="overview"),
     url(r"license_liveview$", lic_views.license_liveview.as_view(), name="license_liveview"),
-    url(r"get_license_overview_steps$", lic_views.get_license_overview_steps.as_view(), name="get_license_overview_steps"),
+    url(r"get_license_overview_steps$", lic_views.get_license_overview_steps.as_view(),
+        name="get_license_overview_steps"),
     url("^license_state_coarse_list$", lic_views.license_state_coarse_list.as_view(), name="license_state_coarse_list"),
-    url("^license_version_state_coarse_list$", lic_views.license_version_state_coarse_list.as_view(), name="license_version_state_coarse_list"),
+    url("^license_version_state_coarse_list$", lic_views.license_version_state_coarse_list.as_view(),
+        name="license_version_state_coarse_list"),
     url("^license_user_coarse_list$", lic_views.license_user_coarse_list.as_view(), name="license_user_coarse_list"),
-    url("^license_device_coarse_list$", lic_views.license_device_coarse_list.as_view(), name="license_device_coarse_list"),
+    url("^license_device_coarse_list$", lic_views.license_device_coarse_list.as_view(),
+        name="license_device_coarse_list"),
 )
 
 
@@ -56,8 +58,10 @@ base_patterns = patterns(
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
     url("^get_cat_tree$", base_views.get_category_tree.as_view(), name="category_tree"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
-    url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(), name="location_gfx_icon"),
-    url("^loc_gfx_image/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_image.as_view(), name="location_gfx_image"),
+    url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
+        name="location_gfx_icon"),
+    url("^loc_gfx_image/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_image.as_view(),
+        name="location_gfx_image"),
     url("^modify_loc_gfx$", base_views.modify_location_gfx.as_view(), name="modify_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
     url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
@@ -251,6 +255,14 @@ doc_patterns = patterns(
         }, name="show"),
 )
 
+system_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"^history_overview$", model_history_views.history_overview.as_view(), name="history_overview"),
+    url(r"^get_historical_data$", model_history_views.get_historical_data.as_view(), name="get_historical_data"),
+    url(r"^get_models_with_history$", model_history_views.get_models_with_history.as_view(),
+        name="get_models_with_history"),
+)
+
 my_url_patterns = patterns(
     "",
     url(r"^$", session_views.redirect_to_main.as_view()),
@@ -273,6 +285,7 @@ my_url_patterns = patterns(
     url(r"^doc/", include(doc_patterns, namespace="doc")),
     url(r"^dyndoc/", include(dyndoc_patterns, namespace="dyndoc")),
     url(r"^rest/", include(rest_patterns, namespace="rest")),
+    url(r"^system/", include(system_patterns, namespace="system")),
 )
 
 url_patterns = patterns(

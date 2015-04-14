@@ -239,6 +239,7 @@ class csw_permission(models.Model):
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
         app_label = "backbone"
+        verbose_name = "Global permission"
 
     @staticmethod
     def get_permission(in_object, code_name):
@@ -269,10 +270,16 @@ class csw_object_permission(models.Model):
     object_pk = models.IntegerField(default=0)
 
     def __unicode__(self):
-        return "{} | {:d}".format(unicode(self.csw_permission), self.object_pk)
+        model_class = self.csw_permission.content_type.model_class()
+        try:
+            obj = model_class.objects.get(pk=self.object_pk)
+        except model_class.DoesNotExist:
+            obj = "deleted object (pk: {})".format(self.object_pk)
+        return "{} on {}".format(unicode(self.csw_permission), obj)
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Object permission"
 
 
 # permission intermediate models
@@ -335,6 +342,10 @@ class user_permission(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Global permissions of users"
+
+    def __unicode__(self):
+        return "Permission {} for user {}".format(self.csw_permission, self.user)
 
 
 @receiver(signals.post_save, sender=user_permission)
@@ -375,8 +386,12 @@ class user_object_permission(models.Model):
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "Permission {} for user {}".format(self.csw_object_permission, self.user)
+
     class Meta:
         app_label = "backbone"
+        verbose_name = "Object permissions of users"
 
 
 @receiver(signals.post_save, sender=user_object_permission)
@@ -762,6 +777,7 @@ class user(models.Model):
         db_table = u'user'
         ordering = ("login", "group__groupname")
         app_label = "backbone"
+        verbose_name = "User"
 
     def get_info(self):
         return unicode(self)
@@ -778,7 +794,6 @@ class user(models.Model):
             self.login,
             " ".join(_add_fields),
         )
-
 
 @receiver(signals.m2m_changed, sender=user.perms.through)
 def user_perms_changed(sender, *args, **kwargs):
@@ -937,6 +952,7 @@ class group(models.Model):
         db_table = u'ggroup'
         ordering = ("groupname",)
         app_label = "backbone"
+        verbose_name = u"Group"
 
     def __unicode__(self):
         return u"{} (gid={:d})".format(
@@ -1273,3 +1289,4 @@ class window_manager(models.Model):
     # devices where this is available
     devices = models.ManyToManyField("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
+
