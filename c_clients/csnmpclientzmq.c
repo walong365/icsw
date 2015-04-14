@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
+  Copyright (C) 2012-2013,2015 Andreas Lang-Nevyjel, init.at
  
   Send feedback to: <lang-nevyjel@init.at>
 
@@ -44,8 +44,9 @@
 /* internal buffer sizes */
 #define ERRSTR_SIZE 512
 #define HOSTB_SIZE 256
-#define SENDBUFF_SIZE 16384
-#define IOBUFF_SIZE 16384
+#define SENDBUFF_SIZE 65536
+#define RECVBUFF_SIZE 65536
+#define IOBUFF_SIZE 65536
 
 char *send_buffer;
 int verbose;
@@ -193,7 +194,7 @@ int main(int argc, char **argv)
     int res_code = 0;
 
     int retry_iter = 0;
-    char recv_buffer[1024];
+    char recv_buffer[RECVBUFF_SIZE];
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
@@ -247,7 +248,7 @@ int main(int argc, char **argv)
         retry_iter = 0;
         while (1) {
             retry_iter++;
-            res_code = zmq_recv(receiver, recv_buffer, 1024, 0);
+            res_code = zmq_recv(receiver, recv_buffer, RECVBUFF_SIZE, 0);
             if (res_code > 0)
                 break;
             if (verbose) {
@@ -264,16 +265,21 @@ int main(int argc, char **argv)
         };
         if (more) {
             // receive body
-            n_bytes = zmq_recv(receiver, recv_buffer, 1024, 0);
-            recv_buffer[n_bytes] = 0;
-            // int reply_size = zmq_msg_size(&reply);
-            // memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
-            // recv_buffer[reply_size] = 0;
+            n_bytes = zmq_recv(receiver, recv_buffer, RECVBUFF_SIZE, 0);
             if (verbose) {
-                printf("rcv(): '%d, %s||%s'\n", n_bytes,
-                       recv_buffer, recv_buffer + 2);
+                printf("body has %d bytes\n", n_bytes);
             };
-            retcode = strtol(recv_buffer, NULL, 10);
+            if (n_bytes > RECVBUFF_SIZE) {
+                printf("message was truncated (%d > %d)\n", n_bytes,
+                       RECVBUFF_SIZE);
+                retcode = 2;
+            } else {
+                recv_buffer[n_bytes] = 0;
+                retcode = strtol(recv_buffer, NULL, 10);
+            }
+            if (verbose) {
+                printf("rcv(): '%s'\n", recv_buffer + 2);
+            };
             printf("%s\n", recv_buffer + 2);
         } else {
             retcode = 2;

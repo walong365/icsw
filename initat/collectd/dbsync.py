@@ -26,6 +26,7 @@ from initat.collectd.config import global_config
 import logging_tools
 import server_mixins
 import threading_tools
+import process_tools
 import server_command
 from lxml import etree
 
@@ -79,6 +80,39 @@ class UUIDCache(GenCache):
         except device.DoesNotExist:
             _err_str = "no device with uuid '{}' found".format(in_value)
             self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
+            raise KeyError(_err_str)
+        else:
+            self[in_value] = _dev
+
+
+class NameCache(GenCache):
+    class Meta:
+        name = "NameCache"
+
+    def resolve(self, in_value):
+        if in_value.count("."):
+            _short, _domain = in_value.split(".", 1)
+        else:
+            _short, _domain = in_value, None
+        if _domain is not None:
+            try:
+                _dev = device.objects.get(Q(name=_short) & Q(domain_tree_node__full_name=_domain))
+            except device.DoesNotExist:
+                self.log("no device with name / domain {} / {} found".format(_short, _domain), logging_tools.LOG_LEVEL_ERROR)
+                _dev = None
+        else:
+            _dev = None
+        if _dev is None:
+            try:
+                _dev = device.objects.get(Q(name=_short))
+            except device.DoesNotExist:
+                self.log("no device with name {} found".format(_short), logging_tools.LOG_LEVEL_ERROR)
+                _dev = None
+            except device.MultipleObjectsReturned:
+                self.log("found more than one device with short name {}: {}".format(_short, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                _dev = None
+        if _dev is None:
+            _err_str = "no device with name '{}' found".format(in_value)
             raise KeyError(_err_str)
         else:
             self[in_value] = _dev
@@ -156,6 +190,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.operational_error_m
         self.register_func("mvector", self._mvector)
         self.register_func("perfdata", self._perfdata)
         self._uuid_cache = UUIDCache(self.log)
+        # self._name_cache = NameCache(self.log)
         self._mvector_cache = MachineVectorCache(self.log)
         # self.register_timer(self.aggregate, 30, instant=False, first_timeout=1)
 
@@ -165,8 +200,10 @@ class SyncProcess(threading_tools.process_obj, server_mixins.operational_error_m
     def loop_post(self):
         self.__log_template.close()
 
-    def get_machine_vector(self, uuid):
+    def get_machine_vector(self, uuid, name):
         _dev = self._uuid_cache[uuid]
+        # if _dev is None:
+        #     _dev = self._name_cache[name]
         if _dev is not None:
             mv = self._mvector_cache[_dev]
         else:
@@ -260,7 +297,22 @@ class SyncProcess(threading_tools.process_obj, server_mixins.operational_error_m
     def _handle_xml(self, _xml):
         self.mvs_changed = 0
         self.mvv_changed = 0
-        mv = self.get_machine_vector(_xml.attrib["uuid"])
+        if "uuid" in _xml.attrib or "name" in _xml.attrib:
+            mv = self.get_machine_vector(
+                _xml.attrib.get("uuid", ""),
+                _xml.get("name", "")
+            )
+            if not mv:
+                self.log(
+                    "uuid '{}' / name '{}' unresolvable, keys found: {}".format(
+                        _xml.get("uuid", "N/A"),
+                        _xml.get("name", "N/A"),
+                        ", ".join(sorted(dict(_xml.attrib).keys()))
+                    )
+                )
+        else:
+            self.log("uuid and name not found in attributes ({})".format(", ".join(sorted(dict(_xml.attrib).keys()))), logging_tools.LOG_LEVEL_ERROR)
+            mv = None
         if mv:
             for entry in _xml:
                 _mvs_key = self._get_mvs_key(entry, _xml)

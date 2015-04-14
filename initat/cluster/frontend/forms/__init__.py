@@ -110,7 +110,6 @@ class device_info_form(ModelForm):
                     filter="{tree_info:$select.search}",
                 ),
                 Field("comment"),
-                Field("curl", wrapper_ng_show="is_device()"),
                 HTML("""
 <div class='form-group' ng-show="is_device()">
     <label class='control-label col-sm-3'>
@@ -185,6 +184,11 @@ class device_info_form(ModelForm):
                 # ng_show="is_device()",
             ),
             Fieldset(
+                "IPMI settings",
+                Field("ipmi_capable"),
+                # ng_show="is_device()",
+            ),
+            Fieldset(
                 "Info",
                 Div(
                     Div(
@@ -208,8 +212,8 @@ class device_info_form(ModelForm):
         model = device
         fields = [
             "name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
-            "enable_perfdata", "flap_detection_enabled", "mon_resolve_name", "curl",
-            "store_rrd_data",
+            "enable_perfdata", "flap_detection_enabled", "mon_resolve_name",
+            "store_rrd_data", "ipmi_capable",
         ]
         widgets = {
             "mon_device_templ": ui_select_widget(),
@@ -501,7 +505,6 @@ class device_tree_form(ModelForm):
         ),
         Fieldset(
             "Additional settings",
-            Field("curl"),
             Field(
                 "domain_tree_node",
                 repeat="value.idx as value in rest_data.domain_tree_node",
@@ -536,6 +539,7 @@ class device_tree_form(ModelForm):
                 Div(
                     Field("enabled"),
                     Field("enable_perfdata"),
+                    Field("ipmi_capable"),
                     css_class="col-md-6",
                 ),
                 Div(
@@ -576,14 +580,13 @@ class device_tree_many_form(ModelForm):
     change_device_group = BooleanField(label="DeviceGroup", required=False)
     root_passwd = CharField(widget=PasswordInput, required=False)
     change_root_passwd = BooleanField(label="pwd", required=False)
-    curl = CharField(label="Curl", required=False)
-    change_curl = BooleanField(label="Curl", required=False)
     change_domain_tree_node = BooleanField(label="DTN", required=False)
     change_bootserver = BooleanField(label="Bootserver", required=False)
     change_monitor_server = BooleanField(label="MonitorServer", required=False)
     change_enabled = BooleanField(label="EnabledFlag", required=False)
     change_enable_perfdata = BooleanField(label="PerfDataFlag", required=False)
     change_store_rrd_data = BooleanField(label="store RRD data", required=False)
+    change_ipmi_capable = BooleanField(label="IPMI capable", required=False)
     helper.layout = Layout(
         HTML("<h2>Change settings of {%verbatim %}{{ num_selected() }}{% endverbatim %} devices</h2>"),
     )
@@ -612,7 +615,6 @@ class device_tree_many_form(ModelForm):
         ),
         (
             "Additional settings", [
-                ("curl", {}),
                 (
                     "domain_tree_node",
                     {
@@ -654,6 +656,7 @@ class device_tree_many_form(ModelForm):
                 ("enabled", {}),
                 ("enable_perfdata", {}),
                 ("store_rrd_data", {}),
+                ("ipmi_capable", {}),
             ]
         ),
     ]:

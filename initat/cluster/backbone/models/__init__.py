@@ -31,6 +31,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
+import reversion
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -70,6 +71,7 @@ from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
+import initat.cluster.backbone.models.model_history
 
 
 # attention: this list is used in create_fixtures.py
@@ -362,6 +364,7 @@ class device_variable(models.Model):
         db_table = u'device_variable'
         unique_together = ("name", "device",)
         ordering = ("name",)
+        verbose_name = "Device variable"
 
 
 @receiver(signals.pre_save, sender=device_variable)
@@ -407,6 +410,7 @@ class device_config(models.Model):
 
     class Meta:
         db_table = u'device_config'
+        verbose_name = "Device configuration"
 
 
 class DeviceSNMPInfo(models.Model):
@@ -420,7 +424,14 @@ class DeviceSNMPInfo(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
+class DeviceEnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(DeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True))
+
+
 class device(models.Model):
+    objects = models.Manager()
+    all_enabled = DeviceEnabledManager()
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
     # no dots allowed (these parts are now in domain_tree_node)
@@ -489,8 +500,8 @@ class device(models.Model):
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64)  # , unique=True)
-    # cluster url
-    curl = models.CharField(default="ssh://", max_length=512, verbose_name="cURL")
+    # cluster url, no longer in use, will be removed in a few months
+    curl = models.CharField(default="ssh://", max_length=512)
     # , choices=[
     #    ("ssh://", "ssh://"),
     #    ("snmp://", "snmp://"),
@@ -523,6 +534,8 @@ class device(models.Model):
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
+    # has an IPMI interface
+    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple")
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
     # scan active ?
@@ -782,6 +795,7 @@ class device(models.Model):
         db_table = u'device'
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
+        verbose_name = u'Device'
 
 
 class device_selection(object):
@@ -985,6 +999,7 @@ class device_group(models.Model):
     class Meta:
         db_table = u'device_group'
         ordering = ("-cluster_device_group", "name",)
+        verbose_name = u"Device group"
 
     def __unicode__(self):
         return u"{}{}{}".format(
@@ -1491,3 +1506,22 @@ class DeleteRequest(models.Model):
         unique_together = ("obj_pk", "model")
 
 
+# register models in history
+def _register_models():
+    models = (
+        # user
+        group, csw_permission, csw_object_permission, user, user_permission, user_object_permission,
+        # net
+        netdevice, net_ip, peer_information,
+        # device
+        device, device_group, device_config, device_variable,
+        # config
+        config, config_catalog, config_script, config_int, config_bool, config_str, config_blob,
+        # category
+        category,
+        # mon
+        mon_check_command, mon_check_command_special,
+    )
+    for model in models:
+        model_history.icsw_register(model)
+_register_models()

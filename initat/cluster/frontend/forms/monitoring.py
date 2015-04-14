@@ -1160,7 +1160,7 @@ class mon_check_command_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Check command '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-        HTML("<tabset><tab heading='basic setup'>"),
+        HTML("<tabset><tab heading='Basic setup'>"),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')"),
@@ -1284,6 +1284,9 @@ class mon_check_command_form(ModelForm):
 </div>
             """),
         ),
+        HTML("</tab><tab heading='History'>"),
+        HTML("<icsw-history-model-history style='config' model=\"'mon_check_command'\""
+             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
         HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),

@@ -396,15 +396,13 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
     def _get_snmp_hosts(self, _router):
         # var cache
         _vc = var_cache(
-            device.objects.get(
+            device.all_enabled.get(
                 Q(device_group__cluster_device_group=True)
             ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public"}
         )
-        snmp_hosts = device.objects.exclude(
+        snmp_hosts = device.all_enabled.exclude(
             Q(snmp_schemes=None)
         ).filter(
-            Q(enabled=True) &
-            Q(device_group__enabled=True) &
             Q(enable_perfdata=True) &
             Q(snmp_schemes__collect=True)
         ).prefetch_related(
@@ -439,11 +437,12 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
     def _get_ipmi_hosts(self, _router):
         # var cache
         _vc = var_cache(
-            device.objects.get(
+            device.all_enabled.get(
                 Q(device_group__cluster_device_group=True)
-            ), {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
+            ),
+            {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
         )
-        ipmi_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="ipmi://") & Q(enable_perfdata=True))
+        ipmi_hosts = device.all_enabled.filter(Q(enable_perfdata=True) & Q(ipmi_capable=True))
         _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")
         ipmi_com = server_command.srv_command(command="ipmi_hosts")
         _bld = ipmi_com.builder()
@@ -648,6 +647,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                 )
                 raise StopIteration
             else:
+                _xml.attrib["uuid"] = _dev.uuid
                 # store values in host_info (and memcached)
                 # host_uuid is uuid or name
                 if simple:
@@ -844,18 +844,21 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                             )
                             diff_time = max(1, abs(cur_time - self.__cached_time))
                             for _key in sorted(_dict.iterkeys()):
-                                _value = abs(self.__cached_stats[_key] - _dict[_key]) / diff_time
-                                _tree.append(
-                                    E.mve(
-                                        info="RRD {}".format(_key),
-                                        unit="1/s",
-                                        base="1",
-                                        v_type="f",
-                                        factor="1",
-                                        value="{:.2f}".format(_value),
-                                        name="rrd.operations.{}".format(_key),
-                                    ),
-                                )
+                                if _key not in self.__cached_stats:
+                                    self.log("key {} missing in previous run, ignoring ...".format(_key), logging_tools.LOG_LEVEL_WARN)
+                                else:
+                                    _value = abs(self.__cached_stats[_key] - _dict[_key]) / diff_time
+                                    _tree.append(
+                                        E.mve(
+                                            info="RRD {}".format(_key),
+                                            unit="1/s",
+                                            base="1",
+                                            v_type="f",
+                                            factor="1",
+                                            value="{:.2f}".format(_value),
+                                            name="rrd.operations.{}".format(_key),
+                                        ),
+                                    )
                             self.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         self.__cached_stats, self.__cached_time = (_dict, cur_time)
                 if _dict is None:

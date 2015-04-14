@@ -505,6 +505,7 @@ class category(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Category"
 
 
 @receiver(signals.pre_save, sender=category)

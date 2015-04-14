@@ -134,7 +134,7 @@ class accounting_process(threading_tools.process_obj):
         self.__cache.update({key: {} for key in _OBJ_DICT.iterkeys()})
 
     def _get_missing_dict(self):
-        _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("rms_job__jobid", "rms_job__jobid", "rms_job__taskid")
+        _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("idx", "rms_job__jobid", "rms_job__taskid")
         _mis_dict = {}
         for _entry in _missing_ids:
             _id = "{:d}".format(_entry[1])
@@ -158,7 +158,12 @@ class accounting_process(threading_tools.process_obj):
             self.log(
                 ", ".join(
                     [
-                        "{}{}".format(_key, " ({:d})".format(len(_mis_dict[_key])) if len(_mis_dict[_key]) > 1 else "") for _key in sorted(_mis_dict.keys())
+                        "{}{}".format(
+                            _key,
+                            " ({:d})".format(
+                                len(_mis_dict[_key])
+                            ) if len(_mis_dict[_key]) > 1 else ""
+                        ) for _key in sorted(_mis_dict.keys())
                     ]
                 )
             )
@@ -308,7 +313,10 @@ class accounting_process(threading_tools.process_obj):
                         # pure duplicate
                         _cur_job_run = None
                     else:
-                        self.log("duplicate with different start/end time found for job {}, creating new run".format(_job_id), logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "duplicate with different start/end time found for job {}, creating new run".format(_job_id),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                         _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
             if _cur_job_run is not None:
                 # resolve dict
@@ -451,13 +459,13 @@ class accounting_process(threading_tools.process_obj):
                 # set slots to the default value
                 _new_run.slots = 1
                 _new_run.save()
-                self.log("added new {}".format(unicode(_new_run)))
+                self.log("added new {} (ext)".format(unicode(_new_run)))
             else:
                 # after 1 minute check the accounting log
                 self.register_timer(self._check_accounting, 60, oneshot=True, data={"job_id": _job.jobid, "task_id": _job.taskid})
                 _latest_run = _job.close_job_run()
                 if _latest_run:
-                    self.log("closed job_run {}".format(unicode(_latest_run)))
+                    self.log("closed job_run {} (ext)".format(unicode(_latest_run)))
         else:
             _pe = self._get_object("rms_pe", _config["pe"])
             _job = self._get_job(
