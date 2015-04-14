@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,6 +25,7 @@
 
 import argparse
 import sys
+
 
 def main():
     my_parser = argparse.ArgumentParser(add_help=False)
@@ -66,11 +67,11 @@ def main():
                     n_dict.setdefault(_state, []).append(_info)
             if opts.check_type == "s":
                 # service check
-                info_dict = {0 : "ok", 1 : "warning", 2 : "unknown", 3: "critical"}
+                info_dict = {0: "ok", 1: "warning", 2: "unknown", 3: "critical"}
             else:
                 # host check
-                info_dict = {0 : "up", 1 : "down", 2 : "unreachable"}
-            count_dict = {key : opts.data.count(key) for key, value in info_dict.iteritems()}
+                info_dict = {0: "up", 1: "down", 2: "unreachable"}
+            count_dict = {key: opts.data.count(key) for key, value in info_dict.iteritems()}
             prob_count = sum([value for key, value in count_dict.iteritems() if key])
             if prob_count >= opts.critical and opts.critical:
                 ret_value = 2
@@ -93,13 +94,17 @@ def main():
             info_str = ", ".join(info_f) or "---"
             print(
                 "CLUSTER {}: {}{}".format(
-                    {0 : "OK", 1 : "WARNING", 2 : "CRITICAL"}[ret_value],
+                    {
+                        0: "OK",
+                        1: "WARNING",
+                        2: "CRITICAL"
+                    }[ret_value],
                     "{}: ".format(opts.label) if opts.label else "",
                     info_str,
                 )
             )
     return ret_value
 
+
 if __name__ == "__main__":
     sys.exit(main())
-
