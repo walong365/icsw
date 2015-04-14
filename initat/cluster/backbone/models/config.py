@@ -347,7 +347,7 @@ def config_int_pre_save(sender, **kwargs):
 class config_script(models.Model):
     idx = models.AutoField(db_column="config_script_idx", primary_key=True)
     name = models.CharField(max_length=192)
-    description = models.CharField(max_length=765, db_column="descr")
+    description = models.CharField(max_length=765, db_column="descr", blank=True)
     enabled = models.BooleanField(default=True)
     priority = models.IntegerField(null=True, blank=True, default=0)
     config = models.ForeignKey("config", db_column="new_config_id")
