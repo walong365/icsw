@@ -50,7 +50,6 @@ device_module = angular.module(
             ["passwd", "Password", false, "Show if a password is set"]
             ["mon_master", "MonMaster", false, "Show monitoring master"]
             ["boot_master", "BootMaster", false, "Show boot master"]
-            ["curl", "cURL", false, "Show cluster URL"]
         ]
         $scope.column_list = [
             ['name', 'Name'],
@@ -273,7 +272,6 @@ device_module = angular.module(
             else
                 new_obj.name = "dev"
                 new_obj.comment = "new device"
-                new_obj.curl = "ssh://"
                 new_obj.device_type = (entry.idx for entry in $scope.rest_data.device_type when entry.identifier == "H")[0]
                 if parent_obj
                     new_obj.device_group = parent_obj.idx
@@ -305,7 +303,6 @@ device_module = angular.module(
                         st_attrs['passwd'] = ""
                         st_attrs['mon_master'] = ""
                         st_attrs['boot_master'] = ""
-                        st_attrs['curl'] = ""
                         if obj.device_group_obj.cluster_device_group
                             new_el = $compile($templateCache.get("device_tree_cdg_row.html"))
                             st_attrs['name'] = obj.device_group_obj.name
@@ -333,7 +330,6 @@ device_module = angular.module(
                         st_attrs['passwd'] = obj.root_passwd_set
                         st_attrs['mon_master'] = array_lookupFilter(obj.monitor_server, $scope.rest_data.monitor_server, "full_name_wt")
                         st_attrs['boot_master'] = array_lookupFilter(obj.bootserver, $scope.rest_data.mother_server, "full_name")
-                        st_attrs['curl'] = obj.curl
                 obj.st_attrs = st_attrs
 ]).directive("icswDeviceTreeOverview", ["$templateCache", ($templateCache) ->
     return {
