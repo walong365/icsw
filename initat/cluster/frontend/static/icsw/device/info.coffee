@@ -235,7 +235,7 @@ angular.module(
                     element.append($compile($templateCache.get("device.info.form"))(scope))
                 )
             scope.is_device = () ->
-                return scope._edit_obj.is_meta_device
+                return not scope._edit_obj.is_meta_device
             scope.get_monitoring_hint_info = () ->
                 if scope._edit_obj.monitoring_hint_set.length
                     mhs = scope._edit_obj.monitoring_hint_set
