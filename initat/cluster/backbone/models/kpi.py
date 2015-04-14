@@ -48,7 +48,7 @@ class Kpi(models.Model):
 
     # pretend as if all device/monitoring tuples were checked
     # TODO: implement in gui
-    uses_all_data = models.BooleanField(default=False)
+    # uses_all_data = models.BooleanField(default=False)
 
     # 'last_week', 'yesterday', etc.
     time_range = models.TextField(blank=True, default='none')
