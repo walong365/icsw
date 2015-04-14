@@ -2562,8 +2562,9 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
- ><label for="id_description" class="control-label col-sm-2 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div></fieldset><fieldset 
+ ><label for="id_description" class="control-label col-sm-2">
+ Description
+ </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Script</legend><textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea></fieldset><fieldset 
  ><legend>Flags</legend><div 
  class="row" ><div 

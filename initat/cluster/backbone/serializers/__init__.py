@@ -200,7 +200,6 @@ class device_serializer(serializers.ModelSerializer):
     monitor_type = serializers.Field(source="get_monitor_type")
     snmp_schemes = snmp_scheme_serializer(many=True, read_only=True)
     DeviceSNMPInfo = DeviceSNMPInfoSerializer(read_only=True)
-    is_deleting = serializers.SerializerMethodField("get_is_deleting")
     is_cd_device = serializers.SerializerMethodField("get_is_cd_device")
 
     def __init__(self, *args, **kwargs):
@@ -222,9 +221,6 @@ class device_serializer(serializers.ModelSerializer):
 
     def get_access_levels(self, obj):
         return {key: value for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()}
-
-    def get_is_deleting(self, obj):
-        return DeleteRequest.objects.filter(model=device.__name__, obj_pk=obj.pk).exists()
 
     def get_is_cd_device(self, obj):
         return True if (obj.ipmi_capable or len([_scheme.power_control for _scheme in obj.snmp_schemes.all() if _scheme.power_control])) else False
@@ -267,7 +263,6 @@ class device_serializer(serializers.ModelSerializer):
             "uuid",
             # active_scan
             "active_scan",
-            "is_deleting",
             # cd_device mark
             "is_cd_device",
         )
