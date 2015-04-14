@@ -20,7 +20,7 @@
                     <li ng-show="check_perm('user.modify_category_tree') || check_perm('user.modify_domain_tree') || check_perm('user.modify_tree')" class="divider"></li>
                     <li ng-show="check_perm('network.modify_network')"><a href="{{ ICSW_URLS.NETWORK_SHOW_NETWORKS }}">Networks</a></li>
                     <li ng-show="check_perm('config.modify_config')"><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}">Configurations</a></li>
-                    <li ng-show="true"><!-- TODO: perm --> <a href="{{ ICSW_URLS.BASE_KPI }}">Key performance indicators</a></li>
+                    <li ng-show="check_perm('config.kpi')"><a href="{{ ICSW_URLS.BASE_KPI }}">Key performance indicators</a></li>
                     <li ng-show="check_perm('network.modify_network') || check_perm('config.modify_config')" class="divider"></li>
                     <li ng-show="check_perm('device.change_network')"><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}">Device network</a></li>
                     <li ng-show="check_perm('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}">Device connections</a></li>

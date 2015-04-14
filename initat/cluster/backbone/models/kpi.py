@@ -77,6 +77,9 @@ class Kpi(models.Model):
 
     class CSW_Meta:
         fk_ignore_list = ["KpiDataSourceTuple", "KpiStoredResult"]
+        permissions = (
+            ("kpi", "define and access key performance indicators (kpis)", False),
+        )
 
 
 class KpiDataSourceTuple(models.Model):
