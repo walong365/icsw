@@ -504,7 +504,7 @@ class DirSave(object):
 
     def restore(self, idx=None):
         if idx is not None:
-            __move_files = [_entry for _entry in self.__move_files if int(__entry[0:4]) == idx]
+            __move_files = [_entry for _entry in self.__move_files if int(_entry[0:4]) == idx]
         else:
             __move_files = self.__move_files
         self.__move_files = [_entry for _entry in self.__move_files if _entry not in __move_files]
@@ -575,7 +575,7 @@ def create_db(opts):
     #     clear_migrations()
     # check_migrations()
     # schemamigrations
-    ds0 = DirSave(CMIG_DIR, 800)
+    ds0 = DirSave(CMIG_DIR, 799)
     os.environ["INIT_REMOVE_APP_NAME_1"] = "django.contrib.sites"
     os.environ["INIT_REMOVE_APP_NAME_2"] = "initat.cluster."
     for _app in ["auth", "contenttypes"]:
@@ -584,8 +584,6 @@ def create_db(opts):
     for _app in ["sites", "reversion"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_2"]
-    for _app in ["backbone"]:
-        apply_migration(_app)
     ds0.restore()
     ds0.cleanup()
     # we now go for the 0800
