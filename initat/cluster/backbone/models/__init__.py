@@ -431,12 +431,12 @@ class DeviceEnabledManager(models.Manager):
 
 class RealDeviceEnabledManager(models.Manager):
     def get_queryset(self):
-        return super(DeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=False))
+        return super(RealDeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=False))
 
 
 class MetaDeviceEnabledManager(models.Manager):
     def get_queryset(self):
-        return super(DeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=True))
+        return super(MetaDeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=True))
 
 
 class device(models.Model):

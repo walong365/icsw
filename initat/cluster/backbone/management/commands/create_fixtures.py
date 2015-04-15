@@ -375,16 +375,6 @@ class Command(BaseCommand):
         # LogSource
         factories.LogSourceFactory(identifier="webfrontend", description="via Webfrontend", device=None)
         factories.LogSourceFactory(identifier="commandline", description="via CommandLine", device=None)
-        # device type
-        factories.DeviceType(identifier="H", description="Host", priority=0)
-        factories.DeviceType(identifier="AM", description="APC Masterswitch", priority=10)
-        factories.DeviceType(identifier="NB", description="Netbotz", priority=20)
-        factories.DeviceType(identifier="S", description="Manageable Switch", priority=-10)
-        factories.DeviceType(identifier="R", description="RAID box", priority=-20)
-        factories.DeviceType(identifier="P", description="Printer", priority=-30)
-        factories.DeviceType(identifier="MD", description="Meta device", priority=128)
-        factories.DeviceType(identifier="IBC", description="IBM Blade center", priority=-40)
-        factories.DeviceType(identifier="CD", description="Controlling Device", priority=30)
         # partition fs
         factories.PartitionFS(name="reiserfs", identifier="f", descr="ReiserFS Filesystem", hexid="83", kernel_module="reiserfs")
         factories.PartitionFS(name="ext2", identifier="f", descr="Extended 2 Fileystem", hexid="83", kernel_module="ext2")

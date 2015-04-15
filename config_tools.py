@@ -786,10 +786,7 @@ class device_with_config(dict):
         # dict: device_name, device_pk, device_group, identifier -> config_list (config, config_pk, identifier, source_identifier)
         dev_conf_dict = {}
         for cur_entry in all_list:
-            print cur_entry
             dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[5]))
-        import pprint
-        pprint.pprint(dev_conf_dict)
         dev_dict = {
             cur_dev.pk: cur_dev for cur_dev in device.objects.filter(
                 Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))
