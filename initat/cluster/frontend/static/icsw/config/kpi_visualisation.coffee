@@ -50,7 +50,7 @@ angular.module(
                         .attr("transform", "translate(10,-30)")
                     scope.tree = d3.layout.tree()
                         .size([400, 550])
-                        .children((node) -> return if node.parents? then node.parents else null)
+                        .children((node) -> return node.origin.operands ) # if node.? then node.parents else null)
 
                 )
                 scope.tree = undefined
@@ -117,6 +117,10 @@ angular.module(
                                             cur_height += 14
                                             i += 1
                                         res += "}"
+                                        res += "<text dx=\"0\" dy=\"-25\" text-anchor=\"middle\">"
+                                        res += "#{d.origin.type}" #{ JSON.stringify(d.origin.arguments)} "
+                                        res += "(" + (k+"="+v for k, v of d.origin.arguments).join(", ") + ")"
+                                        res += "</text>"
                                         return res
                                     )
                                     #.text((d) ->
@@ -129,8 +133,6 @@ angular.module(
                                     #        d.append("text")
                                     #             .text((e) -> e)
                                     #)
-
-
 
                                 node.on("click", scope.on_node_click)
                                 node.on("mouseenter", scope.on_mouse_enter)
