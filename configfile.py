@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2011-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -254,16 +254,26 @@ class _conf_var(object):
         except ValueError:
             raise ValueError("Value Error for value {}".format(str(val)))
         else:
-            self.value = r_val
-            if source and (source != "default" or self.source == "default"):
-                self.source = source
+            if self._choices and r_val not in self._choices:
+                print(
+                    "ignoring value {} for {} (not in choices: {})".format(
+                        r_val,
+                        self.descr,
+                        str(self._choices),
+                    )
+                )
+            else:
+                self.value = r_val
+                if source and (source != "default" or self.source == "default"):
+                    self.source = source
 
     def __str__(self):
         return "{} (source {}, {}) : {}".format(
             self.descr,
             self.source,
             "global" if self.__is_global else "local",
-            self.pretty_print())
+            self.pretty_print()
+        )
 
     def get_info(self):
         return self.__info
@@ -609,8 +619,10 @@ class configuration(object):
                 self.log(
                     "Error while reading file {}: {}".format(
                         file_name,
-                        process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 for line in lines:
                     sec_m = sec_re.match(line)

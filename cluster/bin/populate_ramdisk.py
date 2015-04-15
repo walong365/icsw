@@ -596,6 +596,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         if os.path.isfile(lib_name):
             if lib_name.startswith("/opt/cluster"):
                 target_lib_name = "/{}".format(lib_name.split("/", 3)[3])
+                # [1:] to remove the trailing slash
+                _dir_name = os.path.dirname(target_lib_name[1:])
+                _t_dir_name = os.path.join(temp_dir, _dir_name)
+                if not os.path.isdir(_t_dir_name):
+                    os.makedirs(_t_dir_name)
             else:
                 target_lib_name = lib_name
             dest_file = norm_path("{}/{}".format(temp_dir, target_lib_name))
@@ -1392,7 +1397,7 @@ def main_normal():
         print "(re)creating {}".format(mod_bz2_file)
         if os.path.exists(mod_bz2_file):
             os.unlink(mod_bz2_file)
-        t_stat, t_out = commands.getstatusoutput("cd {} ; tar cpsjf modules.tar.bz2 lib".format(my_args.kernel_dir))
+        t_stat, t_out = commands.getstatusoutput("cd {} ; tar -cpjf modules.tar.bz2 lib".format(my_args.kernel_dir))
         print "... gave ({:d}) {}".format(t_stat, t_out)
         if t_stat:
             sys.exit(t_stat)
@@ -1426,8 +1431,8 @@ def main_normal():
         print "    - use mkfs.cramfs to build stage1 initrd"
         print "    - create a cpio-archive for stage1 initrd"
         print "    - use loopdevice %s to build stage1 initrd" % (loop_dev)
-    stage_add_dict[1][1].append("run-init")
-    stage_add_dict[3][1].append("run-init")
+    stage_add_dict[1][0].append("run-init")
+    stage_add_dict[3][0].append("run-init")
     # add boot-load specific files
     if my_args.add_grub_binaries:
         if not my_args.quiet:
@@ -1656,7 +1661,7 @@ def main_normal():
                 if os.path.isfile(file_name):
                     o_s2_size += os.stat(file_name)[stat.ST_SIZE]
         # create stage2
-        commands.getstatusoutput("tar cpsjf %s -C %s ." % (stage2_file, stage_targ_dirs[1]))
+        commands.getstatusoutput("tar -cpjf %s -C %s ." % (stage2_file, stage_targ_dirs[1]))
         n_s2_size = os.stat(stage2_file)[stat.ST_SIZE]
         e_time = time.time()
         print "from %s to %s in %s" % (get_size_str(o_s2_size),
