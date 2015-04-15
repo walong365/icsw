@@ -509,10 +509,10 @@ mount -t ramfs /dev/ram1 /stage2 || {
     ram_size=32768
     mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
         # second try, 16 MB (sigh)
-    ram_size=16384
-    mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
-        err_exit "Cannot create stage2 RamDisc $(cat /tmp/errstr)" 
-    }
+        ram_size=16384
+        mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
+            err_exit "Cannot create stage2 RamDisc $(cat /tmp/errstr)"
+        }
     }
 
     check_ram_fill=1

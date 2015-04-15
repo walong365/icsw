@@ -395,10 +395,13 @@ for sub_dir in os.listdir(dir_name):
 
 ADDITIONAL_JS = tuple(ADDITIONAL_JS)
 
-for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
-    add_app = os.environ[add_app_key]
-    if add_app not in INSTALLED_APPS:
-        INSTALLED_APPS.append(add_app)
+for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REMOVE_APP_NAME")]:
+    rem_app = os.environ[add_app_key]
+    if rem_app.endswith("."):
+        INSTALLED_APPS = [_entry for _entry in INSTALLED_APPS if _entry.startswith(rem_app)]
+    else:
+        if rem_app in INSTALLED_APPS:
+            INSTALLED_APPS.remove(rem_app)
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 

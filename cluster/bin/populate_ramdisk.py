@@ -1449,11 +1449,12 @@ def main_normal():
                 act_mods = [line.strip() for line in my_kernel.target_module_list.split(",") if line.strip() not in MOD_REFUSE_LIST]
             else:
                 act_mods = []
-            print "Using module_list from database: %s, %s" % (
+            print "Using module_list from database: {}, {}".format(
                 logging_tools.get_plural("module", len(act_mods)),
-                ", ".join(act_mods))
+                ", ".join(act_mods)
+            )
         else:
-            print "Saving module_list to database: %s, %s" % (
+            print "Saving module_list to database: {}, {}".format(
                 logging_tools.get_plural("module", len(act_mods)),
                 ", ".join(act_mods))
             my_kernel.target_module_list = ",".join(act_mods)
