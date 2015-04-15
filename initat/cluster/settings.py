@@ -348,13 +348,10 @@ ADDITIONAL_ANGULAR_APPS = []
 ADDITIONAL_URLS = []
 ADDITIONAL_JS = []
 
+# my authentication backend
 AUTHENTICATION_BACKENDS = (
     "initat.cluster.backbone.cluster_auth.db_backend",
 )
-AUTH_USER_MODEL = "backbone.user"
-
-# my authentication backend
-
 
 ICSW_ADDON_APPS = []
 # add everything below cluster
@@ -396,12 +393,15 @@ for sub_dir in os.listdir(dir_name):
 ADDITIONAL_JS = tuple(ADDITIONAL_JS)
 
 for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REMOVE_APP_NAME")]:
-    rem_app = os.environ[add_app_key]
+    rem_app = os.environ[rem_app_key]
     if rem_app.endswith("."):
-        INSTALLED_APPS = [_entry for _entry in INSTALLED_APPS if _entry.startswith(rem_app)]
+        INSTALLED_APPS = [_entry for _entry in INSTALLED_APPS if not _entry.startswith(rem_app)]
     else:
         if rem_app in INSTALLED_APPS:
             INSTALLED_APPS.remove(rem_app)
+
+if any([_app.startswith("initat.cluster.") for _app in INSTALLED_APPS]):
+    AUTH_USER_MODEL = "backbone.user"
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
