@@ -257,23 +257,23 @@ install:
 	echo ${SGE_FILES} > ${DESTDIR}/${ICSW_SGE}/.sge_files
 	echo "proepilogue.py qlogin_wrapper.sh sge_starter.sh" > ${DESTDIR}/${ICSW_SGE}/.party_files
 	# /usr/sbin (mostly rc* files)
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/sbin
-	${LN} -s ${INIT}/hoststatus ${DESTDIR}/usr/sbin/rchoststatus
-	${LN} -s ${INIT}/loadmodules ${DESTDIR}/usr/sbin/rcloadmodules
-	${LN} -s ${INIT}/meta-server ${DESTDIR}/usr/sbin/rcmeta-server
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
+	${LN} -s ${INIT}/hoststatus ${DESTDIR}${USRSBIN}/rchoststatus
+	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules
+	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
 	${LN} -s ${INIT}/logging-server ${DESTDIR}/${USRSBIN}/rclogging-server
-	${LN} -s ${INIT}/package-server ${DESTDIR}/usr/sbin/rcpackage-server
-	${LN} -s ${INIT}/package-client ${DESTDIR}/usr/sbin/rcpackage-client
-	${LN} -s ${INIT}/rms-server ${DESTDIR}/usr/sbin/rcrms-server
-	${LN} -s ${INIT}/rrd-grapher ${DESTDIR}/usr/sbin/rcrrd-grapher
-	${LN} -s ${INIT}/mother ${DESTDIR}/usr/sbin/rcmother
-	${LN} -s ${INIT}/logcheck-server ${DESTDIR}/usr/sbin/rclogcheck-server
-	${LN} -s ${INIT}/md-config-server ${DESTDIR}/usr/sbin/rcmd-config-server
-	${LN} -s ${INIT}/init-license-server ${DESTDIR}/usr/sbin/rcinit-license-server
-	${LN} -s ${INIT}/discovery-server ${DESTDIR}/usr/sbin/rcdiscovery-server
-	${LN} -s ${INIT}/cluster-server ${DESTDIR}/usr/sbin/rccluster-server
-	${LN} -s ${INIT}/collectd-init ${DESTDIR}/usr/sbin/rccollectd-init
-	${LN} -s ${INIT}/cluster-config-server ${DESTDIR}/usr/sbin/rccluster-config-server
+	${LN} -s ${INIT}/package-server ${DESTDIR}${USRSBIN}/rcpackage-server
+	${LN} -s ${INIT}/package-client ${DESTDIR}${USRSBIN}/rcpackage-client
+	${LN} -s ${INIT}/rms-server ${DESTDIR}${USRSBIN}/rcrms-server
+	${LN} -s ${INIT}/rrd-grapher ${DESTDIR}${USRSBIN}/rcrrd-grapher
+	${LN} -s ${INIT}/mother ${DESTDIR}${USRSBIN}/rcmother
+	${LN} -s ${INIT}/logcheck-server ${DESTDIR}${USRSBIN}/rclogcheck-server
+	${LN} -s ${INIT}/md-config-server ${DESTDIR}${USRSBIN}/rcmd-config-server
+	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server
+	${LN} -s ${INIT}/discovery-server ${DESTDIR}${USRSBIN}/rcdiscovery-server
+	${LN} -s ${INIT}/cluster-server ${DESTDIR}${USRSBIN}/rccluster-server
+	${LN} -s ${INIT}/collectd-init ${DESTDIR}${USRSBIN}/rccollectd-init
+	${LN} -s ${INIT}/cluster-config-server ${DESTDIR}${USRSBIN}/rccluster-config-server
 	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${USRSBIN}/rchost-monitoring
 	${LN} -s ${INIT}/host-relay ${DESTDIR}/${USRSBIN}/rchost-relay
 	${LN} -s ${INIT}/snmp-relay ${DESTDIR}/${USRSBIN}/rcsnmp-relay
