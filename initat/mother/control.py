@@ -47,7 +47,7 @@ import time
 import uuid
 
 
-class machine(object):
+class Host(object):
     # store important device-related settings
     def __init__(self, dev):
         self.device = dev
@@ -62,11 +62,22 @@ class machine(object):
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=machine.process.zmq_context,
-            init_logger=True)
+            init_logger=True
+        )
         self.log("added client, type is {}".format("META" if self.device.is_meta_device else "real"))
         self.additional_lut_keys = set()
+        # clear ip_dict
         self.ip_dict = {}
-        self.init()
+        # clear maintenance ip/mac
+        self.set_maint_ip()
+        # check network settings
+        self.check_network_settings()
+        if not self.device.uuid:
+            self.device.uuid = str(uuid.uuid4())
+            self.log("setting uuid to {}".format(self.device.uuid))
+            self.device.save(update_fields=["uuid"])
+        machine.add_lut_key(self, self.device.uuid)
+        machine.add_lut_key(self, self.device.get_boot_uuid())
 
     def init(self):
         pass
@@ -154,12 +165,7 @@ class machine(object):
 
     @staticmethod
     def set_device(new_dev):
-        if new_dev.device_type.identifier == "H":
-            new_mach = host(new_dev)
-        elif new_dev.device_type.identifier == "CD":
-            new_mach = controlling_device(new_dev)
-        else:
-            new_mach = machine(new_dev)
+        new_mach = Host(new_dev)
         machine.__unique_keys.add(new_dev.pk)
         machine.__unique_names.add(new_dev.full_name)
         machine.__lut[new_dev.full_name] = new_mach
@@ -337,30 +343,6 @@ class machine(object):
             self.log("adding ip {} to lut".format(new_key))
             machine.add_lut_key(self, new_key)
 
-
-class host(machine):
-    def init(self):
-        # clear ip_dict
-        self.ip_dict = {}
-        # clear maintenance ip/mac
-        self.set_maint_ip()
-        # hardware information counter
-        self.hwi_delay_counter = 0
-        # check network settings
-        self.check_network_settings()
-        # save changes done during init
-        # do not overwrite states, preserve
-        # self.set_recv_state()
-        # self.set_req_state()
-        # should now be handled in device_pre_save
-        if not self.device.uuid:
-            self.device.uuid = str(uuid.uuid4())
-            self.log("setting uuid to {}".format(self.device.uuid))
-        machine.add_lut_key(self, self.device.uuid)
-        machine.add_lut_key(self, self.device.get_boot_uuid())
-        self.device.save()
-
-    # machine related
     def set_maint_ip(self, ip=None):
         if ip:
             if self.maint_ip and (self.maint_ip.ip != ip.ip or self.maint_ip.netdevice.macaddr != ip.netdevice.macaddr):
@@ -389,9 +371,6 @@ class host(machine):
             self.dhcp_mac_written = None
             self.dhcp_ip_written = None
 
-    def get_bnd(self):
-        return self.__bnd
-
     @property
     def is_node(self):
         # check if device is a valid node
@@ -399,6 +378,9 @@ class host(machine):
             return True
         else:
             return False
+
+    def get_bnd(self):
+        return self.__bnd
 
     def set_bnd(self, val):
         if val is None:
@@ -783,14 +765,14 @@ class host(machine):
                         )
                     else:
                         link_field = [
-                            ("%s/bzImage" % (kern_abs_base_dir),
-                             "%s/bzImage" % (kern_base_dir),
-                             "%s/k" % (kern_dst_dir)),
-                            ("%s/initrd_%s.gz" % (kern_abs_base_dir, self.device.stage1_flavour),
-                             "%s/initrd_%s.gz" % (kern_base_dir, self.device.stage1_flavour),
-                             "%s/i" % (kern_dst_dir))]
+                            ("{}/bzImage".format(kern_abs_base_dir),
+                             "{}/bzImage".format(kern_base_dir),
+                             "{}/k".format(kern_dst_dir)),
+                            ("{}/initrd_{}.gz".format(kern_abs_base_dir, self.device.stage1_flavour),
+                             "{}/initrd_{}.gz".format(kern_base_dir, self.device.stage1_flavour),
+                             "{}/i".format(kern_dst_dir))]
                         if new_kernel.xen_host_kernel:
-                            link_field.append(("%s/xen.gz" % (kern_abs_base_dir), "%s/xen.gz" % (kern_base_dir), "%s/x" % (kern_dst_dir)))
+                            link_field.append(("{}/xen.gz".format(kern_abs_base_dir), "{}/xen.gz".format(kern_base_dir), "{}/x".format(kern_dst_dir)))
                         for abs_src, src, dst in link_field:
                             if new_kernel.name:
                                 if os.path.isfile(abs_src):
@@ -806,58 +788,71 @@ class host(machine):
                                     elif os.path.isfile(dst):
                                         os.unlink(dst)
                                     if c_link:
-                                        self.log("Linking from %s to %s" % (dst, src))
+                                        self.log("Linking from {} to {}".format(dst, src))
                                         # print "symlink()", src, dst
                                         os.symlink(src, dst)
                                         valid_links.append(dst)
                                 else:
-                                    self.log("source %s for symlink() does not exist" % (abs_src),
-                                             logging_tools.LOG_LEVEL_ERROR)
+                                    self.log(
+                                        "source {} for symlink() does not exist".format(abs_src),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
                                     valid_links.append(dst)
                 else:
-                    self.log("source_kernel_dir %s does not exist" % (kern_abs_base_dir),
-                             logging_tools.LOG_LEVEL_ERROR)
-                    # self.device_log_entry(0,
-                    #                      "e",
-                    #                      "error kernel_dir dir '%s' not found" % (kern_abs_base_dir),
-                    #                      sql_queue,
-                    #                      loc_config["LOG_SOURCE_IDX"])
+                    self.log(
+                        "source_kernel_dir {} does not exist".format(kern_abs_base_dir),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 if unlink_field:
                     unlink_field = [l_path for l_path in unlink_field if os.path.islink(l_path) and l_path not in valid_links]
                     if unlink_field:
-                        self.log("Removing %s: %s" % (logging_tools.get_plural("dead link", len(unlink_field)),
-                                                      ", ".join(unlink_field)))
+                        self.log(
+                            "Removing {}: {}".format(
+                                logging_tools.get_plural("dead link", len(unlink_field)),
+                                ", ".join(unlink_field)
+                            )
+                        )
                         for l_path in unlink_field:
                             try:
                                 os.unlink(l_path)
                             except:
-                                self.log("error removing link %s: %s" % (l_path,
-                                                                         process_tools.get_except_info()),
-                                         logging_tools.LOG_LEVEL_ERROR)
+                                self.log(
+                                    "error removing link {}: {}".format(
+                                        l_path,
+                                        process_tools.get_except_info()
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
                 if self.device.stage1_flavour == "cpio":
                     root_str = ""
                 else:
                     root_str = "root=/dev/ram0"
-                append_string = (" ".join([
-                    root_str,
-                    "init=/linuxrc rw nbd=%s,%s,%d,%s uuid=%s %s" % (
-                        self.bootnetdevice.devname,
-                        self.bootnetdevice.driver,
-                        self.bootnetdevice.ethtool_options,
-                        self.bootnetdevice.driver_options.replace(" ", ur"§"),
-                        self.device.get_boot_uuid(),
-                        self.device.kernel_append
-                        )])).strip().replace("  ", " ").replace("  ", " ")
+                append_string = (
+                    " ".join(
+                        [
+                            root_str,
+                            "init=/linuxrc rw nbd={},{},{:d},{} uuid={} {}".format(
+                                self.bootnetdevice.devname,
+                                self.bootnetdevice.driver,
+                                self.bootnetdevice.ethtool_options,
+                                self.bootnetdevice.driver_options.replace(" ", ur"§"),
+                                self.device.get_boot_uuid(),
+                                self.device.kernel_append
+                            )
+                        ]
+                    )
+                ).strip().replace("  ", " ").replace("  ", " ")
                 # self.clear_ip_mac_files([self.ip_mac_file_base_name])
                 if new_kernel.xen_host_kernel:
                     append_field = [
                         "x dom0_mem=524288",
-                        "k console=tty0 ip=%s:%s::%s %s" % (
+                        "k console=tty0 ip={}:{}::{} {}".format(
                             self.maint_ip.ip,
                             machine.process.server_ip,
                             ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
                             append_string),
-                        "i"]
+                        "i"
+                    ]
                 else:
                     total_append_string = "initrd={}/i ip={}:{}::{} {}".format(
                         self.maint_ip.ip,
@@ -876,18 +871,18 @@ class host(machine):
                         pxe_lines.extend([
                             "LABEL linux",
                             "    KERNEL mboot.c32",
-                            "    APPEND %s" % (" --- ".join(append_field))])
+                            "    APPEND {}".format(" --- ".join(append_field))])
                     else:
                         pxe_lines.extend([
                             "LABEL linux",
                             "    KERNEL {}/k".format(self.maint_ip.ip),
-                            "    APPEND %s" % (total_append_string)])
+                            "    APPEND {}".format(total_append_string)])
                 pxe_lines.extend([""])
                 if global_config["FANCY_PXE_INFO"]:
-                    menu_lines = ["\x0c\x0f20%s\x0f07" % (("init.at Bootinfo, %s%s" % (time.ctime(), 80 * " "))[0:79])]
+                    menu_lines = ["\x0c\x0f20{}\x0f07".format(("init.at Bootinfo, {}{}".format(time.ctime(), 80 * " "))[0:79])]
                 else:
                     menu_lines = ["",
-                                  ("init.at Bootinfo, %s%s" % (time.ctime(), 80 * " "))[0:79]]
+                                  ("init.at Bootinfo, {}{}".format(time.ctime(), 80 * " "))[0:79]]
                 menu_lines.extend([
                     "Nodename  , IP : %-30s, %s" % (self.device.name, self.maint_ip.ip),
                     "Servername, IP : %-30s, %s" % (global_config["SERVER_SHORT_NAME"], machine.process.server_ip),
@@ -915,11 +910,6 @@ class host(machine):
                         self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("Error: directory {} does not exist".format(kern_dst_dir))
-                # self.device_log_entry(1,
-                #                      "e",
-                #                      "error etherboot dir '%s' not found" % (kern_dst_dir),
-                #                      sql_queue,
-                #                      self.__loc_config["NODE_SOURCE_IDX"])
         else:
             self.log("Error: etherboot-dir not defined")
 
@@ -936,14 +926,10 @@ class host(machine):
             self.log("starting readdots in dir '{}'".format(c_dir))
             hlist = [
                 (".version", "imageversion", None, None),
-                (".imagename", "actimage", None, None),
                 (".imagename", "act_image", image, "name"),
-                # (".kernel"   , "actkernel"          , None, None),
                 (".kernel", "act_kernel", kernel, "name"),
                 (".kversion", "kernelversion", None, None),
-                # handled by cluster-config-server
-                # (".parttype" , "act_partition_table", partition_table, "name"),
-                (None, "act_kernel_build", None, None)
+                # (None, "act_kernel_build", None, None)
             ]
             s_dict = {}
             num_tried, num_ok, num_found = (0, 0, 0)
@@ -963,26 +949,30 @@ class host(machine):
                                 try:
                                     new_obj = set_obj.objects.get(Q(**{q_name: line}))
                                 except set_obj.DoesNotExist:
-                                    self.log("no %s with %s=%s found" % (set_obj._meta.model_name, q_name, line), logging_tools.LOG_LEVEL_ERROR)
+                                    self.log(
+                                        "no {} with {}={} found".format(set_obj._meta.model_name, q_name, line),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
                                     new_obj = None
                                 else:
-                                    # print dbentry, line, new_obj.pk, getattr(self.device, "%s_id" % (dbentry))
-                                    if new_obj.pk != getattr(self.device, "%s_id" % (dbentry)):
+                                    if new_obj.pk != getattr(self.device, "{}_id".format(dbentry)):
                                         s_dict[dbentry] = new_obj
-                            else:
-                                pass
-                                # print "dbe", dbentry, line, self.device
             if s_dict:
                 for key, value in s_dict.iteritems():
                     setattr(self.device, key, value)
                 self.device.save(update_fields=s_dict.keys())
             num_changed = len(s_dict)
-            self.log("readdots finished (%d tried, %d found, %d ok, %d changed%s)" % (
-                num_tried,
-                num_found,
-                num_ok,
-                num_changed,
-                (num_changed and " [%s]" % (", ".join(["%s=%s" % (key, unicode(value)) for key, value in s_dict.iteritems()])) or "")))
+            self.log(
+                "readdots finished ({:d} tried, {:d} found, {:d} ok, {:d} changed{})".format(
+                    num_tried,
+                    num_found,
+                    num_ok,
+                    num_changed,
+                    num_changed and " [{}]".format(
+                        ", ".join(["{}={}".format(key, unicode(value)) for key, value in s_dict.iteritems()])
+                    ) or ""
+                )
+            )
 
     def handle_mac_command(self, com_name):
         self.refresh_device()
@@ -1023,24 +1013,27 @@ class host(machine):
                 om_shell_coms = ["delete"]
             else:
                 om_shell_coms = []
-        self.log("transformed dhcp_command %s to %s: %s (%s)" % (
-            com_name,
-            logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
-            ", ".join(om_shell_coms),
-            ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
+        self.log(
+            "transformed dhcp_command {} to {}: {} ({})".format(
+                com_name,
+                logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
+                ", ".join(om_shell_coms),
+                ip_to_write and "ip {} from {}".format(ip_to_write, ip_to_write_src) or "no ip"
+            )
+        )
         simple_command.process.set_check_freq(200)  # @UndefinedVariable
         for om_shell_com in om_shell_coms:
             om_array = ['server 127.0.0.1',
                         'port 7911',
                         'connect',
                         'new host',
-                        'set name = "%s"' % (self.device.name)]
+                        'set name = "{}"'.format(self.device.name)]
             if om_shell_com == "write":
-                om_array.extend(['set hardware-address = %s' % (self.device.bootnetdevice.macaddr),
+                om_array.extend(['set hardware-address = {}'.format(self.device.bootnetdevice.macaddr),
                                  'set hardware-type = 1',
-                                 'set ip-address=%s' % (ip_to_write)])
+                                 'set ip-address={}'.format(ip_to_write)])
                 om_array.extend(['set statements = "' +
-                                 'supersede host-name = \\"%s\\" ;' % (self.device.name) +
+                                 'supersede host-name = \\"{}\\" ;'.format(self.device.name) +
                                  'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
                                  'filename = \\"etherboot/pxelinux.0\\" ; ' +  # % (ip_to_write) +
                                  '} "'])
@@ -1049,13 +1042,17 @@ class host(machine):
                 om_array.extend(['open',
                                  'remove'])
             om_array.append("")
-            simple_command("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)),
-                           done_func=self.omshell_done,
-                           stream_id="mac",
-                           short_info=True,
-                           add_info="omshell %s" % (com_name),
-                           log_com=self.log,
-                           info=om_shell_com)
+            simple_command(
+                "echo -e '{}' | /usr/bin/omshell".format(
+                    "\n".join(om_array)
+                ),
+                done_func=self.omshell_done,
+                stream_id="mac",
+                short_info=True,
+                add_info="omshell {}".format(com_name),
+                log_com=self.log,
+                info=om_shell_com
+            )
 
     def omshell_done(self, om_sc):
         cur_out = om_sc.read()
@@ -1077,7 +1074,7 @@ class host(machine):
                 if err_m:
                     error_str = err_m.group("why")
                     self.log(
-                        "an error occured: %s (%s, %s)" % (
+                        "an error occured: {} ({}, {})".format(
                             line,
                             err_m.group("what"),
                             err_m.group("why")
@@ -1112,7 +1109,7 @@ class host(machine):
         if new_dhcp_written is None:
             new_dhcp_written = self.device.dhcp_written
         # selective update
-        self.log("storing state to db: dhcp_written=%s, dhcp_error='%s'" % (new_dhcp_written, error_str))
+        self.log("storing state to db: dhcp_written={}, dhcp_error='{}'".format(new_dhcp_written, error_str))
         self.device.dhcp_written = new_dhcp_written
         self.device.dhcp_error = error_str
         self.device.save(update_fields=["dhcp_written", "dhcp_error"])
@@ -1121,7 +1118,7 @@ class host(machine):
         self.refresh_device()
         if in_dict["key"] == "discover":
             # dhcp feed, in most cases discover
-            self.log("set macaddress of bootnetdevice to '%s'" % (in_dict["macaddr"]))
+            self.log("set macaddress of bootnetdevice to '{}'".format(in_dict["macaddr"]))
             self.bootnetdevice.macaddr = in_dict["macaddr"]
             self.bootnetdevice.save(update_fields=["macaddr"])
             self.device.dhcp_mac = False
@@ -1129,13 +1126,14 @@ class host(machine):
             DeviceLogEntry.new(
                 device=self.device,
                 source=machine.process.node_src,
-                text="set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]),
+                text="set macaddr of {} to {}".format(self.bootnetdevice.devname, in_dict["macaddr"]),
             )
             macbootlog(
                 device=self.device,
                 macaddr=in_dict["macaddr"],
                 entry_type=in_dict["key"],
-                ip_action="SET").save()
+                ip_action="SET"
+            ).save()
             # no change to dhcp-server
             self.handle_mac_command("alter")
         else:
@@ -1148,7 +1146,7 @@ class host(machine):
             DeviceLogEntry.new(
                 device=self.device,
                 source=machine.process.node_src,
-                text="DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"],),
+                text="DHCP / {} ({})".format(in_dict["key"], in_dict["ip"],),
             )
             self.set_recv_state("got IP-Address via DHCP")
             change_fields.add("recvstate")
@@ -1159,7 +1157,7 @@ class host(machine):
                 self.refresh_target_kernel(refresh=False)
 
     def nodeinfo(self, in_text, instance):
-        self.log("got info '%s' from %s" % (in_text, instance))
+        self.log("got info '{}' from {}".format(in_text, instance))
         self.set_recv_state(in_text)
         self.device.save(update_fields=["recvstate", "recvstate_timestamp"])
         DeviceLogEntry.new(
@@ -1170,338 +1168,9 @@ class host(machine):
         return "ok got it"
 
     def nodestatus(self, in_text, instance):
-        self.log("got status '%s' from %s" % (in_text, instance))
+        self.log("got status '{}' from {}".format(in_text, instance))
         self.set_req_state(in_text)
         self.device.save(update_fields=["reqstate", "reqstate_timestamp"])
-
-
-class controlling_device(machine):
-    def init(self):
-        # clear ip_dict
-        self.ip_dict = {}
-        # clear maintenance ip/mac
-        self.set_maint_ip()
-        # check network settings
-        self.check_network_settings()
-        # save changes done during init
-        # do not overwrite states, preserve
-        # self.set_recv_state()
-        # self.set_req_state()
-        # should now be handled in device_pre_save
-        if not self.device.uuid:
-            self.device.uuid = str(uuid.uuid4())
-            self.log("setting uuid to {}".format(self.device.uuid))
-        machine.add_lut_key(self, self.device.uuid)
-        machine.add_lut_key(self, self.device.get_boot_uuid())
-        self.device.save()
-
-    # machine related
-    def set_maint_ip(self, ip=None):
-        if ip:
-            if self.maint_ip and (self.maint_ip.ip != ip.ip or self.maint_ip.netdevice.macaddr != ip.netdevice.macaddr):
-                self.log(
-                    "Changing maintenance IP and MAC from {} ({}) [{}] to {} ({}) [{}] and setting node-flag".format(
-                        self.maint_ip.ip,
-                        self.maint_ip.get_hex_ip(),
-                        self.maint_ip.netdevice.macaddr,
-                        ip.ip,
-                        ip.get_hex_ip(),
-                        ip.netdevice.macaddr
-                    )
-                )
-            else:
-                self.log(
-                    "Setting maintenance IP and MAC to {} ({}) [{}] and setting node-flag".format(
-                        ip.ip,
-                        ip.get_hex_ip(),
-                        ip.netdevice.macaddr
-                    )
-                )
-            self.maint_ip = ip
-            # self.is_node = True
-        else:
-            self.log("Clearing maintenance IP and MAC (and node-flag)")
-            self.maint_ip = None
-            self.dhcp_mac_written = None
-            self.dhcp_ip_written = None
-            # self.is_node = False
-
-    def get_bnd(self):
-        return self.__bnd
-
-    def set_bnd(self, val):
-        if val is None:
-            self.log("clearing bootnetdevice")
-            self.__bnd = val
-        else:
-            self.log(
-                "changing bootnetdevice_name from '{}' to '{}'".format(
-                    self.__bnd.devname if self.__bnd else "unset",
-                    val
-                )
-            )
-            self.__bnd = val
-    bootnetdevice = property(get_bnd, set_bnd)
-
-    def get_sip_d(self):
-        return self.__srv_ip_dict
-
-    def set_sip_d(self, val):
-        self.__srv_ip_dict = val
-        if val is not None:
-            self.log("Found {}:".format(logging_tools.get_plural("valid device->server ip-mapping", len(val.keys()))))
-            for my_ip, s_ip in val.iteritems():
-                self.log("  {:<15s} -> {:<15s} [{}]".format(my_ip, s_ip["ip"], s_ip["identifier"]))
-    server_ip_dict = property(get_sip_d, set_sip_d)
-
-    def check_network_settings(self):
-        # bootnet device name
-        self.bootnetdevice = None
-        nd_list, nd_lut = (set(), {})
-        for net_dev in self.device.netdevice_set.all():
-            nd_list.add(net_dev.pk)
-            nd_lut[net_dev.pk] = net_dev
-            if self.device.bootnetdevice_id and net_dev.pk == self.device.bootnetdevice.pk:
-                # set bootnetdevice_name
-                self.bootnetdevice = net_dev
-        # dict: my net_ip -> dict [identifier, ip] server_net_ip
-        server_ip_dict = {}
-        # dict: ip -> identifier
-        ip_dict = {}
-        if nd_list:
-            machine.process.update_router_object()
-            all_paths = sorted(
-                machine.process.router_obj.get_ndl_ndl_pathes(
-                    machine.process.sc.netdevice_idx_list,
-                    nd_list,
-                    only_endpoints=True,
-                    add_penalty=True,
-                )
-            )
-            # get hopcount
-            # latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-            # my_hc = hopcount.objects.filter(
-            # Q(route_generation=latest_gen) &
-            # Q(s_netdevice__in=machine.process.sc.netdevice_idx_list) &
-            # Q(d_netdevice__in=nd_list)).order_by("value")
-            for _ in all_paths:
-                srv_dev, mach_dev = (machine.process.sc.nd_lut[_[1]], nd_lut[_[2]])
-                for cur_ip in mach_dev.net_ip_set.all():
-                    cur_id = cur_ip.network.network_type.identifier
-                    srv_ips = list(
-                        set(
-                            [srv_ip.ip for srv_ip in machine.process.sc.identifier_ip_lut.get(cur_id, [])]
-                        ) & set(
-                            [x2.ip for x2 in machine.process.sc.netdevice_ip_lut[srv_dev.pk]]
-                        )
-                    )
-                    if srv_ips and cur_ip.ip not in server_ip_dict:
-                        server_ip_dict[cur_ip.ip] = {
-                            "identifier": cur_id,
-                            "ip": srv_ips[0] if srv_ips else None
-                        }
-                    if cur_id == "b" and srv_ips:
-                        self.set_maint_ip(cur_ip)
-                    if cur_ip.ip not in ip_dict:
-                        # definitely wrong, oh my...
-                        # ip_dict[cur_ip.ip] = ip_dict
-                        # not sure ...
-                        ip_dict[cur_ip.ip] = cur_ip
-            self.log(
-                "found {}: {}".format(
-                    logging_tools.get_plural("IP-address", len(ip_dict)),
-                    ", ".join(sorted(ip_dict.keys()))))
-            self.log("Setting reachable flag")
-            self.device.reachable = True
-        else:
-            self.log("Cannot add device {} (empty ip_list -> cannot reach host)".format(self.name),
-                     logging_tools.LOG_LEVEL_WARN)
-            self.device.reachable = False
-        self.set_ip_dict(ip_dict)
-        self.server_ip_dict = server_ip_dict
-
-    def set_recv_state(self, recv_state="error not set"):
-        self.device.recvstate = recv_state
-        self.device.recvstate_timestamp = cluster_timezone.localize(datetime.datetime.now())
-
-    def set_req_state(self, req_state="error not set"):
-        self.device.reqstate = req_state
-        self.device.reqstate_timestamp = cluster_timezone.localize(datetime.datetime.now())
-
-    def handle_mac_command(self, com_name):
-        self.refresh_device()
-        self.check_network_settings()
-        if self.maint_ip:
-            ip_to_write, ip_to_write_src = (self.maint_ip.ip, "maint_ip")
-        elif self.bootnetdevice and self.bootnetdevice.dhcp_device:
-            # FIXME
-            if self.ip_dict:
-                ip_to_write, ip_to_write_src = (self.ip_dict.keys()[0], "first ip of ip_dict.keys()")
-            else:
-                ip_to_write, ip_to_write_src = (None, "")
-        else:
-            ip_to_write, ip_to_write_src = (None, "")
-        om_shell_coms = []
-        if com_name == "alter":
-            if self.device.dhcp_written:
-                if self.device.dhcp_write and ip_to_write:
-                    if self.dhcp_mac_written == self.device.bootnetdevice.macaddr and self.dhcp_ip_written == ip_to_write:
-                        self.log("MAC/IP in DHCP database up to date, not writing")
-                        om_shell_coms = []
-                    else:
-                        om_shell_coms = ["delete", "write"]
-                else:
-                    om_shell_coms = ["delete"]
-            else:
-                if self.device.dhcp_write and ip_to_write:
-                    om_shell_coms = ["write"]
-                else:
-                    om_shell_coms = ["delete"]
-        elif com_name == "write":
-            if self.device.dhcp_write and ip_to_write:
-                om_shell_coms = ["write"]
-            else:
-                om_shell_coms = []
-        elif com_name == "delete":
-            if self.device.dhcp_write:
-                om_shell_coms = ["delete"]
-            else:
-                om_shell_coms = []
-        self.log("transformed dhcp_command %s to %s: %s (%s)" % (
-            com_name,
-            logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
-            ", ".join(om_shell_coms),
-            ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip")
-        )
-        simple_command.process.set_check_freq(200)  # @UndefinedVariable
-        for om_shell_com in om_shell_coms:
-            om_array = ['server 127.0.0.1',
-                        'port 7911',
-                        'connect',
-                        'new host',
-                        'set name = "%s"' % (self.device.name)]
-            if om_shell_com == "write":
-                om_array.extend(['set hardware-address = %s' % (self.device.bootnetdevice.macaddr),
-                                 'set hardware-type = 1',
-                                 'set ip-address=%s' % (ip_to_write)])
-                om_array.extend(['set statements = "' +
-                                 'supersede host-name = \\"%s\\" ;' % (self.device.name) +
-                                 'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
-                                 'filename = \\"etherboot/pxelinux.0\\" ; ' +  # % (ip_to_write) +
-                                 '} "'])
-                om_array.append('create')
-            elif om_shell_com == "delete":
-                om_array.extend(['open',
-                                 'remove'])
-            om_array.append("")
-            simple_command("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)),
-                           done_func=self.omshell_done,
-                           stream_id="mac",
-                           short_info=True,
-                           add_info="omshell %s" % (com_name),
-                           log_com=self.log,
-                           info=om_shell_com)
-
-    def omshell_done(self, om_sc):
-        cur_out = om_sc.read()
-        self.log(
-            "omshell finished with state {:d} ({:d} bytes)".format(
-                om_sc.result,
-                len(cur_out)
-            )
-        )
-        error_re = re.compile("^.*can't (?P<what>.*) object: (?P<why>.*)$")
-        lines = cur_out.split("\n")
-        error_str = ""
-        for line in lines:
-            if line.lower().count("connection refused") or line.lower().count("dhcpctl_connect: no more"):
-                self.log(line, logging_tools.LOG_LEVEL_ERROR)
-                error_str = "connection refused"
-            if line.startswith(">"):
-                err_m = error_re.match(line)
-                if err_m:
-                    error_str = err_m.group("why")
-                    self.log(
-                        "an error occured: %s (%s, %s)" % (
-                            line,
-                            err_m.group("what"),
-                            err_m.group("why")
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-        if error_str:
-            if error_str in ["key conflict", "not found"]:
-                new_dhcp_written = False
-            elif error_str in ["already exists"]:
-                new_dhcp_written = True
-            else:
-                # unknown
-                new_dhcp_written = None
-            self.device.add_log_entry(
-                source=global_config["LOG_SOURCE_IDX"],
-                level=logging_tools.LOG_LEVEL_ERROR,
-                text="DHCP: {}".format(error_str)
-            )
-        else:
-            if om_sc.info == "write":
-                new_dhcp_written = True
-                self.dhcp_mac_written = self.device.bootnetdevice.macaddr
-                self.dhcp_ip_written = self.maint_ip.ip
-            elif om_sc.info == "delete":
-                self.dhcp_mac_writte, self.dhcp_ip_written = (None, None)
-                new_dhcp_written = False
-            self.device.add_log_entry(
-                source=global_config["LOG_SOURCE_IDX"],
-                text="DHCP {} is ok".format(om_sc.info),
-            )
-        if new_dhcp_written is None:
-            new_dhcp_written = self.device.dhcp_written
-        # selective update
-        self.log("storing state to db: dhcp_written=%s, dhcp_error='%s'" % (new_dhcp_written, error_str))
-        self.device.dhcp_written = new_dhcp_written
-        self.device.dhcp_error = error_str
-        self.device.save(update_fields=["dhcp_written", "dhcp_error"])
-
-    def feed_dhcp(self, in_dict, in_line):
-        self.refresh_device()
-        if in_dict["key"] == "discover":
-            # dhcp feed, in most cases discover
-            self.log("set macaddress of bootnetdevice to '%s'" % (in_dict["macaddr"]))
-            self.bootnetdevice.macaddr = in_dict["macaddr"]
-            self.bootnetdevice.save(update_fields=["macaddr"])
-            self.device.dhcp_mac = False
-            self.device.save(update_fields=["dhcp_mac"])
-            DeviceLogEntry.new(
-                device=self.device,
-                source=machine.process.node_src,
-                text="set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]),
-            )
-            macbootlog(
-                device=self.device,
-                macaddr=in_dict["macaddr"],
-                entry_type=in_dict["key"],
-                ip_action="SET").save()
-            # no change to dhcp-server
-            self.handle_mac_command("alter")
-        else:
-            change_fields = set()
-            if self.device.dhcp_mac:
-                # clear dhcp_mac
-                self.log("clearing dhcp_mac")
-                self.device.dhcp_mac = False
-                change_fields.add("dhcp_mac")
-            DeviceLogEntry.new(
-                device=self.device,
-                source=machine.process.node_src,
-                text="DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]),
-            )
-            self.set_recv_state("got IP-Address via DHCP")
-            change_fields.add("recvstate")
-            change_fields.add("recvstate_timestamp")
-            if change_fields:
-                self.device.save(update_fields=list(change_fields))
-            if self.device.new_state:
-                self.refresh_target_kernel(refresh=False)
 
 
 class hm_icmp_protocol(icmp_class.icmp_protocol):
@@ -1568,9 +1237,13 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                         self.send_echo(value["host"])
                     except:
                         value["error_list"].append(process_tools.get_except_info())
-                        self.log("error sending to %s: %s" % (value["host"],
-                                                              ", ".join(value["error_list"])),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "error sending to {}: {}".format(
+                                value["host"],
+                                ", ".join(value["error_list"])
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
                         value["sent_list"][self.echo_seqno] = cur_time
                         self.__seqno_dict[self.echo_seqno] = key
@@ -1765,7 +1438,7 @@ class node_control_process(threading_tools.process_obj):
 
     def _soft_control(self, zmq_id, in_com, *args, **kwargs):
         # soft_control takes the same path as ping but uses a different hoststatus command (not status)
-        self.log("got soft_control from id %s" % (zmq_id))
+        self.log("got soft_control from id {}".format(zmq_id))
         in_com = server_command.srv_command(source=in_com)
         # set zmq_id in structure
         in_com["command"].attrib["zmq_id"] = zmq_id
@@ -1801,7 +1474,7 @@ class node_control_process(threading_tools.process_obj):
             self.pending_list.append(in_com)
 
     def _status(self, zmq_id, in_com, *args, **kwargs):
-        self.log("got status from id %s" % (zmq_id))
+        self.log("got status from id {}".format(zmq_id))
         in_com = server_command.srv_command(source=in_com)
         in_com["command"].attrib["zmq_id"] = zmq_id
         if not machine.ping(in_com):
@@ -1818,13 +1491,13 @@ class node_control_process(threading_tools.process_obj):
         for cur_com in self.pending_list:
             _processed = False
             if cd_ping:
-                if cur_com.xpath(".//ns:cd_ping[text() = '%s']" % (id_str), smart_strings=False):
+                if cur_com.xpath(".//ns:cd_ping[text() = '{}']".format(id_str), smart_strings=False):
                     machine.interpret_cdping_result(cur_com, res_dict)
                     if not cur_com.xpath(".//ns:ping_list", smart_strings=False) and not cur_com.xpath(".//ns:cd_ping_list/ns:cd_ping[@pending='1']"):
                         self._add_ping_info(cur_com)
                         _processed = True
             else:
-                if cur_com.xpath(".//ns:ping[text() = '%s']" % (id_str), smart_strings=False):
+                if cur_com.xpath(".//ns:ping[text() = '{}']".format(id_str), smart_strings=False):
                     # interpret result
                     machine.interpret_result(cur_com, id_str, res_dict)
                     if not cur_com.xpath(".//ns:ping_list", smart_strings=False) and not cur_com.xpath(".//ns:cd_ping_list/ns:cd_ping[@pending='1']"):
@@ -1845,7 +1518,7 @@ class node_control_process(threading_tools.process_obj):
         if cur_dev:
             ret_str = cur_dev.nodeinfo(node_text, instance)
         else:
-            ret_str = "error no node with id '%s' found" % (node_id)
+            ret_str = "error no node with id '{}' found".format(node_id)
         self.send_pool_message("send_return", id_str, ret_str)
 
     def _nodestatus(self, id_str, node_text, **kwargs):
@@ -1872,14 +1545,14 @@ class node_control_process(threading_tools.process_obj):
     def _syslog_line(self, *args, **kwargs):
         in_line = args[0]
         if "DHCP" not in in_line:
-            self.log("got dhcp_line %s, skip" % (in_line))
+            self.log("got dhcp_line {}, skip".format(in_line))
         else:
             for key, cur_re in self.__dhcp_res.iteritems():
                 cur_m = cur_re.match(in_line)
                 if cur_m:
                     break
             if not cur_m:
-                self.log("cannot parse %s" % (in_line), logging_tools.LOG_LEVEL_ERROR)
+                self.log("cannot parse {}".format(in_line), logging_tools.LOG_LEVEL_ERROR)
             else:
                 cur_dict = cur_m.groupdict()
                 cur_dict["key"] = key
@@ -1890,31 +1563,41 @@ class node_control_process(threading_tools.process_obj):
             try:
                 ip_dev = device.objects.select_related("bootnetdevice").get(Q(netdevice__net_ip__ip=in_dict["ip"]))
             except device.DoesNotExist:
-                self.log("got %s for unknown ip %s" % (
-                    in_dict["key"],
-                    in_dict["ip"]), logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "got {} for unknown ip {}".format(
+                        in_dict["key"],
+                        in_dict["ip"]
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 ip_dev = None
             except device.MultipleObjectsReturned:
-                self.log("got %s for multiple ip %s" % (
-                    in_dict["key"],
-                    in_dict["ip"]), logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "got {} for multiple ip {}".format(
+                        in_dict["key"],
+                        in_dict["ip"]
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 ip_dev = None
             else:
                 if ip_dev.bootserver:
                     if ip_dev.bootserver.pk == self.sc.effective_device.pk:
                         boot_dev = machine.get_device(ip_dev.name)
-                        boot_dev.log("parsed: %s" % (", ".join(["%s=%s" % (key, in_dict[key]) for key in sorted(in_dict.keys())])))
+                        boot_dev.log("parsed: {}".format(", ".join(["{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())])))
                         boot_dev.feed_dhcp(in_dict, in_line)
                     else:
                         self.log(
-                            "got request %s for %s, not responsible" % (
+                            "got request {} for {}, not responsible".format(
                                 in_dict["key"],
-                                ip_dev.name),
-                            logging_tools.LOG_LEVEL_WARN)
+                                ip_dev.name
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                 else:
-                    self.log("no bootserver set for device %s, strange..." % (ip_dev.name), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("no bootserver set for device {}, strange...".format(ip_dev.name), logging_tools.LOG_LEVEL_ERROR)
         if in_dict["key"] == "discover":
-            self.log("parsed: %s" % (", ".join(["%s=%s" % (key, in_dict[key]) for key in sorted(in_dict.keys())])))
+            self.log("parsed: {}".format(", ".join(["{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())])))
             if in_line.lower().count("no free leases"):
                 # nothing found
                 try:
@@ -1927,7 +1610,7 @@ class node_control_process(threading_tools.process_obj):
                     ).select_related("bootnetdevice").order_by("name")
                     if len(greedy_devs):
                         if mac_ignore.objects.filter(Q(macaddr__iexact=in_dict["macaddr"].lower())).count():
-                            self.log("ignoring mac-address '%s' (in ignore_list)" % (in_dict["macaddr"]))
+                            self.log("ignoring mac-address '{}' (in ignore_list)".format(in_dict["macaddr"]))
                             macbootlog(
                                 entry_type=in_dict["key"],
                                 ip_action="IGNORE",
@@ -1939,7 +1622,7 @@ class node_control_process(threading_tools.process_obj):
                                 cur_mach.feed_dhcp(in_dict, in_line)
                             else:
                                 # FIXME
-                                self.log("no device found with name '%s', resync ?" % (greedy_devs[0].name), logging_tools.LOG_LEVEL_ERROR)
+                                self.log("no device found with name '{}', resync ?".format(greedy_devs[0].name), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         all_greedy_devs = device.objects.filter(Q(dhcp_mac=True)).select_related("bootnetdevice").order_by("name")
                         if all_greedy_devs:

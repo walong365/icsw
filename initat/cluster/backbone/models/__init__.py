@@ -451,7 +451,6 @@ class device(models.Model):
     name = models.CharField(max_length=192)
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
-    device_type = models.ForeignKey("device_type")
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
     mon_device_templ = models.ForeignKey("backbone.mon_device_templ", null=True, blank=True)
@@ -459,17 +458,15 @@ class device(models.Model):
     mon_ext_host = models.ForeignKey("backbone.mon_ext_host", null=True, blank=True)
     etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
-    newkernel = models.CharField(max_length=192, blank=True)
     new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
-    actkernel = models.CharField(max_length=192, blank=True)
     act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
     act_kernel_build = models.IntegerField(null=True, blank=True)
-    kernelversion = models.CharField(max_length=192, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True, default="CPIO")
-    newimage = models.CharField(max_length=765, blank=True)
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
-    actimage = models.CharField(max_length=765, blank=True)
     act_image = models.ForeignKey("image", null=True, related_name="act_image")
+    # kernel version running
+    kernelversion = models.CharField(max_length=192, blank=True)
+    # image version running
     imageversion = models.CharField(max_length=192, blank=True)
     # new partition table
     partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="new_partition_table")
@@ -1121,18 +1118,6 @@ class device_rsync_config(models.Model):
 
     class Meta:
         db_table = u'device_rsync_config'
-
-
-class device_type(models.Model):
-    idx = models.AutoField(db_column="device_type_idx", primary_key=True)
-    identifier = models.CharField(unique=True, max_length=24)
-    # for ordering
-    priority = models.IntegerField(default=0)
-    description = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = u'device_type'
 
 
 class DeviceLogEntry(models.Model):

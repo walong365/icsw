@@ -205,7 +205,7 @@ class config_control(object):
                     vs_struct.fetch_config_vars()
                     if dir_key in vs_struct:
                         # save image versoin info
-                        self.device.imageversion = "%s.%s" % (cur_img.version, cur_img.release)
+                        self.device.imageversion = "{}.{}".format(cur_img.version, cur_img.release)
                         self.device.save(update_fields=["imageversion"])
                         return "ok %s %s %s %s %s" % (
                             s_req.server_ip,
@@ -215,7 +215,7 @@ class config_control(object):
                             cur_img.builds,
                         )
                     else:
-                        return "error key %s not found" % (dir_key)
+                        return "error key {} not found".format(dir_key)
                 else:
                     return "error resolving server"
 
