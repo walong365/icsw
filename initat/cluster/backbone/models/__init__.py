@@ -509,15 +509,6 @@ class device(models.Model):
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64)  # , unique=True)
-    # cluster url, no longer in use, will be removed in a few months
-    curl = models.CharField(default="ssh://", max_length=512)
-    # , choices=[
-    #    ("ssh://", "ssh://"),
-    #    ("snmp://", "snmp://"),
-    #    ("ipmi://", "ipmi://"),
-    #    ("ilo4://", "ilo4://"), # no longer used ?
-    #    ]
-    # )
     date = models.DateTimeField(auto_now_add=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
