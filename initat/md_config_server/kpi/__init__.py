@@ -74,6 +74,8 @@ class KpiProcess(threading_tools.process_obj):
 
             for kpi_db in Kpi.objects.filter(enabled=True):
 
+                self.log("Evaluating kpi {}".format(kpi_db))
+
                 print '\nevaluating kpi', kpi_db
                 kpi_set = KpiSet(data.get_data_for_kpi(kpi_db),
                                  origin=KpiInitialOperation(kpi=kpi_db))
@@ -91,6 +93,7 @@ class KpiProcess(threading_tools.process_obj):
                     for line in traceback.format_exc().split("\n"):
                         self.log(line)
                 else:
+                    self.log("Kpi {} successfully evaluated".format(kpi_db))
                     if 'kpi' not in eval_locals:
                         self.log("Kpi {} does not define result".format(kpi_db))
                     else:
@@ -101,8 +104,16 @@ class KpiProcess(threading_tools.process_obj):
                         print_tree(result)
 
                         serialized = result.serialize()
-                        # print 'serialized:', serialized
+                        print 'serialized:', serialized
                         result_str = json.dumps(serialized)
+
+                        try:
+                            # there are objects which can be serialized but not deserialized, e.g. enums
+                            json.loads(result_str)
+                        except ValueError:
+                            self.log("result string can be serialized but not deserialized: {}".format(result_str),
+                                     logging_tools.LOG_LEVEL_ERROR)
+                            result_str = None
 
                 date = django.utils.timezone.now()
 

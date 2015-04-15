@@ -32,7 +32,7 @@ angular.module(
             #replace: true
             template: """
 <div>
-    <svg width="700" height="600" class="kpi-visualisation-svg" style="float: left"></svg>
+    <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}" class="kpi-visualisation-svg" style="float: left"></svg>
     <div style="float: left; width: 400px">
         obj:
         {{a}}
@@ -42,22 +42,31 @@ angular.module(
             scope:
                 kpiIdx: '&kpiIdx'
             link: (scope, el, attrs) ->
+                scope.width = 700
+                scope.height = 600
+
+                top_bottom_padding = 10
+
+                draw_height = scope.height - top_bottom_padding * 2
+                draw_width = scope.width - 50  # space for labels on the right side
 
                 d3_service.d3().then((d3) ->
                     scope.svg_el = el[0].getElementsByClassName("kpi-visualisation-svg")[0]
                     scope.svg = d3.select(scope.svg_el)
                         .append("g")
-                        .attr("transform", "translate(25,-30)")
+                        .attr("transform", "translate(0, #{top_bottom_padding})")
                     scope.tree = d3.layout.tree()
-                        .size([400, 650])
-                        .children((node) -> return node.origin.operands ) # if node.? then node.parents else null)
+                        .size([draw_width, draw_height])
+                        .children((node) ->
+                            console.log 'hide ch', node, node.hide_children
+                            if node.hide_children then null else return node.origin.operands)
 
                 )
                 scope.tree = undefined
 
-                height = 600
 
                 scope.redraw = () ->
+                    # TODO: clear svg
                     if !scope.tree?
                         # wait for tree
                         $timeout(scope.redraw, 200)
@@ -65,80 +74,102 @@ angular.module(
                         if scope.kpiIdx()?
                             kpi = icswConfigKpiDataService.get_kpi(scope.kpiIdx())
                             if kpi.enabled and kpi.result?  # only for enabled's
-                                data = kpi.result.json
-                                console.log 'drawing', scope.kpiIdx(), kpi, data
-                                nodes = scope.tree.nodes(data)
-                                links = scope.tree.links(nodes)
+                                scope.data = kpi.result.json
+                                source = {
+                                    x0: draw_height/2,
+                                    y0: 0,
+                                }
 
-                                diagonal = d3.svg.diagonal()
-                                    .projection((d) -> return [d.x, height - d.y])
+                                console.log 'drawing', scope.kpiIdx(), kpi, scope.data
+                                scope.update_dthree()
 
-                                link = scope.svg.selectAll(".link")
-                                    .data(links)
-                                    .enter()
-                                    .append("g")
-                                    .attr("class", "link")
+                scope.update_dthree = () ->
+                    nodes = scope.tree.nodes(scope.data)
+                    links = scope.tree.links(nodes)
 
-                                link.append("path")
-                                    .attr("fill", "none")
-                                    .attr("stroke", "#ff8888")
-                                    .attr("stroke-width", "1.5px")
-                                    .attr("d", diagonal);
+                    # fixed depth
+                    nodes.forEach((d) -> d.y = d.depth * 70)
 
-                                node = scope.svg.selectAll(".node")
-                                    .data(nodes)
-                                    .enter()
-                                    .append("g")
-                                    .attr("class", "node")
-                                    .style("cursor", "pointer")
-                                    # diagonal:
-                                    #.attr("transform", (d) -> return "translate(" + d.y + "," + d.x + ")")
-                                    .attr("transform", (d) -> return "translate(" + d.x + "," + (height - d.y) + ")")
+                    diagonal = d3.svg.diagonal()
+                        #.projection((d) -> return [d.x, draw_height - d.y])
 
-                                #node.append("circle")
-                                #    .attr("r", 4.5)
+#                    link = scope.svg.selectAll(".link")
+#                        .data(links)
+#
+#                    link_enter = link.enter()
+#                    link_enter
+#                        .append("g")
+#                        .attr("class", "link")
+#                        .append("path")
+#                        .attr("fill", "none")
+#                        .attr("stroke", "#ff8888")
+#                        .attr("stroke-width", "1.5px")
+#                        .attr("d", diagonal);
+#
+#                    link.exit().remove()
 
-                                #node.append("text")
-                                #    #.attr("dx", (d) -> return if d.children then -8 else 8)
-                                #    .attr("dx", (d) -> return 8)
-                                #    .attr("dy", 3)
-                                #    #.style("text-anchor", (d) -> return if d.children then "end" else "start")
-                                #    .style("text-anchor", (d) -> return "start")
+                    node = scope.svg.selectAll(".node")
+                        .data(nodes)
 
-                                node.html((d) ->
-                                        res = "<circle r=\"4.5\"></circle> {"
-                                        cur_height = 3
-                                        i = 0
-                                        for kpi_obj in d.objects
-                                            if i > 2 # only 3 elems
-                                                res += "<text dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
-                                                break
-                                            s = scope.kpi_obj_to_string(kpi_obj)
-                                            s = $filter('limit_text')(s, 40)
-                                            res += "<text dx=\"8\" dy=\"#{cur_height}\"> #{s} </text>"
-                                            cur_height += 14
-                                            i += 1
-                                        res += "}"
-                                        res += "<text dx=\"0\" dy=\"-25\" text-anchor=\"middle\">"
-                                        res += "#{d.origin.type}" #{ JSON.stringify(d.origin.arguments)} "
-                                        res += "(" + (k+"="+v for k, v of d.origin.arguments).join(", ") + ")"
-                                        res += "</text>"
-                                        return res
-                                    )
-                                    #.text((d) ->
-                                    #    if d.objects.length > 3
-                                    #        return "#{d.objects.length} objects"
-                                    #    else
-                                    #        return "{" + (d.host_name for d in d.objects).join("\n") + "}"
-                                    #).each((d) ->
-                                    #    for ch in d.objects
-                                    #        d.append("text")
-                                    #             .text((e) -> e)
-                                    #)
+                    node.enter()
+                        .append("g")
+                        .attr("class", "node")
+                        .style("cursor", "pointer")
+                        .attr("transform", (d) -> return "translate(" + d.x + "," + d.y + ")")
+                        #.attr("transform", (d) -> return "translate(" + d.x + "," + (draw_height - d.y) + ")")
 
-                                node.on("click", scope.on_node_click)
-                                node.on("mouseenter", scope.on_mouse_enter)
-                                node.on("mouseleave", scope.on_mouse_leave)
+                    node.exit().remove()
+
+
+                    #node.append("circle")
+                    #    .attr("r", 4.5)
+
+                    #node.append("text")
+                    #    #.attr("dx", (d) -> return if d.children then -8 else 8)
+                    #    .attr("dx", (d) -> return 8)
+                    #    .attr("dy", 3)
+                    #    #.style("text-anchor", (d) -> return if d.children then "end" else "start")
+                    #    .style("text-anchor", (d) -> return "start")
+
+                    node
+                        .html((d) ->
+                            res = "<circle r=\"4.5\"></circle> {"
+                            cur_height = 3
+
+                            if d.origin.type == 'initial'
+                                res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> initial data </text>"
+                            else
+                                i = 0
+                                for kpi_obj in d.objects
+                                    if i > 2 # only 3 elems
+                                        res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
+                                        break
+                                    s = scope.kpi_obj_to_string(kpi_obj)
+                                    s = $filter('limit_text')(s, 40)
+                                    res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{s} </text>"
+                                    cur_height += 14
+                                    i += 1
+                                res += "}"
+                                res += "<text style=\"font-size: 11px\" dx=\"0\" dy=\"-15\" text-anchor=\"middle\">"
+                                res += "#{d.origin.type}" #{ JSON.stringify(d.origin.arguments)} "
+                                res += "(" + (k+"="+v for k, v of d.origin.arguments).join(", ") + ")"
+                                res += "</text>"
+                            return res
+                        )
+                        #.text((d) ->
+                        #    if d.objects.length > 3
+                        #        return "#{d.objects.length} objects"
+                        #    else
+                        #        return "{" + (d.host_name for d in d.objects).join("\n") + "}"
+                        #).each((d) ->
+                        #    for ch in d.objects
+                        #        d.append("text")
+                        #             .text((e) -> e)
+                        #)
+
+                    node.on("click", scope.on_node_click)
+                    node.on("mouseenter", scope.on_mouse_enter)
+                    node.on("mouseleave", scope.on_mouse_leave)
 
                 scope.kpi_obj_to_string = (kpi_obj) ->
                     parts = []
@@ -162,12 +193,12 @@ angular.module(
 
 
                 scope.on_node_click = (node) ->
-                    console.log 'click', node
+                    node.hide_children = !node.hide_children
+                    console.log 'node hide', node.hide_children
+                    scope.redraw()
                 scope.on_mouse_enter = (node) ->
-                    console.log 'enter', node
                     scope.a = node.objects
                 scope.on_mouse_leave = (node) ->
-                    console.log 'leave', node
                     scope.a = undefined
 
                 scope.$watch(

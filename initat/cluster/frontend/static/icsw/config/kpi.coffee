@@ -242,6 +242,7 @@ angular.module(
 
                     for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
                         entry = create_data_source_tuple(obj, tup)
+                        console.log 'crate', entry
                         icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
                             (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
                         )
@@ -266,6 +267,7 @@ angular.module(
                 for k, v of cur_edit_kpi
                     orig_kpi[k] = v
 
+                delete orig_kpi.result  # don't want to put this, possibly remove it from here
                 orig_kpi.put()
 
             else

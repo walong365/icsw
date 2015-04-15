@@ -71,7 +71,7 @@ class KpiResult(IntEnum):
             KpiResult.critical: mon_icinga_log_raw_service_alert_data.STATE_CRITICAL,
             KpiResult.unknown: mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN,
             KpiResult.undetermined: mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
-        }
+        }[self]
 
 
 class KpiObject(object):
@@ -424,7 +424,7 @@ class KpiSet(object):
             raise ValueError("num_warn is higher than num_ok ({} > {})".format(num_warn, num_ok))
 
         origin = KpiOperation(KpiOperation.Type.at_least,
-                              arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': result},
+                              arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': result.name},
                               operands=[self])
 
         num = sum(1 for obj in self.result_objects if obj.result == result)
@@ -517,7 +517,7 @@ class KpiSet(object):
         :type result: KpiResult
         """
         origin = KpiOperation(KpiOperation.Type.evaluate_historic,
-                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn},
+                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': result.name},
                               operands=[self])
         if not self.time_line_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
