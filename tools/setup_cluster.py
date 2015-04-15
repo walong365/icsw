@@ -589,7 +589,6 @@ def call_update_funcs(opts):
     call_manage(["migrate_to_new_logging_scheme"])
     call_manage(["migrate_to_config_catalog"])
     call_manage(["ensure_cluster_id"])
-    call_manage(["rewrite_curl"])
 
 
 def create_fixtures():
