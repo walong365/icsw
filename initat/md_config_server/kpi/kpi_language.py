@@ -231,9 +231,10 @@ class KpiTimeLineObject(KpiObject):
 
     def serialize(self):
         trans = mon_icinga_log_aggregated_service_data.STATE_CHOICES_READABLE
+
+        aggr_tl = TimeLineUtils.merge_state_types(TimeLineUtils.aggregate_time_line(self.time_line))
         return dict(
-            aggregated_tl={"{};{}".format(trans[k[0]], k[1]): v
-                           for k, v in TimeLineUtils.aggregate_time_line(self).iteritems()},
+            aggregated_tl={trans[k]: v for k, v in aggr_tl.iteritems()},
             **super(KpiTimeLineObject, self).serialize()
         )
 
@@ -525,7 +526,7 @@ class KpiSet(object):
 
             for tl_obj in self.time_line_objects:
 
-                aggregated_tl = TimeLineUtils.aggregate_time_line(tl_obj)
+                aggregated_tl = TimeLineUtils.aggregate_time_line(tl_obj.time_line)
 
                 # also aggregate state types
                 amount = sum(v for k, v in aggregated_tl.iteritems()

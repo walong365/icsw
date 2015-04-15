@@ -143,14 +143,21 @@ class TimeLineUtils(list):
         return compound_time_line
 
     @staticmethod
-    def aggregate_time_line(tl_obj):
+    def aggregate_time_line(time_line):
         states_accumulator = collections.defaultdict(lambda: 0)
-        for entry1, entry2 in pairwise(tl_obj.time_line):
+        for entry1, entry2 in pairwise(time_line):
             time_span = entry2.date - entry1.date
             states_accumulator[entry1.state] += time_span.total_seconds()
 
         total_time_span = sum(states_accumulator.itervalues())
         return {k: v / total_time_span for k, v in states_accumulator.iteritems()}
+
+    @staticmethod
+    def merge_state_types(aggregated_tl):
+        accumulator = collections.defaultdict(lambda: 0)
+        for k, v in aggregated_tl.iteritems():
+            accumulator[k[0]] += v
+        return accumulator
 
 
 class TimeLineEntry(object):

@@ -21,18 +21,18 @@
 angular.module(
     "icsw.config.kpi_visualisation",
     [
-        "icsw.tools.utils", "icsw.d3",
+        "icsw.tools.utils", "icsw.d3", "icsw.tools",
     ]
 ).directive("icswConfigKpiEvaluationGraph",
-    ["icswConfigKpiDataService", "d3_service", "$timeout",
-    (icswConfigKpiDataService, d3_service, $timeout) ->
+    ["icswConfigKpiDataService", "d3_service", "$timeout", "$filter",
+    (icswConfigKpiDataService, d3_service, $timeout, $filter) ->
         return {
             restrict: "E"
             #templateNamespace: "svg"
             #replace: true
             template: """
 <div>
-    <svg width="600" height="600" class="kpi-visualisation-svg" style="float: left"></svg>
+    <svg width="700" height="600" class="kpi-visualisation-svg" style="float: left"></svg>
     <div style="float: left; width: 400px">
         obj:
         {{a}}
@@ -47,9 +47,9 @@ angular.module(
                     scope.svg_el = el[0].getElementsByClassName("kpi-visualisation-svg")[0]
                     scope.svg = d3.select(scope.svg_el)
                         .append("g")
-                        .attr("transform", "translate(10,-30)")
+                        .attr("transform", "translate(25,-30)")
                     scope.tree = d3.layout.tree()
-                        .size([400, 550])
+                        .size([400, 650])
                         .children((node) -> return node.origin.operands ) # if node.? then node.parents else null)
 
                 )
@@ -109,11 +109,13 @@ angular.module(
                                         res = "<circle r=\"4.5\"></circle> {"
                                         cur_height = 3
                                         i = 0
-                                        for ch in d.objects
+                                        for kpi_obj in d.objects
                                             if i > 2 # only 3 elems
                                                 res += "<text dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
                                                 break
-                                            res += "<text dx=\"8\" dy=\"#{cur_height}\"> #{ch} </text>"
+                                            s = scope.kpi_obj_to_string(kpi_obj)
+                                            s = $filter('limit_text')(s, 40)
+                                            res += "<text dx=\"8\" dy=\"#{cur_height}\"> #{s} </text>"
                                             cur_height += 14
                                             i += 1
                                         res += "}"
@@ -137,6 +139,27 @@ angular.module(
                                 node.on("click", scope.on_node_click)
                                 node.on("mouseenter", scope.on_mouse_enter)
                                 node.on("mouseleave", scope.on_mouse_leave)
+
+                scope.kpi_obj_to_string = (kpi_obj) ->
+                    parts = []
+                    if kpi_obj.host_name
+                        parts.push kpi_obj.host_name.split(".")[0]
+                    if kpi_obj.service_info?
+                        parts.push kpi_obj.service_info
+                    else if kpi_obj.check_command
+                        parts.push kpi_obj.check_command
+
+                    if kpi_obj.aggregated_tl?
+                        #return "aggregated tl <b>bb</b>"
+                        #return JSON.stringify(kpi_obj.aggregated_tl)
+                        parts.push "{" + ( "#{k}: #{(v*100).toFixed(2)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
+
+                    if parts.length
+                        return parts.join(":")
+                    else
+                        return JSON.stringify(kpi_obj)
+
+
 
                 scope.on_node_click = (node) ->
                     console.log 'click', node
