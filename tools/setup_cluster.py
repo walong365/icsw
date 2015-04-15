@@ -588,6 +588,8 @@ def create_db(opts):
         apply_migration(_app)
     ds0.restore()
     ds0.cleanup()
+    # we now go for the 0800
+    check_for_0800(opts)
     apply_migration("backbone")
 
     call_manage(["createinitialrevisions"])
