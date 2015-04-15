@@ -944,14 +944,10 @@ class host(machine):
             self.log("starting readdots in dir '{}'".format(c_dir))
             hlist = [
                 (".version", "imageversion", None, None),
-                (".imagename", "actimage", None, None),
                 (".imagename", "act_image", image, "name"),
-                # (".kernel"   , "actkernel"          , None, None),
                 (".kernel", "act_kernel", kernel, "name"),
                 (".kversion", "kernelversion", None, None),
-                # handled by cluster-config-server
-                # (".parttype" , "act_partition_table", partition_table, "name"),
-                (None, "act_kernel_build", None, None)
+                # (None, "act_kernel_build", None, None)
             ]
             s_dict = {}
             num_tried, num_ok, num_found = (0, 0, 0)
@@ -979,9 +975,6 @@ class host(machine):
                                 else:
                                     if new_obj.pk != getattr(self.device, "{}_id".format(dbentry)):
                                         s_dict[dbentry] = new_obj
-                            else:
-                                pass
-                                # print "dbe", dbentry, line, self.device
             if s_dict:
                 for key, value in s_dict.iteritems():
                     setattr(self.device, key, value)

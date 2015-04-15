@@ -458,17 +458,15 @@ class device(models.Model):
     mon_ext_host = models.ForeignKey("backbone.mon_ext_host", null=True, blank=True)
     etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
-    newkernel = models.CharField(max_length=192, blank=True)
     new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
-    actkernel = models.CharField(max_length=192, blank=True)
     act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
     act_kernel_build = models.IntegerField(null=True, blank=True)
-    kernelversion = models.CharField(max_length=192, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True, default="CPIO")
-    newimage = models.CharField(max_length=765, blank=True)
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
-    actimage = models.CharField(max_length=765, blank=True)
     act_image = models.ForeignKey("image", null=True, related_name="act_image")
+    # kernel version running
+    kernelversion = models.CharField(max_length=192, blank=True)
+    # image version running
     imageversion = models.CharField(max_length=192, blank=True)
     # new partition table
     partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="new_partition_table")
