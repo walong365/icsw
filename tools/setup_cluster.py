@@ -654,7 +654,7 @@ def main():
     upd_opts = my_p.add_argument_group("update options")
     upd_opts.add_argument("--only-fixtures", default=False, action="store_true", help="only call create_fixtures")
     auc_flags = my_p.add_argument_group("automatic update options")
-    auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
+    # auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
     auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
     sqlite_db_opts = my_p.add_argument_group("sqlite database file options")
     sqlite_db_opts.add_argument("--db-path", type=str, help="path to sqlite database file directory")
@@ -677,18 +677,7 @@ def main():
         print("No database access libraries installed, please install some of them")
         sys.exit(1)
     # flag: setup db_cf data
-    if opts.enable_auto_update:
-        if os.path.exists(AUTO_FLAG):
-            print("auto_udpate_flag {} already exists".format(AUTO_FLAG))
-        else:
-            try:
-                file(AUTO_FLAG, "w").write("\n")
-            except:
-                print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
-                sys.exit(-1)
-            else:
-                print("created auto_update_flag {}".format(AUTO_FLAG))
-    elif opts.disable_auto_update:
+    if opts.disable_auto_update:
         if os.path.isfile(AUTO_FLAG):
             try:
                 os.unlink(AUTO_FLAG)
@@ -700,46 +689,57 @@ def main():
         else:
             print("auto_udpate_flag {} not present".format(AUTO_FLAG))
     else:
-        db_exists = os.path.exists(DB_FILE)
-        call_create_db = True
-        call_migrate_db = False
-        call_create_fixtures = False
-        if db_exists:
-            if opts.only_fixtures:
-                setup_db_cf = False
-                call_create_db = False
-                call_migrate_db = False
-                call_create_fixtures = True
-            elif opts.migrate:
-                setup_db_cf = False
-                call_create_db = False
-                call_migrate_db = True
-            else:
-                if opts.use_existing:
-                    # use existing db_cf
-                    setup_db_cf = False
-                else:
-                    if opts.ignore_existing:
-                        print("DB access file {} already exists, ignoring ...".format(DB_FILE))
-                        setup_db_cf = True
-                    else:
-                        print("DB access file {} already exists, exiting ...".format(DB_FILE))
-                        sys.exit(1)
+        if os.path.exists(AUTO_FLAG):
+            pass
+            # print("auto_udpate_flag {} already exists".format(AUTO_FLAG))
         else:
-            setup_db_cf = True
+            try:
+                file(AUTO_FLAG, "w").write("\n")
+            except:
+                print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
+                sys.exit(-1)
+            else:
+                print("created auto_update_flag {}".format(AUTO_FLAG))
+    db_exists = os.path.exists(DB_FILE)
+    call_create_db = True
+    call_migrate_db = False
+    call_create_fixtures = False
+    if db_exists:
+        if opts.only_fixtures:
+            setup_db_cf = False
+            call_create_db = False
+            call_migrate_db = False
+            call_create_fixtures = True
+        elif opts.migrate:
+            setup_db_cf = False
+            call_create_db = False
+            call_migrate_db = True
+        else:
             if opts.use_existing:
-                print("DB access file {} does not exist ...".format(DB_FILE))
-        if setup_db_cf:
-            if not create_db_cf(opts, default_engine, default_database):
-                print("Creation of {} not successfull, exiting".format(DB_FILE))
-                sys.exit(3)
-        check_db_rights()
-        if call_create_db:
-            create_db(opts)
-        if call_migrate_db:
-            migrate_db(opts)
-        if call_create_fixtures:
-            create_fixtures()
+                # use existing db_cf
+                setup_db_cf = False
+            else:
+                if opts.ignore_existing:
+                    print("DB access file {} already exists, ignoring ...".format(DB_FILE))
+                    setup_db_cf = True
+                else:
+                    print("DB access file {} already exists, exiting ...".format(DB_FILE))
+                    sys.exit(1)
+    else:
+        setup_db_cf = True
+        if opts.use_existing:
+            print("DB access file {} does not exist ...".format(DB_FILE))
+    if setup_db_cf:
+        if not create_db_cf(opts, default_engine, default_database):
+            print("Creation of {} not successfull, exiting".format(DB_FILE))
+            sys.exit(3)
+    check_db_rights()
+    if call_create_db:
+        create_db(opts)
+    if call_migrate_db:
+        migrate_db(opts)
+    if call_create_fixtures:
+        create_fixtures()
 
 if __name__ == "__main__":
     main()

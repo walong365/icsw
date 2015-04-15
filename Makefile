@@ -141,7 +141,7 @@ install:
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
-	for shf in post_install server_installed ; do \
+	for shf in post_install ; do \
 	    ${INSTALL} ${INSTALL_OTPS} tools/$${shf}.sh ${DESTDIR}/${ICSW_BASE}/sbin/pis ; \
 	done
 	${INSTALL} ${INSTALL_OPTS} meta-server.py ${DESTDIR}/${SPREFIX}
