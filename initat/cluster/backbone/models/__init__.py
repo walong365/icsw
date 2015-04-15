@@ -215,7 +215,7 @@ class home_export_list(object):
         exp_entries = device_config.objects.filter(
             Q(config__name__icontains="homedir") &
             Q(config__name__icontains="export") &
-            Q(device__device_type__identifier="H")
+            Q(device__is_meta_device=False)
         ).prefetch_related(
             "config__config_str_set"
         ).select_related(
@@ -430,9 +430,21 @@ class DeviceEnabledManager(models.Manager):
         return super(DeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True))
 
 
+class RealDeviceEnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(RealDeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=False))
+
+
+class MetaDeviceEnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(MetaDeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=True))
+
+
 class device(models.Model):
     objects = models.Manager()
     all_enabled = DeviceEnabledManager()
+    all_real_enabled = RealDeviceEnabledManager()
+    all_meta_enabled = MetaDeviceEnabledManager()
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
     # no dots allowed (these parts are now in domain_tree_node)
@@ -536,7 +548,9 @@ class device(models.Model):
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
     # has an IPMI interface
-    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple")
+    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
+    # flag: is meta device ?
+    is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
     # scan active ?
@@ -578,7 +592,7 @@ class device(models.Model):
     def display_name(self):
         # like full_name but replaces METADEV_ with group
         _name = self.full_name
-        if self.device_type.identifier == "MD" and _name.startswith("METADEV_"):
+        if self.is_meta_device and _name.startswith("METADEV_"):
             _name = "group {}".format(_name[8:])
         return _name
 
@@ -594,12 +608,6 @@ class device(models.Model):
 
     def root_passwd_set(self):
         return True if self.root_passwd else False
-
-    def is_meta_device(self):
-        return self.device_type.identifier == "MD"
-
-    def device_type_identifier(self):
-        return self.device_type.identifier
 
     def device_group_name(self):
         return self.device_group.name
@@ -812,7 +820,7 @@ def device_post_save(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         if _cur_inst.bootserver_id:
             bootsettings_changed.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
-        if _cur_inst.device_type.identifier in ["MD"]:
+        if _cur_inst.is_meta_device:
             _stripped = strip_metadevice_name(_cur_inst.name)
             if _stripped != _cur_inst.device_group.name:
                 _cur_inst.device_group.name = _stripped
@@ -910,15 +918,14 @@ def device_pre_save(sender, **kwargs):
                     )
                 )
         # check for device group
-        if cur_inst.device_group.cluster_device_group and cur_inst.device_type.identifier not in ["MD"]:
+        if cur_inst.device_group.cluster_device_group and not cur_inst.is_meta_device:
             raise ValidationError("no devices allowed in cluster_device_group")
         # Check if the device limit is reached, disabled as of 2013-10-14 (AL)
         if False:
             dev_count = settings.CLUSTER_LICENSE["device_count"]
 
             # Exclude special meta devices
-            md_type = device_type.objects.get(identifier="MD")
-            current_count = device.objects.exclude(device_type=md_type).count()
+            current_count = device.objects.exclude(is_meta_device=True).count()
 
             if dev_count > 0 and current_count >= dev_count:
                 logger.warning("Device limit {:d} reached".format(dev_count))
@@ -983,12 +990,13 @@ class device_group(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def _add_meta_device(self):
-        new_md = device(name=self.get_metadevice_name(),
-                        device_group=self,
-                        domain_tree_node=self.domain_tree_node,
-                        enabled=self.enabled,
-                        # device_class=device_class.objects.get(Q(pk=1)),
-                        device_type=device_type.objects.get(Q(identifier="MD")))
+        new_md = device(
+            name=self.get_metadevice_name(),
+            device_group=self,
+            domain_tree_node=self.domain_tree_node,
+            enabled=self.enabled,
+            is_meta_device=True,
+        )
         new_md.save()
         self.device = new_md
         self.save()
@@ -1122,9 +1130,6 @@ class device_type(models.Model):
     priority = models.IntegerField(default=0)
     description = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return self.description
 
     class Meta:
         db_table = u'device_type'

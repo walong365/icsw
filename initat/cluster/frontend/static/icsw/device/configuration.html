@@ -9,7 +9,7 @@
     <td>{{ get_name(obj) }}</td>
     <td>{{ obj.device_group_name }}</td>
     <td>{{ obj.comment }}</td>
-    <td>local: {{ obj.local_selected.length }}<span ng-show="obj.device_type_identifier != 'MD'">, meta: {{ meta_devices[devg_md_lut[obj.device_group]].local_selected.length }}</span></td>
+    <td>local: {{ obj.local_selected.length }}<span ng-show="!obj.is_meta_device">, meta: {{ meta_devices[devg_md_lut[obj.device_group]].local_selected.length }}</span></td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.configuration.table">
@@ -30,7 +30,7 @@
 <script type="text/ng-template" id="icsw.device.configuration.row">
    <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
    <td class="text-center">{{ dev.local_selected.length }}</td>
-   <td class="text-center"><span ng-show="dev.device_type_identifier != 'MD'">{{ meta_devices[devg_md_lut[dev.device_group]].local_selected.length }}</span></td>
+   <td class="text-center"><span ng-show="!dev.is_meta_device">{{ meta_devices[devg_md_lut[dev.device_group]].local_selected.length }}</span></td>
    <td ng-repeat="conf in active_configs" class="text-center" ng-class="get_td_class(dev, conf.idx, true)" ng-click="click(dev, conf.idx)">
         <div ng-show="show_config(dev, conf.idx)">
            <span ng-class="get_config_class_icon(dev, conf.idx, true)"></span>

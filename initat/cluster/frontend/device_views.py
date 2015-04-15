@@ -34,13 +34,14 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
-from initat.cluster.backbone.models import device_type, device_group, device, \
+from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 import logging_tools
 import server_command
+import process_tools
 
 
 logger = logging.getLogger("cluster.device")
@@ -91,7 +92,6 @@ class change_devices(View):
             c_dict = {key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]}
             # resolve foreign keys
             c_dict = {key: {
-                "device_type": device_type,
                 "device_group": device_group,
                 "domain_tree_node": domain_tree_node,
                 "bootserver": device,
@@ -177,9 +177,15 @@ class manual_connection(View):
                 val = ("(%s)(%s)(%s)" % (parts[0], "#" * (len(parts) - 1), parts[-1])).replace("()", "").replace("#", "\d")
             re_dict[key] = re.compile("^%s$" % (val))
         # all cd / non-cd devices
-        cd_devices = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(device_type__identifier='CD'))
-        non_cd_devices = device.objects.exclude(Q(device_type__identifier='CD')).filter(Q(enabled=True) & Q(device_group__enabled=True))
-        logger.info("cd / non-cd devices: %d / %d" % (cd_devices.count(), non_cd_devices.count()))
+        # FIXME
+        cd_devices = device.all_real_enabled.filter(
+            Q(ipmi_capable=True) | (
+                Q(snmp_schemes__power_control=True)
+            )
+        )
+        print cd_devices
+        non_cd_devices = device.all_real_enabled()
+        logger.info("cd / non-cd devices: {:d} / {:d}".format(cd_devices.count(), non_cd_devices.count()))
         # iterate over non-cd-device
         # pprint.pprint(re_dict)
         match_dict = {}
@@ -198,26 +204,30 @@ class manual_connection(View):
         # matching keys
         m_keys = set(match_dict["source"].keys()) & set(match_dict["target"].keys())
         logger.info(
-            "%s: %s" % (logging_tools.get_plural("matching key", len(m_keys)),
-                        ", ".join(sorted([str(key) for key in m_keys]))))
+            "{}: {}".format(
+                logging_tools.get_plural("matching key", len(m_keys)),
+                ", ".join(sorted([str(key) for key in m_keys]))
+            )
+        )
         created_cons = []
         for m_key in m_keys:
             new_cd = cd_connection(
                 parent=match_dict["target" if t_type == "slave" else "source"][m_key][1],
                 child=match_dict["source" if t_type == "slave" else "target"][m_key][1],
                 created_by=request.user,
-                connection_info="manual")
+                connection_info="manual"
+            )
             try:
                 new_cd.save()
-            except ValidationError, what:
-                request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
+            except ValidationError:
+                request.xml_response.error("error creating: {}".format(process_tools.get_except_info()), logger)
                 for del_cd in created_cons:
                     del_cd.delete()
             else:
                 created_cons.append(new_cd)
         if m_keys:
             if created_cons:
-                request.xml_response.info("created %s" % (logging_tools.get_plural("connection", len(m_keys))), logger)
+                request.xml_response.info("created {}".format(logging_tools.get_plural("connection", len(m_keys))), logger)
         else:
             request.xml_response.warn("found no matching devices", logger)
 

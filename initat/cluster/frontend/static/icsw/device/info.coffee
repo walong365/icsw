@@ -61,7 +61,7 @@ angular.module(
         (Restangular, $rootScope, $templateCache, $compile, $modal, $q, access_level_service, msgbus) ->
             return {
                 "NewSingleSelection" : (dev) ->
-                    if dev.device_type_identifier == "MD"
+                    if dev.is_meta_device
                         msgbus.emit("devicelist", [[dev.idx], [], [], [dev.idx]])
                     else
                         msgbus.emit("devicelist", [[dev.idx], [dev.idx], [], []])
@@ -73,7 +73,7 @@ angular.module(
                     access_level_service.install(sub_scope)
                     dev_idx = dev.idx
                     sub_scope.devicepk = dev_idx
-                    if dev.device_type_identifier == "MD"
+                    if dev.is_meta_device
                         sub_scope.dev_pk_list = [dev_idx]
                         sub_scope.dev_pk_nmd_list = []
                     else
@@ -189,17 +189,17 @@ angular.module(
         $scope.toggle_uuid = () ->
             $scope.show_uuid = !$scope.show_uuid
         $scope.get_full_name = () ->
-            if $scope._edit_obj.device_type_identifier == "MD"
+            if $scope._edit_obj.is_meta_device
                 return $scope._edit_obj.full_name.substr(8)
             else
                 return $scope._edit_obj.full_name
         $scope.modify = () ->
             if not $scope.form.$invalid
                 if $scope.acl_modify($scope._edit_obj, "backbone.device.change_basic")
-                    if $scope._edit_obj.device_type_identifier == "MD"
+                    if $scope._edit_obj.is_meta_device
                         $scope._edit_obj.name = "METADEV_" + $scope._edit_obj.name
                     $scope._edit_obj.put().then(() ->
-                        if $scope._edit_obj.device_type_identifier == "MD"
+                        if $scope._edit_obj.is_meta_device
                             $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
                         # selectively reload sidebar tree
                         reload_sidebar_tree([$scope._edit_obj.idx])
@@ -229,13 +229,13 @@ angular.module(
                     scope.mon_device_templ_list = data[1]
                     scope.mon_ext_host_list = data[2]
                     scope._edit_obj = data[3][0]
-                    if scope._edit_obj.device_type_identifier == "MD"
+                    if scope._edit_obj.is_meta_device
                         scope._edit_obj.name = scope._edit_obj.name.substr(8)
                     element.children().remove()
                     element.append($compile($templateCache.get("device.info.form"))(scope))
                 )
             scope.is_device = () ->
-                return if scope._edit_obj.device_type_identifier in ["MD"] then false else true
+                return not scope._edit_obj.is_meta_device
             scope.get_monitoring_hint_info = () ->
                 if scope._edit_obj.monitoring_hint_set.length
                     mhs = scope._edit_obj.monitoring_hint_set

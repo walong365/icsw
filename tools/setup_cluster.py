@@ -474,14 +474,22 @@ def check_for_pre17(opts):
 
 
 def check_for_0800(opts):
+    tmp_dir = tempfile.mkdtemp()
+    # move away all migrations above 0800
+    _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry.endswith(".py") and _entry[0:4].isdigit() and int(_entry[0:4]) > 800]
+    print("moving away migrations above 0800_base ({})".format(logging_tools.get_plural("file", len(_move_files))))
+    for _move_file in _move_files:
+        shutil.move(os.path.join(CMIG_DIR, _move_file), os.path.join(tmp_dir, _move_file))
     _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
+    print("moving back migrations above 0800_base ({})".format(logging_tools.get_plural("file", len(_move_files))))
+    for _move_file in _move_files:
+        shutil.move(os.path.join(tmp_dir, _move_file), os.path.join(CMIG_DIR, _move_file))
     if not _list_stat:
         sys.exit(7)
     applied = True if _list_out.count("[X] 0800_base") else False
     if applied:
         print("0800_base already applied")
     else:
-        tmp_dir = tempfile.mkdtemp()
         print("0800_base not reached, migrating to stable 0800 (tmp_dir is {})".format(tmp_dir))
         # move away all migrations >= 0800
         _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry.endswith(".py") and _entry[0:4].isdigit() and int(_entry[0:4]) >= 800]
@@ -582,6 +590,7 @@ def call_update_funcs(opts):
     call_manage(["migrate_to_config_catalog"])
     call_manage(["ensure_cluster_id"])
     call_manage(["rewrite_curl"])
+    call_manage(["remove_device_type"])
 
 
 def create_fixtures():

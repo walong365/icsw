@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2010,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -915,7 +915,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 # normal exports
                 exp_entries = device_config.objects.filter(
                     Q(config__name__icontains="export") &
-                    Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+                    Q(device__is_meta_device=False)).prefetch_related("config__config_str_set").select_related("device")
                 export_dict = {}
                 ei_dict = {}
                 for entry in exp_entries:

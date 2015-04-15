@@ -1091,10 +1091,15 @@ def list_to_struct(in_list, **kwargs):
         return [("", in_list)]
     # find longest common prefix
     _len = 0
+    _min_len = min([len(_v) for _v in in_list])
+    if not _min_len:
+        return [("", in_list)]
     while True:
         _pfs = set([_value[:_len + 1] for _value in in_list])
         if len(_pfs) == 1:
             _len += 1
+            if _len > _min_len:
+                break
         else:
             break
     if _len:
@@ -1154,4 +1159,5 @@ def struct_to_string(in_struct):
 
 
 def reduce_list(in_list, **kwargs):
-    return ",".join([struct_to_string(_sub_list) for _sub_list in list_to_struct(in_list, **kwargs)])
+    _top_join_str = kwargs.pop("top_join_str", ",")
+    return _top_join_str.join([struct_to_string(_sub_list) for _sub_list in list_to_struct(in_list, **kwargs)])

@@ -2,7 +2,7 @@
 
 import factory
 from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
-    device_type, partition_fs, status, network_device_type, \
+    partition_fs, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, LogSource, \
@@ -38,19 +38,6 @@ class LogLevelFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = LogLevel
         django_get_or_create = ("identifier",)
-
-
-class DeviceType(factory.django.DjangoModelFactory):
-    class Meta:
-        model = device_type
-        django_get_or_create = ("identifier",)
-    priority = 0
-
-    @factory.post_generation
-    def priority(self, create, extracted, **kwargs):
-        if self.priority != extracted:
-            self.priority = extracted
-            self.save()
 
 
 class PartitionFS(factory.django.DjangoModelFactory):
@@ -385,6 +372,10 @@ class SNMPScheme(factory.django.DjangoModelFactory):
     @factory.post_generation
     def mon_check(self, create, extracted, **kwargs):
         _check_boolean(self, extracted or False, "mon_check")
+
+    @factory.post_generation
+    def power_control(self, create, extracted, **kwargs):
+        _check_boolean(self, extracted or False, "power_control")
 
     @factory.post_generation
     def description(self, create, extracted, **kwargs):

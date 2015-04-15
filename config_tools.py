@@ -76,7 +76,7 @@ class router_object(object):
         if latest_gen != self.__cur_gen:
             s_time = time.time()
             self.all_nds = netdevice.objects.exclude(
-                Q(device__device_type__identifier="MD")
+                Q(device__is_meta_device=True)
             ).exclude(
                 Q(enabled=False)
             ).filter(
@@ -193,11 +193,7 @@ class router_object(object):
                 }
             )
         # add devices withoutnetdevices
-        for _wnd in device.objects.exclude(
-            Q(device_type__identifier="MD")
-        ).filter(
-            Q(enabled=True) &
-            Q(device_group__enabled=True) &
+        for _wnd in device.all_real_enabled.filter(
             Q(netdevice=None)
         ).values_list("pk", flat=True):
             clusters.append(
@@ -247,11 +243,7 @@ class topology_object(object):
 
     def _update(self):
         s_time = time.time()
-        dev_sel = device.objects.exclude(
-            Q(device_type__identifier="MD")
-        ).filter(
-            Q(enabled=True) & Q(device_group__enabled=True)
-        ).select_related("domain_tree_node")
+        dev_sel = device.all_real_enabled.select_related("domain_tree_node")
         if self.__graph_mode.startswith("sel"):
             dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
         if self.__graph_mode == "none":
@@ -521,7 +513,7 @@ class server_check(object):
                         try:
                             self.config = _co.get(
                                 Q(name=self.__server_type) &
-                                Q(device_config__device__device_type__identifier="MD") &
+                                Q(device_config__device__is_meta_device=True) &
                                 Q(device_config__device__device_group=self.device.device_group_id)
                             )
                         except config.DoesNotExist:  # @UndefinedVariable
@@ -529,7 +521,7 @@ class server_check(object):
                         else:
                             self.effective_device = device.objects.get(
                                 Q(device_group=self.device.device_group_id) &
-                                Q(device_type__identifier="MD")
+                                Q(is_meta_device=True)
                             )
                     else:
                         self.effective_device = self.device
@@ -752,32 +744,32 @@ class device_with_config(dict):
         # right now we are fetching a little bit too much ...
         # print "*** %s=%s" % (self.__match_str, self.__m_config_name)
         direct_list = device_config.objects.filter(
-            Q(**{
-                "config__{}".format(self.__match_str): self.__m_config_name,
-                "device__enabled": True,
-                "device__device_group__enabled": True,
-            })
+            Q(
+                **{
+                    "config__{}".format(self.__match_str): self.__m_config_name,
+                    "device__enabled": True,
+                    "device__device_group__enabled": True,
+                }
+            )
         ).select_related(
             "device",
             "config",
             "device__device_group",
-            "device__device_type"
         ).values_list(
             "config__name",
             "config",
             "device__name",
             "device",
             "device__device_group",
-            "device__device_type__identifier",
-            "device__device_type__identifier"
+            "device__is_meta_device",
         )
-        exp_group = set([cur_entry[4] for cur_entry in direct_list if cur_entry[5] == "MD"])
+        exp_group = set([cur_entry[4] for cur_entry in direct_list if cur_entry[5]])
         conf_pks = set([cur_entry[1] for cur_entry in direct_list])
         # expand device groups
         group_dict, md_set, group_md_lut = ({}, set(), {})
         if exp_group:
-            for group_dev in device.objects.filter(Q(device_group__in=exp_group)).values_list("name", "pk", "device_group", "device_type__identifier"):
-                if group_dev[3] != "MD":
+            for group_dev in device.objects.filter(Q(device_group__in=exp_group)).values_list("name", "pk", "device_group", "is_meta_device"):
+                if not group_dev[3]:
                     group_dict.setdefault(group_dev[2], []).append(group_dev)
                 else:
                     # lut: device_group -> md_device
@@ -785,7 +777,7 @@ class device_with_config(dict):
                     md_set.add(group_dev[1])
         all_list = []
         for cur_entry in direct_list:
-            if cur_entry[5] == "MD":
+            if cur_entry[5]:
                 all_list.extend([(cur_entry[0], cur_entry[1], g_list[0], g_list[1], g_list[2], g_list[3], "MD") for g_list in group_dict[cur_entry[4]]])
             else:
                 all_list.append(cur_entry)
@@ -794,7 +786,7 @@ class device_with_config(dict):
         # dict: device_name, device_pk, device_group, identifier -> config_list (config, config_pk, identifier, source_identifier)
         dev_conf_dict = {}
         for cur_entry in all_list:
-            dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[6]))
+            dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[5]))
         dev_dict = {
             cur_dev.pk: cur_dev for cur_dev in device.objects.filter(
                 Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))

@@ -51,7 +51,7 @@ import time
 import uuid
 
 from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
-    LogSource, LogLevel, device_group, cluster_license, device_type, mac_ignore, \
+    LogSource, LogLevel, device_group, cluster_license, mac_ignore, \
     macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
     quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting, \
     DeviceSNMPInfo, DeleteRequest
@@ -127,11 +127,6 @@ class cluster_license_serializer(serializers.ModelSerializer):
         model = cluster_license
 
 
-class device_type_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = device_type
-
-
 class LogSourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = LogSource
@@ -188,7 +183,6 @@ class device_serializer(serializers.ModelSerializer):
     full_name = serializers.Field(source="full_name")
     is_meta_device = serializers.Field(source="is_meta_device")
     is_cluster_device_group = serializers.Field(source="is_cluster_device_group")
-    device_type_identifier = serializers.Field(source="device_type_identifier")
     device_group_name = serializers.Field(source="device_group_name")
     access_level = serializers.SerializerMethodField("get_access_level")
     access_levels = serializers.SerializerMethodField("get_access_levels")
@@ -206,6 +200,7 @@ class device_serializer(serializers.ModelSerializer):
     monitor_type = serializers.Field(source="get_monitor_type")
     snmp_schemes = snmp_scheme_serializer(many=True, read_only=True)
     DeviceSNMPInfo = DeviceSNMPInfoSerializer(read_only=True)
+    is_cd_device = serializers.SerializerMethodField("get_is_cd_device")
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
@@ -227,15 +222,18 @@ class device_serializer(serializers.ModelSerializer):
     def get_access_levels(self, obj):
         return {key: value for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()}
 
+    def get_is_cd_device(self, obj):
+        return True if (obj.ipmi_capable or len([_scheme.power_control for _scheme in obj.snmp_schemes.all() if _scheme.power_control])) else False
+
     class Meta:
         model = device
         fields = (
-            "idx", "name", "device_group", "device_type",
+            "idx", "name", "device_group", "is_meta_device",
             "comment", "full_name", "domain_tree_node", "enabled",
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_meta_device", "device_group_name", "bootserver",
             "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "mon_resolve_name", "access_level", "access_levels", "store_rrd_data", "ipmi_capable",
             "access_level", "access_levels", "store_rrd_data",
@@ -265,6 +263,8 @@ class device_serializer(serializers.ModelSerializer):
             "uuid",
             # active_scan
             "active_scan",
+            # cd_device mark
+            "is_cd_device",
         )
         read_only_fields = ("uuid",)
 
@@ -278,7 +278,7 @@ class device_serializer_package_state(device_serializer):
     class Meta:
         model = device
         fields = (
-            "idx", "name", "device_group", "device_type",
+            "idx", "name", "device_group", "is_meta_device",
             "comment", "full_name", "domain_tree_node", "enabled",
             "package_device_connection_set", "latest_contact", "is_meta_device",
             "access_level", "access_levels", "client_version",

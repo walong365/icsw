@@ -138,7 +138,7 @@ angular.module(
                             $scope.reload_pending = false
                         )
         $scope.get_tr_class = (obj) ->
-            if obj.device_type_identifier == "MD"
+            if obj.is_meta_device
                 return "success"
             else
                 return ""
