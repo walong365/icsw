@@ -62,7 +62,7 @@ class write_yp_config(cs_base_class.server_com):
         all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.prefetch_related("secondary_groups").all()])
         # normal exports
         exp_entries = device_config.objects.filter(
-            Q(config__name__icontains="export") &
+            Q(config__name__icontains="export")
         ).prefetch_related(
             "config__config_str_set"
         ).select_related(
@@ -191,15 +191,24 @@ class write_yp_config(cs_base_class.server_com):
         ext_keys["passwd.byname"] = pbn
         # home-exports
         if False:
-            self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options') ORDER BY d.name")
+            #  self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c,
+            #  device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND dt.identifier='H'
+            # AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND
+            # (cs.name='homeexport' OR cs.name='options') ORDER BY d.name")
             home_exp_dict = {}
             for entry in self.dc.fetchall():
-                home_exp_dict.setdefault(entry["device_config_idx"], {"name"       : entry["name"],
-                                                                      "options"    : "",
-                                                                      "homeexport" : ""})[entry["csname"]] = entry["value"]
+                home_exp_dict.setdefault(
+                    entry["device_config_idx"],
+                    {
+                        "name": entry["name"],
+                        "options": "",
+                        "homeexport": ""
+                    }
+                )[entry["csname"]] = entry["value"]
             valid_home_keys = [x for x in home_exp_dict.keys() if home_exp_dict[x]["homeexport"]]
             if valid_home_keys:
-                self.dc.execute("SELECT u.login, g.homestart, u.home, u.export FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export=%d" % (x) for x in valid_home_keys])))
+                # self.dc.execute("SELECT u.login, g.homestart, u.home, u.export FROM user u,
+                # ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export=%d" % (x) for x in valid_home_keys])))
                 for e2 in self.dc.fetchall():
                     if e2["homestart"]:
                         mountpoint = e2["homestart"].replace("/", "").strip()

@@ -450,7 +450,6 @@ class device(models.Model):
     name = models.CharField(max_length=192)
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
-    device_type = models.ForeignKey("device_type")
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
     mon_device_templ = models.ForeignKey("backbone.mon_device_templ", null=True, blank=True)
@@ -510,15 +509,6 @@ class device(models.Model):
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64)  # , unique=True)
-    # cluster url, no longer in use, will be removed in a few months
-    curl = models.CharField(default="ssh://", max_length=512)
-    # , choices=[
-    #    ("ssh://", "ssh://"),
-    #    ("snmp://", "snmp://"),
-    #    ("ipmi://", "ipmi://"),
-    #    ("ilo4://", "ilo4://"), # no longer used ?
-    #    ]
-    # )
     date = models.DateTimeField(auto_now_add=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
@@ -1118,18 +1108,6 @@ class device_rsync_config(models.Model):
 
     class Meta:
         db_table = u'device_rsync_config'
-
-
-class device_type(models.Model):
-    idx = models.AutoField(db_column="device_type_idx", primary_key=True)
-    identifier = models.CharField(unique=True, max_length=24)
-    # for ordering
-    priority = models.IntegerField(default=0)
-    description = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = u'device_type'
 
 
 class DeviceLogEntry(models.Model):
