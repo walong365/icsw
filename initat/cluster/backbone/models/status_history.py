@@ -89,8 +89,10 @@ class raw_host_alert_manager(models.Manager):
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_UP = "UP"
     STATE_DOWN = "D"
+    STATE_UNKNOWN = "U"
     STATE_UNREACHABLE = "UR"
     STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE"),
+                     (STATE_UNKNOWN, "UNKNOWN"),
                      (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
