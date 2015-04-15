@@ -33,7 +33,7 @@ angular.module(
             template: """
 <div>
     <svg width="600" height="600" class="kpi-visualisation-svg" style="float: left"></svg>
-    <div style="float: left">
+    <div style="float: left; width: 400px">
         obj:
         {{a}}
     </div>
@@ -59,12 +59,13 @@ angular.module(
 
                 scope.redraw = () ->
                     if !scope.tree?
+                        # wait for tree
                         $timeout(scope.redraw, 200)
                     else
                         if scope.kpiIdx()?
                             kpi = icswConfigKpiDataService.get_kpi(scope.kpiIdx())
                             if kpi.enabled and kpi.result?  # only for enabled's
-                                data = JSON.parse(kpi.result.json)
+                                data = kpi.result.json
                                 console.log 'drawing', scope.kpiIdx(), kpi, data
                                 nodes = scope.tree.nodes(data)
                                 links = scope.tree.links(nodes)
@@ -105,7 +106,7 @@ angular.module(
                                 #    .style("text-anchor", (d) -> return "start")
 
                                 node.html((d) ->
-                                        res = "<circle r=\"4.5\"></circle>"
+                                        res = "<circle r=\"4.5\"></circle> {"
                                         cur_height = 3
                                         i = 0
                                         for ch in d.objects
@@ -115,6 +116,7 @@ angular.module(
                                             res += "<text dx=\"8\" dy=\"#{cur_height}\"> #{ch} </text>"
                                             cur_height += 14
                                             i += 1
+                                        res += "}"
                                         return res
                                     )
                                     #.text((d) ->
