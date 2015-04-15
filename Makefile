@@ -176,7 +176,7 @@ install:
 	for script in host-monitoring-zmq.py tls_verify.py snmp-relay.py logscan/openvpn_scan.py ; do \
 		${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for file in find_group_id.sh find_user_id.sh force_redhat_init_script.sh lse check_rpm_lists.py; do \
+	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
 	done
 	for sbin_file in start_cluster.sh stop_cluster.sh start_server.sh stop_server.sh check_cluster.sh check_server.sh; do \

@@ -215,10 +215,11 @@ class write_yp_config(cs_base_class.server_com):
                         entry = home_exp_dict[e2["export"]]
                         if mountpoint:
                             homestart = "auto.%s" % (mountpoint)
-                            if not ext_keys.has_key(homestart):
+                            if homestart not in ext_keys:
                                 ext_keys[homestart] = []
                                 auto_master.append((e2["homestart"], homestart))
-                            ext_keys[homestart].append((e2["home"], "%s %s:%s/%s" % (entry["options"], entry["name"], cs_tools.hostname_expand(entry["name"], entry["homeexport"]), e2["home"])))
+                            ext_keys[homestart].append((e2["home"], "%s %s:%s/%s" % (entry["options"], entry["name"],
+                                                                                     cs_tools.hostname_expand(entry["name"], entry["homeexport"]), e2["home"])))
                         else:
                             pass
                             # mysql_tools.device_log_entry(self.dc,
