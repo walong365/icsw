@@ -312,13 +312,6 @@ install:
 	# /usr/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/bin
 	${LN} -s ${ICSW_BASE}/bin/load_firmware.sh ${DESTDIR}/usr/bin/load_firmware.sh
-	# /opt/cluster/md_daemon
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/md_daemon/sql_icinga
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/md_daemon/sql_nagios
-	for daemon in nagios icinga; do \
-	    ${INSTALL} ${INSTALL_OPTS} sql_$${daemon}/check_database.sh ${DESTDIR}/${ICSW_BASE}/md_daemon/sql_$${daemon}; \
-	    cp -a sql_$${daemon}/*.sql ${DESTDIR}/${ICSW_BASE}/md_daemon/sql_$${daemon}; \
-	done
 	# /opt/cluster/lcs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/lcs
 	cp -a cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs
