@@ -19,12 +19,7 @@ ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_SGE=${ICSW_BASE}/sge
 ICSW_TFTP=/opt/cluster/system/tftpboot
 
-PYINIT_BASE=/opt/python-init/
-PYINIT_SITE=/opt/python-init/lib/python2.7/site-packages/
-
 CONFDIR_HM=${SYSCONF}/host-monitoring.d
-INITAT27=${PYTHON_LIB_LD}/python2.7/site-packages/initat
-INITAT=${PYTHON_LIB_LD}/python/site-packages/initat
 LOCALBIN=/usr/local/bin
 LOCALSBIN=/usr/local/sbin
 META_DIR=/var/lib/meta-server
@@ -32,16 +27,12 @@ MOTHER_DIR=${ICSW_SHARE}/mother
 NGINX_CONF=/etc/nginx/sites-enabled/localhost
 PREFIX_PYTHON3=/opt/python3-init
 PREFIX_PYTHON=/opt/python-init
-PYINITLIB=${PYINIT}/lib
-PYINIT=/opt/python-init
 PYTHON_LIB_LD=${PREFIX_PYTHON}/lib
 PYTHON_SITE=${PREFIX_PYTHON}/lib/python2.7/site-packages
-SBIN=/usr/sbin
 SCRIPTDIR=/usr/bin
-SPREFIX=${ICSW_BASE}/sbin
-SYSCONF=/etc/sysconfig
 USRSBIN=/usr/sbin
 VARDIR=/var/lib/cluster/package-client
+
 # list of target systems
 TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install/server package_install/client meta_server md_config_server
 
@@ -119,10 +110,10 @@ build:
 
 install:
 	# Copy the main source code
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYINIT_SITE}/
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/extra_servers.d
-	cp -a initat ${DESTDIR}/${PYINIT_SITE}/
+	cp -a initat ${DESTDIR}/${PYTHON_SITE}/
 	# setup.py
 	${PYTHON} ./cbc-tools_setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
 	${PYTHON} ./meta-server_setup.py install --root "${DESTDIR}"
@@ -142,51 +133,51 @@ install:
 	done
 	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
 	for shf in post_install ; do \
-	    ${INSTALL} ${INSTALL_OTPS} tools/$${shf}.sh ${DESTDIR}/${ICSW_BASE}/sbin/pis ; \
+	    ${INSTALL} ${INSTALL_OTPS} tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}/pis ; \
 	done
-	${INSTALL} ${INSTALL_OPTS} meta-server.py ${DESTDIR}/${SPREFIX}
-	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${SPREFIX}
+	${INSTALL} ${INSTALL_OPTS} meta-server.py ${DESTDIR}/${ICSW_SBIN}
+	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${SPREFIX}; \
+	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for file in package-server.py package-client.py; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${SPREFIX}; \
+	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for file in rms-server.py ; do \
-	    install ${INSTALL_OPTS} $${file} ${DESTDIR}/${SPREFIX}; \
+	    install ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	${INSTALL} ${INSTALL_OPTS} hpc_library_post_install.py ${DESTDIR}/${ICSW_BASE}/sbin/pis
-	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_pre_start.sh ${DESTDIR}/opt/cluster/sbin
-	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_post_install.sh ${DESTDIR}/opt/cluster/sbin
-	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_BASE}/sbin
-	${INSTALL} ${INSTALL_OPTS} mother.py ${DESTDIR}/${ICSW_BASE}/sbin
-	${INSTALL} ${INSTALL_OPTS} logcheck-server.py ${DESTDIR}/${ICSW_BASE}/sbin
-	install ${INSTALL_OPTS} md-config-server.py ${DESTDIR}/${ICSW_BASE}/sbin
-	${INSTALL} ${INSTALL_OPTS} discovery-server.py ${DESTDIR}/${ICSW_BASE}/sbin
-	${INSTALL} ${INSTALL_OPTS} cluster-server.py ${DESTDIR}/${ICSW_BASE}/sbin
-	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_BASE}/sbin
-	cp -a collectd-init.py  ${DESTDIR}${ICSW_BASE}/sbin 
-	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_BASE}/sbin
+	${INSTALL} ${INSTALL_OPTS} hpc_library_post_install.py ${DESTDIR}/${ICSW_SBIN}/pis
+	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_pre_start.sh ${DESTDIR}${ICSW_SBIN}
+	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_post_install.sh ${DESTDIR}${ICSW_SBIN}
+	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_SBIN}
+	${INSTALL} ${INSTALL_OPTS} mother.py ${DESTDIR}/${ICSW_SBIN}
+	${INSTALL} ${INSTALL_OPTS} logcheck-server.py ${DESTDIR}/${ICSW_SBIN}
+	install ${INSTALL_OPTS} md-config-server.py ${DESTDIR}/${ICSW_SBIN}
+	${INSTALL} ${INSTALL_OPTS} discovery-server.py ${DESTDIR}/${ICSW_SBIN}
+	${INSTALL} ${INSTALL_OPTS} cluster-server.py ${DESTDIR}/${ICSW_SBIN}
+	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
+	cp -a collectd-init.py  ${DESTDIR}${ICSW_SBIN} 
+	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
 	for script in start_node.sh stop_node.sh check_node.sh disable_node.sh; do \
-		${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
+	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for name in cluster-config-server.py fetch_ssh_keys.py ; do \
-		${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_BASE}/sbin; \
+	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for script in host-monitoring-zmq.py tls_verify.py snmp-relay.py logscan/openvpn_scan.py ; do \
-		${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
+	    ${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
-		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
+	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
 	done
 	for sbin_file in start_cluster.sh stop_cluster.sh start_server.sh stop_server.sh check_cluster.sh check_server.sh; do \
-		${INSTALL} ${INSTALL_OPTS} cluster/bin/$$sbin_file ${DESTDIR}/${ICSW_SBIN}; \
+	    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$sbin_file ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
-	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_BASE}/sbin; \
+	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for pyf in db_magic check_local_settings create_django_users setup_cluster restore_user_group fix_models ; do \
-	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_BASE}/sbin ; \
+	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
 	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_SBIN}/pis
 	${INSTALL} ${INSTALL_OPTS} get_pids_from_meta.py ${DESTDIR}/${ICSW_SBIN}/
@@ -195,19 +186,19 @@ install:
 	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collrelay.py
 	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collserver.py
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
-	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_BASE}/sbin/clustermanage.py
+	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
 	for file in get_cpuid.py send_command.py send_command_zmq.py ics_tools.sh ics_tools.py migrate_repos.py ; do \
-		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
+	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
 	done 
 	${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
 	# pyfiles
 	for bin_file in clog.py device_info.py load_firmware.sh \
-		mysql_dump.sh pack_kernel.sh populate_ramdisk.py resync_config.sh \
-		show_config_script.py make_image.py change_cluster_var.py ; do \
-		${INSTALL} ${INSTALL_OPTS} cluster/bin/$$bin_file ${DESTDIR}/${ICSW_BASE}/bin; \
+	    mysql_dump.sh pack_kernel.sh populate_ramdisk.py resync_config.sh \
+	    show_config_script.py make_image.py change_cluster_var.py ; do \
+	    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$bin_file ${DESTDIR}/${ICSW_BASE}/bin; \
 	done
 	${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
@@ -283,9 +274,9 @@ install:
 	${LN} -s ${INIT}/cluster-server ${DESTDIR}/usr/sbin/rccluster-server
 	${LN} -s ${INIT}/collectd-init ${DESTDIR}/usr/sbin/rccollectd-init
 	${LN} -s ${INIT}/cluster-config-server ${DESTDIR}/usr/sbin/rccluster-config-server
-	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${SBIN}/rchost-monitoring
-	${LN} -s ${INIT}/host-relay ${DESTDIR}/${SBIN}/rchost-relay
-	${LN} -s ${INIT}/snmp-relay ${DESTDIR}/${SBIN}/rcsnmp-relay
+	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${USRSBIN}/rchost-monitoring
+	${LN} -s ${INIT}/host-relay ${DESTDIR}/${USRSBIN}/rchost-relay
+	${LN} -s ${INIT}/snmp-relay ${DESTDIR}/${USRSBIN}/rcsnmp-relay
 	# SYSCONF
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/cluster
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/init-license-server.d
@@ -307,7 +298,7 @@ install:
 	# /usr/local/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/local/bin
 	for link_source in sgenodestat sgejobstat sjs sns ; do \
-		${LN} -s ${ICSW_BASE}/bin/sgestat.py ${DESTDIR}/usr/local/bin/$$link_source; \
+	    ${LN} -s ${ICSW_BASE}/bin/sgestat.py ${DESTDIR}/usr/local/bin/$$link_source; \
 	done
 	# /usr/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/bin
@@ -329,16 +320,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} memdisk ${DESTDIR}/${MOTHER_DIR}/syslinux
 	# fixtures
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/package_server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/rms_server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/rrd_server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/mother_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/logcheck_server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/md_config_server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/discovery_server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/rrd_collector_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/config_server_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
+	${INSTALL} ${INSTALL_OPTS} fixtures/*_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
 	# examples
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/examples/sge_licenses
 	cp -a examples/* ${DESTDIR}${ICSW_BASE}/examples/sge_licenses
@@ -354,7 +336,7 @@ install:
 	# Various python files
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}
 	for pyf in kernel_sync_tools module_dependency_tools cluster_location ; do \
-		install ${INSTALL_OPTS} $${pyf}.py ${DESTDIR}/${PYTHON_SITE}; \
+	    install ${INSTALL_OPTS} $${pyf}.py ${DESTDIR}/${PYTHON_SITE}; \
 	done
 	install ${INSTALL_OPTS} sge_license_tools.py ${DESTDIR}/${PYTHON_SITE}
 	${INSTALL} ${INSTALL_OPTS} sge_tools.py ${DESTDIR}/${PYTHON_SITE}
@@ -378,9 +360,9 @@ install:
 	${INSTALL} ${INSTALL_OPTS} configs/host-monitoring ${DESTDIR}/${SYSCONF}/host-monitoring
 	${INSTALL} ${INSTALL_OPTS} configs/host-relay ${DESTDIR}/${SYSCONF}/host-relay
 	# uwsgi 
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/etc/uwsgi
-	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}/opt/cluster/etc/uwsgi/
-	${INSTALL} ${INSTALL_OPTS} nginx/${WSGI_INI} ${DESTDIR}/opt/cluster/etc/uwsgi/webfrontend.wsgi.ini
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
+	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/
+	${INSTALL} ${INSTALL_OPTS} nginx/${WSGI_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/webfrontend.wsgi.ini
 	# nginx
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${NGINX_CONF}
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend.conf ${DESTDIR}/${NGINX_CONF}
@@ -399,7 +381,7 @@ install:
 	for tsys in ${TARGET_SYS_LIST} ; do \
 	    ./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
 	done
-	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/opt/cluster/sbin/_hoststatus_version.py ; \
+	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}${ICSW_SBIN}/_hoststatus_version.py ; \
 
 clean:
 	rm -f gpxelinux.0
