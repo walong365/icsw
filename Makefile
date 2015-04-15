@@ -253,7 +253,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} rms-server.rc ${DESTDIR}${INIT}/rms-server
 	# SGE stuff ICSW_SGE
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SGE}/init.d
-	for name in sgemaster sgeexecd sgebdb ; do \
+	for name in sgemaster sgeexecd ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $$name ${DESTDIR}${ICSW_SGE}/init.d; \
 	done
 	for file in ${SGE_FILES} ; do \
