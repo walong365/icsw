@@ -17,17 +17,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import ast
+
 import json
 # noinspection PyUnresolvedReferences
 import pprint
 import traceback
 from django.db import connection
 import django.utils.timezone
-from initat.cluster.backbone.models import Kpi, KpiStoredResult
+from initat.cluster.backbone.models import Kpi
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiInitialOperation
 from initat.md_config_server.kpi.kpi_utils import print_tree
 import logging_tools
 import process_tools
@@ -75,7 +75,8 @@ class KpiProcess(threading_tools.process_obj):
             for kpi_db in Kpi.objects.filter(enabled=True):
 
                 print '\nevaluating kpi', kpi_db
-                kpi_set = KpiSet(data.get_data_for_kpi(kpi_db), kpi=kpi_db)
+                kpi_set = KpiSet(data.get_data_for_kpi(kpi_db),
+                                 origin=KpiInitialOperation(kpi=kpi_db))
 
                 # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
                 eval_globals = {'data': kpi_set, 'KpiSet': KpiSet, 'KpiObject': KpiObject, 'KpiResult': KpiResult}

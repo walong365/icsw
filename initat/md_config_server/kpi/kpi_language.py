@@ -18,25 +18,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import re
+from types import NoneType
 # noinspection PyUnresolvedReferences
 import collections
 # noinspection PyUnresolvedReferences
 import pprint
-import ast
-import re
-from types import NoneType
 
-from enum import IntEnum
-import itertools
-import json
+from enum import IntEnum, Enum
 
-from initat.md_config_server.kpi.kpi_historic import TimeLineUtils, TimeLineEntry
+from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 import logging_tools
-from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
-    raw_service_alert_manager
-from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, duration, \
-    mon_icinga_log_aggregated_timespan, mon_check_command, device
+from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
+from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
@@ -45,9 +40,10 @@ logger = logging_tools.logging.getLogger("cluster.kpi")
 class KpiResult(IntEnum):
     # this is ordered by badness and also same as nagios convention
     ok = 0
-    warn = 1
+    warning = 1
     critical = 2
     unknown = 3
+    undetermined = 4
 
     def get_numeric_icinga_service_status(self):
         return self.value
@@ -57,19 +53,33 @@ class KpiResult(IntEnum):
         if num == 0:
             return KpiResult.ok
         elif num == 1:
-            return KpiResult.warn
+            return KpiResult.warning
         elif num == 2:
             return KpiResult.critical
         elif num == 3:
             return KpiResult.unknown
+        elif num == 4:
+            # icinga service status does not have undetermined, this is icsw-only
+            return KpiResult.undetermined
         else:
             raise ValueError("Invalid numeric icinga service status: {}".format(num))
 
+    def get_corresponding_service_enum_value(self):
+        return {
+            KpiResult.ok: mon_icinga_log_raw_service_alert_data.STATE_OK,
+            KpiResult.warning: mon_icinga_log_raw_service_alert_data.STATE_WARNING,
+            KpiResult.critical: mon_icinga_log_raw_service_alert_data.STATE_CRITICAL,
+            KpiResult.unknown: mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN,
+            KpiResult.undetermined: mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+        }
+
 
 class KpiObject(object):
-    def __init__(self, result=None, host_name=None, host_pk=None):
+    def __init__(self, result=None, host_name=None, host_pk=None, kpi_id=None):
         if (host_name is None) != (host_pk is None):
             raise ValueError("host_name is {} but host_pk is {}".format(host_name, host_pk))
+
+        self.kpi_id = kpi_id if kpi_id is not None else id(self)
 
         self.result = result if isinstance(result, (KpiResult, NoneType)) \
             else KpiResult.from_numeric_icinga_service_status(result)
@@ -83,7 +93,15 @@ class KpiObject(object):
     def serialize(self):
         # we serialize for the client to show something, not for a functional representation
         return {
+            'kpi_id': self.kpi_id,
             'result': None if self.result is None else self.result.get_numeric_icinga_service_status(),
+            'host_name': self.host_name,
+            'host_pk': self.host_pk,
+        }
+
+    def get_object_identifier_properties(self):
+        """Returns all properties of the object which identify it for the user (usually host and service)"""
+        return {
             'host_name': self.host_name,
             'host_pk': self.host_pk,
         }
@@ -195,6 +213,13 @@ class KpiServiceObject(KpiObject):
             **super(KpiServiceObject, self).serialize()
         )
 
+    def get_object_identifier_properties(self):
+        return dict(
+            service_name=self.check_command,
+            service_info=self.service_info,
+            **super(KpiServiceObject, self).get_object_identifier_properties()
+        )
+
 
 class KpiTimeLineObject(KpiObject):
     """Kpi Object which has a time line"""
@@ -217,6 +242,45 @@ class KpiServiceTimeLineObject(KpiServiceObject, KpiTimeLineObject):
     pass
 
 
+class KpiServiceDetailObject(KpiServiceObject, KpiDetailObject):
+    pass
+
+
+class KpiOperation(object):
+    class Type(Enum):
+        initial = 1
+        filter = 2
+        union = 3
+        at_least = 4
+        evaluate = 5
+        evaluate_historic = 6
+        evaluate_rrd = 7
+        get_historic_data = 8
+        aggregate_historic = 9
+
+    def __init__(self, type, operands=None, arguments=None):
+        if arguments is None:
+            arguments = {}
+        if operands is None:  # only for initial and possibly specially constructed sets
+            operands = []
+        self.type = type
+        self.operands = operands
+        self.arguments = arguments
+
+    def serialize(self):
+        return {
+            'type': self.type.name,
+            'operands': [oper.serialize() for oper in self.operands],
+            'arguments': self.arguments,
+        }
+
+
+class KpiInitialOperation(KpiOperation):
+    def __init__(self, kpi):
+        super(KpiInitialOperation, self).__init__(type=KpiOperation.Type.initial)
+        self.kpi = kpi
+
+
 class KpiSet(object):
     @classmethod
     def get_singleton_ok(cls, **kwargs):
@@ -224,60 +288,68 @@ class KpiSet(object):
 
     @classmethod
     def get_singleton_warn(cls, **kwargs):
-        return KpiSet([KpiObject(result=KpiResult.warn)], **kwargs)
+        return KpiSet([KpiObject(result=KpiResult.warning)], **kwargs)
 
     @classmethod
     def get_singleton_critical(cls, **kwargs):
         return KpiSet([KpiObject(result=KpiResult.critical)], **kwargs)
 
     @classmethod
+    def get_singleton_undetermined(cls, **kwargs):
+        return KpiSet([KpiObject(result=KpiResult.undetermined)], **kwargs)
+
+    @classmethod
     def get_singleton_unknown(cls, **kwargs):
         return KpiSet([KpiObject(result=KpiResult.unknown)], **kwargs)
 
-    def __init__(self, objects, parents=None, explanation=None, kpi=None):
+    def __init__(self, objects, origin):
         """
         :type objects: list of KpiObject
-        :type parents: list of KpiSet
-        :param explanation: KpiSet of objects which explain the current state, e.g. services which are critical
-        :type explanation: KpiSet
-        :param kpi: Kpi object we are calculating. Only set for first KpiSet, with which the calculations start.
+        :type origin: KpiOperation
         """
         self.objects = objects
-        self.parents = parents
-        self.explanation = explanation
-        self.kpi = kpi
+        self.origin = origin
 
+    """
     @classmethod
     def deserialize(cls, data):
         objects = [KpiObject.deserialize(obj_json) for obj_json in data['objects']]
         parents = [KpiSet.deserialize(set_json) for set_json in data['parents']]\
             if data['parents'] is not None else None
         return KpiSet(objects, parents)
+    """
 
     def serialize(self):
-
         # for obj in self.objects: print obj.serialize() json.dumps(obj.serialize())
         return {
             "objects": [obj.serialize() for obj in self.objects],
-            "parents": [par.serialize() for par in self.parents] if self.parents is not None else None,
+            "origin": self.origin.serialize() if self.origin is not None else None,
         }
+
+    def _check_value(self, amount, limit_ok, limit_warn):
+        if amount >= limit_ok:
+            result = KpiResult.ok
+        elif amount >= limit_warn:
+            result = KpiResult.warning
+        else:
+            result = KpiResult.critical
+        return result
 
     def _get_current_kpi(self):
         """
         Get Kpi object from original kpi set. Assumes that parent-chain is valid!
         :rtype : Kpi
         """
-        if self.kpi is not None:
-            kpi = self.kpi
+        if self.origin.type == KpiOperation.Type.initial:
+            return self.origin.kpi
         else:
             kpi = None
-            if self.parents is not None:
-                for par in self.parents:
-                    kpi = par._get_current_kpi()
-                    if kpi is not None:
-                        break
-                else:
-                    raise ValueError("Failed to find top level kpi set.")
+            for parent in self.origin.operands:
+                kpi = parent._get_current_kpi()
+                if kpi is not None:
+                    break
+            else:
+                raise ValueError("Failed to find initial kpi set.")
         return kpi
 
     ########################################
@@ -308,6 +380,13 @@ class KpiSet(object):
         """
         return [obj for obj in self.objects if isinstance(obj, KpiTimeLineObject)]
 
+    @property
+    def rrd_objects(self):
+        """
+        :rtype : list of KpiRRDObject
+        """
+        return [obj for obj in self.objects if isinstance(obj, KpiRRDObject)]
+
     ########################################
     # proper kpi language elements
     #
@@ -328,10 +407,11 @@ class KpiSet(object):
 
         # print '    results', objects
 
-        return KpiSet(objects, parents=[self])
+        return KpiSet(objects, origin=KpiOperation(KpiOperation.Type.filter, arguments=kwargs, operands=[self]))
 
     def union(self, kpi_set):
-        return KpiSet(self.objects + kpi_set.objects, parents=[self, kpi_set])
+        return KpiSet(self.objects + kpi_set.objects,
+                      origin=KpiOperation(KpiOperation.Type.union, operands=[self, kpi_set]))
 
     __add__ = union
 
@@ -341,20 +421,28 @@ class KpiSet(object):
         """
         if num_warn > num_ok:
             raise ValueError("num_warn is higher than num_ok ({} > {})".format(num_warn, num_ok))
+
+        origin = KpiOperation(KpiOperation.Type.at_least,
+                              arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': result},
+                              operands=[self])
+
         num = sum(1 for obj in self.result_objects if obj.result == result)
         if num > num_ok:
-            return KpiSet.get_singleton_ok(parents=[self])
+            return KpiSet.get_singleton_ok(origin=origin)
         elif num > num_warn:
-            return KpiSet.get_singleton_warn(parents=[self])
+            return KpiSet.get_singleton_warn(origin=origin)
         else:
-            return KpiSet.get_singleton_critical(parents=[self])
+            return KpiSet.get_singleton_critical(origin=origin)
 
     def aggregate_historic(self, method):
         """
         :param method: "or" or "and"
         """
+        origin = KpiOperation(KpiOperation.Type.aggregate_historic,
+                              arguments={'method': method},
+                              operands=[self])
         if not self.time_line_objects:
-            retval = KpiSet.get_singleton_unknown(parents=[self])
+            retval = KpiSet.get_singleton_undetermined(origin=origin)
         else:
             # work on copies
             compound_time_line = TimeLineUtils.calculate_compound_time_line(
@@ -364,7 +452,7 @@ class KpiSet(object):
 
             retval = KpiSet(
                 objects=[KpiTimeLineObject(time_line=compound_time_line)],
-                parents=[self],
+                origin=origin
             )
 
         return retval
@@ -419,14 +507,19 @@ class KpiSet(object):
                     print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
                     # TODO: logging is broken in this context
 
-        return KpiSet(objects=objects, parents=[self])
+        return KpiSet(objects=objects,
+                      origin=KpiOperation(KpiOperation.Type.get_historic_data, operands=[self]))
 
-    def evaluate_historic(self, ratio_ok, ratio_warn):
+    def evaluate_historic(self, ratio_ok, ratio_warn, result=KpiResult.ok):
         """
         Check if up percentage is at least some value
+        :type result: KpiResult
         """
+        origin = KpiOperation(KpiOperation.Type.evaluate_historic,
+                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn},
+                              operands=[self])
         if not self.time_line_objects:
-            return KpiSet.get_singleton_unknown(parents=[self])
+            return KpiSet.get_singleton_undetermined(origin=origin)
         else:
             objects = []
 
@@ -434,24 +527,20 @@ class KpiSet(object):
 
                 aggregated_tl = TimeLineUtils.aggregate_time_line(tl_obj)
 
-                amount_ok = sum(v for k, v in aggregated_tl.iteritems()
-                                if k[0] == mon_icinga_log_raw_service_alert_data.STATE_OK)
+                # also aggregate state types
+                amount = sum(v for k, v in aggregated_tl.iteritems()
+                             if k[0] == result.get_corresponding_service_enum_value())
 
-                amount_warn = sum(v for k, v in aggregated_tl.iteritems()
-                                  if k[0] == mon_icinga_log_raw_service_alert_data.STATE_WARNING)
-
-                if amount_ok >= ratio_ok:
-                    result = KpiResult.ok
-                elif amount_warn >= ratio_warn:
-                    result = KpiResult.warn
+                kwargs = tl_obj.get_object_identifier_properties()
+                kwargs['result'] = self._check_value(amount, ratio_ok, ratio_warn)
+                kwargs['detail'] = aggregated_tl
+                if isinstance(tl_obj, KpiServiceObject):
+                    obj = KpiServiceDetailObject(**kwargs)
                 else:
-                    result = KpiResult.critical
+                    obj = KpiDetailObject(**kwargs)
+                objects.append(obj)
 
-                objects.append(
-                    KpiDetailObject(result=result, detail=aggregated_tl)
-                )
-
-            return KpiSet(objects=objects, parents=[self])
+            return KpiSet(objects=objects, origin=origin)
 
     def evaluate(self):
         """
@@ -459,12 +548,32 @@ class KpiSet(object):
         if at least one is critical or else warn if at least one is warn etc.
         """
         # TODO: have parameter: method
+        origin = KpiOperation(KpiOperation.Type.evaluate, operands=[self])
         if not self.result_objects:
-            return KpiSet.get_singleton_unknown(parents=[self])
+            return KpiSet.get_singleton_undetermined(origin=origin)
         else:
             aggregated_result = max(obj.result for obj in self.result_objects)
-            causes = list(obj for obj in self.result_objects if obj.result == aggregated_result)
-            return KpiSet([KpiObject(result=aggregated_result)], parents=[self], explanation=KpiSet(objects=causes))
+            return KpiSet([KpiObject(result=aggregated_result)], origin=origin)
+
+    def evaluate_rrd(self, limit_ok, limit_warn):
+        origin = KpiOperation(KpiOperation.Type.evaluate_rrd,
+                              arguments={'limit_ok': limit_ok, 'limit_warn': limit_warn},
+                              operands=[self])
+
+        if not self.rrd_objects:
+            return KpiSet.get_singleton_undetermined(origin=origin)
+        else:
+            return KpiSet(
+                objects=[
+                    KpiRRDObject(
+                        rrd_key=rrd_obj.rrd_key,
+                        rrd_value=rrd_obj.rrd_value,
+                        result=self._check_value(rrd_obj.rrd_value, limit_ok, limit_warn),
+                        **rrd_obj.get_object_identifier_properties()
+                    ) for rrd_obj in self.rrd_objects
+                ],
+                origin=origin,
+            )
 
     def dump(self, msg=None):
         """Debug function: Log set contents and return itself"""
@@ -525,7 +634,8 @@ class KpiSet(object):
                  else:
                      print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
                      # TODO: logging is broken in this context
-                     # logger.warn("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+                     # logger.warn("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id,
+                     service_info))
      return KpiSet(objects=objects, parents=[self])
 
 def evaluate_historic(self, ratio_ok, ratio_warn):

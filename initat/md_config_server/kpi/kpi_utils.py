@@ -28,10 +28,9 @@ from initat.cluster.backbone.models import duration
 
 
 def print_tree(t, i=0):
-    print " " * i, t
-    if t.parents:
-        for p in t.parents:
-            print_tree(p, i + 8)
+    print " " * i, t, t.origin.type
+    for p in t.origin.operands:
+        print_tree(p, i + 8)
 
 
 class KpiUtils(object):
