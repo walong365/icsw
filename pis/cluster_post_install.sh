@@ -21,6 +21,7 @@ if [ -d ${PREFIX_INIT}/initat/cluster/backbone/migrations ] ; then
     fi
 else
     echo "to create a new database use ${CLUSTER_PATH}/sbin/setup_cluster.py"
+
     # do not show, only for ALN
     # echo "to migrate the database to a django-support format please use %{CLUSTER_PATH}/sbin/migrate_to_django.sh"
     # echo "to migrate the current user structure use %{CLUSTER_PATH}/sbin/create_django_users.py"

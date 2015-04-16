@@ -17,6 +17,7 @@ ICSW_SHARE=${ICSW_BASE}/share
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_SGE=${ICSW_BASE}/sge
+ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_TFTP=/opt/cluster/system/tftpboot
 
 CONFDIR_HM=${SYSCONF}/host-monitoring.d
@@ -36,7 +37,7 @@ VARDIR=/var/lib/cluster/package-client
 # list of target systems
 TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install/server package_install/client meta_server md_config_server
 
-SGE_FILES=sge_editor_conf.py modify_sge_config.sh add_logtail.sh sge_request sge_qstat create_sge_links.py build_sge6x.sh post_install.sh
+SGE_FILES=sge_editor_conf.py modify_sge_config.sh add_logtail.sh sge_request sge_qstat create_sge_links.py build_sge6x.sh
 
 ###############################################################################
 # Programs
@@ -126,15 +127,12 @@ install:
 	make -C c_progs DESTDIR=${DESTDIR} install
 	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SBIN}/pis
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
 	for file in logging-server.py log_error.py logging-client.py ; do \
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
-	for shf in post_install ; do \
-	    ${INSTALL} ${INSTALL_OTPS} tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}/pis ; \
-	done
 	${INSTALL} ${INSTALL_OPTS} meta-server.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
@@ -146,9 +144,11 @@ install:
 	for file in rms-server.py ; do \
 	    install ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	${INSTALL} ${INSTALL_OPTS} hpc_library_post_install.py ${DESTDIR}/${ICSW_SBIN}/pis
-	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_pre_start.sh ${DESTDIR}${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend_post_install.sh ${DESTDIR}${ICSW_SBIN}
+	${INSTALL} ${INSTALL_OPTS} pis/cluster_post_install.sh ${DESTDIR}${ICSW_PIS}
+	${INSTALL} ${INSTALL_OPTS} pis/sge_post_install.sh ${DESTDIR}${ICSW_PIS}
+	${INSTALL} ${INSTALL_OPTS} pis/hpc_library_post_install.py ${DESTDIR}${ICSW_PIS}
+	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_pre_start.sh ${DESTDIR}${ICSW_PIS}
+	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_post_install.sh ${DESTDIR}${ICSW_PIS}
 	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} mother.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} logcheck-server.py ${DESTDIR}/${ICSW_SBIN}
@@ -179,7 +179,7 @@ install:
 	for pyf in db_magic check_local_settings create_django_users setup_cluster restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
-	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_SBIN}/pis
+	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} get_pids_from_meta.py ${DESTDIR}/${ICSW_SBIN}/
 	# Create to ICSW_SBIN
 	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collclient.py
