@@ -1,0 +1,60 @@
+<script type="text/ng-template" id="icsw.config.kpi.evaluation_graph">
+    <div ng-mouseleave="fun">
+        <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}" class="kpi-visualisation-svg" style="float: left"></svg>
+        <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show" style="float:left; width: 480px; margin-left: 20px"></icsw-config-kpi-show-kpi-set>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.show_kpi_set">
+    <div class="panel panel-default" ng-show="kpi_set">
+        <div class="panel-heading">
+            Kpi Set
+        </div>
+        <div class="panel-body">
+            <ul class="list-group">
+                <icsw-config-kpi-show-kpi-object ng-repeat="kpi_obj in kpi_set.objects" kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
+            </ul>
+
+            <button class="btn btn-default btn-primary" ng-click="kpi_set = undefined">close</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.show_kpi_object">
+
+    <li class="list-group-item">
+
+    <span ng-show="kpi_obj.host_name">
+        Host: {{kpi_obj.host_name.split(".")[0]}},
+     </span>
+
+    <span ng-show="kpi_obj.service_info"> <!-- show as in status history, i.e. prefer service_info -->
+        Service: {{kpi_obj.service_info}},
+    </span>
+
+    <span ng-show="!kpi_obj.service_info && kpi_obj.check_command">
+        Service: {{kpi_obj.check_command}},
+    </span>
+
+    <span ng-show="kpi_obj.result">
+        Result: {{kpi_obj.result}},
+    </span>
+
+        <div class="row">
+            <div class="col-md-2" style="display: inline-block; vertical-align: middle">
+    <icsw-tools-piechart ng-show="pie_data" diameter="50" data="pie_data" ></icsw-tools-piechart>
+                </div>
+            <div class="col-md-10">
+         <table class="table table-condensed table-hover table-striped" ng-show="service_data">
+                    <tbody>
+                        <tr ng-repeat="state in service_data">
+                            <td> {{ state.state }} </td>
+                            <td class="text-right"> {{ state.value }} </td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+
+    </li>
+</script>

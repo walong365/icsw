@@ -6,7 +6,6 @@
         <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
     </h2>
 
-
     <tabset>
         <tab heading="Configuration">
             <div class="alert alert-danger"><strong>TODO</strong>: add to reversion in future
@@ -15,6 +14,13 @@
             <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
         </tab>
         <tab heading="Evaluation" active="true">
+
+            <div class="alert alert-danger"><strong>TODO</strong>: indicate visually if nodes are collapsed
+            </div>
+
+            <div class="alert alert-danger"><strong>TODO</strong>: indicate visually which node is shown
+            </div>
+
             <icsw-config-kpi-evaluation-table></icsw-config-kpi-evaluation-table>
         </tab>
     </tabset>

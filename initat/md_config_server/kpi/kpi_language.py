@@ -86,15 +86,17 @@ class KpiObject(object):
         self.host_name = host_name
         self.host_pk = host_pk
 
+    """
     @classmethod
     def deserialize(cls, data):
         return KpiObject(**data)
+    """
 
     def serialize(self):
         # we serialize for the client to show something, not for a functional representation
         return {
             'kpi_id': self.kpi_id,
-            'result': None if self.result is None else self.result.get_numeric_icinga_service_status(),
+            'result': None if self.result is None else self.result.name,
             'host_name': self.host_name,
             'host_pk': self.host_pk,
         }
