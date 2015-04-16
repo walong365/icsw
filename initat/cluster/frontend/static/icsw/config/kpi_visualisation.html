@@ -6,6 +6,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_set">
+    VARIABLE HEIGHT OF SVG, NUM_DEPTH * 70
     <div class="panel panel-default" ng-show="kpi_set">
         <div class="panel-heading">
             Kpi Set
@@ -21,40 +22,39 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_object">
+    <li ng-attr-class="list-group-item {{list_group_class}}">
 
-    <li class="list-group-item">
+        <span ng-show="kpi_obj.host_name">
+            Host: {{kpi_obj.host_name.split(".")[0]}},
+         </span>
 
-    <span ng-show="kpi_obj.host_name">
-        Host: {{kpi_obj.host_name.split(".")[0]}},
-     </span>
+        <span ng-show="kpi_obj.service_info"> <!-- show as in status history, i.e. prefer service_info -->
+            Service: {{kpi_obj.service_info}},
+        </span>
 
-    <span ng-show="kpi_obj.service_info"> <!-- show as in status history, i.e. prefer service_info -->
-        Service: {{kpi_obj.service_info}},
-    </span>
+        <span ng-show="!kpi_obj.service_info && kpi_obj.check_command">
+            Service: {{kpi_obj.check_command}},
+        </span>
 
-    <span ng-show="!kpi_obj.service_info && kpi_obj.check_command">
-        Service: {{kpi_obj.check_command}},
-    </span>
-
-    <span ng-show="kpi_obj.result">
-        Result: {{kpi_obj.result}},
-    </span>
+        <span ng-show="kpi_obj.result">
+            Result: {{kpi_obj.result}},
+        </span>
 
         <div class="row">
-            <div class="col-md-2" style="display: inline-block; vertical-align: middle">
-    <icsw-tools-piechart ng-show="pie_data" diameter="50" data="pie_data" ></icsw-tools-piechart>
-                </div>
+            <div class="col-md-2">
+                <icsw-tools-piechart ng-show="pie_data" diameter="50" data="pie_data"></icsw-tools-piechart>
+            </div>
             <div class="col-md-10">
-         <table class="table table-condensed table-hover table-striped" ng-show="service_data">
+                <table class="table table-condensed table-hover table-striped" ng-show="service_data">
                     <tbody>
                         <tr ng-repeat="state in service_data">
-                            <td> {{ state.state }} </td>
-                            <td class="text-right"> {{ state.value }} </td>
+                            <td> {{ state.state }}</td>
+                            <td class="text-right"> {{ state.value }}</td>
                         </tr>
                     </tbody>
                 </table>
-                </div>
             </div>
+        </div>
 
     </li>
 </script>

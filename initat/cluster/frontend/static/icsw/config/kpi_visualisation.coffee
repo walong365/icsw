@@ -40,9 +40,6 @@ angular.module(
 
                 top_bottom_padding = 10
 
-                draw_height = scope.height - top_bottom_padding * 2
-                draw_width = scope.width - 50  # space for labels on the right side
-
                 scope.tree = undefined
                 d3_service.d3().then((d3) ->
                     scope.svg_el = el[0].getElementsByClassName("kpi-visualisation-svg")[0]
@@ -50,7 +47,6 @@ angular.module(
                         .append("g")
                         .attr("transform", "translate(0, #{top_bottom_padding})")
                     scope.tree = d3.layout.tree()
-                        .size([draw_width, draw_height])
                         .children((node) ->
                             if node.hide_children then null else return node.origin.operands)
                         #.nodeSize([130, 70])  # this would be nice but changes layout horribly
@@ -68,14 +64,23 @@ angular.module(
                             if kpi.enabled and kpi.result?  # only for enabled's
                                 scope.data = kpi.result.json
                                 console.log 'drawing', scope.kpiIdx(), kpi, scope.data
+                                #scope.height = 70
                                 scope.update_dthree()
 
+
                 scope.update_dthree = () ->
+                    draw_height = scope.height - top_bottom_padding * 2
+                    draw_width = scope.width - 50  # space for labels on the right side
+
+                    TODO: height proportional to depth
+
+                    scope.tree.size([draw_width, draw_height])
+
                     nodes = scope.tree.nodes(scope.data)
                     links = scope.tree.links(nodes)
 
                     # fixed depth (now handled via nodeSize)
-                    # nodes.forEach((d) -> d.y = d.depth * 70)
+                    #nodes.forEach((d) -> d.y = d.depth * 70)
 
                     my_translate = (x, y) -> return [x, draw_height - y]
 
@@ -225,13 +230,23 @@ angular.module(
             replace: true
             link: (scope, el, attrs) ->
                 icswConfigKpiVisUtils.add_to_scope(scope)
+                scope.list_group_class = ""
 
                 scope.update = () ->
+                    list_group_class_map = {
+                        ok: 'list-group-item-success'
+                        warning: 'list-group-item-warning'
+                        critical: 'list-group-item-danger'
+                        #unknown:
+                        #undetermined = 4
+                    }
+                    if scope.kpi_obj.result of list_group_class_map
+                        scope.list_group_class = list_group_class_map[scope.kpi_obj.result]
+
                     if scope.kpi_obj.aggregated_tl
                         # dict to list representation
                         status_util_compat_data = ({state: st, value: val} for st, val of scope.kpi_obj.aggregated_tl)
                         [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(status_util_compat_data)
-                        console.log 'servi',  scope.service_data
 
                 scope.$watch(
                     () -> return scope.kpi_obj.kpi_id

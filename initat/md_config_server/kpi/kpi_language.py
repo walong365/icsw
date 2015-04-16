@@ -39,6 +39,7 @@ logger = logging_tools.logging.getLogger("cluster.kpi")
 
 class KpiResult(IntEnum):
     # this is ordered by badness and also same as nagios convention
+    # names are same as in status history but lower case
     ok = 0
     warning = 1
     critical = 2
