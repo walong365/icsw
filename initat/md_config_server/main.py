@@ -193,7 +193,8 @@ def main():
         # exit
         os._exit(0)
     else:
+        process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+        print("Debugging md-config-server on {}".format(long_host_name))
         global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        print "Debugging md-config-server on %s" % (long_host_name)
         run_code()
     sys.exit(0)

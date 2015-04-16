@@ -465,9 +465,9 @@ class device(models.Model):
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
     act_image = models.ForeignKey("image", null=True, related_name="act_image")
     # kernel version running
-    kernelversion = models.CharField(max_length=192, blank=True)
+    kernelversion = models.CharField(max_length=192, blank=True, default="")
     # image version running
-    imageversion = models.CharField(max_length=192, blank=True)
+    imageversion = models.CharField(max_length=192, blank=True, default="")
     # new partition table
     partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="new_partition_table")
     # current partition table
@@ -650,6 +650,18 @@ class device(models.Model):
 
     def get_slave_cons(self):
         return [entry for entry in self.cd_cons if entry.child_id == self.pk]
+
+    def new_kernel_version(self):
+        if self.new_kernel_id:
+            return "{:d}.{:d}".format(self.new_kernel.version, self.new_kernel.release)
+        else:
+            return ""
+
+    def new_image_version(self):
+        if self.new_image_id:
+            return "{:d}.{:d}".format(self.new_image.version, self.new_image.release)
+        else:
+            return ""
 
     def valid_state(self):
         _rs = ""

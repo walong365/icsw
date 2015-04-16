@@ -581,16 +581,17 @@ def create_db(opts):
     for _app in ["auth", "contenttypes"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_1"]
-    for _app in ["sites", "reversion"]:
+    for _app in ["sites"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_2"]
+    for _app in ["reversion"]:  # reversion needs access to proper user model
+        apply_migration(_app)
     ds0.restore()
     ds0.cleanup()
     # we now go for the 0800
     check_for_0800(opts)
     apply_migration("backbone")
 
-    call_manage(["createinitialrevisions"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -602,6 +603,7 @@ def create_db(opts):
             print("creating superuser {} (email {}, password is {})".format(opts.superuser, opts.email, su_pw))
             call_manage(["createsuperuser", "--login={}".format(opts.superuser), "--email={}".format(opts.email), "--noinput"])
             del os.environ["DJANGO_SUPERUSER_PASSWORD"]
+        call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
 
 

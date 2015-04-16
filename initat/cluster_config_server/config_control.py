@@ -20,7 +20,7 @@
 """ cluster-config-server, config control """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device, partition
+from initat.cluster.backbone.models import device, partition, kernel, image
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.simple_request import simple_request, var_cache
 import config_tools
@@ -28,6 +28,7 @@ import crypt
 import logging_tools
 import module_dependency_tools
 import os
+import process_tools
 import time
 
 
@@ -40,7 +41,7 @@ class config_control(object):
         config_control.update_router()
         self.__com_dict = {
             "get_kernel": self._handle_get_kernel,
-            "get_kernel_name": self._handle_get_kernel,
+            "get_kernel_name": self._handle_get_kernel_name,
             "get_syslog_server": self._handle_get_syslog_server,
             "get_package_server": self._handle_get_package_server,
             "hello": self._handle_hello,
@@ -90,7 +91,8 @@ class config_control(object):
             q_id,
             self.device.name,
             req_name,
-            s_req.data)
+            s_req.data
+        )
 
     def complex_config_result(self, s_req, req_name, result):
         ret_str = getattr(s_req, "%s_result" % (req_name))(result)
@@ -112,9 +114,15 @@ class config_control(object):
         com_call = self.__com_dict.get(s_req.command, None)
         if com_call:
             config_control.update_router()
-            ret_str = com_call(s_req)
+            try:
+                ret_str = com_call(s_req)
+            except:
+                ret_str = "error interpreting command {}: {}".format(
+                    node_text,
+                    process_tools.get_except_info(),
+                )
         else:
-            ret_str = "error unknown command '%s'" % (node_text)
+            ret_str = "error unknown command '{}'".format(node_text)
         if ret_str is None:
             self.log("waiting for answer")
         else:
@@ -360,14 +368,14 @@ class config_control(object):
     def _handle_get_syslog_server(self, s_req):
         vs_struct = s_req._get_valid_server_struct(["syslog_server"])
         if vs_struct:
-            return "ok %s" % (s_req.server_ip)
+            return "ok {}".format(s_req.server_ip)
         else:
             return "error no syslog-server defined"
 
     def _handle_get_package_server(self, s_req):
         vs_struct = s_req._get_valid_server_struct(["package_server"])
         if vs_struct:
-            return "ok %s" % (s_req.server_ip)
+            return "ok {}".format(s_req.server_ip)
         else:
             return "error no package-server defined"
 
@@ -387,23 +395,40 @@ class config_control(object):
                     dir_key = "EXPORT"
                 if dir_key in vs_struct:
                     kernel_source_path = os.path.join(vs_struct[dir_key], "kernels")
-                    if s_req.command == "get_kernel":
-                        return "ok NEW %s %s/%s" % (
-                            s_req.server_ip,
-                            kernel_source_path,
-                            dev_kernel.name)
-                    else:
-                        return "ok NEW %s %s" % (
-                            s_req.server_ip,
-                            dev_kernel.name)
+                    return "ok {} {}/{} {} {}".format(
+                        s_req.server_ip,
+                        kernel_source_path,
+                        dev_kernel.name,
+                        dev_kernel.version,
+                        dev_kernel.release,
+                    )
                 else:
-                    return "error key %s not found" % (dir_key)
+                    return "error key {} not found".format(dir_key)
+        else:
+            return "error no kernel set"
+
+    def _handle_get_kernel_name(self, s_req):
+        dev_kernel = self.device.new_kernel
+        if dev_kernel:
+            vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "kernel_server"])
+            if not vs_struct:
+                return "error no server found"
+            else:
+                # add NEW as dummy string (because get_kernel_name is called from stage1)
+                return "ok NEW {} {}".format(
+                    s_req.server_ip,
+                    dev_kernel.name
+                )
         else:
             return "error no kernel set"
 
     def _handle_set_kernel(self, s_req):
         # maybe we can do something better here
-        return "ok got it but better fixme :-)"
+        _com, _k_name, _k_vers = s_req.node_text.split()
+        self.device.act_kernel = kernel.objects.get(Q(name=_k_name))
+        self.device.kernelversion = _k_vers
+        self.device.save(update_fields=["act_kernel", "kernelversion"])
+        return "ok set kernel and version"
 
     def close(self):
         if self.__log_template is not None:
