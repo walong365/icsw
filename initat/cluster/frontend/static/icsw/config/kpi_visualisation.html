@@ -1,8 +1,8 @@
 <script type="text/ng-template" id="icsw.config.kpi.evaluation_graph">
     <div ng-mouseleave="fun">
         <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}" class="kpi-visualisation-svg" style="float: left"></svg>
-        <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show"
-                                      ng-attr-style="float:left; width: 480px; height: {{height}}px; overflow-y: scroll; margin-left: 20px"></icsw-config-kpi-show-kpi-set>
+        <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show" height="height"
+                                      ng-attr-style="float:left; width: 480px; height: {{height}}px; overflow-y: auto; margin-left: 20px"></icsw-config-kpi-show-kpi-set>
     </div>
 </script>
 
@@ -11,13 +11,18 @@
         <div class="panel-heading">
             Kpi Set
         </div>
-        <div class="panel-body">
+        <div class="panel-body" >
 
             <button class="btn btn-default btn-primary" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
 
-            <ul class="list-group">
+            <ul class="list-group" ng-show="kpi_set.objects.length > 0">
                 <icsw-config-kpi-show-kpi-object ng-repeat="kpi_obj in kpi_set.objects" kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
             </ul>
+
+            <div ng-show="kpi_set.objects.length == 0">
+                <alert type="info">No objects</alert>
+            </div>
+
 
         </div>
     </div>

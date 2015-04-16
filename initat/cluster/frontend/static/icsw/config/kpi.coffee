@@ -174,14 +174,12 @@ angular.module(
                         )
                     )
                 scope.get_result_from_kpi_entry = (kpi) ->
-                    return "CURRENTLY DISABLED"
-                    if kpi.result? and kpi.result.values.length > 0
-                        return  ({
-                            0: 'ok'
-                            1: 'warn'
-                            2: 'critical'
-                            3: 'unknown'
-                        }[val] for val in kpi.result.values).join(", ")
+                    if kpi.result and kpi.result.json.objects.length > 0
+                        results = []
+                        for kpi_obj in kpi.result.json.objects
+                            if kpi_obj.result?
+                                results.push(kpi_obj.result)
+                        return results.join(",")
                     else
                         return "unknown"
         }

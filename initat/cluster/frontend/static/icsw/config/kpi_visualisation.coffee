@@ -68,7 +68,6 @@ angular.module(
                             kpi = icswConfigKpiDataService.get_kpi(scope.kpiIdx())
                             if kpi.enabled and kpi.result?  # only for enabled's
                                 scope.data = kpi.result.json
-                                console.log 'drawing', scope.kpiIdx(), kpi, scope.data
                                 # scope.height = 70
                                 scope.update_dthree()
 
@@ -81,6 +80,7 @@ angular.module(
                         return max_depth
 
                     max_depth = _get_max_depth(scope.data, 0)
+                    max_depth = Math.max(max_depth, 3)
 
                     draw_height = max_depth * node_height
                     draw_width = scope.width - 100  # labels grow to the right side
@@ -167,15 +167,15 @@ angular.module(
                                             res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
                                             break
                                         s = icswConfigKpiVisUtils.kpi_obj_to_string(kpi_obj)
-                                        s = $filter('limit_text')(s, 40)
+                                        s = $filter('limit_text')(s, 17)
                                         res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{s} </text>"
                                         cur_height += 14
                                         i += 1
 
                                 # operation
                                 res += "<text style=\"font-size: 11px; font-style: italic;\" dx=\"0\" dy=\"-22\" text-anchor=\"middle\">"
-                                operation = "#{d.origin.type}  (" + (k+"="+v for k, v of d.origin.arguments).join(", ") + ")"
-                                res += $filter('limit_text')(operation, 40)
+                                operation = "#{d.origin.type}  (" + (k+"="+v for k, v of d.origin.arguments).join(", ")
+                                res += $filter('limit_text')(operation, 25) + ")"
                                 res += "</text>"
                             return res
                         )
@@ -207,7 +207,6 @@ angular.module(
                         # hide locally
                         node.hide_children = true
 
-                    console.log 'node hide', node.hide_children
                     scope.redraw()
                 scope.on_mouse_enter = (node) ->
                     scope.$apply(
@@ -287,6 +286,9 @@ angular.module(
 
                 if kpi_obj.aggregated_tl?
                     parts.push "{" + ( "#{k}: #{(v*100).toFixed(2)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
+
+                if kpi_obj.result?
+                    parts.push kpi_obj.result
 
                 if parts.length
                     return parts.join(":")
