@@ -74,7 +74,7 @@ __all__ = [
 def _csw_key(perm):
     return "{}.{}.{}".format(
         perm.content_type.app_label,
-        perm.content_type.name,
+        perm.content_type.model_class().__name__,
         perm.codename,
     )
 

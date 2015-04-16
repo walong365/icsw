@@ -581,7 +581,7 @@ def create_db(opts):
     for _app in ["auth", "contenttypes"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_1"]
-    for _app in ["sites", "reversion"]:
+    for _app in ["sites"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_2"]
     ds0.restore()
@@ -589,6 +589,8 @@ def create_db(opts):
     # we now go for the 0800
     check_for_0800(opts)
     apply_migration("backbone")
+    for _app in ["reversion"]:  # reversion needs access to proper user model
+        apply_migration(_app)
 
     if opts.no_initial_data:
         print("")
