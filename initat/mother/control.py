@@ -927,7 +927,7 @@ class Host(object):
             hlist = [
                 (".version", "imageversion", None, None),
                 (".imagename", "act_image", image, "name"),
-                (".kernel", "act_kernel", kernel, "name"),
+                # (".kernel", "act_kernel", kernel, "name"),
                 (".kversion", "kernelversion", None, None),
                 # (None, "act_kernel_build", None, None)
             ]

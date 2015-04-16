@@ -527,13 +527,8 @@ echo ${echo_opt} "Requesting stage 2 "
 mkfifo /tmp/tftpfifo
 
 kernel_str=$(get_conf_str "get_kernel_name")
-if [ "$(echo $kernel_str | cut -d " " -f 3)" = "NEW" ] ; then
-    kernel_server=$(echo  $kernel_str | cut -d " " -f 4)
-    kernel=$(echo  $kernel_str | cut -d " " -f 5)
-else
-    kernel_server=$motherserver
-    kernel=$(echo  $kernel_str | cut -d " " -f 3)
-fi
+kernel_server=$(echo  $kernel_str | cut -d " " -f 4)
+kernel=$(echo  $kernel_str | cut -d " " -f 5)
 
 # strange option-handling because of RH8.0 simple-tftp command
 echo ${echo_opt} "\n${GREEN}Fetching stage2 system ...${OFF}"
