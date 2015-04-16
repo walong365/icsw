@@ -44,6 +44,12 @@ kernel_module = angular.module(
         $scope.delete_ok = (obj) ->
             num_refs = obj.act_kernel.length + obj.new_kernel.length
             return if num_refs == 0 then true else false
+        $scope.bump_version = (obj) ->
+            obj.version++
+            obj.put()
+        $scope.bump_release = (obj) ->
+            obj.release++
+            obj.put()
         $scope.scan_for_kernels = (reload_func) =>
             blockUI.start()
             icswCallAjaxService

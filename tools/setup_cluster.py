@@ -592,7 +592,6 @@ def create_db(opts):
     check_for_0800(opts)
     apply_migration("backbone")
 
-    call_manage(["createinitialrevisions"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -604,6 +603,7 @@ def create_db(opts):
             print("creating superuser {} (email {}, password is {})".format(opts.superuser, opts.email, su_pw))
             call_manage(["createsuperuser", "--login={}".format(opts.superuser), "--email={}".format(opts.email), "--noinput"])
             del os.environ["DJANGO_SUPERUSER_PASSWORD"]
+        call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
 
 

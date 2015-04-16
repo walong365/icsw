@@ -468,32 +468,16 @@ function install_kernel() {
     echo -e "Requesting kernel"
     conf_str=`get_conf_str "get_kernel"`
     num=`echo $conf_str| cut -d " " -f 1`
-    if [ "$(echo $conf_str | cut -d ' ' -f 3)" == "NEW" ] ; then
-    # new_version
-        kernel_server=`echo $conf_str | cut -d " " -f 4`
-        full_newkernel=`echo $conf_str | cut -d " " -f 5`
-        new_version=`echo $conf_str | cut -d " " -f 6`
-        new_release=`echo $conf_str | cut -d " " -f 7`
-    else
-        kernel_server=$motherserver
-        full_newkernel=`echo $conf_str | cut -d " " -f 3`
-        new_version=`echo $conf_str | cut -d " " -f 4`
-        new_release=`echo $conf_str | cut -d " " -f 5`
-    fi
+    kernel_server=`echo $conf_str | cut -d " " -f 3`
+    full_newkernel=`echo $conf_str | cut -d " " -f 4`
+    new_version=`echo $conf_str | cut -d " " -f 5`
+    new_release=`echo $conf_str | cut -d " " -f 6`
     newkernel_dir=$(dirname $full_newkernel)
     newkernel=$(basename $full_newkernel)
-    new_version=${new_version:-?}
-    new_release=${new_release:-?}
     send_info "got kernel $newkernel (dir $newkernel_dir, version $new_version, release $new_release) after $num request(s)"
     mkdir /kernel
     mount_it "kernel" ${kernel_server}:${newkernel_dir}/${newkernel} /kernel "${RO_MOUNTOPTS}"
-    if [ "$new_version" = "?" ] ; then
-        if [ -s /kernel/.version ] ; then
-            newkversion=`cat /kernel/.version | grep -E "^VERSION" | cut -d "=" -f 2`
-        fi
-    else
-        newkversion="$new_version.$new_release"
-    fi
+    newkversion="$new_version.$new_release"
     if [ -s /conf/.kernel ] ; then
         oldkernel=`cat /conf/.kernel`
     else

@@ -309,10 +309,10 @@ angular.module(
                                     if _list.length
                                         dev.target_state = _list[0].idx
                                 # copy image
-                                for _kv in ["new_image", "act_image", "imageversion"]
+                                for _kv in ["new_image", "act_image", "imageversion", "new_image_version"]
                                     dev[_kv] = entry[_kv]
                                 # copy kernel
-                                for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append"]
+                                for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append", "kernelversion", "new_kernel_version"]
                                     dev[_kv] = entry[_kv]
                                 # copy partition
                                 for _kv in ["act_partition_table", "partition_table"]
@@ -508,18 +508,11 @@ angular.module(
                         #console.log dev.new_state, dev.prod_link
                     else if entry[0] == "i"
                         # image
-                        img_str = scope.get_info_str("i", dev.act_image, dev.new_image, scope.image_lut)
-                        # check version
-                        cur_vers = dev.imageversion
-                        if dev.act_image
-                            img_info = scope.image_lut[dev.act_image]
-                            img_vers = "#{img_info.version}.#{img_info.release}"
-                            if img_vers != cur_vers
-                                img_str = "#{img_str} (#{cur_vers} / #{img_vers})"
+                        img_str = scope.get_info_str("i", dev.act_image, dev.imageversion, dev.new_image, dev.new_image_version, scope.image_lut)
                         return img_str
                     else if entry[0] == "k"
                         # kernel
-                        _k_str = scope.get_info_str("k", dev.act_kernel, dev.new_kernel, scope.kernel_lut)
+                        _k_str = scope.get_info_str("k", dev.act_kernel, dev.kernelversion, dev.new_kernel, dev.new_kernel_version, scope.kernel_lut)
                         if dev.act_kernel or dev.new_kernel
                             _k_str = "#{_k_str}, flavour is #{dev.stage1_flavour}"
                             if dev.kernel_append
@@ -527,7 +520,7 @@ angular.module(
                         return _k_str
                     else if entry[0] == "p"
                         # partition info
-                        return scope.get_info_str("p", dev.act_partition_table, dev.partition_table, scope.partition_lut)
+                        return scope.get_info_str("p", dev.act_partition_table, "", dev.partition_table, "", scope.partition_lut)
                     else if entry[0] == "b"
                         # bootdevice
                         if dev.bootnetdevice
@@ -552,24 +545,32 @@ angular.module(
                     return lut[val].name
                 else
                     return "? #{s_type}: #{val} ?"
-            scope.get_info_str = (s_type, act_val, new_val, lut) ->
+            scope.get_info_str = (s_type, act_val, act_vers, new_val, new_vers, lut) ->
                 if act_val == new_val
                     if act_val
-                        # everything ok
-                        return "<span class='glyphicon glyphicon-ok'></span> " + scope.get_lut_val(s_type, lut, act_val)  
+                        if act_vers == new_vers
+                            # everything ok, same version
+                            if act_vers
+                                return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + "(#{act_vers})"
+                            else
+                                return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + scope.get_lut_val(s_type, lut, act_val)
+                        else
+                            return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-up'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + "(#{act_vers} != #{new_vers})"
                     else
                         # both values are empty
-                        return "<span class='glyphicon glyphicon-ban-circle'></span>"
+                        return "<span class='label label-danger'><span class='glyphicon glyphicon-ban-circle'></span></span>"
                 else
                     new_val_str = if new_val then scope.get_lut_val(s_type, lut, new_val) else "---"
                     act_val_str = if act_val then scope.get_lut_val(s_type, lut, act_val) else "---"
+                    act_vers_str = if act_vers then " (#{act_vers})" else ""
+                    new_vers_str = if new_vers then " (#{new_vers})" else ""
                     if act_val and new_val
                         # show source and target value
-                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'></span> #{new_val_str}"
+                        return "#{act_val_str}#{act_vers_str}<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span> #{new_val_str}#{new_vers_str}"
                     else if act_val
-                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'>"
+                        return "#{act_val_str}#{act_vers_str}<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span>"
                     else
-                        return "<span class='glyphicon glyphicon-arrow-right'> #{new_val_str}"
+                        return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span> #{new_val_str}#{new_vers_str}"
     }
 ]).directive("icswDeviceBootLogTable", ["$templateCache", ($templateCache) ->
     return {

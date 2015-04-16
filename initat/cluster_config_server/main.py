@@ -90,10 +90,13 @@ def main():
         ("WRITE_REDHAT_HWADDR_ENTRY", configfile.bool_c_var(True)),
         ("ADD_NETDEVICE_LINKS", configfile.bool_c_var(False)),
     ])
-    global_config.add_config_entries([
-        ("CONFIG_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
-        ("IMAGE_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "images"))),
-        ("KERNEL_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
+    global_config.add_config_entries(
+        [
+            ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
+            ("IMAGE_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "images"))),
+            ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels")))
+        ]
+    )
     global_config.add_config_entries(
         [
             (
@@ -118,7 +121,8 @@ def main():
         # exit
         os._exit(0)
     else:
-        print("Debugging cluster-config-server on %s" % (long_host_name))
+        process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+        print("Debugging cluster-config-server on {}".format(long_host_name))
         global_config = configfile.get_global_config(prog_name, parent_object=global_config)
         run_code()
     sys.exit(0)
