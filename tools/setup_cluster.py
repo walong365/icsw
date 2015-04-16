@@ -581,9 +581,11 @@ def create_db(opts):
     for _app in ["auth", "contenttypes"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_1"]
-    for _app in ["sites", "reversion"]:
+    for _app in ["sites"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_2"]
+    for _app in ["reversion"]:  # reversion needs access to proper user model
+        apply_migration(_app)
     ds0.restore()
     ds0.cleanup()
     # we now go for the 0800
