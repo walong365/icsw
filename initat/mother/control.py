@@ -61,7 +61,7 @@ class Host(object):
                 self.name.replace(".", r"\.")),
             global_config["LOG_DESTINATION"],
             zmq=True,
-            context=machine.process.zmq_context,
+            context=Host.process.zmq_context,
             init_logger=True
         )
         self.log("added client, type is {}".format("META" if self.device.is_meta_device else "real"))
@@ -76,8 +76,8 @@ class Host(object):
             self.device.uuid = str(uuid.uuid4())
             self.log("setting uuid to {}".format(self.device.uuid))
             self.device.save(update_fields=["uuid"])
-        machine.add_lut_key(self, self.device.uuid)
-        machine.add_lut_key(self, self.device.get_boot_uuid())
+        Host.add_lut_key(self, self.device.uuid)
+        Host.add_lut_key(self, self.device.get_boot_uuid())
 
     def init(self):
         pass
@@ -85,7 +85,7 @@ class Host(object):
     def close(self):
         del_keys = copy.deepcopy(self.additional_lut_keys)
         for add_key in del_keys:
-            machine.del_lut_key(self, add_key)
+            Host.del_lut_key(self, add_key)
         self.__log_template.close()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, device_log=False):
@@ -93,29 +93,29 @@ class Host(object):
 
     @staticmethod
     def setup(c_process):
-        machine.process = c_process
-        machine.eb_dir = global_config["ETHERBOOT_DIR"]
-        machine.iso_dir = global_config["ISO_DIR"]
-        machine.g_log("init (etherboot_dir={}, isos in{})".format(machine.eb_dir, machine.iso_dir))
-        machine.__lut = {}
+        Host.process = c_process
+        Host.eb_dir = global_config["ETHERBOOT_DIR"]
+        Host.iso_dir = global_config["ISO_DIR"]
+        Host.g_log("init (etherboot_dir={}, isos in{})".format(Host.eb_dir, Host.iso_dir))
+        Host.__lut = {}
         # pks
-        machine.__unique_keys = set()
+        Host.__unique_keys = set()
         # names
-        machine.__unique_names = set()
-        machine.ping_id = 0
+        Host.__unique_names = set()
+        Host.ping_id = 0
 
     @staticmethod
     def shutdown():
-        while machine.__lut:
-            machine.delete_device(machine.__lut.keys()[0])
+        while Host.__lut:
+            Host.delete_device(Host.__lut.keys()[0])
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        machine.process.log("[mach] {}".format(what), log_level)
+        Host.process.log("[mach] {}".format(what), log_level)
 
     @staticmethod
     def get_query(names=[], ips=[]):
-        query = device.objects.filter(Q(bootserver=machine.process.sc.effective_device)).prefetch_related(
+        query = device.objects.filter(Q(bootserver=Host.process.sc.effective_device)).prefetch_related(
             "netdevice_set",
             "netdevice_set__net_ip_set",
             "netdevice_set__net_ip_set__network",
@@ -127,7 +127,7 @@ class Host(object):
         return query
 
     def refresh_device(self):
-        found_devs = machine.get_query(names=[self.device.name])
+        found_devs = Host.get_query(names=[self.device.name])
         if len(found_devs) == 1:
             self.device = found_devs[0]
         elif not len(found_devs):
@@ -136,72 +136,72 @@ class Host(object):
 
     @staticmethod
     def sync(names=[], ips=[]):
-        query = machine.get_query(names=names, ips=ips)
-        machine.g_log(
+        query = Host.get_query(names=names, ips=ips)
+        Host.g_log(
             "found {}: {}".format(
                 logging_tools.get_plural("device", len(query)),
                 logging_tools.compress_list([cur_dev.name for cur_dev in query])))
         for cur_dev in query:
-            machine.set_device(cur_dev)
+            Host.set_device(cur_dev)
 
     @staticmethod
     def add_lut_key(obj, key):
-        if key in machine.__lut:
-            machine.g_log("key '{}' already set in machine.__lut ({} set, obj is {})".format(
+        if key in Host.__lut:
+            Host.g_log("key '{}' already set in Host.__lut ({} set, obj is {})".format(
                 key,
-                machine.__lut[key].name,
+                Host.__lut[key].name,
                 obj.name,
                 ), logging_tools.LOG_LEVEL_ERROR)
         else:
-            machine.__lut[key] = obj
+            Host.__lut[key] = obj
             obj.additional_lut_keys.add(key)
 
     @staticmethod
     def del_lut_key(obj, key):
         # if key == "172.16.1.56":
         #    print "+", key
-        del machine.__lut[key]
+        del Host.__lut[key]
         obj.additional_lut_keys.remove(key)
 
     @staticmethod
     def set_device(new_dev):
         new_mach = Host(new_dev)
-        machine.__unique_keys.add(new_dev.pk)
-        machine.__unique_names.add(new_dev.full_name)
-        machine.__lut[new_dev.full_name] = new_mach
+        Host.__unique_keys.add(new_dev.pk)
+        Host.__unique_names.add(new_dev.full_name)
+        Host.__lut[new_dev.full_name] = new_mach
         # short name, will not always work
-        machine.__lut[new_dev.name] = new_mach
-        machine.__lut[new_dev.pk] = new_mach
+        Host.__lut[new_dev.name] = new_mach
+        Host.__lut[new_dev.pk] = new_mach
 
     @staticmethod
     def delete_device(dev_spec):
-        mach = machine.get_device(dev_spec)
+        mach = Host.get_device(dev_spec)
         if mach:
             mach.close()
-            del machine.__lut[mach.full_name]
-            del machine.__lut[mach.pk]
+            del Host.__lut[mach.full_name]
+            del Host.__lut[mach.pk]
             try:
-                del machine.__lut[mach.name]
+                del Host.__lut[mach.name]
             except:
                 pass
-            machine.__unique_keys.remove(mach.pk)
-            machine.__unique_names.remove(mach.full_name)
+            Host.__unique_keys.remove(mach.pk)
+            Host.__unique_names.remove(mach.full_name)
 
     @staticmethod
     def get_device(dev_spec):
-        if dev_spec in machine.__lut:
-            return machine.__lut[dev_spec]
+        if dev_spec in Host.__lut:
+            return Host.__lut[dev_spec]
         else:
-            machine.g_log("no device with spec '{}' found (not mother / bootserver ?)".format(
+            Host.g_log("no device with spec '{}' found (not mother / bootserver ?)".format(
                 str(dev_spec),
                 ), logging_tools.LOG_LEVEL_ERROR)
             return None
 
     @staticmethod
     def iterate(com_name, *args, **kwargs):
-        iter_keys = machine.__unique_keys & set(kwargs.pop("device_keys", machine.__unique_keys))
+        iter_keys = Host.__unique_keys & set(kwargs.pop("device_keys", Host.__unique_keys))
         for u_key in iter_keys:
-            cur_dev = machine.get_device(u_key)
+            cur_dev = Host.get_device(u_key)
             if hasattr(cur_dev, com_name):
                 cur_dev.log("call '{}'".format(com_name))
                 getattr(cur_dev, com_name)(*args, **kwargs)
@@ -212,7 +212,7 @@ class Host(object):
     def iterate_xml(srv_com, com_name, *args, **kwargs):
         for cur_dev in srv_com.xpath(".//ns:device[@pk]", smart_strings=False):
             pk = int(cur_dev.attrib["pk"])
-            cur_mach = machine.get_device(pk)
+            cur_mach = Host.get_device(pk)
             if cur_mach is None:
                 pass
             else:
@@ -221,12 +221,12 @@ class Host(object):
     @staticmethod
     def ping(srv_com):
         # send ping(s) to all valid IPs of then selected devices
-        keys = set(map(lambda x: int(x), srv_com.xpath(".//ns:device/@pk", smart_strings=False))) & set(machine.__unique_keys)
-        cur_id = machine.ping_id
+        keys = set(map(lambda x: int(x), srv_com.xpath(".//ns:device/@pk", smart_strings=False))) & set(Host.__unique_keys)
+        cur_id = Host.ping_id
         _bldr = srv_com.builder()
         ping_list = _bldr.ping_list()
         for u_key in keys:
-            cur_dev = machine.get_device(u_key)
+            cur_dev = Host.get_device(u_key)
             dev_node = srv_com.xpath(".//ns:device[@pk='{:d}']".format(cur_dev.pk), smart_strings=False)[0]
             tried = 0
             for ip in cur_dev.ip_dict.iterkeys():
@@ -236,7 +236,7 @@ class Host(object):
                     cur_id_str = "mp_{:d}".format(cur_id)
                     cur_id += 1
                     # init ping
-                    machine.process.send_pool_message("ping", cur_id_str, ip, 4, 3.0, target="direct")
+                    Host.process.send_pool_message("ping", cur_id_str, ip, 4, 3.0, target="direct")
                     ping_list.append(_bldr.ping(cur_id_str, pk="{:d}".format(cur_dev.pk)))
             dev_node.attrib.update(
                 {
@@ -264,10 +264,10 @@ class Host(object):
             for master_pk, master_ip in _master_dict.iteritems():
                 cur_id_str = "mps_{:d}".format(master_id)
                 master_id += 1
-                machine.process.send_pool_message("ping", cur_id_str, master_ip, 2, 3.0, target="direct")
+                Host.process.send_pool_message("ping", cur_id_str, master_ip, 2, 3.0, target="direct")
                 cd_ping_list.append(_bldr.cd_ping(cur_id_str, pk="{:d}".format(master_pk), pending="1"))
             srv_com["cd_ping_list"] = cd_ping_list
-        machine.ping_id = cur_id
+        Host.ping_id = cur_id
         # return True if at least one ping has been sent, otherwise false
         return True if len(ping_list) + len(cd_ping_list) else False
 
@@ -278,7 +278,7 @@ class Host(object):
         pk = int(node.attrib["pk"])
         ping_list = node.getparent()
         ping_list.remove(node)
-        machine.get_device(pk).interpret_local_result(srv_com, res_dict)
+        Host.get_device(pk).interpret_local_result(srv_com, res_dict)
         if not len(ping_list):
             pl_parent = ping_list.getparent()
             pl_parent.remove(ping_list)
@@ -294,7 +294,7 @@ class Host(object):
                 "reachable": "1" if res_dict["recv_ok"] else "0",
             })
         else:
-            machine.g_log("unknown id_str '{}' for cdp_node".format(res_dict["id"]), logging_tools.LOG_LEVEL_ERROR)
+            Host.g_log("unknown id_str '{}' for cdp_node".format(res_dict["id"]), logging_tools.LOG_LEVEL_ERROR)
 
     def interpret_local_result(self, srv_com, res_dict):
         # device-specific interpretation
@@ -307,7 +307,7 @@ class Host(object):
                 dev_node.attrib["ip"] = res_dict["host"]
                 if cur_ok == 1:
                     self.log("send hoststatus query to {}".format(res_dict["host"]))
-                    machine.process.send_pool_message(
+                    Host.process.send_pool_message(
                         "contact_hoststatus",
                         self.device.get_boot_uuid() if self.ip_dict[dev_node.attrib["ip"]].network.network_type.identifier == "b" else self.device.uuid,
                         dev_node.attrib.get("soft_command", "status"),
@@ -338,10 +338,10 @@ class Host(object):
         new_keys = set(self.ip_dict.keys())
         for del_key in old_keys - new_keys:
             self.log("removing ip {} from lut".format(del_key))
-            machine.del_lut_key(self, del_key)
+            Host.del_lut_key(self, del_key)
         for new_key in new_keys - old_keys:
             self.log("adding ip {} to lut".format(new_key))
-            machine.add_lut_key(self, new_key)
+            Host.add_lut_key(self, new_key)
 
     def set_maint_ip(self, ip=None):
         if ip:
@@ -425,10 +425,10 @@ class Host(object):
         # dict: ip -> identifier
         ip_dict = {}
         if nd_list:
-            machine.process.update_router_object()
+            Host.process.update_router_object()
             all_paths = sorted(
-                machine.process.router_obj.get_ndl_ndl_pathes(
-                    machine.process.sc.netdevice_idx_list,
+                Host.process.router_obj.get_ndl_ndl_pathes(
+                    Host.process.sc.netdevice_idx_list,
                     nd_list,
                     only_endpoints=True,
                     add_penalty=True,
@@ -438,19 +438,19 @@ class Host(object):
             # latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
             # my_hc = hopcount.objects.filter(
             # Q(route_generation=latest_gen) &
-            # Q(s_netdevice__in=machine.process.sc.netdevice_idx_list) &
+            # Q(s_netdevice__in=Host.process.sc.netdevice_idx_list) &
             # Q(d_netdevice__in=nd_list)).order_by("value")
             for _ in all_paths:
-                srv_dev, mach_dev = (machine.process.sc.nd_lut[_[1]], nd_lut[_[2]])
+                srv_dev, mach_dev = (Host.process.sc.nd_lut[_[1]], nd_lut[_[2]])
                 for cur_ip in mach_dev.net_ip_set.all():
                     cur_id = cur_ip.network.network_type.identifier
                     srv_ips = list(
                         set(
                             [
-                                srv_ip.ip for srv_ip in machine.process.sc.identifier_ip_lut.get(cur_id, [])
+                                srv_ip.ip for srv_ip in Host.process.sc.identifier_ip_lut.get(cur_id, [])
                             ]
                         ) & set(
-                            [x2.ip for x2 in machine.process.sc.netdevice_ip_lut[srv_dev.pk]]
+                            [x2.ip for x2 in Host.process.sc.netdevice_ip_lut[srv_dev.pk]]
                         )
                     )
                     if srv_ips and cur_ip.ip not in server_ip_dict:
@@ -625,7 +625,7 @@ class Host(object):
                     new_state, new_kernel = (None, None)
                 if new_state:
                     if new_kernel and new_state.prod_link:
-                        if machine.process.server_ip:
+                        if Host.process.server_ip:
                             self.write_kernel_config(new_kernel)
                         else:
                             self.log("no server_ip set", logging_tools.LOG_LEVEL_ERROR)
@@ -848,7 +848,7 @@ class Host(object):
                         "x dom0_mem=524288",
                         "k console=tty0 ip={}:{}::{} {}".format(
                             self.maint_ip.ip,
-                            machine.process.server_ip,
+                            Host.process.server_ip,
                             ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
                             append_string),
                         "i"
@@ -857,7 +857,7 @@ class Host(object):
                     total_append_string = "initrd={}/i ip={}:{}::{} {}".format(
                         self.maint_ip.ip,
                         self.maint_ip.ip,
-                        machine.process.server_ip,
+                        Host.process.server_ip,
                         ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
                         append_string)
                 pxe_lines = []
@@ -885,7 +885,7 @@ class Host(object):
                                   ("init.at Bootinfo, {}{}".format(time.ctime(), 80 * " "))[0:79]]
                 menu_lines.extend([
                     "Nodename  , IP : %-30s, %s" % (self.device.name, self.maint_ip.ip),
-                    "Servername, IP : %-30s, %s" % (global_config["SERVER_SHORT_NAME"], machine.process.server_ip),
+                    "Servername, IP : %-30s, %s" % (global_config["SERVER_SHORT_NAME"], Host.process.server_ip),
                     "Netmask        : %s (%s)" % (self.maint_ip.network.netmask, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask)),
                     "MACAddress     : %s" % (self.bootnetdevice.macaddr.lower()),
                     "Stage1 flavour : %s" % (self.device.stage1_flavour),
@@ -1125,7 +1125,7 @@ class Host(object):
             self.device.save(update_fields=["dhcp_mac"])
             DeviceLogEntry.new(
                 device=self.device,
-                source=machine.process.node_src,
+                source=Host.process.node_src,
                 text="set macaddr of {} to {}".format(self.bootnetdevice.devname, in_dict["macaddr"]),
             )
             macbootlog(
@@ -1145,7 +1145,7 @@ class Host(object):
                 change_fields.add("dhcp_mac")
             DeviceLogEntry.new(
                 device=self.device,
-                source=machine.process.node_src,
+                source=Host.process.node_src,
                 text="DHCP / {} ({})".format(in_dict["key"], in_dict["ip"],),
             )
             self.set_recv_state("got IP-Address via DHCP")
@@ -1162,7 +1162,7 @@ class Host(object):
         self.device.save(update_fields=["recvstate", "recvstate_timestamp"])
         DeviceLogEntry.new(
             device=self.device,
-            source=machine.process.node_src,
+            source=Host.process.node_src,
             text=in_text,
         )
         return "ok got it"
@@ -1332,8 +1332,8 @@ class node_control_process(threading_tools.process_obj):
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         self.router_obj = config_tools.router_object(self.log)
         self._setup_etherboot()
-        machine.setup(self)
-        machine.sync()
+        Host.setup(self)
+        Host.sync()
         self.register_func("refresh", self._refresh)
         # self.register_func("alter_macaddr", self.alter_macaddr)
         self.register_func("soft_control", self._soft_control)
@@ -1423,15 +1423,15 @@ class node_control_process(threading_tools.process_obj):
             id_str, in_com = args
             in_com = server_command.srv_command(source=in_com)
             dev_list = map(lambda x: int(x), in_com.xpath(".//ns:device/@pk", smart_strings=False))
-            machine.iterate("refresh_target_kernel", device_keys=dev_list)
-            machine.iterate("read_dot_files", device_keys=dev_list)
-            machine.iterate("handle_mac_command", "alter", device_keys=dev_list)
+            Host.iterate("refresh_target_kernel", device_keys=dev_list)
+            Host.iterate("read_dot_files", device_keys=dev_list)
+            Host.iterate("handle_mac_command", "alter", device_keys=dev_list)
         else:
             id_str, in_com = (None, None)
             # use kwargs to specify certain devices
-            machine.iterate("refresh_target_kernel")
-            machine.iterate("read_dot_files")
-            machine.iterate("handle_mac_command", "alter")
+            Host.iterate("refresh_target_kernel")
+            Host.iterate("read_dot_files")
+            Host.iterate("handle_mac_command", "alter")
         if id_str:
             in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
             self.send_pool_message("send_return", id_str, unicode(in_com))
@@ -1449,7 +1449,7 @@ class node_control_process(threading_tools.process_obj):
             log_user = None
         for xml_dev in in_com.xpath(".//ns:devices/ns:device"):
             u_key = int(xml_dev.attrib["pk"])
-            dev = machine.get_device(u_key)
+            dev = Host.get_device(u_key)
             if dev is None:
                 DeviceLogEntry.new(
                     device=device.objects.get(Q(pk=u_key)),
@@ -1467,7 +1467,7 @@ class node_control_process(threading_tools.process_obj):
                     ),
                     user=log_user,
                 )
-        if not machine.ping(in_com):
+        if not Host.ping(in_com):
             # no pings send
             self._add_ping_info(in_com)
         else:
@@ -1477,11 +1477,11 @@ class node_control_process(threading_tools.process_obj):
         self.log("got status from id {}".format(zmq_id))
         in_com = server_command.srv_command(source=in_com)
         in_com["command"].attrib["zmq_id"] = zmq_id
-        if not machine.ping(in_com):
+        if not Host.ping(in_com):
             self._add_ping_info(in_com)
         else:
             self.pending_list.append(in_com)
-        machine.iterate("read_dot_files", device_keys=[int(_val) for _val in in_com.xpath(".//ns:devices/ns:device/@pk")])
+        Host.iterate("read_dot_files", device_keys=[int(_val) for _val in in_com.xpath(".//ns:devices/ns:device/@pk")])
 
     def _ping_result(self, id_str, res_dict, **kwargs):
         # a ping has finished
@@ -1492,14 +1492,14 @@ class node_control_process(threading_tools.process_obj):
             _processed = False
             if cd_ping:
                 if cur_com.xpath(".//ns:cd_ping[text() = '{}']".format(id_str), smart_strings=False):
-                    machine.interpret_cdping_result(cur_com, res_dict)
+                    Host.interpret_cdping_result(cur_com, res_dict)
                     if not cur_com.xpath(".//ns:ping_list", smart_strings=False) and not cur_com.xpath(".//ns:cd_ping_list/ns:cd_ping[@pending='1']"):
                         self._add_ping_info(cur_com)
                         _processed = True
             else:
                 if cur_com.xpath(".//ns:ping[text() = '{}']".format(id_str), smart_strings=False):
                     # interpret result
-                    machine.interpret_result(cur_com, id_str, res_dict)
+                    Host.interpret_result(cur_com, id_str, res_dict)
                     if not cur_com.xpath(".//ns:ping_list", smart_strings=False) and not cur_com.xpath(".//ns:cd_ping_list/ns:cd_ping[@pending='1']"):
                         self._add_ping_info(cur_com)
                         _processed = True
@@ -1508,13 +1508,13 @@ class node_control_process(threading_tools.process_obj):
         self.pending_list = new_pending
 
     def _add_ping_info(self, cur_com):
-        machine.iterate_xml(cur_com, "add_ping_info")
+        Host.iterate_xml(cur_com, "add_ping_info")
         # print "**", cur_com.pretty_print()
         self.send_pool_message("send_return", cur_com.xpath(".//ns:command/@zmq_id", smart_strings=False)[0], unicode(cur_com))
 
     def _nodeinfo(self, id_str, node_text, **kwargs):
         node_id, instance = id_str.split(":", 1)
-        cur_dev = machine.get_device(node_id)
+        cur_dev = Host.get_device(node_id)
         if cur_dev:
             ret_str = cur_dev.nodeinfo(node_text, instance)
         else:
@@ -1523,14 +1523,14 @@ class node_control_process(threading_tools.process_obj):
 
     def _nodestatus(self, id_str, node_text, **kwargs):
         node_id, instance = id_str.split(":", 1)
-        cur_dev = machine.get_device(node_id)
+        cur_dev = Host.get_device(node_id)
         if cur_dev:
             cur_dev.nodestatus(node_text, instance)
         else:
             self.log("error no node with id '%s' found" % (node_id), logging_tools.LOG_LEVEL_ERROR)
 
     def loop_post(self):
-        machine.shutdown()
+        Host.shutdown()
         self.__log_template.close()
 
     def set_check_freq(self, cur_to):
@@ -1583,7 +1583,7 @@ class node_control_process(threading_tools.process_obj):
             else:
                 if ip_dev.bootserver:
                     if ip_dev.bootserver.pk == self.sc.effective_device.pk:
-                        boot_dev = machine.get_device(ip_dev.name)
+                        boot_dev = Host.get_device(ip_dev.name)
                         boot_dev.log("parsed: {}".format(", ".join(["{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())])))
                         boot_dev.feed_dhcp(in_dict, in_line)
                     else:
@@ -1617,7 +1617,7 @@ class node_control_process(threading_tools.process_obj):
                                 macaddr=in_dict["macaddr"].lower()).save()
                         else:
                             # no feed to device
-                            cur_mach = machine.get_device(greedy_devs[0].name)
+                            cur_mach = Host.get_device(greedy_devs[0].name)
                             if cur_mach:
                                 cur_mach.feed_dhcp(in_dict, in_line)
                             else:

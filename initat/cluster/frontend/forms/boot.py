@@ -149,13 +149,16 @@ class boot_single_form(Form):
                 filter="{name:$select.search}",
                 wrapper_ng_show="bo_enabled['i']",
             ),
+            HTML("""
+<div ng-show="!partitions.length" class="alert alert-danger">no valid partition tables found</div>
+            """),
             Field(
                 "partition_table",
                 repeat="value.idx as value in partitions",
                 display="name",
                 placeholder="partition table",
                 filter="{name:$select.search}",
-                wrapper_ng_show="bo_enabled['p']",
+                wrapper_ng_show="bo_enabled['p'] && partitions.length",
             ),
         ),
         Fieldset(

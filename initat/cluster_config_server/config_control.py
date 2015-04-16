@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -158,7 +158,7 @@ class config_control(object):
         return "ok %s" % (r_pwd)
 
     def _handle_get_additional_packages(self, s_req):
-        return "ok %s" % (" ".join(s_req._get_config_str_vars("ADDITIONAL_PACKAGES")))
+        return "ok {}".format(" ".join(s_req._get_config_str_vars("ADDITIONAL_PACKAGES")))
 
     def _handle_ack_config(self, s_req):
         if self.device.name in config_control.done_config_requests:
@@ -236,16 +236,17 @@ class config_control(object):
             vs_struct.fetch_config_vars()
             if dir_key in vs_struct:
                 _kernel_source_path = "%s/kernels/" % (vs_struct[dir_key])
-                return "ok %s %s %d %d %s %s %s" % (
+                return "ok {} {} {:d} {:d} {} {} {}".format(
                     self.device.new_state.status,
-                    prod_net.identifier,
+                    prod_net.identifier.replace(" ", "_"),
                     self.device.rsync,
                     self.device.rsync_compressed,
                     self.device.name,
                     s_req.server_ip,
-                    "%s/%s" % (vs_struct[dir_key], "config"))
+                    os.path.join(vs_struct[dir_key], "config")
+                )
             else:
-                return "error key %s not found" % (dir_key)
+                return "error key {} not found".format(dir_key)
         else:
             return "error resolving server"
 

@@ -365,9 +365,12 @@ depmod -ae || depmod -ave
 
 
 if [ -z "$avail_nets" ] ; then
-    echo -n "No available netdevices found, rebooting in 10 seconds"
+    echo -n "No available netdevices found, rebooting in 30 seconds"
+    echo
+    echo "PCI list:"
+    echo
     /sbin/lspci
-    for i in $(seq 10) ; do 
+    for i in $(seq 30) ; do
         echo -n "."
         sleep 1
     done
@@ -494,7 +497,8 @@ export motherserver ipaddr valid_net basedir eto
 
 # try direct ramfs mount
 
-modprobe ext2
+# no longer neede (20150415, ALN)
+# modprobe ext2
 mkdir /stage2
 
 check_ram_fill=0
@@ -505,10 +509,10 @@ mount -t ramfs /dev/ram1 /stage2 || {
     ram_size=32768
     mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
         # second try, 16 MB (sigh)
-    ram_size=16384
-    mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
-        err_exit "Cannot create stage2 RamDisc $(cat /tmp/errstr)" 
-    }
+        ram_size=16384
+        mkfs.ext2 -F -v -m 0 -b 1024 ${S2_RDISK} $ram_size >/tmp/errstr 2>&1 || {
+            err_exit "Cannot create stage2 RamDisc $(cat /tmp/errstr)"
+        }
     }
 
     check_ram_fill=1

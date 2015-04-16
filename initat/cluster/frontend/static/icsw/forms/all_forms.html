@@ -1994,10 +1994,10 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="bo_enabled[&#39;i&#39;]"
  ><label for="id_new_image" class="control-label col-sm-4">
  New image
- </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_image' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='image'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in images| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div id="div_id_partition_table"
+ </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_image' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='image'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in images| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div ng-show="!partitions.length" class="alert alert-danger">no valid partition tables found</div><div id="div_id_partition_table"
  class="form-group 
  "
- ng_show="bo_enabled[&#39;p&#39;]"
+ ng_show="bo_enabled[&#39;p&#39;] &amp;&amp; partitions.length"
  ><label for="id_partition_table" class="control-label col-sm-4">
  Partition table
  </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.partition_table' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='partition table'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in partitions| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset><fieldset 
