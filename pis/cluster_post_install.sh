@@ -11,7 +11,7 @@ if [ -x ${CLUSTER_PATH}/sbin/check_local_settings.py ] ; then
     ${CLUSTER_PATH}/sbin/check_local_settings.py
 fi
 
-if [ -d ${PREFIX_INIT}/initat/cluster/backbone/migrations ] ; then
+if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     # already installed
     if [ -f /etc/sysconfig/cluster/db_auto_update ] ; then
         echo "running auto-update script ${CLUSTER_PATH}/sbin/setup_cluster.py --migrate"
