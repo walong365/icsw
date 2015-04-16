@@ -73,6 +73,10 @@ class image(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     enabled = models.BooleanField(default=True)
 
+    @property
+    def full_version(self):
+        return "{:d}.{:d}".format(self.version, self.release)
+
     def __unicode__(self):
         return "{} (arch {})".format(
             self.name,
@@ -143,6 +147,10 @@ class kernel(models.Model):
 
     class Meta:
         db_table = u'kernel'
+
+    @property
+    def full_version(self):
+        return "{:d}.{:d}".format(self.version, self.release)
 
     class CSW_Meta:
         permissions = (

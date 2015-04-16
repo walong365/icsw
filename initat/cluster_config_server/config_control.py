@@ -213,9 +213,9 @@ class config_control(object):
                     vs_struct.fetch_config_vars()
                     if dir_key in vs_struct:
                         # save image versoin info
-                        self.device.imageversion = "{}.{}".format(cur_img.version, cur_img.release)
+                        self.device.imageversion = cur_img.full_version
                         self.device.save(update_fields=["imageversion"])
-                        return "ok %s %s %s %s %s" % (
+                        return "ok {} {} {} {} {}".format(
                             s_req.server_ip,
                             os.path.join(vs_struct[dir_key], "images", cur_img.name),
                             cur_img.version,
@@ -276,13 +276,13 @@ class config_control(object):
                 self.log("dependencies: %20s    %s" % ("", value))
             # walk the kernel dir
             # mod_list = ["%s.o" % (key) for key in mod_dict.keys()] + ["%s.ko" % (key) for key in mod_dict.keys()]
-            return "ok %s" % (" ".join([mod_name[len(global_config["TFTP_DIR"]):] for mod_name in dep_h.module_dict.itervalues()]))
+            return "ok {}".format(" ".join([mod_name[len(global_config["TFTP_DIR"]):] for mod_name in dep_h.module_dict.itervalues()]))
         else:
             return "error no kernel set"
 
     def _handle_get_init_mods(self, s_req):
         db_mod_list = s_req._get_config_str_vars("INIT_MODS")
-        return "ok %s" % (" ".join(db_mod_list))
+        return "ok {}".format(" ".join(db_mod_list))
 
     def _handle_get_autodetect_mods(self, s_req):
         low_pri_mods = s_req._get_config_str_vars("LOW_PRIORITY_MODS")
@@ -395,7 +395,12 @@ class config_control(object):
                     dir_key = "EXPORT"
                 if dir_key in vs_struct:
                     kernel_source_path = os.path.join(vs_struct[dir_key], "kernels")
-                    return "ok {} {}/{} {} {}".format(
+                    if dev_kernel.full_version != self.device.kernelversion or self.device.act_kernel != self.device.new_kernel:
+                        inst = 1
+                    else:
+                        inst = 0
+                    return "ok {:d} {} {}/{} {} {}".format(
+                        inst,
                         s_req.server_ip,
                         kernel_source_path,
                         dev_kernel.name,

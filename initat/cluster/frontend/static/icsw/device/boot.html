@@ -73,16 +73,13 @@
                     </div>
                 </td>
                 <td>
-                    <input type="button" class="btn btn-xs btn-primary" ng-show="num_selected && any_type_1_selected" value="modify ({{ num_selected }})" ng-click="modify_many($event)"/>
+                    <icsw-tools-button type="modify" size="xs" ng-show="num_selected && any_type_1_selected" value="modify many" ng-click="modify_many($event)"></icsw-tools-button>
                 </td>
             </tr>
         </tfoot>
     </table>
     <form class="form-inline">
-        <div class="btn-group">
-            <input type="button" ng-class="show_mbl && 'btn btn-sm btn-success' || 'btn btn-sm'" value="macbootlog" ng-click="toggle_show_mbl()">
-            </input>
-        </div>
+        <icsw-tools-button type="display" size="sm" value="macbootlog" ng-click="toggle_show_mbl()"></icsw-tools-button>
     </form>
     <div ng-show="show_mbl">
         <h4>Showing {{ mbl_entries.length }} Macbootlog entries</h4>
@@ -153,7 +150,7 @@
         </span>
     </td>
     <td ng-show="any_type_1_selected">
-        <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_device(dev, $event)"/>
+        <icsw-tools-button type="modify" size="xs" ng-click="modify_device(dev, $event)"></icsw-tools-button>
     </td>
     <td ng-show="any_type_3_selected">
         <input type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"/>

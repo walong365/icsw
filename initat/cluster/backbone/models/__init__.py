@@ -652,7 +652,7 @@ class device(models.Model):
 
     def new_kernel_version(self):
         if self.new_kernel_id:
-            return "{:d}.{:d}".format(self.new_kernel.version, self.new_kernel.release)
+            return self.new_kernel.full_version
         else:
             return ""
 
