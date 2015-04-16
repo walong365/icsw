@@ -50,6 +50,7 @@ angular.module(
                 draw_height = scope.height - top_bottom_padding * 2
                 draw_width = scope.width - 50  # space for labels on the right side
 
+                scope.tree = undefined
                 d3_service.d3().then((d3) ->
                     scope.svg_el = el[0].getElementsByClassName("kpi-visualisation-svg")[0]
                     scope.svg = d3.select(scope.svg_el)
@@ -60,10 +61,9 @@ angular.module(
                         .children((node) ->
                             console.log 'hide ch', node, node.hide_children
                             if node.hide_children then null else return node.origin.operands)
-
+                        #.nodeSize([130, 70])  # this would be nice but changes layout horribly
+                        .separation((a, b) -> return 3)
                 )
-                scope.tree = undefined
-
 
                 scope.redraw = () ->
                     # TODO: clear svg
@@ -75,11 +75,6 @@ angular.module(
                             kpi = icswConfigKpiDataService.get_kpi(scope.kpiIdx())
                             if kpi.enabled and kpi.result?  # only for enabled's
                                 scope.data = kpi.result.json
-                                source = {
-                                    x0: draw_height/2,
-                                    y0: 0,
-                                }
-
                                 console.log 'drawing', scope.kpiIdx(), kpi, scope.data
                                 scope.update_dthree()
 
@@ -87,26 +82,34 @@ angular.module(
                     nodes = scope.tree.nodes(scope.data)
                     links = scope.tree.links(nodes)
 
-                    # fixed depth
-                    nodes.forEach((d) -> d.y = d.depth * 70)
+                    # fixed depth (now handled via nodeSize)
+                    # nodes.forEach((d) -> d.y = d.depth * 70)
+
+                    my_translate = (x, y) -> return [x, draw_height - y]
 
                     diagonal = d3.svg.diagonal()
-                        #.projection((d) -> return [d.x, draw_height - d.y])
+                        .projection((d) -> return my_translate(d.x, d.y))
 
-#                    link = scope.svg.selectAll(".link")
-#                        .data(links)
+                    link = scope.svg.selectAll(".link")
+                        .data(links)
 #
-#                    link_enter = link.enter()
-#                    link_enter
-#                        .append("g")
-#                        .attr("class", "link")
-#                        .append("path")
-#                        .attr("fill", "none")
-#                        .attr("stroke", "#ff8888")
-#                        .attr("stroke-width", "1.5px")
-#                        .attr("d", diagonal);
-#
-#                    link.exit().remove()
+                    link.enter()
+                        .append("g")
+                        .attr("class", "link")
+                        .append("path")
+                        .attr("fill", "none")
+                        .attr("stroke", "#ff8888")
+                        .attr("stroke-width", "1.5px")
+                        .attr("d", diagonal);
+
+                    duration = 0.001  # milliseconds
+
+                    link.transition()
+                        .duration(duration)
+                        .select("path")
+                        .attr("d", diagonal);
+
+                    link.exit().remove()
 
                     node = scope.svg.selectAll(".node")
                         .data(nodes)
@@ -115,8 +118,12 @@ angular.module(
                         .append("g")
                         .attr("class", "node")
                         .style("cursor", "pointer")
-                        .attr("transform", (d) -> return "translate(" + d.x + "," + d.y + ")")
-                        #.attr("transform", (d) -> return "translate(" + d.x + "," + (draw_height - d.y) + ")")
+                        #.attr("transform", (d) -> return "translate(" + d.x + "," + d.y + ")")
+                        .attr("transform", (d) -> return "translate(" + my_translate(d.x, d.y).join(",") + ")")
+
+                    node.transition()
+                        .duration(duration)
+                        .attr("transform", (d) -> return "translate(" + my_translate(d.x, d.y).join(",") + ")")
 
                     node.exit().remove()
 
@@ -193,7 +200,18 @@ angular.module(
 
 
                 scope.on_node_click = (node) ->
-                    node.hide_children = !node.hide_children
+                    if node.hide_children
+                        # unhide recursively
+                        unhide_rec = (node) ->
+                            node.hide_children = false
+                            for child in node.origin.operands
+                                unhide_rec(child)
+
+                        unhide_rec(node)
+                    else
+                        # hide locally
+                        node.hide_children = true
+
                     console.log 'node hide', node.hide_children
                     scope.redraw()
                 scope.on_mouse_enter = (node) ->

@@ -242,7 +242,6 @@ angular.module(
 
                     for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
                         entry = create_data_source_tuple(obj, tup)
-                        console.log 'crate', entry
                         icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
                             (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
                         )
