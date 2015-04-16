@@ -33,12 +33,14 @@ angular.module(
                 kpiIdx: '&kpiIdx'
             link: (scope, el, attrs) ->
                 scope.width = 700
-                scope.height = 600
-                scope.fun = () -> console.log 'yay'
+
+                node_height = 80
+
+                # scope.height = 600  # set later
 
                 scope.kpi_set_to_show = undefined
 
-                top_bottom_padding = 10
+                top_bottom_padding = 13
 
                 scope.tree = undefined
                 d3_service.d3().then((d3) ->
@@ -49,9 +51,12 @@ angular.module(
                     scope.tree = d3.layout.tree()
                         .children((node) ->
                             if node.hide_children then null else return node.origin.operands)
-                        #.nodeSize([130, 70])  # this would be nice but changes layout horribly
-                        .separation((a, b) -> return 3)
+                        .nodeSize([330, node_height])  # this would be nice but changes layout horribly
+                        #.separation((a, b) -> return 8)
+
                 )
+
+
 
                 scope.redraw = () ->
                     # TODO: clear svg
@@ -64,23 +69,31 @@ angular.module(
                             if kpi.enabled and kpi.result?  # only for enabled's
                                 scope.data = kpi.result.json
                                 console.log 'drawing', scope.kpiIdx(), kpi, scope.data
-                                #scope.height = 70
+                                # scope.height = 70
                                 scope.update_dthree()
 
-
                 scope.update_dthree = () ->
-                    draw_height = scope.height - top_bottom_padding * 2
-                    draw_width = scope.width - 50  # space for labels on the right side
 
-                    TODO: height proportional to depth
+                    _get_max_depth = (node, cur_depth) ->
+                        max_depth = cur_depth
+                        for child in node.origin.operands
+                            max_depth = Math.max(max_depth, _get_max_depth(child, cur_depth + 1))
+                        return max_depth
+
+                    max_depth = _get_max_depth(scope.data, 0)
+
+                    draw_height = max_depth * node_height
+                    draw_width = scope.width - 100  # labels grow to the right side
+
+                    scope.height = draw_height + top_bottom_padding * 2
 
                     scope.tree.size([draw_width, draw_height])
 
                     nodes = scope.tree.nodes(scope.data)
                     links = scope.tree.links(nodes)
 
-                    # fixed depth (now handled via nodeSize)
-                    #nodes.forEach((d) -> d.y = d.depth * 70)
+                    # fixed depth
+                    #nodes.forEach((d) -> d.y = d.depth * node_height)
 
                     my_translate = (x, y) -> return [x, draw_height - y]
 
@@ -143,20 +156,26 @@ angular.module(
                             if d.origin.type == 'initial'
                                 res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> initial data (#{d.objects.length} objects) </text>"
                             else
-                                i = 0
-                                for kpi_obj in d.objects
-                                    if i > 2 # only 3 elems
-                                        res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
-                                        break
-                                    s = icswConfigKpiVisUtils.kpi_obj_to_string(kpi_obj)
-                                    s = $filter('limit_text')(s, 40)
-                                    res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{s} </text>"
-                                    cur_height += 14
-                                    i += 1
-                                res += "}"
-                                res += "<text style=\"font-size: 11px\" dx=\"0\" dy=\"-15\" text-anchor=\"middle\">"
-                                res += "#{d.origin.type}" #{ JSON.stringify(d.origin.arguments)} "
-                                res += "(" + (k+"="+v for k, v of d.origin.arguments).join(", ") + ")"
+                                concise = d.objects.length > 3 || d.objects.length == 0
+
+                                if concise
+                                    res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{d.objects.length} objects </text>"
+                                else
+                                    i = 0
+                                    for kpi_obj in d.objects
+                                        if i > 2 # only 3 elems
+                                            res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
+                                            break
+                                        s = icswConfigKpiVisUtils.kpi_obj_to_string(kpi_obj)
+                                        s = $filter('limit_text')(s, 40)
+                                        res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{s} </text>"
+                                        cur_height += 14
+                                        i += 1
+
+                                # operation
+                                res += "<text style=\"font-size: 11px; font-style: italic;\" dx=\"0\" dy=\"-22\" text-anchor=\"middle\">"
+                                operation = "#{d.origin.type}  (" + (k+"="+v for k, v of d.origin.arguments).join(", ") + ")"
+                                res += $filter('limit_text')(operation, 40)
                                 res += "</text>"
                             return res
                         )

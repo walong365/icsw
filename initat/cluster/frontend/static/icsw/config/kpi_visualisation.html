@@ -1,22 +1,24 @@
 <script type="text/ng-template" id="icsw.config.kpi.evaluation_graph">
     <div ng-mouseleave="fun">
         <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}" class="kpi-visualisation-svg" style="float: left"></svg>
-        <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show" style="float:left; width: 480px; margin-left: 20px"></icsw-config-kpi-show-kpi-set>
+        <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show"
+                                      ng-attr-style="float:left; width: 480px; height: {{height}}px; overflow-y: scroll; margin-left: 20px"></icsw-config-kpi-show-kpi-set>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_set">
-    VARIABLE HEIGHT OF SVG, NUM_DEPTH * 70
     <div class="panel panel-default" ng-show="kpi_set">
         <div class="panel-heading">
             Kpi Set
         </div>
         <div class="panel-body">
+
+            <button class="btn btn-default btn-primary" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
+
             <ul class="list-group">
                 <icsw-config-kpi-show-kpi-object ng-repeat="kpi_obj in kpi_set.objects" kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
             </ul>
 
-            <button class="btn btn-default btn-primary" ng-click="kpi_set = undefined">close</button>
         </div>
     </div>
 </script>
