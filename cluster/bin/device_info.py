@@ -30,6 +30,8 @@ django.setup()
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.functions import to_system_tz
+import logging_tools
 import argparse
 
 
@@ -54,6 +56,33 @@ def main():
                 cur_nd.devname,
                 ", ".join([cur_ip.ip for cur_ip in cur_nd.net_ip_set.all().order_by("ip")]) or "no IPs")
             )
+        if cur_dev.deviceboothistory_set.count():
+            _brs = cur_dev.deviceboothistory_set.all()
+            print("found {}".format(logging_tools.get_plural("boot record", len(_brs))))
+            for _entry in _brs:
+                print "  {}, kernel: {}, image: {}".format(
+                    to_system_tz(_entry.date),
+                    ", ".join(
+                        [
+                            "{} ({}, {})".format(
+                                unicode(_kernel.kernel.name),
+                                _kernel.full_version,
+                                _kernel.timespan,
+                            ) for _kernel in _entry.kerneldevicehistory_set.all()
+                        ]
+                    ) or "---",
+                    ", ".join(
+                        [
+                            "{} ({}, {})".format(
+                                unicode(_image.image.name),
+                                _image.full_version,
+                                _image.timespan,
+                            ) for _image in _entry.imagedevicehistory_set.all()
+                        ]
+                    ) or "---",
+                )
+        else:
+            print("device has not boot history records")
 
 if __name__ == "__main__":
     main()

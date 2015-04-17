@@ -468,11 +468,7 @@ function install_kernel() {
     echo -e "Requesting kernel"
     conf_str=`get_conf_str "get_kernel"`
     num=`echo $conf_str| cut -d " " -f 1`
-    if [ "$do_install" == "1" ] ; then
-        inst="1"
-    else
-        inst=`echo $conf_str | cut -d " " -f 3`
-    fi
+    inst=`echo $conf_str | cut -d " " -f 3`
     kernel_server=`echo $conf_str | cut -d " " -f 4`
     full_newkernel=`echo $conf_str | cut -d " " -f 5`
     new_version=`echo $conf_str | cut -d " " -f 6`
@@ -485,6 +481,7 @@ function install_kernel() {
     newkversion="$new_version.$new_release"
     gen_initrd=0
     if [ "$inst" == "1" ] ; then
+        # previous kernel
         gen_initrd=1
         initrd_cause="new kernel"
         set_hoststat "${INSTALL_KERNEL} $newkernel ($newkversion)"
@@ -495,10 +492,16 @@ function install_kernel() {
         echo -e "Installing kernel ${newkernel}, version ${newkversion}"
         cp -a /kernel/System.map /$basedir/boot/System.map
         cp -a /kernel/bzImage /$basedir/boot/vmlinuz
-        # keep modules in updates
-        # only delete files from previous modules
-        rm -rf /$basedir/lib/modules/*
+        if [ -f /$basedir/.icswinfo/modules.tar.bz2 ] ; then
+            # only delete files from previous modules
+            echo "removing modules from previous install ..."
+            rm -f $(tar tjf /$basedir/.icswinfo/modules.tar.bz2 | grep -v "/$" | sed sX^X/${basedir}/Xg )
+            rmdir $(tar tjf /$basedir/.icswinfo/modules.tar.bz2 | grep "/$" | sed sX^X/${basedir}/Xg | sort -r )
+            echo " ... done"
+        fi
         if [ -f /kernel/modules.tar.bz2 ] ; then
+            # create a local copy
+            cp -a /kernel/modules.tar.bz2 /$basedir/.icswinfo/
             tar xjf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
         else
             echo -e "${YELLOW}No modules.tar.bz2 file found for actual kernel${OFF}"
@@ -793,7 +796,7 @@ elif [ -x /sbin/rsyslogd ] ; then
     echo -e "\$ModLoad imudp.so" >> /etc/rsyslog.conf
     echo -e "*.*\t@logserver:514\n" >> /etc/rsyslog.conf
     echo -e "starting rsyslogd"
-    /sbin/rsyslogd -c 5 -f /etc/rsyslog.conf &
+    /sbin/rsyslogd -f /etc/rsyslog.conf &
 else
     SYSLOG_BIN=0
 fi
@@ -860,7 +863,7 @@ else
     config_dir=`echo $conf_str | cut -d " " -f 9`
 fi
 
-mkdir /conf
+[ ! -d /conf ] && mkdir /conf
 set_hoststat ${MOUNT_STRING}
 mount_it "config" $config_server:/$config_dir/$device_name /conf "${RW_MOUNTOPTS}"
 
@@ -1225,7 +1228,7 @@ elif [ "$do_mount" = "1" ] ; then
 # copy config
     if [ "$we_are_clean" = "0" ] ; then
         # copy location of source config dir
-        echo ${config_dir} > /$basedir/.icsw_info/config_dir
+        echo ${config_dir} > /$basedir/.icswinfo/config_dir
         copy_config ${prod_net} "$do_install"
         cleanup_udev
         make_nsswitch_local

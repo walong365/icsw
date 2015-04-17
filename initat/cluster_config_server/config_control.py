@@ -423,15 +423,17 @@ class config_control(object):
                         inst = 1
                     else:
                         prev_kernel = self.device.kerneldevicehistory_set.all()[0]
-                        if prev_kernel.kernel_id != self.device.new_kernel_id:
+                        if prev_kernel.kernel_id != dev_kernel.pk:
                             self.log("kernel changed, forcing install")
                             inst = 1
-                        elif prev_kernel.full_version != self.device.new_kernel.full_version:
+                        elif prev_kernel.full_version != dev_kernel.full_version:
                             self.log("kernel version changed, forcing install")
                             inst = 1
                         elif self.dbh.imagedevicehistory_set.all().count():
                             self.log("new image was installed, forcing install")
                             inst = 1
+                    if inst:
+                        dev_kernel.create_history_entry(self.dbh)
                     return "ok {:d} {} {}/{} {} {}".format(
                         inst,
                         s_req.server_ip,

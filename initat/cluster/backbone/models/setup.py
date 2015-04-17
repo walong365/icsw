@@ -21,11 +21,14 @@
 #
 """ setup models (kernel, image, architecture) for NOCTUA and CORVUS """
 
+import datetime
+
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import signals
 from django.dispatch import receiver
 import logging_tools
 from initat.cluster.backbone.models.functions import cluster_timezone
+
 
 __all__ = [
     "architecture",
@@ -67,6 +70,13 @@ class HistoryObject(models.Model):
     @property
     def full_version(self):
         return "{:d}.{:d}".format(self.version, self.release)
+
+    @property
+    def timespan(self):
+        if self.start and self.end:
+            return logging_tools.get_diff_time_str((self.end - self.start).total_seconds())
+        else:
+            return "---"
 
     def ok(self):
         self.end = cluster_timezone.localize(datetime.datetime.now())
