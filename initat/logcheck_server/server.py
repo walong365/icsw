@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2011-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,13 +21,14 @@
 #
 """ logcheck-server (to be run on a syslog_server), server process """
 
+import os
+
 from django.db import connection
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.struct import machine
 import cluster_location
 import configfile
 import logging_tools
-import os
 import process_tools
 import psutil
 import threading_tools
@@ -203,7 +204,7 @@ class server_process(threading_tools.process_pool):
                 syslog_found = True
                 break
         if syslog_found:
-            c_stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
+            c_stat, out_f = process_tools.submit_at_command("{} restart".format(syslog_rc), 0)
             self.log(u"restarting {} gave {:d}:".format(syslog_rc, c_stat))
             for line in out_f:
                 self.log(line)

@@ -87,15 +87,19 @@ def main():
     if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
         sys.stderr.write(" %s is no syslog-server, exiting..." % (long_host_name))
         sys.exit(5)
-    cluster_location.read_config_from_db(global_config, "syslog_server", [
-        ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
-        ("SYSLOG_DIR", configfile.str_c_var("/var/log/hosts")),
-        ("COMPORT", configfile.int_c_var(SERVER_PORT)),
-        ("KEEP_LOGS_UNCOMPRESSED", configfile.int_c_var(2)),
-        ("KEEP_LOGS_TOTAL", configfile.int_c_var(30)),
-        ("INITIAL_LOGCHECK", configfile.bool_c_var(False)),
-        ("LOGSCAN_TIME", configfile.int_c_var(60, info="time in minutes between two logscan iterations"))
-    ])
+    cluster_location.read_config_from_db(
+        global_config,
+        "syslog_server", [
+            ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
+            ("SYSLOG_DIR", configfile.str_c_var("/var/log/hosts")),
+            ("COMPORT", configfile.int_c_var(SERVER_PORT)),
+            ("KEEP_LOGS_UNCOMPRESSED", configfile.int_c_var(2)),
+            ("KEEP_LOGS_TOTAL", configfile.int_c_var(30)),
+            ("COMPRESS_BINARY", configfile.str_c_var("bzip2")),
+            ("INITIAL_LOGCHECK", configfile.bool_c_var(False)),
+            ("LOGSCAN_TIME", configfile.int_c_var(60, info="time in minutes between two logscan iterations"))
+        ]
+    )
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     process_tools.renice()
