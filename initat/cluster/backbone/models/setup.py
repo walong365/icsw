@@ -34,6 +34,8 @@ __all__ = [
     "kernel_build",
     "kernel_local_info",
     "kernel_log",
+    "KernelDeviceHistory",
+    "ImageDeviceHistory",
 ]
 
 
@@ -77,6 +79,15 @@ class image(models.Model):
     def full_version(self):
         return "{:d}.{:d}".format(self.version, self.release)
 
+    def create_history_entry(self, _device):
+        _kdh = ImageDeviceHistory.objects.create(
+            image=self,
+            device=_device,
+            version=self.version,
+            release=self.release,
+        )
+        return _kdh
+
     def __unicode__(self):
         return "{} (arch {})".format(
             self.name,
@@ -90,6 +101,16 @@ class image(models.Model):
     class Meta:
         db_table = u'image'
         ordering = ("name",)
+
+
+class ImageDeviceHistory(models.Model):
+    idx = models.AutoField(primary_key=True)
+    image = models.ForeignKey("backbone.image")
+    device = models.ForeignKey("backbone.device")
+    # copy from kernel field
+    version = models.IntegerField(null=True, blank=True, default=1)
+    release = models.IntegerField(null=True, blank=True, default=1)
+    date = models.DateTimeField(auto_now_add=True)
 
 
 @receiver(signals.pre_save, sender=image)
@@ -142,6 +163,15 @@ class kernel(models.Model):
     def get_usecount(self):
         return 5
 
+    def create_history_entry(self, _device):
+        _kdh = KernelDeviceHistory.objects.create(
+            kernel=self,
+            device=_device,
+            version=self.version,
+            release=self.release,
+        )
+        return _kdh
+
     def __unicode__(self):
         return self.name
 
@@ -157,6 +187,16 @@ class kernel(models.Model):
             ("modify_kernels", "modify kernels", False),
         )
         fk_ignore_list = ["initrd_build", "kernel_build"]
+
+
+class KernelDeviceHistory(models.Model):
+    idx = models.AutoField(primary_key=True)
+    kernel = models.ForeignKey("backbone.kernel")
+    device = models.ForeignKey("backbone.device")
+    # copy from kernel field
+    version = models.IntegerField(null=True, blank=True, default=1)
+    release = models.IntegerField(null=True, blank=True, default=1)
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class initrd_build(models.Model):
