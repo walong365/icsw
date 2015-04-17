@@ -586,19 +586,20 @@ class server_check(object):
 
     def _fetch_network_info(self, **kwargs):
         # commented force_flag, FIXME
-        if not self.__network_info_fetched or kwargs.get("force", False):
-            for net_dev in self.device.netdevice_set.all():
-                if net_dev.enabled:
-                    self.netdevice_idx_list.append(net_dev.pk)
-                    self.netdevice_ip_lut[net_dev.pk] = []
-                    self.nd_lut[net_dev.pk] = net_dev
-                    for net_ip in net_dev.net_ip_set.all():
-                        self.ip_list.append(net_ip)
-                        self.netdevice_ip_lut[net_dev.pk].append(net_ip)
-                        self.ip_netdevice_lut[net_ip.ip] = net_dev
-                        self.ip_identifier_lut[net_ip.ip] = net_ip.network.network_type.identifier
-                        self.identifier_ip_lut.setdefault(net_ip.network.network_type.identifier, []).append(net_ip)
-            self.__network_info_fetched = True
+        if self.device is not None:
+            if not self.__network_info_fetched or kwargs.get("force", False):
+                for net_dev in self.device.netdevice_set.all():
+                    if net_dev.enabled:
+                        self.netdevice_idx_list.append(net_dev.pk)
+                        self.netdevice_ip_lut[net_dev.pk] = []
+                        self.nd_lut[net_dev.pk] = net_dev
+                        for net_ip in net_dev.net_ip_set.all():
+                            self.ip_list.append(net_ip)
+                            self.netdevice_ip_lut[net_dev.pk].append(net_ip)
+                            self.ip_netdevice_lut[net_ip.ip] = net_dev
+                            self.ip_identifier_lut[net_ip.ip] = net_ip.network.network_type.identifier
+                            self.identifier_ip_lut.setdefault(net_ip.network.network_type.identifier, []).append(net_ip)
+                self.__network_info_fetched = True
 
     def _db_check_ip(self):
         # get local ip-addresses

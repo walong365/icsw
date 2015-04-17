@@ -25,6 +25,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 import logging_tools
+from initat.cluster.backbone.models.functions import cluster_timezone
 
 __all__ = [
     "architecture",
@@ -49,6 +50,32 @@ class architecture(models.Model):
 
     def __unicode__(self):
         return self.architecture
+
+
+class HistoryObject(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("backbone.device")
+    device_boot_history = models.ForeignKey("backbone.DeviceBootHistory")
+    # copy from kernel / image field
+    version = models.IntegerField(null=True, blank=True, default=1)
+    release = models.IntegerField(null=True, blank=True, default=1)
+    success = models.BooleanField(default=False)
+    start = models.DateTimeField(auto_now_add=True, default=None, null=True)
+    end = models.DateTimeField(default=None, null=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def full_version(self):
+        return "{:d}.{:d}".format(self.version, self.release)
+
+    def ok(self):
+        self.end = cluster_timezone.localize(datetime.datetime.now())
+        self.success = True
+        self.save(update_fields=["end", "success"])
+
+    class Meta:
+        abstract = True
+        ordering = ("-pk",)
 
 
 class image(models.Model):
@@ -79,10 +106,11 @@ class image(models.Model):
     def full_version(self):
         return "{:d}.{:d}".format(self.version, self.release)
 
-    def create_history_entry(self, _device):
+    def create_history_entry(self, _dbh):
         _kdh = ImageDeviceHistory.objects.create(
             image=self,
-            device=_device,
+            device=_dbh.device,
+            device_boot_history=_dbh,
             version=self.version,
             release=self.release,
         )
@@ -98,20 +126,16 @@ class image(models.Model):
             ("modify_images", "modify images", False),
         )
 
+    def __unicode__(self):
+        return "Image {} ({})".format(self.name, self.full_version)
+
     class Meta:
         db_table = u'image'
         ordering = ("name",)
 
 
-class ImageDeviceHistory(models.Model):
-    idx = models.AutoField(primary_key=True)
+class ImageDeviceHistory(HistoryObject):
     image = models.ForeignKey("backbone.image")
-    device = models.ForeignKey("backbone.device")
-    device_boot_history = models.ForeignKey("backbone.DeviceBootHistory")
-    # copy from kernel field
-    version = models.IntegerField(null=True, blank=True, default=1)
-    release = models.IntegerField(null=True, blank=True, default=1)
-    date = models.DateTimeField(auto_now_add=True)
 
 
 @receiver(signals.pre_save, sender=image)
@@ -164,10 +188,11 @@ class kernel(models.Model):
     def get_usecount(self):
         return 5
 
-    def create_history_entry(self, _device):
+    def create_history_entry(self, _dbh):
         _kdh = KernelDeviceHistory.objects.create(
             kernel=self,
-            device=_device,
+            device=_dbh.device,
+            device_boot_history=_dbh,
             version=self.version,
             release=self.release,
         )
@@ -183,6 +208,9 @@ class kernel(models.Model):
     def full_version(self):
         return "{:d}.{:d}".format(self.version, self.release)
 
+    def __unicode__(self):
+        return "Kernel {} ({})".format(self.name, self.full_version)
+
     class CSW_Meta:
         permissions = (
             ("modify_kernels", "modify kernels", False),
@@ -190,15 +218,8 @@ class kernel(models.Model):
         fk_ignore_list = ["initrd_build", "kernel_build"]
 
 
-class KernelDeviceHistory(models.Model):
-    idx = models.AutoField(primary_key=True)
+class KernelDeviceHistory(HistoryObject):
     kernel = models.ForeignKey("backbone.kernel")
-    device = models.ForeignKey("backbone.device")
-    device_boot_history = models.ForeignKey("backbone.DeviceBootHistory")
-    # copy from kernel field
-    version = models.IntegerField(null=True, blank=True, default=1)
-    release = models.IntegerField(null=True, blank=True, default=1)
-    date = models.DateTimeField(auto_now_add=True)
 
 
 class initrd_build(models.Model):

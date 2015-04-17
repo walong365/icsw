@@ -487,7 +487,6 @@ function install_kernel() {
     if [ "$inst" == "1" ] ; then
         gen_initrd=1
         initrd_cause="new kernel"
-        get_conf_str "set_kernel $newkernel $newkversion"
         set_hoststat "${INSTALL_KERNEL} $newkernel ($newkversion)"
         echo "KERNEL_NAME=${newkernel}" > /$basedir/.icswinfo/kernelinfo
         echo "KERNEL_VERSION=${newkversion}" >> /$basedir/.icswinfo/kernelinfo
@@ -524,6 +523,7 @@ function install_kernel() {
     #    chroot /$basedir mkinitrd -i initrd -k vmlinuz -m "$*"
     #fi
     fi
+    get_conf_str "new_kernel_ok"
     send_info "done. umounting kernel $newkernel"
     umount /kernel
     rmdir /kernel
@@ -802,7 +802,7 @@ echo -e "starting klogd"
 /sbin/klogd -c 1 &
 
 # say hello to the config-server (create boot entry)
-get_conf_str "hello"
+get_conf_str "create_boot_entry"
 
 # build pci id str for autodetection
 pci_str=""
@@ -1159,6 +1159,7 @@ elif [ "$do_mount" = "1" ] ; then
             echo -e "starting rsync from server $motherserver, image is $image"
             rsync ${rsync_flags} --exclude-from=/tmp/.rsync_exclude --stats ${motherserver}::${image} /${basedir} || err_exit "doing rsync-call"
         fi
+        get_conf_str "new_image_ok"
 # check for global /lost+found dir
         [ ! -d /${basedir}/lost+found ] && mkdir /${basedir}/lost+found
         [ ! -d /${basedir}/.icswinfo ] && mkdir /${basedir}/.icswinfo

@@ -340,7 +340,8 @@ class device_variable(models.Model):
         return "{}[{}] = {}".format(
             self.name,
             self.var_type,
-            str(self.get_value()))
+            str(self.get_value())
+        )
 
     def init_as_gauge(self, max_value, start=0):
         self.__max, self.__cur = (max_value, start)
@@ -458,15 +459,15 @@ class device(models.Model):
     etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
     new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
-    act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
-    act_kernel_build = models.IntegerField(null=True, blank=True)
+    # act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
+    # act_kernel_build = models.IntegerField(null=True, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True, default="CPIO")
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
-    act_image = models.ForeignKey("image", null=True, related_name="act_image")
+    # act_image = models.ForeignKey("image", null=True, related_name="act_image")
     # kernel version running
-    kernelversion = models.CharField(max_length=192, blank=True, default="")
+    # kernelversion = models.CharField(max_length=192, blank=True, default="")
     # image version running
-    imageversion = models.CharField(max_length=192, blank=True, default="")
+    # imageversion = models.CharField(max_length=192, blank=True, default="")
     # new partition table
     partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="new_partition_table")
     # current partition table
@@ -650,17 +651,19 @@ class device(models.Model):
     def get_slave_cons(self):
         return [entry for entry in self.cd_cons if entry.child_id == self.pk]
 
-    def new_kernel_version(self):
-        if self.new_kernel_id:
-            return self.new_kernel.full_version
+    def get_act_image(self):
+        if self.imagedevicehistory_set.all().count():
+            _ho = self.imagedevicehistory_set.all()[0]
+            return (_ho.image_id, _ho.version, _ho.release)
         else:
-            return ""
+            return None
 
-    def new_image_version(self):
-        if self.new_image_id:
-            return "{:d}.{:d}".format(self.new_image.version, self.new_image.release)
+    def get_act_kernel(self):
+        if self.kerneldevicehistory_set.all().count():
+            _ho = self.kerneldevicehistory_set.all()[0]
+            return (_ho.kernel_id, _ho.version, _ho.release)
         else:
-            return ""
+            return None
 
     def valid_state(self):
         _rs = ""
@@ -770,6 +773,11 @@ class device(models.Model):
         else:
             return "?.?"
 
+    def create_boot_history(self):
+        return DeviceBootHistory.objects.create(
+            device=self,
+        )
+
     def __unicode__(self):
         return u"{}{}".format(
             self.name,
@@ -808,6 +816,8 @@ class device(models.Model):
 
 
 class DeviceBootHistory(models.Model):
+    # new kernel and / or image changes are connected to the device via this structure
+    # might be empty if we only boot
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device")
     date = models.DateTimeField(auto_now_add=True)

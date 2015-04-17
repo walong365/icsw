@@ -21,30 +21,30 @@
 #
 """ node control related parts of mother """
 
+import copy
+import datetime
+import os
+import re
+import select
+import shutil
+import stat
+import time
+import uuid
+
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
-    cluster_timezone, log_source_lookup, log_level_lookup, LogSource, DeviceLogEntry, user
+from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
+    cluster_timezone, log_source_lookup, LogSource, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 import config_tools
 import configfile
-import copy
-import datetime
 import icmp_class
 import ipvx_tools
 import logging_tools
-import os
-import pprint  # @UnusedImport
 import process_tools
-import re
-import select
 import server_command
-import shutil
-import stat
 import threading_tools
-import time
-import uuid
 
 
 class Host(object):
@@ -862,10 +862,18 @@ class Host(object):
                         append_string)
                 pxe_lines = []
                 if global_config["NODE_BOOT_DELAY"]:
-                    pxe_lines.extend(["TIMEOUT %d" % (global_config["NODE_BOOT_DELAY"]),
-                                      "PROMPT 1"])
-                pxe_lines.extend(["DISPLAY {}/menu".format(self.maint_ip.ip),
-                                  "DEFAULT linux auto"])
+                    pxe_lines.extend(
+                        [
+                            "TIMEOUT {:d}".format(global_config["NODE_BOOT_DELAY"]),
+                            "PROMPT 1"
+                        ]
+                    )
+                pxe_lines.extend(
+                    [
+                        "DISPLAY {}/menu".format(self.maint_ip.ip),
+                        "DEFAULT linux auto"
+                    ]
+                )
                 if new_kernel.name:
                     if new_kernel.xen_host_kernel:
                         pxe_lines.extend([
@@ -879,27 +887,34 @@ class Host(object):
                             "    APPEND {}".format(total_append_string)])
                 pxe_lines.extend([""])
                 if global_config["FANCY_PXE_INFO"]:
-                    menu_lines = ["\x0c\x0f20{}\x0f07".format(("init.at Bootinfo, {}{}".format(time.ctime(), 80 * " "))[0:79])]
+                    menu_lines = [
+                        "\x0c\x0f20{}\x0f07".format(("init.at Bootinfo, {}{}".format(time.ctime(), 80 * " "))[0:79])
+                    ]
                 else:
-                    menu_lines = ["",
-                                  ("init.at Bootinfo, {}{}".format(time.ctime(), 80 * " "))[0:79]]
-                menu_lines.extend([
-                    "Nodename  , IP : %-30s, %s" % (self.device.name, self.maint_ip.ip),
-                    "Servername, IP : %-30s, %s" % (global_config["SERVER_SHORT_NAME"], Host.process.server_ip),
-                    "Netmask        : %s (%s)" % (self.maint_ip.network.netmask, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask)),
-                    "MACAddress     : %s" % (self.bootnetdevice.macaddr.lower()),
-                    "Stage1 flavour : %s" % (self.device.stage1_flavour),
-                    "Kernel to boot : %s" % (new_kernel.name or "<no kernel set>"),
-                    "device UUID    : %s" % (self.device.get_boot_uuid()),
-                    "Kernel options : %s" % (append_string or "<none set>"),
-                    "target state   : %s" % (unicode(self.device.new_state) if self.device.new_state_id else "???"),
-                    "will boot {}".format(
-                        "in {}".format(
-                            logging_tools.get_plural("second", int(global_config["NODE_BOOT_DELAY"] / 10))
-                        ) if global_config["NODE_BOOT_DELAY"] else "immediately"
-                    ),
-                    "",
-                    ""])
+                    menu_lines = [
+                        "",
+                        ("init.at Bootinfo, {}{}".format(time.ctime(), 80 * " "))[0:79]
+                    ]
+                menu_lines.extend(
+                    [
+                        "Nodename  , IP : {:<30s}, {}".format(self.device.name, self.maint_ip.ip),
+                        "Servername, IP : {:<30s}, {}".format(global_config["SERVER_SHORT_NAME"], Host.process.server_ip),
+                        "Netmask        : {} ({})".format(self.maint_ip.network.netmask, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask)),
+                        "MACAddress     : {}".format(self.bootnetdevice.macaddr.lower()),
+                        "Stage1 flavour : {}".format(self.device.stage1_flavour),
+                        "Kernel to boot : {}".format(new_kernel.name or "<no kernel set>"),
+                        "device UUID    : {}".format(self.device.get_boot_uuid()),
+                        "Kernel options : {}".format(append_string or "<none set>"),
+                        "target state   : {}".format(unicode(self.device.new_state) if self.device.new_state_id else "???"),
+                        "will boot {}".format(
+                            "in {}".format(
+                                logging_tools.get_plural("second", int(global_config["NODE_BOOT_DELAY"] / 10))
+                            ) if global_config["NODE_BOOT_DELAY"] else "immediately"
+                        ),
+                        "",
+                        "",
+                    ]
+                )
                 self.write_file(self.ip_file_name, "\n".join(pxe_lines))
                 self.write_file(self.ip_mac_file_name, "\n".join(pxe_lines))
                 self.write_file(self.menu_file_name, "\n".join(menu_lines))
@@ -909,70 +924,9 @@ class Host(object):
                     else:
                         self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("Error: directory {} does not exist".format(kern_dst_dir))
+                self.log("Error: directory {} does not exist".format(kern_dst_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("Error: etherboot-dir not defined")
-
-    def read_dot_files(self):
-        if not self.is_node:
-            self.log("not node, checking network settings", logging_tools.LOG_LEVEL_WARN)
-            self.refresh_device()
-            self.check_network_settings()
-        if self.is_node:
-            c_dir = self.config_dir
-            if not os.path.isdir(c_dir):
-                self.log("config_dir '{}' not found".format(c_dir), logging_tools.LOG_LEVEL_ERROR)
-                return
-            self.log("starting readdots in dir '{}'".format(c_dir))
-            hlist = [
-                (".version", "imageversion", None, None),
-                (".imagename", "act_image", image, "name"),
-                # (".kernel", "act_kernel", kernel, "name"),
-                (".kversion", "kernelversion", None, None),
-                # (None, "act_kernel_build", None, None)
-            ]
-            s_dict = {}
-            num_tried, num_ok, num_found = (0, 0, 0)
-            for file_name, dbentry, set_obj, q_name in hlist:
-                if file_name:
-                    full_name = os.path.join(c_dir, file_name)
-                    num_tried += 1
-                    if os.path.exists(full_name):
-                        num_found += 1
-                        try:
-                            line = open(full_name, "r").readline().strip()
-                        except:
-                            pass
-                        else:
-                            num_ok += 1
-                            if set_obj:
-                                try:
-                                    new_obj = set_obj.objects.get(Q(**{q_name: line}))
-                                except set_obj.DoesNotExist:
-                                    self.log(
-                                        "no {} with {}={} found".format(set_obj._meta.model_name, q_name, line),
-                                        logging_tools.LOG_LEVEL_ERROR
-                                    )
-                                    new_obj = None
-                                else:
-                                    if new_obj.pk != getattr(self.device, "{}_id".format(dbentry)):
-                                        s_dict[dbentry] = new_obj
-            if s_dict:
-                for key, value in s_dict.iteritems():
-                    setattr(self.device, key, value)
-                self.device.save(update_fields=s_dict.keys())
-            num_changed = len(s_dict)
-            self.log(
-                "readdots finished ({:d} tried, {:d} found, {:d} ok, {:d} changed{})".format(
-                    num_tried,
-                    num_found,
-                    num_ok,
-                    num_changed,
-                    num_changed and " [{}]".format(
-                        ", ".join(["{}={}".format(key, unicode(value)) for key, value in s_dict.iteritems()])
-                    ) or ""
-                )
-            )
+            self.log("Error: etherboot-dir not defined", logging_tools.LOG_LEVEL_ERROR)
 
     def handle_mac_command(self, com_name):
         self.refresh_device()
@@ -1184,7 +1138,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         self.__process.register_socket(self.socket, select.POLLIN, self.received)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_template.log(log_level, "[icmp] %s" % (what))
+        self.__log_template.log(log_level, "[icmp] {}".format(what))
 
     def __setitem__(self, key, value):
         self.__work_dict[key] = value
@@ -1200,7 +1154,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
 
     def ping(self, seq_str, target, num_pings, timeout, **kwargs):
         if self.__verbose:
-            self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
+            self.log("ping to {} ({:d}, {:.2f}) [{}]".format(target, num_pings, timeout, seq_str))
         cur_time = time.time()
         self[seq_str] = {
             "host": target,
@@ -1269,8 +1223,10 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         if dgram and dgram.packet_type == 0 and dgram.ident == self.__process.pid & 0x7fff:
             seqno = dgram.seqno
             if seqno not in self.__seqno_dict:
-                self.log("got result with unknown seqno %d" % (seqno),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "got result with unknown seqno {:d}".format(seqno),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 value = self[self.__seqno_dict[seqno]]
                 if seqno not in value["recv_list"]:
@@ -1424,13 +1380,11 @@ class node_control_process(threading_tools.process_obj):
             in_com = server_command.srv_command(source=in_com)
             dev_list = map(lambda x: int(x), in_com.xpath(".//ns:device/@pk", smart_strings=False))
             Host.iterate("refresh_target_kernel", device_keys=dev_list)
-            Host.iterate("read_dot_files", device_keys=dev_list)
             Host.iterate("handle_mac_command", "alter", device_keys=dev_list)
         else:
             id_str, in_com = (None, None)
             # use kwargs to specify certain devices
             Host.iterate("refresh_target_kernel")
-            Host.iterate("read_dot_files")
             Host.iterate("handle_mac_command", "alter")
         if id_str:
             in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
@@ -1481,7 +1435,6 @@ class node_control_process(threading_tools.process_obj):
             self._add_ping_info(in_com)
         else:
             self.pending_list.append(in_com)
-        Host.iterate("read_dot_files", device_keys=[int(_val) for _val in in_com.xpath(".//ns:devices/ns:device/@pk")])
 
     def _ping_result(self, id_str, res_dict, **kwargs):
         # a ping has finished
@@ -1534,7 +1487,7 @@ class node_control_process(threading_tools.process_obj):
         self.__log_template.close()
 
     def set_check_freq(self, cur_to):
-        self.log("changing check_freq of check_commands to %d msecs" % (cur_to))
+        self.log("changing check_freq of check_commands to {:d} msecs".format(cur_to))
         self.change_timer(self._check_commands, cur_to)
 
     def _check_commands(self):

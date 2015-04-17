@@ -34,6 +34,7 @@ angular.module(
             $scope.dev_pk_nmd_list = args[1]
             $scope.devg_pk_list = args[2]
             $scope.dev_pk_md_list = args[3]
+            # console.log args
             $scope.addon_devices = []
             if $scope.dev_pk_list.length
                 $scope.show = true
