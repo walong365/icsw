@@ -793,6 +793,7 @@ class device(models.Model):
         )
         fk_ignore_list = [
             "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", "DeviceLogEntry",
+            "KernelDeviceHistory", "ImageDeviceHistory", "DeviceBootHistory",
             "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
             "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
             "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
@@ -804,6 +805,12 @@ class device(models.Model):
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
         verbose_name = u'Device'
+
+
+class DeviceBootHistory(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device")
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class device_selection(object):

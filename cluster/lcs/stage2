@@ -801,7 +801,7 @@ fi
 echo -e "starting klogd"
 /sbin/klogd -c 1 &
 
-# say hello to the config-server
+# say hello to the config-server (create boot entry)
 get_conf_str "hello"
 
 # build pci id str for autodetection

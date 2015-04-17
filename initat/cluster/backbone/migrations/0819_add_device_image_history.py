@@ -12,6 +12,17 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
+            name='DeviceBootHistory',
+            fields=[
+                ('idx', models.AutoField(serialize=False, primary_key=True)),
+                ('date', models.DateTimeField(auto_now_add=True)),
+                ('device', models.ForeignKey(to='backbone.device')),
+            ],
+            options={
+            },
+            bases=(models.Model,),
+        ),
+        migrations.CreateModel(
             name='ImageDeviceHistory',
             fields=[
                 ('idx', models.AutoField(serialize=False, primary_key=True)),
@@ -19,6 +30,7 @@ class Migration(migrations.Migration):
                 ('release', models.IntegerField(default=1, null=True, blank=True)),
                 ('date', models.DateTimeField(auto_now_add=True)),
                 ('device', models.ForeignKey(to='backbone.device')),
+                ('device_boot_history', models.ForeignKey(to='backbone.DeviceBootHistory')),
                 ('image', models.ForeignKey(to='backbone.image')),
             ],
             options={
@@ -33,6 +45,7 @@ class Migration(migrations.Migration):
                 ('release', models.IntegerField(default=1, null=True, blank=True)),
                 ('date', models.DateTimeField(auto_now_add=True)),
                 ('device', models.ForeignKey(to='backbone.device')),
+                ('device_boot_history', models.ForeignKey(to='backbone.DeviceBootHistory')),
                 ('kernel', models.ForeignKey(to='backbone.kernel')),
             ],
             options={

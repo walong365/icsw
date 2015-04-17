@@ -107,6 +107,7 @@ class ImageDeviceHistory(models.Model):
     idx = models.AutoField(primary_key=True)
     image = models.ForeignKey("backbone.image")
     device = models.ForeignKey("backbone.device")
+    device_boot_history = models.ForeignKey("backbone.DeviceBootHistory")
     # copy from kernel field
     version = models.IntegerField(null=True, blank=True, default=1)
     release = models.IntegerField(null=True, blank=True, default=1)
@@ -193,6 +194,7 @@ class KernelDeviceHistory(models.Model):
     idx = models.AutoField(primary_key=True)
     kernel = models.ForeignKey("backbone.kernel")
     device = models.ForeignKey("backbone.device")
+    device_boot_history = models.ForeignKey("backbone.DeviceBootHistory")
     # copy from kernel field
     version = models.IntegerField(null=True, blank=True, default=1)
     release = models.IntegerField(null=True, blank=True, default=1)
