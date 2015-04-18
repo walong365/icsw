@@ -348,8 +348,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} src/kcompile ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/hosts
-	mkdir -p ${DESTDIR}/var/run/collectd-init
-	mkdir -p ${DESTDIR}/var/run/rrd-grapher
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_TFTP}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${VARDIR}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/lib/logging-server
