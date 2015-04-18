@@ -322,8 +322,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
 	${INSTALL} ${INSTALL_OPTS} fixtures/*_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
 	# examples
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/examples/sge_licenses
-	cp -a examples/* ${DESTDIR}${ICSW_BASE}/examples/sge_licenses
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/examples/sge_licenses
+	cp -a examples/* ${DESTDIR}${ICSW_SHARE}/examples/sge_licenses
 	# /opt/cluster/share
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/cert/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/webcache/
