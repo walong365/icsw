@@ -343,7 +343,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} license_tool.py ${DESTDIR}/${PYTHON_SITE}
 	# Various
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
-	cp -a cluster.schema ${DESTDIR}/etc
+	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
 	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} src/kcompile ${DESTDIR}/${KERNEL_CONFIGS}
