@@ -95,9 +95,8 @@ setup(
         "compile_tools",
     ],
     package_data={
-        "initat.core": [
-            "templates/initcore/*.html",
-            "templates/initcore/*.xml",
+        "initat.cluster.frontend": [
+            "*/*",
         ]
     }
 )
