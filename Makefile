@@ -122,7 +122,7 @@ install:
 	${PYTHON} ./meta-server_setup.py install --root "${DESTDIR}"
 	${PYTHON} ./host-monitoring_setup.py install --root "${DESTDIR}"
 	${PYTHON} ./python-modules-base_setup.py install --root="${DESTDIR}"
-	rm -f %{DESTDIR}/${PYTHON_SITE}/*.egg*
+	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
