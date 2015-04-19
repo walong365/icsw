@@ -197,7 +197,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
 	# pyfiles
 	for bin_file in clog.py device_info.py load_firmware.sh \
-	    mysql_dump.sh pack_kernel.sh populate_ramdisk.py resync_config.sh \
+	    populate_ramdisk.py resync_config.sh \
 	    show_config_script.py make_image.py change_cluster_var.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$bin_file ${DESTDIR}/${ICSW_BASE}/bin; \
 	done
