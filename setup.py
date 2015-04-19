@@ -102,10 +102,12 @@ setup(
         "inotify_tools",
         "compile_tools",
     ],
-    package_data={
+    package_dir={
         ".": [
-            "modules/*.py",
+            "modules/*.py"
         ],
+    },
+    package_data={
         "initat.cluster.frontend": [
             "static/css/*",
             "static/fonts/*",
