@@ -15,11 +15,13 @@ setup(
         "initat.cluster.backbone.0800_models",
         "initat.cluster.backbone.models",
         "initat.cluster.backbone.migrations",
+        "initat.cluster.backbone.serializers",
         "initat.cluster.backbone.management",
         "initat.cluster.backbone.management.commands",
         "initat.cluster.rms",
         "initat.cluster.rms.rms_addons",
         "initat.cluster.frontend",
+        "initat.cluster.frontend.ext",
         "initat.cluster.frontend.management",
         "initat.cluster.frontend.management.commands",
         "initat.cluster.urls",
@@ -108,6 +110,14 @@ setup(
             "static/js/*/*",
             "static/js/*/*/*",
             "static/js/*/*/*/*",
-        ]
+            "templates/*.html",
+            "templates/angular/*.coffee",
+        ],
+        "initat.cluster.rms": [
+            "templates/*.html",
+        ],
+        "initat.cluster.backbone": [
+            "fixtures_deprecated/*.xml",
+        ],
     }
 )
