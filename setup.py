@@ -116,7 +116,7 @@ setup(
         ],
         "initat.cluster": [
             "runserver.sh",
-        ]
+        ],
         "initat.cluster.rms": [
             "templates/*.html",
         ],
