@@ -7,7 +7,6 @@ setup(
     url="http://www.init.at",
     author="Andreas Lang-Nevyjel",
     author_email="lang-nevyjel@init.at",
-    py_modules=[],
     packages=[
         "initat",
         "initat.snmp_relay",
