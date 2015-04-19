@@ -21,6 +21,7 @@ setup(
         "initat.cluster.rms",
         "initat.cluster.rms.rms_addons",
         "initat.cluster.frontend",
+        "initat.cluster.frontend.forms",
         "initat.cluster.frontend.ext",
         "initat.cluster.frontend.management",
         "initat.cluster.frontend.management.commands",
@@ -113,6 +114,9 @@ setup(
             "templates/*.html",
             "templates/angular/*.coffee",
         ],
+        "initat.cluster": [
+            "runserver.sh",
+        ]
         "initat.cluster.rms": [
             "templates/*.html",
         ],
