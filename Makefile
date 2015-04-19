@@ -331,9 +331,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} cert/* ${DESTDIR}/opt/cluster/share/cert
 	# Various python files
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}
-	for pyf in kernel_sync_tools module_dependency_tools cluster_location ; do \
-	    install ${INSTALL_OPTS} $${pyf}.py ${DESTDIR}/${PYTHON_SITE}; \
-	done
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
 	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
 	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
