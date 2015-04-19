@@ -103,11 +103,14 @@ setup(
         "compile_tools",
     ],
     package_dir={
-        ".": [
+        "": [
             "modules/*.py"
         ],
     },
     package_data={
+        "": [
+            "modules/*.py"
+        ],
         "initat.cluster.frontend": [
             "static/css/*",
             "static/fonts/*",
