@@ -103,6 +103,9 @@ setup(
         "compile_tools",
     ],
     package_data={
+        ".": [
+          "modules/*",
+        ],
         "initat.cluster.frontend": [
             "static/css/*",
             "static/fonts/*",
