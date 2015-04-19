@@ -94,4 +94,10 @@ setup(
         "inotify_tools",
         "compile_tools",
     ],
+    package_data={
+        "initat.core": [
+            "templates/initcore/*.html",
+            "templates/initcore/*.xml",
+        ]
+    }
 )
