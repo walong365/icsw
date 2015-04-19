@@ -334,10 +334,6 @@ install:
 	for pyf in kernel_sync_tools module_dependency_tools cluster_location ; do \
 	    install ${INSTALL_OPTS} $${pyf}.py ${DESTDIR}/${PYTHON_SITE}; \
 	done
-	install ${INSTALL_OPTS} sge_license_tools.py ${DESTDIR}/${PYTHON_SITE}
-	${INSTALL} ${INSTALL_OPTS} sge_tools.py ${DESTDIR}/${PYTHON_SITE}
-	${INSTALL} ${INSTALL_OPTS} license_tool.py ${DESTDIR}/${PYTHON_SITE}
-	# Various
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
 	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
 	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
