@@ -21,7 +21,7 @@ setup(
         "initat.package_install",
         "initat.rrd_grapher",
         "initat.mother",
-        "intiat.snmp",
+        "initat.snmp",
         "initat.snmp_relay",
         "initat.meta_server",
         "initat.host_monitoring",
