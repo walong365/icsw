@@ -113,6 +113,8 @@ setup(
             "static/images/*",
             "static/images/*/*",
             "static/images/*/*/*",
+            "static/css/*",
+            "static/css/*/*",
             "static/js/*",
             "static/js/*/*",
             "static/js/*/*/*",
