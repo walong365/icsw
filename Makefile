@@ -96,10 +96,10 @@ build:
 	${MAKE} -C c_progs_collectd
 	${MAKE} -C c_progs
 	${MAKE} -C c_clients
-	${PIP_BIN} ./cbc-tools_setup.py build
-	${PIP_BIN} ./meta-server_setup.py build
-	${PIP_BIN} ./host-monitoring_setup.py build
-	${PIP_BIN} ./python-modules-base_setup.py build
+	${PYTHON} ./cbc-tools_setup.py build
+	${PYTHON} ./meta-server_setup.py build
+	${PYTHON} ./host-monitoring_setup.py build
+	${PYTHON} ./python-modules-base_setup.py build
 	tar --transform s:^.*/:: -xjf syslinux-${VERSION_SYSLINUX}.tar.bz2 \
 		syslinux-${VERSION_SYSLINUX}/bios/gpxe/gpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/lpxelinux.0 \
@@ -118,10 +118,11 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/extra_servers.d
 	cp -a initat ${DESTDIR}/${PYTHON_SITE}/
 	# setup.py
-	${PIP_BIN} install -e ./cbc-tools_setup.py --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
-	${PIP_BIN} ./meta-server_setup.py install --root "${DESTDIR}"
-	${PIP_BIN} ./host-monitoring_setup.py install --root "${DESTDIR}"
-	${PIP_BIN} ./python-modules-base_setup.py install --root="${DESTDIR}"
+	${PYTHON} ./cbc-tools_setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
+	${PYTHON} ./meta-server_setup.py install --root "${DESTDIR}"
+	${PYTHON} ./host-monitoring_setup.py install --root "${DESTDIR}"
+	${PYTHON} ./python-modules-base_setup.py install --root="${DESTDIR}"
+	rm -f %{DESTDIR}/${PYTHON_SITE}/*.egg*
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
