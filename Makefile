@@ -118,7 +118,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/extra_servers.d
 	cp -a initat ${DESTDIR}/${PYTHON_SITE}/
 	# setup.py
-	${PIP_BIN} ./cbc-tools_setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
+	${PIP_BIN} install -e ./cbc-tools_setup.py --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
 	${PIP_BIN} ./meta-server_setup.py install --root "${DESTDIR}"
 	${PIP_BIN} ./host-monitoring_setup.py install --root "${DESTDIR}"
 	${PIP_BIN} ./python-modules-base_setup.py install --root="${DESTDIR}"
