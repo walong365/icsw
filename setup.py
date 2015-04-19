@@ -104,7 +104,7 @@ setup(
     ],
     package_data={
         ".": [
-            "modules/*",
+            "modules/*.py",
         ],
         "initat.cluster.frontend": [
             "static/css/*",
