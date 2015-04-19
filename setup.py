@@ -18,6 +18,7 @@ setup(
         "initat.cluster.backbone.serializers",
         "initat.cluster.backbone.management",
         "initat.cluster.backbone.management.commands",
+        "initat.cluster.backbone.management.commands.fixtures",
         "initat.cluster.rms",
         "initat.cluster.rms.rms_addons",
         "initat.cluster.frontend",
