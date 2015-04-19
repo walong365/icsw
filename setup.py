@@ -69,7 +69,7 @@ setup(
         "read_hpl_result.py",
         "check_vasp.py",
     ],
-    py_modules=[
+    py_modulesx=[
         "configfile",
         "ip",
         "inet",
@@ -104,7 +104,7 @@ setup(
     ],
     package_data={
         ".": [
-          "modules/*",
+            "modules/*",
         ],
         "initat.cluster.frontend": [
             "static/css/*",
