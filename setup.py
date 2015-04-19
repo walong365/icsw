@@ -96,7 +96,18 @@ setup(
     ],
     package_data={
         "initat.cluster.frontend": [
-            "*/*",
+            "static/css/*",
+            "static/fonts/*",
+            "static/icons/*",
+            "static/icsw/*/*.coffee",
+            "static/icsw/*/*.html",
+            "static/images/*",
+            "static/images/*/*",
+            "static/images/*/*/*",
+            "static/js/*",
+            "static/js/*/*",
+            "static/js/*/*/*",
+            "static/js/*/*/*/*",
         ]
     }
 )
