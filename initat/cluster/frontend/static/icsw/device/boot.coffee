@@ -266,74 +266,85 @@ angular.module(
                     # do not update while a modal is active
                     $scope.update_info_timeout = $timeout($scope.update_info, 10000)
                     return
-                send_data = {
-                    "sel_list" : $scope.devsel_list
-                    "call_mother" : 1
-                }
-                icswCallAjaxService
-                    url     : ICSW_URLS.BOOT_GET_BOOT_INFO_JSON
-                    data    : send_data
-                    success : (xml) =>
-                        $scope.update_info_timeout = $timeout($scope.update_info, 10000)
-                        if icswParseXMLResponseService(xml, 40, false)
-                            $scope.conn_problems = 0
-                            $scope.info_ok = true
-                            _resp = angular.fromJson($(xml).find("value[name='response']").text())
-                            for entry in _resp
-                                dev = $scope.device_lut[entry.idx]
-                                # copied from bootcontrol, seems strange to me now ...
-                                valid_str = "#{entry.valid_state}state"
-                                if entry[valid_str]
-                                     dev.recvreq_str = entry[valid_str] +  "(" + entry.valid_state + ")"
-                                else
-                                     dev.recvreq_str = "rcv: ---"
-                                net_state = entry.net_state
-                                tr_class = {"down" : "danger", "unknown" : "danger", "ping" : "warning", "up" : "success"}[net_state]
-                                dev.network = "#{entry.network} (#{net_state})"
-                                dev.net_state = net_state
-                                dev.recvreq_state = tr_class
-                                dev.network_state = tr_class
-                                # target state
-                                for _kv in ["new_state", "prod_link"]
-                                    dev[_kv] = entry[_kv]
-                                dev.target_state = 0
-                                # rewrite device new_state / prod_link
-                                if dev.new_state
-                                    if dev.prod_link
-                                        _list = (_entry for _entry in $scope.network_states when _entry.network == dev.prod_link)
-                                        if _list.length
-                                            _list = (_entry for _entry in _list[0]["states"] when _entry.status == dev.new_state)
+                wait_list = [
+                    restDataSource.reload([ICSW_URLS.REST_KERNEL_LIST, {}]),
+                    restDataSource.reload([ICSW_URLS.REST_IMAGE_LIST, {}])
+                    restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}])
+                ]
+                $q.all(wait_list).then((data) ->
+                    $scope.kernels = data[0]
+                    $scope.images = data[1]
+                    $scope.kernel_lut = icswTools.build_lut($scope.kernels)
+                    $scope.image_lut = icswTools.build_lut($scope.images)
+                    send_data = {
+                        "sel_list" : $scope.devsel_list
+                        "call_mother" : 1
+                    }
+                    icswCallAjaxService
+                        url     : ICSW_URLS.BOOT_GET_BOOT_INFO_JSON
+                        data    : send_data
+                        success : (xml) =>
+                            $scope.update_info_timeout = $timeout($scope.update_info, 10000)
+                            if icswParseXMLResponseService(xml, 40, false)
+                                $scope.conn_problems = 0
+                                $scope.info_ok = true
+                                _resp = angular.fromJson($(xml).find("value[name='response']").text())
+                                for entry in _resp
+                                    dev = $scope.device_lut[entry.idx]
+                                    # copied from bootcontrol, seems strange to me now ...
+                                    valid_str = "#{entry.valid_state}state"
+                                    if entry[valid_str]
+                                         dev.recvreq_str = entry[valid_str] +  "(" + entry.valid_state + ")"
                                     else
-                                        _list = (_entry for _entry in $scope.special_states when _entry.status == dev.new_state)
-                                    # _list can be empty when networks change theirs types
-                                    if _list.length
-                                        dev.target_state = _list[0].idx
-                                # copy image
-                                for _kv in ["new_image", "act_image", "imageversion"]
-                                    dev[_kv] = entry[_kv]
-                                # copy kernel
-                                for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append"]
-                                    dev[_kv] = entry[_kv]
-                                # copy partition
-                                for _kv in ["act_partition_table", "partition_table"]
-                                    dev[_kv] = entry[_kv]
-                                # copy bootdevice
-                                for _kv in ["dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice"]
-                                    dev[_kv] = entry[_kv]
-                                # master connections
-                                for _kv in ["master_connections", "slave_connections"]
-                                    dev[_kv] = entry[_kv]
-                            cd_result = $(xml).find("value[name='cd_response']")
-                            if cd_result.length
-                                $scope.cd_reachable = angular.fromJson(cd_result.text())
+                                         dev.recvreq_str = "rcv: ---"
+                                    net_state = entry.net_state
+                                    tr_class = {"down" : "danger", "unknown" : "danger", "ping" : "warning", "up" : "success"}[net_state]
+                                    dev.network = "#{entry.network} (#{net_state})"
+                                    dev.net_state = net_state
+                                    dev.recvreq_state = tr_class
+                                    dev.network_state = tr_class
+                                    # target state
+                                    for _kv in ["new_state", "prod_link"]
+                                        dev[_kv] = entry[_kv]
+                                    dev.target_state = 0
+                                    # rewrite device new_state / prod_link
+                                    if dev.new_state
+                                        if dev.prod_link
+                                            _list = (_entry for _entry in $scope.network_states when _entry.network == dev.prod_link)
+                                            if _list.length
+                                                _list = (_entry for _entry in _list[0]["states"] when _entry.status == dev.new_state)
+                                        else
+                                            _list = (_entry for _entry in $scope.special_states when _entry.status == dev.new_state)
+                                        # _list can be empty when networks change theirs types
+                                        if _list.length
+                                            dev.target_state = _list[0].idx
+                                    # copy image, act_image is a tuple (idx, vers, release) or none
+                                    for _kv in ["new_image", "act_image"]
+                                        dev[_kv] = entry[_kv]
+                                    # copy kernel, act_kernel is a tuple (idx, vers, release) or none
+                                    for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append"]
+                                        dev[_kv] = entry[_kv]
+                                    # copy partition
+                                    for _kv in ["act_partition_table", "partition_table"]
+                                        dev[_kv] = entry[_kv]
+                                    # copy bootdevice
+                                    for _kv in ["dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice"]
+                                        dev[_kv] = entry[_kv]
+                                    # master connections
+                                    for _kv in ["master_connections", "slave_connections"]
+                                        dev[_kv] = entry[_kv]
+                                cd_result = $(xml).find("value[name='cd_response']")
+                                if cd_result.length
+                                    $scope.cd_reachable = angular.fromJson(cd_result.text())
+                                else
+                                    $scope.cd_reachable = {}
+                                $scope.$digest()
                             else
-                                $scope.cd_reachable = {}
-                            $scope.$digest()
-                        else
-                            $scope.$apply(
-                                $scope.conn_problems++
-                            )
-                            #console.log $scope.conn_problems, xml
+                                $scope.$apply(
+                                    $scope.conn_problems++
+                                )
+                                #console.log $scope.conn_problems, xml
+                )
                 if $scope.bo_enabled["l"]
                     send_data = {
                         "sel_list" : angular.toJson(([dev.idx, dev.latest_log] for dev in $scope.devices))
@@ -478,16 +489,39 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.boot.row")
         link : (scope, el, attrs) ->
+            _resolve_lut_name = (entry, lut) ->
+                if entry of lut
+                    return lut[entry].name
+                else
+                    return null
+            _get_latest_entry = (hist_tuple, lut, key) ->
+                if hist_tuple?
+                    _idx = hist_tuple[0]
+                    if _idx of lut
+                        if key?
+                            return lut[_idx][key]
+                        else
+                            return lut[_idx]
+                    else
+                        return null
+                else
+                    return null
+            _resolve_version = (lut, idx) ->
+                if idx of lut
+                    _obj = lut[idx]
+                    return "#{_obj.version}.#{_obj.release}"
+                else
+                    return null
             scope.get_td_class = (entry) ->
                 dev = scope.dev
                 _cls = ""
                 if scope.info_ok
                     if entry[0] == "i"
-                        _cls = scope._get_td_class(dev.act_image, dev.new_image)
+                        _cls = scope._get_td_class(_get_latest_entry(dev.act_image, scope.image_lut, "name"), _resolve_lut_name(dev.new_image, scope.image_lut))
                     else if entry[0] == "p"
                         _cls = scope._get_td_class(dev.act_partition_table, dev.partition_table)
                     else if entry[0] == "k"
-                        _cls = scope._get_td_class(dev.act_kernel, dev.new_kernel)
+                        _cls = scope._get_td_class(_get_latest_entry(dev.act_kernel, scope.kernel_lut, "name"), _resolve_lut_name(dev.new_kernel, scope.kernel_lut))
                 return _cls
             scope._get_td_class = (act_val, new_val) ->
                 if act_val == new_val
@@ -508,18 +542,21 @@ angular.module(
                         #console.log dev.new_state, dev.prod_link
                     else if entry[0] == "i"
                         # image
-                        img_str = scope.get_info_str("i", dev.act_image, dev.new_image, scope.image_lut)
-                        # check version
-                        cur_vers = dev.imageversion
-                        if dev.act_image
-                            img_info = scope.image_lut[dev.act_image]
-                            img_vers = "#{img_info.version}.#{img_info.release}"
-                            if img_vers != cur_vers
-                                img_str = "#{img_str} (#{cur_vers} / #{img_vers})"
+                        act_image = if dev.act_image then dev.act_image[0] else null
+                        if act_image
+                            act_image_version = "#{dev.act_image[1]}.#{dev.act_image[2]}"
+                        else
+                            act_image_version = ""
+                        img_str = scope.get_info_str("i", act_image, act_image_version, dev.new_image, _resolve_version(scope.image_lut, dev.new_image), scope.image_lut)
                         return img_str
                     else if entry[0] == "k"
                         # kernel
-                        _k_str = scope.get_info_str("k", dev.act_kernel, dev.new_kernel, scope.kernel_lut)
+                        act_kernel = if dev.act_kernel then dev.act_kernel[0] else null
+                        if act_kernel
+                            act_kernel_version = "#{dev.act_kernel[1]}.#{dev.act_kernel[2]}"
+                        else
+                            act_kernel_version = ""
+                        _k_str = scope.get_info_str("k", act_kernel, act_kernel_version, dev.new_kernel, _resolve_version(scope.kernel_lut, dev.new_kernel), scope.kernel_lut)
                         if dev.act_kernel or dev.new_kernel
                             _k_str = "#{_k_str}, flavour is #{dev.stage1_flavour}"
                             if dev.kernel_append
@@ -527,7 +564,7 @@ angular.module(
                         return _k_str
                     else if entry[0] == "p"
                         # partition info
-                        return scope.get_info_str("p", dev.act_partition_table, dev.partition_table, scope.partition_lut)
+                        return scope.get_info_str("p", dev.act_partition_table, "", dev.partition_table, "", scope.partition_lut)
                     else if entry[0] == "b"
                         # bootdevice
                         if dev.bootnetdevice
@@ -552,24 +589,32 @@ angular.module(
                     return lut[val].name
                 else
                     return "? #{s_type}: #{val} ?"
-            scope.get_info_str = (s_type, act_val, new_val, lut) ->
+            scope.get_info_str = (s_type, act_val, act_vers, new_val, new_vers, lut) ->
                 if act_val == new_val
                     if act_val
-                        # everything ok
-                        return "<span class='glyphicon glyphicon-ok'></span> " + scope.get_lut_val(s_type, lut, act_val)  
+                        if act_vers == new_vers
+                            # everything ok, same version
+                            if act_vers
+                                return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + "(#{act_vers})"
+                            else
+                                return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + scope.get_lut_val(s_type, lut, act_val)
+                        else
+                            return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-up'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + "(#{act_vers} != #{new_vers})"
                     else
                         # both values are empty
-                        return "<span class='glyphicon glyphicon-ban-circle'></span>"
+                        return "<span class='label label-danger'><span class='glyphicon glyphicon-ban-circle'></span></span>"
                 else
                     new_val_str = if new_val then scope.get_lut_val(s_type, lut, new_val) else "---"
                     act_val_str = if act_val then scope.get_lut_val(s_type, lut, act_val) else "---"
+                    act_vers_str = if act_vers then " (#{act_vers})" else ""
+                    new_vers_str = if new_vers then " (#{new_vers})" else ""
                     if act_val and new_val
                         # show source and target value
-                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'></span> #{new_val_str}"
+                        return "#{act_val_str}#{act_vers_str}<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span> #{new_val_str}#{new_vers_str}"
                     else if act_val
-                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'>"
+                        return "#{act_val_str}#{act_vers_str}<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span>"
                     else
-                        return "<span class='glyphicon glyphicon-arrow-right'> #{new_val_str}"
+                        return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span> #{new_val_str}#{new_vers_str}"
     }
 ]).directive("icswDeviceBootLogTable", ["$templateCache", ($templateCache) ->
     return {

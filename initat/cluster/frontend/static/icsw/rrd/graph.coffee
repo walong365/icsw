@@ -42,7 +42,7 @@ class d_graph
         @cropped = false
         @removed_keys = []
         for entry in @xml.find("removed_keys removed_key")
-            @removed_keys.push($(entry).text())
+            @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
     get_devices: () ->
         dev_names = ($(entry).text() for entry in @xml.find("devices device"))
         return dev_names.join(", ")
@@ -73,6 +73,19 @@ class d_graph
       
 DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
+full_draw_key = (s_key, v_key) ->
+    _key = s_key
+    if v_key
+        _key = "#{_key}.#{v_key}"
+    return _key
+
+get_node_keys = (node) ->
+    # mapping for graph.py
+    return {
+        "struct_key": node._key_pair[0]
+        "value_key": node._key_pair[1]
+        "build_info": if node.build_info? then node.build_info else "",
+    }
 class pd_timerange
     constructor: (@name, @from, @to) ->
     get_from: (cur_from, cur_to) =>
@@ -244,14 +257,14 @@ angular.module(
                 root_node = $scope.init_machine_vector()
                 $scope.num_struct = 0
                 $scope.num_mve = 0
-                for dev in json._nodes
-                    if dev._nodes?
-                        mv = dev._nodes[0]
-                        $scope.add_machine_vector(root_node, dev.pk, mv)
-                        if dev._nodes.length > 1
-                            # compound
-                            $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
+                for dev in json
+                    if dev.struct? and dev.struct.length
+                        $scope.add_machine_vector(root_node, dev.pk, dev.struct)
+                        #if dev._nodes.length > 1
+                        #    # compound
+                        #    $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
                         $scope.num_devices++
+                $scope.g_tree.recalc()
                 $scope.is_loading = false
                 $scope.$apply(
                     $scope.vector_valid = if $scope.num_struct then true else false
@@ -269,8 +282,7 @@ angular.module(
                 )
 
         $scope._add_structural_entry = (entry, lut, parent) =>
-            _latest_is_entry = entry._tag in ["mve", "cve"]
-            parts = entry.name.split(".")
+            parts = entry.key.split(".")
             _pn = ""
             for _part in parts
                 if pn
@@ -281,32 +293,26 @@ angular.module(
                     cur_node = lut[pn]
                     if $scope.mv_dev_pk not in cur_node._dev_pks
                         cur_node._dev_pks.push($scope.mv_dev_pk)
-                    if pn == entry.name and _latest_is_entry
-                        true
                 else
-                    if pn == entry.name and _latest_is_entry
-                        # value entry
-                        $scope._add_value_entry(entry, lut, parent)
-                    else
-                        # override name if display_name is set and this is the structural entry at the bottom
-                        if entry.display_name? and pn == entry.name
-                            display_name = entry.display_name
-                        else
-                            display_name = _part
-                        # structural
-                        cur_node = $scope.g_tree.new_node({
+                    # override name if display_name is set and this is the structural entry at the bottom
+                    # structural
+                    cur_node = $scope.g_tree.new_node(
+                        {
                             folder : true,
                             expand : false
-                            _name  : _part
-                            _display_name: display_name
+                            _display_name: _part
                             _mult : 1
                             _dev_pks : [$scope.mv_dev_pk]
                             _node_type : "s"
                             _show_select: false
-                        })
-                        $scope.num_struct++
-                        lut[pn] = cur_node
-                        parent.add_child(cur_node, $scope._child_sort)
+                            build_info: ""
+                            # marker: this is not an mve entry
+                            _is_mve: false
+                        }
+                    )
+                    $scope.num_struct++
+                    lut[pn] = cur_node
+                    parent.add_child(cur_node, $scope._child_sort)
                 parent = cur_node
             return parent
         
@@ -320,19 +326,17 @@ angular.module(
             
         $scope._expand_info = (info, g_key) =>
             _num = 0
-            for _var in g_key.split(":")[1].split(".")
+            for _var in g_key.split(".")
                 _num++
                 info = info.replace("$#{_num}", _var)
             return info
             
         $scope._add_value_entry = (entry, lut, parent, top) =>
-            # top is the parent node from the machine vector (or undefined)
-            if top?
-                # pde or mvl, graph_key is top.name + local node name
-                g_key = "#{top._tag}:#{top.name}.#{entry.key}"
+            # top is the parent node from the value entry (== mvstructentry)
+            if entry.key
+                g_key = "#{top.key}.#{entry.key}"
             else
-                # mve or cve, graph_key is entry.name
-                g_key = "#{entry._tag}:#{entry.name}"
+                g_key = top.key
             if $scope.cur_selected.length
                 _sel = g_key in $scope.cur_selected
             else if $scope.auto_select_re
@@ -340,25 +344,38 @@ angular.module(
             else
                 _sel = false
             if g_key of lut
+                # rewrite structural entry as mve
                 cur_node = lut[g_key]
+                if not cur_node._is_mve
+                    # change marker
+                    cur_node._is_mve = true
+                    cur_node._dev_pks = []
+                    $scope.num_struct--
+                    $scope.num_mve++
             else
-                cur_node = $scope.g_tree.new_node({
-                    folder : false
-                    expand : false
-                    node   : entry
-                    selected: _sel
-                    _dev_pks: []
-                    _name  : entry.info
-                    _display_name: $scope._expand_info(entry.info, g_key)
-                    _node_type : "e"
-                    _show_select: true
-                    _g_key : g_key
-                })
+                cur_node = $scope.g_tree.new_node(
+                    {
+                        expand : false
+                        selected: _sel
+                        _dev_pks: []
+                        _is_mve: true
+                    }
+                )
                 $scope.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, $scope._child_sort)
-            cur_node._dev_pks.push($scope.mv_dev_pk)
-        
+            cur_node._key_pair = [top.key, entry.key]
+            cur_node._display_name = $scope._expand_info(entry.info, g_key)
+            if $scope.mv_dev_pk not in cur_node._dev_pks
+                cur_node._dev_pks.push($scope.mv_dev_pk)
+            cur_node._node_type = "e"
+            cur_node.build_info = entry.build_info
+            cur_node.folder = false
+            cur_node._show_select = true
+            cur_node._g_key = g_key
+            cur_node.node = entry
+            cur_node.selected = _sel
+
         $scope.init_machine_vector = () =>
             $scope.lut = {}
             $scope.g_tree.clear_root_nodes()
@@ -374,31 +391,20 @@ angular.module(
         $scope.add_machine_vector = (root_node, dev_pk, mv) =>
             $scope.mv_dev_pk = dev_pk
             lut = $scope.lut
-            for entry in mv._nodes
-                _tag = entry._tag
-                if _tag in ["mve", "cve"]
-                    # add machine vector entry or compound data
-                    $scope._add_structural_entry(entry, lut, root_node)
-                else if _tag in ["pde", "mvl"]
-                    # add performance data header
-                    if _tag == "mvl" and entry.info and entry.name.match(/\.snmp_/g)
-                        # hack to beautify snmp network entries
-                        entry.display_name = "[S] #{entry.info}"
-                    _pde_mvl = $scope._add_structural_entry(entry, lut, root_node)
-                    # add performance data values
-                    for _sub in entry._nodes
-                        $scope._add_value_entry(_sub, lut, _pde_mvl, entry)
-                else
-                    # unhandled entry
-                    true
+            for entry in mv
+                _struct = $scope._add_structural_entry(entry, lut, root_node)
+                for _sub in entry.mvvs
+                    $scope._add_value_entry(_sub, lut, _struct, entry)
 
         $scope.update_search = () ->
             if $scope.cur_search_to
                 $timeout.cancel($scope.cur_search_to)
             $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
+
         $scope.clear_selection = () =>
             $scope.searchstr = ""
             $scope.set_search_filter()
+
         $scope.set_search_filter = () =>
             if $scope.searchstr
                 try
@@ -411,7 +417,7 @@ angular.module(
             $scope.g_tree.iter(
                 (entry, cur_re) ->
                     if entry._node_type in ["e"]
-                        entry.set_selected(if (entry._name.match(cur_re) or entry._g_key.match(cur_re)) then true else false)
+                        entry.set_selected(if (entry._display_name.match(cur_re) or entry._g_key.match(cur_re)) then true else false)
                 cur_re
             )
             $scope.g_tree.show_selected(false)
@@ -439,7 +445,7 @@ angular.module(
                 icswCallAjaxService
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
-                        "keys"       : angular.toJson($scope.cur_selected)
+                        "keys"       : angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
                         "pks"        : angular.toJson($scope.devsel_list)
                         "start_time" : moment($scope.from_date_mom).format(DT_FORM)
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
@@ -578,7 +584,6 @@ angular.module(
                         bounds = this.getBounds()
                         boundx = bounds[0]
                         boundy = bounds[1]
-
                     )
                     myImg.bind("error", () ->
                         scope.$apply(() ->

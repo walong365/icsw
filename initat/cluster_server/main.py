@@ -106,7 +106,8 @@ def main():
             prog_name,
             VERSION_STRING),
         add_writeback_option=True,
-        positional_arguments=False)
+        positional_arguments=False
+    )
     # enable connection debugging
     settings.DEBUG = global_config["DATABASE_DEBUG"]
     global_config.write_file()

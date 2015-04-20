@@ -125,7 +125,7 @@ def main():
             time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         )
         print("taring {} to {} ...".format(err_file_name, new_file_name))
-        c_stat, out = commands.getstatusoutput("tar cpjf %s %s" % (new_file_name, err_file_name))
+        c_stat, out = commands.getstatusoutput("tar cpjf {} {}".format(new_file_name, err_file_name))
         if c_stat:
             print("*** error (%d): %s" % (c_stat, out))
         else:

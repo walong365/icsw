@@ -63,6 +63,9 @@ class config_catalog(models.Model):
     def __unicode__(self):
         return self.name
 
+    class Meta:
+        verbose_name = 'Configuration catalog'
+
 
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
@@ -104,6 +107,7 @@ class config(models.Model):
         db_table = u'new_config'
         ordering = ["name", "config_catalog__name"]
         unique_together = (("name", "config_catalog"),)
+        verbose_name = "Configuration"
 
     class CSW_Meta:
         permissions = (
@@ -208,6 +212,7 @@ class config_str(models.Model):
     class Meta:
         db_table = u'config_str'
         ordering = ("name",)
+        verbose_name = "Configuration variable (string)"
 
 
 @receiver(signals.pre_save, sender=config_str)
@@ -240,6 +245,7 @@ class config_blob(models.Model):
 
     class Meta:
         db_table = u'config_blob'
+        verbose_name = "Configuration variable (blob)"
 
 
 @receiver(signals.pre_save, sender=config_blob)
@@ -274,6 +280,7 @@ class config_bool(models.Model):
 
     class Meta:
         db_table = u'config_bool'
+        verbose_name = "Configuration variable (boolean)"
 
 
 @receiver(signals.pre_save, sender=config_bool)
@@ -320,6 +327,7 @@ class config_int(models.Model):
 
     class Meta:
         db_table = u'config_int'
+        verbose_name = "Configuration variable (integer)"
 
 
 @receiver(signals.pre_save, sender=config_int)
@@ -339,7 +347,7 @@ def config_int_pre_save(sender, **kwargs):
 class config_script(models.Model):
     idx = models.AutoField(db_column="config_script_idx", primary_key=True)
     name = models.CharField(max_length=192)
-    description = models.CharField(max_length=765, db_column="descr")
+    description = models.CharField(max_length=765, db_column="descr", blank=True)
     enabled = models.BooleanField(default=True)
     priority = models.IntegerField(null=True, blank=True, default=0)
     config = models.ForeignKey("config", db_column="new_config_id")
@@ -355,6 +363,7 @@ class config_script(models.Model):
     class Meta:
         db_table = u'config_script'
         ordering = ("priority", "name",)
+        verbose_name = "Configuration script"
 
 
 @receiver(signals.pre_save, sender=config_script)

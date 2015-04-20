@@ -26,6 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
+from initat.snmp.sink import SNMPSink
 from initat.snmp.struct import simple_snmp_oid
 from initat.mother.config import global_config
 import config_tools
@@ -35,79 +36,52 @@ import server_command
 import threading_tools
 
 
-class snmp_scheme(object):
-    def __init__(self, cdc):
-        self.cdc = cdc
-
-    def set_command(self, command):
-        _list = []
-        if command == "cycle":
-            _list = self.cycle()
-        elif command == "on":
-            _list = self.on()
-        elif command == "off":
-            _list = self.off()
-        if _list:
-            _list = ["S", _list]
-        return _list
-
-
-class apcv1_scheme(snmp_scheme):
-    def cycle(self):
-        # cdc ... controlling device connection
-        return [
-            (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=3)),
-        ]
-
-    def on(self):
-        # cdc ... controlling device connection
-        # delayed on : 5, delayed off : 6, delayed cycle : 7
-        return [
-            (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=1)),
-        ]
-
-    def off(self):
-        # cdc ... controlling device connection
-        return [
-            (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=2)),
-        ]
-
-_SNMP_SCHEME_LUT = {
-    "apcv1": apcv1_scheme
-}
-
-
 class hc_command(object):
-    def __init__(self, user_id, xml_struct, router_obj):
+    def __init__(self, user_id, xml_struct, router_obj, snmp_sink):
         hc_command.hc_id += 1
         self.cur_id = hc_command.hc_id
-        cur_cd = cd_connection.objects.select_related("child", "parent").prefetch_related("parent__device_variable_set").get(Q(pk=xml_struct.get("cd_con")))
+        cur_cd = cd_connection.objects.select_related(
+            "child",
+            "parent"
+        ).prefetch_related(
+            "parent__device_variable_set",
+            "parent__snmp_schemes",
+        ).get(
+            Q(pk=xml_struct.get("cd_con"))
+        )
         self.cd_obj = cur_cd
+        _pc_schemes = [_scheme for _scheme in self.cd_obj.parent.snmp_schemes.all() if _scheme.power_control]
+        if len(_pc_schemes):
+            # FIXME, why the first entry ?
+            _pc_scheme = _pc_schemes[0]
+            _mode = "SNMP"
+        elif self.cd_obj.parent.ipmi_capable:
+            _mode = "IPMI"
+        else:
+            _mode = None
         command = xml_struct.get("command")
         self.user = user.objects.get(Q(pk=user_id)) if user_id else None  # @UndefinedVariable
-        self.curl_base = self.cd_obj.parent.curl.split(":")[0]
         self.log(
-            "got command {} for {} (curl is '{}', target: {})".format(
+            "got command {} for {} (target: {}), mode is {}".format(
                 command,
                 unicode(cur_cd.parent),
-                cur_cd.parent.curl,
-                unicode(cur_cd.child)
+                unicode(cur_cd.child),
+                _mode,
             )
         )
         # better use subclasses, FIXME
         var_list = {
-            "ipmi": [
+            "IPMI": [
                 ("IPMI_USERNAME", "admin"),
                 ("IPMI_PASSWORD", "admin"),
                 ("IPMI_INTERFACE", ""),
                 ],
-            "snmp": [
-                ("SNMP_SCHEME", None),
+            "SNMP": [
                 ("SNMP_VERSION", 2),
                 ("SNMP_WRITE_COMMUNITY", "private"),
             ],
-        }.get(self.curl_base, [])
-        var_dict = dict([(key, self.get_var(key, def_val)) for key, def_val in var_list])
+        }.get(_mode, [])
+        var_dict = {key: self.get_var(key, def_val) for key, def_val in var_list}
         for key in sorted(var_dict):
             self.log(
                 " var {:<20s}: {}".format(
@@ -118,13 +92,13 @@ class hc_command(object):
         com_ip = self.get_ip_to_host(self.cd_obj.parent, router_obj)
         if not com_ip:
             self.log(
-                "cannot reach device %s".format(unicode(self.cd_obj.parent)),
+                "cannot reach device {}".format(unicode(self.cd_obj.parent)),
                 logging_tools.LOG_LEVEL_ERROR,
-                dev=cur_cd.child
+                dev=cur_cd.child,
             )
         else:
-            if self.curl_base in ["ipmi"]:
-                com_str = self._build_com_str(var_dict, com_ip, command)
+            if _mode == "IPMI":
+                com_str = self._build_ipmi_com_str(var_dict, com_ip, command)
                 self.log(
                     "sending com_str '{}' to '{}'".format(
                         com_str,
@@ -132,26 +106,34 @@ class hc_command(object):
                     ),
                     dev=self.cd_obj.child
                 )
-                simple_command(com_str,
-                               short_info="True",
-                               done_func=self.hc_done,
-                               log_com=self.log,
-                               info="hard_control")
-            elif self.curl_base in ["snmp"]:
-                if not var_dict["SNMP_SCHEME"]:
-                    self.log("no SNMP_SCHEME defined for '%s'" % (unicode(self.cd_obj.parent)), logging_tools.LOG_LEVEL_ERROR, dev=self.cd_obj.child)
-                elif var_dict["SNMP_SCHEME"] not in _SNMP_SCHEME_LUT:
-                    self.log("SNMP_SCHEME '{}' not found for '{}' ({})".format(
-                        var_dict["SNMP_SCHEME"],
-                        unicode(self.cd_obj.parent),
-                        ", ".join(sorted(_SNMP_SCHEME_LUT.keys())),
-                        ), logging_tools.LOG_LEVEL_ERROR, dev=self.cd_obj.child)
-                else:
-                    self.log("sending command '{}' (scheme {}) to {}".format(
+                simple_command(
+                    com_str,
+                    short_info="True",
+                    done_func=self.hc_done,
+                    log_com=self.log,
+                    info="hard_control",
+                )
+            elif _mode == "SNMP":
+                _pc_handler = snmp_sink.get_handler(_pc_scheme)
+                self.log(
+                    "sending command '{}' (scheme {}) to {}".format(
                         command,
-                        var_dict["SNMP_SCHEME"],
-                        unicode(self.cd_obj.parent)), dev=self.cd_obj.child)
-                    cur_scheme = _SNMP_SCHEME_LUT[var_dict["SNMP_SCHEME"]](self.cd_obj)
+                        unicode(_pc_handler),
+                        unicode(self.cd_obj.parent)
+                    ),
+                    dev=self.cd_obj.child
+                )
+                try:
+                    _set_com = _pc_handler.power_control(command, self.cd_obj)
+                except:
+                    self.log(
+                        "error generating SNMP-set list: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR,
+                        dev=self.cd_obj.child,
+                    )
+                else:
                     hc_command.register(self)
                     # snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout
                     self.process.send_pool_message(
@@ -162,41 +144,43 @@ class hc_command(object):
                         self.cur_id,
                         False,
                         10,
-                        cur_scheme.set_command(command),
+                        _set_com,
                         target="snmp_process",
                     )
             else:
                 self.log(
-                    "cannot handle curl_base '{}' for {}".format(
-                        self.curl_base,
+                    "cannot handle mode '{}' for {}".format(
+                        _mode,
                         unicode(self.cd_obj.parent),
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL,
                     dev=self.cd_obj.child
                 )
 
-    def _build_com_str(self, var_dict, com_ip, command):
-        if self.curl_base == "ipmi":
-            com_str = "{} {} -H {} -U {} -P {} chassis power {}".format(
-                process_tools.find_file("ipmitool"),
-                # add ipmi interface if defined
-                "-I %s" % (var_dict["IPMI_INTERFACE"]) if var_dict.get("IPMI_INTERFACE", "") else "",
-                com_ip,
-                var_dict["IPMI_USERNAME"],
-                var_dict["IPMI_PASSWORD"],
-                {
-                    "on": "on",
-                    "off": "off",
-                    "cycle": "cycle"
-                }.get(command, "status")
-            )
+    def _build_ipmi_com_str(self, var_dict, com_ip, command):
+        com_str = "{} {} -H {} -U {} -P {} chassis power {}".format(
+            process_tools.find_file("ipmitool"),
+            # add ipmi interface if defined
+            "-I {}".format(var_dict["IPMI_INTERFACE"]) if var_dict.get("IPMI_INTERFACE", "") else "",
+            com_ip,
+            var_dict["IPMI_USERNAME"],
+            var_dict["IPMI_PASSWORD"],
+            {
+                "on": "on",
+                "off": "off",
+                "cycle": "cycle"
+            }.get(command, "status")
+        )
         return com_str
 
     def hc_done(self, hc_sc):
         cur_out = hc_sc.read()
-        self.log("hc_com finished with stat %d (%d bytes)" % (
-            hc_sc.result,
-            len(cur_out)))
+        self.log(
+            "hc_com finished with stat {:d} ({:d} bytes)".format(
+                hc_sc.result,
+                len(cur_out)
+            )
+        )
         for line_num, line in enumerate(cur_out.split("\n")):
             if line.strip():
                 self.log(
@@ -246,16 +230,16 @@ class hc_command(object):
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        hc_command.process.log("[hc] %s" % (what), log_level)
+        hc_command.process.log("[hc] {}".format(what), log_level)
 
     @staticmethod
     def register(cur_hc):
-        hc_command.g_log("registered %d" % (cur_hc.cur_id))
+        hc_command.g_log("registered {:d}".format(cur_hc.cur_id))
         hc_command.hc_lut[cur_hc.cur_id] = cur_hc
 
     @staticmethod
     def unregister(cur_hc):
-        hc_command.g_log("unregistered %d" % (cur_hc.cur_id))
+        hc_command.g_log("unregistered {:d}".format(cur_hc.cur_id))
         del hc_command.hc_lut[cur_hc.cur_id]
 
     @staticmethod
@@ -279,7 +263,7 @@ class hc_command(object):
             )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dev=None):
-        hc_command.process.log("[hc] %s" % (what), log_level)
+        hc_command.process.log("[hc] {}".format(what), log_level)
         if dev is not None:
             DeviceLogEntry.new(
                 device=dev,
@@ -301,6 +285,7 @@ class external_command_process(threading_tools.process_obj):
         connection.close()
         simple_command.setup(self)
         self.router_obj = config_tools.router_object(self.log)
+        self.snmp_sink = SNMPSink(self.log)
         self.sc = config_tools.server_check(server_type="mother_server")
         if "b" in self.sc.identifier_ip_lut:
             self.__kernel_ip = self.sc.identifier_ip_lut["b"][0].ip
@@ -336,7 +321,7 @@ class external_command_process(threading_tools.process_obj):
         if dst_call:
             dst_call(s_com.get_command(), s_com)
         else:
-            self.log("Unknown server_message_command: %s" % (s_com.get_command()), logging_tools.LOG_LEVEL_ERROR)
+            self.log("Unknown server_message_command: {}".format(s_com.get_command()), logging_tools.LOG_LEVEL_ERROR)
         if "SIGNAL_MAIN_THREAD" in s_com.get_option_dict():
             self.send_pool_message(s_com.get_option_dict()["SIGNAL_MAIN_THREAD"])
 
@@ -351,7 +336,7 @@ class external_command_process(threading_tools.process_obj):
         in_com = server_command.srv_command(source=in_com)
         self.router_obj.check_for_update()
         for cur_dev in in_com.xpath(".//ns:device", smart_strings=False):
-            hc_command(in_com.get("user_id", None), cur_dev, self.router_obj)
+            hc_command(in_com.get("user_id", None), cur_dev, self.router_obj, self.snmp_sink)
 
     def sc_finished(self, sc_com):
         self.log("simple command done")

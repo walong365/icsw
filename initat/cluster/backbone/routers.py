@@ -11,5 +11,5 @@ class db_router(object):
     def allow_relation(self, obj_1, obj_2, **hints):
         return True
 
-    def allow_syncdb(self, db, model, **hints):
+    def allow_migrate(self, db, app_label, model_name=None, **hints):
         return True

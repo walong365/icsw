@@ -1,13 +1,15 @@
 # Django settings for cluster project.
 # -*- coding: utf-8 -*-
 import glob
-
-from django.core.exceptions import ImproperlyConfigured
-from django.utils.crypto import get_random_string
-import logging_tools
 import os
 import sys
 from lxml import etree
+
+from django.utils.translation import ugettext_lazy as _
+from django.core.exceptions import ImproperlyConfigured
+from django.utils.crypto import get_random_string
+import logging_tools
+
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
@@ -147,6 +149,10 @@ TIME_ZONE = "Europe/Vienna"
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = "en-us"
 
+LANGUAGES = (
+    ("en", _("English")),
+)
+
 ANONYMOUS_USER_ID = -1
 
 SITE_ID = 1
@@ -243,6 +249,8 @@ MIDDLEWARE_CLASSES = (
     "backbone.middleware.database_debug",
     # "django.middleware.gzip.GZipMiddleware",
     "pipeline.middleware.MinifyHTMLMiddleware",
+
+    "reversion.middleware.RevisionMiddleware",
 )
 
 if not DEBUG:
@@ -342,13 +350,10 @@ ADDITIONAL_ANGULAR_APPS = []
 ADDITIONAL_URLS = []
 ADDITIONAL_JS = []
 
+# my authentication backend
 AUTHENTICATION_BACKENDS = (
     "initat.cluster.backbone.cluster_auth.db_backend",
 )
-AUTH_USER_MODEL = "backbone.user"
-
-# my authentication backend
-
 
 ICSW_ADDON_APPS = []
 # add everything below cluster
@@ -389,10 +394,16 @@ for sub_dir in os.listdir(dir_name):
 
 ADDITIONAL_JS = tuple(ADDITIONAL_JS)
 
-for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
-    add_app = os.environ[add_app_key]
-    if add_app not in INSTALLED_APPS:
-        INSTALLED_APPS.append(add_app)
+for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REMOVE_APP_NAME")]:
+    rem_app = os.environ[rem_app_key]
+    if rem_app.endswith("."):
+        INSTALLED_APPS = [_entry for _entry in INSTALLED_APPS if not _entry.startswith(rem_app)]
+    else:
+        if rem_app in INSTALLED_APPS:
+            INSTALLED_APPS.remove(rem_app)
+
+if any([_app.startswith("initat.cluster.") for _app in INSTALLED_APPS]):
+    AUTH_USER_MODEL = "backbone.user"
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
@@ -537,7 +548,8 @@ if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
     try:
-        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY, PASSWORD_CHARACTER_COUNT, AUTO_CREATE_NEW_DOMAINS, LOGIN_SCREEN_TYPE  # @UnresolvedImport
+        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY,\
+            PASSWORD_CHARACTER_COUNT, AUTO_CREATE_NEW_DOMAINS, LOGIN_SCREEN_TYPE  # @UnresolvedImport
     except:
         pass
     else:

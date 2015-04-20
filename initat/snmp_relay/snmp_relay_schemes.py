@@ -56,7 +56,7 @@ class net_object(object):
         )
 
     def log(self, log_com, what, log_level=logging_tools.LOG_LEVEL_OK):
-        log_com("[{}] {}" % (self.name, what), log_level)
+        log_com("[{}] {}".format(self.name, what), log_level)
 
     def get_pending_requests(self, in_set, log_com):
         pend_reqs = self.__pending_requests & in_set
@@ -104,14 +104,17 @@ class snmp_scheme(object):
     def __init__(self, name, **kwargs):
         self.name = name
         self.parser = argparse.ArgumentParser(prog=self.name)
-        self.__init_time = kwargs["init_time"]
         # public stuff
         self.snmp_dict = {}
-        self.net_obj = kwargs["net_obj"]
-        self.envelope = kwargs["envelope"]
-        self.xml_input = kwargs["xml_input"]
-        self.srv_com = kwargs["srv_com"]
-        self.timeout = kwargs.get("timeout", 10)
+        # for helper functions (show info)
+        self.__dummy_init = kwargs.get("dummy_init", False)
+        if not self.__dummy_init:
+            self.__init_time = kwargs["init_time"]
+            self.net_obj = kwargs["net_obj"]
+            self.envelope = kwargs["envelope"]
+            self.xml_input = kwargs["xml_input"]
+            self.srv_com = kwargs["srv_com"]
+            self.timeout = kwargs.get("timeout", 10)
         # print self.timeout
         self.__errors = []
         self.__missing_headers = []
@@ -122,6 +125,10 @@ class snmp_scheme(object):
 
     def __del__(self):
         pass
+
+    @property
+    def dummy_init(self):
+        return self.__dummy_init
 
     @property
     def proc_data(self):
@@ -135,6 +142,9 @@ class snmp_scheme(object):
         ] + self.snmp_start()
 
     def parse_options(self, options, **kwargs):
+        self.opts = argparse.Namespace()
+        if self.__dummy_init:
+            return
         old_stdout, old_stderr = (sys.stdout, sys.stderr)
         act_io = cStringIO.StringIO()
         sys.stdout = act_io
@@ -142,7 +152,6 @@ class snmp_scheme(object):
         one_integer_ok = kwargs.get("one_integer_arg_allowed", False)
         if one_integer_ok:
             self.parser.add_argument("iarg", type=int, default=0)
-        self.opts = argparse.Namespace()
         try:
             self.opts = self.parser.parse_args(options)
         except SystemExit:
@@ -312,16 +321,18 @@ class snmp_scheme(object):
             new_dict.setdefault(part_idx, {})[sub_idx] = value
         return new_dict
 
-    @property
-    def requests(self):
+    # @property
+    def get_requests(self):
         return self.__req_list
 
-    @requests.setter
-    def requests(self, in_value):
+    # @requests.setter
+    def set_requests(self, in_value):
         if type(in_value) is list:
             self.__req_list.extend(in_value)
         else:
             self.__req_list.append(in_value)
+
+    requests = property(get_requests, set_requests)
 
     @property
     def snmp(self):
@@ -497,10 +508,11 @@ class check_snmp_qos_scheme(snmp_scheme):
         self.parser.add_argument("-z", type=str, dest="qos_ids", help="QOS Ids [%(default)s]", default="")
         self.parse_options(kwargs["options"])
         self.transform_single_key = True
-        if self.opts.key.count(","):
-            self.qos_key, self.if_idx = [int(value) for value in self.opts.key.split(",")]
-        else:
-            self.qos_key, self.if_idx = (int(self.opts.key), 0)
+        if not self.dummy_init:
+            if self.opts.key.count(","):
+                self.qos_key, self.if_idx = [int(value) for value in self.opts.key.split(",")]
+            else:
+                self.qos_key, self.if_idx = (int(self.opts.key), 0)
         self.requests = [snmp_oid(value, cache=True, cache_timeout=150) for value in self.oid_dict.itervalues()]
 
     def _build_base_cfg(self):
@@ -964,10 +976,14 @@ class eonstor_voltage(eonstor_object):
 class eonstor_info_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "eonstor_info", **kwargs)
-        net_obj = kwargs["net_obj"]
-        if not hasattr(net_obj, "eonstor_version"):
-            net_obj.eonstor_version = 2
-        if net_obj.eonstor_version == 1:
+        if "net_obj" in kwargs:
+            net_obj = kwargs["net_obj"]
+            if not hasattr(net_obj, "eonstor_version"):
+                net_obj.eonstor_version = 2
+            _vers = net_obj.eonstor_version
+        else:
+            _vers = 2
+        if _vers == 1:
             self.__th_system = snmp_oid(
                 (1, 3, 6, 1, 4, 1, 1714, 1, 9, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT
             )
@@ -1035,10 +1051,13 @@ class eonstor_info_scheme(snmp_scheme):
 class eonstor_proto_scheme(snmp_scheme):
     def __init__(self, name, **kwargs):
         snmp_scheme.__init__(self, name, **kwargs)
-        net_obj = kwargs["net_obj"]
-        if not hasattr(net_obj, "eonstor_version"):
-            net_obj.eonstor_version = 1
-        eonstor_version = getattr(net_obj, "eonstor_version", 1)
+        if "net_obj" in kwargs:
+            net_obj = kwargs["net_obj"]
+            if not hasattr(net_obj, "eonstor_version"):
+                net_obj.eonstor_version = 1
+            eonstor_version = getattr(net_obj, "eonstor_version", 1)
+        else:
+            eonstor_version = 2
         if eonstor_version == 1:
             self.sys_oid = (1, 3, 6, 1, 4, 1, 1714, 1, 9, 1)
             self.disc_oid = (1, 3, 6, 1, 4, 1, 1714, 1, 6, 1)

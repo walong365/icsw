@@ -287,6 +287,7 @@ class net_ip(models.Model):
     class Meta:
         db_table = u"netip"
         app_label = "backbone"
+        verbose_name = "IP address"
 
 
 @receiver(signals.pre_save, sender=net_ip)
@@ -469,6 +470,7 @@ class netdevice(models.Model):
         db_table = u'netdevice'
         ordering = ("snmp_idx", "devname",)
         app_label = "backbone"
+        verbose_name = "Netdevice"
 
     def delete(self, *args, **kwargs):
         super(netdevice, self).delete(*args, **kwargs)
@@ -529,7 +531,7 @@ def netdevice_pre_save(sender, **kwargs):
         if cur_inst.force_network_device_type_match:
             nd_type = cur_inst.find_matching_network_device_type()
             if not nd_type:
-                raise ValidationError("no matching device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
+                raise ValidationError("no matching network_device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
             cur_inst.network_device_type = nd_type
         else:
             if not cur_inst.network_device_type_id:
@@ -700,6 +702,7 @@ class peer_information(models.Model):
     class Meta:
         db_table = u'peer_information'
         app_label = "backbone"
+        verbose_name = "Peer information"
 
 
 @receiver(signals.pre_save, sender=peer_information)

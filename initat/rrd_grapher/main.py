@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,7 +27,7 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.cluster.backbone.models import log_source
+from initat.cluster.backbone.models import LogSource
 from initat.rrd_grapher.config_static import SERVER_COM_PORT
 from initat.rrd_grapher.version import VERSION_STRING
 from io_stream_helper import io_stream
@@ -110,8 +110,8 @@ def main():
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(
-                    log_source.create_log_source_entry(
-                        "rrd-server", "Cluster RRDServer", device=sql_info.effective_device
+                    LogSource.new(
+                        "rrd-grapher", device=sql_info.effective_device
                     ).pk
                 )
             ),

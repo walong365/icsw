@@ -99,7 +99,7 @@ angular.module(
             for idx in $scope.cur_sel
                 if idx of $scope.dev_lut
                     # in case dev_lut is not valid
-                    if $scope.dev_lut[idx].device_type_identifier == "MD"
+                    if $scope.dev_lut[idx].is_meta_device
                         devg_pk_list.push($scope.dev_lut[idx].device_group)
                         dev_pk_md_list.push(idx)
                     else
@@ -349,14 +349,13 @@ angular.module(
         handle_click: (entry, event) =>
             if entry._node_type == "d"
                 dev = @scope.dev_lut[entry.obj]
-                if dev.device_type_identifier != "MDX"
-                    # create modal or use main view
-                    if @scope.index_view
-                        # replace index
-                        @scope.DeviceOverviewService.NewSingleSelection(dev)
-                    else
-                        # modal
-                        @scope.DeviceOverviewService.NewOverview(event, dev)
+                # create modal or use main view
+                if @scope.index_view
+                    # replace index
+                    @scope.DeviceOverviewService.NewSingleSelection(dev)
+                else
+                    # modal
+                    @scope.DeviceOverviewService.NewOverview(event, dev)
         get_name: (t_entry) ->
             entry = @get_dev_entry(t_entry)
             if t_entry._node_type == "f"
@@ -372,7 +371,6 @@ angular.module(
                     d_name = entry.full_name.slice(8)
                 else
                     d_name = entry.full_name
-                    info_f.push(entry.device_type_identifier)
                 if entry.comment
                     info_f.push(entry.comment)
                 if info_f.length

@@ -102,6 +102,8 @@ class snmp_scheme(models.Model):
     initial = models.BooleanField(default=False)
     # moncheck
     mon_check = models.BooleanField(default=False)
+    # power_control
+    power_control = models.BooleanField(default=False)
     # priority for handling, schemes with higher priority will be handled first
     priority = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
@@ -216,6 +218,7 @@ class mon_dist_slave(mon_dist_base):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Config builds as slave"
 
 
 class mon_dist_master(mon_dist_base):
@@ -228,6 +231,7 @@ class mon_dist_master(mon_dist_base):
     class Meta:
         app_label = "backbone"
         ordering = ("-idx",)
+        verbose_name = "Config builds as master"
 
 
 class mon_build_unreachable(models.Model):
@@ -263,6 +267,7 @@ class mon_host_cluster(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Host Cluster"
 
 
 @receiver(signals.pre_save, sender=mon_host_cluster)
@@ -296,6 +301,7 @@ class mon_service_cluster(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Service Cluster"
 
 
 @receiver(signals.pre_save, sender=mon_service_cluster)
@@ -344,6 +350,7 @@ class mon_check_command_special(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Special check command"
 
     def __unicode__(self):
         return "mccs_{}".format(self.name)
@@ -478,6 +485,7 @@ class mon_check_command(models.Model):
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
         app_label = "backbone"
+        verbose_name = "Check command"
 
     class CSW_Meta:
         permissions = (
@@ -801,7 +809,7 @@ def mon_host_dependency_templ_pre_save(sender, **kwargs):
 
 class mon_host_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
-    devices = models.ManyToManyField("device", related_name="mhd_devices", null=True, blank=True)
+    devices = models.ManyToManyField("device", related_name="mhd_devices", blank=True)
     dependent_devices = models.ManyToManyField("device", related_name="mhd_dependent_devices")
     mon_host_dependency_templ = models.ForeignKey("backbone.mon_host_dependency_templ")
     mon_host_cluster = models.ForeignKey("backbone.mon_host_cluster", null=True, blank=True)
@@ -1107,9 +1115,7 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
-
 class MonitoringHintEnabledManager(models.Manager):
-
     def get_queryset(self):
         return super(MonitoringHintEnabledManager, self).get_queryset().filter(enabled=True)
 
@@ -1163,7 +1169,7 @@ class monitoring_hint(models.Model):
     enabled = models.BooleanField(default=True)
     # used in monitoring
     check_created = models.BooleanField(default=False)
-    changed = models.DateTimeField(auto_now_add=True, auto_now=True)  # , default=datetime.datetime.now())
+    changed = models.DateTimeField(auto_now=True)  # , default=datetime.datetime.now())
     # persistent: do not remove even when missing from server (for instance openvpn)
     persistent = models.BooleanField(default=False)
     # is check active ?
@@ -1241,6 +1247,7 @@ class monitoring_hint(models.Model):
     class Meta:
         app_label = "backbone"
         ordering = ("m_type", "key",)
+        verbose_name = "Monitoring hint"
 
 
 ########################################

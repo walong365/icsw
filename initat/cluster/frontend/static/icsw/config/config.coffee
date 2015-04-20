@@ -484,6 +484,19 @@ config_module = angular.module(
                     if mod_obj != false
                         $scope.filter_conf(config, $scope)
             )
+        $scope.on_script_revert = (get_change_list) ->
+            # script is called edit_value in edit_obj
+            rename = (key) -> return if key == "value" then "edit_value" else key
+            # apply all changes in order of their initial application (i.e. all diffs)
+            for changes in get_change_list()
+                if changes.full_dump
+                    # we get full obj, on initial, created, deleted
+                    for k, v of changes.full_dump
+                        $scope._edit_obj[rename(k)] = v
+                else
+                    # we get a dict {new_data: dat, ...} for each key
+                    for k, v of changes
+                        $scope._edit_obj[rename(k)] = v.new_data
         $scope.create_script = (config, event) ->
             $scope.script_edit.create_list = config.config_script_set
             $scope.script_edit.new_object = (scope) ->

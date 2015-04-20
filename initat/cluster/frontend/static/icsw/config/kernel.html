@@ -4,10 +4,10 @@
         <th>Version</th>
         <th>Comment</th>
         <th>Enabled</th>
-        <th>Ver</th>   
+        <th>Ver.Rel</th>
         <th>Bitcount</th>
         <th>Usecount</th>
-        <th colspan="2" class="text-center">action</th>   
+        <th colspan="4" class="text-center">action</th>
     </tr>
 </script>
 
@@ -16,11 +16,19 @@
     <td>{{ obj.kernel_version  }}</td>
     <td>{{ obj.comment }}</td>
     <td>{{ obj.enabled | yesno1 }}</td>
-    <td>{{ obj.version }}.{{ obj.release }}</td>
-    <td>{{ obj.bitcount }}</td>
-    <td class="text-center">{{ obj.act_kernel.length }} / {{ obj.new_kernel.length }}</td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td class="text-center">{{ obj.version }}.{{ obj.release }}</td>
+    <td class="text-center">{{ obj.bitcount }}</td>
+    <td class="text-center">{{ obj.kerneldevicehistory_set.length }} / {{ obj.new_kernel.length }}</td>
+    <td>
+        <icsw-tools-button type="change" size="xs" value="bump version" ng-click="bump_version(obj)"></icsw-tools-button>
+        <icsw-tools-button type="change" size="xs" value="bump release" ng-click="bump_release(obj)"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete(obj, $event)"></icsw-tools-button>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.kernel.overview">

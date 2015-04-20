@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2005,2012-2014 Andreas Lang, init.at
+# Copyright (C) 2001-2005,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -52,7 +52,7 @@ global_config = configfile.get_global_config(process_tools.get_programm_name())
 VERSION_STRING = "1.3"
 SLASH_NAME = "slash"
 
-NEEDED_PACKAGES = [
+NEEDED_PACKAGES_1 = [
     "python-init",
     "ethtool-init",
     "host-monitoring",
@@ -62,6 +62,13 @@ NEEDED_PACKAGES = [
     "loadmodules",
     "python-modules-base",
     "child",
+    "modules-init",
+]
+
+NEEDED_PACKAGES_2 = [
+    "python-init",
+    "ethtool-init",
+    "icsw-client",
     "modules-init",
 ]
 
@@ -104,7 +111,7 @@ class package_check(object):
         return missing_packages
 
     def check_zypper(self, pack_list):
-        self.log("checking image at path %s with zypper" % (self.__image.source))
+        self.log("checking image at path {} with zypper".format(self.__image.source))
         res_str = self._call("zypper -x -R %s --no-refresh search -i | xmllint --recover - 2>/dev/null " % (self.__image.source))
         try:
             res_xml = etree.fromstring(res_str)
@@ -161,13 +168,15 @@ class build_process(threading_tools.process_obj):
         if global_config["COMPRESSION_OPTION"]:
             if global_config["COMPRESSION"] == "xz":
                 comp_opt = "export XZ_OPT='%s'" % (global_config["COMPRESSION_OPTION"])
-        self._call("cd %s ; %s tar -c%sf %s --preserve-permissions --preserve-order %s" % (
-            system_dir,
-            "%s;" % (comp_opt) if comp_opt else "",
-            c_flag,
-            t_file,
-            " ".join(file_list) if file_list else target_dir,
-        ))
+        self._call(
+            "cd {} ; {} tar -c{}f {} --preserve-permissions {}".format(
+                system_dir,
+                "{};".format(comp_opt) if comp_opt else "",
+                c_flag,
+                t_file,
+                " ".join(file_list) if file_list else target_dir,
+            )
+        )
         new_size = os.stat(t_file)[stat.ST_SIZE]
         self.log("target size is %s (compression %.2f%%)" % (
             logging_tools.get_size_str(new_size),
@@ -293,10 +302,11 @@ class server_process(threading_tools.process_pool):
                 self._init_compress_image()
                 do_exit = False
         except:
-            self._int_error("build failed: %s" % (process_tools.get_except_info()))
+            self._int_error("build failed: {}".format(process_tools.get_except_info()))
         else:
             if do_exit:
                 self._int_error("done")
+
     def _compress_done(self, *args, **kwargs):
         b_name, _b_pid, dir_name = args
         self.__pending[b_name] = False
@@ -438,11 +448,15 @@ class server_process(threading_tools.process_pool):
     def _check_packages(self, cur_img):
         """ check packages in image """
         cur_pc = package_check(self.log, cur_img)
-        missing = cur_pc.check(NEEDED_PACKAGES)
-        if missing:
-            self.log("missing packages: %s" % (", ".join(sorted(list(missing)))), logging_tools.LOG_LEVEL_ERROR)
+        missing_1 = cur_pc.check(NEEDED_PACKAGES_1)
+        missing_2 = cur_pc.check(NEEDED_PACKAGES_2)
+        print missing_1
+        print missing_2
+        if missing_1 and missing_2:
+            self.log("missing packages 1: {}".format(", ".join(sorted(list(missing_1)))), logging_tools.LOG_LEVEL_ERROR)
+            self.log("missing packages 2: {}".format(", ".join(sorted(list(missing_2)))), logging_tools.LOG_LEVEL_ERROR)
             if not global_config["IGNORE_ERRORS"]:
-                raise ValueError("packages missing (%s)" % (", ".join(missing)))
+                raise ValueError("packages missing (%s)" % (", ".join(sorted(list(missing_1 | missing_2)))))
         else:
             self.log("all packages installed")
 
@@ -543,40 +557,46 @@ class server_process(threading_tools.process_pool):
 def main():
     prog_name = global_config.name()
     all_imgs = sorted(image.objects.all().values_list("name", flat=True))
-    global_config.add_config_entries([
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("COMPRESSION", configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
-        ("COMPRESSION_OPTION", configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
-        ("VERBOSE", configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
-        (
-            "MODIFY_IMAGE",
-            configfile.bool_c_var(True, short_options="m", help_string="do not modify image (no chroot calls) [%(default)s]", action="store_false")
-        ),
-        ("IGNORE_ERRORS", configfile.bool_c_var(False, short_options="i", help_string="ignore image errors [%(default)s]", action="store_true")),
-        ("FORCE_SERVER", configfile.bool_c_var(False, short_options="f", help_string="force being an image server [%(default)s]", action="store_true")),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME", configfile.str_c_var(prog_name)),
-        ("BUILDERS", configfile.int_c_var(4, help_string="numbers of builders [%(default)i]")),
-        ("OVERRIDE", configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
-        ("BUILD_IMAGE", configfile.bool_c_var(False, help_string="build (compress) image [%(default)s]", action="store_true", only_commandline=True)),
-        ("CHECK_SIZE", configfile.bool_c_var(True, help_string="image size check [%(default)s]", action="store_false")),
-    ])
+    global_config.add_config_entries(
+        [
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("COMPRESSION", configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
+            ("COMPRESSION_OPTION", configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
+            ("VERBOSE", configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
+            (
+                "MODIFY_IMAGE",
+                configfile.bool_c_var(True, short_options="m", help_string="do not modify image (no chroot calls) [%(default)s]", action="store_false")
+            ),
+            ("IGNORE_ERRORS", configfile.bool_c_var(False, short_options="i", help_string="ignore image errors [%(default)s]", action="store_true")),
+            ("FORCE_SERVER", configfile.bool_c_var(False, short_options="f", help_string="force being an image server [%(default)s]", action="store_true")),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            ("BUILDERS", configfile.int_c_var(4, help_string="numbers of builders [%(default)i]")),
+            ("OVERRIDE", configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
+            ("BUILD_IMAGE", configfile.bool_c_var(False, help_string="build (compress) image [%(default)s]", action="store_true", only_commandline=True)),
+            ("CHECK_SIZE", configfile.bool_c_var(True, help_string="image size check [%(default)s]", action="store_false")),
+        ]
+    )
     if all_imgs:
-        global_config.add_config_entries([
-            ("IMAGE_NAME", configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
-        ])
+        global_config.add_config_entries(
+            [
+                ("IMAGE_NAME", configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
+            ]
+        )
     global_config.parse_file()
     process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     _options = global_config.handle_commandline(
-        description="%s, version is %s" % (
+        description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING
+        ),
         add_writeback_option=True,
-        positional_arguments=False)
+        positional_arguments=False
+    )
     global_config.write_file()
     if not all_imgs:
-        print("No imags found")
+        print("No images found")
         sys.exit(1)
     ret_state = server_process().loop()
     sys.exit(ret_state)

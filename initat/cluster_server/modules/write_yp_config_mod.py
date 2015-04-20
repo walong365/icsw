@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -60,39 +60,36 @@ class write_yp_config(cs_base_class.server_com):
         # fetch all users / groups
         all_groups = dict([(cur_g.pk, cur_g) for cur_g in group.objects.all()])
         all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.prefetch_related("secondary_groups").all()])
-        # secondary groups, FIXME
-        # self.dc.execute("SELECT * FROM user_ggroup")
-        # for db_rec in self.dc.fetchall():
-            # if all_users.has_key(db_rec["user"]) and all_groups.has_key(db_rec["ggroup"]):
-                # all_users[db_rec["user"]].setdefault("secondary_groups", []).append(db_rec["ggroup"])
-        # luts
-        # group_lut = dict([(cur_g.groupname, cur_g.pk) for cur_g in all_groups.itervalues()])
-        # user_lut = dict([(cur_u.login, cur_u.pk) for cur_u in all_users.itervalues()])
         # normal exports
         exp_entries = device_config.objects.filter(
-            Q(config__name__icontains="export") &
-            Q(device__device_type__identifier__in=["H", "MD"])).prefetch_related("config__config_str_set").select_related(
-                "device",
-                "device__device_type",
-                "device__device_group",
-                )
+            Q(config__name__icontains="export")
+        ).prefetch_related(
+            "config__config_str_set"
+        ).select_related(
+            "device",
+            "device__device_group",
+        )
         export_dict = {}
         ei_dict = {}
         for entry in exp_entries:
             act_pk = entry.config.pk
-            if entry.device.device_type.identifier == "H":
+            if not entry.device.is_meta_device:
                 dev_names = [entry.device.name]
             else:
                 # expand meta devices
-                dev_names = device.objects.filter(Q(device_type__identifier="H") & Q(device_group=entry.device.device_group)).values_list("name", flat=True)
+                dev_names = device.objects.filter(Q(is_meta_device=False) & Q(device_group=entry.device.device_group)).values_list("name", flat=True)
             for dev_name in dev_names:
                 ei_dict.setdefault(
-                    dev_name, {}).setdefault(
-                        act_pk, {
-                            "export"       : None,
-                            "import"       : None,
-                            "node_postfix" : "",
-                            "options"      : "-soft"})
+                    dev_name, {}
+                ).setdefault(
+                    act_pk,
+                    {
+                        "export": None,
+                        "import": None,
+                        "node_postfix": "",
+                        "options": "-soft"
+                    }
+                )
                 for c_str in entry.config.config_str_set.all():
                     if c_str.name in ei_dict[dev_name][act_pk]:
                         ei_dict[dev_name][act_pk][c_str.name] = c_str.value
@@ -194,25 +191,35 @@ class write_yp_config(cs_base_class.server_com):
         ext_keys["passwd.byname"] = pbn
         # home-exports
         if False:
-            self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options') ORDER BY d.name")
+            #  self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c,
+            #  device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND dt.identifier='H'
+            # AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND
+            # (cs.name='homeexport' OR cs.name='options') ORDER BY d.name")
             home_exp_dict = {}
             for entry in self.dc.fetchall():
-                home_exp_dict.setdefault(entry["device_config_idx"], {"name"       : entry["name"],
-                                                                      "options"    : "",
-                                                                      "homeexport" : ""})[entry["csname"]] = entry["value"]
+                home_exp_dict.setdefault(
+                    entry["device_config_idx"],
+                    {
+                        "name": entry["name"],
+                        "options": "",
+                        "homeexport": ""
+                    }
+                )[entry["csname"]] = entry["value"]
             valid_home_keys = [x for x in home_exp_dict.keys() if home_exp_dict[x]["homeexport"]]
             if valid_home_keys:
-                self.dc.execute("SELECT u.login, g.homestart, u.home, u.export FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export=%d" % (x) for x in valid_home_keys])))
+                # self.dc.execute("SELECT u.login, g.homestart, u.home, u.export FROM user u,
+                # ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export=%d" % (x) for x in valid_home_keys])))
                 for e2 in self.dc.fetchall():
                     if e2["homestart"]:
                         mountpoint = e2["homestart"].replace("/", "").strip()
                         entry = home_exp_dict[e2["export"]]
                         if mountpoint:
                             homestart = "auto.%s" % (mountpoint)
-                            if not ext_keys.has_key(homestart):
+                            if homestart not in ext_keys:
                                 ext_keys[homestart] = []
                                 auto_master.append((e2["homestart"], homestart))
-                            ext_keys[homestart].append((e2["home"], "%s %s:%s/%s" % (entry["options"], entry["name"], cs_tools.hostname_expand(entry["name"], entry["homeexport"]), e2["home"])))
+                            ext_keys[homestart].append((e2["home"], "%s %s:%s/%s" % (entry["options"], entry["name"],
+                                                                                     cs_tools.hostname_expand(entry["name"], entry["homeexport"]), e2["home"])))
                         else:
                             pass
                             # mysql_tools.device_log_entry(self.dc,

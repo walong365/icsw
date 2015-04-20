@@ -38,8 +38,14 @@ image_module = angular.module(
             $scope.architectures = response
         )
         $scope.new_entries = []
+        $scope.bump_version = (obj) ->
+            obj.version++
+            obj.put()
+        $scope.bump_release = (obj) ->
+            obj.release++
+            obj.put()
         $scope.delete_ok = (obj) ->
-            num_refs = obj.act_image.length + obj.new_image.length
+            num_refs = obj.imagedevicehistory_set.length + obj.new_image.length
             return if num_refs == 0 then true else false
         $scope.scan_for_images = () =>
             blockUI.start()

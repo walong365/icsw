@@ -41,13 +41,16 @@ class background_job(models.Model):
     # command as text
     command = models.CharField(null=False, max_length=256)
     # state
-    state = models.CharField(max_length=128, default="pre-init", choices=[
-        ("pre-init", "before cluster-server detection"),
-        ("pending", "init and awaiting processing"),
-        ("done", "job finished"),
-        ("timeout", "timeout"),
-        ("merged", "merged with other job"),
-        ])
+    state = models.CharField(
+        max_length=128, default="pre-init",
+        choices=[
+            ("pre-init", "before cluster-server detection"),
+            ("pending", "init and awaiting processing"),
+            ("done", "job finished"),
+            ("timeout", "timeout"),
+            ("merged", "merged with other job"),
+        ]
+    )
     # command as XML
     command_xml = models.TextField(null=False)
     # initiator
@@ -75,6 +78,7 @@ class background_job(models.Model):
     class Meta:
         ordering = ("-date",)
         app_label = "backbone"
+        verbose_name = "Background jobs"
 
     class CSW_Meta:
         permissions = (
@@ -107,3 +111,4 @@ class background_job_run(models.Model):
     class Meta:
         ordering = ("date",)
         app_label = "backbone"
+        verbose_name = "Background job run"

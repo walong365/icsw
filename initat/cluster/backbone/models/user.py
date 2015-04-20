@@ -74,7 +74,7 @@ __all__ = [
 def _csw_key(perm):
     return "{}.{}.{}".format(
         perm.content_type.app_label,
-        perm.content_type.name,
+        perm.content_type.model_class().__name__,
         perm.codename,
     )
 
@@ -159,7 +159,7 @@ class auth_cache(object):
         code_key = self._get_code_key(app_label, content_name, code_name)
         if self.has_permission(app_label, content_name, code_name) or getattr(self.auth_obj, "is_superuser", False):
             # at fist check global permission, return all devices
-            return set(apps.get_model(app_label, self.__perm_dict[code_key].content_type.name).objects.all().values_list("pk", flat=True))
+            return set(apps.get_model(app_label, self.__perm_dict[code_key].content_type.model_class().__name__).objects.all().values_list("pk", flat=True))
         elif code_key in self.__obj_perms:
             # only return devices where the code_key is set
             return set(self.__obj_perms[code_key].keys())
@@ -195,7 +195,7 @@ class auth_cache(object):
     def get_object_access_levels(self, obj, is_superuser):
         obj_type = obj._meta.model_name
         # returns a dict with all access levels for the given object
-        obj_perms = [key for key, value in self.__perm_dict.iteritems() if value.content_type.name == obj_type]
+        obj_perms = [key for key, value in self.__perm_dict.iteritems() if value.content_type.model_class().__name__ == obj_type]
         if is_superuser:
             ac_dict = {key: AC_FULL for key in obj_perms}
         else:
@@ -239,6 +239,7 @@ class csw_permission(models.Model):
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
         app_label = "backbone"
+        verbose_name = "Global permission"
 
     @staticmethod
     def get_permission(in_object, code_name):
@@ -246,8 +247,8 @@ class csw_permission(models.Model):
         cur_pk = in_object.pk
         return csw_object_permission.objects.create(
             csw_permission=csw_permission.objects.get(Q(content_type=ct) & Q(codename=code_name)),
-            object_pk=cur_pk
-            )
+            object_pk=cur_pk,
+        )
 
     def __unicode__(self):
         return u"{} | {} | {} | {}".format(
@@ -255,7 +256,7 @@ class csw_permission(models.Model):
             self.content_type,
             self.name,
             "G/O" if self.valid_for_object_level else "G",
-            )
+        )
 
 
 class csw_object_permission(models.Model):
@@ -269,10 +270,16 @@ class csw_object_permission(models.Model):
     object_pk = models.IntegerField(default=0)
 
     def __unicode__(self):
-        return "{} | {:d}".format(unicode(self.csw_permission), self.object_pk)
+        model_class = self.csw_permission.content_type.model_class()
+        try:
+            obj = model_class.objects.get(pk=self.object_pk)
+        except model_class.DoesNotExist:
+            obj = "deleted object (pk: {})".format(self.object_pk)
+        return "{} on {}".format(unicode(self.csw_permission), obj)
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Object permission"
 
 
 # permission intermediate models
@@ -335,6 +342,10 @@ class user_permission(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Global permissions of users"
+
+    def __unicode__(self):
+        return "Permission {} for user {}".format(self.csw_permission, self.user)
 
 
 @receiver(signals.post_save, sender=user_permission)
@@ -375,8 +386,12 @@ class user_object_permission(models.Model):
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "Permission {} for user {}".format(self.csw_object_permission, self.user)
+
     class Meta:
         app_label = "backbone"
+        verbose_name = "Object permissions of users"
 
 
 @receiver(signals.post_save, sender=user_object_permission)
@@ -403,9 +418,17 @@ def get_label_codename(perm):
         else:
             raise ImproperlyConfigured("Unknown permission format '{}'".format(perm))
     elif isinstance(perm, csw_permission):
-        app_label, content_name, codename = (perm.content_type.app_label, perm.content_type.name, perm.codename)
+        app_label, content_name, codename = (
+            perm.content_type.app_label,
+            perm.content_type.model_class().__name__,
+            perm.codename
+        )
     elif isinstance(perm, csw_object_permission):
-        app_label, content_name, codename = (perm.csw_permission.content_type.app_label, perm.csw_permission.content_type.name, perm.csw_permission.codename)
+        app_label, content_name, codename = (
+            perm.csw_permission.content_type.app_label,
+            perm.csw_permission.content_type.model_class().__name__,
+            perm.csw_permission.codename
+        )
     else:
         raise ImproperlyConfigured("Unknown perm '{}'".format(unicode(perm)))
     return (app_label, content_name, codename)
@@ -762,6 +785,7 @@ class user(models.Model):
         db_table = u'user'
         ordering = ("login", "group__groupname")
         app_label = "backbone"
+        verbose_name = "User"
 
     def get_info(self):
         return unicode(self)
@@ -937,6 +961,7 @@ class group(models.Model):
         db_table = u'ggroup'
         ordering = ("groupname",)
         app_label = "backbone"
+        verbose_name = u"Group"
 
     def __unicode__(self):
         return u"{} (gid={:d})".format(

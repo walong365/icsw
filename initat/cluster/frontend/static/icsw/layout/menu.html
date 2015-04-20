@@ -38,6 +38,9 @@
                     <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('image.modify_images')"><a href="{{ ICSW_URLS.SETUP_IMAGE_OVERVIEW }}">Image overview</a></li>
                     <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('kernel.modify_kernels')"><a href="{{ ICSW_URLS.SETUP_KERNEL_OVERVIEW }}">Kernel overview</a></li>
                     <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('partition_fs.modify_partitions')"><a href="{{ ICSW_URLS.SETUP_PARTITION_OVERVIEW }}">Partition overview</a></li>
+
+                    <!-- TODO: permisssion -->
+                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}">History</a></li>
                 </ul>
             </li>
             <li ng-show="check_perm('group.group_admin')">

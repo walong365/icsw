@@ -69,16 +69,15 @@ class get_boot_info_json(View):
             "bootnetdevice__net_ip_set__network__network_device_type",
             "categories",
             "domain_tree_node",
+            "kerneldevicehistory_set",
+            "imagedevicehistory_set",
         ).select_related(
             "device_group",
-            "device_type",
         )
         cd_cons = cd_connection.objects.filter(Q(child__in=sel_list) | Q(parent__in=sel_list)).select_related(
             "child__device_group",
-            "child__device_type",
             "child__domain_tree_node",
             "parent__device_group",
-            "parent__device_type",
             "parent__domain_tree_node",
         )
         call_mother = True if int(_post["call_mother"]) else False

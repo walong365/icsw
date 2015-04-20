@@ -115,13 +115,12 @@
         <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
         <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
     </td>
-    <td>{{ obj.device_type | array_lookup:rest_data.device_type:"description" }}</td>
     <td ng-show="hide_lut['tln']">{{ obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="hide_lut['rrd_store']">{{ obj.store_rrd_data | yesno2 }}</td>
+    <td ng-show="hide_lut['ipmi_capable']">{{ obj.ipmi_capable | yesno2 }}</td>
     <td ng-show="hide_lut['passwd']">{{ obj.root_passwd_set | isset }}</td>
     <td ng-show="hide_lut['mon_master']">{{ obj.monitor_server | array_lookup:rest_data.monitor_server:"full_name_wt" }}</td>
     <td ng-show="hide_lut['boot_master']">{{ obj.bootserver | array_lookup:rest_data.mother_server:"full_name" }}</td>
-    <td ng-show="hide_lut['curl']">{{ obj.curl }}</td>
     <td>
         <icsw-tools-button type="modify" size="xs" ng-click="edit('device', $event, obj)"></icsw-tools-button>
     </td>
@@ -160,7 +159,7 @@
 
                     <tr>
                         <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                         </td>
                     </tr>
 
@@ -198,3 +197,5 @@
         </div>
     </div>
 </script>
+
+

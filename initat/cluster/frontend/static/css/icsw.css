@@ -105,3 +105,11 @@ and every even row contains a collapsible row which is hidden by default */
 .icsw-table-striped-4 > tbody > tr:nth-child(4n+1) {
     background-color: #f9f9f9;
 }
+
+
+ins {
+    color: #080;
+}
+del {
+    color: #a00;
+}

@@ -275,12 +275,7 @@
  "
  ><label for="id_comment" class="control-label col-sm-3">
  Comment
- </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="_edit_obj.comment" type="text" /> </div></div><div id="div_id_curl"
- class="form-group 
- "
- ng_show="is_device()"
- ><label for="id_curl" class="control-label col-sm-3 requiredField">
- CURL<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="_edit_obj.curl" required="True" type="text" value="ssh://" /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
+ </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="_edit_obj.comment" type="text" /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
  IP Info
  </label><div class='col-sm-9 form-control-static'>
  {{ get_ip_info() }}
@@ -332,6 +327,12 @@
  "
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="_edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
+ </label></div></div></div></fieldset><fieldset 
+ ><legend>IPMI settings</legend><div class="form-group"><div id="div_id_ipmi_capable"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="_edit_obj.ipmi_capable" type="checkbox" />
+ IPMI cabaple
  </label></div></div></div></fieldset><fieldset 
  ><legend>Info</legend><div 
  class="row" ><div 
@@ -925,19 +926,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 <form id="form" class="form-horizontal" ng-submit="modify_many()" name="form" ><h2>Change settings of {{ num_selected() }} devices</h2><fieldset 
  ><legend>Basic settings</legend><div 
  class="row" ><div 
- class="col-md-2" ><div class="form-group"><div id="div_id_change_device_type"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_device_type" class=""><input class="checkboxinput checkbox" id="id_change_device_type" name="change_device_type" ng-model="edit_obj.change_device_type" type="checkbox" />
- DeviceType
- </label></div></div></div></div><div 
- class="col-md-10" ><div id="div_id_device_type"
- class="form-group 
- "
- ng_show="edit_obj.change_device_type"
- ><label for="id_device_type" class="control-label col-sm-3 requiredField">
- Device type<span class="asteriskField">*</span></label><div class="controls col-sm-8"><ui-select ng-model='edit_obj.device_type' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select the device type'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in rest_data.device_type | filter:ignore_md| props_filter:{description:$select.search}'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></div></div><div 
- class="row" ><div 
  class="col-md-2" ><div class="form-group"><div id="div_id_change_device_group"
  class="checkbox
  "
@@ -951,20 +939,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ><label for="id_device_group" class="control-label col-sm-3 requiredField">
  Device group<span class="asteriskField">*</span></label><div class="controls col-sm-8"><ui-select ng-model='edit_obj.device_group' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select the device group'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in rest_data.device_group | filter:ignore_cdg| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></div></div></fieldset><fieldset 
  ><legend>Additional settings</legend><div 
- class="row" ><div 
- class="col-md-2" ><div class="form-group"><div id="div_id_change_curl"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_curl" class=""><input class="checkboxinput checkbox" id="id_change_curl" name="change_curl" ng-model="edit_obj.change_curl" type="checkbox" />
- Curl
- </label></div></div></div></div><div 
- class="col-md-10" ><div id="div_id_curl"
- class="form-group 
- "
- ng_show="edit_obj.change_curl"
- ><label for="id_curl" class="control-label col-sm-3">
- Curl
- </label><div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_curl" name="curl" ng-model="edit_obj.curl" type="text" /> </div></div></div></div><div 
  class="row" ><div 
  class="col-md-2" ><div class="form-group"><div id="div_id_change_domain_tree_node"
  class="checkbox
@@ -1063,6 +1037,20 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="edit_obj.change_store_rrd_data"
  ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
+ </label></div></div></div></div></div><div 
+ class="row" ><div 
+ class="col-md-2" ><div class="form-group"><div id="div_id_change_ipmi_capable"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_change_ipmi_capable" name="change_ipmi_capable" ng-model="edit_obj.change_ipmi_capable" type="checkbox" />
+ IPMI capable
+ </label></div></div></div></div><div 
+ class="col-md-10" ><div class="form-group"><div id="div_id_ipmi_capable"
+ class="checkbox
+ "
+ ng_show="edit_obj.change_ipmi_capable"
+ ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
+ IPMI cabaple
  </label></div></div></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value="Modify many"
@@ -1429,7 +1417,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.str.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>String var '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>String var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -1444,7 +1432,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_value" class="control-label col-sm-3">
  Value
- </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_value" name="value" ng-model="_edit_obj.value" rows="10"></textarea></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_value" name="value" ng-model="_edit_obj.value" rows="10"></textarea></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_str'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -1742,20 +1730,12 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_comment" class="control-label col-sm-3">
  Comment
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="edit_obj.comment" type="text" /> </div></div><div id="div_id_device_type"
- class="form-group 
- "
- ><label for="id_device_type" class="control-label col-sm-3 requiredField">
- Device type<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.device_type' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select the device type'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in rest_data.device_type | filter:ignore_md| props_filter:{description:$select.search}'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div id="div_id_device_group"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="edit_obj.comment" type="text" /> </div></div><div id="div_id_device_group"
  class="form-group 
  "
  ><label for="id_device_group" class="control-label col-sm-3 requiredField">
  Device group<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.device_group' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select the device group'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in rest_data.device_group | filter:ignore_cdg| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset><fieldset 
- ><legend>Additional settings</legend><div id="div_id_curl"
- class="form-group 
- "
- ><label for="id_curl" class="control-label col-sm-3 requiredField">
- CURL<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_curl" maxlength="512" name="curl" ng-model="edit_obj.curl" required="True" type="text" value="ssh://" /> </div></div><div id="div_id_domain_tree_node"
+ ><legend>Additional settings</legend><div id="div_id_domain_tree_node"
  class="form-group 
  "
  ><label for="id_domain_tree_node" class="control-label col-sm-3 requiredField">
@@ -1788,6 +1768,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enable_perfdata" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox" />
  Enable perfdata, check IPMI and SNMP
+ </label></div></div></div><div class="form-group"><div id="div_id_ipmi_capable"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
+ IPMI cabaple
  </label></div></div></div></div><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_store_rrd_data"
  class="checkbox
@@ -2009,15 +1994,15 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="bo_enabled[&#39;i&#39;]"
  ><label for="id_new_image" class="control-label col-sm-4">
  New image
- </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_image' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='image'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in images| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div id="div_id_partition_table"
+ </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_image' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='image'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in images| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div ng-show="!partitions.length" class="alert alert-danger">no valid partition tables found</div><div id="div_id_partition_table"
  class="form-group 
  "
- ng_show="bo_enabled[&#39;p&#39;]"
+ ng_show="bo_enabled[&#39;p&#39;] &amp;&amp; partitions.length"
  ><label for="id_partition_table" class="control-label col-sm-4">
  Partition table
  </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.partition_table' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='partition table'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in partitions| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset><fieldset 
  ><legend>bootdevice settings</legend><div 
- class="row" ><div 
+ ><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_dhcp_mac"
  class="checkbox
  "
@@ -2209,17 +2194,18 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Change boot settings of {{ device_info_str }}</h2><fieldset 
  class="row "
  ><legend>target state</legend><div 
+ ><div 
  class="col-md-3" ><div class="form-group"><div id="div_id_change_target_state"
  class="checkbox
  "
  ng_show="bo_enabled[&#39;t&#39;]"
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_change_target_state" class=""><input class="checkboxinput checkbox" id="id_change_target_state" name="change_target_state" ng-model="_edit_obj.change_target_state" type="checkbox" />
  target state
- </label></div></div></div></div><div class="col-md-9"><div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
+ </label></div></div></div></div><div class="col-md-9"><div ng-repeat="netstate in network_states" class='row form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
  network {{ netstate.info }}
- </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in netstate.states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div><div class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
+ </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in netstate.states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div><div class='row form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
  special state
- </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in special_states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div></div></fieldset><fieldset 
+ </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in special_states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div></div></div></fieldset><fieldset 
  ><legend>settings</legend><div 
  class="row" ><div 
  class="col-md-3" ><div class="form-group"><div id="div_id_change_new_kernel"
@@ -2368,7 +2354,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='mon.check.command.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Check command '{{ _edit_obj.name }}'</h2><tabset><tab heading='basic setup'><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Check command '{{ _edit_obj.name }}'</h2><tabset><tab heading='Basic setup'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -2442,7 +2428,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_event_handler" class=""><input class="checkboxinput checkbox" id="id_is_event_handler" name="is_event_handler" ng-model="_edit_obj.is_event_handler" type="checkbox" />
  Is event handler
  </label></div></div></div></div></div></fieldset></tab><tab heading='Categories ({{ num_cats }})' ng-show='num_cats'><fieldset 
- ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{_edit_obj }}' mode='mon'></div></fieldset></tab></tabset><div class="form-actions"><input type="submit"
+ ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{_edit_obj }}' mode='mon'></div></fieldset></tab><tab heading='History'><icsw-history-model-history style='config' model="'mon_check_command'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2568,7 +2554,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.script.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Config script '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Config script '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -2577,8 +2563,9 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
- ><label for="id_description" class="control-label col-sm-2 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div></fieldset><fieldset 
+ ><label for="id_description" class="control-label col-sm-2">
+ Description
+ </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div></fieldset><fieldset 
  ><legend>Script</legend><textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea></fieldset><fieldset 
  ><legend>Flags</legend><div 
  class="row" ><div 
@@ -2593,7 +2580,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="_edit_obj.enabled" type="checkbox" />
  Enabled
- </label></div></div></div></div></div></fieldset><div class="form-actions"><input type="submit"
+ </label></div></div></div></div></div></fieldset></tab><tab heading='History'><icsw-history-model-history on-revert='on_script_revert(get_change_list)'style='config' model="'config_script'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3040,7 +3027,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></div></form>
 </script>
 <script type='text/ng-template' id='config.int.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Integer var '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Integer var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -3055,7 +3042,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_value" class="control-label col-sm-3">
  Value
- </label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_value" name="value" ng-model="_edit_obj.value" type="number" /> </div></div></fieldset><div ng-bind-html='show_config_var_help()'></div><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_value" name="value" ng-model="_edit_obj.value" type="number" /> </div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_int'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3241,7 +3228,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.bool.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Bool var '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Bool var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -3253,90 +3240,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ><label for="id_description" class="control-label col-sm-3 requiredField">
  Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div class='form-group'><label class='control-label col-sm-3'>Value</label><div class='controls col-sm-7'><input type='button'
  ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
- ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'></input></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div><div class="form-actions"><input type="submit"
+ ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'></input></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_bool'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
  id="submit-id-submit"
  ng-value="action_string"
  /> </div></form>
-</script>
-<script type='text/ng-template' id='cransys.create.job.form'>
-<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><div 
- ><div id="div_id_manual_sel_start"
- class="form-group 
- ng-class:has_error(&#39;manual_sel_start&#39;) 
- "
- ><label for="id_manual_sel_start" class="control-label col-sm-3 requiredField">
- Manual sel start<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="numberinput form-control" id="id_manual_sel_start" name="manual_sel_start" ng-change="update_range()" ng-model="_edit_obj.manual_sel_start" required="True" type="number" /> </div></div><div id="div_id_manual_sel_end"
- class="form-group 
- ng-class:has_error(&#39;manual_sel_end&#39;) 
- "
- ><label for="id_manual_sel_end" class="control-label col-sm-3 requiredField">
- Manual sel end<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="numberinput form-control" id="id_manual_sel_end" name="manual_sel_end" ng-change="update_range()" ng-model="_edit_obj.manual_sel_end" required="True" type="number" /> </div></div><div id="div_id_line_sel" class="form-group"><label for="id_line_sel" class="control-label col-sm-3 requiredField">
- Line sel<span class="asteriskField">*</span></label><div class="controls col-sm-9"><select
- multiple="multiple"
- ng-options="value.line for value in line_sel track by value.idx"
- class="selectmultiple form-control ng-pristine ng-valid ng-valid-required ng-touched"
- id="id_line_sel"
- name="line_sel"
- ng-model="_edit_obj.line_sel"
- required="True"
- ng-change="update_sel()"
- size="20"
- ></select><p id="hint_id_line_sel" class="help-block"> Hold down "Control", or "Command" on a Mac, to select more than one.</p></div></div><div id="div_id_host_os"
- class="form-group 
- "
- ><label for="id_host_os" class="control-label col-sm-3 requiredField">
- Host os<span class="asteriskField">*</span></label><div class="controls col-sm-9"><select class="select form-control" id="id_host_os" name="host_os" ng-model="_edit_obj.host_os" required="True"><option value="linux">linux</option><option value="windows" selected="selected">windows</option></select></div></div><div id="div_id_max_jobs"
- class="form-group 
- ng-class:has_error(&#39;max_jobs&#39;) 
- "
- ><label for="id_max_jobs" class="control-label col-sm-3 requiredField">
- Max jobs<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="numberinput form-control" id="id_max_jobs" max="100" min="1" name="max_jobs" ng-model="_edit_obj.max_jobs" required="True" type="number" value="0" /> </div></div><div id="div_id_stdout_handling"
- class="form-group 
- "
- ><label for="id_stdout_handling" class="control-label col-sm-3 requiredField">
- Stdout handling<span class="asteriskField">*</span></label><div class="controls col-sm-9"><select class="select form-control" id="id_stdout_handling" name="stdout_handling" ng-model="_edit_obj.stdout_handling" required="True"><option value="0">ignore stdout</option><option value="1" selected="selected">only store last one</option><option value="2">one per run, indexed</option></select></div></div><div id="div_id_name"
- class="form-group 
- ng-class:has_error(&#39;name&#39;) 
- "
- ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><fieldset 
- ><legend>Options</legend><div class="form-group"><div id="div_id_compress_directories"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_compress_directories" class=""><input checked="checked" class="checkboxinput checkbox" id="id_compress_directories" name="compress_directories" ng-model="_edit_obj.compress_directories" type="checkbox" />
- Compress directories
- </label></div></div></div><div class="form-group"><div id="div_id_keep_geo_files"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_keep_geo_files" class=""><input class="checkboxinput checkbox" id="id_keep_geo_files" name="keep_geo_files" ng-model="_edit_obj.keep_geo_files" type="checkbox" />
- Keep geo files
- </label></div></div></div><div class="form-group"><div id="div_id_keep_lc_files"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_keep_lc_files" class=""><input class="checkboxinput checkbox" id="id_keep_lc_files" name="keep_lc_files" ng-model="_edit_obj.keep_lc_files" type="checkbox" />
- Keep lc files
- </label></div></div></div></fieldset><input type="submit"
- name="submit"
- value="Submit"
- class="btn btn-primary primaryAction"
- id="submit-id-submit"
- /> </div></form>
-</script>
-<script type='text/ng-template' id='cransys.dataset.upload.form'>
-<form method="post" enctype="multipart/form-data"><fieldset 
- class="inlineLabels "
- ><legend>Upload new CranSys .zip file</legend><div id="div_id_dataset"
- class="form-group 
- "
- ><label for="id_dataset" class="control-label requiredField">
- Dataset<span class="asteriskField">*</span></label><div class="controls "><input class="clearablefileinput" id="id_dataset" name="dataset" required="True" type="file" /> </div></div><div 
- class="buttonHolder"><input type="submit"
- name="submit"
- value="Submit"
- class="btn btn-primary primaryAction"
- id="submit-id-submit"
- /> </div></fieldset></form>
 </script>

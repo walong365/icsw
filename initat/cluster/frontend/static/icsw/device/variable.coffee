@@ -36,7 +36,7 @@ device_variable_module = angular.module(
                 my_names = (entry.name for entry in obj.device_variable_set)
                 num_meta = 0
                 if not obj.is_cluster_device_group
-                    if obj.device_type_identifier != "MD"
+                    if not obj.is_meta_device
                         meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
                         meta_names = (entry.name for entry in meta_server.device_variable_set when entry.inherit)
                         num_meta += (entry for entry in meta_names when entry not in my_names).length
@@ -52,7 +52,7 @@ device_variable_module = angular.module(
                 my_names = (entry.name for entry in obj.device_variable_set)
                 num_shadow = 0
                 if not obj.is_cluster_device_group
-                    if obj.device_type_identifier != "MD"
+                    if not obj.is_meta_device
                         meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
                         meta_names = (entry.name for entry in meta_server.device_variable_set)
                         num_shadow += (entry for entry in meta_names when entry in my_names).length
@@ -113,12 +113,12 @@ device_variable_module = angular.module(
                 my_names = (entry.name for entry in obj.device_variable_set)
                 parents = []
                 if not obj.is_cluster_device_group
-                    if obj.device_type_identifier != "MD" and src == "g"
+                    if not obj.is_meta_device and src == "g"
                         # device, inherited from group
                         meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
                         parents = (entry for entry in meta_group.device_variable_set when entry.inherit)
                     else if src == "c"
-                        if obj.device_type_identifier == "MD"
+                        if obj.is_meta_device
                             # group, inherited from cluster
                             parents = (entry for entry in scope.cdg.device_variable_set when entry.inherit)
                         else
@@ -202,7 +202,7 @@ device_variable_module = angular.module(
                 $scope.deep_entries = icswTools.build_lut(entries)
                 $scope.group_dev_lut = {}
                 for entry in entries
-                    if entry.device_type_identifier == "MD"
+                    if entry.is_meta_device
                         $scope.group_dev_lut[entry.device_group] = entry.idx
                 $scope.entries = (entry for entry in entries when entry.idx in dev_pks)
                 for entry in $scope.entries
@@ -212,12 +212,12 @@ device_variable_module = angular.module(
         $scope.get_tr_class = (obj) ->
             if obj.is_cluster_device_group
                 return "danger"
-            else if obj.device_type_identifier == "MD"
+            else if obj.is_meta_device
                 return "success"
             else
                 return ""
         $scope.get_name = (obj) ->
-            if obj.device_type_identifier == "MD"
+            if obj.is_meta_device
                 if obj.is_cluster_device_group
                     return obj.full_name.slice(8) + " [ClusterGroup]"
                 else

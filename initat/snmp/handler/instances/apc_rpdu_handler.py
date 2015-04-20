@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -56,3 +56,19 @@ class handler(SNMPHandler):
                     name="apc.ampere.used",
                 )
             )
+
+    def power_control(self, command, cd_obj):
+        if cd_obj.parameter_i1 == 0:
+            raise ValueError("parameter_i1 is 0")
+        # delayed on : 5, delayed off : 6, delayed cycle : 7
+        _com_value = {
+            "on": 1,
+            "cycle": 3,
+            "off": 2,
+        }[command]
+        return [
+            "S",
+            [
+                simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, cd_obj.parameter_i1), target_value=_com_value),
+            ]
+        ]

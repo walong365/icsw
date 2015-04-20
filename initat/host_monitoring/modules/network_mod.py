@@ -216,6 +216,9 @@ class _general(hm_classes.hm_module):
         return self.__argus_map
 
     def _check_free_space(self):
+        if not os.path.exists(ARGUS_TARGET):
+            self.log("{} not found".format(ARGUS_TARGET), logging_tools.LOG_LEVEL_ERROR)
+            return False
         _stat = os.statvfs(ARGUS_TARGET)
         _cur_free = _stat.f_bavail * _stat.f_bsize
         if _cur_free > ARGUS_MIN_FREE:

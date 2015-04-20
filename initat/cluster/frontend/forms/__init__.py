@@ -21,6 +21,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
     config_script, netdevice, net_ip, peer_information, config_catalog, cd_connection, \
     location_gfx
 import pprint
+from initat.cluster.frontend.forms.form_models import empty_query_set
 
 from initat.cluster.frontend.forms.boot import *
 from initat.cluster.frontend.forms.config import *
@@ -29,12 +30,6 @@ from initat.cluster.frontend.forms.package import *
 from initat.cluster.frontend.forms.partition import *
 from initat.cluster.frontend.forms.user import *
 from initat.cluster.frontend.forms.network import *
-
-
-# empty query set
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class domain_tree_node_form(ModelForm):
@@ -115,7 +110,6 @@ class device_info_form(ModelForm):
                     filter="{tree_info:$select.search}",
                 ),
                 Field("comment"),
-                Field("curl", wrapper_ng_show="is_device()"),
                 HTML("""
 <div class='form-group' ng-show="is_device()">
     <label class='control-label col-sm-3'>
@@ -190,6 +184,11 @@ class device_info_form(ModelForm):
                 # ng_show="is_device()",
             ),
             Fieldset(
+                "IPMI settings",
+                Field("ipmi_capable"),
+                # ng_show="is_device()",
+            ),
+            Fieldset(
                 "Info",
                 Div(
                     Div(
@@ -213,8 +212,8 @@ class device_info_form(ModelForm):
         model = device
         fields = [
             "name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
-            "enable_perfdata", "flap_detection_enabled", "mon_resolve_name", "curl",
-            "store_rrd_data",
+            "enable_perfdata", "flap_detection_enabled", "mon_resolve_name",
+            "store_rrd_data", "ipmi_capable",
         ]
         widgets = {
             "mon_device_templ": ui_select_widget(),
@@ -490,13 +489,6 @@ class device_tree_form(ModelForm):
             Field("name"),
             Field("comment"),
             Field(
-                "device_type",
-                repeat="value.idx as value in rest_data.device_type | filter:ignore_md",
-                placeholder="Select the device type",
-                display="description",
-                filter="{description:$select.search}",
-            ),
-            Field(
                 "device_group",
                 repeat="value.idx as value in rest_data.device_group | filter:ignore_cdg",
                 placeholder="Select the device group",
@@ -506,7 +498,6 @@ class device_tree_form(ModelForm):
         ),
         Fieldset(
             "Additional settings",
-            Field("curl"),
             Field(
                 "domain_tree_node",
                 repeat="value.idx as value in rest_data.domain_tree_node",
@@ -541,6 +532,7 @@ class device_tree_form(ModelForm):
                 Div(
                     Field("enabled"),
                     Field("enable_perfdata"),
+                    Field("ipmi_capable"),
                     css_class="col-md-6",
                 ),
                 Div(
@@ -558,8 +550,8 @@ class device_tree_form(ModelForm):
 
     class Meta:
         model = device
+        exclude = ()
         widgets = {
-            "device_type": ui_select_widget(),
             "device_group": ui_select_widget(),
             "domain_tree_node": ui_select_widget(),
             "bootserver": ui_select_widget(),
@@ -576,33 +568,22 @@ class device_tree_many_form(ModelForm):
     helper.field_class = 'col-sm-8'
     helper.ng_model = "edit_obj"
     helper.ng_submit = "modify_many()"
-    change_device_type = BooleanField(label="DeviceType", required=False)
     change_device_group = BooleanField(label="DeviceGroup", required=False)
     root_passwd = CharField(widget=PasswordInput, required=False)
     change_root_passwd = BooleanField(label="pwd", required=False)
-    curl = CharField(label="Curl", required=False)
-    change_curl = BooleanField(label="Curl", required=False)
     change_domain_tree_node = BooleanField(label="DTN", required=False)
     change_bootserver = BooleanField(label="Bootserver", required=False)
     change_monitor_server = BooleanField(label="MonitorServer", required=False)
     change_enabled = BooleanField(label="EnabledFlag", required=False)
     change_enable_perfdata = BooleanField(label="PerfDataFlag", required=False)
     change_store_rrd_data = BooleanField(label="store RRD data", required=False)
+    change_ipmi_capable = BooleanField(label="IPMI capable", required=False)
     helper.layout = Layout(
         HTML("<h2>Change settings of {%verbatim %}{{ num_selected() }}{% endverbatim %} devices</h2>"),
     )
     for fs_string, el_list in [
         (
             "Basic settings", [
-                (
-                    "device_type",
-                    {
-                        "repeat": "value.idx as value in rest_data.device_type | filter:ignore_md",
-                        "placeholder": "Select the device type",
-                        "display": "description",
-                        "filter": "{description:$select.search}",
-                    }
-                ),
                 (
                     "device_group",
                     {
@@ -616,7 +597,6 @@ class device_tree_many_form(ModelForm):
         ),
         (
             "Additional settings", [
-                ("curl", {}),
                 (
                     "domain_tree_node",
                     {
@@ -658,6 +638,7 @@ class device_tree_many_form(ModelForm):
                 ("enabled", {}),
                 ("enable_perfdata", {}),
                 ("store_rrd_data", {}),
+                ("ipmi_capable", {}),
             ]
         ),
     ]:
@@ -687,8 +668,8 @@ class device_tree_many_form(ModelForm):
 
     class Meta:
         model = device
+        exclude = ()
         widgets = {
-            "device_type": ui_select_widget(),
             "device_group": ui_select_widget(),
             "domain_tree_node": ui_select_widget(),
             "bootserver": ui_select_widget(),
@@ -742,6 +723,7 @@ class device_group_tree_form(ModelForm):
 
     class Meta:
         model = device_group
+        exclude = ()
         widgets = {
             "domain_tree_node": ui_select_widget()
         }
@@ -777,6 +759,7 @@ class device_variable_form(ModelForm):
     )
 
     class Meta:
+        exclude = ()
         model = device_variable
 
 
@@ -838,6 +821,7 @@ class device_variable_new_form(ModelForm):
     )
 
     class Meta:
+        exclude = ()
         model = device_variable
 
 

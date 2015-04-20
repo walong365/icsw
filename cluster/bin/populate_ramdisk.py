@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2010,2012,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2012,2015 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -596,6 +596,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         if os.path.isfile(lib_name):
             if lib_name.startswith("/opt/cluster"):
                 target_lib_name = "/{}".format(lib_name.split("/", 3)[3])
+                # [1:] to remove the trailing slash
+                _dir_name = os.path.dirname(target_lib_name[1:])
+                _t_dir_name = os.path.join(temp_dir, _dir_name)
+                if not os.path.isdir(_t_dir_name):
+                    os.makedirs(_t_dir_name)
             else:
                 target_lib_name = lib_name
             dest_file = norm_path("{}/{}".format(temp_dir, target_lib_name))
@@ -1392,7 +1397,7 @@ def main_normal():
         print "(re)creating {}".format(mod_bz2_file)
         if os.path.exists(mod_bz2_file):
             os.unlink(mod_bz2_file)
-        t_stat, t_out = commands.getstatusoutput("cd {} ; tar cpsjf modules.tar.bz2 lib".format(my_args.kernel_dir))
+        t_stat, t_out = commands.getstatusoutput("cd {} ; tar -cpjf modules.tar.bz2 lib".format(my_args.kernel_dir))
         print "... gave ({:d}) {}".format(t_stat, t_out)
         if t_stat:
             sys.exit(t_stat)
@@ -1426,8 +1431,8 @@ def main_normal():
         print "    - use mkfs.cramfs to build stage1 initrd"
         print "    - create a cpio-archive for stage1 initrd"
         print "    - use loopdevice %s to build stage1 initrd" % (loop_dev)
-    stage_add_dict[1][1].append("run-init")
-    stage_add_dict[3][1].append("run-init")
+    stage_add_dict[1][0].append("run-init")
+    stage_add_dict[3][0].append("run-init")
     # add boot-load specific files
     if my_args.add_grub_binaries:
         if not my_args.quiet:
@@ -1444,11 +1449,12 @@ def main_normal():
                 act_mods = [line.strip() for line in my_kernel.target_module_list.split(",") if line.strip() not in MOD_REFUSE_LIST]
             else:
                 act_mods = []
-            print "Using module_list from database: %s, %s" % (
+            print "Using module_list from database: {}, {}".format(
                 logging_tools.get_plural("module", len(act_mods)),
-                ", ".join(act_mods))
+                ", ".join(act_mods)
+            )
         else:
-            print "Saving module_list to database: %s, %s" % (
+            print "Saving module_list to database: {}, {}".format(
                 logging_tools.get_plural("module", len(act_mods)),
                 ", ".join(act_mods))
             my_kernel.target_module_list = ",".join(act_mods)
@@ -1558,7 +1564,7 @@ def main_normal():
         if act_stage_dir:
             stage_dirs += ["%s/%s" % (my_args.root_dir, act_stage_dir[0])]
         else:
-            print "Error generating stage%d dir" % (stage)
+            print("Error generating stage{:d} dir".format(stage))
             print "\n".join(["  - %s" % (x) for x in out.split("\n") if x.strip().startswith("E ")])
         del_dirs += [os.path.normpath("%s/%s" % (my_args.root_dir, loc_root_dir))]
     stage_dirs_ok = len(stage_dirs) == len(stage_targ_dirs)
@@ -1631,10 +1637,12 @@ def main_normal():
         for name, (err_name, y) in stat_out:
             print "%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (z) for z in y.split("\n")]))
     if stage_dirs_ok:
-        for s1_type, s1_file in [("lo", stage1_lo_file),
-                                 ("cramfs", stage1_cramfs_file),
-                                 ("cpio", stage1_cpio_file)]:
-            print "Compressing stage1 (%7s) ... " % (s1_type),
+        for s1_type, s1_file in [
+            ("lo", stage1_lo_file),
+            ("cramfs", stage1_cramfs_file),
+            ("cpio", stage1_cpio_file)
+        ]:
+            print "Compressing stage1 ({:7s}) ... ".format(s1_type),
             s_time = time.time()
             o_s1_size = os.stat(s1_file)[stat.ST_SIZE]
             # zip stage1
@@ -1654,7 +1662,7 @@ def main_normal():
                 if os.path.isfile(file_name):
                     o_s2_size += os.stat(file_name)[stat.ST_SIZE]
         # create stage2
-        commands.getstatusoutput("tar cpsjf %s -C %s ." % (stage2_file, stage_targ_dirs[1]))
+        commands.getstatusoutput("tar -cpjf %s -C %s ." % (stage2_file, stage_targ_dirs[1]))
         n_s2_size = os.stat(stage2_file)[stat.ST_SIZE]
         e_time = time.time()
         print "from %s to %s in %s" % (get_size_str(o_s2_size),

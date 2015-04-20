@@ -112,7 +112,10 @@ def to_system_tz(in_dt):
     return in_dt.astimezone(system_timezone)
 
 
-def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_objs=[]):
+def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_objs=[], related_objects=None):
+    """
+    :param related_objects: If not None, RelatedObjects with references are appended
+    """
     used_objs = [] if detail else 0
     if hasattr(in_obj, "CSW_Meta"):
         # copy list because we remove entries as we iterate over foreign models
@@ -137,6 +140,9 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
             else:
                 ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
                 if ref_list:
+                    if related_objects is not None:
+                        rel_obj.ref_list = ref_list
+                        related_objects.append(rel_obj)
                     _lock_list.append("{} -> {} ({:d})".format(rel_field_name, _rel_name, len(ref_list)))
                     if detail:
                         used_objs.extend(ref_list)
@@ -165,23 +171,52 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
     return used_objs
 
 
-def can_delete_obj(obj, logger):
+def can_delete_obj(obj, logger=None):
+    """
+    Check is obj is referenced in models which are not in fk_ignore_list
+    NOTE: references which are set to NULL on delete are considered deletable
+    :return: Response obj which can be evaluated to bool and contains a "msg"-field
+    """
     from initat.cluster.backbone.models import device
     ignore_objs = {
-        "device_group": list(device.objects.filter(Q(device_group=obj.idx) & Q(device_type__identifier="MD")))
+        "device_group": list(device.objects.filter(Q(device_group=obj.idx) & Q(is_meta_device=True)))
     }.get(obj._meta.object_name, [])
-    num_refs = get_related_models(obj, ignore_objs=ignore_objs)
+    related_objects = []
+    num_refs = get_related_models(obj, ignore_objs=ignore_objs, related_objects=related_objects)
+
     delete_ok = False
+    msg = u''
     if num_refs:
-        logger.error("lock_list for {} contains {}:".format(unicode(obj), logging_tools.get_plural("entry", len(obj._lock_list))))
+        if logger:
+            logger.error(
+                "lock_list for {} contains {}:".format(
+                    unicode(obj),
+                    logging_tools.get_plural("entry", len(obj._lock_list))
+                )
+            )
         for _num, _entry in enumerate(obj._lock_list, 1):
-            logger.error(" - {:2d}: {}".format(_num, _entry))
-        raise ValueError("cannot delete {}: referenced {}".format(
+            if logger:
+                logger.error(" - {:2d}: {}".format(_num, _entry))
+        msg = "cannot delete {}: referenced {}".format(
             obj._meta.object_name,
-            logging_tools.get_plural("time", num_refs)))
+            logging_tools.get_plural("time", num_refs)
+        )
     else:
         delete_ok = True
-    return delete_ok
+
+    class CanDeleteAnswer(object):
+        def __init__(self, delete_ok, msg, related_objects):
+            """
+            :param related_objects: list of RelatedObject (django)
+            """
+            self.delete_ok = delete_ok
+            self.msg = msg
+            self.related_objects = related_objects
+
+        def __nonzero__(self):
+            return self.delete_ok
+
+    return CanDeleteAnswer(delete_ok, msg, related_objects)
 
 
 def get_change_reset_list(s_obj, d_obj, required_changes=None):
@@ -206,7 +241,7 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
                 r_list.append((_f.name, dr_val))
         if cur_t in ["CharField", "TextField", "IntegerField", "PositiveIntegerField", "BooleanField", "NullBooleanField", "ForeignKey"]:
             if s_val != d_val:
-                c_list.append((_f.verbose_name, "changed from '{!s}' to '{!s}'".format(s_val, d_val)))
+                c_list.append((_f.verbose_name, u"changed from '{!s}' to '{!s}'".format(s_val, d_val)))
         # elif cur_t in ["ForeignKey"]:
         #    print "**", _f.name, s_val, d_val
         elif cur_t in ["DateTimeField", "AutoField", "FloatField", "DateField"]:

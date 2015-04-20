@@ -54,8 +54,16 @@ class merge_cds(View):
     def post(self, request):
         # return the RRD tree with selected controlling devices
         dev_pks = [_pk for _pk in request.POST.getlist("pks[]")]
-        devs = device.objects.filter(Q(pk__in=dev_pks))
-        cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=devs)).values_list("pk", flat=True))
+        devs = device.all_real_enabled.filter(Q(pk__in=dev_pks))
+        cd_pks = list(
+            device.all_real_enabled.filter(
+                (
+                    Q(ipmi_capable=True) |
+                    Q(snmp_schemes__power_control=True)
+                ) &
+                Q(master_connections__in=devs)
+            ).values_list("pk", flat=True)
+        )
         return _get_node_rrd(request, dev_pks + cd_pks)
 
 
@@ -94,15 +102,26 @@ class graph_rrds(View):
             json.loads(_post["keys"])
         )
         if int(self._parse_post_boolean(_post, "cds_already_merged", "0")):
-            cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=pk_list)).values_list("pk", flat=True))
+            # FIXME
+            cd_pks = list(
+                device.all_real_enabled.filter(
+                    (
+                        Q(ipmi_capable=True) |
+                        Q(snmp_schemes__power_control=True)
+                    ) &
+                    Q(master_connections__in=devs)
+                ).values_list("pk", flat=True)
+            )
         else:
             cd_pks = []
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list + cd_pks]
         )
-        srv_com["graph_key_list"] = E.graph_key_list(
-            *[E.graph_key(graph_key) for graph_key in graph_keys if not graph_key.startswith("_")]
-        )
+        # simply copy the graph-keys as a json dump
+        srv_com["graph_key_list"] = json.dumps(graph_keys)
+        # E.graph_key_list(
+        #     *[E.graph_key(**graph_attrs) for graph_attrs in graph_keys]
+        # )
         if "start_time" in _post:
             start_time = dateutil.parser.parse(_post["start_time"])
             end_time = dateutil.parser.parse(_post["end_time"])

@@ -100,6 +100,7 @@ ics_app = angular.module(
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
+        "icsw.history",
         {% for app in ADDITIONAL_ANGULAR_APPS %}
         "{{ app }}",
         {% endfor %}
@@ -121,8 +122,11 @@ ics_app = angular.module(
     "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}"
     "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"
+    "BASE_ADD_DELETE_REQUEST": "{% url 'base:add_delete_request' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
+    "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"
+    "BASE_CHECK_DELETION_STATUS": "{% url 'base:check_deletion_status' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
     "BASE_MODIFY_LOCATION_GFX": "{% url 'base:modify_location_gfx' %}"
     "BASE_PRUNE_CATEGORIES": "{% url 'base:prune_categories' %}"
@@ -235,7 +239,6 @@ ics_app = angular.module(
     "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
     "REST_DEVICE_TREE_DETAIL": "{% url 'rest:device_tree_detail' 1 %}"
-    "REST_DEVICE_TYPE_LIST": "{% url 'rest:device_type_list' %}"
     "REST_DEVICE_VARIABLE_DETAIL": "{% url 'rest:device_variable_detail' 1 %}"
     "REST_DEVICE_VARIABLE_LIST": "{% url 'rest:device_variable_list' %}"
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
@@ -336,6 +339,9 @@ ics_app = angular.module(
     "SETUP_RESCAN_KERNELS": "{% url 'setup:rescan_kernels' %}"
     "SETUP_USE_IMAGE": "{% url 'setup:use_image' %}"
     "SETUP_VALIDATE_PARTITION": "{% url 'setup:validate_partition' %}"
+    "SYSTEM_HISTORY_OVERVIEW": "{% url 'system:history_overview' %}"
+    "SYSTEM_GET_HISTORICAL_DATA": "{% url 'system:get_historical_data' %}"
+    "SYSTEM_GET_MODELS_WITH_HISTORY": "{% url 'system:get_models_with_history' %}"
     "USER_ACCOUNT_INFO": "{% url 'user:account_info' %}"
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"

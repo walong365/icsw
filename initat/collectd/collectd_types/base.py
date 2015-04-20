@@ -96,16 +96,16 @@ class PerfdataObject(object):
         return self.PD_XML_INFO
 
     def build_perfdata_info(self, host_info, pd_tuple, v_list):  # mach_values):
-        new_com = server_command.srv_command(command="perfdata_info")
-        new_com["hostname"] = host_info.name
-        new_com["uuid"] = host_info.uuid
-        # new_com["uuid"] =
-        new_com["pd_type"] = self.pd_name
-        new_com["file_name"] = host_info.target_file_name(pd_tuple)
+        new_com = E.perfdata(
+            hostname=host_info.name,
+            uuid=host_info.uuid,
+            pd_type=self.pd_name,
+            file_name=host_info.target_file_name(pd_tuple),
+        )
         info = self.get_pd_xml_info(v_list)
         if pd_tuple[1]:
-            info.attrib["type_instance"] = pd_tuple[1]
-        new_com["info"] = info
+            new_com.attrib["type_instance"] = pd_tuple[1]
+        new_com.append(info)
         return new_com
 
 

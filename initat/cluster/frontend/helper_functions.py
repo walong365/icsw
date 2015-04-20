@@ -287,7 +287,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
                         logging_tools.get_plural("device", len(cur_router.no_bootserver_devices)),
                         ", ".join(sorted([_v[1] for _v in cur_router.no_bootserver_devices])),
                     ),
-                    logging_tools.LOG_LEVEL_ERROR
+                    logging_tools.LOG_LEVEL_WARN
                 )
         else:
             send_list = [(None, send_com)]

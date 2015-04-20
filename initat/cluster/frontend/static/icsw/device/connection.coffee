@@ -59,7 +59,7 @@ angular.module(
         $scope.reload = () ->
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
-                [ICSW_URLS.REST_DEVICE_TREE_LIST, {"pks" : angular.toJson($scope.devsel_list), "cd_connections" : true, "olp" : "backbone.device.change_connection"}],
+                [ICSW_URLS.REST_DEVICE_TREE_LIST, {"pks" : angular.toJson($scope.devsel_list), "cd_connections" : true, "mark_cd_devices" : true, "olp": "backbone.device.change_connection"}],
                 [ICSW_URLS.REST_CD_CONNECTION_LIST, {}]
             ])
             $q.all(wait_list).then((data) ->
@@ -67,7 +67,7 @@ angular.module(
                 $scope.devices = icswTools.build_lut(_devs)
                 $scope.cd_devs = []
                 for entry in _devs
-                    if entry.device_type_identifier == "CD" and entry.idx in $scope.devsel_list
+                    if entry.is_cd_device and entry.idx in $scope.devsel_list
                         entry.master_list = []
                         entry.slave_list = []
                         $scope.cd_devs.push(entry)
@@ -100,7 +100,7 @@ angular.module(
             _ms_pks = (entry.child for entry in dev.master_list).concat((entry.parent for entry in dev.slave_list))
             valid_pks = (pk for pk in $scope.devsel_list when pk != dev.idx and pk not in _ms_pks)
             if only_cds
-                valid_pks = (pk for pk in valid_pks when pk of $scope.devices and $scope.devices[pk].device_type_identifier == "CD")
+                valid_pks = (pk for pk in valid_pks when pk of $scope.devices and $scope.devices[pk].is_meta_device)
             return valid_pks
         $scope.get_device_info = (pk) ->
             if pk of $scope.devices

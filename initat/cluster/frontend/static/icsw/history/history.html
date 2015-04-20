@@ -1,0 +1,99 @@
+
+<script type="text/ng-template" id="icsw.history.overview">
+    <h2>System history</h2>
+
+
+    <div class="form-inline">
+        <label for="id_sel_mod" class="control-label">
+            Data:
+        </label>
+        <select id="id_sel_mod" class="select form-control" ng-model="selected_model"
+                ng-options="v[1] as v[0] for v in models_with_history_sorted" style="width: auto"></select>
+    </div>
+
+    <!--
+    -->
+    <icsw-history-model-history model="selected_model"></icsw-history-model-history>
+</script>
+
+<script type="text/ng-template" id="icsw.history.model_history">
+    <h3 ng-show="style != 'config'">{{models_with_history[model()]}}</h3>
+    <table class="table table-condensed table-hover table-striped" style="width: auto"
+            st-table="entries_display" st-safe-src="entries">
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="meta.date" st-sort-default="reverse">Date</th>
+                <th>User</th>
+                <th>Type</th>
+                <th>Object</th>
+                <th>Object ID</th>
+                <th></th>
+                <th>Change</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="entry in entries_display">
+                <td>{{entry.meta.date | datetime_concise}}</td>
+                <td>{{get_user_by_idx(entry.meta.user).login}}</td>
+                <td>{{entry.meta.type}}
+                <td>{{entry.meta.object_repr}}</td>
+                <td>{{entry.meta.object_id}}</td>
+                <td></td>
+                <td>
+                    <div ng-show="on_revert_defined">
+                        <div ng-show="onRevert._revision_applied != entry">
+                            <icsw-tools-button type="revert" value="revert to this version"
+                                               ng-click="onRevert({'get_change_list': get_get_change_list(entry)}); onRevert._revision_applied = entry"></icsw-tools-button>
+                        </div>
+                        <div ng-show="onRevert._revision_applied == entry">
+                            <alert type="info">
+                                Data is reverted to this version in dialog. Click on 'modify' if you want to save it.
+                            </alert>
+                        </div>
+                    </div>
+                    <div ng-repeat="(k, v) in entry.changes" ng-if="!entry.changes.full_dump">
+                        Changed <strong>{{k}}</strong><span ng-if="v.patch">:</span>
+                        <span ng-if="v.patch">
+                            <pre ng-bind-html="v.patch"></pre>
+                        </span>
+                        <span ng-if="!v.patch">
+                            from
+                            <strong>
+                                {{format_value(v.old_data_human)}}
+                            </strong>
+                            to
+                            <strong>
+                                {{format_value(v.new_data_human)}}
+                            </strong>
+                        </span>
+                    </div>
+
+                    <div ng-if="entry.changes.full_dump">
+
+                        <table class="table table-condensed" style="width: auto">
+                            <tr>
+                                <th ng-repeat="(k, v) in entry.changes.full_dump_human">
+                                    {{k}}
+                                </th>
+                            </tr>
+                            <tr>
+                                <td ng-repeat="(k, v) in entry.changes.full_dump_human">
+                                    {{format_value(v)}}
+                                </td>
+                            </tr>
+
+                        </table>
+                    </div>
+
+                </td>
+
+            </tr>
+        </tbody>
+    </table>
+</script>
