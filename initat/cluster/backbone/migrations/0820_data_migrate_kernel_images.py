@@ -8,10 +8,8 @@ from django.db import migrations
 
 def create_history_entry(obj, dbh):
     _dh = obj(
-        device=_dbh.device,
-        device_boot_history=_dbh,
-        version=obj.version,
-        release=obj.release,
+        device=dbh.device,
+        device_boot_history=dbh,
     )
     return _dh
 
@@ -36,7 +34,7 @@ def migrate_kernel_image(apps, schema_editor):
                 _kh.release = int(kvm.group("release"))
             _kh.save()
             _ih = create_history_entry(image_hist, dbh)
-            _ih.image = dev.act_image
+            _ih.image = _dev.act_image
             ivm = VERS_RE.match(_dev.imageversion)
             if ivm:
                 _ih.version = int(ivm.group("version"))
