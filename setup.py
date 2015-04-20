@@ -95,6 +95,10 @@ setup(
             "/opt/cluster/sbin/pis",
             [
                 "pis/cluster_post_install.sh",
+                "pis/sge_post_install.sh",
+                "pis/webfrontend_pre_start.sh",
+                "pis/webfrontend_post_install.sh",
+                "pis/hpc_library_post_install.py",
             ]
         ),
     ],
