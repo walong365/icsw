@@ -330,10 +330,17 @@ class KpiSet(object):
             "origin": self.origin.serialize() if self.origin is not None else None,
         }
 
-    def _check_value(self, amount, limit_ok, limit_warn):
-        if amount >= limit_ok:
+    def _check_value(self, amount, limit_ok, limit_warn, method='at least'):
+        if method == 'at least':
+            cmp = lambda x, y: x >= y
+        elif method == 'at most':
+            cmp = lambda x, y: x < y
+        else:
+            raise ValueError("Invalid comparison method: '{}'. Supported methods are 'at least' or 'at most'.")
+
+        if cmp(amount, limit_ok):
             result = KpiResult.ok
-        elif amount >= limit_warn:
+        elif cmp(amount, limit_warn):
             result = KpiResult.warning
         else:
             result = KpiResult.critical
@@ -514,13 +521,15 @@ class KpiSet(object):
         return KpiSet(objects=objects,
                       origin=KpiOperation(KpiOperation.Type.get_historic_data, operands=[self]))
 
-    def evaluate_historic(self, ratio_ok, ratio_warn, result=KpiResult.ok):
+    def evaluate_historic(self, ratio_ok, ratio_warn, result=KpiResult.ok, method='at least'):
         """
         Check if up percentage is at least some value
         :type result: KpiResult
+        :param method: 'at least' or 'at most'
         """
         origin = KpiOperation(KpiOperation.Type.evaluate_historic,
-                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': result.name},
+                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': result.name,
+                                         'method': method},
                               operands=[self])
         if not self.time_line_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
@@ -536,7 +545,7 @@ class KpiSet(object):
                              if k[0] == result.get_corresponding_service_enum_value())
 
                 kwargs = tl_obj.get_object_identifier_properties()
-                kwargs['result'] = self._check_value(amount, ratio_ok, ratio_warn)
+                kwargs['result'] = self._check_value(amount, ratio_ok, ratio_warn, method)
                 kwargs['detail'] = aggregated_tl
                 if isinstance(tl_obj, KpiServiceObject):
                     obj = KpiServiceDetailObject(**kwargs)
@@ -559,9 +568,12 @@ class KpiSet(object):
             aggregated_result = max(obj.result for obj in self.result_objects)
             return KpiSet([KpiObject(result=aggregated_result)], origin=origin)
 
-    def evaluate_rrd(self, limit_ok, limit_warn):
+    def evaluate_rrd(self, limit_ok, limit_warn, method):
+        """
+        :param method: 'at least' or 'at most'
+        """
         origin = KpiOperation(KpiOperation.Type.evaluate_rrd,
-                              arguments={'limit_ok': limit_ok, 'limit_warn': limit_warn},
+                              arguments={'limit_ok': limit_ok, 'limit_warn': limit_warn, 'method': method},
                               operands=[self])
 
         if not self.rrd_objects:
@@ -572,7 +584,7 @@ class KpiSet(object):
                     KpiRRDObject(
                         rrd_key=rrd_obj.rrd_key,
                         rrd_value=rrd_obj.rrd_value,
-                        result=self._check_value(rrd_obj.rrd_value, limit_ok, limit_warn),
+                        result=self._check_value(rrd_obj.rrd_value, limit_ok, limit_warn, method),
                         **rrd_obj.get_object_identifier_properties()
                     ) for rrd_obj in self.rrd_objects
                 ],

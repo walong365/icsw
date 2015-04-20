@@ -46,8 +46,8 @@ class KpiProcess(threading_tools.process_obj):
         )
         connection.close()
 
-        #self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
-        self.update()
+        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        #self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -104,7 +104,7 @@ class KpiProcess(threading_tools.process_obj):
                         print_tree(result)
 
                         serialized = result.serialize()
-                        print 'serialized:', serialized
+                        # print 'serialized:', serialized
                         result_str = json.dumps(serialized)
 
                         try:

@@ -45,12 +45,12 @@
             Service: {{kpi_obj.check_command}},
         </span>
 
-        <span ng-show="kpi_obj.result">
-            Result: {{kpi_obj.result}},
-        </span>
-
         <span ng-show="kpi_obj.rrd_key">
             {{kpi_obj.rrd_key}}: {{kpi_obj.rrd_value}}
+        </span>
+
+        <span ng-show="kpi_obj.result">
+            Result: {{kpi_obj.result}},
         </span>
 
         <div class="row">
