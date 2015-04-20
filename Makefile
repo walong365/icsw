@@ -116,6 +116,8 @@ install:
 	# setup.py
 	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
+	# need package
+	${INSTALL} ${INSTALL_OPTS} modules/*.py ${DESTDIR}/${PYTHON_SITE}
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/

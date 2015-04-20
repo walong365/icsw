@@ -330,7 +330,7 @@ class machine(object):
                             dirs_proc += 1
                             err_files, ok_files = ([], [])
                             old_size, new_size = (0, 0)
-                            for file_name in [entry for entry in files if entry.split(".")[-1] not in ["gz", "bzip2", "xz"]]:
+                            for file_name in [entry for entry in files if entry.split(".")[-1] not in ["gz", "bz2", "xz"]]:
                                 old_file = os.path.join(root_dir, file_name)
                                 compress_list.append(old_file)
             _info_dict = {
