@@ -32,7 +32,7 @@ angular.module(
             scope:
                 kpiIdx: '&kpiIdx'
             link: (scope, el, attrs) ->
-                scope.width = 700
+                scope.svg_width = 700
 
                 node_height = 80
 
@@ -77,12 +77,13 @@ angular.module(
                         return max_depth
 
                     max_depth = _get_max_depth(scope.data, 0)
-                    max_depth = Math.max(max_depth, 3)
+                    max_depth = Math.max(max_depth, 1)
 
                     draw_height = max_depth * node_height
-                    draw_width = scope.width - 100  # labels grow to the right side
+                    draw_width = scope.svg_width - 100  # labels grow to the right side
 
-                    scope.height = draw_height + top_bottom_padding * 2
+                    scope.svg_height = draw_height + top_bottom_padding * 2
+                    scope.div_height = Math.max(max_depth, 3) * node_height + top_bottom_padding * 2
 
                     scope.tree.size([draw_width, draw_height])
 
@@ -90,7 +91,7 @@ angular.module(
                     links = scope.tree.links(nodes)
 
                     # fixed depth
-                    #nodes.forEach((d) -> d.y = d.depth * node_height)
+                    nodes.forEach((d) -> d.y = d.depth * node_height)
 
                     my_translate = (x, y) -> return [x, draw_height - y]
 
@@ -223,6 +224,9 @@ angular.module(
                 scope.on_mouse_leave_widget = () ->
                     # when mouse leaves full widget
                     scope.kpi_set_to_show = undefined
+
+                scope.get_div_style = () ->
+                    return {'height': scope.div_height}
 
                 scope.$watch(
                     () -> return scope.kpiIdx()
