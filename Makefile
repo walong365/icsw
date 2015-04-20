@@ -122,7 +122,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
 	# Makefiles
-	make -C c_progs DESTDIR=${DESTDIR} install
+	${MAKE} -C c_progs DESTDIR=${DESTDIR} install
 	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
@@ -315,9 +315,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} *.c32 ${DESTDIR}/${MOTHER_DIR}/syslinux
 	${INSTALL} ${INSTALL_OPTS} memtest${MEMTEST_VERSION}.iso ${DESTDIR}/${MOTHER_DIR}
 	${INSTALL} ${INSTALL_OPTS} memdisk ${DESTDIR}/${MOTHER_DIR}/syslinux
-	# fixtures
-	#${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	#${INSTALL} ${INSTALL_OPTS} fixtures/*_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
 	# examples
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/examples/sge_licenses
 	cp -a examples/* ${DESTDIR}${ICSW_SHARE}/examples/sge_licenses
