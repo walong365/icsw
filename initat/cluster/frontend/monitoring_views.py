@@ -481,8 +481,6 @@ class _device_status_history_util(object):
         except mon_icinga_log_aggregated_timespan.DoesNotExist:
             return None
 
-
-
     @staticmethod
     def get_line_graph_data(request, for_host):
         """
@@ -503,7 +501,6 @@ class _device_status_history_util(object):
         # calculate detailed view based on all events
         start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
         additional_filter = Q(device__in=device_ids)
-        entries = obj_man.calc_alerts(start, end, additional_filter=additional_filter)
 
         last_before_entries = obj_man.calc_limit_alerts(start,
                                                         mode='last before',
@@ -512,6 +509,8 @@ class _device_status_history_util(object):
         first_after_entries = obj_man.calc_limit_alerts(end,
                                                         mode='first after',
                                                         additional_filter=additional_filter)
+
+        entries = obj_man.calc_alerts(start, end, additional_filter=additional_filter)
 
         return_data = {}
 

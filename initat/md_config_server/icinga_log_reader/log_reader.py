@@ -375,8 +375,8 @@ class icinga_log_reader(threading_tools.process_obj):
         mon_icinga_log_raw_host_flapping_data.objects.bulk_create(host_flapping_states)
         mon_icinga_log_raw_service_notification_data.objects.bulk_create(service_notifications)
         mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
-        mon_icinga_log_raw_service_downtime_data.objects.bulk_create(host_downtimes)
-        mon_icinga_log_raw_host_downtime_data.objects.bulk_create(service_downtimes)
+        mon_icinga_log_raw_host_downtime_data.objects.bulk_create(host_downtimes)
+        mon_icinga_log_raw_service_downtime_data.objects.bulk_create(service_downtimes)
         for timestamp in full_system_dump_times:
             mon_icinga_log_full_system_dump.objects.get_or_create(date=self._parse_timestamp(timestamp))
         self.log(u"read {} lines, ignored {} old ones".format(line_num, old_ignored))
@@ -590,7 +590,7 @@ class icinga_log_reader(threading_tools.process_obj):
             retval = mon_icinga_log_raw_host_downtime_data(
                 date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
-                state=state,
+                downtime_state=state,
                 msg=msg,
                 logfile=logfile_db,
             )
@@ -603,12 +603,12 @@ class icinga_log_reader(threading_tools.process_obj):
         except (self.unknown_host_error, self.unknown_service_error) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
-            retval = mon_icinga_log_raw_host_downtime_data(
+            retval = mon_icinga_log_raw_service_downtime_data(
                 date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
-                state=state,
+                downtime_state=state,
                 msg=msg,
                 logfile=logfile_db,
             )

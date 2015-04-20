@@ -29,6 +29,8 @@ import pytz
 import time
 import datetime
 import logging_tools
+import sys
+import pdb
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])
@@ -703,3 +705,17 @@ def get_vnc_enc(password):
 
     ctext = desfunc(passpadd, ekey)
     return ctext.encode('hex')
+
+
+class ForkedPdb(pdb.Pdb):
+    """A Pdb subclass that may be used
+    from a forked multiprocessing child
+
+    """
+    def interaction(self, *args, **kwargs):
+        _stdin = sys.stdin
+        try:
+            sys.stdin = file('/dev/stdin')
+            pdb.Pdb.interaction(self, *args, **kwargs)
+        finally:
+            sys.stdin = _stdin

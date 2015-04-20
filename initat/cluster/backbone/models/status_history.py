@@ -22,6 +22,7 @@
 from collections import defaultdict
 import collections
 import operator
+import django
 
 from django.db import models
 from django.db.models import Max, Min, Prefetch, Q
@@ -50,7 +51,12 @@ class mon_icinga_log_raw_base(models.Model):
     # icinga sometimes says "unknown" (see services below)
     STATE_UNDETERMINED = "UD"  # state as well as state type
     STATE_UNDETERMINED_LONG = "UNDETERMINED"
-    STATE_TYPES = [(STATE_TYPE_HARD, "HARD"), (STATE_TYPE_SOFT, "SOFT"), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
+    STATE_PLANNED_DOWN = "PD"  # state as well as state type
+    STATE_PLANNED_DOWN_LONG = "PLANNED DOWN"
+    STATE_TYPES = [(STATE_TYPE_HARD, "HARD"),
+                   (STATE_TYPE_SOFT, "SOFT"),
+                   (STATE_UNDETERMINED, STATE_UNDETERMINED),
+                   (STATE_PLANNED_DOWN, STATE_PLANNED_DOWN_LONG)]
 
     START = "START"
     STOP = "STOP"
@@ -77,8 +83,23 @@ class raw_host_alert_manager(models.Manager):
                 .filter(device_independent=True, date__range=(start_time, end_time)):
             for key in host_alerts:
                 host_alerts[key].append(entry)
+
+        downtimes_qs = mon_icinga_log_raw_host_downtime_data.objects.all().order_by('date')
+        downtimes = raw_service_alert_manager.preprocess_start_stop_data(downtimes_qs,
+                                                                         lambda entry: entry.device_id,
+                                                                         'downtime_state',
+                                                                         start_time,
+                                                                         end_time)
+
+        for k, downtime_list in downtimes.iteritems():
+            if downtime_list:
+                host_alerts[k] = [alert for alert in host_alerts[k]
+                                  if not any(downtime.start <= alert.date < downtime.end for downtime in downtime_list)]
+            for downtime in downtime_list:
+                host_alerts[k].append(downtime.start_entry)
+
         for l in host_alerts.itervalues():
-            # not in order due to dev independents
+            # not in order due to dev independents and downtimes
             l.sort(key=operator.attrgetter('date'))
         return host_alerts
 
@@ -95,8 +116,11 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_DOWN = "D"
     STATE_UNKNOWN = "U"
     STATE_UNREACHABLE = "UR"
-    STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE"),
+    STATE_CHOICES = [(STATE_UP, "UP"),
+                     (STATE_DOWN, "DOWN"),
+                     (STATE_UNREACHABLE, "UNREACHABLE"),
                      (STATE_UNKNOWN, "UNKNOWN"),
+                     (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG),
                      (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
@@ -129,8 +153,25 @@ class raw_service_alert_manager(models.Manager):
         for entry in self.filter(device_independent=True, date__range=(start_time, end_time)):
             for key in service_alerts:
                 service_alerts[key].append(entry)
+
+        downtimes_qs = mon_icinga_log_raw_service_downtime_data.objects.all().order_by('date')
+        downtimes = raw_service_alert_manager.preprocess_start_stop_data(
+            downtimes_qs,
+            lambda entry: (entry.device_id, entry.service_id, entry.service_info),
+            'downtime_state',
+            start_time,
+            end_time)
+
+        for k, downtime_list in downtimes.iteritems():
+            if downtime_list:
+                service_alerts[k] = [alert for alert in service_alerts[k]
+                                     if not any(downtime.start <= alert.date < downtime.end
+                                                for downtime in downtime_list)]
+                for downtime in downtime_list:
+                    service_alerts[k].append(downtime.start_entry)
+
         for l in service_alerts.itervalues():
-            # not in order due to dev independents
+            # not in order due to dev independents and downtimes
             l.sort(key=operator.attrgetter('date'))
         return service_alerts
 
@@ -172,9 +213,10 @@ class raw_service_alert_manager(models.Manager):
         else:
             queryset = obj_man.filter(Q(date__gte=time) & Q(device_independent=False))
 
-        if additional_filter is not None:
-            queryset = queryset.filter(additional_filter)
+        apply_additional_filter =\
+            lambda x: x if additional_filter is None else x.filter(additional_filter)
 
+        queryset = apply_additional_filter(queryset)
         queryset = queryset.values(*group_by_fields)
 
         # only get these values and annotate with extreme date, then we get the each field-tuple with their extreme date
@@ -208,6 +250,37 @@ class raw_service_alert_manager(models.Manager):
             # so we do the last grouping by this key here manually
             if key not in last_service_alert_cache or comp(entry['extreme_date'], last_service_alert_cache[key][1]):
                 last_service_alert_cache[key] = relevant_entry, entry['extreme_date']
+
+        # if we are in a planned downtime, we have to return planned downtime independent of the actual state
+        if is_host:
+            downtime_queryset = apply_additional_filter(mon_icinga_log_raw_host_downtime_data.objects.all())
+            downtime_key = lambda entry: entry.device_id
+        else:
+            downtime_queryset = apply_additional_filter(mon_icinga_log_raw_service_downtime_data.objects.all())
+            downtime_key = lambda entry: (entry.device_id, entry.service_id, entry.service_info)
+
+        for downtime_entry_key in raw_service_alert_manager.preprocess_start_stop_data(downtime_queryset,
+                                                                                       downtime_key,
+                                                                                       'downtime_state',
+                                                                                       start_time=time,
+                                                                                       end_time=time).iterkeys():
+            # every entry here is in a downtime state exactly at time, we don't need to consider the downtime time span
+            if is_host:
+                downtime_entry = {
+                    'device_id': downtime_entry_key,
+                }
+            else:
+                downtime_entry = {
+                    'device_id': downtime_entry_key[0],
+                    'service_id': downtime_entry_key[1],
+                    'service_info': downtime_entry_key[2],
+                }
+            downtime_entry['date'] = time
+            downtime_entry['msg'] = u"Planned downtime"
+            downtime_entry['state'] = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+            downtime_entry['state_type'] = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+
+            last_service_alert_cache[downtime_entry_key] = downtime_entry, time
 
         # NOTE: apparently, in django, if you use group_by, you can only select the elements you group_by and
         #       the annotated elements therefore we retrieve the extra parameters manually
@@ -247,6 +320,34 @@ class raw_service_alert_manager(models.Manager):
         service_name = service.name if service else u""
         return u"{},{}".format(service_name, service_info if service_info else u"")
 
+    @staticmethod
+    def preprocess_start_stop_data(queryset, key_fun, field_name, start_time, end_time):
+        """
+        for models which have entries for start and stop events,
+        create a dict which contains (start, stop) tuples
+        extract entries for this timespan (the rest would be the same for every timespan)
+        @param start_time: discard events which have finished before start_time
+        @param end_time: discard events which start after end_time
+        """
+        StartStopDuration = collections.namedtuple("StartStopDuration", ['start', 'end', 'start_entry'])
+        cache = defaultdict(lambda: [])  # this is sorted by time
+        aux_start_times = {}
+        for entry in queryset:
+            key = key_fun(entry)
+            if key not in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.START:
+                # proper start
+                if entry.date <= end_time:  # discard events which start after we have ended
+                    aux_start_times[key] = entry
+            if key in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.STOP:
+                # a proper stop
+                start_entry = aux_start_times.pop(key)
+                if entry.date >= start_time:  # discard elements which have already finished when we haven't started yet
+                    cache[key].append(StartStopDuration(start_entry.date, entry.date, start_entry))
+        # handles events which haven't stopped yet
+        for key, start_entry in aux_start_times.iteritems():
+            cache[key].append(StartStopDuration(start_entry.date, django.utils.timezone.now(), start_entry))
+        return dict(cache)  # make into regular dict
+
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_OK = "O"
@@ -254,11 +355,13 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_UNKNOWN = "U"
     STATE_CRITICAL = "C"
     STATE_UNDETERMINED = mon_icinga_log_raw_base.STATE_UNDETERMINED
+    STATE_PLANNED_DOWN = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
     STATE_CHOICES = [(STATE_OK, "OK"),
                      (STATE_WARNING, "WARNING"),
                      (STATE_UNKNOWN, "UNKNOWN"),
                      (STATE_CRITICAL, "CRITICAL"),
-                     (STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
+                     (STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG),
+                     (STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     objects = raw_service_alert_manager()
@@ -335,14 +438,32 @@ class mon_icinga_log_raw_service_downtime_data(mon_icinga_log_raw_base):
     service = models.ForeignKey(mon_check_command, null=True)
     service_info = models.TextField(blank=True, null=True)
 
-    state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
+    downtime_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
+
+    # interface compatibility with regular alerts
+    @property
+    def state(self):
+        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+
+    @property
+    def state_type(self):
+        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
 
     class CSW_Meta:
         backup = False
 
 
 class mon_icinga_log_raw_host_downtime_data(mon_icinga_log_raw_base):
-    state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
+    downtime_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
+
+    # interface compatibility with regular alerts
+    @property
+    def state(self):
+        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+
+    @property
+    def state_type(self):
+        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
 
     class CSW_Meta:
         backup = False
@@ -402,15 +523,12 @@ class mon_icinga_log_aggregated_timespan(models.Model):
 
 class mon_icinga_log_aggregated_host_data(models.Model):
     STATE_FLAPPING = "FL"  # this is also a state type
-    STATE_PLANNED_DOWN = "PD"
-    STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING"),
-                                                                        (STATE_PLANNED_DOWN, "PLANNED DOWNTIME")]
+    STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
 
-    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING),
-                                                         (STATE_PLANNED_DOWN, STATE_PLANNED_DOWN)]
+    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
 
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
@@ -556,13 +674,10 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
 
 
 class mon_icinga_log_aggregated_service_data(models.Model):
-
     objects = mon_icinga_log_aggregated_service_data_manager()
 
     STATE_FLAPPING = "FL"
-    STATE_PLANNED_DOWN = "PD"
-    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING"),
-                                                                           (STATE_PLANNED_DOWN, "PLANNED DOWNTIME")]
+    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
@@ -570,8 +685,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     idx = models.AutoField(primary_key=True)
     timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)
 
-    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING),
-                                                         (STATE_PLANNED_DOWN, STATE_PLANNED_DOWN)]
+    STATE_TYPES = mon_icinga_log_raw_service_alert_data.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
 
     device = models.ForeignKey("backbone.device")
     state_type = models.CharField(max_length=2, choices=STATE_TYPES)

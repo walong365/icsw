@@ -19,6 +19,7 @@
 #
 import django
 from django.conf import settings
+from initat.cluster.backbone.models.status_history import raw_service_alert_manager
 
 import logging_tools
 import operator
@@ -40,7 +41,8 @@ from initat.cluster.backbone.models import mon_check_command,\
     mon_icinga_log_raw_service_notification_data,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
     mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, duration
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, duration, \
+    mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.middleware import show_database_calls
 
@@ -204,36 +206,20 @@ class icinga_log_aggregator(object):
             self.get_active_hosts_and_services_in_timespan_queryset(start_time, end_time)
 
         # get flappings of timespan (can't use db in inner loop)
-        def preprocess_start_stop_data(queryset, key_fun, field_name):
-            # for models which have entries for start and stop events,
-            # create a dict which contains (start, stop) tuples
-            cache = defaultdict(lambda: [])  # this is sorted by time
-            aux_start_times = {}
-            for entry in queryset:
-                key = key_fun(entry)
-                if key not in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.START:
-                    # proper start
-                    if entry.date <= end_time:  # discard newer events
-                        aux_start_times[key] = entry.date
-                if key in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.STOP:
-                    # a proper stop
-                    start_date = aux_start_times.pop(key)
-                    if entry.date >= start_time:  # only use events which are in this timespan
-                        cache[key].append((start_date, entry.date))
-            # handles events which haven't stopped yet
-            for key, start_date in aux_start_times.iteritems():
-                cache[key].append((start_date, django.utils.timezone.now()))
-            return dict(cache)  # make into regular dict
-
         # TODO: possibly extract keys in cache
+        preprocess_start_stop_data = raw_service_alert_manager.preprocess_start_stop_data
         service_flapping_cache = preprocess_start_stop_data(self._service_flapping_cache,
                                                             lambda flap_data: (flap_data.device_id,
                                                                                flap_data.service_id,
                                                                                flap_data.service_info),
-                                                            'flapping_state')
+                                                            'flapping_state',
+                                                            start_time,
+                                                            end_time)
         host_flapping_cache = preprocess_start_stop_data(self._host_flapping_cache,
                                                          lambda flap_data: flap_data.device_id,
-                                                         'flapping_state')
+                                                         'flapping_state',
+                                                         start_time,
+                                                         end_time)
 
         if next_last_service_alert_cache:
             last_service_alert_cache = next_last_service_alert_cache
@@ -295,8 +281,8 @@ class icinga_log_aggregator(object):
         def calc_flapping_ratio(cache, key):
             flapping_seconds = 0.0
             for flapping in cache.get(key, []):
-                flap_start = max(flapping[0], start_time)
-                flap_end = min(flapping[1], end_time)
+                flap_start = max(flapping.start, start_time)
+                flap_end = min(flapping.end, end_time)
                 flapping_seconds += (flap_end - flap_start).total_seconds()
             return flapping_seconds / timespan_seconds
 
@@ -316,9 +302,9 @@ class icinga_log_aggregator(object):
                     state_description_before =\
                         mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
+                serv_key = (device_id, service_id, service_info)
                 weighted_states, last_state_description =\
-                    calc_weighted_states(service_alerts[(device_id, service_id, service_info)],
-                                         state_description_before)
+                    calc_weighted_states(service_alerts[serv_key], state_description_before)
                 next_last_service_alert_cache[(device_id, service_id, service_info)] = last_state_description
 
                 flapping_ratio = calc_flapping_ratio(service_flapping_cache, (device_id, service_id, service_info))
@@ -360,7 +346,7 @@ class icinga_log_aggregator(object):
                         mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
                 weighted_states, last_state_description =\
-                    calc_weighted_states(host_alerts[device_id], state_description_before)  # @UnusedVariable
+                    calc_weighted_states(host_alerts[device_id], state_description_before)
                 flapping_ratio = calc_flapping_ratio(host_flapping_cache, device_id)
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING,
