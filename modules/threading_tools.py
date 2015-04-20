@@ -615,13 +615,15 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
             _iter += 1
             try:
                 self.__com_socket.send_unicode("main", zmq.SNDMORE)  # @UndefinedVariable
-                self.__com_socket.send_pyobj({
-                    "pid": self.pid,
-                    "target": target,
-                    "type": list(args)[0],
-                    "args": list(args)[1:],
-                    "kwargs": kwargs
-                    })
+                self.__com_socket.send_pyobj(
+                    {
+                        "pid": self.pid,
+                        "target": target,
+                        "type": list(args)[0],
+                        "args": list(args)[1:],
+                        "kwargs": kwargs
+                    }
+                )
             except zmq.error.ZMQError:
                 logging_tools.my_syslog("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter))
                 if _iter > 10:
@@ -646,8 +648,22 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.register_poller(com_socket, zmq.POLLIN, self._handle_message)  # @UndefinedVariable
         com_socket.connect(self.__main_queue_name)
         self.__com_socket = com_socket
+
+    def _send_start_message(self):
         # flush pool
         self.send_pool_message("process_start")
+
+    def _send_module_list(self):
+        _keys = sys.modules.keys()
+        _files = set()
+        for _key in _keys:
+            _value = sys.modules[_key]
+            if hasattr(_value, "__file__"):
+                _file = _value.__file__
+                if _file.endswith(".pyc") or _file.endswith(".pyo"):
+                    _file = _file[:-1]
+                _files.add(_file)
+        self.send_pool_message("used_module_list", _files)
 
     def _close_sockets(self):
         # wait for the last commands to settle, commented out by ALN on 20.7.2014
@@ -707,6 +723,8 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         threading.currentThread().setName(self.name)
         self._install_signal_handlers()
         self._init_sockets()
+        self._send_start_message()
+        self._send_module_list()
         # redirect stdout / stderr ?
         if self.stdout_target:
             self.orig_stdout = sys.stdout
@@ -883,6 +901,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         # internal exit-function for terminating processes
         self.register_func("process_exit", self._process_exit_zmq)
         self.register_func("process_start", self._process_start_zmq)
+        self.register_func("used_module_list", self._used_module_list)
         self.register_func("process_exception", self._process_exception)
         # flags for exiting / loop-control
         self.__flags = {
@@ -1134,6 +1153,10 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         self.log("process {} ({:d}) started".format(t_name, t_pid))
         self._flush_process_buffers(t_name)
         self.process_start(t_name, t_pid)
+
+    def _used_module_list(self, t_name, t_pid, *args):
+        _list = args[0]
+        # print t_name, t_pid, len(_list)
 
     def _process_exception(self, t_name, t_pid, *args):
         self.log(

@@ -82,7 +82,7 @@ stage1_file_dict = {
         "readlink", "ethtool", "cp", "mount", "cat", "ls", "mount", "mkdir", "find", "head",
         "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
         "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
-        "lsmod", "depmod", "insmod", "mkfs.ext2", "date",
+        "lsmod", "depmod", "insmod", "mkfs.ext2", "date", "xml",
         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
         "killall", "seq", "hoststatus_zmq", "chown", "ldconfig", "which",
         "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee",
@@ -110,7 +110,7 @@ stage2_file_dict = {
         "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
         "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
-        "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm", "which",
+        "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm", "which", "xml",
         "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkswap",
         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
         ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
@@ -159,17 +159,6 @@ def make_debian_fixes(in_dict):
         if "vi" in val:
             val.remove("vi")
             val.append("vim.tiny")
-
-
-def get_size_str(b_size):
-    if b_size > 1024 * 1024 * 1024:
-        return "%6.2f GB" % (float(b_size) / (1024 * 1024 * 1024))
-    elif b_size > 1024 * 1024:
-        return "%6.2f MB" % (float(b_size) / (1024 * 1024))
-    elif b_size > 1024:
-        return "%6.2f kB" % (float(b_size) / (1024))
-    else:
-        return "%6d  B" % (b_size)
 
 
 def norm_path(in_path):
@@ -559,7 +548,15 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             if verbose > 1:
                 f_size = os.stat(file_name)[stat.ST_SIZE]
                 f_free = os.statvfs(temp_dir)[statvfs.F_BFREE] * os.statvfs(temp_dir)[statvfs.F_BSIZE]
-                print "{:4d} of {:4d}, {}, {} free, file {}".format(act_file, num_files, get_size_str(f_size), get_size_str(f_free), file_name)
+                print(
+                    "{:4d} of {:4d}, {}, {} free, file {}".format(
+                        act_file,
+                        num_files,
+                        logging_tools.get_size_str(f_size),
+                        logging_tools.get_size_str(f_free),
+                        file_name,
+                    )
+                )
             shutil.copy2(file_name, eliminate_symlinks(temp_dir, dest_file))
             file_list.append(file_name)
             if os.path.isfile(dest_file) and not os.path.islink(dest_file):
@@ -611,13 +608,16 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                     l_size = os.stat(lib_name)[stat.ST_SIZE]
                     free_stat = os.statvfs(temp_dir)
                     l_free = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
-                    print "{:4d} of {:4d}, {}, {} free, lib {}{}".format(
-                        act_lib,
-                        num_libs,
-                        get_size_str(l_size),
-                        get_size_str(l_free),
-                        lib_name,
-                        " (map to {})".format(target_lib_name) if target_lib_name != lib_name else "")
+                    print(
+                        "{:4d} of {:4d}, {}, {} free, lib {}{}".format(
+                            act_lib,
+                            num_libs,
+                            logging_tools.get_size_str(l_size),
+                            logging_tools.get_size_str(l_free),
+                            lib_name,
+                            " (map to {})".format(target_lib_name) if target_lib_name != lib_name else ""
+                        )
+                    )
                 file_list.append(lib_name)
                 shutil.copy2(lib_name, eliminate_symlinks(temp_dir, dest_file))
                 if os.path.isfile(dest_file) and not os.path.islink(dest_file):
@@ -631,7 +631,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         _strip_stat, _strip_out = commands.getstatusoutput("strip -s {}".format(" ".join(strip_files)))
         free_stat = os.statvfs(temp_dir)
         free_after = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
-        print "size saved by stripping: {}".format(get_size_str(free_after - free_before))
+        print(
+            "size saved by stripping: {}".format(
+                logging_tools.get_size_str(free_after - free_before)
+            )
+        )
     # default shell
     def_shell = {
         1: "/bin/bash",
@@ -1651,9 +1655,13 @@ def main_normal():
             s1_file = "%s.gz" % (s1_file)
             n_s1_size = os.stat(s1_file)[stat.ST_SIZE]
             e_time = time.time()
-            print "from %s to %s in %s" % (get_size_str(o_s1_size),
-                                           get_size_str(n_s1_size),
-                                           logging_tools.get_diff_time_str(e_time - s_time))
+            print(
+                "from {} to {} in {}".format(
+                    logging_tools.get_size_str(o_s1_size),
+                    logging_tools.get_size_str(n_s1_size),
+                    logging_tools.get_diff_time_str(e_time - s_time)
+                )
+            )
         print "Compressing stage2 ............. ",
         s_time = time.time()
         o_s2_size = 0
@@ -1665,9 +1673,13 @@ def main_normal():
         commands.getstatusoutput("tar -cpjf %s -C %s ." % (stage2_file, stage_targ_dirs[1]))
         n_s2_size = os.stat(stage2_file)[stat.ST_SIZE]
         e_time = time.time()
-        print "from %s to %s in %s" % (get_size_str(o_s2_size),
-                                       get_size_str(n_s2_size),
-                                       logging_tools.get_diff_time_str(e_time - s_time))
+        print(
+            "from {} to {} in {}".format(
+                logging_tools.get_size_str(o_s2_size),
+                logging_tools.get_size_str(n_s2_size),
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
         print "Compressing stageloc ........... ",
         s_time = time.time()
         o_sl_size = os.stat(stageloc_file)[stat.ST_SIZE]
@@ -1677,9 +1689,13 @@ def main_normal():
         stageloc_file = "%s.gz" % (stageloc_file)
         n_sl_size = os.stat(stageloc_file)[stat.ST_SIZE]
         e_time = time.time()
-        print "from %s to %s in %s" % (get_size_str(o_sl_size),
-                                       get_size_str(n_sl_size),
-                                       logging_tools.get_diff_time_str(e_time - s_time))
+        print(
+            "from {} to {} in {}".format(
+                logging_tools.get_size_str(o_sl_size),
+                logging_tools.get_size_str(n_sl_size),
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
     if my_kernel:
         for stage1_flav in ["lo", "cpio", "cramfs"]:
             setattr(my_kernel, "stage1_%s_present" % (stage1_flav), True)
