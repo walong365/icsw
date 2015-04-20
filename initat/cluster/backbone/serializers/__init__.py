@@ -322,8 +322,8 @@ class device_serializer_boot(device_serializer):
     uptime_valid = serializers.Field(source="uptime_valid")
     network = serializers.Field(source="network")
     net_state = serializers.Field(source="net_state")
-    new_kernel_version = serializers.Field(source="new_kernel_version")
-    new_image_version = serializers.Field(source="new_image_version")
+    act_image = serializers.Field(source="get_act_image")
+    act_kernel = serializers.Field(source="get_act_kernel")
     master_connections = cd_connection_serializer_boot(source="get_master_cons", many=True)
     slave_connections = cd_connection_serializer_boot(source="get_slave_cons", many=True)
 
@@ -345,9 +345,9 @@ class device_serializer_boot(device_serializer):
             # partition
             "act_partition_table", "partition_table",
             # image
-            "act_image", "new_image", "imageversion", "new_image_version",
+            "new_image", "act_image",
             # kernel
-            "act_kernel", "new_kernel", "stage1_flavour", "kernel_append", "new_kernel_version", "kernelversion",
+            "new_kernel", "act_kernel", "stage1_flavour", "kernel_append",
             # boot device
             "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice", "bootnetdevice",
             # connections

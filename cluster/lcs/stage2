@@ -464,61 +464,48 @@ function err_exit() {
 
 function install_kernel() {
     shift;
-    # get partition
+    # get kernel
     echo -e "Requesting kernel"
     conf_str=`get_conf_str "get_kernel"`
     num=`echo $conf_str| cut -d " " -f 1`
-    kernel_server=`echo $conf_str | cut -d " " -f 3`
-    full_newkernel=`echo $conf_str | cut -d " " -f 4`
-    new_version=`echo $conf_str | cut -d " " -f 5`
-    new_release=`echo $conf_str | cut -d " " -f 6`
+    inst=`echo $conf_str | cut -d " " -f 3`
+    kernel_server=`echo $conf_str | cut -d " " -f 4`
+    full_newkernel=`echo $conf_str | cut -d " " -f 5`
+    new_version=`echo $conf_str | cut -d " " -f 6`
+    new_release=`echo $conf_str | cut -d " " -f 7`
     newkernel_dir=$(dirname $full_newkernel)
     newkernel=$(basename $full_newkernel)
-    send_info "got kernel $newkernel (dir $newkernel_dir, version $new_version, release $new_release) after $num request(s)"
+    send_info "got kernel $newkernel (inst=$inst, dir $newkernel_dir, version $new_version, release $new_release) after $num request(s)"
     mkdir /kernel
     mount_it "kernel" ${kernel_server}:${newkernel_dir}/${newkernel} /kernel "${RO_MOUNTOPTS}"
     newkversion="$new_version.$new_release"
-    if [ -s /conf/.kernel ] ; then
-        oldkernel=`cat /conf/.kernel`
-    else
-        oldkernel="?"
-    fi
-    oldkversion="?"
-    if [ -s /conf/.kversion ] ; then
-        oldkversion=`cat /conf/.kversion`
-    fi
-        #echo $oldkernel"*"$newkernel"*"$oldkversion"*"$newkversion
-    if [ "$oldkernel" = "$newkernel" -a "$oldkversion" = "$newkversion" ] ; then
-        inst=0
-    else
-        inst=1
-    fi
     gen_initrd=0
-    #echo $oldkernel $newkernel $olkversion $newkversion $inst
-    if [ $inst -eq 1 ] ; then
+    if [ "$inst" == "1" ] ; then
+        # previous kernel
         gen_initrd=1
         initrd_cause="new kernel"
-        get_conf_str "set_kernel $newkernel $newkversion"
         set_hoststat "${INSTALL_KERNEL} $newkernel ($newkversion)"
-        [ -s /kernel/.version ] && cp -a /kernel/.version /$basedir/.kversion
+        echo "KERNEL_NAME=${newkernel}" > /$basedir/.icswinfo/kernelinfo
+        echo "KERNEL_VERSION=${newkversion}" >> /$basedir/.icswinfo/kernelinfo
         [ -s /kernel/.config ] && cp -a /kernel/.config /$basedir/boot/.config
-        [ -s /kernel/.comment ] && cp -a /kernel/.comment /$basedir/boot/.comment
-        echo -e "Installing kernel $newkernel , version $newkversion"
-        echo $newkernel > /conf/.kernel
-        echo $newkversion > /conf/.kversion
+        [ -s /kernel/.comment ] && cp -a /kernel/.comment /$basedir/.icswinfo/.comment
+        echo -e "Installing kernel ${newkernel}, version ${newkversion}"
         cp -a /kernel/System.map /$basedir/boot/System.map
         cp -a /kernel/bzImage /$basedir/boot/vmlinuz
-        # keep modules in updates
-        # only delete files from previous modules
-        rm -rf /$basedir/lib/modules/*
+        if [ -f /$basedir/.icswinfo/modules.tar.bz2 ] ; then
+            # only delete files from previous modules
+            echo "removing modules from previous install ..."
+            rm -f $(tar tjf /$basedir/.icswinfo/modules.tar.bz2 | grep -v "/$" | sed sX^X/${basedir}/Xg )
+            rmdir $(tar tjf /$basedir/.icswinfo/modules.tar.bz2 | grep "/$" | sed sX^X/${basedir}/Xg | sort -r )
+            echo " ... done"
+        fi
         if [ -f /kernel/modules.tar.bz2 ] ; then
+            # create a local copy
+            cp -a /kernel/modules.tar.bz2 /$basedir/.icswinfo/
             tar xjf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
         else
             echo -e "${YELLOW}No modules.tar.bz2 file found for actual kernel${OFF}"
         fi
-    else
-        echo $oldkernel > /conf/.kernel
-        echo $oldkversion > /conf/.kversion
     fi
     [ -h /$basedir/boot/initrd ]  && rm -f  /$basedir/boot/initrd
     [ ! -f /$basedir/boot/initrd ] && { gen_initrd=1 ; initrd_cause="no initrd found"; }
@@ -539,6 +526,7 @@ function install_kernel() {
     #    chroot /$basedir mkinitrd -i initrd -k vmlinuz -m "$*"
     #fi
     fi
+    get_conf_str "new_kernel_ok"
     send_info "done. umounting kernel $newkernel"
     umount /kernel
     rmdir /kernel
@@ -759,7 +747,7 @@ function mount_it() {
 #python-init
 
 echo
-echo -e "\n${GREEN}${BOLD}init.at ClusterNetInstall stage2 (c) 2001-2013 init.at (lang-nevyjel@init.at)${OFF}"
+echo -e "\n${GREEN}${BOLD}init.at ClusterNetInstall stage2 (c) 2001-2015 init.at (lang-nevyjel@init.at)${OFF}"
 echo "/dev/ram1 / ext2 rw 0 0" > /etc/mtab
 
 echo -e "mounting /proc and /sys for stage2"
@@ -808,7 +796,7 @@ elif [ -x /sbin/rsyslogd ] ; then
     echo -e "\$ModLoad imudp.so" >> /etc/rsyslog.conf
     echo -e "*.*\t@logserver:514\n" >> /etc/rsyslog.conf
     echo -e "starting rsyslogd"
-    /sbin/rsyslogd -c 5 -f /etc/rsyslog.conf &
+    /sbin/rsyslogd -f /etc/rsyslog.conf &
 else
     SYSLOG_BIN=0
 fi
@@ -816,8 +804,8 @@ fi
 echo -e "starting klogd"
 /sbin/klogd -c 1 &
 
-# say hello to the config-server
-get_conf_str "hello"
+# say hello to the config-server (create boot entry)
+get_conf_str "create_boot_entry"
 
 # build pci id str for autodetection
 pci_str=""
@@ -875,7 +863,7 @@ else
     config_dir=`echo $conf_str | cut -d " " -f 9`
 fi
 
-mkdir /conf
+[ ! -d /conf ] && mkdir /conf
 set_hoststat ${MOUNT_STRING}
 mount_it "config" $config_server:/$config_dir/$device_name /conf "${RW_MOUNTOPTS}"
 
@@ -1105,30 +1093,18 @@ elif [ "$do_mount" = "1" ] ; then
         set_hoststat "Requesting image"
         conf_str=`get_conf_str "get_image"`
         num=`echo $conf_str| cut -d " " -f 1`
-        if [ $(echo $conf_str | wc -w) -eq 6 ] ; then
-        # old version
-            image_server=$motherserver
-            full_image=`echo $conf_str | cut -d " " -f 3`
-            image=$(basename $full_image)
-            image_dir=$(dirname $full_image)
-            image_version=`echo $conf_str | cut -d " " -f 4`
-            image_release=`echo $conf_str | cut -d " " -f 5`
-            image_builds=`echo $conf_str | cut -d " " -f 6`
-        else
-        # new version with image_server_ip
-            image_server=`echo $conf_str | cut -d " " -f 3`
-            full_image=`echo $conf_str | cut -d " " -f 4`
-            image=$(basename $full_image)
-            image_dir=$(dirname $full_image)
-            image_version=`echo $conf_str | cut -d " " -f 5`
-            image_release=`echo $conf_str | cut -d " " -f 6`
-            image_builds=`echo $conf_str | cut -d " " -f 7`
-        fi
+        image_server=`echo $conf_str | cut -d " " -f 3`
+        full_image=`echo $conf_str | cut -d " " -f 4`
+        image=$(basename $full_image)
+        image_dir=$(dirname $full_image)
+        image_version=`echo $conf_str | cut -d " " -f 5`
+        image_release=`echo $conf_str | cut -d " " -f 6`
+        image_builds=`echo $conf_str | cut -d " " -f 7`
         send_info "got image $image after $num request(s)"
         date
         echo -ne "Installing image $image (dir $image_dir, ${image_version}.${image_release}, ${image_builds} builds)"
         if [ "$rsync_flag" = "0" ] ; then
-            echo " via tar.gz/bz2"
+            echo " via tar.gz/bz2/xz"
             
             set_hoststat ${INS_MESG}
             mount_it "image" $image_server:$image_dir/$image /images "${RO_MOUNTOPTS}"
@@ -1186,14 +1162,16 @@ elif [ "$do_mount" = "1" ] ; then
             echo -e "starting rsync from server $motherserver, image is $image"
             rsync ${rsync_flags} --exclude-from=/tmp/.rsync_exclude --stats ${motherserver}::${image} /${basedir} || err_exit "doing rsync-call"
         fi
+        get_conf_str "new_image_ok"
 # check for global /lost+found dir
         [ ! -d /${basedir}/lost+found ] && mkdir /${basedir}/lost+found
+        [ ! -d /${basedir}/.icswinfo ] && mkdir /${basedir}/.icswinfo
 # image version
         echo -e "Renewing image info."
         echo "${image}" > /conf/.imagename
         echo "${image_version}.${image_release}" > /conf/.version
-        echo "IMAGE_NAME=${image}" > /${basedir}/.imageinfo
-        echo "IMAGE_VERSION=${image_version}.${image_release}" >> /${basedir}/.imageinfo
+        echo "IMAGE_NAME=${image}" > /${basedir}/.icswinfo/imageinfo
+        echo "IMAGE_VERSION=${image_version}.${image_release}" >> /${basedir}/.icswinfo/imageinfo
 # fixing fstab
         rm -f /$basedir/etc/fstab /$basedir/etc/mtab
         cat /conf/pinfo/fstab > /$basedir/etc/fstab
@@ -1249,8 +1227,8 @@ elif [ "$do_mount" = "1" ] ; then
     fi
 # copy config
     if [ "$we_are_clean" = "0" ] ; then
-# copy location of source config dir
-        echo ${config_dir} > /$basedir/.config_dir
+        # copy location of source config dir
+        echo ${config_dir} > /$basedir/.icswinfo/config_dir
         copy_config ${prod_net} "$do_install"
         cleanup_udev
         make_nsswitch_local

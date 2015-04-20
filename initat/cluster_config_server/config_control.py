@@ -20,7 +20,7 @@
 """ cluster-config-server, config control """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device, partition, kernel, image
+from initat.cluster.backbone.models import device, partition, kernel, image, DeviceBootHistory
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.simple_request import simple_request, var_cache
 import config_tools
@@ -38,19 +38,22 @@ class config_control(object):
         self.__log_template = None
         self.device = cur_dev
         self.create_logger()
+        self.dbh = None
         config_control.update_router()
         self.__com_dict = {
             "get_kernel": self._handle_get_kernel,
             "get_kernel_name": self._handle_get_kernel_name,
             "get_syslog_server": self._handle_get_syslog_server,
             "get_package_server": self._handle_get_package_server,
-            "hello": self._handle_hello,
+            "create_boot_entry": self._handle_create_boot_entry,
             "get_init_mods": self._handle_get_init_mods,
             "get_autodetect_mods": self._handle_get_autodetect_mods,
             "locate_module": self._handle_locate_module,
             "get_target_sn": self._handle_get_target_sn,
             "get_partition": self._handle_get_partition,
             "get_image": self._handle_get_image,
+            "new_image_ok": self._handle_new_image_ok,
+            "new_kernel_ok": self._handle_new_kernel_ok,
             "create_config": self._handle_create_config,
             "ack_config": self._handle_ack_config,
             "get_add_group": self._handle_get_add_group,
@@ -61,7 +64,6 @@ class config_control(object):
             "get_stop_scripts": self._handle_get_stop_scripts,
             "get_root_passwd": self._handle_get_root_passwd,
             "get_additional_packages": self._handle_get_additional_packages,
-            "set_kernel": self._handle_set_kernel,
             "modify_bootloader": self._handle_modify_bootloader,
         }
 
@@ -137,22 +139,22 @@ class config_control(object):
 
     # command snippets
     def _handle_get_add_user(self, s_req):
-        return "ok %s" % (" ".join(s_req._get_config_str_vars("ADD_USER")))
+        return "ok {}".format(" ".join(s_req._get_config_str_vars("ADD_USER")))
 
     def _handle_get_add_group(self, s_req):
-        return "ok %s" % (" ".join(s_req._get_config_str_vars("ADD_GROUP")))
+        return "ok {}".format(" ".join(s_req._get_config_str_vars("ADD_GROUP")))
 
     def _handle_get_del_user(self, s_req):
-        return "ok %s" % (" ".join(s_req._get_config_str_vars("DEL_USER")))
+        return "ok {}".format(" ".join(s_req._get_config_str_vars("DEL_USER")))
 
     def _handle_get_del_group(self, s_req):
-        return "ok %s" % (" ".join(s_req._get_config_str_vars("DEL_GROUP")))
+        return "ok {}".format(" ".join(s_req._get_config_str_vars("DEL_GROUP")))
 
     def _handle_get_start_scripts(self, s_req):
-        return "ok %s" % (" ".join(s_req._get_config_str_vars("START_SCRIPTS")))
+        return "ok {}".format(" ".join(s_req._get_config_str_vars("START_SCRIPTS")))
 
     def _handle_get_stop_scripts(self, s_req):
-        return "ok %s" % (" ".join(s_req._get_config_str_vars("STOP_SCRIPTS")))
+        return "ok {}".format(" ".join(s_req._get_config_str_vars("STOP_SCRIPTS")))
 
     def _handle_get_root_passwd(self, s_req):
         var_dict, _var_info = var_cache(config_control.cdg).get_vars(self.device)
@@ -162,8 +164,8 @@ class config_control(object):
             r_pwd, pwd_src = (crypt.crypt(var_dict["ROOT_PASSWORD"], self.device.name), "var_dict")
         else:
             r_pwd, pwd_src = (crypt.crypt("init4u", self.device.name), "default")
-        self.log("got root password from %s" % (pwd_src))
-        return "ok %s" % (r_pwd)
+        self.log("got root password from {}".format(pwd_src))
+        return "ok {}".format(r_pwd)
 
     def _handle_get_additional_packages(self, s_req):
         return "ok {}".format(" ".join(s_req._get_config_str_vars("ADDITIONAL_PACKAGES")))
@@ -192,7 +194,22 @@ class config_control(object):
             return "ok started building config"
 
     def _handle_modify_bootloader(self, s_req):
-        return "ok %s" % ("yes" if self.device.act_partition_table.modify_bootloader else "no")
+        return "ok {}".format("yes" if self.device.act_partition_table.modify_bootloader else "no")
+
+    def _ensure_dbh(self):
+        if not self.dbh:
+            self.log("creating new DeviceBootHistory entry", logging_tools.LOG_LEVEL_WARN)
+            self.dbh = self.device.create_boot_history()
+
+    def _handle_new_image_ok(self, s_req):
+        self._ensure_dbh()
+        _count = len([_history.ok() for _history in self.dbh.imagedevicehistory_set.all()])
+        return "ok set ok-state for {}".format(logging_tools.get_plural("image history object", _count))
+
+    def _handle_new_kernel_ok(self, s_req):
+        self._ensure_dbh()
+        _count = len([_history.ok() for _history in self.dbh.kerneldevicehistory_set.all()])
+        return "ok set ok-state for {}".format(logging_tools.get_plural("kernel history object", _count))
 
     def _handle_get_image(self, s_req):
         cur_img = self.device.new_image
@@ -204,6 +221,7 @@ class config_control(object):
             else:
                 vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "image_server"])
                 if vs_struct:
+                    self._ensure_dbh()
                     if vs_struct.config_name.startswith("mother"):
                         # is mother_server
                         dir_key = "TFTP_DIR"
@@ -212,10 +230,10 @@ class config_control(object):
                         dir_key = "EXPORT"
                     vs_struct.fetch_config_vars()
                     if dir_key in vs_struct:
-                        # save image versoin info
-                        self.device.imageversion = "{}.{}".format(cur_img.version, cur_img.release)
-                        self.device.save(update_fields=["imageversion"])
-                        return "ok %s %s %s %s %s" % (
+                        self._ensure_dbh()
+                        # save image version info
+                        cur_img.create_history_entry(self.dbh)
+                        return "ok {} {} {} {} {}".format(
                             s_req.server_ip,
                             os.path.join(vs_struct[dir_key], "images", cur_img.name),
                             cur_img.version,
@@ -276,13 +294,13 @@ class config_control(object):
                 self.log("dependencies: %20s    %s" % ("", value))
             # walk the kernel dir
             # mod_list = ["%s.o" % (key) for key in mod_dict.keys()] + ["%s.ko" % (key) for key in mod_dict.keys()]
-            return "ok %s" % (" ".join([mod_name[len(global_config["TFTP_DIR"]):] for mod_name in dep_h.module_dict.itervalues()]))
+            return "ok {}".format(" ".join([mod_name[len(global_config["TFTP_DIR"]):] for mod_name in dep_h.module_dict.itervalues()]))
         else:
             return "error no kernel set"
 
     def _handle_get_init_mods(self, s_req):
         db_mod_list = s_req._get_config_str_vars("INIT_MODS")
-        return "ok %s" % (" ".join(db_mod_list))
+        return "ok {}".format(" ".join(db_mod_list))
 
     def _handle_get_autodetect_mods(self, s_req):
         low_pri_mods = s_req._get_config_str_vars("LOW_PRIORITY_MODS")
@@ -359,7 +377,9 @@ class config_control(object):
         else:
             return "error no kernel set"
 
-    def _handle_hello(self, s_req):
+    def _handle_create_boot_entry(self, s_req):
+        self.log("creating new DeviceBootHistory entry")
+        self.dbh = DeviceBootHistory.objects.create(device=self.device)
         return s_req.create_config_dir()
 
     def _handle_get_partition(self, s_req):
@@ -394,8 +414,28 @@ class config_control(object):
                     # is tftpboot_export
                     dir_key = "EXPORT"
                 if dir_key in vs_struct:
+                    self._ensure_dbh()
                     kernel_source_path = os.path.join(vs_struct[dir_key], "kernels")
-                    return "ok {} {}/{} {} {}".format(
+                    inst = 0
+                    if self.device.kerneldevicehistory_set.all().count() == 0:
+                        prev_kernel = None
+                        self.log("no previous kernel installed, forcing install")
+                        inst = 1
+                    else:
+                        prev_kernel = self.device.kerneldevicehistory_set.all()[0]
+                        if prev_kernel.kernel_id != dev_kernel.pk:
+                            self.log("kernel changed, forcing install")
+                            inst = 1
+                        elif prev_kernel.full_version != dev_kernel.full_version:
+                            self.log("kernel version changed, forcing install")
+                            inst = 1
+                        elif self.dbh.imagedevicehistory_set.all().count():
+                            self.log("new image was installed, forcing install")
+                            inst = 1
+                    if inst:
+                        dev_kernel.create_history_entry(self.dbh)
+                    return "ok {:d} {} {}/{} {} {}".format(
+                        inst,
                         s_req.server_ip,
                         kernel_source_path,
                         dev_kernel.name,
@@ -421,14 +461,6 @@ class config_control(object):
                 )
         else:
             return "error no kernel set"
-
-    def _handle_set_kernel(self, s_req):
-        # maybe we can do something better here
-        _com, _k_name, _k_vers = s_req.node_text.split()
-        self.device.act_kernel = kernel.objects.get(Q(name=_k_name))
-        self.device.kernelversion = _k_vers
-        self.device.save(update_fields=["act_kernel", "kernelversion"])
-        return "ok set kernel and version"
 
     def close(self):
         if self.__log_template is not None:
@@ -475,7 +507,7 @@ class config_control(object):
 
     @staticmethod
     def cc_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        config_control.srv_process.log("[cc] %s" % (what), log_level)
+        config_control.srv_process.log("[cc] {}".format(what), log_level)
 
     @staticmethod
     def has_client(search_spec):
@@ -494,7 +526,7 @@ class config_control(object):
             config_control.__cc_dict[new_dev.name] = new_c
             for key in ["pk", "name", "uuid"]:
                 config_control.__lut_dict[getattr(new_dev, key)] = new_c
-            config_control.cc_log("added client %s" % (unicode(new_dev)))
+            config_control.cc_log("added client {}".format(unicode(new_dev)))
         else:
             config_control.__cc_dict[new_dev.name].refresh()
         return config_control.__cc_dict[new_dev.name]

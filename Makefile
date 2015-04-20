@@ -24,6 +24,7 @@ CONFDIR_HM=${SYSCONF}/host-monitoring.d
 LOCALBIN=/usr/local/bin
 LOCALSBIN=/usr/local/sbin
 META_DIR=/var/lib/meta-server
+PIP_BIN=/opt/python-init/bin/pip
 MOTHER_DIR=${ICSW_SHARE}/mother
 NGINX_CONF=/etc/nginx/sites-enabled/localhost
 PREFIX_PYTHON3=/opt/python3-init
@@ -95,10 +96,7 @@ build:
 	${MAKE} -C c_progs_collectd
 	${MAKE} -C c_progs
 	${MAKE} -C c_clients
-	${PYTHON} ./cbc-tools_setup.py build
-	${PYTHON} ./meta-server_setup.py build
-	${PYTHON} ./host-monitoring_setup.py build
-	${PYTHON} ./python-modules-base_setup.py build
+	${PYTHON} ./setup.py build
 	tar --transform s:^.*/:: -xjf syslinux-${VERSION_SYSLINUX}.tar.bz2 \
 		syslinux-${VERSION_SYSLINUX}/bios/gpxe/gpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/lpxelinux.0 \
@@ -112,19 +110,19 @@ build:
 install:
 	# Copy the main source code
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/graphs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/extra_servers.d
-	cp -a initat ${DESTDIR}/${PYTHON_SITE}/
 	# setup.py
-	${PYTHON} ./cbc-tools_setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
-	${PYTHON} ./meta-server_setup.py install --root "${DESTDIR}"
-	${PYTHON} ./host-monitoring_setup.py install --root "${DESTDIR}"
-	${PYTHON} ./python-modules-base_setup.py install --root="${DESTDIR}"
+	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
+	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
+	# need package
+	${INSTALL} ${INSTALL_OPTS} modules/*.py ${DESTDIR}/${PYTHON_SITE}
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
 	# Makefiles
-	make -C c_progs DESTDIR=${DESTDIR} install
+	${MAKE} -C c_progs DESTDIR=${DESTDIR} install
 	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
@@ -133,38 +131,19 @@ install:
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} meta-server.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for file in package-server.py package-client.py; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for file in rms-server.py ; do \
-	    install ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	${INSTALL} ${INSTALL_OPTS} pis/cluster_post_install.sh ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/sge_post_install.sh ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/hpc_library_post_install.py ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_pre_start.sh ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_post_install.sh ${DESTDIR}${ICSW_PIS}
-	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} mother.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} logcheck-server.py ${DESTDIR}/${ICSW_SBIN}
-	install ${INSTALL_OPTS} md-config-server.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} discovery-server.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} cluster-server.py ${DESTDIR}/${ICSW_SBIN}
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
-	cp -a collectd-init.py  ${DESTDIR}${ICSW_SBIN} 
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
 	for script in start_node.sh stop_node.sh check_node.sh disable_node.sh; do \
 	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for name in cluster-config-server.py fetch_ssh_keys.py ; do \
+	for name in fetch_ssh_keys.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for script in host-monitoring-zmq.py tls_verify.py snmp-relay.py logscan/openvpn_scan.py ; do \
+	for script in tls_verify.py logscan/openvpn_scan.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
@@ -190,38 +169,26 @@ install:
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
-	for file in get_cpuid.py send_command.py send_command_zmq.py ics_tools.sh ics_tools.py migrate_repos.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
-	done 
-	${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
-	# pyfiles
-	for bin_file in clog.py device_info.py load_firmware.sh \
-	    mysql_dump.sh pack_kernel.sh populate_ramdisk.py resync_config.sh \
-	    show_config_script.py make_image.py change_cluster_var.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$bin_file ${DESTDIR}/${ICSW_BASE}/bin; \
-	done
-	${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
-	${INSTALL} ${INSTALL_OPTS} license_server_tool.py ${DESTDIR}/${ICSW_BASE}/bin
-	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BASE}/bin
-	cp -a cdfetch.py  ${DESTDIR}${ICSW_BASE}/bin
+	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BIN}
+	cp -a cdfetch.py  ${DESTDIR}${ICSW_BIN}
 	for file in license_progs loadsensor ; do \
-	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BASE}/bin; \
+	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BIN}; \
 	done
-	cp -a tools/modify_object.py ${DESTDIR}/${ICSW_BASE}/bin
+	cp -a tools/modify_object.py ${DESTDIR}/${ICSW_BIN}
 	if [ "${LIB_DIR}" = "lib64" ] ; then \
 	    tar xzf lmutil-x64_lsb-11.12.1.0v6.tar.gz ; \
-	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BASE}/bin/lmutil; \
+	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
 	else \
 	    tar xzf lmutil-i86_lsb-11.12.1.0v6.tar.gz ; \
-	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BASE}/bin/lmutil; \
+	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
 	fi
-	${INSTALL} ${INSTALL_OPTS} sgestat.py ${DESTDIR}/${ICSW_BASE}/bin
-	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BASE}/bin/populate_ramdisk_local.py
-	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BASE}/bin/copy_local_kernel.sh
+	${INSTALL} ${INSTALL_OPTS} sgestat.py ${DESTDIR}/${ICSW_BIN}
+	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/populate_ramdisk_local.py
+	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/copy_local_kernel.sh
 	${LN} -s ${ICSW_BIN}/ics_tools.sh ${DESTDIR}/${INIT}/
 	${LN} -s ${PYTHON_SITE}/send_mail.py ${DESTDIR}/${ICSW_BIN}/
-	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BASE}/bin/compile_mpich.py
+	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
 	${INSTALL} ${INSTALL_OPTS} cluster-config-server ${DESTDIR}/${INIT}/cluster-config-server
 	cp -a collectd-init ${DESTDIR}/${INIT}
@@ -298,11 +265,11 @@ install:
 	# /usr/local/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/local/bin
 	for link_source in sgenodestat sgejobstat sjs sns ; do \
-	    ${LN} -s ${ICSW_BASE}/bin/sgestat.py ${DESTDIR}/usr/local/bin/$$link_source; \
+	    ${LN} -s ${ICSW_BIN}/sgestat.py ${DESTDIR}/usr/local/bin/$$link_source; \
 	done
 	# /usr/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/bin
-	${LN} -s ${ICSW_BASE}/bin/load_firmware.sh ${DESTDIR}/usr/bin/load_firmware.sh
+	${LN} -s ${ICSW_BIN}/load_firmware.sh ${DESTDIR}/usr/bin/load_firmware.sh
 	# /opt/cluster/lcs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/lcs
 	cp -a cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs
@@ -318,12 +285,9 @@ install:
 	${INSTALL} ${INSTALL_OPTS} *.c32 ${DESTDIR}/${MOTHER_DIR}/syslinux
 	${INSTALL} ${INSTALL_OPTS} memtest${MEMTEST_VERSION}.iso ${DESTDIR}/${MOTHER_DIR}
 	${INSTALL} ${INSTALL_OPTS} memdisk ${DESTDIR}/${MOTHER_DIR}/syslinux
-	# fixtures
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/*_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
 	# examples
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/examples/sge_licenses
-	cp -a examples/* ${DESTDIR}${ICSW_BASE}/examples/sge_licenses
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/examples/sge_licenses
+	cp -a examples/* ${DESTDIR}${ICSW_SHARE}/examples/sge_licenses
 	# /opt/cluster/share
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/cert/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/webcache/
@@ -335,21 +299,12 @@ install:
 	${INSTALL} ${INSTALL_OPTS} cert/* ${DESTDIR}/opt/cluster/share/cert
 	# Various python files
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}
-	for pyf in kernel_sync_tools module_dependency_tools cluster_location ; do \
-	    install ${INSTALL_OPTS} $${pyf}.py ${DESTDIR}/${PYTHON_SITE}; \
-	done
-	install ${INSTALL_OPTS} sge_license_tools.py ${DESTDIR}/${PYTHON_SITE}
-	${INSTALL} ${INSTALL_OPTS} sge_tools.py ${DESTDIR}/${PYTHON_SITE}
-	${INSTALL} ${INSTALL_OPTS} license_tool.py ${DESTDIR}/${PYTHON_SITE}
-	# Various
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
-	cp -a cluster.schema ${DESTDIR}/etc
+	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
 	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} src/kcompile ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/hosts
-	mkdir -p ${DESTDIR}/var/run/collectd-init
-	mkdir -p ${DESTDIR}/var/run/rrd-grapher
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_TFTP}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${VARDIR}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/lib/logging-server
@@ -395,9 +350,7 @@ clean:
 	make -C c_progs_collectd clean
 	make -C c_progs clean
 	make -C c_clients clean
-	${PYTHON} ./cbc-tools_setup.py clean
-	${PYTHON} ./host-monitoring_setup.py clean
-	${PYTHON} ./python-modules-base_setup.py clean
+	${PYTHON} ./setup.py clean
 	rm -rf build
 
 ###############################################################################

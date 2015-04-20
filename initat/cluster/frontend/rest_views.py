@@ -166,10 +166,10 @@ class rest_logging(object):
 
 class db_prefetch_mixin(object):
     def _kernel_prefetch(self):
-        return ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]
+        return ["initrd_build_set", "kernel_build_set", "new_kernel", "kerneldevicehistory_set"]
 
     def _image_prefetch(self):
-        return ["new_image", "act_image"]
+        return ["new_image", "imagedevicehistory_set"]
 
     def _partition_table_prefetch(self):
         return [

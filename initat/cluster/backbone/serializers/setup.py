@@ -42,7 +42,7 @@ class image_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "enabled", "version", "release",
             "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
-            "new_image", "act_image",
+            "new_image", "imagedevicehistory_set",
         )
 
 
@@ -53,6 +53,7 @@ class kernel_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "enabled", "kernel_version", "version",
             "release", "bitcount", "initrd_build_set", "kernel_build_set", "initrd_built",
-            "new_kernel", "act_kernel", "comment", "target_module_list", "module_list",
+            "new_kernel", "comment", "target_module_list", "module_list",
             "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
+            "kerneldevicehistory_set",
         )

@@ -2002,7 +2002,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  Partition table
  </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.partition_table' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='partition table'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in partitions| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset><fieldset 
  ><legend>bootdevice settings</legend><div 
- class="row" ><div 
+ ><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_dhcp_mac"
  class="checkbox
  "
@@ -2194,17 +2194,18 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Change boot settings of {{ device_info_str }}</h2><fieldset 
  class="row "
  ><legend>target state</legend><div 
+ ><div 
  class="col-md-3" ><div class="form-group"><div id="div_id_change_target_state"
  class="checkbox
  "
  ng_show="bo_enabled[&#39;t&#39;]"
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_change_target_state" class=""><input class="checkboxinput checkbox" id="id_change_target_state" name="change_target_state" ng-model="_edit_obj.change_target_state" type="checkbox" />
  target state
- </label></div></div></div></div><div class="col-md-9"><div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
+ </label></div></div></div></div><div class="col-md-9"><div ng-repeat="netstate in network_states" class='row form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
  network {{ netstate.info }}
- </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in netstate.states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div><div class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
+ </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in netstate.states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div><div class='row form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state"><label class='control-label col-sm-4'>
  special state
- </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in special_states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div></div></fieldset><fieldset 
+ </label><div class='col-sm-7'><ui-select ng-model="_edit_obj.target_state"><ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match><ui-select-choices repeat="value.idx as value in special_states"><div ng-bind-html='value.info'></div></ui-select-choices></ui-select></div></div></div></div></fieldset><fieldset 
  ><legend>settings</legend><div 
  class="row" ><div 
  class="col-md-3" ><div class="form-group"><div id="div_id_change_new_kernel"

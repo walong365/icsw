@@ -69,6 +69,8 @@ class get_boot_info_json(View):
             "bootnetdevice__net_ip_set__network__network_device_type",
             "categories",
             "domain_tree_node",
+            "kerneldevicehistory_set",
+            "imagedevicehistory_set",
         ).select_related(
             "device_group",
         )

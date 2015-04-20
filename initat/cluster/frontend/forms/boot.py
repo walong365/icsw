@@ -173,7 +173,6 @@ class boot_single_form(Form):
                     Field("dhcp_write", wrapper_ng_show="bo_enabled['b']"),
                     css_class="col-md-6",
                 ),
-                css_class="row"
             ),
             Field("macaddr", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
             Field("driver", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
@@ -215,45 +214,47 @@ class boot_many_form(Form):
         Fieldset(
             "target state",
             Div(
-                Field(
-                    "change_target_state",
-                    wrapper_ng_show="bo_enabled['t']",
+                Div(
+                    Field(
+                        "change_target_state",
+                        wrapper_ng_show="bo_enabled['t']",
+                    ),
+                    css_class="col-md-3",
                 ),
-                css_class="col-md-3",
-            ),
-            HTML("""
+                HTML("""
 {% verbatim %}
 <div class="col-md-9">
-<div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
-    <label class='control-label col-sm-4'>
-        network {{ netstate.info }}
-    </label>
-    <div class='col-sm-7'>
-        <ui-select ng-model="_edit_obj.target_state">
-            <ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match>
-            <ui-select-choices repeat="value.idx as value in netstate.states">
-                <div ng-bind-html='value.info'></div>
-            </ui-select-choices>
-        </ui-select>
+    <div ng-repeat="netstate in network_states" class='row form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+        <label class='control-label col-sm-4'>
+            network {{ netstate.info }}
+        </label>
+        <div class='col-sm-7'>
+            <ui-select ng-model="_edit_obj.target_state">
+                <ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match>
+                <ui-select-choices repeat="value.idx as value in netstate.states">
+                    <div ng-bind-html='value.info'></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
     </div>
-</div>
-<div class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
-    <label class='control-label col-sm-4'>
-        special state
-    </label>
-    <div class='col-sm-7'>
-        <ui-select ng-model="_edit_obj.target_state">
-            <ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match>
-            <ui-select-choices repeat="value.idx as value in special_states">
-                <div ng-bind-html='value.info'></div>
-            </ui-select-choices>
-        </ui-select>
+    <div class='row form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+        <label class='control-label col-sm-4'>
+            special state
+        </label>
+        <div class='col-sm-7'>
+            <ui-select ng-model="_edit_obj.target_state">
+                <ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match>
+                <ui-select-choices repeat="value.idx as value in special_states">
+                    <div ng-bind-html='value.info'></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
     </div>
-</div>
 </div>
 {% endverbatim %}
-            """),
-            css_class="row",
+             """),
+            ),
+            css_class="row"
         )
     )
     for fs_string, el_list in [
@@ -339,7 +340,7 @@ class boot_many_form(Form):
                                 **f_options),
                             css_class="col-md-9",
                         ),
-                        css_class="row",
+                        css_class="row"
                     ) for f_name, f_options, en_flag, en_field in el_list
                 ]
             )

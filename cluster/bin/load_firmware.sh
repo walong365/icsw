@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 
 echo $$ > /.firmware_pid
 
