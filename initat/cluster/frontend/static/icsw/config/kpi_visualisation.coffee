@@ -56,10 +56,7 @@ angular.module(
 
                 )
 
-
-
                 scope.redraw = () ->
-                    # TODO: clear svg
                     if !scope.tree?
                         # wait for tree
                         $timeout(scope.redraw, 200)
@@ -209,13 +206,20 @@ angular.module(
 
                     scope.redraw()
                 scope.on_mouse_enter = (node) ->
-                    scope.$apply(
-                        scope.kpi_set_to_show = node
+
+                    $timeout(
+                        () ->
+                            if scope._mouse_on_node == node
+                                scope.kpi_set_to_show = node
+                        100
                     )
+                    scope._mouse_on_node = node
                 scope.on_mouse_leave = (node) ->
-                    scope.$apply(
-                        #scope.kpi_set_to_show = undefined
-                    )
+                    # when mouse leaves single node
+                    scope._mouse_on_node = undefined
+                scope.on_mouse_leave_widget = () ->
+                    # when mouse leaves full widget
+                    scope.kpi_set_to_show = undefined
 
                 scope.$watch(
                     () -> return scope.kpiIdx()
@@ -296,6 +300,7 @@ angular.module(
                     return JSON.stringify(kpi_obj)
 
             kpi_obj_to_string_verbose = (kpi_obj) ->
+                # unused
                 parts = []
                 if kpi_obj.host_name
                     parts.push "Host: #{kpi_obj.host_name.split(".")[0]}"
