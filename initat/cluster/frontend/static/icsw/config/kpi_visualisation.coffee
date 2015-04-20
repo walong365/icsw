@@ -147,7 +147,10 @@ angular.module(
 
                     node
                         .html((d) ->
-                            res = "<circle r=\"4.5\"></circle> {"
+                            res = "<circle r=\"4.5\"></circle>"
+                            if d.hide_children and d.origin.type != 'initial'
+                                res += "<circle r=\"1.5\" fill=\"white\"></circle>"
+                            res += "{"
                             cur_height = 3
 
                             if d.origin.type == 'initial'
