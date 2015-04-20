@@ -83,6 +83,8 @@ setup(
                 "cluster/bin/populate_ramdisk.py",
                 "cluster/bin/make_image.py",
                 "cluster/bin/change_cluster_var.py",
+                "cluster/bin/show_config_script.py",
+                "cluster/bin/resync_config.sh",
             ]
         )
     ],
