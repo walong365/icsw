@@ -63,15 +63,26 @@ setup(
         (
             "/opt/",
             [
+                # cbc
                 "cluster/bin/compile_libgoto.py",
                 "cluster/bin/compile_openmpi.py",
                 "cluster/bin/compile_hpl.py",
-                #"compile_fftw.py",
-                #"read_bonnie.py",
-                #"bonnie.py",
-                #"n_from_mem.py",
-                #"read_hpl_result.py",
-                #"check_vasp.py",
+                "cluster/bin/compile_fftw.py",
+                "cluster/bin/read_bonnie.py",
+                "cluster/bin/bonnie.py",
+                "cluster/bin/n_from_mem.py",
+                "cluster/bin/read_hpl_result.py",
+                "cluster/bin/check_vasp.py",
+                # tools
+                "cluster/bin/get_cpuid.py",
+                "cluster/bin/dump_graph_structure.py",
+                "cluster/bin/user_info.py",
+                "cluster/bin/clog.py",
+                "cluster/bin/device_info.py",
+                "cluster/bin/load_firmware.sh",
+                "cluster/bin/populate_ramdisk.py",
+                "cluster/bin/make_image.py",
+                "cluster/bin/change_cluster_var.py",
             ]
         )
     ],

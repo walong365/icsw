@@ -188,18 +188,16 @@ install:
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
-	${INSTALL} ${INSTALL_OPTS} dump_graph_structure.py ${DESTDIR}/${ICSW_BIN}
 	for file in get_cpuid.py send_command.py send_command_zmq.py ics_tools.sh ics_tools.py migrate_repos.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
 	done 
-	${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
 	# pyfiles
-	for bin_file in clog.py device_info.py load_firmware.sh \
-	    populate_ramdisk.py resync_config.sh \
-	    show_config_script.py make_image.py change_cluster_var.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$bin_file ${DESTDIR}/${ICSW_BASE}/bin; \
-	done
-	${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
+	#for bin_file in clog.py device_info.py load_firmware.sh \
+	#    populate_ramdisk.py resync_config.sh \
+	#    show_config_script.py make_image.py change_cluster_var.py ; do \
+	#    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$bin_file ${DESTDIR}/${ICSW_BASE}/bin; \
+	#done
+	#${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} license_server_tool.py ${DESTDIR}/${ICSW_BASE}/bin
 	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BASE}/bin
