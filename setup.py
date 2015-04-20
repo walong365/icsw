@@ -62,7 +62,7 @@ setup(
         (
             "/opt/cluster/bin",
             [
-                "cbc_scripts/compile_libgoto.py",
+                "cbc_scripts/compile_libgoto.py = compile_libgoto.py",
                 "cbc_scripts/compile_openmpi.py",
                 "cbc_scripts/compile_hpl.py",
                 #"compile_fftw.py",
