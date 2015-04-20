@@ -148,7 +148,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_pre_start.sh ${DESTDIR}${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_post_install.sh ${DESTDIR}${ICSW_PIS}
 	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} dump_graph_structure.py ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} mother.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} logcheck-server.py ${DESTDIR}/${ICSW_SBIN}
 	install ${INSTALL_OPTS} md-config-server.py ${DESTDIR}/${ICSW_SBIN}
@@ -189,6 +188,7 @@ install:
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
+	${INSTALL} ${INSTALL_OPTS} dump_graph_structure.py ${DESTDIR}/${ICSW_BIN}
 	for file in get_cpuid.py send_command.py send_command_zmq.py ics_tools.sh ics_tools.py migrate_repos.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
 	done 
