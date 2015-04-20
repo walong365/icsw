@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+import django
 from django.conf import settings
 
 import logging_tools
@@ -26,6 +27,7 @@ import itertools
 import pprint  # @UnusedImport
 from collections import defaultdict
 import time
+import django.utils.timezone
 
 from django.db.models.query_utils import Q
 from django.db import connection
@@ -202,28 +204,36 @@ class icinga_log_aggregator(object):
             self.get_active_hosts_and_services_in_timespan_queryset(start_time, end_time)
 
         # get flappings of timespan (can't use db in inner loop)
-        def preprocess_flapping_data(flapping_cache, key_fun):
+        def preprocess_start_stop_data(queryset, key_fun, field_name):
+            # for models which have entries for start and stop events,
+            # create a dict which contains (start, stop) tuples
             cache = defaultdict(lambda: [])  # this is sorted by time
             aux_start_times = {}
-            for flap_data in flapping_cache:
-                key = key_fun(flap_data)
-                if key not in aux_start_times and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_START:
+            for entry in queryset:
+                key = key_fun(entry)
+                if key not in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.START:
                     # proper start
-                    if flap_data.date <= end_time:  # discard newer flappings
-                        aux_start_times[key] = flap_data.date
-                if key in aux_start_times and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_STOP:
+                    if entry.date <= end_time:  # discard newer events
+                        aux_start_times[key] = entry.date
+                if key in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.STOP:
                     # a proper stop
                     start_date = aux_start_times.pop(key)
-                    if flap_data.date >= start_time:  # only use flappings which are in this timespan
-                        cache[key].append((start_date, flap_data.date))
+                    if entry.date >= start_time:  # only use events which are in this timespan
+                        cache[key].append((start_date, entry.date))
+            # handles events which haven't stopped yet
+            for key, start_date in aux_start_times.iteritems():
+                cache[key].append((start_date, django.utils.timezone.now()))
             return dict(cache)  # make into regular dict
+
         # TODO: possibly extract keys in cache
-        service_flapping_cache = preprocess_flapping_data(self._service_flapping_cache,
-                                                          lambda flap_data: (flap_data.device_id,
-                                                                             flap_data.service_id,
-                                                                             flap_data.service_info))
-        host_flapping_cache = preprocess_flapping_data(self._host_flapping_cache,
-                                                       lambda flap_data: flap_data.device_id)
+        service_flapping_cache = preprocess_start_stop_data(self._service_flapping_cache,
+                                                            lambda flap_data: (flap_data.device_id,
+                                                                               flap_data.service_id,
+                                                                               flap_data.service_info),
+                                                            'flapping_state')
+        host_flapping_cache = preprocess_start_stop_data(self._host_flapping_cache,
+                                                         lambda flap_data: flap_data.device_id,
+                                                         'flapping_state')
 
         if next_last_service_alert_cache:
             last_service_alert_cache = next_last_service_alert_cache

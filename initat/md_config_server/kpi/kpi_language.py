@@ -602,9 +602,10 @@ class KpiSet(object):
         return self
 
     def __repr__(self):
-        magic = 3
-        return "KpiSet({})".format(self.objects if len(self.objects) <= magic else
-                                   repr(self.objects[:magic]) + "... ({} more)".format(len(self.objects) - magic))
+        num_objs_to_show = 3
+        return "KpiSet({})".format(self.objects if len(self.objects) <= num_objs_to_show else
+                                   repr(self.objects[:num_objs_to_show]) +
+                                   "... ({} more)".format(len(self.objects) - num_objs_to_show))
 
 
 """

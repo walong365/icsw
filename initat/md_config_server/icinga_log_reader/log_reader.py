@@ -40,7 +40,8 @@ from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_service_notification_data, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_full_system_dump
+    mon_icinga_log_raw_base, mon_icinga_log_full_system_dump, \
+    mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 
@@ -76,12 +77,14 @@ class icinga_log_reader(threading_tools.process_obj):
         icinga_initial_service_state = 'INITIAL SERVICE STATE'
         icinga_service_flapping_alert = 'SERVICE FLAPPING ALERT'
         icinga_service_notification = 'SERVICE NOTIFICATION'
+        icinga_service_downtime_alert = 'SERVICE DOWNTIME ALERT'
 
         icinga_host_alert = 'HOST ALERT'
         icinga_current_host_state = 'CURRENT HOST STATE'
         icinga_initial_host_state = 'INITIAL HOST STATE'
         icinga_host_notification = 'HOST NOTIFICATION'
         icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
+        icinga_host_downtime_alert = 'HOST DOWNTIME ALERT'
 
         always_collect_warnings = True
 
@@ -262,9 +265,11 @@ class icinga_log_reader(threading_tools.process_obj):
         host_states = []
         host_flapping_states = []
         host_notifications = []
+        host_downtimes = []
         service_states = []
         service_flapping_states = []
         service_notifications = []
+        service_downtimes = []
         full_system_dump_times = set()
 
         cur_line = None
@@ -345,6 +350,16 @@ class icinga_log_reader(threading_tools.process_obj):
                         if entry:
                             stats['host notification'] += 1
                             host_notifications.append(entry)
+                    elif cur_line.kind == self.constants.icinga_host_downtime_alert:
+                        entry = self.create_host_downtime_entry(cur_line, logfilepath, logfile_db)
+                        if entry:
+                            stats['host downtime alert'] += 1
+                            host_downtimes.append(entry)
+                    elif cur_line.kind == self.constants.icinga_service_downtime_alert:
+                        entry = self.create_service_downtime_entry(cur_line, logfilepath, logfile_db)
+                        if entry:
+                            stats['service downtime alert'] += 1
+                            service_downtimes.append(entry)
                     else:
                         pass  # line_raw is not of interest to us
                 else:
@@ -360,6 +375,8 @@ class icinga_log_reader(threading_tools.process_obj):
         mon_icinga_log_raw_host_flapping_data.objects.bulk_create(host_flapping_states)
         mon_icinga_log_raw_service_notification_data.objects.bulk_create(service_notifications)
         mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
+        mon_icinga_log_raw_service_downtime_data.objects.bulk_create(host_downtimes)
+        mon_icinga_log_raw_host_downtime_data.objects.bulk_create(service_downtimes)
         for timestamp in full_system_dump_times:
             mon_icinga_log_full_system_dump.objects.get_or_create(date=self._parse_timestamp(timestamp))
         self.log(u"read {} lines, ignored {} old ones".format(line_num, old_ignored))
@@ -563,6 +580,40 @@ class icinga_log_reader(threading_tools.process_obj):
             )
         return retval
 
+    def create_host_downtime_entry(self, cur_line, logfilepath, logfile_db):
+        retval = None
+        try:
+            host, state, msg = self._parse_host_downtime_alert(cur_line)
+        except (self.unknown_host_error, self.unknown_service_error) as e:
+            self._handle_warning(e, logfilepath, cur_line.line_no)
+        else:
+            retval = mon_icinga_log_raw_host_downtime_data(
+                date=self._parse_timestamp(cur_line.timestamp),
+                device_id=host,
+                state=state,
+                msg=msg,
+                logfile=logfile_db,
+            )
+        return retval
+
+    def create_service_downtime_entry(self, cur_line, logfilepath, logfile_db):
+        retval = None
+        try:
+            host, (service, service_info), state, msg = self._parse_service_downtime_alert(cur_line)
+        except (self.unknown_host_error, self.unknown_service_error) as e:
+            self._handle_warning(e, logfilepath, cur_line.line_no)
+        else:
+            retval = mon_icinga_log_raw_host_downtime_data(
+                date=self._parse_timestamp(cur_line.timestamp),
+                device_id=host,
+                service_id=service,
+                service_info=service_info,
+                state=state,
+                msg=msg,
+                logfile=logfile_db,
+            )
+        return retval
+
     icinga_log_line = namedtuple('icinga_log_line', ('timestamp', 'kind', 'info', 'line_no'))
 
     @classmethod
@@ -662,8 +713,8 @@ class icinga_log_reader(threading_tools.process_obj):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START,
-                          "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[2], None)  # format as in db table
+        flapping_state = {"STARTED": mon_icinga_log_raw_base.START,
+                          "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[2], None)  # format as in db table
         if not flapping_state:
             raise self.malformed_icinga_log_entry(u"Malformed flapping state entry: {} (error #7)".format(info))
 
@@ -680,12 +731,48 @@ class icinga_log_reader(threading_tools.process_obj):
             raise self.malformed_icinga_log_entry(u"Malformed host flapping entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
-        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START,
-                          "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[1], None)  # format as in db table
+        flapping_state = {"STARTED": mon_icinga_log_raw_base.START,
+                          "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[1], None)  # format as in db table
         if not flapping_state:
             raise self.malformed_icinga_log_entry(u"Malformed flapping state entry: {} (error #7)".format(info))
         msg = data[2]
         return host, flapping_state, msg
+
+    def _parse_service_downtime_alert(self, cur_line):
+        # format is:
+        # host;service;(STARTED|STOPPED);msg
+        info = cur_line.info
+        data = info.split(";", 3)
+        if len(data) != 4:
+            raise self.malformed_icinga_log_entry(u"Malformed service downtime entry: {} (error #1)".format(info))
+
+        host, service, service_info = self._parse_host_service(data[0], data[1])
+
+        state = {"STARTED": mon_icinga_log_raw_base.START,
+                 "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[2], None)  # format as in db table
+        if not state:
+            raise self.malformed_icinga_log_entry(u"Malformed service downtime state entry: {} (error #2)".format(info))
+
+        msg = data[3]
+
+        return host, (service, service_info), state, msg
+
+    def _parse_host_downtime_alert(self, cur_line):
+        # format is:
+        # host;(STARTED|STOPPED);msg
+        # msg is autogenerated (something like 'host has exited from downtime'), collect it anyway
+        info = cur_line.info
+        data = info.split(";", 2)
+        if len(data) != 3:
+            raise self.malformed_icinga_log_entry(u"Malformed host downtime entry: {} (error #1)".format(info))
+        host = self._resolve_host(data[0])
+        state = {"STARTED": mon_icinga_log_raw_base.START,
+                 "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[1], None)  # format as in db table
+        if not state:
+            raise self.malformed_icinga_log_entry(u"Malformed host downtime state entry: {} (error #2)".format(info))
+        msg = data[2]
+
+        return host, state, msg
 
     def _parse_service_notification(self, cur_line):
         # format is:
@@ -748,6 +835,7 @@ class icinga_log_reader(threading_tools.process_obj):
         msg = data[5]
 
         return host, (service, service_info), state, state_type, msg
+
 
     def _resolve_host(self, host_spec):
         '''
@@ -816,7 +904,7 @@ class icinga_log_reader(threading_tools.process_obj):
         host_flapping_entry = mon_icinga_log_raw_host_flapping_data(
             date=when,
             device_id=None,
-            flapping_state=mon_icinga_log_raw_base.FLAPPING_STOP,
+            flapping_state=mon_icinga_log_raw_base.STOP,
             device_independent=True,
             msg=msg,
             logfile=logfile_db,
@@ -826,7 +914,7 @@ class icinga_log_reader(threading_tools.process_obj):
             device_id=None,
             service_id=None,
             service_info=None,
-            flapping_state=mon_icinga_log_raw_base.FLAPPING_STOP,
+            flapping_state=mon_icinga_log_raw_base.STOP,
             device_independent=True,
             msg=msg,
             logfile=logfile_db,

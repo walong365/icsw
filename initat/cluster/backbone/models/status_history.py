@@ -52,8 +52,11 @@ class mon_icinga_log_raw_base(models.Model):
     STATE_UNDETERMINED_LONG = "UNDETERMINED"
     STATE_TYPES = [(STATE_TYPE_HARD, "HARD"), (STATE_TYPE_SOFT, "SOFT"), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
 
-    FLAPPING_START = "START"
-    FLAPPING_STOP = "STOP"
+    START = "START"
+    STOP = "STOP"
+
+    # use for CharFields
+    _start_stop_field_args = {'max_length': 5, 'choices': [(START, START), (STOP, STOP)]}
 
     class Meta:
         app_label = "backbone"
@@ -291,33 +294,23 @@ class mon_icinga_log_full_system_dump(models.Model):
 
 
 class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
-    # see comment in mon_icinga_log_raw_service_alert_data
     service = models.ForeignKey(mon_check_command, null=True)  # null for device_independent events
     service_info = models.TextField(blank=True, null=True)
 
-    flapping_state = models.CharField(
-        max_length=5,
-        choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
-                 (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)]
-    )
+    flapping_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
 
     class CSW_Meta:
         backup = False
 
 
 class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
-    flapping_state = models.CharField(
-        max_length=5,
-        choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
-                 (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)]
-    )
+    flapping_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
 
     class CSW_Meta:
         backup = False
 
 
 class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
-    # see comment in mon_icinga_log_raw_service_alert_data
     service = models.ForeignKey(mon_check_command, null=True)
     service_info = models.TextField(blank=True, null=True)
 
@@ -333,6 +326,23 @@ class mon_icinga_log_raw_host_notification_data(mon_icinga_log_raw_base):
     state = models.CharField(max_length=2, choices=mon_icinga_log_raw_host_alert_data.STATE_CHOICES)
     user = models.TextField()
     notification_type = models.TextField()
+
+    class CSW_Meta:
+        backup = False
+
+
+class mon_icinga_log_raw_service_downtime_data(mon_icinga_log_raw_base):
+    service = models.ForeignKey(mon_check_command, null=True)
+    service_info = models.TextField(blank=True, null=True)
+
+    state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
+
+    class CSW_Meta:
+        backup = False
+
+
+class mon_icinga_log_raw_host_downtime_data(mon_icinga_log_raw_base):
+    state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
 
     class CSW_Meta:
         backup = False
@@ -392,12 +402,15 @@ class mon_icinga_log_aggregated_timespan(models.Model):
 
 class mon_icinga_log_aggregated_host_data(models.Model):
     STATE_FLAPPING = "FL"  # this is also a state type
-    STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
+    STATE_PLANNED_DOWN = "PD"
+    STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING"),
+                                                                        (STATE_PLANNED_DOWN, "PLANNED DOWNTIME")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
 
-    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
+    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING),
+                                                         (STATE_PLANNED_DOWN, STATE_PLANNED_DOWN)]
 
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
@@ -547,7 +560,9 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     objects = mon_icinga_log_aggregated_service_data_manager()
 
     STATE_FLAPPING = "FL"
-    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
+    STATE_PLANNED_DOWN = "PD"
+    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING"),
+                                                                           (STATE_PLANNED_DOWN, "PLANNED DOWNTIME")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
@@ -555,13 +570,13 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     idx = models.AutoField(primary_key=True)
     timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)
 
-    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
+    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING),
+                                                         (STATE_PLANNED_DOWN, STATE_PLANNED_DOWN)]
 
     device = models.ForeignKey("backbone.device")
     state_type = models.CharField(max_length=2, choices=STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
 
-    # see comment in mon_icinga_log_raw_service_alert_data
     service = models.ForeignKey(mon_check_command, null=True)  # null for old entries for special check commands
     service_info = models.TextField(blank=True, null=True)
 
