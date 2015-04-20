@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2008,2011-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -23,12 +23,14 @@
 
 from __future__ import print_function
 import argparse
-import logging_tools
 import os
-import process_tools
 import stat
 import sys
 import time
+
+import logging_tools
+import process_tools
+
 
 MS_DIR = "/var/lib/meta-server"
 

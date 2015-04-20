@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -81,7 +81,7 @@ class vasprun(target_file):
     def _transform(self, in_xml):
         split_to_xyz = set(["v", "r"])
         for node in in_xml.xpath(".//*"):
-            if node.text != None:
+            if node.text is not None:
                 node.text = node.text.strip()
                 if node.tag in split_to_xyz:
                     if len(node.text.split()) == 3:
