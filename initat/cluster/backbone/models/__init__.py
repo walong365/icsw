@@ -500,7 +500,7 @@ class device(models.Model):
     last_kernel = models.CharField(max_length=192, blank=True)
     root_passwd = models.CharField(max_length=192, blank=True)
     # link to monitor_server (or null for master)
-    monitor_server = models.ForeignKey("device", null=True, blank=True, on_delete=models.SET_NULL)
+    monitor_server = models.ForeignKey("device", null=True, blank=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks", verbose_name="Checks enabled")
     # performance data tracking, also needed for IPMI and SNMP active monitoring
     enable_perfdata = models.BooleanField(default=True, verbose_name="enable perfdata, check IPMI and SNMP")
