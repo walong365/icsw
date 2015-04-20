@@ -86,7 +86,17 @@ setup(
                 "cluster/bin/show_config_script.py",
                 "cluster/bin/resync_config.sh",
             ]
-        )
+        ),
+        (
+            "/opt/cluster/sbin",
+            []
+        ),
+        (
+            "/opt/cluster/sbin/pis",
+            [
+                "pis/cluster_post_install.sh",
+            ]
+        ),
     ],
     scripts=[
     ],
