@@ -37,7 +37,8 @@ class mon_icinga_log_raw_base(models.Model):
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True)
     device = models.ForeignKey("backbone.device", db_index=True, null=True)  # only null for device_independent
-    device_independent = models.BooleanField(default=False, db_index=True)  # events which apply to all devices such as icinga shutdown
+    # events which apply to all devices such as icinga shutdown
+    device_independent = models.BooleanField(default=False, db_index=True)
     # text from log entry
     msg = models.TextField()
     # entry originates from this logfile
@@ -212,7 +213,8 @@ class raw_service_alert_manager(models.Manager):
                 if is_host:
                     additional_fields_query = obj_man.filter(device_id=k, date=v[1])
                 else:
-                    additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2], date=v[1])
+                    additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2],
+                                                             date=v[1])
 
                 if len(additional_fields_query) == 0:  # must be dev independent
                     additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
@@ -293,16 +295,22 @@ class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     service = models.ForeignKey(mon_check_command, null=True)  # null for device_independent events
     service_info = models.TextField(blank=True, null=True)
 
-    flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
-                                                             (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)])
+    flapping_state = models.CharField(
+        max_length=5,
+        choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
+                 (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)]
+    )
 
     class CSW_Meta:
         backup = False
 
 
 class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
-    flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
-                                                             (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)])
+    flapping_state = models.CharField(
+        max_length=5,
+        choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
+                 (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)]
+    )
 
     class CSW_Meta:
         backup = False
@@ -503,9 +511,9 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             return_data = {}
             for device_id, device_data in data_per_device.iteritems():
                 # it's not obvious how to aggregate service states
-                # we now just add the values, but we could e.g. also use the most common state of a service as it's state
+                # we now just add the values,but we could e.g. also use the most common state of a service as it's state
                 # then we could say "4 services were ok, 3 were critical".
-                data_concat = list(itertools.chain.from_iterable(service_data for service_data in device_data.itervalues()))
+                data_concat = list(itertools.chain.from_iterable(s_data for s_data in device_data.itervalues()))
                 return_data[device_id] = self.merge_state_types(data_concat,
                                                                 trans[mon_icinga_log_raw_base.STATE_UNDETERMINED],
                                                                 normalize=True)
