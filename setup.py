@@ -61,7 +61,7 @@ setup(
     ],
     data_files=[
         (
-            "/opt/",
+            "/opt/cluster/bin",
             [
                 # cbc
                 "cluster/bin/compile_libgoto.py",
