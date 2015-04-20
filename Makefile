@@ -131,38 +131,19 @@ install:
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} meta-server.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for file in package-server.py package-client.py; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for file in rms-server.py ; do \
-	    install ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	#${INSTALL} ${INSTALL_OPTS} pis/cluster_post_install.sh ${DESTDIR}${ICSW_PIS}
-	#${INSTALL} ${INSTALL_OPTS} pis/sge_post_install.sh ${DESTDIR}${ICSW_PIS}
-	#${INSTALL} ${INSTALL_OPTS} pis/hpc_library_post_install.py ${DESTDIR}${ICSW_PIS}
-	#${INSTALL} ${INSTALL_OPTS} pis/webfrontend_pre_start.sh ${DESTDIR}${ICSW_PIS}
-	#${INSTALL} ${INSTALL_OPTS} pis/webfrontend_post_install.sh ${DESTDIR}${ICSW_PIS}
-	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} mother.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} logcheck-server.py ${DESTDIR}/${ICSW_SBIN}
-	install ${INSTALL_OPTS} md-config-server.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} discovery-server.py ${DESTDIR}/${ICSW_SBIN}
-	${INSTALL} ${INSTALL_OPTS} cluster-server.py ${DESTDIR}/${ICSW_SBIN}
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
-	cp -a collectd-init.py  ${DESTDIR}${ICSW_SBIN} 
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
 	for script in start_node.sh stop_node.sh check_node.sh disable_node.sh; do \
 	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for name in cluster-config-server.py fetch_ssh_keys.py ; do \
+	for name in fetch_ssh_keys.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for script in host-monitoring-zmq.py tls_verify.py snmp-relay.py logscan/openvpn_scan.py ; do \
+	for script in tls_verify.py logscan/openvpn_scan.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \

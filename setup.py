@@ -1,5 +1,22 @@
 from distutils.core import setup
 
+SERVER_LIST = [
+    "cluster-config-server.py",
+    "cluster-server.py",
+    "collectd-init.py",
+    "discovery-server.py",
+    "host-monitoring-zmq.py",
+    "logcheck-server.py",
+    "md-config-server.py",
+    "meta-server.py",
+    "mother.py",
+    "package-client.py",
+    "package-server.py",
+    "rms-server.py",
+    "rrd-grapher.py",
+    "snmp-relay.py",
+]
+
 setup(
     name="icsw",
     version="3.0.0",
@@ -89,7 +106,7 @@ setup(
         ),
         (
             "/opt/cluster/sbin",
-            []
+            SERVER_LIST,
         ),
         (
             "/opt/cluster/sbin/pis",
