@@ -142,11 +142,11 @@ install:
 	for file in rms-server.py ; do \
 	    install ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	${INSTALL} ${INSTALL_OPTS} pis/cluster_post_install.sh ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/sge_post_install.sh ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/hpc_library_post_install.py ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_pre_start.sh ${DESTDIR}${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} pis/webfrontend_post_install.sh ${DESTDIR}${ICSW_PIS}
+	#${INSTALL} ${INSTALL_OPTS} pis/cluster_post_install.sh ${DESTDIR}${ICSW_PIS}
+	#${INSTALL} ${INSTALL_OPTS} pis/sge_post_install.sh ${DESTDIR}${ICSW_PIS}
+	#${INSTALL} ${INSTALL_OPTS} pis/hpc_library_post_install.py ${DESTDIR}${ICSW_PIS}
+	#${INSTALL} ${INSTALL_OPTS} pis/webfrontend_pre_start.sh ${DESTDIR}${ICSW_PIS}
+	#${INSTALL} ${INSTALL_OPTS} pis/webfrontend_post_install.sh ${DESTDIR}${ICSW_PIS}
 	cp -a rrd-grapher.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} mother.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} logcheck-server.py ${DESTDIR}/${ICSW_SBIN}
