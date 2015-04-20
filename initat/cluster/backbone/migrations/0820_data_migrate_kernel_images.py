@@ -10,8 +10,6 @@ def create_history_entry(obj, dbh):
     _dh = obj(
         device=dbh.device,
         device_boot_history=dbh,
-        version=obj.version,
-        release=obj.release,
     )
     return _dh
 
