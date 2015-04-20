@@ -114,7 +114,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/extra_servers.d
 	# setup.py
-	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BASE}/bin
+	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
 	# need package
 	${INSTALL} ${INSTALL_OPTS} modules/*.py ${DESTDIR}/${PYTHON_SITE}
@@ -169,37 +169,26 @@ install:
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
-	for file in get_cpuid.py send_command.py send_command_zmq.py ics_tools.sh ics_tools.py migrate_repos.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
-	done 
-	# pyfiles
-	#for bin_file in clog.py device_info.py load_firmware.sh \
-	#    populate_ramdisk.py resync_config.sh \
-	#    show_config_script.py make_image.py change_cluster_var.py ; do \
-	#    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$bin_file ${DESTDIR}/${ICSW_BASE}/bin; \
-	#done
-	#${INSTALL} ${INSTALL_OPTS} user_info.py ${DESTDIR}/${ICSW_BASE}/bin
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
-	${INSTALL} ${INSTALL_OPTS} license_server_tool.py ${DESTDIR}/${ICSW_BASE}/bin
-	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BASE}/bin
-	cp -a cdfetch.py  ${DESTDIR}${ICSW_BASE}/bin
+	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BIN}
+	cp -a cdfetch.py  ${DESTDIR}${ICSW_BIN}
 	for file in license_progs loadsensor ; do \
-	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BASE}/bin; \
+	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BIN}; \
 	done
-	cp -a tools/modify_object.py ${DESTDIR}/${ICSW_BASE}/bin
+	cp -a tools/modify_object.py ${DESTDIR}/${ICSW_BIN}
 	if [ "${LIB_DIR}" = "lib64" ] ; then \
 	    tar xzf lmutil-x64_lsb-11.12.1.0v6.tar.gz ; \
-	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BASE}/bin/lmutil; \
+	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
 	else \
 	    tar xzf lmutil-i86_lsb-11.12.1.0v6.tar.gz ; \
-	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BASE}/bin/lmutil; \
+	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
 	fi
-	${INSTALL} ${INSTALL_OPTS} sgestat.py ${DESTDIR}/${ICSW_BASE}/bin
-	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BASE}/bin/populate_ramdisk_local.py
-	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BASE}/bin/copy_local_kernel.sh
+	${INSTALL} ${INSTALL_OPTS} sgestat.py ${DESTDIR}/${ICSW_BIN}
+	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/populate_ramdisk_local.py
+	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/copy_local_kernel.sh
 	${LN} -s ${ICSW_BIN}/ics_tools.sh ${DESTDIR}/${INIT}/
 	${LN} -s ${PYTHON_SITE}/send_mail.py ${DESTDIR}/${ICSW_BIN}/
-	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BASE}/bin/compile_mpich.py
+	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
 	${INSTALL} ${INSTALL_OPTS} cluster-config-server ${DESTDIR}/${INIT}/cluster-config-server
 	cp -a collectd-init ${DESTDIR}/${INIT}
@@ -276,11 +265,11 @@ install:
 	# /usr/local/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/local/bin
 	for link_source in sgenodestat sgejobstat sjs sns ; do \
-	    ${LN} -s ${ICSW_BASE}/bin/sgestat.py ${DESTDIR}/usr/local/bin/$$link_source; \
+	    ${LN} -s ${ICSW_BIN}/sgestat.py ${DESTDIR}/usr/local/bin/$$link_source; \
 	done
 	# /usr/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/bin
-	${LN} -s ${ICSW_BASE}/bin/load_firmware.sh ${DESTDIR}/usr/bin/load_firmware.sh
+	${LN} -s ${ICSW_BIN}/load_firmware.sh ${DESTDIR}/usr/bin/load_firmware.sh
 	# /opt/cluster/lcs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/lcs
 	cp -a cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs

@@ -102,6 +102,15 @@ setup(
                 "cluster/bin/change_cluster_var.py",
                 "cluster/bin/show_config_script.py",
                 "cluster/bin/resync_config.sh",
+                "cluster/bin/send_command.py",
+                "cluster/bin/send_command_zmq.py",
+                # repo tools
+                "cluster/bin/migrate_repos.py",
+                # icsw helper
+                "cluster/bin/ics_tools.sh",
+                "cluster/bin/ics_tools.py",
+                # license
+                "cluster/bin/license_server_tool.py",
             ]
         ),
         (
