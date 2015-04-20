@@ -318,8 +318,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} memtest${MEMTEST_VERSION}.iso ${DESTDIR}/${MOTHER_DIR}
 	${INSTALL} ${INSTALL_OPTS} memdisk ${DESTDIR}/${MOTHER_DIR}/syslinux
 	# fixtures
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
-	${INSTALL} ${INSTALL_OPTS} fixtures/*_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
+	#${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
+	#${INSTALL} ${INSTALL_OPTS} fixtures/*_fixtures.py ${DESTDIR}/${PYTHON_SITE}/initat/cluster/backbone/management/commands/fixtures/
 	# examples
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/examples/sge_licenses
 	cp -a examples/* ${DESTDIR}${ICSW_SHARE}/examples/sge_licenses

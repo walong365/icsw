@@ -62,15 +62,15 @@ setup(
         (
             "/opt/cluster/bin",
             [
-                "compile_libgoto.py",
-                "compile_openmpi.py",
-                "compile_hpl.py",
-                "compile_fftw.py",
-                "read_bonnie.py",
-                "bonnie.py",
-                "n_from_mem.py",
-                "read_hpl_result.py",
-                "check_vasp.py",
+                "cbc_scripts/compile_libgoto.py",
+                "cbc_scripts/compile_openmpi.py",
+                "cbc_scripts/compile_hpl.py",
+                #"compile_fftw.py",
+                #"read_bonnie.py",
+                #"bonnie.py",
+                #"n_from_mem.py",
+                #"read_hpl_result.py",
+                #"check_vasp.py",
             ]
         )
     ],
