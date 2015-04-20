@@ -4,6 +4,7 @@ setup(
     name="icsw",
     version="3.0.0",
     description="The init.at Clustersoftware (CORUVS, NOCTUA, NESTOR)",
+    license="GPL",
     url="http://www.init.at",
     author="Andreas Lang-Nevyjel",
     author_email="lang-nevyjel@init.at",
@@ -60,11 +61,11 @@ setup(
     ],
     data_files=[
         (
-            "/opt/cluster/bin",
+            "/opt/",
             [
-                "cbc_scripts/compile_libgoto.py = compile_libgoto.py",
-                "cbc_scripts/compile_openmpi.py",
-                "cbc_scripts/compile_hpl.py",
+                "cluster/bin/compile_libgoto.py",
+                "cluster/bin/compile_openmpi.py",
+                "cluster/bin/compile_hpl.py",
                 #"compile_fftw.py",
                 #"read_bonnie.py",
                 #"bonnie.py",
