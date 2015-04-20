@@ -61,11 +61,11 @@ setup(
     ],
     data_files=[
         (
-            "/opt",
+            "/opt/",
             [
                 # cbc
-                "/cluster/bin/compile_libgoto.py",
-                "/cluster/bin/compile_openmpi.py",
+                "cluster/bin/compile_libgoto.py",
+                "cluster/bin/compile_openmpi.py",
                 "cluster/bin/compile_hpl.py",
                 "cluster/bin/compile_fftw.py",
                 "cluster/bin/read_bonnie.py",
