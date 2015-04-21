@@ -8,25 +8,25 @@ import setproctitle
 import sys
 import pprint
 import importlib
+import os
 
 
 def main():
     name = "initat.mother.main"
-    print setproctitle.setproctitle("icsw.mother")
-    print setproctitle.getproctitle()
+    print
     sys.argv = ["mother.py", "-d"]
-    _t = threading.currentThread()
-    print _t.getName()
-    print dir(_t)
-    _d = importlib.import_module(name)
     # print "++", _d.main()
     # _d.main()
     # print "***"
     # return 0
-    with daemon.DaemonContext(detach_process=True):
-        _d.main()
-        time.sleep(400)
-    print "+"
+    for idx in xrange(5):
+        if not os.fork():
+            with daemon.DaemonContext():  # detach_process=True):
+                setproctitle.setproctitle("icsw.mother")
+                importlib.import_module(name).main()
+                print "done"
+        print "wait.."
+        time.sleep(5)
 
 
 if __name__ == "__main__":
