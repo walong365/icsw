@@ -74,6 +74,8 @@ class icinga_log_aggregator(object):
             # aggregate in order of duration for incremental aggregation (would break if not in order)
             for duration_type in (duration.Hour, duration.Day, duration.Week, duration.Month, duration.Year):
                 # self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
+
+                do_loop = True
                 try:
                     last_entry = mon_icinga_log_aggregated_timespan.objects\
                         .filter(duration_type=duration_type.ID).latest("start_date")
@@ -81,15 +83,19 @@ class icinga_log_aggregator(object):
                     self.log("last icinga aggregated entry for {} from {} to {}"
                              .format(duration_type.__name__, last_entry.start_date, last_entry.end_date))
                 except mon_icinga_log_aggregated_timespan.DoesNotExist:
-                    earliest_date1 = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
-                    earliest_date2 = mon_icinga_log_raw_service_alert_data.objects.earliest("date").date
-                    earliest_date = min(earliest_date1, earliest_date2)
-                    next_start_time = duration_type.get_time_frame_start(earliest_date)
-                    self.log("no archive data for duration type {}, starting new data at {}"
-                             .format(duration_type.__name__, next_start_time))
+                    try:
+                        earliest_date1 = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
+                        earliest_date2 = mon_icinga_log_raw_service_alert_data.objects.earliest("date").date
+                        earliest_date = min(earliest_date1, earliest_date2)
+                        next_start_time = duration_type.get_time_frame_start(earliest_date)
+                        self.log("no archive data for duration type {}, starting new data at {}"
+                                 .format(duration_type.__name__, next_start_time))
+                    except (mon_icinga_log_raw_host_alert_data.DoesNotExist,
+                            mon_icinga_log_raw_service_alert_data.DoesNotExist):
+                        self.log("no log data, hence nothing to aggregate")
+                        do_loop = False
 
-                do_loop = True
-                i = 0
+                # i = 0
                 next_last_service_alert_cache = None
                 while do_loop:
                     next_end_time = duration_type.get_end_time_for_start(next_start_time)
@@ -111,7 +117,7 @@ class icinga_log_aggregator(object):
                         self.log("exit requested")
                         do_loop = False
 
-                    i += 1
+                    # i += 1
 
                     # def printfun(s):
                     #    import time
