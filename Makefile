@@ -331,10 +331,8 @@ install:
 	# remove pyc
 	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
 	# create version files
-	for tsys in ${TARGET_SYS_LIST} ; do \
-	    ./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
-	done
-	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}${ICSW_SBIN}/_hoststatus_version.py ; \
+	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/client_version.py ; \
+	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/server_version.py ; \
 
 clean:
 	rm -f gpxelinux.0
