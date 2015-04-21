@@ -18,10 +18,10 @@
 """ SNMP relayer """
 
 from io_stream_helper import io_stream
-import configfile
+from initat.tools import configfile
 import daemon
 import os
-import process_tools
+from initat.tools import process_tools
 import sys
 
 

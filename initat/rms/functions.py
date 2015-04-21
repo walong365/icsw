@@ -21,7 +21,7 @@
 """ rms-server, helper functions """
 
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import time
 
 

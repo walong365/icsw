@@ -30,7 +30,7 @@ modify Repositories of OpenSUSE-bases distributions
 
 import argparse
 import os
-import process_tools
+from initat.tools import process_tools
 import re
 
 REPO_DIR = "/etc/zypp/repos.d"

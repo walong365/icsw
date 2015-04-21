@@ -19,8 +19,8 @@
 #
 """ config part of md-config-server """
 
-import configfile
-import process_tools
+from initat.tools import configfile
+from initat.tools import process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 

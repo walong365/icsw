@@ -26,13 +26,13 @@ import os.path
 import tempfile
 import tarfile
 import commands
-import cpu_database
+from initat.tools import cpu_database
 import time
 import shutil
-import logging_tools
-import rpm_build_tools
+from initat.tools import logging_tools
+from initat.tools import rpm_build_tools
 import subprocess
-import compile_tools
+from initat.tools import compile_tools
 import cluster_module_tools
 
 FFTW_VERSION_FILE = "/opt/cluster/share/fftw_versions"

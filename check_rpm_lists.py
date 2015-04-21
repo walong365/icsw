@@ -26,8 +26,8 @@ import cPickle
 import marshal
 import sys
 import getopt
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import os
 import os.path
 

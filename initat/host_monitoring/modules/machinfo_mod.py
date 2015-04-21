@@ -23,22 +23,22 @@ from initat.host_monitoring import hm_classes, limits
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import commands
-import cpu_database
-import logging_tools
+from initat.tools import cpu_database
+from initat.tools import logging_tools
 import os
-import partition_tools
-import pci_database
+from initat.tools import partition_tools
+from initat.tools import pci_database
 import platform
 import pprint  # @UnusedImport
-import process_tools
+from initat.tools import process_tools
 import re
-import server_command
+from initat.tools import server_command
 import statvfs
 import sys
 import json
 import tempfile
 import time
-import uuid_tools
+from initat.tools import uuid_tools
 import psutil
 try:
     from initat.host_monitoring_version import VERSION_STRING

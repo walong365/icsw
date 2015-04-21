@@ -22,7 +22,7 @@
 """ logs an error """
 
 import argparse
-import io_stream_helper
+from initat.tools import io_stream_helper
 import zmq
 
 def main():

@@ -35,11 +35,11 @@ from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TI
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
 from initat.md_config_server.version import VERSION_STRING
 from io_stream_helper import io_stream
-import cluster_location
-import config_tools
-import configfile
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
 import daemon
-import process_tools
+from initat.tools import process_tools
 import sys
 
 

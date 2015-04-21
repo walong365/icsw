@@ -28,18 +28,18 @@ import sys
 # clean sys.path, remove all pathes not starting with /opt
 sys.path = [entry for entry in sys.path if entry.startswith("/opt")]
 
-import configfile
+from initat.tools import configfile
 import grp
-import logging_tools
-import net_tools
+from initat.tools import logging_tools
+from initat.tools import net_tools
 import os
 import pprint
-import process_tools
+from initat.tools import process_tools
 import pwd
-import server_command
+from initat.tools import server_command
 import socket
 import stat
-import threading_tools
+from initat.tools import threading_tools
 import time
 
 SEP_LEN = 70

@@ -25,7 +25,7 @@ from ..base import SNMPHandler
 from django.db.models import Q
 from initat.cluster.backbone.models import network, netdevice, domain_tree_node, \
     network_type, net_ip
-import ipvx_tools
+from initat.tools import ipvx_tools
 
 
 class handler(SNMPHandler):

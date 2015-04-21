@@ -24,7 +24,7 @@ import sys
 
 from initat.host_monitoring.modules.raidcontrollers.all import dummy_mod
 from initat.host_monitoring.modules.raidcontrollers.megaraid import ctrl_type_megaraid_sas
-import server_command
+from initat.tools import server_command
 
 
 class dummy_ccs(object):

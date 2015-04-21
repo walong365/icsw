@@ -11,7 +11,7 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-import server_command
+from initat.tools import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
     category_tree, location_gfx, DeleteRequest
@@ -24,8 +24,8 @@ import initat.cluster.backbone.models
 import json
 import PIL
 import logging
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import pprint
 
 logger = logging.getLogger("cluster.base")

@@ -22,7 +22,7 @@
 #
 """ old classes for multiprocessing (using threading) """
 
-import logging_tools
+from initat.tools import logging_tools
 import os
 try:
     import Queue

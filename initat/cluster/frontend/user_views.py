@@ -48,8 +48,8 @@ from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from lxml.builder import E  # @UnresolvedImport
-import config_tools
-import server_command
+from initat.tools import config_tools
+from initat.tools import server_command
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.frontend.common import duration_utils
 

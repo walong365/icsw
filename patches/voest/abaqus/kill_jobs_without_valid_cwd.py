@@ -23,7 +23,7 @@
 import sys
 import os
 import os.path
-import logging_tools
+from initat.tools import logging_tools
 
 WORK_DIR = "/work"
 

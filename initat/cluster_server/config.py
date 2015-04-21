@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import configfile
-import process_tools
+from initat.tools import configfile
+from initat.tools import process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())

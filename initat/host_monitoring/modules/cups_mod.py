@@ -21,7 +21,7 @@
 import sys
 import commands
 from initat.host_monitoring import limits, hm_classes
-import server_command
+from initat.tools import server_command
 
 class _general(hm_classes.hm_module):
     pass

@@ -39,11 +39,11 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.renderers import JSONRenderer
 from lxml.builder import E  # @UnresolvedImports @UnusedImport
 import logging
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import json
 import pprint
-import server_command
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.package")
 

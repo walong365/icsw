@@ -22,11 +22,11 @@ from django.db.models import Q
 from initat.cluster.backbone.models import image
 from initat.cluster_server.config import global_config
 import cs_base_class
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import re
-import server_command
+from initat.tools import server_command
 
 
 class write_rsyncd_config(cs_base_class.server_com):

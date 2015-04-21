@@ -22,7 +22,7 @@ from django.utils import timezone
 from initat.cluster.backbone.models import device
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
-import process_tools
+from initat.tools import process_tools
 import psutil
 import os
 import shutil

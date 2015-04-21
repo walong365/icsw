@@ -35,8 +35,8 @@ import time
 import tempfile
 
 from django.utils.crypto import get_random_string
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
 DB_PRESENT = {}

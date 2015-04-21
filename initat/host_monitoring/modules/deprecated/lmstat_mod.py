@@ -20,7 +20,7 @@
 
 from initat.host_monitoring import limits, hm_classes
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import re
 import sys
 

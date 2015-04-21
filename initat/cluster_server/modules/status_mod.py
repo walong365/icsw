@@ -21,15 +21,15 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
-import check_scripts
-import cluster_location
+from initat.tools import check_scripts
+from initat.tools import cluster_location
 import cs_base_class
 import initat.cluster_server
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
-import server_command
-import uuid_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import uuid_tools
 
 
 class status(cs_base_class.server_com):

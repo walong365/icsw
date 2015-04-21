@@ -26,10 +26,10 @@ from initat.snmp.sink import SNMPSink
 from initat.snmp.struct import value_cache
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
-import logging_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import server_command
 import time
-import process_tools
+from initat.tools import process_tools
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
 

@@ -24,12 +24,12 @@ from initat.cluster.backbone.management.commands import dumpdatafast, dumpdatasl
 from optparse import OptionParser
 import bz2
 import datetime
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import stat
 import subprocess
-import threading_tools
+from initat.tools import threading_tools
 import time
 
 

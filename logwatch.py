@@ -29,8 +29,8 @@ import datetime
 import time
 import stat
 
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 global opts
 

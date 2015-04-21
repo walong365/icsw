@@ -34,18 +34,18 @@ from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import argparse
 import StringIO
-import configfile
+from initat.tools import configfile
 import difflib
-import logging_tools
+from initat.tools import logging_tools
 import netifaces
 import os
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 import sys
-import threading_tools
+from initat.tools import threading_tools
 import time
 import uuid
-import uuid_tools
+from initat.tools import uuid_tools
 import zmq
 from multiprocessing import Process, Queue
 

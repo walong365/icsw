@@ -17,7 +17,7 @@
 #
 """ raid controller, container for all controllers """
 
-import logging_tools
+from initat.tools import logging_tools
 
 from initat.host_monitoring.modules.raidcontrollers import CTRL_DICT
 

@@ -18,9 +18,9 @@
 """ tools for handling partition tables (LVM and UUID / label stuff) """
 
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import re
 
 

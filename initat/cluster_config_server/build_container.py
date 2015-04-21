@@ -27,9 +27,9 @@ from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes
     do_etc_hosts, do_hosts_equiv
 from initat.cluster_config_server.partition_setup import partition_setup
 import base64
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import sys
 import time
 

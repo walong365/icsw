@@ -31,10 +31,10 @@ from initat.cluster.backbone.models import LogSource
 from initat.rrd_grapher.config_static import SERVER_COM_PORT
 from initat.rrd_grapher.version import VERSION_STRING
 from io_stream_helper import io_stream
-import config_tools
-import configfile
+from initat.tools import config_tools
+from initat.tools import configfile
 import daemon
-import process_tools
+from initat.tools import process_tools
 import sys
 
 

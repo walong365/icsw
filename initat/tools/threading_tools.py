@@ -22,12 +22,12 @@
 """ classes for multiprocessing (using multiprocessing) """
 
 import inspect
-import io_stream_helper
-import logging_tools
+from initat.tools import io_stream_helper
+from initat.tools import logging_tools
 import multiprocessing
 import psutil
 import os
-import process_tools
+from initat.tools import process_tools
 import signal
 import sys
 import threading

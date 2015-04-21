@@ -24,7 +24,7 @@ from lxml.builder import ElementMaker  # @UnresolvedImport
 import base64
 import bz2
 import datetime
-import logging_tools
+from initat.tools import logging_tools
 import marshal
 import os
 import pickle

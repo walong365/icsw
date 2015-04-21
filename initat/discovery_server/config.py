@@ -19,8 +19,8 @@
 #
 """ discovery-server, configuration and constants """
 
-import configfile
-import process_tools
+from initat.tools import configfile
+from initat.tools import process_tools
 
 try:
     from initat.discovery_server.version import VERSION_STRING

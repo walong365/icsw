@@ -20,8 +20,8 @@ from initat.host_monitoring import limits, hm_classes
 from lxml import etree  # @UnresolvedImport
 import commands
 import os
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 
 
 class _general(hm_classes.hm_module):

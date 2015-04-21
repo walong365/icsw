@@ -7,7 +7,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from initat.cluster.backbone.models import user, group # , capability
 from django.contrib.auth.models import User, Group, Permission
-import logging_tools
+from initat.tools import logging_tools
 import django.contrib.auth.hashers
 from django.contrib.contenttypes.models import ContentType
 

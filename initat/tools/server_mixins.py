@@ -20,11 +20,11 @@
 """ usefull server mixins """
 
 from initat.cluster.backbone.routing import get_server_uuid
-import cluster_location
-import logging_tools
+from initat.tools import cluster_location
+from initat.tools import logging_tools
 import pprint  # @UnusedImport
-import process_tools
-import threading_tools
+from initat.tools import process_tools
+from initat.tools import threading_tools
 import zmq
 
 

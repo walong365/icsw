@@ -27,7 +27,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import django
 django.setup()
-import logging_tools
+from initat.tools import logging_tools
 import argparse
 from initat.cluster.backbone.models import DeviceLogEntry, LogSource, LogLevel, device
 from django.db.models import Q

@@ -25,9 +25,9 @@
 from initat.host_monitoring import limits
 from initat.host_monitoring.struct import ExtReturn
 import difflib
-import net_tools
+from initat.tools import net_tools
 import os
-import server_command
+from initat.tools import server_command
 
 
 def client_code(global_config):

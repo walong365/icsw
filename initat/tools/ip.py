@@ -5,7 +5,7 @@
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 
 
-import inet
+from initat.tools import inet
 import socket
 import struct
 import string

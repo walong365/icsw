@@ -25,12 +25,12 @@ import commands
 import cs_base_class
 import ldap  # @UnresolvedImport @UnusedImport
 import ldap.modlist  # important, do not remove  @UnresolvedImport
-import logging_tools
+from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
-import process_tools
+from initat.tools import process_tools
 import re
-import server_command
+from initat.tools import server_command
 import sys
 import time
 

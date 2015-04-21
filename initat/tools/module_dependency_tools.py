@@ -22,7 +22,7 @@
 import commands
 import copy
 import fnmatch
-import logging_tools
+from initat.tools import logging_tools
 import os
 import re
 

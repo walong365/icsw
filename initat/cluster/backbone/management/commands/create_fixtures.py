@@ -28,7 +28,7 @@ from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, \
     get_related_models
 from lxml import etree  # @UnresolvedImport
-import logging_tools
+from initat.tools import logging_tools
 import os
 import sys
 

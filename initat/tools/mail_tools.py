@@ -32,10 +32,10 @@ except ImportError:
     # not present for python3
     pass
 import email.utils  # @UnusedImport
-import logging_tools
+from initat.tools import logging_tools
 import mimetypes
 import os
-import process_tools
+from initat.tools import process_tools
 import socket
 try:
     import email.Encoders

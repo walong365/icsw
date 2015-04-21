@@ -28,13 +28,13 @@ from initat.discovery_server.discovery import discovery_process
 from initat.snmp.process import snmp_process_container
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
-import cluster_location
-import configfile
-import logging_tools
+from initat.tools import cluster_location
+from initat.tools import configfile
+from initat.tools import logging_tools
 import pprint  # @UnusedImport
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import zmq
 
 

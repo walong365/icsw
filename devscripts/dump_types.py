@@ -22,7 +22,7 @@
 """ dump types """
 
 from initat.collectd.collectd_types import *  # @UnusedWildImport
-import logging_tools
+from initat.tools import logging_tools
 
 
 def dump_types():

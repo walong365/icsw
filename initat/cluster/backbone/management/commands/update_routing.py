@@ -24,7 +24,7 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from initat.cluster.backbone import routing
-import logging_tools
+from initat.tools import logging_tools
 
 
 class Command(BaseCommand):

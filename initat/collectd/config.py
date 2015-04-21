@@ -21,9 +21,9 @@
 
 """ base constants and config """
 
-import process_tools
-import uuid_tools
-import configfile
+from initat.tools import process_tools
+from initat.tools import uuid_tools
+from initat.tools import configfile
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 

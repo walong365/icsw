@@ -22,7 +22,7 @@
 
 """ simple caching wrapper """
 
-import process_tools
+from initat.tools import process_tools
 
 
 class my_cached_file(process_tools.cached_file):

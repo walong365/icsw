@@ -19,7 +19,7 @@
 #
 from django.conf import settings
 
-import logging_tools
+from initat.tools import logging_tools
 import operator
 import datetime
 import itertools

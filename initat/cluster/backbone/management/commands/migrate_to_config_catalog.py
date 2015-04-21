@@ -23,7 +23,7 @@
 
 from django.core.management.base import BaseCommand
 from initat.cluster.backbone.models import config, config_catalog
-import logging_tools
+from initat.tools import logging_tools
 
 
 class Command(BaseCommand):

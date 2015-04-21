@@ -25,9 +25,9 @@ Checks related to pgpool-II >= 3.0 via SQL interface.
 from ConfigParser import SafeConfigParser
 from initat.host_monitoring import limits
 from initat.host_monitoring.hm_classes import hm_command, hm_module
-from initat.host_monitoring.server import server_command
+from initat.host_monitoring.server from initat.tools import server_command
 import cPickle
-import logging_tools
+from initat.tools import logging_tools
 import os
 try:
     import psycopg2  # @UnresolvedImport

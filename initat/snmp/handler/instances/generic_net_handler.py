@@ -29,7 +29,7 @@ from initat.host_monitoring import limits
 from lxml.builder import E
 import pprint  # @UnusedImport
 import time
-import logging_tools
+from initat.tools import logging_tools
 
 # if base
 IF_BASE = "1.3.6.1.2.1.2"

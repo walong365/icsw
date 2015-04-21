@@ -17,9 +17,9 @@
 #
 
 from initat.host_monitoring import hm_classes, limits
-import logging_tools
-import server_command
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import server_command
+from initat.tools import process_tools
 
 HPASM_BIN = "hpasmcli"
 

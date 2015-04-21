@@ -43,8 +43,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-import logging_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import server_command
 
 
 logger = logging.getLogger("cluster.boot")

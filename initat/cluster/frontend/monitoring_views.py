@@ -56,9 +56,9 @@ import base64
 import itertools
 import json
 import logging
-import logging_tools
-import process_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 import socket
 import cairosvg
 import StringIO

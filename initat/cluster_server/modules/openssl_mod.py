@@ -23,9 +23,9 @@ from initat.cluster_server.config import global_config
 from initat.cluster.backbone.models import device
 from django.db.models import Q
 import cs_base_class
-import logging_tools
-import openssl_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import openssl_tools
+from initat.tools import server_command
 
 
 def _build_obj(cur_inst, **kwargs):

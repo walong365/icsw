@@ -24,9 +24,9 @@ from initat.cluster.backbone.models import device
 from initat.cluster_config_server.build_container import build_container, generated_tree
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.partition_setup import partition_setup
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import shutil
 
 

@@ -23,7 +23,7 @@
 """ A raw ICMP baseclass (icmp protocol), based on seafelt lib/icmp.py """
 
 import array
-import logging_tools
+from initat.tools import logging_tools
 import os
 import socket
 import struct

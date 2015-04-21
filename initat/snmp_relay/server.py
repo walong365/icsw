@@ -22,15 +22,15 @@ from initat.snmp.process import snmp_process_container
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay import snmp_relay_schemes
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
-import configfile
+from initat.tools import configfile
 import difflib
-import logging_tools
+from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 import socket
-import threading_tools
+from initat.tools import threading_tools
 import time
 import zmq
 

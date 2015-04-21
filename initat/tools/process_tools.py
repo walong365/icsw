@@ -24,7 +24,7 @@ import codecs
 import base64
 import inspect
 import locale
-import logging_tools
+from initat.tools import logging_tools
 import marshal
 import os
 import pickle
@@ -40,7 +40,7 @@ import sys
 import threading
 import time
 import traceback
-import uuid_tools
+from initat.tools import uuid_tools
 import zmq
 import json
 import bz2
@@ -71,7 +71,7 @@ except locale.Error:
     ENCODING = "C"
 
 try:
-    import affinity_tools  # @UnresolvedImports
+    from initat.tools import affinity_tools  # @UnresolvedImports
 except IOError:
     affinity_tools = None
 
@@ -1855,7 +1855,7 @@ def _read_issue_file(f_name):
 
 def fetch_sysinfo(root_dir="/"):
     # late import due to strange build problem on Debian (once again) systems
-    import cpu_database
+    from initat.tools import cpu_database
     log_lines, sys_dict = ([], {})
     try:
         isl = []

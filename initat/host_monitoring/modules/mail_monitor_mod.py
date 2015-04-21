@@ -26,9 +26,9 @@ import stat
 import time
 
 from initat.host_monitoring import hm_classes, limits
-import logging_tools
-import process_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 
 
 MIN_UPDATE_TIME = 30

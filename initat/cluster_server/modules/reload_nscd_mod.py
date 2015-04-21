@@ -16,8 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 
 import cs_base_class
 
