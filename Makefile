@@ -119,7 +119,7 @@ install:
 	# links
 	for file in ${DESTDIR}/modules/*.py ; do \
 	    ${LN} -s ${PYTHON_SITE}/$${file} ${DESTDIR}/${PYTHON_SITE}/$$(basename $${file}) \
-	done \
+	done
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
