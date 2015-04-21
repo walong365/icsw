@@ -57,8 +57,18 @@ class icsw_deletion_record(models.Model):
         if not isinstance(acting_user, user):
             acting_user = None
 
+        try:
+            # use smart way
+            object_repr = force_text(instance)
+        except:
+            try:
+                # smart way might use something which has already been deleted, try it more direct
+                object_repr = repr(instance)
+            except:
+                object_repr = "object"
+
         record = icsw_deletion_record(user=acting_user, object_id_int=instance.pk, content_type=content_type,
-                                      serialized_data=serialized_data, object_repr=force_text(instance))
+                                      serialized_data=serialized_data, object_repr=object_repr)
         record.save()
 
 
