@@ -23,15 +23,15 @@ from collections import defaultdict
 import collections
 import operator
 import django
+import itertools
 
 from django.db import models
 from django.db.models import Max, Min, Prefetch, Q
+from initat.cluster.backbone.models import mon_check_command
 
 
 ########################################
 # models for direct data from icinga logs
-import itertools
-from initat.cluster.backbone.models import mon_check_command
 
 
 class mon_icinga_log_raw_base(models.Model):
@@ -69,78 +69,6 @@ class mon_icinga_log_raw_base(models.Model):
         abstract = True
 
 
-class AlertList(object):
-    """Nice interface to a list of either host or service alerts
-    Includes handling of last before and first after state as well as downtimes
-    """
-    # noinspection PyUnresolvedReferences
-    def __init__(self, is_host, alert_filter, start_time, end_time, calc_first_after=False):
-        # self.is_host = is_host
-        # self.alert_filter = alert_filter
-
-        model = mon_icinga_log_raw_host_alert_data if is_host else mon_icinga_log_raw_service_alert_data
-
-        self.alerts = model.objects.calc_alerts(start_time=start_time, end_time=end_time,
-                                                additional_filter=alert_filter)
-        self.last_before = model.objects.calc_limit_alerts(time=start_time, mode='last before',
-                                                           additional_filter=alert_filter)
-        if calc_first_after:
-            self.first_after = model.objects.calc_limit_alerts(time=end_time, mode='first after',
-                                                               additional_filter=alert_filter)
-
-        # handle downtimes
-        downtime_model = mon_icinga_log_raw_host_downtime_data if is_host else mon_icinga_log_raw_service_downtime_data
-        if is_host:
-            key_fun = lambda entry: entry.device_id
-        else:
-            key_fun = lambda entry: (entry.device_id, entry.service_id, entry.service_info)
-        downtimes_qs = downtime_model.objects.all().order_by('date')
-        if alert_filter is not None:
-            downtimes_qs = downtimes_qs.filter(alert_filter)
-        downtimes = raw_service_alert_manager.preprocess_start_stop_data(
-            downtimes_qs,
-            key_fun,
-            'downtime_state',
-            start_time,
-            end_time)
-
-        for k, downtime_list in downtimes.iteritems():
-            if downtime_list:
-                # filter alerts
-                self.alerts[k] = [alert for alert in self.alerts[k]
-                                  if not any(downtime.start <= alert.date < downtime.end
-                                             for downtime in downtime_list)]
-
-                # add downtime state changing alerts
-                for downtime in downtime_list:
-                    # search last before entry
-                    last_alert_before_downtime = None
-                    for alert in self.alerts[k]:
-                        if alert.date > downtime.start:
-                            break
-                        last_alert_before_downtime = alert
-
-                    if last_alert_before_downtime is None:
-                        last_alert_before_downtime = self.last_before.get(k, None)
-
-                    self.alerts[k].append(downtime.start_entry)
-
-                    # add end time if downtime has ended
-                    if downtime.end_entry is not None:
-                        downtime.end_entry.state = last_alert_before_downtime.state
-                        downtime.end_entry.state_type = last_alert_before_downtime.state_type
-                        self.alerts[k].append(downtime.end_entry)
-
-                    # check if we have started in downtime
-                    if downtime.start <= start_time < downtime.end:
-                        # update last before state
-                        self.last_before[k].state = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
-                        self.last_before[k].state_type = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
-
-                # if this is too slow, we could also insert the entries in order
-                self.alerts[k].sort(key=operator.attrgetter('date'))
-
-
 class raw_host_alert_manager(models.Manager):
     def calc_alerts(self, start_time, end_time, additional_filter=None):
         host_alerts = defaultdict(lambda: [])
@@ -166,7 +94,7 @@ class raw_host_alert_manager(models.Manager):
         Find last alert before or first alert after some point in time for some devices
         :param mode: 'last before' or 'first after'
         """
-        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=True, time=time, mode=mode, **kwargs)
+        return StatusHistoryUtils.do_calc_limit_alerts(self, is_host=True, time=time, mode=mode, **kwargs)
 
 
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
@@ -222,126 +150,7 @@ class raw_service_alert_manager(models.Manager):
         Find last alert before or first alert after some point in time for some devices
         :param mode: 'last before' or 'first after'
         """
-        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=False, time=time, mode=mode, **kwargs)
-
-    @staticmethod
-    def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', additional_filter=None):
-        # TODO: replace mode by some enum34 instance
-        assert mode in ('last before', 'first after')
-
-        group_by_fields = ['device_id', 'state', 'state_type']
-        additional_fields = ['date', 'msg']
-        if not is_host:
-            group_by_fields.extend(['service_id', 'service_info'])
-
-        # NOTE: code was written for 'last_before' mode and then generalised, hence some vars are called 'latest...'
-        try:
-            if mode == 'last before':
-                latest_dev_independent_service_alert = \
-                    obj_man.filter(date__lte=time, device_independent=True).latest('date')
-            else:
-                latest_dev_independent_service_alert = \
-                    obj_man.filter(date__gte=time, device_independent=True).earliest('date')
-
-            # can't use values() on single entry
-            latest_dev_independent_service_alert = {key: getattr(latest_dev_independent_service_alert, key)
-                                                    for key in (group_by_fields + additional_fields)}
-        except obj_man.model.DoesNotExist:
-            latest_dev_independent_service_alert = None
-
-        # get last service alert of each service before the start time
-        last_service_alert_cache = {}
-        if mode == 'last before':
-            queryset = obj_man.filter(Q(date__lte=time) & Q(device_independent=False))
-        else:
-            queryset = obj_man.filter(Q(date__gte=time) & Q(device_independent=False))
-
-        apply_additional_filter =\
-            lambda x: x if additional_filter is None else x.filter(additional_filter)
-
-        queryset = apply_additional_filter(queryset)
-        queryset = queryset.values(*group_by_fields)
-
-        # only get these values and annotate with extreme date, then we get the each field-tuple with their extreme date
-
-        if mode == 'last before':
-            queryset = queryset.annotate(extreme_date=Max('date'))
-        else:
-            queryset = queryset.annotate(extreme_date=Min('date'))
-
-        for entry in queryset:
-            # prefer latest info if there is dev independent one
-
-            if mode == 'last before':
-                comp = lambda x, y: x > y
-            else:
-                comp = lambda x, y: x < y
-            if latest_dev_independent_service_alert is not None and \
-                    comp(latest_dev_independent_service_alert['date'], entry['extreme_date']):
-                relevant_entry = latest_dev_independent_service_alert
-            else:
-                relevant_entry = entry
-
-            if is_host:
-                key = entry['device_id']
-            else:
-                key = entry['device_id'], entry['service_id'], entry['service_info']
-
-            # the query above is not perfect, it should group only by device and service
-            # this seems to be hard in django:
-            # http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
-            # so we do the last grouping by this key here manually
-            if key not in last_service_alert_cache or comp(entry['extreme_date'], last_service_alert_cache[key][1]):
-                last_service_alert_cache[key] = relevant_entry, entry['extreme_date']
-
-        # if we are in a planned downtime, we have to return planned downtime independent of the actual state
-        if is_host:
-            downtime_queryset = apply_additional_filter(mon_icinga_log_raw_host_downtime_data.objects.all())
-            downtime_key = lambda entry: entry.device_id
-        else:
-            downtime_queryset = apply_additional_filter(mon_icinga_log_raw_service_downtime_data.objects.all())
-            downtime_key = lambda entry: (entry.device_id, entry.service_id, entry.service_info)
-
-        for downtime_entry_key in raw_service_alert_manager.preprocess_start_stop_data(downtime_queryset,
-                                                                                       downtime_key,
-                                                                                       'downtime_state',
-                                                                                       start_time=time,
-                                                                                       end_time=time).iterkeys():
-            # every entry here is in a downtime state exactly at time, we don't need to consider the downtime time span
-            if is_host:
-                downtime_entry = {
-                    'device_id': downtime_entry_key,
-                }
-            else:
-                downtime_entry = {
-                    'device_id': downtime_entry_key[0],
-                    'service_id': downtime_entry_key[1],
-                    'service_info': downtime_entry_key[2],
-                }
-            downtime_entry['date'] = time
-            downtime_entry['msg'] = u"Planned downtime"
-            downtime_entry['state'] = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
-            downtime_entry['state_type'] = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
-
-            last_service_alert_cache[downtime_entry_key] = downtime_entry, time
-
-        # NOTE: apparently, in django, if you use group_by, you can only select the elements you group_by and
-        #       the annotated elements therefore we retrieve the extra parameters manually
-        for k, v in last_service_alert_cache.iteritems():
-            if any(key not in v[0] for key in additional_fields):
-                if is_host:
-                    additional_fields_query = obj_man.filter(device_id=k, date=v[1])
-                else:
-                    additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2],
-                                                             date=v[1])
-
-                if len(additional_fields_query) == 0:  # must be dev independent
-                    additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
-
-                v[0].update(additional_fields_query.values(*additional_fields)[0])
-
-        # drop extreme date
-        return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
+        return StatusHistoryUtils.do_calc_limit_alerts(self, is_host=False, time=time, mode=mode, **kwargs)
 
     @staticmethod
     def calculate_service_name_for_client(entry):
@@ -362,35 +171,6 @@ class raw_service_alert_manager(models.Manager):
     def _do_calculate_service_name_for_client(service, service_info):
         service_name = service.name if service else u""
         return u"{},{}".format(service_name, service_info if service_info else u"")
-
-    @staticmethod
-    def preprocess_start_stop_data(queryset, key_fun, field_name, start_time, end_time):
-        """
-        for models which have entries for start and stop events,
-        create a dict which contains (start, stop) tuples
-        extract entries for this timespan (the rest would be the same for every timespan)
-        @param start_time: discard events which have finished before start_time
-        @param end_time: discard events which start after end_time
-        """
-        StartStopDuration = collections.namedtuple("StartStopDuration", ['start', 'end', 'start_entry',
-                                                                         'end_entry'])
-        cache = defaultdict(lambda: [])  # this is sorted by time
-        aux_start_times = {}
-        for entry in queryset:
-            key = key_fun(entry)
-            if key not in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.START:
-                # proper start
-                if entry.date <= end_time:  # discard events which start after we have ended
-                    aux_start_times[key] = entry
-            if key in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.STOP:
-                # a proper stop
-                start_entry = aux_start_times.pop(key)
-                if entry.date >= start_time:  # discard elements which have already finished when we haven't started yet
-                    cache[key].append(StartStopDuration(start_entry.date, entry.date, start_entry, entry))
-        # handles events which haven't stopped yet
-        for key, start_entry in aux_start_times.iteritems():
-            cache[key].append(StartStopDuration(start_entry.date, django.utils.timezone.now(), start_entry, None))
-        return dict(cache)  # make into regular dict
 
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
@@ -740,3 +520,230 @@ class mon_icinga_log_aggregated_service_data(models.Model):
 
     class CSW_Meta:
         backup = False
+
+
+########################################
+# outsourced calculation functions
+
+
+class StatusHistoryUtils(object):
+    """Misc functions used in this file mostly"""
+    @staticmethod
+    def preprocess_start_stop_data(queryset, key_fun, field_name, start_time, end_time):
+        """
+        for models which have entries for start and stop events,
+        create a dict which contains (start, stop) tuples
+        extract entries for this timespan (the rest would be the same for every timespan)
+        @param start_time: discard events which have finished before start_time
+        @param end_time: discard events which start after end_time
+        """
+        StartStopDuration = collections.namedtuple("StartStopDuration", ['start', 'end', 'start_entry',
+                                                                         'end_entry'])
+        cache = defaultdict(lambda: [])  # this is sorted by time
+        aux_start_times = {}
+        for entry in queryset:
+            key = key_fun(entry)
+            if key not in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.START:
+                # proper start
+                if entry.date <= end_time:  # discard events which start after we have ended
+                    aux_start_times[key] = entry
+            if key in aux_start_times and getattr(entry, field_name) == mon_icinga_log_raw_base.STOP:
+                # a proper stop
+                start_entry = aux_start_times.pop(key)
+                if entry.date >= start_time:  # discard elements which have already finished when we haven't started yet
+                    cache[key].append(StartStopDuration(start_entry.date, entry.date, start_entry, entry))
+        # handles events which haven't stopped yet
+        for key, start_entry in aux_start_times.iteritems():
+            cache[key].append(StartStopDuration(start_entry.date, django.utils.timezone.now(), start_entry, None))
+        return dict(cache)  # make into regular dict
+
+    @staticmethod
+    def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', additional_filter=None):
+        # TODO: replace mode by some enum34 instance
+        assert mode in ('last before', 'first after')
+
+        group_by_fields = ['device_id', 'state', 'state_type']
+        additional_fields = ['date', 'msg']
+        if not is_host:
+            group_by_fields.extend(['service_id', 'service_info'])
+
+        # NOTE: code was written for 'last_before' mode and then generalised, hence some vars are called 'latest...'
+        try:
+            if mode == 'last before':
+                latest_dev_independent_service_alert = \
+                    obj_man.filter(date__lte=time, device_independent=True).latest('date')
+            else:
+                latest_dev_independent_service_alert = \
+                    obj_man.filter(date__gte=time, device_independent=True).earliest('date')
+
+            # can't use values() on single entry
+            latest_dev_independent_service_alert = {key: getattr(latest_dev_independent_service_alert, key)
+                                                    for key in (group_by_fields + additional_fields)}
+        except obj_man.model.DoesNotExist:
+            latest_dev_independent_service_alert = None
+
+        # get last service alert of each service before the start time
+        last_service_alert_cache = {}
+        if mode == 'last before':
+            queryset = obj_man.filter(Q(date__lte=time) & Q(device_independent=False))
+        else:
+            queryset = obj_man.filter(Q(date__gte=time) & Q(device_independent=False))
+
+        apply_additional_filter = \
+            lambda x: x if additional_filter is None else x.filter(additional_filter)
+
+        queryset = apply_additional_filter(queryset)
+        queryset = queryset.values(*group_by_fields)
+
+        # only get these values and annotate with extreme date, then we get the each field-tuple with their extreme date
+
+        if mode == 'last before':
+            queryset = queryset.annotate(extreme_date=Max('date'))
+        else:
+            queryset = queryset.annotate(extreme_date=Min('date'))
+
+        for entry in queryset:
+            # prefer latest info if there is dev independent one
+
+            if mode == 'last before':
+                comp = lambda x, y: x > y
+            else:
+                comp = lambda x, y: x < y
+            if latest_dev_independent_service_alert is not None and \
+                    comp(latest_dev_independent_service_alert['date'], entry['extreme_date']):
+                relevant_entry = latest_dev_independent_service_alert
+            else:
+                relevant_entry = entry
+
+            if is_host:
+                key = entry['device_id']
+            else:
+                key = entry['device_id'], entry['service_id'], entry['service_info']
+
+            # the query above is not perfect, it should group only by device and service
+            # this seems to be hard in django:
+            # http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
+            # so we do the last grouping by this key here manually
+            if key not in last_service_alert_cache or comp(entry['extreme_date'], last_service_alert_cache[key][1]):
+                last_service_alert_cache[key] = relevant_entry, entry['extreme_date']
+
+        # if we are in a planned downtime, we have to return planned downtime independent of the actual state
+        if is_host:
+            downtime_queryset = apply_additional_filter(mon_icinga_log_raw_host_downtime_data.objects.all())
+            downtime_key = lambda entry: entry.device_id
+        else:
+            downtime_queryset = apply_additional_filter(mon_icinga_log_raw_service_downtime_data.objects.all())
+            downtime_key = lambda entry: (entry.device_id, entry.service_id, entry.service_info)
+
+        for downtime_entry_key in StatusHistoryUtils.preprocess_start_stop_data(downtime_queryset,
+                                                                                downtime_key,
+                                                                                'downtime_state',
+                                                                                start_time=time,
+                                                                                end_time=time).iterkeys():
+            # every entry here is in a downtime state exactly at time, we don't need to consider the downtime time span
+            if is_host:
+                downtime_entry = {
+                    'device_id': downtime_entry_key,
+                    }
+            else:
+                downtime_entry = {
+                    'device_id': downtime_entry_key[0],
+                    'service_id': downtime_entry_key[1],
+                    'service_info': downtime_entry_key[2],
+                    }
+            downtime_entry['date'] = time
+            downtime_entry['msg'] = u"Planned downtime"
+            downtime_entry['state'] = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+            downtime_entry['state_type'] = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+
+            last_service_alert_cache[downtime_entry_key] = downtime_entry, time
+
+        # NOTE: apparently, in django, if you use group_by, you can only select the elements you group_by and
+        #       the annotated elements therefore we retrieve the extra parameters manually
+        for k, v in last_service_alert_cache.iteritems():
+            if any(key not in v[0] for key in additional_fields):
+                if is_host:
+                    additional_fields_query = obj_man.filter(device_id=k, date=v[1])
+                else:
+                    additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2],
+                                                             date=v[1])
+
+                if len(additional_fields_query) == 0:  # must be dev independent
+                    additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
+
+                v[0].update(additional_fields_query.values(*additional_fields)[0])
+
+        # drop extreme date
+        return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
+
+
+class AlertList(object):
+    """Nice interface to a list of either host or service alerts
+    Includes handling of last before and first after state as well as downtimes
+    """
+    # noinspection PyUnresolvedReferences
+    def __init__(self, is_host, alert_filter, start_time, end_time, calc_first_after=False):
+        # self.is_host = is_host
+        # self.alert_filter = alert_filter
+
+        model = mon_icinga_log_raw_host_alert_data if is_host else mon_icinga_log_raw_service_alert_data
+
+        self.alerts = model.objects.calc_alerts(start_time=start_time, end_time=end_time,
+                                                additional_filter=alert_filter)
+        self.last_before = model.objects.calc_limit_alerts(time=start_time, mode='last before',
+                                                           additional_filter=alert_filter)
+        if calc_first_after:
+            self.first_after = model.objects.calc_limit_alerts(time=end_time, mode='first after',
+                                                               additional_filter=alert_filter)
+
+        # handle downtimes
+        downtime_model = mon_icinga_log_raw_host_downtime_data if is_host else mon_icinga_log_raw_service_downtime_data
+        if is_host:
+            key_fun = lambda entry: entry.device_id
+        else:
+            key_fun = lambda entry: (entry.device_id, entry.service_id, entry.service_info)
+        downtimes_qs = downtime_model.objects.all().order_by('date')
+        if alert_filter is not None:
+            downtimes_qs = downtimes_qs.filter(alert_filter)
+        downtimes = StatusHistoryUtils.preprocess_start_stop_data(
+            downtimes_qs,
+            key_fun,
+            'downtime_state',
+            start_time,
+            end_time)
+
+        for k, downtime_list in downtimes.iteritems():
+            if downtime_list:
+                # filter alerts
+                self.alerts[k] = [alert for alert in self.alerts[k]
+                                  if not any(downtime.start <= alert.date < downtime.end
+                                             for downtime in downtime_list)]
+
+                # add downtime state changing alerts
+                for downtime in downtime_list:
+                    # search last before entry
+                    last_alert_before_downtime = None
+                    for alert in self.alerts[k]:
+                        if alert.date > downtime.start:
+                            break
+                        last_alert_before_downtime = alert
+
+                    if last_alert_before_downtime is None:
+                        last_alert_before_downtime = self.last_before.get(k, None)
+
+                    self.alerts[k].append(downtime.start_entry)
+
+                    # add end time if downtime has ended
+                    if downtime.end_entry is not None:
+                        downtime.end_entry.state = last_alert_before_downtime.state
+                        downtime.end_entry.state_type = last_alert_before_downtime.state_type
+                        self.alerts[k].append(downtime.end_entry)
+
+                    # check if we have started in downtime
+                    if downtime.start <= start_time < downtime.end:
+                        # update last before state
+                        self.last_before[k].state = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+                        self.last_before[k].state_type = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+
+                # if this is too slow, we could also insert the entries in order
+                self.alerts[k].sort(key=operator.attrgetter('date'))

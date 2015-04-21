@@ -28,7 +28,8 @@ from django.db.models.query_utils import Q
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, raw_service_alert_manager
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, raw_service_alert_manager, \
+    StatusHistoryUtils
 from initat.cluster.backbone.models.functions import cluster_timezone, duration
 
 
@@ -193,7 +194,7 @@ class icinga_log_aggregator(object):
 
         # get flappings of timespan (can't use db in inner loop)
         # TODO: possibly extract keys in cache
-        preprocess_start_stop_data = raw_service_alert_manager.preprocess_start_stop_data
+        preprocess_start_stop_data = StatusHistoryUtils.preprocess_start_stop_data
         service_flapping_cache = preprocess_start_stop_data(self._service_flapping_cache,
                                                             lambda flap_data: (flap_data.device_id,
                                                                                flap_data.service_id,
