@@ -118,7 +118,7 @@ install:
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
 	# links
 	for file in ${DESTDIR}/modules/*.py ; do \
-	    ${LN} -s ${PYTHON_SITE}/$${file} ${DESTDIR}/${PYTHON_SITE}/$$(basename $${file}) \
+	    ${LN} -s ${PYTHON_SITE}/$${file} ${DESTDIR}/${PYTHON_SITE}/$$(basename $${file}) ; \
 	done
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
