@@ -117,7 +117,7 @@ install:
 	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
 	# links
-	for file in ${DESTDIR}/modules/*.py ; do \
+	for file in ${DESTDIR}/${PYTHON_SITE}/initat/tools/*.py ; do \
 	    ${LN} -s ${PYTHON_SITE}/$${file} ${DESTDIR}/${PYTHON_SITE}/$$(basename $${file}) ; \
 	done
 	# status and pci.ids
