@@ -325,7 +325,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} scripts/unregister_file_watch ${DESTDIR}/${SCRIPTDIR}
 	./init_proprietary.py ${DESTDIR}
 	# check scripts
-	${LN} -s ${PYTHON_SITE}/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
+	${LN} -s ${PYTHON_SITE}/initat/tools/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
 	# remove deprecated
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc
