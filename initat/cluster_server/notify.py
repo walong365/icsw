@@ -25,11 +25,11 @@ from django.db.models import Q
 from initat.cluster.backbone.models import background_job, user, background_job_run, device, \
     cluster_timezone, virtual_desktop_user_setting
 from initat.cluster.backbone.routing import srv_type_routing, get_server_uuid
-import config_tools
+from initat.tools import config_tools
 import datetime
-import logging_tools
-import process_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 
 # background job command mapping
 BGJ_CM = {

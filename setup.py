@@ -27,6 +27,7 @@ setup(
     author_email="lang-nevyjel@init.at",
     packages=[
         "initat",
+        "initat.tools",
         "initat.rms",
         "initat.cluster",
         "initat.cluster.backbone",

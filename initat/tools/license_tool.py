@@ -24,8 +24,8 @@
 
 from lxml import etree  # @UnresolvedImport
 import argparse
-import logging_tools
-import sge_license_tools
+from initat.tools import logging_tools
+from initat.tools import sge_license_tools
 import sys
 
 

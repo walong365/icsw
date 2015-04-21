@@ -8,7 +8,7 @@ from lxml import etree
 from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
-import logging_tools
+from initat.tools import logging_tools
 
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"

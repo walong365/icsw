@@ -21,11 +21,11 @@
 
 import base64
 import bz2
-import logging_tools
+from initat.tools import logging_tools
 import marshal
 import os
 import re
-import server_command
+from initat.tools import server_command
 import subprocess
 import sys
 import tempfile

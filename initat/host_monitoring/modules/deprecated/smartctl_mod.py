@@ -25,9 +25,9 @@ from initat.host_monitoring import hm_classes
 import re
 import os
 import os.path
-import logging_tools
+from initat.tools import logging_tools
 import pprint
-import process_tools
+from initat.tools import process_tools
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):

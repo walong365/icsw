@@ -25,8 +25,8 @@ from initat.host_monitoring import ipc_comtools
 from initat.md_config_server.constants import DEFAULT_CACHE_MODE
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import datetime
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import time
 
 

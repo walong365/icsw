@@ -31,7 +31,7 @@ django.setup()
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.functions import to_system_tz
-import logging_tools
+from initat.tools import logging_tools
 import argparse
 
 

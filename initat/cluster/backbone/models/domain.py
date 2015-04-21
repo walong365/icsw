@@ -14,7 +14,7 @@ from initat.cluster.backbone.models.functions import _check_empty_string, _check
     _check_float, get_related_models
 import StringIO
 import os
-import process_tools
+from initat.tools import process_tools
 import re
 import uuid
 

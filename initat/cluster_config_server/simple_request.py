@@ -21,9 +21,9 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import config, config_str, device_variable
-import config_tools
-import logging_tools
-import server_command
+from initat.tools import config_tools
+from initat.tools import logging_tools
+from initat.tools import server_command
 
 
 # copy from md-config-server

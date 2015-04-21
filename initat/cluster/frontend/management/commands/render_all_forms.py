@@ -39,7 +39,7 @@ from django.forms import Form, ModelForm
 from django.conf import settings
 import inspect
 import logging
-import logging_tools
+from initat.tools import logging_tools
 import time
 import importlib
 import os

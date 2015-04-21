@@ -20,10 +20,10 @@
 
 from initat.cluster_server.config import global_config
 import cs_base_class
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 

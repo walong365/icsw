@@ -28,7 +28,7 @@ from initat.host_monitoring import limits
 from initat.host_monitoring import hm_classes
 import stat
 import time
-import logging_tools
+from initat.tools import logging_tools
 
 SENSFILE_NAME = "sensinfo"
 

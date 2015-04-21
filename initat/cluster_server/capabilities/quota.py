@@ -27,9 +27,9 @@ from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
 import commands
 import grp
-import logging_tools
+from initat.tools import logging_tools
 import pprint  # @UnusedImport
-import process_tools
+from initat.tools import process_tools
 import psutil
 import pwd
 import time

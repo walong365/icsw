@@ -26,12 +26,12 @@ import os
 from django.db import connection
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.struct import machine
-import cluster_location
-import configfile
-import logging_tools
-import process_tools
+from initat.tools import cluster_location
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import psutil
-import threading_tools
+from initat.tools import threading_tools
 
 
 class server_process(threading_tools.process_pool):

@@ -34,10 +34,10 @@ from initat.cluster_config_server.config_static import SERVER_PORT, NCS_PORT
 from initat.cluster.backbone.models import LogSource
 import daemon
 from io_stream_helper import io_stream
-import cluster_location
-import config_tools
-import configfile
-import process_tools
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
+from initat.tools import process_tools
 
 
 def run_code():

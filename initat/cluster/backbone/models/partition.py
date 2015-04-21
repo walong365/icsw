@@ -26,7 +26,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_integer
-import logging_tools
+from initat.tools import logging_tools
 import re
 
 __all__ = [

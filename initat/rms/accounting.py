@@ -29,11 +29,11 @@ from initat.rms.functions import call_command
 from lxml import etree  # @UnresolvedImport @UnusedImport
 import commands
 import datetime
-import logging_tools
+from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
-import server_command
-import threading_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import time
 
 _OBJ_DICT = {

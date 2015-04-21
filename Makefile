@@ -116,8 +116,12 @@ install:
 	# setup.py
 	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
-	# need package
-	${INSTALL} ${INSTALL_OPTS} modules/*.py ${DESTDIR}/${PYTHON_SITE}
+	# links
+	for file in ${DESTDIR}/${PYTHON_SITE}/initat/tools/*.py ; do \
+	    ${LN} -s ${PYTHON_SITE}/initat/tools/$$(basename $${file}) ${DESTDIR}/${PYTHON_SITE}/$$(basename $${file}) ; \
+	done ; \
+	# remove link to __init__.py
+	rm ${DESTDIR}/${PYTHON_SITE}/__init__.py
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/

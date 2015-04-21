@@ -24,10 +24,10 @@
 from initat.logging_server import version
 from initat.logging_server.config import global_config
 from initat.logging_server.server import main_process
-import configfile
+from initat.tools import configfile
 import daemon
 import os
-import process_tools
+from initat.tools import process_tools
 import socket
 import stat
 import sys

@@ -21,9 +21,9 @@
 
 from ConfigParser import SafeConfigParser
 from initat.host_monitoring.hm_classes import hm_module
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import time
 try:
     import psycopg2

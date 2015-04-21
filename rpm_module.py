@@ -23,7 +23,7 @@ import sys
 import imp
 import os
 import exceptions
-import cpu_database
+from initat.tools import cpu_database
 
 
 def __import__(name):

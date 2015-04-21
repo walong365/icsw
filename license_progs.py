@@ -25,10 +25,10 @@
 
 from lxml import etree
 import argparse
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
-import sge_license_tools
+from initat.tools import process_tools
+from initat.tools import sge_license_tools
 import sys
 import tempfile
 import time

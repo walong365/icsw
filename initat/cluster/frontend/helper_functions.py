@@ -28,9 +28,9 @@ from initat.cluster.backbone import routing
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
 import email.mime
-import logging_tools
-import net_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import net_tools
+from initat.tools import process_tools
 import smtplib
 
 

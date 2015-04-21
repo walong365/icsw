@@ -39,9 +39,9 @@ from initat.cluster.backbone.models import device_group, device, \
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-import logging_tools
-import server_command
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import server_command
+from initat.tools import process_tools
 
 
 logger = logging.getLogger("cluster.device")

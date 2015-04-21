@@ -22,7 +22,7 @@
 """ shows package status """
 
 import getopt
-import logging_tools
+from initat.tools import logging_tools
 import os
 import re
 import sys

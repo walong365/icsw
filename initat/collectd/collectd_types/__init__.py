@@ -23,7 +23,7 @@
 import inspect
 import os
 
-import process_tools
+from initat.tools import process_tools
 
 from .base import PerfdataObject
 

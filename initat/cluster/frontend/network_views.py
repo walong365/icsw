@@ -36,9 +36,9 @@ from initat.cluster.backbone.models import device, peer_information
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from networkx.readwrite import json_graph
-import config_tools
-import ipvx_tools
-import logging_tools
+from initat.tools import config_tools
+from initat.tools import ipvx_tools
+from initat.tools import logging_tools
 
 
 logger = logging.getLogger("cluster.network")

@@ -23,11 +23,11 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device_variable, config, device, config_blob, \
     config_bool, config_int, config_str, net_ip
 import array
-import config_tools
-import configfile
+from initat.tools import config_tools
+from initat.tools import configfile
 import datetime
 import netifaces
-import process_tools
+from initat.tools import process_tools
 import socket
 
 _VAR_LUT = {

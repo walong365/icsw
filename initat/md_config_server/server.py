@@ -39,14 +39,14 @@ from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
-import cluster_location
+from initat.tools import cluster_location
 import codecs
 import inspect
-import configfile
-import logging_tools
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import time
 import zmq
 

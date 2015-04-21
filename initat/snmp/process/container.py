@@ -19,7 +19,7 @@
 
 from .config import DEFAULT_RETURN_NAME
 from .process import snmp_process
-import logging_tools
+from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
 import time

@@ -23,8 +23,8 @@ import commands
 from initat.host_monitoring import limits, hm_classes
 import os
 import os.path
-import logging_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import server_command
 try:
     import xen_tools
 except:

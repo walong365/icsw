@@ -36,8 +36,8 @@ import dateutil.parser
 import dateutil.tz
 import json
 import logging
-import logging_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.rrd")
 

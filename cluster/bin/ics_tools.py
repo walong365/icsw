@@ -28,8 +28,8 @@ import stat
 import sys
 import time
 
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
 MS_DIR = "/var/lib/meta-server"

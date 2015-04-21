@@ -29,8 +29,8 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import argparse
-import mail_tools
-import logging_tools
+from initat.tools import mail_tools
+from initat.tools import logging_tools
 import zmq
 
 

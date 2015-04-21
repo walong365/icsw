@@ -20,11 +20,11 @@ from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
 import base64
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import marshal
 import os
 import re
-import server_command
+from initat.tools import server_command
 import time
 
 class _general(hm_classes.hm_module):

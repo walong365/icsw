@@ -22,16 +22,16 @@
 """ meta-server, server process """
 
 from initat.meta_server.config import global_config
-import configfile
-import logging_tools
-import mail_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import mail_tools
 import os
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 import signal
 import stat
 import subprocess  # @UnusedImport
-import threading_tools
+from initat.tools import threading_tools
 import time
 import zmq
 

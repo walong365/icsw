@@ -32,8 +32,8 @@ from lxml.builder import E  # @UnresolvedImport
 import argparse
 import commands
 import datetime
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import psutil
 import stat
 import subprocess
@@ -57,7 +57,7 @@ else:
         except:
             config_tools = None
         else:
-            import config_tools
+            from initat.tools import config_tools
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 

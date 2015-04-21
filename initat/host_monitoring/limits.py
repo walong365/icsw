@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import logging_tools
+from initat.tools import logging_tools
 
 # nagios / icinga exit codes
 nag_STATE_CRITICAL = 2

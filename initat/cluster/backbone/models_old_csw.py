@@ -13,8 +13,8 @@ from django.core.exceptions import ValidationError
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import re
-import ipvx_tools
-import logging_tools
+from initat.tools import ipvx_tools
+from initat.tools import logging_tools
 import pprint
 
 def only_wf_perms(in_list):

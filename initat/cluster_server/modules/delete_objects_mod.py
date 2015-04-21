@@ -21,7 +21,7 @@ import json
 import time
 
 from django.db import transaction
-import logging_tools
+from initat.tools import logging_tools
 
 from initat.cluster_server.modules import cs_base_class
 from initat.cluster.backbone.models import DeleteRequest

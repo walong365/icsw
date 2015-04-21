@@ -25,7 +25,7 @@
 from django.db import models
 import django.utils.timezone
 from django.db.models import Q, signals
-import logging_tools
+from initat.tools import logging_tools
 
 
 __all__ = [

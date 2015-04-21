@@ -23,14 +23,14 @@
 """ host-monitoring for 0MQ >=  4.x.y, direct socket part """
 
 from initat.host_monitoring.config import global_config
-import icmp_class
-import logging_tools
-import process_tools
+from initat.tools import icmp_class
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import re
 import select
-import server_command
+from initat.tools import server_command
 import socket
-import threading_tools
+from initat.tools import threading_tools
 import time
 import zmq
 

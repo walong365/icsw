@@ -23,9 +23,9 @@
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
 import commands
-import logging_tools
-import process_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 import subprocess
 import time
 

@@ -22,7 +22,7 @@
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E
 import subprocess
-import logging_tools
+from initat.tools import logging_tools
 import os
 import re
 import rrdtool  # @UnresolvedImport

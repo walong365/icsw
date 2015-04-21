@@ -33,22 +33,22 @@ from django.db.models import Q
 from initat.cluster.backbone.models import kernel, initrd_build
 import argparse
 import commands
-import config_tools
+from initat.tools import config_tools
 import datetime
 import fnmatch
 import gzip
-import logging_tools
-import module_dependency_tools
-import net_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import module_dependency_tools
+from initat.tools import net_tools
+from initat.tools import process_tools
 import re
-import server_command
+from initat.tools import server_command
 import shutil
 import stat
 import statvfs
 import tempfile
 import time
-import uuid_tools
+from initat.tools import uuid_tools
 
 MOD_REFUSE_LIST = [
     "3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",

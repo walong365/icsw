@@ -22,7 +22,7 @@
 
 import sys
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import xml
 import xml.dom.minidom
 import xml.parsers.expat

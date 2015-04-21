@@ -24,7 +24,7 @@
 # import commands
 import time
 import subprocess
-import logging_tools
+from initat.tools import logging_tools
 
 
 class command_stream(object):

@@ -34,17 +34,17 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import image
 from lxml import etree  # @UnresolvedImports
-import config_tools
-import configfile
-import logging_tools
+from initat.tools import config_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
 import pprint
-import process_tools
+from initat.tools import process_tools
 import shutil
 import stat
 import statvfs
 import subprocess
 import tempfile
-import threading_tools
+from initat.tools import threading_tools
 import time
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())

@@ -23,11 +23,11 @@
 
 import sys
 import re
-import logging_tools
+from initat.tools import logging_tools
 import os
 import getopt
-import process_tools
-import configfile
+from initat.tools import process_tools
+from initat.tools import configfile
 
 
 class result_line(object):

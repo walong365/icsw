@@ -19,12 +19,12 @@
 #
 """ checks processor-affinity on a regular basis """
 
-import affinity_tools
-import configfile
-import cpu_database
-import logging_tools
-import process_tools
-import threading_tools
+from initat.tools import affinity_tools
+from initat.tools import configfile
+from initat.tools import cpu_database
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import threading_tools
 import time
 
 class thread_pool(threading_tools.thread_pool):

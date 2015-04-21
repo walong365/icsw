@@ -22,7 +22,7 @@
 """ inotify tools """
 
 import logging
-import logging_tools
+from initat.tools import logging_tools
 try:
     import pyinotify
 except:

@@ -39,7 +39,7 @@ from initat.cluster.frontend.common import duration_utils
 from lxml import etree  # @UnresolvedImport @UnusedImport
 import json  # @UnusedImport
 import pprint  # @UnusedImport
-import server_command
+from initat.tools import server_command
 import datetime
 import logging
 import collections
