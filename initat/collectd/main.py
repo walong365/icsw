@@ -28,7 +28,7 @@ django.setup()
 
 from initat.cluster.backbone.models import LogSource
 from initat.collectd.config_static import COMMAND_PORT
-from initat.collectd.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools

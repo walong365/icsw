@@ -27,7 +27,7 @@ import django
 django.setup()
 
 from initat.discovery_server.config_static import SERVER_PORT
-from initat.discovery_server.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools

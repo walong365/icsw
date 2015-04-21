@@ -21,20 +21,17 @@
 #
 """ meta-server, main part """
 
-from initat.meta_server.config import global_config
-from initat.meta_server.server import main_process
-from io_stream_helper import io_stream
-from initat.tools import configfile
-import daemon
 import os
-from initat.tools import process_tools
 import socket
 import sys
 
-try:
-    from initat.meta_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.meta_server.config import global_config
+from initat.meta_server.server import main_process
+from initat.tools import configfile
+import daemon
+from initat.tools import process_tools
+from initat.client_version import VERSION_STRING
+from initat.tools.io_stream_helper import io_stream
 
 
 def main():

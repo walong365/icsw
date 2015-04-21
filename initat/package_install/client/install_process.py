@@ -21,7 +21,7 @@
 
 from initat.package_install.client.command import simple_command
 from initat.package_install.client.config import global_config
-from initat.package_install.client.version import VERSION_STRING
+from initat.client_version import VERSION_STRING
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools

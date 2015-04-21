@@ -22,7 +22,7 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import mon_dist_master, mon_dist_slave, cluster_timezone, \
     mon_build_unreachable
-from initat.md_config_server.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 import base64
 import bz2
 from initat.tools import config_tools
@@ -231,7 +231,7 @@ class sync_config(object):
             # re-check relayer version for master
             if "initat.host_monitoring.version" in sys.modules:
                 del sys.modules["initat.host_monitoring.version"]
-            from initat.host_monitoring.version import VERSION_STRING as RELAYER_VERSION_STRING
+            from initat.client_version import VERSION_STRING as RELAYER_VERSION_STRING
             self.relayer_version = RELAYER_VERSION_STRING
             _mon_version = global_config["MD_VERSION_STRING"]
             if _mon_version.split(".")[-1] in ["x86_64", "i586", "i686"]:

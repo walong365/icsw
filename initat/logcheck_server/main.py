@@ -28,7 +28,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.logcheck_server.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools

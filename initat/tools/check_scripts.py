@@ -77,35 +77,34 @@ def check_processes(name, pids, pid_thread_dict, any_ok):
 
 INSTANCE_XML = """
 <instances>
-    <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node" version_file="/opt/cluster/sbin/_hoststatus_version.py">
+    <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="client">
     </instance>
-    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="logging-server" runs_on="client" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver">
     </instance>
-    <instance name="meta-server" runs_on="node"  has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="meta-server" runs_on="client"  has_force_stop="1" version_file="1">
     </instance>
-    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="host-monitoring" runs_on="client" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver">
     </instance>
-    <instance name="package-client" runs_on="node"  has_force_stop="1" pid_file_name="package-client/package-client.pid" version_file="%{INIT_BASE}/package_install/client/version.py">
+    <instance name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
     </instance>
-    <!--<instance name="gmond" runs_on="node" pid_file_name="">
     </instance>-->
-    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck">
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
     </instance>
-    <instance name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/package_install/server/version.py">
+    <instance name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
     </instance>
-    <instance name="mother" pid_file_name="mother/mother.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="mother" pid_file_name="mother/mother.pid" has_force_stop="1">
         <config_names>
             <config_name>mother_server</config_name>
         </config_names>
     </instance>
     <!-- collectd is checked via process_name to take the python side-process into account -->
-    <instance name="collectd-init" runs_on="server" has_force_stop="1" pid_file_name="collectd-init/collectd-init.pid" meta_server_name="collectd-init" version_file="%{INIT_BASE}/collectd/version.py">
+    <instance name="collectd-init" runs_on="server" has_force_stop="1" pid_file_name="collectd-init/collectd-init.pid" meta_server_name="collectd-init">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
@@ -136,45 +135,45 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server" version_file="%{INIT_BASE}/rms/version.py">
+    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-server" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="cluster-server" has_force_stop="1">
         <config_names>
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1">
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
     </instance>
-    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay" version_file="%{INIT_BASE}/host_monitoring/version.py">
+    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1" version_file="%{INIT_BASE}/snmp_relay/version.py">
+    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
@@ -231,7 +230,7 @@ def check_system(opt_ns):
     if set_all_servers:
         opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name", smart_strings=False)
     if set_all_nodes:
-        opt_ns.node = instance_xml.xpath(".//*[@runs_on='node']/@name", smart_strings=False)
+        opt_ns.node = instance_xml.xpath(".//*[@runs_on='client']/@name", smart_strings=False)
     if set_all_system:
         opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name", smart_strings=False)
     for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
@@ -414,20 +413,17 @@ def check_system(opt_ns):
                 "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
             )
         )
-        if "version_file" in entry.attrib and act_state != 5:
+        if entry.get("runs_on") in ["client", "server"] and act_state != 5:
             entry.attrib["version_ok"] = "0"
             try:
-                _path = entry.attrib["version_file"].replace("%{INIT_BASE}", INIT_BASE).replace("%{NAME}", entry.attrib["name"].replace("-", "_"))
-                if os.path.exists(_path):
-                    _lines = file(_path, "r").read().split("\n")
-                    _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
-                    if _vers_lines:
-                        entry.attrib["version_ok"] = "1"
-                        entry.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
-                    else:
-                        entry.attrib["version"] = "no version lines found in '{}'".format(_path)
+                _path = "%{INIT_BASE}/initat/{runs_on}_version.py".replace("%{INIT_BASE}", INIT_BASE).format(dict(entry.attrib))
+                _lines = file(_path, "r").read().split("\n")
+                _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
+                if _vers_lines:
+                    entry.attrib["version_ok"] = "1"
+                    entry.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
                 else:
-                    entry.attrib["version"] = "{} missing".format(_path)
+                    entry.attrib["version"] = "no version lines found in '{}'".format(_path)
             except:
                 entry.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
     return instance_xml
