@@ -589,7 +589,11 @@ def create_db(opts):
     # we now go for the 0800
     check_for_0800(opts)
     apply_migration("backbone")
-    for _app in ["reversion"]:  # reversion needs access to proper user model
+    # reversion needs access to proper user model
+    apply_migration("reversion")
+
+    # migrate apps without any dependencies
+    for _app in ["django.contrib.admin", "django.contrib.sessions"]:
         apply_migration(_app)
 
     if opts.no_initial_data:
@@ -619,7 +623,7 @@ def migrate_db(opts):
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
                 # call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
-        for _app in ["backbone", "django.contrib.auth", "reversion"]:
+        for _app in ["backbone", "django.contrib.auth", "reversion", "django.contrib.admin", "django.contrib.sessions"]:
             print("migrating app {}".format(_app))
             apply_migration(_app)
         print("")
