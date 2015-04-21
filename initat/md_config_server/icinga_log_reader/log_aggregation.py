@@ -30,7 +30,7 @@ from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_hos
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
     mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, raw_service_alert_manager, \
-    StatusHistoryUtils
+    StatusHistoryUtils, AlertList, mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.cluster.backbone.models.functions import cluster_timezone, duration
 
 
@@ -61,6 +61,9 @@ class icinga_log_aggregator(object):
         else:
             self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
             self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
+
+            self._host_downtime_cache = mon_icinga_log_raw_host_downtime_data.objects.all().order_by('date')
+            self._service_downtime_cache = mon_icinga_log_raw_service_downtime_data.objects.all().order_by('date')
 
             # aggregate in order of duration for incremental aggregation (would break if not in order)
             for duration_type in (duration.Hour, duration.Day, duration.Week, duration.Month, duration.Year):
@@ -228,7 +231,9 @@ class icinga_log_aggregator(object):
         last_host_alert_cache = {k: (v['state'], v['state_type']) for k, v in last_host_alert_cache.iteritems()}
 
         # regular changes in time span
-        def calc_weighted_states(relevant_entries, state_description_before, debug=False):
+        def calc_weighted_states(relevant_entries, state_description_before, start_in_planned_downtime, debug=False):
+            # state_description_before is always the entry according to regular alerts
+            # if start_in_planned_downtime, then we count it as planned downtime, but also return the state before
             weighted_states = defaultdict(lambda: 0.0)
             for raw_entry1, raw_entry2 in pairwise(relevant_entries):
                 entry_timespan_seconds = (raw_entry2.date - raw_entry1.date).total_seconds()
@@ -240,10 +245,13 @@ class icinga_log_aggregator(object):
                              .format(raw_entry1.date, raw_entry2.date, raw_entry1.state,
                                      raw_entry1.state_type, entry_weight))
 
+            actual_state_description_before = state_description_before if not start_in_planned_downtime else  \
+                (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN)
+
             # first/last
             if not relevant_entries:
                 # always state before
-                weighted_states[state_description_before] += 1.0
+                weighted_states[actual_state_description_before] += 1.0
                 last_state_description = state_description_before
                 if debug:
                     self.log("always in state {}".format(state_description_before))
@@ -253,7 +261,7 @@ class icinga_log_aggregator(object):
                 first_entry_timespan_seconds = (relevant_entries[0].date - start_time).total_seconds()
                 first_entry_weight = first_entry_timespan_seconds / timespan_seconds
 
-                weighted_states[state_description_before] += first_entry_weight
+                weighted_states[actual_state_description_before] += first_entry_weight
 
                 if debug:
                     self.log("fst;in state {}; weight: {}".format(state_description_before, first_entry_weight))
@@ -283,6 +291,19 @@ class icinga_log_aggregator(object):
         service_alerts = mon_icinga_log_raw_service_alert_data.objects.calc_alerts(start_time, end_time)
         host_alerts = mon_icinga_log_raw_host_alert_data.objects.calc_alerts(start_time, end_time)
 
+        service_downtimes = StatusHistoryUtils.preprocess_start_stop_data(
+            self._service_downtime_cache,
+            StatusHistoryUtils.get_key_fun(is_host=False),
+            'downtime_state',
+            start_time,
+            end_time)
+        host_downtimes = StatusHistoryUtils.preprocess_start_stop_data(
+            self._host_downtime_cache,
+            StatusHistoryUtils.get_key_fun(is_host=True),
+            'downtime_state',
+            start_time,
+            end_time)
+
         def process_service_alerts():
             next_last_service_alert_cache = {}
 
@@ -297,8 +318,20 @@ class icinga_log_aggregator(object):
                         mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
                 serv_key = (device_id, service_id, service_info)
+
+                downtime_list = service_downtimes.get(serv_key, [])
+                service_alerts[serv_key] = \
+                    AlertList.add_downtimes_to_alerts(service_alerts[serv_key],
+                                                      state_description_before,
+                                                      downtime_list=downtime_list)
+                start_in_planned_downtime = bool(AlertList.get_downtime_entry(downtime_list, start_time))
+                # state_description_before is always state without considering downtimes
+                # (this is necessary to keep track of state before downtime)
+
                 weighted_states, last_state_description =\
-                    calc_weighted_states(service_alerts[serv_key], state_description_before)
+                    calc_weighted_states(service_alerts[serv_key],
+                                         state_description_before,
+                                         start_in_planned_downtime=start_in_planned_downtime)
                 next_last_service_alert_cache[(device_id, service_id, service_info)] = last_state_description
 
                 flapping_ratio = calc_flapping_ratio(service_flapping_cache, (device_id, service_id, service_info))
@@ -339,8 +372,16 @@ class icinga_log_aggregator(object):
                     state_description_before =\
                         mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
+                downtime_list = host_downtimes.get(device_id, [])
+                host_alerts[device_id] = \
+                    AlertList.add_downtimes_to_alerts(host_alerts[device_id],
+                                                      state_description_before,
+                                                      downtime_list=downtime_list)
+                start_in_planned_downtime = bool(AlertList.get_downtime_entry(downtime_list, start_time))
+
                 weighted_states, last_state_description =\
-                    calc_weighted_states(host_alerts[device_id], state_description_before)
+                    calc_weighted_states(host_alerts[device_id], state_description_before,
+                                         start_in_planned_downtime=start_in_planned_downtime)
                 flapping_ratio = calc_flapping_ratio(host_flapping_cache, device_id)
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING,
