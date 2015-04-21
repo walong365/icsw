@@ -113,6 +113,7 @@ def main():
             sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
             run_code(options)
             configfile.terminate_manager()
+        os._exit(0)
     else:
         print("Debugging logcheck_server")
         global_config = configfile.get_global_config(prog_name, parent_object=global_config)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2010-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -84,6 +84,6 @@ def main():
                 main_process().loop()
             os._exit(0)
         else:
-            print "Debugging meta-server on {}".format(global_config["SERVER_FULL_NAME"])
+            print("Debugging meta-server on {}".format(global_config["SERVER_FULL_NAME"]))
             main_process().loop()
     return 0

@@ -25,4 +25,5 @@
 import sys
 
 from initat.mother.main import main
+
 sys.exit(main())
