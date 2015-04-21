@@ -84,6 +84,9 @@ class vncserver(virtual_desktop_server):
         self.vdus = vdus
 
         self.user_home_dir = os.path.expanduser("~" + self.vdus.user.login)
+        if not os.path.isdir(self.user_home_dir):
+            raise RuntimeError("User directory {} does not exist.".foramt(self.user_home_dir))
+
         self.corvus_dir = "{}/.corvus".format(self.user_home_dir)
         self.vnc_home_dir = "{}/vncsession-{}".format(self.corvus_dir, self.vdus.pk)
         self.vnc_dir = "{}/.vnc".format(self.vnc_home_dir)
