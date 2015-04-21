@@ -17,34 +17,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import django
-from django.conf import settings
-from initat.cluster.backbone.models.status_history import raw_service_alert_manager
-
-import logging_tools
-import operator
 import datetime
 import itertools
-import pprint  # @UnusedImport
 from collections import defaultdict
-import time
-import django.utils.timezone
 
+from django.conf import settings
+import logging_tools
 from django.db.models.query_utils import Q
-from django.db import connection
-from django.db.models.aggregates import Max
 
-from initat.md_config_server.config import global_config
-from initat.cluster.backbone.models import mon_check_command,\
-    mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
-    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
-    mon_icinga_log_raw_service_notification_data,\
-    mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
-    mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, duration, \
-    mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
-from initat.cluster.backbone.models.functions import cluster_timezone
-from initat.cluster.backbone.middleware import show_database_calls
+from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, \
+    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
+    mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, raw_service_alert_manager
+from initat.cluster.backbone.models.functions import cluster_timezone, duration
+
 
 __all__ = ["icinga_log_aggregator"]
 

@@ -23,7 +23,7 @@ import django.utils.timezone
 from django.db.models import Q
 import operator
 import itertools
-from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base
+from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList
 
 
 # itertools recipe
@@ -46,22 +46,19 @@ class TimeLineUtils(list):
         :return: {(dev_id, serv_pk, serv_info) : TimeLine}
         """
         # TODO: hosts
-        additional_filter = reduce(operator.or_, (Q(device_id=dev_id, service_id=serv_id, service_info=service_info)
-                                                  for (dev_id, serv_id, service_info) in device_service_identifiers))
-        initial_values =\
-            mon_icinga_log_raw_service_alert_data.objects.calc_limit_alerts(start, mode='last before',
-                                                                            additional_filter=additional_filter)
-        alerts =\
-            mon_icinga_log_raw_service_alert_data.objects.calc_alerts(start, end, additional_filter=additional_filter)
+        alert_filter = reduce(operator.or_, (Q(device_id=dev_id, service_id=serv_id, service_info=service_info)
+                                             for (dev_id, serv_id, service_info) in device_service_identifiers))
+
+        alert_list = AlertList(is_host=False, alert_filter=alert_filter, start_time=start, end_time=end)
 
         time_lines = {}
 
-        for (dev_id, serv_id, service_info), entry in initial_values.iteritems():
+        for (dev_id, serv_id, service_info), entry in alert_list.last_before.iteritems():
             time_lines[(dev_id, serv_id, service_info)] = [
                 TimeLineEntry(date=start, state=(entry['state'], entry['state_type']))
             ]
 
-        for (dev_id, serv_id, service_info), alert_list in alerts.iteritems():
+        for (dev_id, serv_id, service_info), service_alert_list in alert_list.alerts.iteritems():
             key = (dev_id, serv_id, service_info)
             if key not in time_lines:
                 # couldn't find initial state, it has not existed at the time of start
@@ -74,7 +71,7 @@ class TimeLineUtils(list):
                 tl = time_lines[key]
 
             last_alert = None
-            for alert in alert_list:
+            for alert in service_alert_list:
                 if last_alert is None or alert.state != last_alert.state or alert.state_type != last_alert.state_type:
                     tl.append(
                         TimeLineEntry(date=alert.date, state=(alert.state, alert.state_type))

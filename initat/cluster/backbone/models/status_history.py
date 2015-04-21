@@ -69,6 +69,78 @@ class mon_icinga_log_raw_base(models.Model):
         abstract = True
 
 
+class AlertList(object):
+    """Nice interface to a list of either host or service alerts
+    Includes handling of last before and first after state as well as downtimes
+    """
+    # noinspection PyUnresolvedReferences
+    def __init__(self, is_host, alert_filter, start_time, end_time, calc_first_after=False):
+        # self.is_host = is_host
+        # self.alert_filter = alert_filter
+
+        model = mon_icinga_log_raw_host_alert_data if is_host else mon_icinga_log_raw_service_alert_data
+
+        self.alerts = model.objects.calc_alerts(start_time=start_time, end_time=end_time,
+                                                additional_filter=alert_filter)
+        self.last_before = model.objects.calc_limit_alerts(time=start_time, mode='last before',
+                                                           additional_filter=alert_filter)
+        if calc_first_after:
+            self.first_after = model.objects.calc_limit_alerts(time=end_time, mode='first after',
+                                                               additional_filter=alert_filter)
+
+        # handle downtimes
+        downtime_model = mon_icinga_log_raw_host_downtime_data if is_host else mon_icinga_log_raw_service_downtime_data
+        if is_host:
+            key_fun = lambda entry: entry.device_id
+        else:
+            key_fun = lambda entry: (entry.device_id, entry.service_id, entry.service_info)
+        downtimes_qs = downtime_model.objects.all().order_by('date')
+        if alert_filter is not None:
+            downtimes_qs = downtimes_qs.filter(alert_filter)
+        downtimes = raw_service_alert_manager.preprocess_start_stop_data(
+            downtimes_qs,
+            key_fun,
+            'downtime_state',
+            start_time,
+            end_time)
+
+        for k, downtime_list in downtimes.iteritems():
+            if downtime_list:
+                # filter alerts
+                self.alerts[k] = [alert for alert in self.alerts[k]
+                                  if not any(downtime.start <= alert.date < downtime.end
+                                             for downtime in downtime_list)]
+
+                # add downtime state changing alerts
+                for downtime in downtime_list:
+                    # search last before entry
+                    last_alert_before_downtime = None
+                    for alert in self.alerts[k]:
+                        if alert.date > downtime.start:
+                            break
+                        last_alert_before_downtime = alert
+
+                    if last_alert_before_downtime is None:
+                        last_alert_before_downtime = self.last_before.get(k, None)
+
+                    self.alerts[k].append(downtime.start_entry)
+
+                    # add end time if downtime has ended
+                    if downtime.end_entry is not None:
+                        downtime.end_entry.state = last_alert_before_downtime.state
+                        downtime.end_entry.state_type = last_alert_before_downtime.state_type
+                        self.alerts[k].append(downtime.end_entry)
+
+                    # check if we have started in downtime
+                    if downtime.start <= start_time < downtime.end:
+                        # update last before state
+                        self.last_before[k].state = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+                        self.last_before[k].state_type = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+
+                # if this is too slow, we could also insert the entries in order
+                self.alerts[k].sort(key=operator.attrgetter('date'))
+
+
 class raw_host_alert_manager(models.Manager):
     def calc_alerts(self, start_time, end_time, additional_filter=None):
         host_alerts = defaultdict(lambda: [])
@@ -83,20 +155,6 @@ class raw_host_alert_manager(models.Manager):
                 .filter(device_independent=True, date__range=(start_time, end_time)):
             for key in host_alerts:
                 host_alerts[key].append(entry)
-
-        downtimes_qs = mon_icinga_log_raw_host_downtime_data.objects.all().order_by('date')
-        downtimes = raw_service_alert_manager.preprocess_start_stop_data(downtimes_qs,
-                                                                         lambda entry: entry.device_id,
-                                                                         'downtime_state',
-                                                                         start_time,
-                                                                         end_time)
-
-        for k, downtime_list in downtimes.iteritems():
-            if downtime_list:
-                host_alerts[k] = [alert for alert in host_alerts[k]
-                                  if not any(downtime.start <= alert.date < downtime.end for downtime in downtime_list)]
-            for downtime in downtime_list:
-                host_alerts[k].append(downtime.start_entry)
 
         for l in host_alerts.itervalues():
             # not in order due to dev independents and downtimes
@@ -154,22 +212,6 @@ class raw_service_alert_manager(models.Manager):
             for key in service_alerts:
                 service_alerts[key].append(entry)
 
-        downtimes_qs = mon_icinga_log_raw_service_downtime_data.objects.all().order_by('date')
-        downtimes = raw_service_alert_manager.preprocess_start_stop_data(
-            downtimes_qs,
-            lambda entry: (entry.device_id, entry.service_id, entry.service_info),
-            'downtime_state',
-            start_time,
-            end_time)
-
-        for k, downtime_list in downtimes.iteritems():
-            if downtime_list:
-                service_alerts[k] = [alert for alert in service_alerts[k]
-                                     if not any(downtime.start <= alert.date < downtime.end
-                                                for downtime in downtime_list)]
-                for downtime in downtime_list:
-                    service_alerts[k].append(downtime.start_entry)
-
         for l in service_alerts.itervalues():
             # not in order due to dev independents and downtimes
             l.sort(key=operator.attrgetter('date'))
@@ -184,6 +226,7 @@ class raw_service_alert_manager(models.Manager):
 
     @staticmethod
     def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', additional_filter=None):
+        # TODO: replace mode by some enum34 instance
         assert mode in ('last before', 'first after')
 
         group_by_fields = ['device_id', 'state', 'state_type']
@@ -329,7 +372,8 @@ class raw_service_alert_manager(models.Manager):
         @param start_time: discard events which have finished before start_time
         @param end_time: discard events which start after end_time
         """
-        StartStopDuration = collections.namedtuple("StartStopDuration", ['start', 'end', 'start_entry'])
+        StartStopDuration = collections.namedtuple("StartStopDuration", ['start', 'end', 'start_entry',
+                                                                         'end_entry'])
         cache = defaultdict(lambda: [])  # this is sorted by time
         aux_start_times = {}
         for entry in queryset:
@@ -342,10 +386,10 @@ class raw_service_alert_manager(models.Manager):
                 # a proper stop
                 start_entry = aux_start_times.pop(key)
                 if entry.date >= start_time:  # discard elements which have already finished when we haven't started yet
-                    cache[key].append(StartStopDuration(start_entry.date, entry.date, start_entry))
+                    cache[key].append(StartStopDuration(start_entry.date, entry.date, start_entry, entry))
         # handles events which haven't stopped yet
         for key, start_entry in aux_start_times.iteritems():
-            cache[key].append(StartStopDuration(start_entry.date, django.utils.timezone.now(), start_entry))
+            cache[key].append(StartStopDuration(start_entry.date, django.utils.timezone.now(), start_entry, None))
         return dict(cache)  # make into regular dict
 
 
@@ -440,14 +484,11 @@ class mon_icinga_log_raw_service_downtime_data(mon_icinga_log_raw_base):
 
     downtime_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
 
-    # interface compatibility with regular alerts
-    @property
-    def state(self):
-        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
-
-    @property
-    def state_type(self):
-        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+    def __init__(self, *args, **kwargs):
+        super(mon_icinga_log_raw_service_downtime_data, self).__init__(*args, **kwargs)
+        # interface compatibility with regular alerts
+        self.state = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+        self.state_type = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
 
     class CSW_Meta:
         backup = False
@@ -456,14 +497,11 @@ class mon_icinga_log_raw_service_downtime_data(mon_icinga_log_raw_base):
 class mon_icinga_log_raw_host_downtime_data(mon_icinga_log_raw_base):
     downtime_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
 
-    # interface compatibility with regular alerts
-    @property
-    def state(self):
-        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
-
-    @property
-    def state_type(self):
-        return mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+    def __init__(self, *args, **kwargs):
+        super(mon_icinga_log_raw_host_downtime_data, self).__init__(*args, **kwargs)
+        # interface compatibility with regular alerts
+        self.state = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+        self.state_type = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
 
     class CSW_Meta:
         backup = False

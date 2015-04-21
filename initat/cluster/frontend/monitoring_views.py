@@ -38,9 +38,9 @@ from initat.cluster.backbone.models import device, domain_name_tree, netdevice, 
     parse_commandline, mon_check_command_special
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.cluster.backbone.models import mon_icinga_log_aggregated_host_data, \
+from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
@@ -500,30 +500,23 @@ class _device_status_history_util(object):
 
         # calculate detailed view based on all events
         start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
-        additional_filter = Q(device__in=device_ids)
+        alert_filter = Q(device__in=device_ids)
 
-        last_before_entries = obj_man.calc_limit_alerts(start,
-                                                        mode='last before',
-                                                        additional_filter=additional_filter)
-
-        first_after_entries = obj_man.calc_limit_alerts(end,
-                                                        mode='first after',
-                                                        additional_filter=additional_filter)
-
-        entries = obj_man.calc_alerts(start, end, additional_filter=additional_filter)
+        alert_list = AlertList(is_host=for_host, alert_filter=alert_filter, start_time=start, end_time=end,
+                               calc_first_after=True)
 
         return_data = {}
 
-        for key, amended_list in entries.iteritems():
+        for key, amended_list in alert_list.alerts.iteritems():
             # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
             # they might be active before and after, but not during the time frame, in which case
             # they are not relevant to us
 
             # add first and last in case they are not contained in range already
-            entry_before = last_before_entries.get(key, None)
+            entry_before = alert_list.last_before.get(key, None)
             if entry_before is not None and amended_list[0].date != entry_before['date']:
                 amended_list = [entry_before] + amended_list
-            entry_after = first_after_entries.get(key, None)
+            entry_after = alert_list.first_after.get(key, None)
             if entry_after is not None and amended_list[-1].date != entry_after['date']:
                 amended_list = amended_list + [entry_after]
 
