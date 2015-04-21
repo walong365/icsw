@@ -135,7 +135,7 @@ install:
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for script in start_node.sh stop_node.sh check_node.sh disable_node.sh; do \
+	for script in start_node.sh stop_node.sh check_node.sh ; do \
 	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for name in fetch_ssh_keys.py ; do \

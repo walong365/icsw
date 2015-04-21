@@ -87,7 +87,6 @@ INSTANCE_XML = """
     </instance>
     <instance name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
     </instance>
-    </instance>-->
     <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck">
         <config_names>
             <config_name>syslog_server</config_name>
@@ -225,12 +224,12 @@ def check_system(opt_ns):
     INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
     instance_xml = get_instance_xml()
     set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
-    set_all_nodes = True if (opt_ns.node == ["ALL"] or opt_ns.instance == ["ALL"]) else False
+    set_all_clients = True if (opt_ns.client == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     if set_all_servers:
         opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name", smart_strings=False)
-    if set_all_nodes:
-        opt_ns.node = instance_xml.xpath(".//*[@runs_on='client']/@name", smart_strings=False)
+    if set_all_clients:
+        opt_ns.client = instance_xml.xpath(".//*[@runs_on='client']/@name", smart_strings=False)
     if set_all_system:
         opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name", smart_strings=False)
     for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
@@ -396,7 +395,7 @@ def check_system(opt_ns):
                 act_state = 5
                 sql_info = "not configured"
         else:
-            sql_info = "node"
+            sql_info = "client"
         if type(sql_info) == str:
             entry.append(
                 E.sql_info(str(sql_info))
@@ -416,7 +415,7 @@ def check_system(opt_ns):
         if entry.get("runs_on") in ["client", "server"] and act_state != 5:
             entry.attrib["version_ok"] = "0"
             try:
-                _path = "%{INIT_BASE}/initat/{runs_on}_version.py".replace("%{INIT_BASE}", INIT_BASE).format(dict(entry.attrib))
+                _path = "%{INIT_BASE}/{runs_on}_version.py".replace("%{INIT_BASE}", INIT_BASE).format(**dict(entry.attrib))
                 _lines = file(_path, "r").read().split("\n")
                 _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
                 if _vers_lines:
@@ -435,7 +434,7 @@ def get_default_ns():
         instance=[],
         system=[],
         server=[],
-        node=[],
+        client=[],
         runlevel=True,
         memory=True,
         database=True,
@@ -467,7 +466,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
         key: "{}{}{}".format(col_str_dict[wc], value, col_str_dict[3]) for key, (wc, value) in rc_dict.iteritems()
     }
     out_bl = logging_tools.new_form_list()
-    types = ["node", "server", "system"]
+    types = ["client", "server", "system"]
     _list = sum([res_xml.xpath("instance[@checked='1' and @runs_on='{}']".format(_type)) for _type in types], [])
     for act_struct in _list:
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
@@ -639,7 +638,7 @@ def main():
     my_parser.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
     my_parser.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
     my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
-    my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node entity names (%(default)s)")
+    my_parser.add_argument("--client", type=str, nargs="+", default=[], help="client entity names (%(default)s)")
     my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
     my_parser.add_argument("--system", type=str, nargs="+", default=[], help="system entity names (%(default)s)")
     my_parser.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
