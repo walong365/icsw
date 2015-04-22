@@ -74,6 +74,7 @@ class Kpi(models.Model):
     class Meta:
         app_label = "backbone"
         ordering = ('idx', )  # rest view in order of creation
+        verbose_name = "KPI"
 
     class CSW_Meta:
         fk_ignore_list = ["KpiDataSourceTuple", "KpiStoredResult"]
@@ -91,12 +92,15 @@ class KpiDataSourceTuple(models.Model):
     monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
 
     def __repr__(self):
-        return "KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(self.kpi,
-                                                                           self.device_category,
-                                                                           self.monitoring_category)
+        return u"KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(self.kpi,
+                                                                            self.device_category,
+                                                                            self.monitoring_category)
+
+    __unicode__ = __repr__  # useful for force_text
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "KPI data sources"
 
 
 class KpiStoredResult(models.Model):

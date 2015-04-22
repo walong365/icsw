@@ -1532,6 +1532,8 @@ def _register_models():
         category,
         # mon
         mon_check_command, mon_check_command_special,
+        # kpi
+        Kpi, KpiDataSourceTuple,
     )
     for model in models:
         model_history.icsw_register(model)
