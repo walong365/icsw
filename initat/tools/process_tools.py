@@ -499,83 +499,14 @@ class meta_server_info(object):
             ("exe_name", "s", None),
             ("need_any_pids", "b", 0),
         ]
-        parsed = False
         if name.startswith("/"):
-            self.__file_name = name
-            # try to read complete info from file
-            self.__name = None
-            try:
-                xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
-            except:
-                logging_tools.my_syslog(
-                    "error parsing XML file {} (meta_server_info): {}".format(
-                        name,
-                        get_except_info()
-                    )
-                )
-                xml_struct = None
-            if xml_struct is not None:
-                self.__name = xml_struct.xpath(".//name/text()", smart_strings=False)[0]
-                # reads pids
-                self.__pids = []
-                self.__pid_names = {}
-                # name from psutil()
-                self.__pid_proc_names = {}
-                self.__pid_fuzzy = {}
-                for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
-                    self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
-                    self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
-                    self.__pid_proc_names[int(pid_struct.text)] = pid_struct.get("proc_name", "")
-                    self.__pid_fuzzy[int(pid_struct.text)] = (
-                        int(pid_struct.get("fuzzy_floor", "0")),
-                        int(pid_struct.get("fuzzy_ceiling", "0")),
-                    )
-                for opt, val_type, def_val in self.__prop_list:
-                    cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='{}']".format(opt), smart_strings=False)
-                    if cur_prop:
-                        cur_prop = cur_prop[0]
-                        cur_value = cur_prop.text
-                        if cur_prop.attrib["type"] == "integer":
-                            cur_value = int(cur_value)
-                        elif cur_prop.attrib["type"] == "boolean":
-                            cur_value = bool(cur_value)
-                    else:
-                        cur_value = def_val
-                    if opt.startswith("fuzzy"):
-                        # ignore fuzzy*
-                        pass
-                    else:
-                        setattr(self, opt, cur_value)
-                parsed = True
-            else:
-                try:
-                    lines = [line.strip() for line in open(name, "r").read().split("\n")]
-                except:
-                    logging_tools.my_syslog("error reading file {} (meta_server_info): {}".format(
-                        name,
-                        get_except_info()))
-                else:
-                    act_dict = {line[0].strip().lower(): line[1].strip() for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1}
-                    self.__name = act_dict.get("name", None)
-                    self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
-                    self.__pid_names = {pid: "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
-                    self.__pid_proc_names = {pid: "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
-                    self.__pid_fuzzy = {cur_pid: (0, 0) for cur_pid in set(self.__pids)}
-                    for opt, val_type, def_val in self.__prop_list:
-                        if opt in act_dict:
-                            cur_value = act_dict[opt]
-                            if val_type == "i":
-                                cur_value = int(cur_value)
-                            elif val_type == "b":
-                                cur_value = bool(cur_value)
-                        else:
-                            cur_value = def_val
-                        setattr(self, opt, cur_value)
-                    parsed = True
-            if parsed:
-                self.__meta_server_dir = os.path.dirname(name)
-                self.pid_checks_ok, self.pid_checks_failed = (0, 0)
-                self.set_last_pid_check_ok_time()
+            parsed = self._parse_file(name)
+        else:
+            parsed = False
+        if parsed:
+            self.__meta_server_dir = os.path.dirname(name)
+            self.pid_checks_ok, self.pid_checks_failed = (0, 0)
+            self.set_last_pid_check_ok_time()
         else:
             self.__file_name = None
             self.set_meta_server_dir("/var/lib/meta-server")
@@ -589,6 +520,55 @@ class meta_server_info(object):
                 setattr(self, opt, def_val)
         self.parsed = parsed
         self.file_init_time = time.time()
+
+    def _parse_file(self, name):
+        self.__file_name = name
+        # try to read complete info from file
+        self.__name = None
+        try:
+            xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
+        except:
+            logging_tools.my_syslog(
+                "error parsing XML file {} (meta_server_info): {}".format(
+                    name,
+                    get_except_info()
+                )
+            )
+            parsed = False
+        else:
+            self.__name = xml_struct.xpath(".//name/text()", smart_strings=False)[0]
+            # reads pids
+            self.__pids = []
+            self.__pid_names = {}
+            # name from psutil()
+            self.__pid_proc_names = {}
+            self.__pid_fuzzy = {}
+            for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
+                self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
+                self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
+                self.__pid_proc_names[int(pid_struct.text)] = pid_struct.get("proc_name", "")
+                self.__pid_fuzzy[int(pid_struct.text)] = (
+                    int(pid_struct.get("fuzzy_floor", "0")),
+                    int(pid_struct.get("fuzzy_ceiling", "0")),
+                )
+            for opt, val_type, def_val in self.__prop_list:
+                cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='{}']".format(opt), smart_strings=False)
+                if cur_prop:
+                    cur_prop = cur_prop[0]
+                    cur_value = cur_prop.text
+                    if cur_prop.attrib["type"] == "integer":
+                        cur_value = int(cur_value)
+                    elif cur_prop.attrib["type"] == "boolean":
+                        cur_value = bool(cur_value)
+                else:
+                    cur_value = def_val
+                if opt.startswith("fuzzy"):
+                    # ignore fuzzy*
+                    pass
+                else:
+                    setattr(self, opt, cur_value)
+            parsed = True
+        return parsed
 
     def get_file_name(self):
         return self.__file_name
@@ -796,10 +776,13 @@ class meta_server_info(object):
         try:
             os.unlink(self.__file_name)
         except:
-            logging_tools.my_syslog("error removing file {} (meta_server_info for {}): {}".format(
-                self.__file_name,
-                self.__name,
-                get_except_info()))
+            logging_tools.my_syslog(
+                "error removing file {} (meta_server_info for {}): {}".format(
+                    self.__file_name,
+                    self.__name,
+                    get_except_info()
+                )
+            )
 
     def check_block(self, act_tc_dict=None, act_dict={}):
         # threadcount dict
