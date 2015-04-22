@@ -144,13 +144,16 @@ angular.module(
             "Critical": "#ff7777"
             "Unknown": "#c7c7c7"
             "Undetermined": "#c7c7c7"
+            "Planned down": "#5bc0de"
         }
     host_colors = {
         "Up": "#66dd66"
         "Down": "#ff7777"
         "Unreachable": "#f0ad4e"
         "Undetermined": "#c7c7c7"
+        "Planned down": "#5bc0de"
     }
+    # olive? "#808000"
 
     get_device_data = (device_ids, start_date, timerange, cont, line_graph_data=false) ->
         query_data = {
@@ -373,12 +376,14 @@ angular.module(
                                         entry_height = switch last_entry.state
                                             when "Up" then 15
                                             when "Down" then 30
+                                            when "Planned down" then 22
                                             when "Unreachable" then 22
                                             when "Undetermined" then 18
                                         color = status_utils_functions.host_colors[last_entry.state]
                                     else
                                         entry_height = switch last_entry.state
                                             when "Ok" then 15
+                                            when "Planned down" then 22
                                             when "Warning" then 22
                                             when "Critical" then 30
                                             when "Unknown" then 18

@@ -661,8 +661,9 @@ class StatusHistoryUtils(object):
 
 
 class AlertList(object):
-    """Nice interface to a list of either host or service alerts
-    Includes handling of last before and first after state as well as downtimes
+    """Nice interface to a list of either host or service alerts.
+    Includes handling of last before and first after state as well as downtimes.
+    Log aggregation accesses this stuff directly as this here would be too slow (especially calc_limit_alerts).
     """
     def __init__(self, is_host, alert_filter, start_time, end_time, calc_first_after=False):
         # self.is_host = is_host
@@ -695,8 +696,9 @@ class AlertList(object):
             downtime_at_start_alert = self.get_downtime_entry(downtime_list, start_time)
             if downtime_at_start_alert:
                 downtime_entry = {}
-                # create entry in last before format
-                for key in ['device_id', 'device_id', 'service_id', 'service_info', 'date', 'msg', 'state', 'state_type']:
+                # create entry in "last before" format
+                for key in ['device_id', 'device_id', 'service_id', 'service_info', 'date', 'msg', 'state',
+                            'state_type']:
                     if hasattr(downtime_at_start_alert, key):
                         downtime_entry[key] = getattr(downtime_entry, key)
 
@@ -715,6 +717,7 @@ class AlertList(object):
             return alerts
         else:
             # filter alerts
+            all_alerts = alerts
             alerts = [alert for alert in alerts
                       if not any(downtime.start <= alert.date < downtime.end
                                  for downtime in downtime_list)]
@@ -722,7 +725,7 @@ class AlertList(object):
             for downtime in downtime_list:
                 # search last before entry
                 last_alert_before_downtime = None
-                for alert in alerts:
+                for alert in all_alerts:
                     if alert.date > downtime.start:
                         break
                     last_alert_before_downtime = alert
@@ -731,9 +734,11 @@ class AlertList(object):
 
                 # add end time if downtime has ended
                 if downtime.end_entry is not None:
+                    downtime_end_msg = None
                     if last_alert_before_downtime is not None:
                         state = last_alert_before_downtime.state
                         state_type = last_alert_before_downtime.state_type
+                        downtime_end_msg = last_alert_before_downtime.msg
                     else:
                         # use default
                         if last_state_description_before_time_span is not None:
@@ -743,6 +748,8 @@ class AlertList(object):
                             state = state_type = mon_icinga_log_raw_base.STATE_UNDETERMINED
                     downtime.end_entry.state = state
                     downtime.end_entry.state_type = state_type
+                    if downtime_end_msg is not None:
+                        downtime.end_entry.msg = downtime_end_msg
                     alerts.append(downtime.end_entry)
 
             # if this is too slow, we could also insert the entries in order
