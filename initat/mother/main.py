@@ -29,7 +29,7 @@ import django
 django.setup()
 
 from initat.cluster.backbone.models import LogSource
-from initat.mother.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools

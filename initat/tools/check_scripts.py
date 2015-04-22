@@ -38,6 +38,7 @@ import psutil
 import stat
 import subprocess
 import time
+
 try:
     from django.conf import settings
 except:
@@ -61,51 +62,55 @@ else:
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
+# return values
+SERVICE_OK = 0
+SERVICE_DEAD = 1
+SERVICE_NOT_INSTALLED = 5
+# also if config not set or insufficient licenses
+SERVICE_NOT_CONFIGURED = 6
+
 
 def check_processes(name, pids, pid_thread_dict, any_ok):
-    ret_state = 7
+    ret_state = SERVICE_NOT_CONFIGURED
     unique_pids = {key: pids.count(key) for key in set(pids)}
     pids_found = {key: pid_thread_dict.get(key, 1) for key in set(pids)}
     num_started = sum(unique_pids.values()) if unique_pids else 0
     num_found = sum(pids_found.values()) if pids_found else 0
     # check for extra Nagios2.x thread
     if any_ok and num_found:
-        ret_state = 0
+        ret_state = SERVICE_OK
     elif num_started == num_found:
-        ret_state = 0
+        ret_state = SERVICE_OK
     return ret_state, num_started, num_found
 
 INSTANCE_XML = """
 <instances>
-    <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node" version_file="/opt/cluster/sbin/_hoststatus_version.py">
+    <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="client">
     </instance>
-    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="logging-server" runs_on="client" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver">
     </instance>
-    <instance name="meta-server" runs_on="node"  has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="meta-server" runs_on="client"  has_force_stop="1" version_file="1">
     </instance>
-    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="host-monitoring" runs_on="client" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver">
     </instance>
-    <instance name="package-client" runs_on="node"  has_force_stop="1" pid_file_name="package-client/package-client.pid" version_file="%{INIT_BASE}/package_install/client/version.py">
+    <instance name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
     </instance>
-    <!--<instance name="gmond" runs_on="node" pid_file_name="">
-    </instance>-->
-    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck">
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
     </instance>
-    <instance name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/package_install/server/version.py">
+    <instance name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
     </instance>
-    <instance name="mother" pid_file_name="mother/mother.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="mother" pid_file_name="mother/mother.pid" has_force_stop="1">
         <config_names>
             <config_name>mother_server</config_name>
         </config_names>
     </instance>
-    <!-- collectd is checked via process_name to take the python side-process into account -->
-    <instance name="collectd-init" runs_on="server" has_force_stop="1" pid_file_name="collectd-init/collectd-init.pid" meta_server_name="collectd-init" version_file="%{INIT_BASE}/collectd/version.py">
+    <instance name="collectd-init" runs_on="server" has_force_stop="1" pid_file_name="collectd-init/collectd-init.pid" meta_server_name="collectd-init">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
@@ -136,45 +141,45 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server" version_file="%{INIT_BASE}/rms/version.py">
+    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-server" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="cluster-server" has_force_stop="1">
         <config_names>
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1">
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
     </instance>
-    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay" version_file="%{INIT_BASE}/host_monitoring/version.py">
+    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1" version_file="%{INIT_BASE}/snmp_relay/version.py">
+    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
+    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
@@ -226,12 +231,12 @@ def check_system(opt_ns):
     INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
     instance_xml = get_instance_xml()
     set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
-    set_all_nodes = True if (opt_ns.node == ["ALL"] or opt_ns.instance == ["ALL"]) else False
+    set_all_clients = True if (opt_ns.client == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     if set_all_servers:
         opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name", smart_strings=False)
-    if set_all_nodes:
-        opt_ns.node = instance_xml.xpath(".//*[@runs_on='node']/@name", smart_strings=False)
+    if set_all_clients:
+        opt_ns.client = instance_xml.xpath(".//*[@runs_on='client']/@name", smart_strings=False)
     if set_all_system:
         opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name", smart_strings=False)
     for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
@@ -258,6 +263,7 @@ def check_system(opt_ns):
                 _prev_db_check = _cr
                 if _cr.effective_device:
                     dev_config.append(_cr)
+
         name = entry.attrib["name"]
         entry.attrib["checked"] = "1"
         if entry.attrib["init_script_name"] in stat_dict:
@@ -278,11 +284,11 @@ def check_system(opt_ns):
                     except psutil.NoSuchProcess:
                         pass
                 if act_pids:
-                    act_state, act_str = (0, "running")
+                    act_state, act_str = (SERVICE_OK, "running")
                 else:
-                    act_state, act_str = (7, "not running")
+                    act_state, act_str = (SERVICE_NOT_CONFIGURED, "not running")
             else:
-                act_state, act_str = (5, "not installed")
+                act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
             entry.append(E.state_info(act_str, state="{:d}".format(act_state)))
             entry.attrib["check_source"] = "simple"
         elif entry.attrib["check_type"] == "threads_by_pid_file":
@@ -310,11 +316,11 @@ def check_system(opt_ns):
                     act_pids = ms_block.pids_found
                     num_started = len(act_pids)
                     if diff_threads:
-                        act_state = 7
+                        act_state = SERVICE_NOT_CONFIGURED
                         num_found = num_started
                         num_diff = diff_threads
                     else:
-                        act_state = 0
+                        act_state = SERVICE_OK
                         num_found = num_started
                         num_diff = 0
                     # print ms_block.pids, ms_block.pid_check_string
@@ -343,40 +349,15 @@ def check_system(opt_ns):
                 )
             else:
                 if os.path.isfile(init_script_name):
-                    if pid_file_name == "":
-                        # only used for gmond ?
-                        found_procs = {}
-                        for key, value in act_proc_dict.iteritems():
-                            try:
-                                if value.name() == entry.attrib["process_name"]:
-                                    found_procs[key] = (value, pid_thread_dict.get(value.pid, 1))
-                            except psutil.NoSuchProcess:
-                                pass
-                        act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
-                        threads_found = sum([value[1] for value in found_procs.itervalues()])
-                        act_state = 0 if act_pids else 7
-                        _info = E.state_info(
-                            num_diff="0",
-                            state="{:d}".format(act_state)
+                    act_state = SERVICE_DEAD
+                    entry.append(
+                        E.state_info(
+                            "no threads",
+                            state="{:d}".format(act_state),
                         )
-                        if threads_found:
-                            _info.attrib.update(
-                                {
-                                    "num_started": "{:d}".format(threads_found),
-                                    "num_found": "{:d}".format(threads_found),
-                                }
-                            )
-                        entry.append(_info)
-                    else:
-                        act_state = 7
-                        entry.append(
-                            E.state_info(
-                                "no threads",
-                                state="{:d}".format(act_state),
-                            )
-                        )
+                    )
                 else:
-                    act_state = 5
+                    act_state = SERVICE_NOT_INSTALLED
                     entry.append(
                         E.state_info(
                             "not installed",
@@ -394,10 +375,14 @@ def check_system(opt_ns):
             if dev_config:  # is not None:
                 sql_info = ", ".join([_dc.server_info_str for _dc in dev_config])
             else:
-                act_state = 5
+                act_state = SERVICE_NOT_CONFIGURED
                 sql_info = "not configured"
+                # update state info
+                _state_info = entry.find("state_info")
+                _state_info.text = "not configured"
+                _state_info.attrib["state"] = "{:d}".format(act_state)
         else:
-            sql_info = "node"
+            sql_info = entry.attrib["runs_on"]
         if type(sql_info) == str:
             entry.append(
                 E.sql_info(str(sql_info))
@@ -414,20 +399,17 @@ def check_system(opt_ns):
                 "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
             )
         )
-        if "version_file" in entry.attrib and act_state != 5:
+        if entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
             entry.attrib["version_ok"] = "0"
             try:
-                _path = entry.attrib["version_file"].replace("%{INIT_BASE}", INIT_BASE).replace("%{NAME}", entry.attrib["name"].replace("-", "_"))
-                if os.path.exists(_path):
-                    _lines = file(_path, "r").read().split("\n")
-                    _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
-                    if _vers_lines:
-                        entry.attrib["version_ok"] = "1"
-                        entry.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
-                    else:
-                        entry.attrib["version"] = "no version lines found in '{}'".format(_path)
+                _path = "%{INIT_BASE}/{runs_on}_version.py".replace("%{INIT_BASE}", INIT_BASE).format(**dict(entry.attrib))
+                _lines = file(_path, "r").read().split("\n")
+                _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
+                if _vers_lines:
+                    entry.attrib["version_ok"] = "1"
+                    entry.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
                 else:
-                    entry.attrib["version"] = "{} missing".format(_path)
+                    entry.attrib["version"] = "no version lines found in '{}'".format(_path)
             except:
                 entry.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
     return instance_xml
@@ -439,7 +421,7 @@ def get_default_ns():
         instance=[],
         system=[],
         server=[],
-        node=[],
+        client=[],
         runlevel=True,
         memory=True,
         database=True,
@@ -458,20 +440,19 @@ def show_xml(opt_ns, res_xml, iteration=0):
         0: "\033[1;32m",
         1: "\033[1;33m",
         2: "\033[1;31m",
-        3: "\033[m\017"
+        3: "\033[m\017",
     }
     rc_dict = {
-        0: (0, "running"),
-        1: (2, "error"),
-        5: (1, "skipped"),
-        6: (1, "not install"),
-        7: (2, "dead")
+        SERVICE_OK: (0, "running"),
+        SERVICE_DEAD: (2, "error"),
+        SERVICE_NOT_INSTALLED: (1, "not installed"),
+        SERVICE_NOT_CONFIGURED: (1, "not configured"),
     }
     rc_strs = {
         key: "{}{}{}".format(col_str_dict[wc], value, col_str_dict[3]) for key, (wc, value) in rc_dict.iteritems()
     }
     out_bl = logging_tools.new_form_list()
-    types = ["node", "server", "system"]
+    types = ["client", "server", "system"]
     _list = sum([res_xml.xpath("instance[@checked='1' and @runs_on='{}']".format(_type)) for _type in types], [])
     for act_struct in _list:
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
@@ -588,7 +569,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
             cur_line.append(logging_tools.form_entry_right(_version, header="Version"))
         cur_state = int(act_struct.find("state_info").get("state", "1"))
         cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
-        if not opt_ns.failed or (opt_ns.failed and cur_state in [1, 7]):
+        if not opt_ns.failed or (opt_ns.failed and cur_state in [SERVICE_DEAD, SERVICE_NOT_CONFIGURED]):
             out_bl.append(cur_line)
     print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
     # _lines = unicode(out_bl).split("\n")
@@ -643,7 +624,7 @@ def main():
     my_parser.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
     my_parser.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
     my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
-    my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node entity names (%(default)s)")
+    my_parser.add_argument("--client", type=str, nargs="+", default=[], help="client entity names (%(default)s)")
     my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
     my_parser.add_argument("--system", type=str, nargs="+", default=[], help="system entity names (%(default)s)")
     my_parser.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")

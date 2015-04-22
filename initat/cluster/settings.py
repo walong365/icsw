@@ -601,7 +601,7 @@ LOGGING = {
     'disable_existing_loggers': True,
     'formatters': {
         "initat": {
-            "()": "logging_tools.initat_formatter",
+            "()": "initat.tools.logging_tools.initat_formatter",
         },
         'verbose': {
             'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
@@ -613,17 +613,17 @@ LOGGING = {
     'handlers': {
         "init_unified": {
             "level": "INFO" if DEBUG else "WARN",
-            "class": "logging_tools.init_handler_unified",
+            "class": "initat.tools.logging_tools.init_handler_unified",
             "formatter": "initat",
         },
         "init": {
             "level": 'INFO' if DEBUG else "WARN",
-            "class": "logging_tools.init_handler",
+            "class": "initat.tools.logging_tools.init_handler",
             "formatter": "initat",
         },
         "init_mail": {
             "level": "ERROR",
-            "class": "logging_tools.init_email_handler",
+            "class": "initat.tools.logging_tools.init_email_handler",
             "formatter": "initat",
         },
     },

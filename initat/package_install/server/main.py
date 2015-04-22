@@ -30,10 +30,7 @@ import os
 from initat.tools import process_tools
 import sys
 
-try:
-    from initat.package_install.server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.server_version import VERSION_STRING
 
 
 def run_code():

@@ -29,7 +29,7 @@ from initat.host_monitoring.discovery import id_discovery
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.struct import host_connection, host_message
 from initat.host_monitoring.tools import my_cached_file
-from initat.host_monitoring.version import VERSION_STRING
+from initat.client_version import VERSION_STRING
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import StringIO

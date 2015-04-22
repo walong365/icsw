@@ -34,10 +34,7 @@ import daemon
 from initat.tools import process_tools
 import sys
 
-try:
-    from initat.cluster_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.server_version import VERSION_STRING
 
 SERVER_PORT = 8004
 

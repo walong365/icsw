@@ -35,14 +35,8 @@ from initat.tools import threading_tools
 import time
 import zmq
 
-try:
-    from initat.host_monitoring import hm_classes
-except:
-    hm_classes = None
-try:
-    from initat.meta_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.host_monitoring import hm_classes
+from initat.client_version import VERSION_STRING
 
 
 class main_process(threading_tools.process_pool):

@@ -23,7 +23,7 @@
 """ host-monitoring, main part """
 
 from initat.host_monitoring import hm_classes
-from initat.host_monitoring.version import VERSION_STRING
+from initat.client_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import configfile
 import daemon
