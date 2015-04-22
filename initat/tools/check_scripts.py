@@ -62,7 +62,7 @@ else:
         else:
             from initat.tools import config_tools
 
-EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
+SERVERS_DIR = "/opt/cluster/etc/servers.d"
 
 # return values
 SERVICE_OK = 0
@@ -72,63 +72,48 @@ SERVICE_NOT_INSTALLED = 5
 SERVICE_NOT_CONFIGURED = 6
 
 
-def check_processes(name, pids, pid_thread_dict, any_ok):
-    ret_state = SERVICE_NOT_CONFIGURED
-    unique_pids = {key: pids.count(key) for key in set(pids)}
-    pids_found = {key: pid_thread_dict.get(key, 1) for key in set(pids)}
-    num_started = sum(unique_pids.values()) if unique_pids else 0
-    num_found = sum(pids_found.values()) if pids_found else 0
-    # check for extra Nagios2.x thread
-    if any_ok and num_found:
-        ret_state = SERVICE_OK
-    elif num_started == num_found:
-        ret_state = SERVICE_OK
-    return ret_state, num_started, num_found
-
-
-def get_instance_xml():
-    instance_xml = E.instances()
-    # check for additional instances
-    if os.path.isdir(EXTRA_SERVER_DIR):
-        for entry in os.listdir(EXTRA_SERVER_DIR):
-            if entry.endswith(".xml"):
-                try:
-                    add_inst_list = etree.fromstring(open(os.path.join(EXTRA_SERVER_DIR, entry), "r").read())  # @UndefinedVariable
-                except:
-                    print(
-                        "cannot read entry '{}' from {}: {}".format(
-                            entry,
-                            EXTRA_SERVER_DIR,
-                            process_tools.get_except_info(),
-                        )
-                    )
-                else:
-                    for sub_inst in add_inst_list.findall("instance"):
-                        instance_xml.append(sub_inst)
-    for cur_el in instance_xml.findall("instance"):
-        name = cur_el.attrib["name"]
-        for key, def_value in [
-            ("runs_on", "server"),
-            ("any_threads_ok", "0"),
-            ("pid_file_name", "{}.pid".format(name)),
-            ("init_script_name", name),
-            ("startstop", "1"),
-            ("checked", "0"),
-            ("to_check", "0"),
-            ("process_name", name),
-            ("meta_server_name", name),
-        ]:
-            if key not in cur_el.attrib:
-                cur_el.attrib[key] = def_value
-    return instance_xml
-
-
 class ServiceContainer(object):
     def __init__(self, log_com):
         self.__log_com = log_com
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SrvC] {}".format(what), log_level)
+
+    def get_instance_xml(self):
+        instance_xml = E.instances()
+        # check for additional instances
+        if os.path.isdir(SERVERS_DIR):
+            for entry in os.listdir(SERVERS_DIR):
+                if entry.endswith(".xml"):
+                    try:
+                        add_inst_list = etree.fromstring(open(os.path.join(SERVERS_DIR, entry), "r").read())  # @UndefinedVariable
+                    except:
+                        print(
+                            "cannot read entry '{}' from {}: {}".format(
+                                entry,
+                                SERVERS_DIR,
+                                process_tools.get_except_info(),
+                            )
+                        )
+                    else:
+                        for sub_inst in add_inst_list.findall("instance"):
+                            instance_xml.append(sub_inst)
+        for cur_el in instance_xml.findall("instance"):
+            name = cur_el.attrib["name"]
+            for key, def_value in [
+                ("runs_on", "server"),
+                ("any_threads_ok", "0"),
+                ("pid_file_name", "{}.pid".format(name)),
+                ("init_script_name", name),
+                ("startstop", "1"),
+                ("checked", "0"),
+                ("to_check", "0"),
+                ("process_name", name),
+                ("meta_server_name", name),
+            ]:
+                if key not in cur_el.attrib:
+                    cur_el.attrib[key] = def_value
+        return instance_xml
 
     def get_default_ns(self):
         def_ns = argparse.Namespace(
@@ -159,6 +144,7 @@ class ServiceContainer(object):
                     pass
             if act_pids:
                 act_state, act_str = (SERVICE_OK, "running")
+                self._add_pids(entry, act_pids)
             else:
                 act_state, act_str = (SERVICE_DEAD, "not running")
         else:
@@ -179,13 +165,12 @@ class ServiceContainer(object):
             act_pids = ms_block.pids_found
             num_started = len(act_pids)
             if diff_threads:
-                act_state = SERVICE_NOT_CONFIGURED
+                act_state = SERVICE_DEAD
                 num_found = num_started
-                num_diff = diff_threads
             else:
                 act_state = SERVICE_OK
                 num_found = num_started
-                num_diff = 0
+            num_diff = diff_threads
             # print ms_block.pids, ms_block.pid_check_string
             entry.attrib["check_source"] = "meta"
             entry.append(
@@ -203,54 +188,92 @@ class ServiceContainer(object):
                     state="{:d}".format(act_state)
                 ),
             )
+            self._add_pids(entry, act_pids)
         else:
-            if os.path.isfile(init_script_name):
-                act_state = SERVICE_DEAD
-                entry.append(
-                    E.state_info(
-                        "no threads",
-                        state="{:d}".format(act_state),
-                    )
+            self._add_non_running(entry)
+
+    def _add_non_running(self, entry):
+        init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
+        if os.path.isfile(init_script_name):
+            act_state = SERVICE_DEAD
+            entry.append(
+                E.state_info(
+                    "no threads",
+                    state="{:d}".format(act_state),
                 )
-            else:
-                act_state = SERVICE_NOT_INSTALLED
-                entry.append(
-                    E.state_info(
-                        "not installed",
-                        state="{:d}".format(act_state),
-                    )
+            )
+        else:
+            act_state = SERVICE_NOT_INSTALLED
+            entry.append(
+                E.state_info(
+                    "not installed",
+                    state="{:d}".format(act_state),
                 )
+            )
+
+    def _check_processes(self, entry, pids):
+        name = entry.attrib["name"]
+        any_ok = True if int(entry.attrib["any_threads_ok"]) else False
+        unique_pids = {key: pids.count(key) for key in set(pids)}
+        pids_found = {key: self.__pid_thread_dict.get(key, 1) for key in set(pids)}
+        num_started = sum(unique_pids.values()) if unique_pids else 0
+        num_found = sum(pids_found.values()) if pids_found else 0
+        # check for extra Nagios2.x thread
+        if any_ok and num_found:
+            ret_state = SERVICE_OK
+        elif num_started == num_found:
+            ret_state = SERVICE_OK
+        else:
+            ret_state = SERVICE_NOT_CONFIGURED
+        return ret_state, num_started, num_found
 
     def _check_pid_file(self, entry):
         name = entry.attrib["name"]
         pid_file_name = entry.attrib["pid_file_name"]
         if not pid_file_name.startswith("/"):
             pid_file_name = os.path.join("/var", "run", pid_file_name)
-        pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
-        act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
-        act_state, num_started, num_found = check_processes(name, act_pids, self.__pid_thread_dict, True if int(entry.attrib["any_threads_ok"]) else False)
-        num_diff = 0
-        diff_dict = {}
-        entry.attrib["check_source"] = "pid"
-        entry.append(
-            E.state_info(
-                *[
-                    E.diff_info(
-                        pid="{:d}".format(key),
-                        diff="{:d}".format(value)
-                    ) for key, value in diff_dict.iteritems()
-                ],
-                num_started="{:d}".format(num_started),
-                num_found="{:d}".format(num_found),
-                num_diff="{:d}".format(num_diff),
-                pid_time="{:d}".format(pid_time),
-                state="{:d}".format(act_state)
-            ),
-        )
+        if os.path.isfile(pid_file_name):
+            pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
+            act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
+            act_state, num_started, num_found = self._check_processes(entry, act_pids)
+            num_diff = 0
+            diff_dict = {}
+            entry.attrib["check_source"] = "pid"
+            entry.append(
+                E.state_info(
+                    *[
+                        E.diff_info(
+                            pid="{:d}".format(key),
+                            diff="{:d}".format(value)
+                        ) for key, value in diff_dict.iteritems()
+                    ],
+                    num_started="{:d}".format(num_started),
+                    num_found="{:d}".format(num_found),
+                    num_diff="{:d}".format(num_diff),
+                    pid_time="{:d}".format(pid_time),
+                    state="{:d}".format(act_state)
+                ),
+            )
+            self._add_pids(entry, act_pids)
+        else:
+            self._add_non_running(entry)
+
+    def _add_pids(self, entry, act_pids):
+        if act_pids:
+            entry.append(
+                E.pids(
+                    *[E.pid("{:d}".format(cur_pid), count="{:d}".format(act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
+                )
+            )
+            entry.append(
+                E.memory_info(
+                    "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
+                )
+            )
 
     def check_system(self, opt_ns):
         INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
-        instance_xml = get_instance_xml()
+        instance_xml = self.get_instance_xml()
         set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
         set_all_clients = True if (opt_ns.client == ["ALL"] or opt_ns.instance == ["ALL"]) else False
         set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
@@ -279,7 +302,6 @@ class ServiceContainer(object):
 
             name = entry.attrib["name"]
             entry.attrib["checked"] = "1"
-            act_pids = []
             init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
             if entry.attrib["check_type"] == "simple":
                 self._check_simple(entry)
@@ -289,11 +311,6 @@ class ServiceContainer(object):
                 self._check_pid_file(entry)
             else:
                 entry.append(E.state_info("unknown check_type '{}'".format(entry.attrib["check_type"]), state="1"))
-            entry.append(
-                E.pids(
-                    *[E.pid("{:d}".format(cur_pid), count="{:d}".format(act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
-                )
-            )
             act_state = int(entry.find("state_info").attrib["state"])
             if entry.attrib["runs_on"] == "server":
                 if dev_config:  # is not None:
@@ -318,15 +335,14 @@ class ServiceContainer(object):
                         sql_info.config_name),
                     )
                 )
-            entry.append(
-                E.memory_info(
-                    "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
-                )
-            )
             if entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
                 entry.attrib["version_ok"] = "0"
                 try:
-                    _path = "%{INIT_BASE}/{runs_on}_version.py".replace("%{INIT_BASE}", INIT_BASE).format(**dict(entry.attrib))
+                    if "version_file" in entry.attrib:
+                        _path = entry.attrib["version_file"]
+                    else:
+                        _path = "%{{INIT_BASE}}/{runs_on}_version.py".format(**dict(entry.attrib))
+                    _path = _path.replace("%{INIT_BASE}", INIT_BASE)
                     _lines = file(_path, "r").read().split("\n")
                     _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
                     if _vers_lines:
@@ -337,8 +353,6 @@ class ServiceContainer(object):
                 except:
                     entry.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
         return instance_xml
-
-
 
 
 def show_xml(opt_ns, res_xml, iteration=0):
@@ -444,12 +458,12 @@ def show_xml(opt_ns, res_xml, iteration=0):
         if opt_ns.database:
             cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
         if opt_ns.memory:
-            cur_mem = act_struct.find("memory_info").text
-            if cur_mem.isdigit():
-                mem_str = process_tools.beautify_mem_info(int(cur_mem))
+            cur_mem = act_struct.find("memory_info")
+            if cur_mem is not None:
+                mem_str = process_tools.beautify_mem_info(int(cur_mem.text))
             else:
                 # no pids hence no memory info
-                mem_str = "no pids"
+                mem_str = ""
             cur_line.append(logging_tools.form_entry_right(mem_str, header="Memory"))
         if opt_ns.version:
             if "version" in act_struct.attrib:
