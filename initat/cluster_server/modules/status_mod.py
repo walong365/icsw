@@ -72,7 +72,8 @@ class server_control(cs_base_class.server_com):
         cmd = cur_inst.srv_com["*control"]
         instance = cur_inst.srv_com["*instance"]
         cur_inst.log("command {} for instance {}".format(cmd, instance))
-        inst_xml = check_scripts.get_instance_xml().find("instance[@name='{}']".format(instance))
+        _cs = check_scripts.ServiceContainer(cur_inst.log)
+        inst_xml = _cs.get_instance_xml().find("instance[@name='{}']".format(instance))
         if inst_xml is None:
             cur_inst.srv_com.set_result(
                 "instance {} not found".format(instance),
