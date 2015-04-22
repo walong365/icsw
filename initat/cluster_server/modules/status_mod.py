@@ -57,13 +57,14 @@ class status(cs_base_class.server_com):
 
 class server_status(cs_base_class.server_com):
     def _call(self, cur_inst):
-        default_ns = check_scripts.get_default_ns()
+        _cs = check_scripts.ServiceContainer(cur_inst.log)
+        default_ns = _cs.get_default_ns()
         default_ns.instance = ["ALL"]
-        stat_xml = check_scripts.check_system(default_ns)
+        stat_xml = _cs.check_system(default_ns)
         cur_inst.srv_com["status"] = stat_xml
         cur_inst.srv_com.set_result(
             "checked system",
-            )
+        )
 
 
 class server_control(cs_base_class.server_com):
