@@ -24,15 +24,12 @@ import codecs
 import base64
 import inspect
 import locale
-from initat.tools import logging_tools
 import marshal
 import os
 import pickle
 import platform
-import psutil
 import random
 import re
-import signal  # @UnusedImport
 import socket
 import stat
 import subprocess
@@ -40,13 +37,17 @@ import sys
 import threading
 import time
 import traceback
-from initat.tools import uuid_tools
-import zmq
 import json
 import bz2
-if sys.version_info[0] == 3:
-    unicode = str  # @ReservedAssignment
-    long = int  # @ReservedAssignment
+from lxml import etree  # @UnresolvedImports
+import grp
+import pwd
+
+from initat.tools import logging_tools
+import psutil
+from initat.tools import uuid_tools
+import zmq
+from lxml.builder import E  # @UnresolvedImports
 
 
 def compress_struct(input):
@@ -55,15 +56,6 @@ def compress_struct(input):
 
 def decompress_struct(b64_str):
     return json.loads(bz2.decompress((base64.b64decode(b64_str))))
-
-
-if sys.platform in ["linux2", "linux3", "linux"]:
-    # helper function for proepilogue
-    from io_stream_helper import io_stream  # @UnusedImport
-    from lxml import etree  # @UnresolvedImports
-    from lxml.builder import E  # @UnresolvedImports
-    import grp
-    import pwd
 
 try:
     ENCODING = locale.getpreferredencoding()
@@ -512,13 +504,16 @@ class meta_server_info(object):
             self.__file_name = name
             # try to read complete info from file
             self.__name = None
-            xml_struct = None
-            if etree:
-                try:
-                    xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
-                except:
-                    logging_tools.my_syslog("error parsing XML file {} (meta_server_info): {}".format(
-                        name, get_except_info()))
+            try:
+                xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
+            except:
+                logging_tools.my_syslog(
+                    "error parsing XML file {} (meta_server_info): {}".format(
+                        name,
+                        get_except_info()
+                    )
+                )
+                xml_struct = None
             if xml_struct is not None:
                 self.__name = xml_struct.xpath(".//name/text()", smart_strings=False)[0]
                 # reads pids
@@ -534,7 +529,7 @@ class meta_server_info(object):
                     self.__pid_fuzzy[int(pid_struct.text)] = (
                         int(pid_struct.get("fuzzy_floor", "0")),
                         int(pid_struct.get("fuzzy_ceiling", "0")),
-                        )
+                    )
                 for opt, val_type, def_val in self.__prop_list:
                     cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='{}']".format(opt), smart_strings=False)
                     if cur_prop:
@@ -747,50 +742,41 @@ class meta_server_info(object):
             all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---")
 
     def save_block(self):
-        if etree:
-            pid_list = E.pid_list()
-            for cur_pid in sorted(set(self.__pids)):
-                cur_pid_el = E.pid(
-                    "{:d}".format(cur_pid),
-                    mult="{:d}".format(
-                        self.__pids.count(cur_pid)
-                    ),
-                    name=self.__pid_names[cur_pid],
-                    proc_name=self.__pid_proc_names[cur_pid]
-                )
-                f_f, f_c = self.__pid_fuzzy[cur_pid]
-                if f_f:
-                    cur_pid_el.attrib["fuzzy_floor"] = "{:d}".format(f_f)
-                if f_c:
-                    cur_pid_el.attrib["fuzzy_ceiling"] = "{:d}".format(f_c)
-                pid_list.append(cur_pid_el)
-            xml_struct = E.meta_info(
-                E.name(self.__name),
-                pid_list,
-                E.properties()
-                )
-            for opt, val_type, _dev_val in self.__prop_list:
-                prop_val = getattr(self, opt)
-                if prop_val is not None:
-                    xml_struct.find("properties").append(
-                        E.prop(str(prop_val), **{
-                            "key": opt,
-                            "type": {
-                                "s": "string",
-                                "i": "integer",
-                                "b": "boolean"}[val_type]
-                            }
-                        )
+        pid_list = E.pid_list()
+        for cur_pid in sorted(set(self.__pids)):
+            cur_pid_el = E.pid(
+                "{:d}".format(cur_pid),
+                mult="{:d}".format(
+                    self.__pids.count(cur_pid)
+                ),
+                name=self.__pid_names[cur_pid],
+                proc_name=self.__pid_proc_names[cur_pid]
+            )
+            f_f, f_c = self.__pid_fuzzy[cur_pid]
+            if f_f:
+                cur_pid_el.attrib["fuzzy_floor"] = "{:d}".format(f_f)
+            if f_c:
+                cur_pid_el.attrib["fuzzy_ceiling"] = "{:d}".format(f_c)
+            pid_list.append(cur_pid_el)
+        xml_struct = E.meta_info(
+            E.name(self.__name),
+            pid_list,
+            E.properties()
+            )
+        for opt, val_type, _dev_val in self.__prop_list:
+            prop_val = getattr(self, opt)
+            if prop_val is not None:
+                xml_struct.find("properties").append(
+                    E.prop(str(prop_val), **{
+                        "key": opt,
+                        "type": {
+                            "s": "string",
+                            "i": "integer",
+                            "b": "boolean"}[val_type]
+                        }
                     )
-            file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)  # @UndefinedVariable
-        else:
-            file_content = ["NAME = {}".format(self.__name),
-                            "PIDS = {}".format(" ".join(["{:d}".format(x) for x in self.__pids]))]
-            for opt, val_type, _dev_val in self.__prop_list:
-                prop_val = getattr(self, opt)
-                if prop_val is not None:
-                    file_content.append("{} = {}".format(opt.upper(), str(prop_val)))
-            file_content = "\n".join(file_content + [""])
+                )
+        file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)  # @UndefinedVariable
         if not self.__file_name:
             self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
         try:
@@ -901,10 +887,13 @@ class meta_server_info(object):
                 ", ".join(["{:d}".format(cur_pid) for cur_pid in all_pids]),
                 ok_pids and "{} ({})".format(
                     logging_tools.get_plural("pid", len(ok_pids)),
-                    ", ".join(["{:d}".format(cur_pid) for cur_pid in ok_pids])) or "---",
+                    ", ".join(["{:d}".format(cur_pid) for cur_pid in ok_pids])
+                ) or "---",
                 error_pids and "{} ({})".format(
                     logging_tools.get_plural("pid", len(error_pids)),
-                    ", ".join(["{:d}".format(cur_pid) for cur_pid in error_pids])) or "---")
+                    ", ".join(["{:d}".format(cur_pid) for cur_pid in error_pids])
+                ) or "---"
+            )
         else:
             return "no pids to kill"
 

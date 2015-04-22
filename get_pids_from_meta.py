@@ -24,8 +24,10 @@
 
 import argparse
 import os
-from initat.tools import process_tools
 import sys
+
+from initat.tools import process_tools
+
 
 META_DIR = "/var/lib/meta-server"
 
