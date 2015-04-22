@@ -28,13 +28,13 @@ from initat.discovery_server.config import global_config
 from initat.snmp.struct import ResultNode
 import base64
 import bz2
-import config_tools
-import logging_tools
-import net_tools
-import partition_tools
+from initat.tools import config_tools
+from initat.tools import logging_tools
+from initat.tools import net_tools
+from initat.tools import partition_tools
 import pprint  # @UnusedImport
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 
 # removed tun from list to enable adding of FWs from Madar, move to option?
 IGNORE_LIST = ["tap", "vnet"]

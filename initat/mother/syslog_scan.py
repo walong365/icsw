@@ -22,9 +22,9 @@
 """ simple command snippet for rsyslog """
 
 import sys
-import logging_tools
+from initat.tools import logging_tools
 import zmq
-import process_tools
+from initat.tools import process_tools
 
 
 def open_socket(zmq_context):

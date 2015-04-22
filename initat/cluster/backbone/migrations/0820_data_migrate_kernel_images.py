@@ -6,12 +6,12 @@ import re
 from django.db import migrations
 
 
-def create_history_entry(obj, dbh):
+def create_history_entry(obj, dbh, src):
     _dh = obj(
-        device=_dbh.device,
-        device_boot_history=_dbh,
-        version=obj.version,
-        release=obj.release,
+        device=dbh.device,
+        device_boot_history=dbh,
+        version=src.version,
+        release=src.release,
     )
     return _dh
 
@@ -28,15 +28,15 @@ def migrate_kernel_image(apps, schema_editor):
         if _dev.act_kernel_id and _dev.act_image_id:
             # only handle cases where act_image and act_kernel are set
             dbh = boot_history.objects.create(device=_dev)
-            _kh = create_history_entry(kernel_hist, dbh)
+            _kh = create_history_entry(kernel_hist, dbh, _dev.act_kernel)
             _kh.kernel = _dev.act_kernel
             kvm = VERS_RE.match(_dev.kernelversion)
             if kvm:
                 _kh.version = int(kvm.group("version"))
                 _kh.release = int(kvm.group("release"))
             _kh.save()
-            _ih = create_history_entry(image_hist, dbh)
-            _ih.image = dev.act_image
+            _ih = create_history_entry(image_hist, dbh, _dev.act_image)
+            _ih.image = _dev.act_image
             ivm = VERS_RE.match(_dev.imageversion)
             if ivm:
                 _ih.version = int(ivm.group("version"))

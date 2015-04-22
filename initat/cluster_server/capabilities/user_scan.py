@@ -21,9 +21,9 @@ from django.db.models import Q
 from initat.cluster.backbone.models import home_export_list, user, user_scan_result, user_scan_run
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import scandir
 import stat
 import time

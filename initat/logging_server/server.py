@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2014 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2009-2015 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,23 +19,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" logging server, central logging facility , server -part"""
+
+""" logging server, central logging facility, server-part"""
 
 from initat.logging_server.config import global_config
 import grp
-import io_stream_helper
+from initat.tools import io_stream_helper
 import logging
-import logging_tools
-import mail_tools
+from initat.tools import logging_tools
+from initat.tools import mail_tools
 import os
 import pickle
-import process_tools
+from initat.tools import process_tools
 import pwd
 import resource
 import stat
-import threading_tools
+from initat.tools import threading_tools
 import time
-import uuid_tools
+from initat.tools import uuid_tools
 import zmq
 
 SEP_STR = "-" * 50
@@ -106,13 +107,15 @@ class main_process(threading_tools.process_pool):
                 # print dir(cur_dst)
                 if "src_thread" in kwargs or "src_process" in kwargs:
                     # build record to log src_thread
-                    cur_record = logging.makeLogRecord({
-                        "threadName": kwargs.get("src_thread", kwargs.get("src_process", "???")),
-                        "process": kwargs.get("src_pid", 0),
-                        "msg": what,
-                        "levelno": level,
-                        "levelname": logging_tools.get_log_level_str(level)
-                    })
+                    cur_record = logging.makeLogRecord(
+                        {
+                            "threadName": kwargs.get("src_thread", kwargs.get("src_process", "???")),
+                            "process": kwargs.get("src_pid", 0),
+                            "msg": what,
+                            "levelno": level,
+                            "levelname": logging_tools.get_log_level_str(level)
+                        }
+                    )
                     cur_dst.handle(cur_record)
                 else:
                     cur_dst.log(level, what)  # , extra={"threadName" : kwargs.get("src_thread", "bla")})
@@ -122,8 +125,12 @@ class main_process(threading_tools.process_pool):
             logging_tools.my_syslog(what, level)
 
     def _startup_error(self, src_name, src_pid, num_errors):
-        self.log("{} during startup, exiting".format(logging_tools.get_plural("bind error", num_errors)),
-                 logging_tools.LOG_LEVEL_ERROR)
+        self.log(
+            "{} during startup, exiting".format(
+                logging_tools.get_plural("bind error", num_errors)
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )
         self._int_error("bind problem")
 
     def _int_error(self, err_cause):
@@ -282,7 +289,8 @@ class main_process(threading_tools.process_pool):
                 in_dict.get("uid", 0),
                 uname,
                 in_dict.get("gid", 0),
-                gname)
+                gname
+            )
             # log to err_py
             _lines = cur_dict["error_str"].split("\n")
             # never log the last line, this line is either incomplete (\n missing) or empty (\n present)
@@ -311,7 +319,8 @@ class main_process(threading_tools.process_pool):
             p_dict.get("name", "N/A"),
             p_dict.get("ppid", 0),
             p_dict.get("uid", -1),
-            p_dict.get("gid", -1))
+            p_dict.get("gid", -1)
+        )
 
     def _check_error_dict(self, force=False):
         c_name = process_tools.get_cluster_name()
@@ -327,8 +336,14 @@ class main_process(threading_tools.process_pool):
                     c_name,
                     process_tools.get_machine_name())
                 err_lines = "".join(es["error_str"]).split("\n")
-                msg_body = "\n".join(["Processinfo {}".format(self._get_process_info(es))] +
-                                     ["{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(err_lines)])
+                msg_body = "\n".join(
+                    [
+                        "Processinfo {}".format(self._get_process_info(es))
+                    ] +
+                    [
+                        "{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(err_lines)
+                    ]
+                )
                 if global_config["SEND_ERROR_MAILS"]:
                     self._send_mail(subject, msg_body)
                     mails_sent += 1
@@ -338,9 +353,11 @@ class main_process(threading_tools.process_pool):
         e_time = time.time()
         if mails_sent:
             self.log(
-                "Sent {} in {:.2f} seconds".format(
+                "Sent {} in {}".format(
                     logging_tools.get_plural("mail", mails_sent),
-                    e_time - s_time))
+                    logging_tools.get_diff_time_str(e_time - s_time)
+                )
+            )
 
     def _send_mail(self, subject, msg_body):
         new_mail = mail_tools.mail(
@@ -353,11 +370,15 @@ class main_process(threading_tools.process_pool):
         try:
             send_stat, log_lines = new_mail.send_mail()
             for log_line in log_lines:
-                self.log(" - ({:d}) {}".format(send_stat, log_line),
-                         logging_tools.LOG_LEVEL_OK)
+                self.log(
+                    " - ({:d}) {}".format(send_stat, log_line),
+                    logging_tools.LOG_LEVEL_OK
+                )
         except:
-            self.log("error sending mail: {}".format(process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "error sending mail: {}".format(process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
 
     def any_message_received(self):
         act_time = time.time()
@@ -371,13 +392,15 @@ class main_process(threading_tools.process_pool):
                 )
             else:
                 fwd_str = ""
-            self.log("logstat (open/close/written): {:d} / {:d} / {:d}, mem_used is {}{}".format(
-                self.__num_open,
-                self.__num_close,
-                self.__num_write,
-                process_tools.beautify_mem_info(),
-                fwd_str,
-                ))
+            self.log(
+                "logstat (open/close/written): {:d} / {:d} / {:d}, mem_used is {}{}".format(
+                    self.__num_open,
+                    self.__num_close,
+                    self.__num_write,
+                    process_tools.beautify_mem_info(),
+                    fwd_str,
+                )
+            )
             self.__num_open, self.__num_close, self.__num_write = (0, 0, 0)
             self.__num_forward_ok, self.__num_forward_error = (0, 0)
 
@@ -405,7 +428,9 @@ class main_process(threading_tools.process_pool):
             self.log(
                 "temporarily closing {}: {}".format(
                     logging_tools.get_plural("handle", len(c_handles)),
-                    ", ".join(c_handles)))
+                    ", ".join(c_handles)
+                )
+            )
         for c_handle in c_handles:
             self.remove_handle(c_handle)
         self._check_error_dict()
@@ -467,7 +492,9 @@ class main_process(threading_tools.process_pool):
             self.log(
                 "logger '{}' (logger_type {}) requested".format(
                     logger_name,
-                    "init.at" if init_logger else "native"))
+                    "init.at" if init_logger else "native"
+                )
+            )
             full_name = os.path.join(global_config["LOG_DESTINATION"], h_name)
             base_dir, base_name = (os.path.dirname(full_name),
                                    os.path.basename(full_name))

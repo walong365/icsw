@@ -27,13 +27,13 @@ import django
 django.setup()
 
 from initat.discovery_server.config_static import SERVER_PORT
-from initat.discovery_server.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
-import cluster_location
-import config_tools
-import configfile
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
 import daemon
-import process_tools
+from initat.tools import process_tools
 import sys
 
 

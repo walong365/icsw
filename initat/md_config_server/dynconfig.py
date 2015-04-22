@@ -37,10 +37,10 @@ from initat.cluster.backbone.models import device, monitoring_hint, mon_check_co
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config
-import logging_tools
-import server_command
-import process_tools
-import threading_tools
+from initat.tools import logging_tools
+from initat.tools import server_command
+from initat.tools import process_tools
+from initat.tools import threading_tools
 
 
 class dynconfig_process(threading_tools.process_obj):

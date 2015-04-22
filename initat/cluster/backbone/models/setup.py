@@ -26,7 +26,7 @@ import datetime
 from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
-import logging_tools
+from initat.tools import logging_tools
 from initat.cluster.backbone.models.functions import cluster_timezone
 
 

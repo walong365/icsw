@@ -25,11 +25,11 @@ import time
 
 from django.db import connection
 from initat.collectd.config import global_config
-import logging_tools
-import process_tools
-import rrd_tools
-import server_mixins
-import threading_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import rrd_tools
+from initat.tools import server_mixins
+from initat.tools import threading_tools
 
 try:
     import rrdtool  # @UnresolvedImport

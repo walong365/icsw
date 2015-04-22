@@ -28,7 +28,7 @@ from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import base64
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import networkx
 import os
 import re

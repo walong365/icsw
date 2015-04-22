@@ -21,7 +21,7 @@
 
 from ..functions import oid_to_str
 from ..struct import ResultNode
-import logging_tools
+from initat.tools import logging_tools
 
 
 class SNMPHandler(object):

@@ -24,20 +24,20 @@ from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster_server.capabilities import usv_server, quota, virtual_desktop, user_scan
 from initat.cluster_server.config import global_config
 from initat.cluster_server.notify import notify_mixin
-import cluster_location
-import config_tools
-import configfile
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
 import datetime
 import initat.cluster_server.modules
-import logging_tools
+from initat.tools import logging_tools
 import os
 import stat
 import pprint
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import time
-import uuid_tools
+from initat.tools import uuid_tools
 import zmq
 
 

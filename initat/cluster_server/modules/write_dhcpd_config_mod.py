@@ -20,11 +20,11 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import network
 from initat.cluster_server.config import global_config
-import config_tools
+from initat.tools import config_tools
 import cs_base_class
 import os
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 
 
 class write_dhcpd_config(cs_base_class.server_com):

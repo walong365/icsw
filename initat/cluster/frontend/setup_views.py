@@ -34,8 +34,8 @@ from initat.cluster.backbone.render import render_me
 from lxml.builder import E  # @UnresolvedImport
 import logging
 import os
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.setup")
 

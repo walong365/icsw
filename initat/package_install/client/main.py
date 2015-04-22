@@ -20,12 +20,12 @@
 """ daemon to automatically install packages (.rpm, .deb) """
 
 from initat.package_install.client.constants import P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
-from initat.package_install.client.version import VERSION_STRING
+from initat.client_version import VERSION_STRING
 from io_stream_helper import io_stream
-import configfile
+from initat.tools import configfile
 import daemon
 import os
-import process_tools
+from initat.tools import process_tools
 import sys
 
 

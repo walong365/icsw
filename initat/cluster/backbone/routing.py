@@ -22,16 +22,18 @@
 
 """ helper functions for cluster routing """
 
-from config_tools import server_check, device_with_config, router_object
+from lxml import etree  # @UnresolvedImports
+import json
+import logging
+
+from initat.tools.config_tools import server_check, device_with_config, router_object
 from django.core.cache import cache
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from lxml import etree  # @UnresolvedImports
-import json
-import uuid_tools
-import logging
-import logging_tools
-import server_command
+from initat.tools import uuid_tools
+from initat.tools import logging_tools
+from initat.tools import server_command
+
 
 # mapping: server type -> default port
 _SRV_TYPE_PORT_MAPPING = {

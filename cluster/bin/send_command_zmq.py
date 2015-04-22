@@ -20,9 +20,9 @@
 """ sends a command to one of the python-servers, 0MQ version"""
 
 import argparse
-import logging_tools
-import process_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 import sys
 import time
 import zmq

@@ -23,17 +23,14 @@ from django.db import connection
 from initat.cluster.backbone.models import LogSource
 from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
 from io_stream_helper import io_stream
-import config_tools
-import configfile
+from initat.tools import config_tools
+from initat.tools import configfile
 import daemon
 import os
-import process_tools
+from initat.tools import process_tools
 import sys
 
-try:
-    from initat.package_install.server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.server_version import VERSION_STRING
 
 
 def run_code():

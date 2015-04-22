@@ -25,10 +25,10 @@ from initat.cluster.backbone.models import MachineVector, MVStructEntry, MVValue
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-import logging_tools
+from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
-import process_tools
+from initat.tools import process_tools
 import re
 import time
 

@@ -28,7 +28,7 @@ from initat.cluster.backbone.models.functions import _check_empty_string, _check
 import datetime
 from collections import defaultdict
 import json
-import logging_tools
+from initat.tools import logging_tools
 import re
 import operator
 

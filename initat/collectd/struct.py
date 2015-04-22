@@ -26,12 +26,12 @@ from initat.collectd.config import global_config
 from lxml.builder import E  # @UnresolvedImports
 from lxml import etree
 import json
-import logging_tools
+from initat.tools import logging_tools
 import memcache
 import shutil
 import os
-import process_tools
-import rrd_tools
+from initat.tools import process_tools
+from initat.tools import rrd_tools
 import rrdtool  # @UnresolvedImport
 import subprocess
 import time

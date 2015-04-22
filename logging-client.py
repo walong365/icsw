@@ -19,10 +19,10 @@
 #
 """ client for logging-server """
 
-import io_stream_helper
-import logging_tools
+from initat.tools import io_stream_helper
+from initat.tools import logging_tools
 import argparse
-import threading_tools
+from initat.tools import threading_tools
 
 
 class my_options(argparse.ArgumentParser):

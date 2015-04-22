@@ -19,7 +19,7 @@
 #
 """ package install, simple command structure """
 
-import logging_tools
+from initat.tools import logging_tools
 import subprocess
 import time
 

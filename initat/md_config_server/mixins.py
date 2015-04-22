@@ -20,10 +20,10 @@
 """ mixins for md-config-server """
 
 from initat.md_config_server.config import global_config
-import cluster_location
+from initat.tools import cluster_location
 import commands
-import configfile
-import logging_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
 import os
 import re
 import time

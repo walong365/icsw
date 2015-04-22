@@ -29,9 +29,9 @@ import bz2
 import tempfile
 import pytz
 import time
-import logging_tools
+from initat.tools import logging_tools
 import psutil
-import threading_tools
+from initat.tools import threading_tools
 import codecs
 
 from django.db import connection

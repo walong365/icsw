@@ -29,25 +29,25 @@ from initat.host_monitoring.discovery import id_discovery
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.struct import host_connection, host_message
 from initat.host_monitoring.tools import my_cached_file
-from initat.host_monitoring.version import VERSION_STRING
+from initat.client_version import VERSION_STRING
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import StringIO
 import base64
 import bz2
 import commands
-import configfile
-import logging_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
 import marshal
 import os
-import process_tools
+from initat.tools import process_tools
 import resource
-import server_command
+from initat.tools import server_command
 import socket
 import sys
-import threading_tools
+from initat.tools import threading_tools
 import time
-import uuid_tools
+from initat.tools import uuid_tools
 import zmq
 
 

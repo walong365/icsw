@@ -25,7 +25,7 @@ from ..base import SNMPHandler
 from django.db.models import Q
 from initat.cluster.backbone.models import netdevice, peer_information
 import pprint  # @UnusedImport
-import logging_tools
+from initat.tools import logging_tools
 
 # bi base
 BI_BASE = "1.3.6.1.2.1.17.4.3.1"

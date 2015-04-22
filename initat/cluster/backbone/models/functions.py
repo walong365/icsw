@@ -28,7 +28,7 @@ from django.db.models import Q
 import pytz
 import time
 import datetime
-import logging_tools
+from initat.tools import logging_tools
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])

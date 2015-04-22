@@ -26,11 +26,11 @@ from initat.cluster.backbone.models import device, device_group, mon_check_comma
 from initat.md_config_server.config.check_command import check_command
 from initat.md_config_server.config.host_type_config import host_type_config
 from initat.md_config_server.config.mon_config import mon_config, unique_list, build_safe_name
-import cluster_location
-import configfile
-import logging_tools
+from initat.tools import cluster_location
+from initat.tools import configfile
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 

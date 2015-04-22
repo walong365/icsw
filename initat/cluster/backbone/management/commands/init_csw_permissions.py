@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.utils.datastructures import SortedDict
 from initat.cluster.backbone.models import csw_permission
 from optparse import make_option
-import logging_tools
+from initat.tools import logging_tools
 import pprint
 import time
 

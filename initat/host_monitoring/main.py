@@ -23,13 +23,13 @@
 """ host-monitoring, main part """
 
 from initat.host_monitoring import hm_classes
-from initat.host_monitoring.version import VERSION_STRING
+from initat.client_version import VERSION_STRING
 from io_stream_helper import io_stream
-import configfile
+from initat.tools import configfile
 import daemon
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import sys
 
 

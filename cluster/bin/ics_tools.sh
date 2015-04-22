@@ -74,24 +74,24 @@ fi
 
 is_redhat() {
     if [ -f /etc/redhat-release ] ; then
-	/bin/true
+        /bin/true
     else
-	/bin/false
+        /bin/false
     fi
 }
 
 is_debian() {
     if [ -f /etc/debian_version ] ; then
-	/bin/true
+        /bin/true
     else
-	/bin/false
+        /bin/false
     fi
 }
 
 is_suse() {
     if [ -f /etc/SuSE-release ] ; then
-	/bin/true
+        /bin/true
     else
-	/bin/false
+        /bin/false
     fi
 }

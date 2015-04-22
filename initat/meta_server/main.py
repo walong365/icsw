@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2010-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,20 +21,17 @@
 #
 """ meta-server, main part """
 
-from initat.meta_server.config import global_config
-from initat.meta_server.server import main_process
-from io_stream_helper import io_stream
-import configfile
-import daemon
 import os
-import process_tools
 import socket
 import sys
 
-try:
-    from initat.meta_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.meta_server.config import global_config
+from initat.meta_server.server import main_process
+from initat.tools import configfile
+import daemon
+from initat.tools import process_tools
+from initat.client_version import VERSION_STRING
+from initat.tools.io_stream_helper import io_stream
 
 
 def main():
@@ -84,6 +81,6 @@ def main():
                 main_process().loop()
             os._exit(0)
         else:
-            print "Debugging meta-server on {}".format(global_config["SERVER_FULL_NAME"])
+            print("Debugging meta-server on {}".format(global_config["SERVER_FULL_NAME"]))
             main_process().loop()
     return 0

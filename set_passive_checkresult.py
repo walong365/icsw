@@ -20,9 +20,9 @@
 """ set the result of a passive checkcommand """
 
 import argparse
-import logging_tools
-import process_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 import sys
 import time
 import zmq

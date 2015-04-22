@@ -26,12 +26,12 @@ from initat.rms.config import global_config
 from initat.rms.license import license_process
 from initat.rms.rmsmon import rms_mon_process
 from django.db import connection
-import cluster_location
-import configfile
-import logging_tools
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import cluster_location
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import zmq
 
 

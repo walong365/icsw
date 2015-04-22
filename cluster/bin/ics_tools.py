@@ -28,8 +28,8 @@ import stat
 import sys
 import time
 
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
 MS_DIR = "/var/lib/meta-server"
@@ -57,8 +57,12 @@ def check_threads(pid_file, options):  # overview_mode, full_status):
                 pid_time = os.stat(pid_file)[stat.ST_CTIME]
                 pids = [int(pid_int) for pid_int in [pid_part.strip() for pid_part in file(pid_file, "r").read().split()] if pid_int and pid_int.isdigit()]
                 unique_pids, pids_found = (
-                    {pid: pids.count(pid) for pid in pids},
-                    {pid: 0 for pid in pids}
+                    {
+                        pid: pids.count(pid) for pid in pids
+                    },
+                    {
+                        pid: 0 for pid in pids
+                    }
                 )
                 for pid in unique_pids.keys():
                     stat_f = "/proc/{:d}/status".format(pid)

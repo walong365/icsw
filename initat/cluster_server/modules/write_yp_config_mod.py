@@ -24,10 +24,10 @@ from initat.cluster_server.config import global_config
 import commands
 import cs_base_class
 import cs_tools
-import logging_tools
+from initat.tools import logging_tools
 import os
 import re
-import server_command
+from initat.tools import server_command
 import shutil
 import time
 

@@ -5,7 +5,7 @@ import logging.handlers
 import socket
 import cPickle
 import struct
-import logging_tools
+from initat.tools import logging_tools
 import os
 
 class my_adapter(logging.LoggerAdapter):

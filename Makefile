@@ -116,8 +116,6 @@ install:
 	# setup.py
 	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
-	# need package
-	${INSTALL} ${INSTALL_OPTS} modules/*.py ${DESTDIR}/${PYTHON_SITE}
 	# status and pci.ids
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
@@ -137,7 +135,7 @@ install:
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for script in start_node.sh stop_node.sh check_node.sh disable_node.sh; do \
+	for script in start_node.sh stop_node.sh check_node.sh ; do \
 	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for name in fetch_ssh_keys.py ; do \
@@ -327,16 +325,14 @@ install:
 	${INSTALL} ${INSTALL_OPTS} scripts/unregister_file_watch ${DESTDIR}/${SCRIPTDIR}
 	./init_proprietary.py ${DESTDIR}
 	# check scripts
-	${LN} -s ${PYTHON_SITE}/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
+	${LN} -s ${PYTHON_SITE}/initat/tools/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
 	# remove deprecated
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc
 	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
 	# create version files
-	for tsys in ${TARGET_SYS_LIST} ; do \
-	    ./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/$${tsys}/version.py ; \
-	done
-	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}${ICSW_SBIN}/_hoststatus_version.py ; \
+	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/client_version.py ; \
+	./create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/server_version.py ; \
 
 clean:
 	rm -f gpxelinux.0

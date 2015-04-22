@@ -33,13 +33,13 @@ from initat.cluster.backbone.models import LogSource
 from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
-from initat.md_config_server.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
-import cluster_location
-import config_tools
-import configfile
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
 import daemon
-import process_tools
+from initat.tools import process_tools
 import sys
 
 

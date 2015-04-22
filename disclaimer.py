@@ -3,9 +3,9 @@
 from email.parser import FeedParser
 from lxml import etree  # @UnresolvedImport
 import email
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import subprocess
 import codecs
 import sys

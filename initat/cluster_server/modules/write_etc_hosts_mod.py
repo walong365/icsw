@@ -19,14 +19,14 @@
 from config_tools import router_object
 from django.db.models import Q
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
-import cluster_location
+from initat.tools import cluster_location
 import codecs
 import cs_base_class
-import ipvx_tools
-import logging_tools
+from initat.tools import ipvx_tools
+from initat.tools import logging_tools
 import networkx
 import os
-import process_tools
+from initat.tools import process_tools
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"

@@ -27,11 +27,11 @@ to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
 """
 import argparse
 import commands
-import compile_tools
-import cpu_database
-import logging_tools
+from initat.tools import compile_tools
+from initat.tools import cpu_database
+from initat.tools import logging_tools
 import os
-import rpm_build_tools
+from initat.tools import rpm_build_tools
 import shutil
 import subprocess
 import sys

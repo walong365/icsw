@@ -21,7 +21,7 @@
 #
 """ cluster-config-server, partition setup"""
 
-import logging_tools
+from initat.tools import logging_tools
 from django.db.models import Q
 from initat.cluster.backbone.models import partition, sys_partition
 

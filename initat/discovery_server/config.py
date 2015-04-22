@@ -19,13 +19,10 @@
 #
 """ discovery-server, configuration and constants """
 
-import configfile
-import process_tools
+from initat.tools import configfile
+from initat.tools import process_tools
 
-try:
-    from initat.discovery_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.server_version import VERSION_STRING
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name("snmp", connect_to_root_instance=True, s_name="discovery-server")

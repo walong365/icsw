@@ -23,10 +23,10 @@
 """ caching resolver """
 
 from initat.host_monitoring.config import global_config
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import socket
-import threading_tools
+from initat.tools import threading_tools
 import time
 
 CACHE_TIMEOUT = 10

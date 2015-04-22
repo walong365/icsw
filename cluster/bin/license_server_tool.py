@@ -23,9 +23,9 @@
 
 import commands
 import getopt
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import psutil
 import sys
 import time

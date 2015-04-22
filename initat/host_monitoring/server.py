@@ -22,6 +22,17 @@
 
 """ host-monitoring, with 0MQ and direct socket support, server code """
 
+from lxml import etree  # @UnresolvedImport
+import argparse
+import StringIO
+import difflib
+import netifaces
+import os
+import sys
+import time
+import uuid
+from multiprocessing import Queue
+
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import TIME_FORMAT
 from initat.host_monitoring.long_running_checks import (
@@ -30,24 +41,15 @@ from initat.host_monitoring.long_running_checks import (
 from initat.host_monitoring.hm_inotify import inotify_process
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.hm_resolve import resolve_process
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-import argparse
-import StringIO
-import configfile
-import difflib
-import logging_tools
-import netifaces
-import os
-import process_tools
-import server_command
-import sys
-import threading_tools
-import time
-import uuid
-import uuid_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
+from initat.tools import uuid_tools
 import zmq
-from multiprocessing import Process, Queue
+
 
 
 # defaults to 10 seconds

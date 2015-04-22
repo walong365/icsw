@@ -12,7 +12,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 import StringIO
 import os
-import process_tools
+from initat.tools import process_tools
 import re
 import uuid
 

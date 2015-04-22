@@ -28,13 +28,13 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.logcheck_server.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
-import cluster_location
-import config_tools
-import configfile
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
 import daemon
-import process_tools
+from initat.tools import process_tools
 import sys
 
 SERVER_PORT = 8014
@@ -113,6 +113,7 @@ def main():
             sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
             run_code(options)
             configfile.terminate_manager()
+        os._exit(0)
     else:
         print("Debugging logcheck_server")
         global_config = configfile.get_global_config(prog_name, parent_object=global_config)
