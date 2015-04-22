@@ -233,6 +233,8 @@ angular.module(
         get_timespan: get_timespan
         preprocess_state_data: preprocess_state_data
         preprocess_service_state_data: preprocess_service_state_data
+        # kpi states and service states currently coincide even though kpis also have host data
+        preprocess_kpi_state_data: preprocess_service_state_data
         service_colors: service_colors
         host_colors: host_colors
     }

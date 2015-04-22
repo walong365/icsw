@@ -31,7 +31,7 @@ import logging_tools
 import pprint
 import initat.collectd.aggregate
 
-from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category, duration
+from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
@@ -40,7 +40,11 @@ from initat.md_config_server.kpi.kpi_utils import KpiUtils
 
 
 class KpiData(object):
-    """Data retrieval methods (mostly functions actually)"""
+    """Data retrieval methods (mostly functions actually)
+
+    Retrieves all data on construction.
+    Data can be retrieved via get_data_for_kpi and get_data_for_dev_mon_tuples later.
+    """
 
     def __init__(self, log):
         self.log = log
@@ -63,16 +67,14 @@ class KpiData(object):
         :rtype: list of KpiObject
         """
         # NOTE: only used through get_data_for_kpi as of now
-        dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(tuples)
-
-        device_id_set = {dev for (dev, _) in dev_mon_tuples}
+        dev_mon_tuples, dev_list = self._get_dev_mon_tuples_from_category_tuples(tuples)
 
         if start is not None:
 
             timespan_hosts_qs, timespan_services_qs =\
                 icinga_log_aggregator.get_active_hosts_and_services_in_timespan_queryset(start, end)
 
-            timespan_hosts_qs = timespan_hosts_qs.filter(device_id__in=device_id_set)
+            timespan_hosts_qs = timespan_hosts_qs.filter(device__in=dev_list)
 
             timespan_hosts = set(timespan_hosts_qs)
 
@@ -89,7 +91,7 @@ class KpiData(object):
 
         # add kpi objects to result list, check off historical data which is present there
         kpi_objects = []
-        for dev in device_id_set:
+        for dev in dev_list:
             if self.host_data[dev.pk].rrd_data is not None:
                 kpi_objects.extend(self.host_data[dev.pk].rrd_data)
             kpi_objects.extend(
@@ -97,6 +99,7 @@ class KpiData(object):
             )
             timespan_hosts.discard(dev.pk)
 
+        # noinspection PyTypeChecker
         for dev, mcc in dev_mon_tuples:
             service_kpi_objects = self.host_data[dev.pk].service_check_results[mcc.pk]
             kpi_objects.extend(service_kpi_objects)
@@ -158,7 +161,7 @@ class KpiData(object):
             # self.kpi_devices = list(device.objects.all())
             # self.kpi_mon_categories = list(mon_check_command.categories_set.all())
 
-            dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(
+            dev_mon_tuples, dev_list = self._get_dev_mon_tuples_from_category_tuples(
                 [
                     KpiDataSourceTuple(kpi=None, device_category=dev_cat, monitoring_category=mon_cat)
                     for dev_cat in category.objects.get_device_categories()
@@ -173,9 +176,9 @@ class KpiData(object):
 
             # self.kpi_mon_categories = set(tup.monitoring_category_id for tup in KpiDataSourceTuple.objects.all())
 
-            # self.kpi_mon_check_commands = set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
+            # self.kpi_mon_check_commands =set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
 
-            dev_mon_tuples = self._get_dev_mon_tuples_from_category_tuples(
+            dev_mon_tuples, dev_list = self._get_dev_mon_tuples_from_category_tuples(
                 KpiDataSourceTuple.objects.all().prefetch_related("device_category")
             )
 
@@ -188,22 +191,25 @@ class KpiData(object):
 
             service_check_results[dev.pk][mcc.pk] = self._get_service_check_results(dev, mcc)
 
-        for dev in {dev for (dev, _) in dev_mon_tuples}:
+        for dev in dev_list:
             self.host_data[dev.pk] = HostData(rrd_data=host_rrd_data.get(dev.pk, None),
                                               host_check_results=self._get_host_check_results(dev),
                                               service_check_results=service_check_results[dev.pk])
 
     def _get_dev_mon_tuples_from_category_tuples(self, queryset):
+        ":rtype: (set[device, mon_check_command], set[device]) "
         queryset = queryset.prefetch_related('device_category', 'device_category__device_set')
         queryset = queryset.prefetch_related('monitoring_category', 'monitoring_category__mon_check_command_set')
         dev_mon_tuples = set()
+        dev_list = set()
         for tup in queryset:
             for dev in tup.device_category.device_set.all():
+                dev_list.add(dev)  # also add devs without checks
                 for mcc in tup.monitoring_category.mon_check_command_set.all():
                     if (dev, mcc) not in dev_mon_tuples:
                         dev_mon_tuples.add((dev, mcc))
 
-        return dev_mon_tuples
+        return dev_mon_tuples, dev_list
 
     def _get_memcached_data(self):
 
@@ -283,7 +289,7 @@ class KpiData(object):
                 service_info = None
             ret.append(
                 KpiServiceObject(
-                    result=KpiResult.from_numeric_icinga_service_status(int(ir['state'])),
+                    result=KpiResult.from_numeric_icinga_service_state(int(ir['state'])),
                     host_name=dev.full_name,
                     host_pk=dev.pk,
                     service_id=mcc.pk,
@@ -312,7 +318,7 @@ class KpiData(object):
 
         ret = list(
             KpiObject(
-                result=KpiResult.from_numeric_icinga_service_status(int(ir['state'])),
+                result=KpiResult.from_numeric_icinga_service_state(int(ir['state'])),
                 host_name=dev.full_name,
                 host_pk=dev.pk,
             )

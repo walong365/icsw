@@ -56,7 +56,7 @@ class KpiSerializer(serializers.ModelSerializer):
                 # kpi_set = KpiSet.deserialize(parsed)
 
                 # 'values':
-                # [obj.result.get_numeric_icinga_service_status() for obj in kpi_set.objects if obj.result is not None],
+                # [obj.result.get_numeric_icinga_service_state() for obj in kpi_set.objects if obj.result is not None],
                 return {
                     'date': stored_result.date,
                     'json': parsed,

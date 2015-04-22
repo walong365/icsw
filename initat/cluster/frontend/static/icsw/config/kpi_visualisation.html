@@ -58,9 +58,9 @@
                 <icsw-tools-piechart ng-show="pie_data" diameter="50" data="pie_data"></icsw-tools-piechart>
             </div>
             <div class="col-md-10">
-                <table class="table table-condensed table-hover table-striped" ng-show="service_data">
+                <table class="table table-condensed table-hover table-striped" ng-show="pie_data_list">
                     <tbody>
-                        <tr ng-repeat="state in service_data">
+                        <tr ng-repeat="state in pie_data_list">
                             <td> {{ state.state }}</td>
                             <td class="text-right"> {{ state.value }}</td>
                         </tr>

@@ -263,19 +263,26 @@ angular.module(
 
                 scope.update = () ->
                     list_group_class_map = {
-                        ok: 'list-group-item-success'
-                        warning: 'list-group-item-warning'
-                        critical: 'list-group-item-danger'
+                        Ok: 'list-group-item-success'
+                        Warning: 'list-group-item-warning'
+                        Critical: 'list-group-item-danger'
                         #unknown:
-                        #undetermined = 4
+                        #undetermined
                     }
+
                     if scope.kpi_obj.result of list_group_class_map
                         scope.list_group_class = list_group_class_map[scope.kpi_obj.result]
 
+                    time_line = undefined
                     if scope.kpi_obj.aggregated_tl
+                        time_line = scope.kpi_obj.aggregated_tl
+                    if scope.kpi_obj.detail
+                        time_line = scope.kpi_obj.detail
+
+                    if time_line?
                         # dict to list representation
-                        status_util_compat_data = ({state: st, value: val} for st, val of scope.kpi_obj.aggregated_tl)
-                        [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(status_util_compat_data)
+                        status_util_compat_data = ({state: st, value: val} for st, val of time_line)
+                        [scope.pie_data_list, scope.pie_data] = status_utils_functions.preprocess_kpi_state_data(status_util_compat_data)
 
                 scope.$watch(
                     () -> return scope.kpi_obj.kpi_id

@@ -23,7 +23,8 @@ import django.utils.timezone
 from django.db.models import Q
 import operator
 import itertools
-from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList
+from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList, \
+    mon_icinga_log_raw_host_alert_data
 
 
 # itertools recipe
@@ -36,35 +37,45 @@ def pairwise(iterable):
 
 class TimeLineUtils(list):
     @staticmethod
-    def calculate_time_lines(device_service_identifiers, start, end):
+    def calculate_time_lines(identifiers, is_host, start, end):
         """
         Calculate time line, i.e. list of states with a date ordered chronologically.
         First entry has date start, last one has end
         (last date does not actually mean anything since this state is valid for 0 seconds, but
         it implicitly includes info about when the time span ends)
-        :param device_service_identifiers: [(dev_id, serv_pk, serv_info)]
+        :param is_host: whether identifiers are all hosts or if not, they must be all services
+        :param identifiers: [dev_id] | [(dev_id, serv_pk, serv_info)]
         :return: {(dev_id, serv_pk, serv_info) : TimeLine}
         """
-        # TODO: hosts
-        alert_filter = reduce(operator.or_, (Q(device_id=dev_id, service_id=serv_id, service_info=service_info)
-                                             for (dev_id, serv_id, service_info) in device_service_identifiers))
+        from initat.md_config_server.kpi import KpiResult
 
-        alert_list = AlertList(is_host=False, alert_filter=alert_filter, start_time=start, end_time=end)
+        if is_host:
+            alert_filter = reduce(operator.or_, (Q(device_id=dev_id) for dev_id in identifiers))
+        else:
+            alert_filter = reduce(operator.or_, (Q(device_id=dev_id, service_id=serv_id, service_info=service_info)
+                                                 for (dev_id, serv_id, service_info) in identifiers))
+
+        alert_list = AlertList(is_host=is_host, alert_filter=alert_filter, start_time=start, end_time=end)
+
+        if is_host:
+            convert_state = KpiResult.from_icinga_host_status
+        else:
+            convert_state = KpiResult.from_icinga_service_status
 
         time_lines = {}
 
-        for (dev_id, serv_id, service_info), entry in alert_list.last_before.iteritems():
-            time_lines[(dev_id, serv_id, service_info)] = [
-                TimeLineEntry(date=start, state=(entry['state'], entry['state_type']))
+        for key, entry in alert_list.last_before.iteritems():
+            # sadly, last before has different format than regular alerts
+            time_lines[key] = [
+                TimeLineEntry(date=start, state=(convert_state(entry['state']), entry['state_type']))
             ]
 
-        for (dev_id, serv_id, service_info), service_alert_list in alert_list.alerts.iteritems():
-            key = (dev_id, serv_id, service_info)
+        for key, service_alert_list in alert_list.alerts.iteritems():
             if key not in time_lines:
                 # couldn't find initial state, it has not existed at the time of start
                 tl = time_lines[key] = [
                     TimeLineEntry(date=start,
-                                  state=(mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+                                  state=(convert_state(mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED),
                                          mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED))
                 ]
             else:
@@ -74,7 +85,7 @@ class TimeLineUtils(list):
             for alert in service_alert_list:
                 if last_alert is None or alert.state != last_alert.state or alert.state_type != last_alert.state_type:
                     tl.append(
-                        TimeLineEntry(date=alert.date, state=(alert.state, alert.state_type))
+                        TimeLineEntry(date=alert.date, state=(convert_state(alert.state), alert.state_type))
                     )
 
         # add final entry
@@ -93,30 +104,39 @@ class TimeLineUtils(list):
         # work on copies
         time_lines = [collections.deque(tl) for tl in time_lines]
         compound_time_line = []
-        state_ordering = {
-            mon_icinga_log_raw_service_alert_data.STATE_OK: 0,
-            mon_icinga_log_raw_service_alert_data.STATE_WARNING: 1,
-            mon_icinga_log_raw_service_alert_data.STATE_CRITICAL: 2,
-            mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN: 3,
-            mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED: 4,
-        }
+        # currently handled via KpiResult:
+#        state_ordering = {
+#            mon_icinga_log_raw_base.STATE_PLANNED_DOWN: -10,
+#            mon_icinga_log_raw_base.STATE_UNDETERMINED: 10,
+#
+#            mon_icinga_log_raw_service_alert_data.STATE_OK: 0,
+#            mon_icinga_log_raw_service_alert_data.STATE_WARNING: 1,
+#            mon_icinga_log_raw_service_alert_data.STATE_CRITICAL: 2,
+#            mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN: 3,  # same value as for hosts
+#
+#            mon_icinga_log_raw_host_alert_data.STATE_UP: 0,
+#            mon_icinga_log_raw_host_alert_data.STATE_UNREACHABLE: 1,
+#            mon_icinga_log_raw_host_alert_data.STATE_DOWN: 2,
+#            mon_icinga_log_raw_host_alert_data.STATE_UNKNOWN: 3,  # same value as for services
+#        }
         state_type_ordering = {
             # prefer soft:
             # soft critical is better than hard critical
             # note that hard ok would be better than soft ok, but soft ok usually doesn't ok because
             # if a check runs through, it's hard ok anyways
+            mon_icinga_log_raw_base.STATE_PLANNED_DOWN: -1,
             mon_icinga_log_raw_base.STATE_TYPE_SOFT: 0,
             mon_icinga_log_raw_base.STATE_TYPE_HARD: 1,
-            mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED: 2,
+            mon_icinga_log_raw_base.STATE_UNDETERMINED: 2,
         }
 
         def add_to_compound_tl(date, current_tl_states):
+            # key_fun = lambda state: (state_ordering[state[0]], state_type_ordering[state[1]])
+            key_fun = lambda state: (state[0], state_type_ordering[state[1]])
             if method == 'or':
-                next_state = min(current_tl_states,
-                                 key=lambda state: (state_ordering[state[0]], state_type_ordering[state[1]]))
+                next_state = min(current_tl_states, key=key_fun)
             elif method == 'and':
-                next_state = max(current_tl_states,
-                                 key=lambda state: (state_ordering[state[0]], state_type_ordering[state[1]]))
+                next_state = max(current_tl_states, key=key_fun)
             else:
                 raise RuntimeError("Invalid aggregate_historic method: {}".format(method) +
                                    "(must be either 'or' or 'and')")

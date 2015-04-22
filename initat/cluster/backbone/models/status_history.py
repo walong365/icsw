@@ -45,6 +45,9 @@ class mon_icinga_log_raw_base(models.Model):
     # entry originates from this logfile
     logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
 
+    STATE_UNKNOWN = "U"
+    STATE_UNKNOWN_LONG = "UNKNOWN"
+
     STATE_TYPE_HARD = "H"
     STATE_TYPE_SOFT = "S"
     # undetermined is the icsw view point of not knowing about a state.
@@ -100,12 +103,11 @@ class raw_host_alert_manager(models.Manager):
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_UP = "UP"
     STATE_DOWN = "D"
-    STATE_UNKNOWN = "U"
     STATE_UNREACHABLE = "UR"
     STATE_CHOICES = [(STATE_UP, "UP"),
                      (STATE_DOWN, "DOWN"),
                      (STATE_UNREACHABLE, "UNREACHABLE"),
-                     (STATE_UNKNOWN, "UNKNOWN"),
+                     (mon_icinga_log_raw_base.STATE_UNKNOWN, mon_icinga_log_raw_base.STATE_UNKNOWN_LONG),
                      (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG),
                      (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
@@ -176,16 +178,13 @@ class raw_service_alert_manager(models.Manager):
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_OK = "O"
     STATE_WARNING = "W"
-    STATE_UNKNOWN = "U"
     STATE_CRITICAL = "C"
-    STATE_UNDETERMINED = mon_icinga_log_raw_base.STATE_UNDETERMINED
-    STATE_PLANNED_DOWN = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
     STATE_CHOICES = [(STATE_OK, "OK"),
                      (STATE_WARNING, "WARNING"),
-                     (STATE_UNKNOWN, "UNKNOWN"),
+                     (mon_icinga_log_raw_base.STATE_UNKNOWN, mon_icinga_log_raw_base.STATE_UNKNOWN_LONG),
                      (STATE_CRITICAL, "CRITICAL"),
-                     (STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG),
-                     (STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG)]
+                     (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG),
+                     (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     objects = raw_service_alert_manager()

@@ -25,12 +25,14 @@ import collections
 # noinspection PyUnresolvedReferences
 import pprint
 
+from collections import defaultdict
 from enum import IntEnum, Enum
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 import logging_tools
-from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data
+from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
+    mon_icinga_log_raw_host_alert_data, mon_icinga_log_aggregated_host_data
 from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command
 
 
@@ -40,18 +42,25 @@ logger = logging_tools.logging.getLogger("cluster.kpi")
 class KpiResult(IntEnum):
     # this is ordered by badness and also same as nagios convention
     # names are same as in status history but lower case
+    planned_down = -1
     ok = 0
     warning = 1
     critical = 2
     unknown = 3
     undetermined = 4
 
-    def get_numeric_icinga_service_status(self):
+    def __unicode__(self):
+        return self.name.capitalize().replace("_", " ")
+
+    def get_numeric_icinga_service_state(self):
         return self.value
 
     @classmethod
-    def from_numeric_icinga_service_status(cls, num):
-        if num == 0:
+    def from_numeric_icinga_service_state(cls, num):
+        # we do this translation manually and not via enum so that we can have custom values
+        if num == -1:  # icsw-only
+            return KpiResult.planned_down
+        elif num == 0:
             return KpiResult.ok
         elif num == 1:
             return KpiResult.warning
@@ -65,25 +74,57 @@ class KpiResult(IntEnum):
         else:
             raise ValueError("Invalid numeric icinga service status: {}".format(num))
 
+    @classmethod
+    def from_icinga_service_status(cls, state):
+        return _icinga_service_to_kpi_state_map[state]
+
+    @classmethod
+    def from_icinga_host_status(cls, state):
+        return _icinga_host_to_kpi_state_map[state]
+
     def get_corresponding_service_enum_value(self):
-        return {
-            KpiResult.ok: mon_icinga_log_raw_service_alert_data.STATE_OK,
-            KpiResult.warning: mon_icinga_log_raw_service_alert_data.STATE_WARNING,
-            KpiResult.critical: mon_icinga_log_raw_service_alert_data.STATE_CRITICAL,
-            KpiResult.unknown: mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN,
-            KpiResult.undetermined: mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
-        }[self]
+        return _kpi_to_icinga_service_state_map[self]
+
+    def get_corresponding_host_enum_value(self):
+        return _kpi_to_icinga_host_state_map[self]
+
+
+_kpi_to_icinga_service_state_map = {
+    KpiResult.planned_down: mon_icinga_log_raw_service_alert_data.STATE_PLANNED_DOWN,
+    KpiResult.ok: mon_icinga_log_raw_service_alert_data.STATE_OK,
+    KpiResult.warning: mon_icinga_log_raw_service_alert_data.STATE_WARNING,
+    KpiResult.critical: mon_icinga_log_raw_service_alert_data.STATE_CRITICAL,
+    KpiResult.unknown: mon_icinga_log_raw_service_alert_data.STATE_UNKNOWN,
+    KpiResult.undetermined: mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+}
+
+_icinga_service_to_kpi_state_map = {v: k for k, v in _kpi_to_icinga_service_state_map.iteritems()}
+
+_kpi_to_icinga_host_state_map = {
+    KpiResult.planned_down: mon_icinga_log_raw_host_alert_data.STATE_PLANNED_DOWN,
+    KpiResult.ok: mon_icinga_log_raw_host_alert_data.STATE_UP,
+    KpiResult.warning: mon_icinga_log_raw_host_alert_data.STATE_UNREACHABLE,
+    KpiResult.critical: mon_icinga_log_raw_host_alert_data.STATE_DOWN,
+    KpiResult.unknown: mon_icinga_log_raw_host_alert_data.STATE_UNKNOWN,
+    KpiResult.undetermined: mon_icinga_log_raw_host_alert_data.STATE_UNDETERMINED,
+}
+
+_icinga_host_to_kpi_state_map = {v: k for k, v in _kpi_to_icinga_host_state_map.iteritems()}
 
 
 class KpiObject(object):
     def __init__(self, result=None, host_name=None, host_pk=None, kpi_id=None):
+        """
+        :type host_name: str | unicode
+        :type host_pk: int
+        """
         if (host_name is None) != (host_pk is None):
             raise ValueError("host_name is {} but host_pk is {}".format(host_name, host_pk))
 
         self.kpi_id = kpi_id if kpi_id is not None else id(self)
 
         self.result = result if isinstance(result, (KpiResult, NoneType)) \
-            else KpiResult.from_numeric_icinga_service_status(result)
+            else KpiResult.from_numeric_icinga_service_state(result)
         self.host_name = host_name
         self.host_pk = host_pk
 
@@ -97,13 +138,42 @@ class KpiObject(object):
         # we serialize for the client to show something, not for a functional representation
         return {
             'kpi_id': self.kpi_id,
-            'result': None if self.result is None else self.result.name,
+            'result': None if self.result is None else unicode(self.result),
             'host_name': self.host_name,
             'host_pk': self.host_pk,
         }
 
-    def get_object_identifier_properties(self):
-        """Returns all properties of the object which identify it for the user (usually host and service)"""
+    def is_service(self):
+        return False
+
+    def matches_id(self, ident):
+        return self.host_pk == ident
+
+    def get_machine_object_id_properties(self):
+        """Returns all properties of the object which are necessary to identify the object"""
+        return self.host_pk
+
+    class IdType(Enum):
+        service = 1
+        device = 2
+
+    @classmethod
+    def get_machine_object_id_type(cls, ident):
+        # TODO: refactor this system to something which explicitly says what it represents
+        try:
+            obj_len = len(ident)
+        except TypeError:
+            obj_len = None
+        if obj_len == 3:
+            return cls.IdType.service
+        elif isinstance(ident, (int, long)):
+            return cls.IdType.device
+        else:
+            raise ValueError()
+
+    def get_full_object_id_properties(self):
+        """Returns all properties of the object which can be passed to KpiObject constructors
+        (including respective subclasses)"""
         return {
             'host_name': self.host_name,
             'host_pk': self.host_pk,
@@ -136,20 +206,19 @@ class KpiObject(object):
 
 
 class KpiDetailObject(KpiObject):
-    """Kpi Object with some misc data attached"""
-    def __init__(self, detail, **kwargs):
-        if detail is None:
-            raise ValueError("detail is None")
+    """Kpi Object with some data attached"""
+    def __init__(self, time_line, **kwargs):
+        if time_line is None:
+            raise ValueError("no detail data set")
         super(KpiDetailObject, self).__init__(**kwargs)
-        self.detail = detail
+        self.time_line = time_line
 
     def __repr__(self, child_repr=""):
-        return super(KpiDetailObject, self).__repr__(child_repr=child_repr + ";detail:{}".format(self.detail))
+        return super(KpiDetailObject, self).__repr__(child_repr=child_repr + ";time_line:{}".format(self.time_line))
 
     def serialize(self):
-        trans = mon_icinga_log_aggregated_service_data.STATE_CHOICES_READABLE
         return dict(
-            detail={"{};{}".format(trans[k[0]], k[1]): v for k, v in self.detail.iteritems()},
+            aggregated_tl={unicode(k): v for k, v in TimeLineUtils.merge_state_types(self.time_line).iteritems()},
             **super(KpiDetailObject, self).serialize()
         )
 
@@ -204,6 +273,8 @@ class KpiServiceObject(KpiObject):
             self.config = mcc.config.name
             self.config_description = mcc.config.description
 
+        self.mcc = mcc  # saved for convenience, but use other attributes except mcc is needed specifically
+
     def __repr__(self, child_repr=""):
         my_repr = ";service:{}:{}".format(self.check_command if self.check_command is not None else self.service_id,
                                           self.service_info)
@@ -216,11 +287,30 @@ class KpiServiceObject(KpiObject):
             **super(KpiServiceObject, self).serialize()
         )
 
-    def get_object_identifier_properties(self):
+    def is_service(self):
+        return True
+
+    def matches_id(self, ident):
+        try:
+            return self.service_id == ident[1] and \
+                self.service_info == ident[2] and \
+                super(KpiServiceObject, self).matches_id(ident[0])
+        except TypeError:
+            return False
+
+    def get_machine_object_id_properties(self):
+        return (
+            super(KpiServiceObject, self).get_machine_object_id_properties(),
+            self.service_id,
+            self.service_info,
+        )
+
+    def get_full_object_id_properties(self):
         return dict(
-            service_name=self.check_command,
+            mcc=self.mcc,
+            service_id=self.service_id,
             service_info=self.service_info,
-            **super(KpiServiceObject, self).get_object_identifier_properties()
+            **super(KpiServiceObject, self).get_full_object_id_properties()
         )
 
 
@@ -233,11 +323,9 @@ class KpiTimeLineObject(KpiObject):
         self.time_line = time_line
 
     def serialize(self):
-        trans = mon_icinga_log_aggregated_service_data.STATE_CHOICES_READABLE
-
         aggr_tl = TimeLineUtils.merge_state_types(TimeLineUtils.aggregate_time_line(self.time_line))
         return dict(
-            aggregated_tl={trans[k]: v for k, v in aggr_tl.iteritems()},
+            aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
             **super(KpiTimeLineObject, self).serialize()
         )
 
@@ -375,7 +463,17 @@ class KpiSet(object):
 
     @property
     def result_objects(self):
+        """
+        :rtype : list of KpiObject
+        """
         return [obj for obj in self.objects if obj.result is not None]
+
+    @property
+    def host_objects(self):
+        """
+        :rtype : list of KpiObject
+        """
+        return [obj for obj in self.objects if obj.host_pk is not None]
 
     @property
     def service_objects(self):
@@ -397,6 +495,12 @@ class KpiSet(object):
         :rtype : list of KpiRRDObject
         """
         return [obj for obj in self.objects if isinstance(obj, KpiRRDObject)]
+
+    def get_by_id(self, ident):
+        """
+        :rtype : list of KpiObject
+        """
+        return [obj for obj in self.objects if obj.matches_id(ident)]
 
     ########################################
     # proper kpi language elements
@@ -429,12 +533,13 @@ class KpiSet(object):
     def at_least(self, num_ok, num_warn, result=KpiResult.ok):
         """
         Check if at_least a number of objects have a certain result.
+        :type result: KpiResult
         """
         if num_warn > num_ok:
             raise ValueError("num_warn is higher than num_ok ({} > {})".format(num_warn, num_ok))
 
         origin = KpiOperation(KpiOperation.Type.at_least,
-                              arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': result.name},
+                              arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
                               operands=[self])
 
         num = sum(1 for obj in self.result_objects if obj.result == result)
@@ -475,60 +580,60 @@ class KpiSet(object):
         return self.aggregate_historic(method='and')
 
     def get_historic_data(self):
-        # group historic data per dev and service
-        device_service_identifiers = []
-        # TODO: host check results
-        for obj in self.service_objects:
-            if obj.host_pk is not None:
-                device_service_identifiers.append(
-                    (obj.host_pk, obj.service_id, obj.service_info)
-                )
+        relevant_obj_identifiers = [obj.get_machine_object_id_properties() for obj in self.host_objects]
 
         objects = []
-        if device_service_identifiers:
-
-            # end = django.utils.timezone.now()
-            # start = end - datetime.timedelta(days=7)
-            # start = datetime.date(2014, 01, 25)  # django change
-            # end = datetime.date(2015, 01, 01)
-
-            # start = datetime.date(2014, 01, 06)
-            # end = datetime.date(2014, 01, 30)
-
+        if relevant_obj_identifiers:
             start, end = KpiUtils.parse_kpi_time_range_from_kpi(self._get_current_kpi())
 
-            time_lines = TimeLineUtils.calculate_time_lines(device_service_identifiers, start, end)
+            # have to sort by service and device ids
+            idents_by_type = defaultdict(lambda: set())
+            for ident in relevant_obj_identifiers:
+                idents_by_type[KpiObject.get_machine_object_id_type(ident)].add(ident)
 
-            for (dev_id, service_id, service_info), time_line in time_lines.iteritems():
-                for kpi_obj in self.service_objects:
-                    if kpi_obj.host_pk == dev_id \
-                            and kpi_obj.service_id == service_id \
-                            and kpi_obj.service_info == service_info:
-                        objects.append(
-                            KpiServiceTimeLineObject(
-                                host_name=kpi_obj.host_name,
-                                host_pk=kpi_obj.host_pk,
-                                service_id=kpi_obj.service_id,
-                                service_info=kpi_obj.service_info,
-                                time_line=time_line
-                            )
+            time_lines = {}
+
+            if KpiObject.IdType.service in idents_by_type:
+                time_lines.update(
+                    TimeLineUtils.calculate_time_lines(idents_by_type[KpiObject.IdType.service], is_host=False,
+                                                       start=start, end=end)
+                )
+            if KpiObject.IdType.device in idents_by_type:
+                time_lines.update(
+                    TimeLineUtils.calculate_time_lines(idents_by_type[KpiObject.IdType.device], is_host=True,
+                                                       start=start, end=end)
+                )
+
+            for ident, time_line in time_lines.iteritems():
+                id_objs = self.get_by_id(ident)
+                if id_objs:
+                    if KpiObject.get_machine_object_id_type(ident) == KpiObject.IdType.service:
+                        kpi_klass = KpiServiceTimeLineObject
+                    else:
+                        kpi_klass = KpiTimeLineObject
+                    objects.append(
+                        kpi_klass(
+                            time_line=time_line,
+                            **id_objs[0].get_full_object_id_properties()
                         )
-                        break
+                    )
                 else:
-                    print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
+                    print ("Historical obj found but no kpi obj: {} {} {}".format(ident))
                     # TODO: logging is broken in this context
 
         return KpiSet(objects=objects,
                       origin=KpiOperation(KpiOperation.Type.get_historic_data, operands=[self]))
 
-    def evaluate_historic(self, ratio_ok, ratio_warn, result=KpiResult.ok, method='at least'):
+    # noinspection PyUnresolvedReferences
+    def evaluate_historic(self, ratio_ok, ratio_warn, result=KpiResult.ok, method='at least',
+                          discard_planned_downtimes=True):
         """
         Check if up percentage is at least some value
         :type result: KpiResult
         :param method: 'at least' or 'at most'
         """
         origin = KpiOperation(KpiOperation.Type.evaluate_historic,
-                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': result.name,
+                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': unicode(result),
                                          'method': method},
                               operands=[self])
         if not self.time_line_objects:
@@ -541,12 +646,22 @@ class KpiSet(object):
                 aggregated_tl = TimeLineUtils.aggregate_time_line(tl_obj.time_line)
 
                 # also aggregate state types
-                amount = sum(v for k, v in aggregated_tl.iteritems()
-                             if k[0] == result.get_corresponding_service_enum_value())
+                ratio = sum(v for k, v in aggregated_tl.iteritems()
+                            if k[0] == result)
 
-                kwargs = tl_obj.get_object_identifier_properties()
-                kwargs['result'] = self._check_value(amount, ratio_ok, ratio_warn, method)
-                kwargs['detail'] = aggregated_tl
+                if discard_planned_downtimes:
+                    ratio_planned_down = sum(v for k, v in aggregated_tl.iteritems()
+                                             if k[0] == KpiResult.planned_down)
+                    # ignore ratio_planned_down
+                    try:
+                        ratio /= (1 - ratio_planned_down)
+                    except ZeroDivisionError:
+                        # ratio_planned_down is 1, always there
+                        ratio = 0
+
+                kwargs = tl_obj.get_full_object_id_properties()
+                kwargs['result'] = self._check_value(ratio, ratio_ok, ratio_warn, method)
+                kwargs['time_line'] = aggregated_tl
                 if isinstance(tl_obj, KpiServiceObject):
                     obj = KpiServiceDetailObject(**kwargs)
                 else:
@@ -585,7 +700,7 @@ class KpiSet(object):
                         rrd_key=rrd_obj.rrd_key,
                         rrd_value=rrd_obj.rrd_value,
                         result=self._check_value(rrd_obj.rrd_value, limit_ok, limit_warn, method),
-                        **rrd_obj.get_object_identifier_properties()
+                        **rrd_obj.get_full_object_id_properties()
                     ) for rrd_obj in self.rrd_objects
                 ],
                 origin=origin,
