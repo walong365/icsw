@@ -56,10 +56,13 @@ angular.module(
                 () -> [scope.model(), scope.objectId]
                 () ->
                     if scope.model()?
+                        model_for_callback = scope.model()
                         icswHistoryDataService.get_historic_data(scope.model(), scope.objectId()).then((new_data) ->
-                            # don't show empty changes
-                            scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
-                            # NOTE: entries must be in chronological, earliest first
+                            # loading takes a while, check if the user has changed the selection meanwhile
+                            if model_for_callback == scope.model()
+                                # don't show empty changes
+                                scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
+                                # NOTE: entries must be in chronological, earliest first
                     )
                 true
             )
