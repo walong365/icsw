@@ -57,6 +57,8 @@ else
     LIB_DIR=lib
 endif
 
+STONITH_DIR:=/usr/${LIB_DIR}/stonith/plugins/external
+
 ifneq ($(wildcard /etc/debian_version), )
     WWW_USER=www-data
     WWW_GROUP=www-data
@@ -108,6 +110,9 @@ build:
 	unzip memtest*zip
 
 install:
+	# stonith from init-ha-addons
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${STONITH_DIR}
+	${INSTALL} ${INSTALL_OPTS} ha-addons/ibmbcs ${DESTDIR}/${STONITH_DIR}
 	# Copy the main source code
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/graphs
