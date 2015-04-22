@@ -613,7 +613,7 @@ LOGGING = {
     'handlers': {
         "init_unified": {
             "level": "INFO" if DEBUG else "WARN",
-            "class": "intiat.tools.logging_tools.init_handler_unified",
+            "class": "initat.tools.logging_tools.init_handler_unified",
             "formatter": "initat",
         },
         "init": {
