@@ -1,0 +1,299 @@
+#!/usr/bin/python-init -Otu
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# this file is part of init-ha-addons
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" IBM Bladecenter fencing tool """
+
+from lxml import etree
+from lxml.builder import E
+from initat.tools import logging_tools, process_tools
+import os
+import paramiko
+import sys
+import time
+import zmq
+
+
+class stonith_client(paramiko.SSHClient):
+    def __init__(self):
+        paramiko.SSHClient.__init__(self)
+        self.zmq_context = zmq.Context()
+        self.log_template = logging_tools.get_logger(
+            "sshclient",
+            "uds:/var/lib/logging-server/py_log_zmq",
+            zmq=True,
+            context=self.zmq_context)
+        self._required_cmds = \
+            "reset gethosts status getconfignames getinfo-devid " \
+            "getinfo-devname getinfo-devdescr getinfo-devurl " \
+            "getinfo-xml"
+        # definitions for the external stonith plugin api
+        self._optional_cmds = "on off"
+        self._required_cmds_list = self._required_cmds.split()
+        self._optional_cmds_list = self._optional_cmds.split()
+        # the list of configuration names
+        self._confignames = ["nodename", "ip_address", "username", "password"]
+        self._parameters = {}
+        for name in self._confignames:
+            try:
+                self._parameters[name] = os.environ.get(name, '').split()[0]
+            except IndexError:
+                self._parameters[name] = ""
+        for key, value in self._parameters.iteritems():
+            self.log("  {:>25s}: {}".format(key, value or "<EMPTY>"))
+        self.shell = None
+
+    def connect(self):
+        self.history = []
+        host = self._parameters["ip_address"]
+        user = self._parameters["username"]
+        passwd = self._parameters["password"]
+        self.log(
+            "session to {} ({}@{})".format(
+                host,
+                passwd,
+                user))
+        self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        paramiko.SSHClient.connect(self, host, 22, user, passwd)
+        self.shell = self.invoke_shell()
+        self.target = "system"
+        self.read()
+
+    def echo(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log(
+            "STDOUT ({:d}): {}".format(
+                len(what),
+                what
+            ),
+            log_level
+        )
+        sys.stdout.write(what)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_template.log(log_level, what)
+
+    def set_target(self, target):
+        self.log("set target to {}".format(target))
+        self.target = target
+        return self.write("env -T {}".format(self.target))
+
+    def write(self, what):
+        s_time = time.time()
+        s_str = "{}\r\n".format(what)
+        while s_str:
+            bytes_sent = self.shell.send(what + "\r\n")
+            s_str = s_str[bytes_sent:]
+        e_time = time.time()
+        self.log(
+            "wrote {:d} bytes in {}: '{}'".format(
+                len(what),
+                logging_tools.get_diff_time_str(e_time - s_time),
+                what
+            )
+        )
+        self.history.append(("WRITE", s_time, e_time - s_time))
+        return self.read()
+
+    def read(self):
+        s_time = time.time()
+        ret_f = []
+        while True:
+            cur_data = self.shell.recv(100)
+            if not cur_data:
+                break
+            else:
+                ret_f.append(cur_data)
+                ret_str = "".join(ret_f)
+                if ret_str.strip().endswith("{}>".format(self.target)):
+                    break
+        ret_str = "".join(ret_f)
+        e_time = time.time()
+        self.log(
+            "read {:d} bytes in {}".format(
+                len(ret_str),
+                logging_tools.get_diff_time_str(e_time - s_time)))
+        for line_num, line in enumerate(ret_str.split("\n"), 1):
+            self.log(" {:3d}: {}".format(line_num, line.strip()))
+        self.history.append(("READ", s_time, e_time - s_time))
+        return ret_str
+
+    def log_history(self):
+        self.log("history entries: {:d}".format(len(self.history)))
+        for what, w_time, dur in self.history:
+            self.log("{} ({}): {}".format(what, w_time, str(dur)))
+
+    def disconnect(self):
+        if self.shell:
+            self.log_history()
+            self.shell.close()
+            self.shell = None
+
+    def close(self):
+        self.disconnect()
+        paramiko.SSHClient.close(self)
+        self.log_template.close()
+        self.zmq_context.term()
+
+    def usage(self):
+        usage = "Call me with one of the allowed commands: {}, {}".format(
+            ", ".join(self._required_cmds_list),
+            ", ".join(self._optional_cmds_list))
+        return usage
+
+    def process(self):
+        self.log("process, sys.argv ({:d})={}".format(len(sys.argv), ", ".join([str(value) for value in sys.argv])))
+        if len(sys.argv) < 2:
+            self.log("need at least one commandline argument", logging_tools.LOG_LEVEL_ERROR)
+            self.echo(self.usage())
+            self.retcode = 1
+        else:
+            cmd = sys.argv[1]
+            if cmd not in self._required_cmds_list + self._optional_cmds_list:
+                self.log("command '{}' not supported".format(cmd), logging_tools.LOG_LEVEL_ERROR)
+                self.retcode = 1
+            else:
+                cmd = cmd.lower().replace("-", "_")
+                self.log("cmd is '{}'".format(cmd))
+                s_time = time.time()
+                try:
+                    func = getattr(self, cmd, self._not_implemented)
+                    self.retcode = func()
+                except:
+                    self.log("error calling func(): {}".format(process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                    self.retcode = 1
+                finally:
+                    e_time = time.time()
+                    self.log("execution took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+        self.log("return code is {:d}".format(self.retcode), logging_tools.LOG_LEVEL_OK if not self.retcode else logging_tools.LOG_LEVEL_ERROR)
+
+    def set_node_target(self, n_name):
+        sys_target = "system:blade[{}]".format(n_name[-1])
+        self.log("setting target to '{}' -> '{}'".format(n_name, sys_target))
+        self.set_target(sys_target)
+    # code
+
+    def _not_implemented(self):
+        self.log("not implemented", logging_tools.LOG_LEVEL_ERROR)
+        return 1
+
+    def gethosts(self):
+        self.echo(self._parameters['nodename'])
+        return(0)
+
+    def status(self):
+        self.connect()
+        self.disconnect()
+        return(0)
+
+    def getinfo_xml(self):
+        info = E.parameters(
+            E.parameter(
+                E.content(type="string"),
+                E.shortdesc("nodename to shoot", lang="en"),
+                E.longdesc("Name fot the node which has to be stonithed in case.", lang="en"),
+                name="nodename",
+                unique="0",
+                required="1",
+            ),
+            E.parameter(
+                E.content(type="string"),
+                E.shortdesc("hostname or ip address of the MM Console", lang="en"),
+                E.longdesc("Hostname or ip address of MM Console used to reset node.", lang="en"),
+                name="ip_address",
+                unique="0",
+                required="1",
+            ),
+            E.parameter(
+                E.content(type="string"),
+                E.shortdesc("username to login on MM Console", lang="en"),
+                E.longdesc("Username to login on MM Console", lang="en"),
+                name="username",
+                unique="0",
+                required="1",
+            ),
+            E.parameter(
+                E.content(type="string"),
+                E.shortdesc("password to login on MM Console", lang="en"),
+                E.longdesc("password to login on MM Console", lang="en"),
+                name="password",
+                unique="0",
+                required="1",
+            ),
+        )
+        self.echo(etree.tostring(info, pretty_print=True))  # @UndefinedVariable
+        return 0
+
+    def getinfo_devid(self):
+        self.echo("External Stonith Plugin for IBM Bladecenter S")
+        return 0
+
+    def getinfo_devdescr(self):
+        self.echo(
+            "External stonith plugin for HAv2 which connects to "
+            "a IBM Bladecenter S via ssh (paramiko). Commands to "
+            "turn on/off power and to reset server are sent "
+            "appropriately. "
+        )
+        return 0
+
+    def getinfo_devurl(self):
+        self.echo("http://www.init.at/HaV2/stonith")
+        return 0
+
+    def getconfignames(self):
+        for name in ['nodename', 'ip_address', 'username', 'password']:
+            self.echo(name)
+        return 0
+
+    def node_command(self, node_com):
+        if self._parameters["nodename"]:
+            self.connect()
+            self.set_node_target(self._parameters["nodename"])
+            self.write(node_com)
+            self.disconnect()
+            self.log("issued node_command '{}' for '{}'".format(node_com, self._parameters["nodename"]))
+            return 0
+        else:
+            self.log("no nodename set", logging_tools.LOG_LEVEL_ERROR)
+            return 1
+
+    def on(self):
+        return self.node_command("power -on")
+
+    def off(self):
+        return self.node_command("power -off")
+
+    def reset(self):
+        return self.node_command("power -cycle")
+
+
+def main():
+    client = stonith_client()
+    client.process()
+    client.close()
+    sys.exit(client.retcode)
+
+
+if __name__ == "__main__":
+    main()
