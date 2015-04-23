@@ -519,28 +519,32 @@ def log_com(what, log_level):
     print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
 
+class ServiceParser(argparse.ArgumentParser):
+    def __init__(self):
+        argparse.ArgumentParser.__init__(self)
+        self.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
+        self.add_argument("-T", dest="time", action="store_true", default=False, help="full time info (implies -t,  %(default)s)")
+        self.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info (%(default)s)")
+        self.add_argument("-d", dest="database", action="store_true", default=False, help="show database info (%(default)s)")
+        self.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
+        self.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except time and DB info (%(default)s)")
+        self.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
+        self.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
+        self.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
+        self.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
+        self.add_argument("--client", type=str, nargs="+", default=[], help="client entity names (%(default)s)")
+        self.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
+        self.add_argument("--system", type=str, nargs="+", default=[], help="system entity names (%(default)s)")
+        self.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
+        self.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
+        self.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
+        self.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
+        self.add_argument("--no-database", default=False, action="store_true", help="disable use of database [%(default)s]")
+
+
 def main():
-    my_parser = argparse.ArgumentParser()
-    my_parser.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
-    my_parser.add_argument("-T", dest="time", action="store_true", default=False, help="full time info (implies -t,  %(default)s)")
-    my_parser.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info (%(default)s)")
-    my_parser.add_argument("-d", dest="database", action="store_true", default=False, help="show database info (%(default)s)")
-    my_parser.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
-    my_parser.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except time and DB info (%(default)s)")
-    my_parser.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
-    my_parser.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
-    my_parser.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
-    my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
-    my_parser.add_argument("--client", type=str, nargs="+", default=[], help="client entity names (%(default)s)")
-    my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
-    my_parser.add_argument("--system", type=str, nargs="+", default=[], help="system entity names (%(default)s)")
-    my_parser.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
-    my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
-    my_parser.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
-    my_parser.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
-    my_parser.add_argument("--no-database", default=False, action="store_true", help="disable use of database [%(default)s]")
     cur_c = ServiceContainer(log_com)
-    opt_ns = my_parser.parse_args()
+    opt_ns = ServiceParser().parse_args()
     if opt_ns.all or opt_ns.almost_all:
         opt_ns.thread = True
         opt_ns.pid = True

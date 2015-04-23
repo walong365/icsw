@@ -48,6 +48,10 @@ import psutil
 from initat.tools import uuid_tools
 import zmq
 from lxml.builder import E  # @UnresolvedImports
+from initat.tools import affinity_tools
+
+
+RUN_DIR = "/var/run"
 
 
 def compress_struct(input):
@@ -61,11 +65,6 @@ try:
     ENCODING = locale.getpreferredencoding()
 except locale.Error:
     ENCODING = "C"
-
-try:
-    from initat.tools import affinity_tools  # @UnresolvedImports
-except IOError:
-    affinity_tools = None
 
 
 def getstatusoutput(cmd):
@@ -125,7 +124,8 @@ def get_except_info(exc_info=None, **kwargs):
     return u"{} ({}{})".format(
         unicode(exc_info[0]),
         unicode(_exc_list),
-        ", {}".format(", ".join(frame_info)) if frame_info else "")
+        ", {}".format(", ".join(frame_info)) if frame_info else ""
+    )
 
 
 class exception_info(object):
@@ -499,6 +499,7 @@ class meta_server_info(object):
             ("exe_name", "s", None),
             ("need_any_pids", "b", 0),
         ]
+        self._reset()
         if name.startswith("/"):
             parsed = self._parse_file(name)
         else:
@@ -508,18 +509,23 @@ class meta_server_info(object):
             self.pid_checks_ok, self.pid_checks_failed = (0, 0)
             self.set_last_pid_check_ok_time()
         else:
+            self.__start_time = time.time()
             self.__file_name = None
             self.set_meta_server_dir("/var/lib/meta-server")
             self.__name = name
-            self.__pids = []
-            self.__pid_names = {}
-            self.__pid_proc_names = {}
-            self.__pid_fuzzy = {}
             self.pid_checks_ok, self.pid_checks_failed = (0, 0)
             for opt, val_type, def_val in self.__prop_list:
                 setattr(self, opt, def_val)
         self.parsed = parsed
         self.file_init_time = time.time()
+
+    def _reset(self):
+        self.__pids = []
+        self.__pid_names = {}
+        self.__pid_proc_names = {}
+        self.__pid_fuzzy = {}
+        # when the MSI-block was startet (== main process start)
+        self.__start_time = {}
 
     def _parse_file(self, name):
         self.__file_name = name
@@ -537,12 +543,12 @@ class meta_server_info(object):
             parsed = False
         else:
             self.__name = xml_struct.xpath(".//name/text()", smart_strings=False)[0]
+            _start_time = xml_struct.find(".//start_time")
+            if _start_time is None:
+                self.__start_time = os.stat(name)[stat.ST_CTIME]
+            else:
+                self.__start_time = int(float(_start_time.text))
             # reads pids
-            self.__pids = []
-            self.__pid_names = {}
-            # name from psutil()
-            self.__pid_proc_names = {}
-            self.__pid_fuzzy = {}
             for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
                 self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
                 self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
@@ -569,12 +575,6 @@ class meta_server_info(object):
                     setattr(self, opt, cur_value)
             parsed = True
         return parsed
-
-    def get_file_name(self):
-        return self.__file_name
-
-    def get_name(self):
-        return self.__name
 
     @property
     def name(self):
@@ -740,6 +740,7 @@ class meta_server_info(object):
             pid_list.append(cur_pid_el)
         xml_struct = E.meta_info(
             E.name(self.__name),
+            E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
             E.properties()
             )
@@ -765,10 +766,10 @@ class meta_server_info(object):
             logging_tools.my_syslog("error writing file {} (meta_server_info for {})".format(self.__file_name, self.__name))
 
     def __eq__(self, other):
-        return self.__name == other.get_name() and self.__pids == other.get_pids()
+        return self.__name == other.name and self.__pids == other.get_pids()
 
     def __ne__(self, other):
-        return self.__name != other.get_name() or self.__pids != other.get_pids()
+        return self.__name != other.name or self.__pids != other.get_pids()
 
     def remove_meta_block(self):
         if not self.__file_name:
@@ -943,13 +944,6 @@ def save_pid(name, pid=None, mult=1):
     return append_pids(name, pid=pid, mult=mult, mode="w")
 
 save_pids = save_pid
-
-RUN_DIR = "/var/run"
-# not needed right now
-# #if os.path.isfile("/etc/SuSE-release"):
-# #    suse_ver = [line.strip().split()[-1] for line in file("/etc/SuSE-release", "r").read().split("\n") if line.startswith("VERSION")]
-# #    if suse_ver == ["12.1"]:
-# #        RUN_DIR = "/run"
 
 
 def append_pids(name, pid=None, mult=1, mode="a"):
@@ -1375,7 +1369,7 @@ def get_proc_list(**kwargs):
     i_fields = ["pid", "uid", "gid", "ppid"]
     proc_name_list = set(kwargs.get("proc_name_list", []))
     add_stat = kwargs.get("add_stat_info", False)
-    add_affinity = kwargs.get("add_affinity", False) and affinity_tools
+    add_affinity = kwargs.get("add_affinity", False)
     add_cmdline = kwargs.get("add_cmdline", True)
     add_exe = kwargs.get("add_exe", True)
     try:
@@ -1438,7 +1432,7 @@ def get_proc_list(**kwargs):
                             t_dict["exe"] = None
                     if t_dict["pid"] == pid:
                         p_dict[pid] = t_dict
-                    if affinity_tools and add_affinity:
+                    if add_affinity:
                         try:
                             t_dict["affinity"] = affinity_tools.get_process_affinity_mask_from_status_lines(_affinity_lines)
                         except:
