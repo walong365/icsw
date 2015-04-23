@@ -439,7 +439,7 @@ class KpiSet(object):
 
         if cmp(amount, limit_ok):
             result = KpiResult.ok
-        elif cmp(amount, limit_warn):
+        elif limit_warn is not None and cmp(amount, limit_warn):
             result = KpiResult.warning
         else:
             result = KpiResult.critical
@@ -541,12 +541,13 @@ class KpiSet(object):
 
     __add__ = union
 
-    def at_least(self, num_ok, num_warn, result=KpiResult.ok):
+    def at_least(self, num_ok, num_warn=None, result=KpiResult.ok):
         """
         Check if at_least a number of objects have a certain result.
+        If num_warn is None, the result can only be ok or critical.
         :type result: KpiResult
         """
-        if num_warn > num_ok:
+        if num_warn is not None and num_warn > num_ok:
             raise ValueError("num_warn is higher than num_ok ({} > {})".format(num_warn, num_ok))
 
         origin = KpiOperation(KpiOperation.Type.at_least,
@@ -554,9 +555,10 @@ class KpiSet(object):
                               operands=[self])
 
         num = sum(1 for obj in self.result_objects if obj.result == result)
+
         if num > num_ok:
             return KpiSet.get_singleton_ok(origin=origin)
-        elif num > num_warn:
+        elif num_warn is not None and num > num_warn:
             return KpiSet.get_singleton_warn(origin=origin)
         else:
             return KpiSet.get_singleton_critical(origin=origin)
@@ -636,7 +638,7 @@ class KpiSet(object):
                       origin=KpiOperation(KpiOperation.Type.get_historic_data, operands=[self]))
 
     # noinspection PyUnresolvedReferences
-    def evaluate_historic(self, ratio_ok, ratio_warn, result=KpiResult.ok, method='at least',
+    def evaluate_historic(self, ratio_ok, ratio_warn=None, result=KpiResult.ok, method='at least',
                           discard_planned_downtimes=True):
         """
         Check if up percentage is at least some value
@@ -694,7 +696,7 @@ class KpiSet(object):
             aggregated_result = max(obj.result for obj in self.result_objects)
             return KpiSet([KpiObject(result=aggregated_result)], origin=origin)
 
-    def evaluate_rrd(self, limit_ok, limit_warn, method):
+    def evaluate_rrd(self, limit_ok, limit_warn=None, method='at least'):
         """
         :param method: 'at least' or 'at most'
         """
