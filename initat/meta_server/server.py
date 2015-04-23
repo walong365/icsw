@@ -361,25 +361,27 @@ class main_process(threading_tools.process_pool):
                     fn_dict = {m_block.get_file_name(): m_block for m_block in self.__check_dict.itervalues()}
                     if full_name not in fn_dict:
                         new_meta_info = process_tools.meta_server_info(full_name)
-                        nm_name = new_meta_info.get_name()
+                        nm_name = new_meta_info.name
                         if nm_name:
                             self.__check_dict[nm_name] = new_meta_info
                             self.log(
                                 "discovered new meta_info_block for {} (file {}, info: {})".format(
-                                    new_meta_info.get_name(),
+                                    new_meta_info.name,
                                     full_name,
                                     new_meta_info.get_info()
                                 )
                             )
                             change = True
                         else:
-                            self.log("error reading meta_info_block {} (get_name() returned None)".format(fname),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "error reading meta_info_block {} (name returned None)".format(fname),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                     else:
                         file_time = os.stat(full_name)[stat.ST_MTIME]
                         if file_time > fn_dict[full_name].file_init_time or fname in problem_list:
                             new_meta_info = process_tools.meta_server_info(full_name)
-                            nm_name = new_meta_info.get_name()
+                            nm_name = new_meta_info.name
                             if nm_name:
                                 # copy checks_failed info
                                 new_meta_info.set_last_pid_check_ok_time(self.__check_dict[nm_name].get_last_pid_check_ok_time())
@@ -387,7 +389,7 @@ class main_process(threading_tools.process_pool):
                                 self.__check_dict[nm_name] = new_meta_info
                                 self.log(
                                     "updated meta_info_block for {} (from file {}, info: {})".format(
-                                        new_meta_info.get_name(),
+                                        new_meta_info.name,
                                         full_name,
                                         new_meta_info.get_info()
                                     )
