@@ -358,7 +358,7 @@ class main_process(threading_tools.process_pool):
                     # ignore heartbeat files
                     pass
                 else:
-                    fn_dict = {m_block.file: m_block for m_block in self.__check_dict.itervalues()}
+                    fn_dict = {m_block.file_name: m_block for m_block in self.__check_dict.itervalues()}
                     if full_name not in fn_dict:
                         new_meta_info = process_tools.meta_server_info(full_name)
                         nm_name = new_meta_info.name

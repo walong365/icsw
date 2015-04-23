@@ -369,57 +369,6 @@ def get_mem_info(pid=0, **kwargs):
             pass
     return sum(ps_list)
 
-# old code, very slow compared to psutil (due to .so)
-if False:
-    cur_pid = 0
-    tot_size = 0
-    smap_file_name = "/proc/{:d}/smaps".format(cur_pid)
-    map_file_name = "/proc/{:d}/maps".format(cur_pid)
-    if os.path.isfile(smap_file_name):
-        have_pss = False
-        shared, private, pss = (0, 0, 0.)
-        try:
-            for line in open(smap_file_name, "r"):
-                if line.startswith("Shared"):
-                    shared += int(line.split()[1])
-                elif line.startswith("Private"):
-                    private += int(line.split()[1])
-                elif line.startswith("Pss"):
-                    have_pss = True
-                    pss += float(line.split()[1]) + 0.5
-        except IOError:
-            pass
-        if have_pss:
-            # print shared, pss - private
-            shared = pss - private
-        tot_size = int((shared + private) * 1024)
-    elif os.path.isfile(map_file_name):
-        # not always correct ...
-        try:
-            map_lines = [
-                [_part.strip() for _part in _line.strip().split()] for _line in
-                open(map_file_name, "r") if _line.strip()]
-        except:
-            pass
-        else:
-            for map_p in map_lines:
-                # print "map_p", map_p
-                try:
-                    mem_start, mem_end = map_p[0].split("-")
-                    mem_start, mem_end = (int(mem_start, 16),
-                                          int(mem_end, 16))
-                    mem_size = mem_end - mem_start
-                    _perm, _offset, _dev, inode = (
-                        map_p[1],
-                        int(map_p[2], 16),
-                        map_p[3],
-                        int(map_p[4])
-                    )
-                    if not inode:
-                        tot_size += mem_size
-                except:
-                    pass
-
 
 def get_stat_info(pid=0):
     if not pid:
@@ -576,6 +525,10 @@ class meta_server_info(object):
             parsed = True
         return parsed
 
+    @property
+    def file_name(self):
+        return self.__file_name
+    
     @property
     def name(self):
         return self.__name
