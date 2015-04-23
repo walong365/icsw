@@ -57,13 +57,14 @@ class status(cs_base_class.server_com):
 
 class server_status(cs_base_class.server_com):
     def _call(self, cur_inst):
-        default_ns = check_scripts.get_default_ns()
+        _cs = check_scripts.ServiceContainer(cur_inst.log)
+        default_ns = _cs.get_default_ns()
         default_ns.instance = ["ALL"]
-        stat_xml = check_scripts.check_system(default_ns)
+        stat_xml = _cs.check_system(default_ns)
         cur_inst.srv_com["status"] = stat_xml
         cur_inst.srv_com.set_result(
             "checked system",
-            )
+        )
 
 
 class server_control(cs_base_class.server_com):
@@ -71,7 +72,8 @@ class server_control(cs_base_class.server_com):
         cmd = cur_inst.srv_com["*control"]
         instance = cur_inst.srv_com["*instance"]
         cur_inst.log("command {} for instance {}".format(cmd, instance))
-        inst_xml = check_scripts.get_instance_xml().find("instance[@name='{}']".format(instance))
+        _cs = check_scripts.ServiceContainer(cur_inst.log)
+        inst_xml = _cs.get_instance_xml().find("instance[@name='{}']".format(instance))
         if inst_xml is None:
             cur_inst.srv_com.set_result(
                 "instance {} not found".format(instance),

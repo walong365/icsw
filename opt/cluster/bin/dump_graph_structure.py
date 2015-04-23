@@ -57,14 +57,14 @@ def parse_args():
 def show_vector(_dev):
     _mv = _dev.machinevector_set.all().prefetch_related(
         "mvstructentry_set",
-        "mvstructentry_set__mvvalue_set",
+        "mvstructentry_set__mvvalueentry_set",
     )[0]
     print
     print("showing {} ({:d} structural entries)".format(unicode(_mv), len(_mv.mvstructentry_set.all())))
     for _struct in _mv.mvstructentry_set.all():
         _key = _struct.key
         print(" {:<40s}  + {}".format(_key, unicode(_struct)))
-        for _value in _struct.mvvalue_set.all():
+        for _value in _struct.mvvalueentry_set.all():
             if _value.key:
                 _fkey = "{}.{}".format(_key, _value.key)
             else:

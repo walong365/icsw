@@ -117,7 +117,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/graphs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/extra_servers.d
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/servers.d
+	${INSTALL} ${INSTALL_OPTS} opt/cluster/etc/servers.d/*.xml ${DESTDIR}/${ICSW_ETC}/servers.d
 	# setup.py
 	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
@@ -153,7 +154,7 @@ install:
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
 	done
 	for sbin_file in start_cluster.sh stop_cluster.sh start_server.sh stop_server.sh check_cluster.sh check_server.sh; do \
-	    ${INSTALL} ${INSTALL_OPTS} cluster/bin/$$sbin_file ${DESTDIR}/${ICSW_SBIN}; \
+	    ${INSTALL} ${INSTALL_OPTS} opt/cluster/bin/$$sbin_file ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
@@ -275,7 +276,7 @@ install:
 	${LN} -s ${ICSW_BIN}/load_firmware.sh ${DESTDIR}/usr/bin/load_firmware.sh
 	# /opt/cluster/lcs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/lcs
-	cp -a cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs
+	cp -a opt/cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs
 	# mibs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
 	${INSTALL} ${INSTALL_OPTS} mibs/powernet385-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster

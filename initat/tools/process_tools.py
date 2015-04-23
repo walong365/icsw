@@ -48,6 +48,10 @@ import psutil
 from initat.tools import uuid_tools
 import zmq
 from lxml.builder import E  # @UnresolvedImports
+from initat.tools import affinity_tools
+
+
+RUN_DIR = "/var/run"
 
 
 def compress_struct(input):
@@ -61,11 +65,6 @@ try:
     ENCODING = locale.getpreferredencoding()
 except locale.Error:
     ENCODING = "C"
-
-try:
-    from initat.tools import affinity_tools  # @UnresolvedImports
-except IOError:
-    affinity_tools = None
 
 
 def getstatusoutput(cmd):
@@ -125,7 +124,8 @@ def get_except_info(exc_info=None, **kwargs):
     return u"{} ({}{})".format(
         unicode(exc_info[0]),
         unicode(_exc_list),
-        ", {}".format(", ".join(frame_info)) if frame_info else "")
+        ", {}".format(", ".join(frame_info)) if frame_info else ""
+    )
 
 
 class exception_info(object):
@@ -369,57 +369,6 @@ def get_mem_info(pid=0, **kwargs):
             pass
     return sum(ps_list)
 
-# old code, very slow compared to psutil (due to .so)
-if False:
-    cur_pid = 0
-    tot_size = 0
-    smap_file_name = "/proc/{:d}/smaps".format(cur_pid)
-    map_file_name = "/proc/{:d}/maps".format(cur_pid)
-    if os.path.isfile(smap_file_name):
-        have_pss = False
-        shared, private, pss = (0, 0, 0.)
-        try:
-            for line in open(smap_file_name, "r"):
-                if line.startswith("Shared"):
-                    shared += int(line.split()[1])
-                elif line.startswith("Private"):
-                    private += int(line.split()[1])
-                elif line.startswith("Pss"):
-                    have_pss = True
-                    pss += float(line.split()[1]) + 0.5
-        except IOError:
-            pass
-        if have_pss:
-            # print shared, pss - private
-            shared = pss - private
-        tot_size = int((shared + private) * 1024)
-    elif os.path.isfile(map_file_name):
-        # not always correct ...
-        try:
-            map_lines = [
-                [_part.strip() for _part in _line.strip().split()] for _line in
-                open(map_file_name, "r") if _line.strip()]
-        except:
-            pass
-        else:
-            for map_p in map_lines:
-                # print "map_p", map_p
-                try:
-                    mem_start, mem_end = map_p[0].split("-")
-                    mem_start, mem_end = (int(mem_start, 16),
-                                          int(mem_end, 16))
-                    mem_size = mem_end - mem_start
-                    _perm, _offset, _dev, inode = (
-                        map_p[1],
-                        int(map_p[2], 16),
-                        map_p[3],
-                        int(map_p[4])
-                    )
-                    if not inode:
-                        tot_size += mem_size
-                except:
-                    pass
-
 
 def get_stat_info(pid=0):
     if not pid:
@@ -499,106 +448,94 @@ class meta_server_info(object):
             ("exe_name", "s", None),
             ("need_any_pids", "b", 0),
         ]
-        parsed = False
+        self._reset()
         if name.startswith("/"):
-            self.__file_name = name
-            # try to read complete info from file
-            self.__name = None
-            try:
-                xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
-            except:
-                logging_tools.my_syslog(
-                    "error parsing XML file {} (meta_server_info): {}".format(
-                        name,
-                        get_except_info()
-                    )
-                )
-                xml_struct = None
-            if xml_struct is not None:
-                self.__name = xml_struct.xpath(".//name/text()", smart_strings=False)[0]
-                # reads pids
-                self.__pids = []
-                self.__pid_names = {}
-                # name from psutil()
-                self.__pid_proc_names = {}
-                self.__pid_fuzzy = {}
-                for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
-                    self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
-                    self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
-                    self.__pid_proc_names[int(pid_struct.text)] = pid_struct.get("proc_name", "")
-                    self.__pid_fuzzy[int(pid_struct.text)] = (
-                        int(pid_struct.get("fuzzy_floor", "0")),
-                        int(pid_struct.get("fuzzy_ceiling", "0")),
-                    )
-                for opt, val_type, def_val in self.__prop_list:
-                    cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='{}']".format(opt), smart_strings=False)
-                    if cur_prop:
-                        cur_prop = cur_prop[0]
-                        cur_value = cur_prop.text
-                        if cur_prop.attrib["type"] == "integer":
-                            cur_value = int(cur_value)
-                        elif cur_prop.attrib["type"] == "boolean":
-                            cur_value = bool(cur_value)
-                    else:
-                        cur_value = def_val
-                    if opt.startswith("fuzzy"):
-                        # ignore fuzzy*
-                        pass
-                    else:
-                        setattr(self, opt, cur_value)
-                parsed = True
-            else:
-                try:
-                    lines = [line.strip() for line in open(name, "r").read().split("\n")]
-                except:
-                    logging_tools.my_syslog("error reading file {} (meta_server_info): {}".format(
-                        name,
-                        get_except_info()))
-                else:
-                    act_dict = {line[0].strip().lower(): line[1].strip() for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1}
-                    self.__name = act_dict.get("name", None)
-                    self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
-                    self.__pid_names = {pid: "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
-                    self.__pid_proc_names = {pid: "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
-                    self.__pid_fuzzy = {cur_pid: (0, 0) for cur_pid in set(self.__pids)}
-                    for opt, val_type, def_val in self.__prop_list:
-                        if opt in act_dict:
-                            cur_value = act_dict[opt]
-                            if val_type == "i":
-                                cur_value = int(cur_value)
-                            elif val_type == "b":
-                                cur_value = bool(cur_value)
-                        else:
-                            cur_value = def_val
-                        setattr(self, opt, cur_value)
-                    parsed = True
-            if parsed:
-                self.__meta_server_dir = os.path.dirname(name)
-                self.pid_checks_ok, self.pid_checks_failed = (0, 0)
-                self.set_last_pid_check_ok_time()
+            parsed = self._parse_file(name)
         else:
+            parsed = False
+        if parsed:
+            self.__meta_server_dir = os.path.dirname(name)
+            self.pid_checks_ok, self.pid_checks_failed = (0, 0)
+            self.set_last_pid_check_ok_time()
+        else:
+            self.__start_time = time.time()
             self.__file_name = None
             self.set_meta_server_dir("/var/lib/meta-server")
             self.__name = name
-            self.__pids = []
-            self.__pid_names = {}
-            self.__pid_proc_names = {}
-            self.__pid_fuzzy = {}
             self.pid_checks_ok, self.pid_checks_failed = (0, 0)
             for opt, val_type, def_val in self.__prop_list:
                 setattr(self, opt, def_val)
         self.parsed = parsed
         self.file_init_time = time.time()
 
-    def get_file_name(self):
-        return self.__file_name
+    def _reset(self):
+        self.__pids = []
+        self.__pid_names = {}
+        self.__pid_proc_names = {}
+        self.__pid_fuzzy = {}
+        # when the MSI-block was startet (== main process start)
+        self.__start_time = {}
 
-    def get_name(self):
-        return self.__name
+    def _parse_file(self, name):
+        self.__file_name = name
+        # try to read complete info from file
+        self.__name = None
+        try:
+            xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
+        except:
+            logging_tools.my_syslog(
+                "error parsing XML file {} (meta_server_info): {}".format(
+                    name,
+                    get_except_info()
+                )
+            )
+            parsed = False
+        else:
+            self.__name = xml_struct.xpath(".//name/text()", smart_strings=False)[0]
+            _start_time = xml_struct.find(".//start_time")
+            if _start_time is None:
+                self.__start_time = os.stat(name)[stat.ST_CTIME]
+            else:
+                self.__start_time = int(float(_start_time.text))
+            # reads pids
+            for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
+                self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
+                self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
+                self.__pid_proc_names[int(pid_struct.text)] = pid_struct.get("proc_name", "")
+                self.__pid_fuzzy[int(pid_struct.text)] = (
+                    int(pid_struct.get("fuzzy_floor", "0")),
+                    int(pid_struct.get("fuzzy_ceiling", "0")),
+                )
+            for opt, val_type, def_val in self.__prop_list:
+                cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='{}']".format(opt), smart_strings=False)
+                if cur_prop:
+                    cur_prop = cur_prop[0]
+                    cur_value = cur_prop.text
+                    if cur_prop.attrib["type"] == "integer":
+                        cur_value = int(cur_value)
+                    elif cur_prop.attrib["type"] == "boolean":
+                        cur_value = bool(cur_value)
+                else:
+                    cur_value = def_val
+                if opt.startswith("fuzzy"):
+                    # ignore fuzzy*
+                    pass
+                else:
+                    setattr(self, opt, cur_value)
+            parsed = True
+        return parsed
+
+    @property
+    def file_name(self):
+        return self.__file_name
 
     @property
     def name(self):
         return self.__name
+
+    @property
+    def start_time(self):
+        return self.__start_time
 
     def get_last_pid_check_ok_time(self):
         return self.__last_check_ok
@@ -760,6 +697,7 @@ class meta_server_info(object):
             pid_list.append(cur_pid_el)
         xml_struct = E.meta_info(
             E.name(self.__name),
+            E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
             E.properties()
             )
@@ -785,10 +723,10 @@ class meta_server_info(object):
             logging_tools.my_syslog("error writing file {} (meta_server_info for {})".format(self.__file_name, self.__name))
 
     def __eq__(self, other):
-        return self.__name == other.get_name() and self.__pids == other.get_pids()
+        return self.__name == other.name and self.__pids == other.get_pids()
 
     def __ne__(self, other):
-        return self.__name != other.get_name() or self.__pids != other.get_pids()
+        return self.__name != other.name or self.__pids != other.get_pids()
 
     def remove_meta_block(self):
         if not self.__file_name:
@@ -796,10 +734,13 @@ class meta_server_info(object):
         try:
             os.unlink(self.__file_name)
         except:
-            logging_tools.my_syslog("error removing file {} (meta_server_info for {}): {}".format(
-                self.__file_name,
-                self.__name,
-                get_except_info()))
+            logging_tools.my_syslog(
+                "error removing file {} (meta_server_info for {}): {}".format(
+                    self.__file_name,
+                    self.__name,
+                    get_except_info()
+                )
+            )
 
     def check_block(self, act_tc_dict=None, act_dict={}):
         # threadcount dict
@@ -960,13 +901,6 @@ def save_pid(name, pid=None, mult=1):
     return append_pids(name, pid=pid, mult=mult, mode="w")
 
 save_pids = save_pid
-
-RUN_DIR = "/var/run"
-# not needed right now
-# #if os.path.isfile("/etc/SuSE-release"):
-# #    suse_ver = [line.strip().split()[-1] for line in file("/etc/SuSE-release", "r").read().split("\n") if line.startswith("VERSION")]
-# #    if suse_ver == ["12.1"]:
-# #        RUN_DIR = "/run"
 
 
 def append_pids(name, pid=None, mult=1, mode="a"):
@@ -1392,7 +1326,7 @@ def get_proc_list(**kwargs):
     i_fields = ["pid", "uid", "gid", "ppid"]
     proc_name_list = set(kwargs.get("proc_name_list", []))
     add_stat = kwargs.get("add_stat_info", False)
-    add_affinity = kwargs.get("add_affinity", False) and affinity_tools
+    add_affinity = kwargs.get("add_affinity", False)
     add_cmdline = kwargs.get("add_cmdline", True)
     add_exe = kwargs.get("add_exe", True)
     try:
@@ -1455,7 +1389,7 @@ def get_proc_list(**kwargs):
                             t_dict["exe"] = None
                     if t_dict["pid"] == pid:
                         p_dict[pid] = t_dict
-                    if affinity_tools and add_affinity:
+                    if add_affinity:
                         try:
                             t_dict["affinity"] = affinity_tools.get_process_affinity_mask_from_status_lines(_affinity_lines)
                         except:
