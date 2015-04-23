@@ -30,7 +30,7 @@ from enum import IntEnum, Enum
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
-from tools import logging_tools
+import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_aggregated_host_data
 from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command

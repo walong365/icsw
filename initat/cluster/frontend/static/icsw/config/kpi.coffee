@@ -306,6 +306,7 @@ angular.module(
             draggable: true
             closable: true
             closeByBackdrop: false
+            closeByKeyboard: false,
             size: BootstrapDialog.SIZE_WIDE
             type: BootstrapDialog.TYPE_DANGER
             onshow: (modal) =>
