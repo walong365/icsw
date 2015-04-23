@@ -30,7 +30,7 @@ from enum import IntEnum, Enum
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
-import logging_tools
+from tools import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_aggregated_host_data
 from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command
@@ -56,8 +56,19 @@ class KpiResult(IntEnum):
         return self.value
 
     @classmethod
+    def from_numeric_icinga_host_state(cls, num):
+        # NOTE: these are different than for services!
+        if num == 0:  # UP
+            return KpiResult.ok
+        elif num == 1:  # DOWN
+            return KpiResult.critical
+        elif num == 2:  # UNREACHABLE
+            return KpiResult.warning
+        else:
+            return cls.from_icinga_service_status(num)
+
+    @classmethod
     def from_numeric_icinga_service_state(cls, num):
-        # we do this translation manually and not via enum so that we can have custom values
         if num == -1:  # icsw-only
             return KpiResult.planned_down
         elif num == 0:

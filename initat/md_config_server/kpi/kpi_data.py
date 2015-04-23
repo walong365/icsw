@@ -318,7 +318,7 @@ class KpiData(object):
 
         ret = list(
             KpiObject(
-                result=KpiResult.from_numeric_icinga_service_state(int(ir['state'])),
+                result=KpiResult.from_numeric_icinga_host_state(int(ir['state'])),
                 host_name=dev.full_name,
                 host_pk=dev.pk,
             )
