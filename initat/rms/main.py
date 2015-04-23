@@ -47,23 +47,30 @@ def main():
     global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
-        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", writeback=False)),
-        ("USER", configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
-        ("GROUP", configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
-        ("GROUPS", configfile.array_c_var(["idg"])),
-        ("FORCE", configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME", configfile.str_c_var(prog_name)),
-        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("FORCE_SCAN", configfile.bool_c_var(
-            False, help_string="force initial scan of accounting file [%(default)s]", action="store_true",
-            only_commandline=True)),
-    ])
+    global_config.add_config_entries(
+        [
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
+            ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+            ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", writeback=False)),
+            ("USER", configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
+            ("GROUP", configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
+            ("GROUPS", configfile.array_c_var(["idg"])),
+            ("FORCE", configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            (
+                "FORCE_SCAN", configfile.bool_c_var(
+                    False,
+                    help_string="force initial scan of accounting file [%(default)s]",
+                    action="store_true",
+                    only_commandline=True
+                )
+            ),
+        ]
+    )
     global_config.parse_file()
     _options = global_config.handle_commandline(
         description="%s, version is %s" % (
