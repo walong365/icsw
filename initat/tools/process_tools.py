@@ -528,10 +528,14 @@ class meta_server_info(object):
     @property
     def file_name(self):
         return self.__file_name
-    
+
     @property
     def name(self):
         return self.__name
+
+    @property
+    def start_time(self):
+        return self.__start_time
 
     def get_last_pid_check_ok_time(self):
         return self.__last_check_ok

@@ -125,7 +125,7 @@ class ServiceContainer(object):
             memory=True,
             database=True,
             pid=True,
-            time=True,
+            started=True,
             thread=True,
             no_database=False,
             version=True,
@@ -157,8 +157,8 @@ class ServiceContainer(object):
         c_name = entry.attrib["meta_server_name"]
         ms_name = os.path.join("/var", "lib", "meta-server", c_name)
         if os.path.exists(ms_name):
-            pid_time = os.stat(ms_name)[stat.ST_CTIME]
             ms_block = process_tools.meta_server_info(ms_name)
+            start_time = ms_block.start_time
             ms_block.check_block(self.__pid_thread_dict, self.__act_proc_dict)
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
@@ -184,7 +184,7 @@ class ServiceContainer(object):
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
                     num_diff="{:d}".format(num_diff),
-                    pid_time="{:d}".format(pid_time),
+                    start_time="{:d}".format(int(start_time)),
                     state="{:d}".format(act_state)
                 ),
             )
@@ -233,7 +233,7 @@ class ServiceContainer(object):
         if not pid_file_name.startswith("/"):
             pid_file_name = os.path.join("/var", "run", pid_file_name)
         if os.path.isfile(pid_file_name):
-            pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
+            start_time = os.stat(pid_file_name)[stat.ST_CTIME]
             act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
             act_state, num_started, num_found = self._check_processes(entry, act_pids)
             num_diff = 0
@@ -250,7 +250,7 @@ class ServiceContainer(object):
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
                     num_diff="{:d}".format(num_diff),
-                    pid_time="{:d}".format(pid_time),
+                    start_time="{:d}".format(start_time),
                     state="{:d}".format(act_state)
                 ),
             )
@@ -379,16 +379,15 @@ def show_xml(opt_ns, res_xml, iteration=0):
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
         cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
         cur_line.append(logging_tools.form_entry(act_struct.attrib.get("check_source", "N/A"), header="source"))
-        if opt_ns.time or opt_ns.thread:
+        if opt_ns.thread:
             s_info = act_struct.find("state_info")
             if "num_started" not in s_info.attrib:
                 cur_line.append(logging_tools.form_entry(s_info.text))
             else:
-                num_started, num_found, num_diff, pid_time, any_ok = (
+                num_started, num_found, num_diff, any_ok = (
                     int(s_info.get("num_started")),
                     int(s_info.get("num_found")),
                     int(s_info.get("num_diff")),
-                    int(s_info.get("pid_time", "0")),
                     True if int(act_struct.attrib["any_threads_ok"]) else False
                 )
                 # print etree.tostring(act_struct, pretty_print=True)
@@ -419,22 +418,21 @@ def show_xml(opt_ns, res_xml, iteration=0):
                         )
                     else:
                         ret_str = "the thread is running" if num_started == 1 else "all {:d} threads running".format(num_started)
-                if opt_ns.time:
-                    if pid_time:
-                        diff_time = max(0, time.mktime(time.localtime()) - pid_time)
-                        diff_days = int(diff_time / (3600 * 24))
-                        diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
-                        diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
-                        diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
-                        ret_str += ", stable since {}{:02d}:{:02d}:{:02d} ({})".format(
-                            diff_days and "{}, ".format(logging_tools.get_plural("day", diff_days)) or "",
-                            diff_hours,
-                            diff_mins,
-                            diff_secs,
-                            time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
-                    else:
-                        ret_str += ", no pid found"
-                cur_line.append(logging_tools.form_entry(ret_str, header="Thread and time info" if opt_ns.time else "Thread info"))
+                cur_line.append(logging_tools.form_entry(ret_str, header="Thread info"))
+        if opt_ns.started:
+            start_time = int(act_struct.find("state_info").get("start_time", "0"))
+            if start_time:
+                diff_time = max(0, time.mktime(time.localtime()) - start_time)
+                diff_days = int(diff_time / (3600 * 24))
+                diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
+                diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
+                diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
+                ret_str = "{}".format(
+                    time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(start_time))
+                )
+            else:
+                ret_str = "no start info found"
+            cur_line.append(logging_tools.form_entry(ret_str, header="started"))
         if opt_ns.pid:
             pid_dict = {}
             for cur_pid in act_struct.findall(".//pids/pid"):
@@ -522,19 +520,19 @@ def log_com(what, log_level):
 class ServiceParser(argparse.ArgumentParser):
     def __init__(self):
         argparse.ArgumentParser.__init__(self)
-        self.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
-        self.add_argument("-T", dest="time", action="store_true", default=False, help="full time info (implies -t,  %(default)s)")
-        self.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info (%(default)s)")
-        self.add_argument("-d", dest="database", action="store_true", default=False, help="show database info (%(default)s)")
-        self.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
-        self.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except time and DB info (%(default)s)")
-        self.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
+        self.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview [%(default)s]")
+        self.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
+        self.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info [%(default)s]")
+        self.add_argument("-d", dest="database", action="store_true", default=False, help="show database info [%(default)s]")
+        self.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption [%(default)s]")
+        self.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
+        self.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
         self.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
         self.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
-        self.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
-        self.add_argument("--client", type=str, nargs="+", default=[], help="client entity names (%(default)s)")
-        self.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
-        self.add_argument("--system", type=str, nargs="+", default=[], help="system entity names (%(default)s)")
+        self.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names [%(default)s]")
+        self.add_argument("--client", type=str, nargs="+", default=[], help="client entity names [%(default)s]")
+        self.add_argument("--server", type=str, nargs="+", default=[], help="server entity names [%(default)s]")
+        self.add_argument("--system", type=str, nargs="+", default=[], help="system entity names [%(default)s]")
         self.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
         self.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
         self.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
@@ -551,7 +549,7 @@ def main():
         opt_ns.memory = True
         opt_ns.version = True
     if opt_ns.all:
-        opt_ns.time = True
+        opt_ns.started = True
         opt_ns.database = True
     if os.getuid():
         print("Not running as root, information may be incomplete, disabling display of memory")
