@@ -134,7 +134,7 @@ class MVValueEntry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MVValue ({}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
+        return u"MVValueEntry ({}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
             self.key or "NONE",
             self.info,
             self.unit,

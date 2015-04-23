@@ -328,8 +328,8 @@ class srv_type_routing(object):
                 self._log(request, log_lines, _err_str, logging_tools.LOG_LEVEL_ERROR)
         else:
             # TODO: check if result is set
-            if log_result:
-                log_str, log_level = result.get_log_tuple()
+            log_str, log_level = result.get_log_tuple()
+            if log_result or (log_error and log_level >= logging_tools.LOG_LEVEL_ERROR):
                 self._log(request, log_lines, log_str, log_level)
             if self.result is None:
                 self.result = result

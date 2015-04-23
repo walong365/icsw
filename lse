@@ -45,16 +45,20 @@ class error_rec(object):
     def set_idx(self, idx=0):
         self.__idx = idx
 
-    def get_pid(self):
+    @property
+    def pid(self):
         return self.__pid
 
-    def get_uid(self):
+    @property
+    def uid(self):
         return self.__uid
 
-    def get_uname(self):
+    @property
+    def uname(self):
         return self.__uname
 
-    def get_source_name(self):
+    @property
+    def source_name(self):
         return self.__source_name
 
     def add_line(self, l_date, state, line):
@@ -94,15 +98,18 @@ class error_rec(object):
             self.__uname,
             self.__gname,
             self.__source_name,
-            logging_tools.get_plural("line", len(self.__lines)))
+            logging_tools.get_plural("line", len(self.__lines))
+        )
 
     def show_lines(self):
         f_str = "%%3d (%%%ds) : %%s" % (max([len(x) for x, _y in self.__lines]))
         return "\n".join([f_str % (l_idx, state, line) for (state, line), l_idx in zip(self.__lines, xrange(len(self.__lines)))])
 
     def __repr__(self):
-        return "error from pid %d (%s)" % (self.__pid,
-                                           logging_tools.get_plural("line", len(self.__lines)))
+        return "error from pid {:d} ({})".format(
+            self.__pid,
+            logging_tools.get_plural("line", len(self.__lines))
+        )
 
 
 def main():
@@ -112,12 +119,13 @@ def main():
     my_parser.add_argument("--noempty", default=False, action="store_true", help="suppress empty error lines [%(default)s]")
     my_parser.add_argument("-s", dest="index", action="append", help="show index at position [%(default)s]", default=[])
     my_parser.add_argument("-l", type=int, dest="num", help="show last [%(default)s] error", default=0)
+    # my_parser.add_argument("-f", default=False, action="store_true", help="enable follow mode [%(default)s]")
     options = my_parser.parse_args()
     options.overview = True if (not options.stat and not options.index and not options.num) else False
     options.index = [int(cur_idx) for cur_idx in options.index]
     err_file_name = "/var/log/cluster/logging-server/err_py"
     if not os.path.isfile(err_file_name):
-        print "%s does not exist" % (err_file_name)
+        print("{} does not exist".format(err_file_name))
         sys.exit(1)
     if options.clear:
         new_file_name = "{}_{}.tar.bz2".format(
@@ -134,11 +142,19 @@ def main():
     try:
         err_lines = [line.strip() for line in file(err_file_name, "r").read().split("\n") if line.count("from pid")]
     except IOError:
-        print "Cannot read '%s': %s" % (
-            err_file_name,
-            process_tools.get_except_info())
+        print(
+            "Cannot read '{}': {}".format(
+                err_file_name,
+                process_tools.get_except_info()
+            )
+        )
         sys.exit(1)
-    print "Found error_file %s with %s" % (err_file_name, logging_tools.get_plural("line", len(err_lines)))
+    print(
+        "Found error_file {} with {}".format(
+            err_file_name,
+            logging_tools.get_plural("line", len(err_lines))
+        )
+    )
     errs_found, act_err = ([], None)
     act_idx, idx_dict, prev_dt = (0, {}, None)
     for line in err_lines:
@@ -160,7 +176,7 @@ def main():
             info_parts.pop(0)
             info_parts.pop(0)
         except:
-            print "Error pre-parsing line '%s': %s" % (line, process_tools.get_except_info())
+            print("Error pre-parsing line '{}': {}".format(line, process_tools.get_except_info()))
         else:
             try:
                 # get pid
@@ -183,7 +199,7 @@ def main():
                 else:
                     dt_change = False
                 prev_dt = cur_dt
-                if not act_err or act_err.get_pid() != line_pid or dt_change or line.count("<type"):
+                if not act_err or act_err.pid != line_pid or dt_change or line.count("<type"):
                     act_idx += 1
                     act_err = error_rec(
                         line_pid,
@@ -191,7 +207,8 @@ def main():
                         line_uid,
                         line_uname,
                         line_gid,
-                        line_gname)
+                        line_gname,
+                    )
                     act_err.set_idx(act_idx)
                     idx_dict[act_idx] = act_err
                     errs_found.append(act_err)
@@ -199,7 +216,7 @@ def main():
                     act_err.add_line(line_date, line_state, err_line)
             except:
                 print "Error parsing line '%s': %s" % (line, process_tools.get_except_info())
-    print "Found %s" % (logging_tools.get_plural("error record", len(errs_found)))
+    print("Found {}".format(logging_tools.get_plural("error record", len(errs_found))))
     if options.overview:
         if errs_found:
             out_list = logging_tools.new_form_list()
@@ -209,7 +226,7 @@ def main():
     elif options.stat:
         uid_dict = {}
         for err in errs_found:
-            uid_dict.setdefault(err.get_uid(), []).append(err)
+            uid_dict.setdefault(err.uid, []).append(err)
         all_uids = uid_dict.keys()
         all_uids.sort()
         out_list = logging_tools.new_form_list()
@@ -217,13 +234,13 @@ def main():
             uid_stuff = uid_dict[uid]
             diff_sources = []
             for err in uid_stuff:
-                if err.get_source_name() not in diff_sources:
-                    diff_sources.append(err.get_source_name())
+                if err.source_name not in diff_sources:
+                    diff_sources.append(err.source_name)
             diff_sources.sort()
             out_list.append(
                 (
                     logging_tools.form_entry(uid, header="uid"),
-                    logging_tools.form_entry(uid_stuff[0].get_uname(), header="uname"),
+                    logging_tools.form_entry(uid_stuff[0].uname, header="uname"),
                     logging_tools.form_entry(len(uid_stuff), header="# err"),
                     logging_tools.form_entry(len(diff_sources), header="# sources"),
                     logging_tools.form_entry(", ".join(diff_sources), header="sources"),
@@ -246,9 +263,12 @@ def main():
                 print act_err.get_header()
                 print act_err.show_lines()
             else:
-                print "Index %d not in index_list %s" % (
-                    idx,
-                    logging_tools.compress_num_list(idx_dict.keys()))
+                print(
+                    "Index {:d} not in index_list {}".format(
+                        idx,
+                        logging_tools.compress_num_list(idx_dict.keys())
+                    )
+                )
 
 if __name__ == "__main__":
     main()
