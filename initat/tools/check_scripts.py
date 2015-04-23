@@ -483,7 +483,12 @@ def show_xml(opt_ns, res_xml, iteration=0):
 
 
 def do_action_xml(opt_ns, res_xml, mode):
-    structs = res_xml.xpath("instance[@checked='1' and @startstop='1']")
+    if mode in ["restart", "start"]:
+        structs = res_xml.xpath("instance[@checked='1' and @startstop='1' and not (.//pid)]")
+    elif mode in ["stop"]:
+        structs = res_xml.xpath("instance[@checked='1' and @startstop='1' and (.//pid)]")
+    else:
+        structs = []
     if not opt_ns.quiet:
         print(
             "{}ing {}: {}".format(
