@@ -33,7 +33,7 @@ from initat.md_config_server.kpi.kpi_utils import KpiUtils
 import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_aggregated_host_data
-from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command
+from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command, category, device
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
@@ -138,6 +138,9 @@ class KpiObject(object):
             else KpiResult.from_numeric_icinga_service_state(result)
         self.host_name = host_name
         self.host_pk = host_pk
+
+        # this is actually a list of strings
+        self.device_category = KpiGlobals.device_category_cache[self.host_pk]
 
     """
     @classmethod
@@ -284,6 +287,9 @@ class KpiServiceObject(KpiObject):
             self.config = mcc.config.name
             self.config_description = mcc.config.description
 
+            # this is actually a list of strings
+            self.check_category = KpiGlobals.mcc_category_cache[mcc.pk]
+
         self.mcc = mcc  # saved for convenience, but use other attributes except mcc is needed specifically
 
     def __repr__(self, child_repr=""):
@@ -385,10 +391,44 @@ class KpiOperation(object):
         }
 
 
-class KpiInitialOperation(KpiOperation):
-    def __init__(self, kpi):
-        super(KpiInitialOperation, self).__init__(type=KpiOperation.Type.initial)
-        self.kpi = kpi
+class KpiGlobals(object):
+    # these are set during the execution of a kpi
+
+    current_kpi = None
+
+    @classmethod
+    def _init(cls, device_category_cache, mcc_category_cache):
+        # use this pattern to make sure to always set all vars
+        cls.device_category_cache = device_category_cache
+        cls.mcc_category_cache = mcc_category_cache
+
+    @classmethod
+    def set_context(cls):
+        class CategoryCache(dict):
+            def __init__(self, model):
+                super(CategoryCache, self).__init__()
+                self.model = model
+
+            def __getitem__(self, obj_pk):
+                # obj_pk may be None
+                try:
+                    return super(CategoryCache, self).__getitem__(obj_pk)
+                except KeyError:
+                    try:
+                        cats = self.model.objects.get(pk=obj_pk).categories.all()
+                    except self.model.DoesNotExist:
+                        cats = []
+                    retval = self[obj_pk] = [cat.name for cat in cats]
+                    return retval
+
+        cls._init(
+            device_category_cache=CategoryCache(device),
+            mcc_category_cache=CategoryCache(mon_check_command),
+        )
+
+    @classmethod
+    def clear_context(cls):
+        cls._init(None, None)
 
 
 class KpiSet(object):
@@ -452,23 +492,6 @@ class KpiSet(object):
             result = KpiResult.critical
         return result
 
-    def _get_current_kpi(self):
-        """
-        Get Kpi object from original kpi set. Assumes that parent-chain is valid!
-        :rtype : Kpi
-        """
-        if self.origin.type == KpiOperation.Type.initial:
-            return self.origin.kpi
-        else:
-            kpi = None
-            for parent in self.origin.operands:
-                kpi = parent._get_current_kpi()
-                if kpi is not None:
-                    break
-            else:
-                raise ValueError("Failed to find initial kpi set.")
-        return kpi
-
     ########################################
     # data accessors
     #
@@ -525,20 +548,28 @@ class KpiSet(object):
     #
 
     def filter(self, **kwargs):
+        """
+        Return all objects which have the required properties.
+        Matches on all properties. Interprets strings as regexp /.*thestring.*/.
+        If properties are lists or tuples, checks if any of them match.
+        """
         objects = self.objects
-        # print 'call filter args:', kwargs
-        # print '    on objs:', objects
-        # pprint.pprint(objects)
+
+        def check_match(match_check_fun, obj):
+            if isinstance(obj, (list, tuple)):
+                # for convenience in specifying kpis:
+                return any(match_check_fun(obj_entry) for obj_entry in obj)
+            else:
+                return match_check_fun(obj)
+
         for k, v in kwargs.iteritems():
             if isinstance(v, basestring):
-                match_re = re.compile(".*{}.*".format(v))
-                is_match = lambda x: x is not None and match_re.match(x)
+                match_re = re.compile(u".*{}.*".format(v))
+                match_check_fun = lambda x: x is not None and match_re.match(x)
             else:
-                is_match = lambda x: x == v
+                match_check_fun = lambda x: x == v
             objects = [obj for obj in objects if
-                       is_match(getattr(obj, k, None))]
-
-        # print '    results', objects
+                       check_match(match_check_fun, getattr(obj, k, None))]
 
         return KpiSet(objects, origin=KpiOperation(KpiOperation.Type.filter, arguments=kwargs, operands=[self]))
 
@@ -604,7 +635,7 @@ class KpiSet(object):
 
         objects = []
         if relevant_obj_identifiers:
-            start, end = KpiUtils.parse_kpi_time_range_from_kpi(self._get_current_kpi())
+            start, end = KpiUtils.parse_kpi_time_range_from_kpi(KpiGlobals.current_kpi)
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())

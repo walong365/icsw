@@ -27,7 +27,7 @@ import django.utils.timezone
 from initat.cluster.backbone.models import Kpi
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiInitialOperation
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
 from initat.md_config_server.kpi.kpi_utils import print_tree
 import logging_tools
 import process_tools
@@ -47,7 +47,7 @@ class KpiProcess(threading_tools.process_obj):
         connection.close()
 
         self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
-        #self.update()
+        # self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -56,6 +56,8 @@ class KpiProcess(threading_tools.process_obj):
         self.__log_template.close()
 
     def update(self):
+        KpiGlobals.set_context()
+
         try:
             data = KpiData(self.log)
         except Exception as e:
@@ -66,26 +68,24 @@ class KpiProcess(threading_tools.process_obj):
 
             # recalculate kpis
 
-            # TODO: permissions for devices?
-
             # calculate kpis, such that drill down data is present
-
-            print '\n\nkpi evaluation\n'
+            # print '\n\nkpi evaluation\n'
 
             for kpi_db in Kpi.objects.filter(enabled=True):
 
                 self.log("Evaluating kpi {}".format(kpi_db))
 
-                print '\nevaluating kpi', kpi_db
+                # print '\nevaluating kpi', kpi_db
                 kpi_set = KpiSet(data.get_data_for_kpi(kpi_db),
-                                 origin=KpiInitialOperation(kpi=kpi_db))
+                                 origin=KpiOperation(type=KpiOperation.Type.initial))
 
                 # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
                 eval_globals = {'data': kpi_set, 'KpiSet': KpiSet, 'KpiObject': KpiObject, 'KpiResult': KpiResult}
-                # print eval(kpi_db.formula, eval_globals)
                 eval_locals = {}
                 result_str = None
                 try:
+                    # KpiGlobals are used for evaluation, but not exposed to kpi user
+                    KpiGlobals.current_kpi = kpi_db
                     exec(kpi_db.formula, eval_globals, eval_locals)
                 except Exception as e:
                     self.log(e)
@@ -99,9 +99,9 @@ class KpiProcess(threading_tools.process_obj):
                     else:
                         result = eval_locals['kpi']
 
-                        print 'full result',
-                        result.dump()
-                        print_tree(result)
+                        # print 'full result',
+                        # result.dump()
+                        # print_tree(result)
 
                         serialized = result.serialize()
                         # print 'serialized:', serialized
@@ -114,10 +114,10 @@ class KpiProcess(threading_tools.process_obj):
                             self.log("result string can be serialized but not deserialized: {}".format(result_str),
                                      logging_tools.LOG_LEVEL_ERROR)
                             result_str = None
+                finally:
+                    KpiGlobals.current_kpi = None
 
-                date = django.utils.timezone.now()
-
-                kpi_db.set_result(result_str, date)
+                kpi_db.set_result(result_str, django.utils.timezone.now())
 
                 """
 
