@@ -128,6 +128,10 @@ class License(models.Model):
     file_name = models.CharField(max_length=512)
     license_file = models.TextField()  # contains the exact file content of the respective license files
 
+    class Meta:
+        app_label = "backbone"
+        verbose_name = "License"
+
 
 @receiver(signals.post_save, sender=License)
 @receiver(signals.post_delete, sender=License)
