@@ -20,21 +20,21 @@
 """ tools for the SGE """
 
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
 import argparse
 import commands
 import copy
 import datetime
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import re
-from initat.tools import server_command
 import stat
 import json
 import time
-import zmq  # @UnresolvedImport
 import uuid
+
+from lxml.builder import E  # @UnresolvedImport
+from initat.tools import logging_tools, process_tools, server_command
+import zmq  # @UnresolvedImport
+
 try:
     import memcache
 except:
@@ -787,7 +787,8 @@ class sge_info(object):
         for cur_job in all_jobs.findall(".//job_list"):
             cur_job.attrib["full_id"] = "{}{}".format(
                 cur_job.findtext("JB_job_number"),
-                ".{}".format(cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else "")
+                ".{}".format(cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else ""
+            )
         # print etree.tostring(all_jobs, pretty_print=True)
         # add info for running jobs
         run_job_ids = set(all_jobs.xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False))
@@ -797,8 +798,8 @@ class sge_info(object):
             self.del_run_job_info(del_job_id)
         for add_job_id in run_job_ids - present_ids:
             self.add_run_job_info(add_job_id, qstat_com)
-        for cur_job_id in run_job_ids:
-            cur_job = all_jobs.xpath(".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(cur_job_id), smart_strings=False)[0]
+        for cur_job in all_jobs.xpath(".//job_list[@full_id and master/text() = \"MASTER\"]"):
+            cur_job_id = cur_job.attrib["full_id"]
             job_info = self.get_run_job_info(cur_job_id)
             if job_info is not None:
                 cur_job.append(job_info)
@@ -809,15 +810,12 @@ class sge_info(object):
             self.del_wait_job_info(del_job_id)
         for add_job_id in waiting_ids - present_ids:
             self.add_wait_job_info(add_job_id, qstat_com)
-        for cur_job_id in waiting_ids:
-            cur_job = all_jobs.xpath(".//job_list[@state='pending' and JB_job_number/text() = \"{}\"]".format(cur_job_id), smart_strings=False)
-            # just a precaution
-            if len(cur_job):
-                cur_job = cur_job[0]
+        for cur_job in all_jobs.xpath(".//job_list[@state='pending' and JB_job_number]"):
+            cur_job_id = cur_job.findtext("JB_job_number")
+            if cur_job_id in waiting_ids:
                 job_info = self.get_wait_job_info(cur_job_id)
                 if job_info is not None:
                     cur_job.append(job_info)
-
         self._add_stdout_stderr_info(all_jobs)
         for state_el in all_jobs.xpath(".//job_list/state", smart_strings=False):
             state_el.addnext(E.state_long(",".join(["({}){}".format(
@@ -1583,17 +1581,21 @@ def build_node_list(s_info, options):
                     )
                 )
             if options.show_memory:
-                cur_node.extend([
-                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
-                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
-                ])
+                cur_node.extend(
+                    [
+                        E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
+                        E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
+                    ]
+                )
             # print etree.tostring(act_h, pretty_print=True)
-            cur_node.extend([
-                E.load("{:.2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
-                E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
-                E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
-                E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),
-            ])
+            cur_node.extend(
+                [
+                    E.load("{:.2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
+                    E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
+                    E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
+                    E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),
+                ]
+            )
             if options.show_acl:
                 for ref_name, header_name in [("user_list", "userlists"),
                                               ("project", "projects")]:

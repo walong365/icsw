@@ -21,6 +21,7 @@
 #
 """ external commands (dhcp, ipmi, SNMP) parts of mother """
 
+import sys
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import cd_connection, device_variable, \
@@ -29,6 +30,7 @@ from initat.mother.command_tools import simple_command
 from initat.snmp.sink import SNMPSink
 from initat.snmp.struct import simple_snmp_oid
 from initat.mother.config import global_config
+from initat.tools.io_stream_helper import io_stream
 from initat.tools import config_tools
 from initat.tools import logging_tools
 from initat.tools import process_tools
@@ -339,8 +341,11 @@ class external_command_process(threading_tools.process_obj):
             hc_command(in_com.get("user_id", None), cur_dev, self.router_obj, self.snmp_sink)
 
     def sc_finished(self, sc_com):
-        self.log("simple command done")
-        print sc_com.read()
+        # output
+        _lines = sc_com.read().split("\n")
+        self.log("simple command done ({})".format(logging_tools.get_plural("line", len(_lines))))
+        for _line in _lines:
+            self.log("   - {}".format(_line))
 
     def _snmp_finished(self, *args, **kwargs):
         hc_command.feed_snmp_result(*args)
