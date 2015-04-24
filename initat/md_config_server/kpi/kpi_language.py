@@ -288,7 +288,7 @@ class KpiServiceObject(KpiObject):
             self.config_description = mcc.config.description
 
             # this is actually a list of strings
-            self.check_category = KpiGlobals.mcc_category_cache[mcc.pk]
+            self.monitoring_category = KpiGlobals.mcc_category_cache[mcc.pk]
 
         self.mcc = mcc  # saved for convenience, but use other attributes except mcc is needed specifically
 
