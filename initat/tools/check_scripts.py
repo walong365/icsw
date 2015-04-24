@@ -169,7 +169,7 @@ class ServiceContainer(object):
         if os.path.exists(ms_name):
             ms_block = process_tools.meta_server_info(ms_name)
             start_time = ms_block.start_time
-            ms_block.check_block(self.__pid_thread_dict, self.__act_proc_dict)
+            ms_block.check_block(self.__act_proc_dict)
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
             act_pids = ms_block.pids_found
@@ -225,7 +225,7 @@ class ServiceContainer(object):
         name = entry.attrib["name"]
         any_ok = True if int(entry.attrib["any_threads_ok"]) else False
         unique_pids = {key: pids.count(key) for key in set(pids)}
-        pids_found = {key: self.__pid_thread_dict.get(key, 1) for key in set(pids)}
+        pids_found = {key: self.__act_proc_dict[key].num_threads() for key in set(pids)}
         num_started = sum(unique_pids.values()) if unique_pids else 0
         num_found = sum(pids_found.values()) if pids_found else 0
         # check for extra Nagios2.x thread
@@ -296,8 +296,7 @@ class ServiceContainer(object):
         for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
             if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
                 cur_el.attrib["to_check"] = "1"
-        self.__act_proc_dict = process_tools.get_proc_list_new()
-        self.__pid_thread_dict = process_tools.get_process_id_list(True, True)
+        self.__act_proc_dict = process_tools.get_proc_list()
         _prev_db_check = None
         for entry in instance_xml.xpath("instance[@to_check='1']"):
             dev_config = []

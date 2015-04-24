@@ -46,7 +46,7 @@ def run_code():
 
 def kill_previous():
     # check for already running rrdcached processes and kill them
-    proc_dict = process_tools.get_proc_list_new(proc_name_list=["rrdcached", "collectd"])
+    proc_dict = process_tools.get_proc_list(proc_name_list=["rrdcached", "collectd"])
     if proc_dict:
         for _key in proc_dict.iterkeys():
             try:

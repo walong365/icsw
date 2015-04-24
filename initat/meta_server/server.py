@@ -174,6 +174,22 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             srv_com.set_result("no args given", server_command.SRV_REPLY_STATE_ERROR)
         return _msi_block
 
+    def _check_srv_com_msi_block(self, srv_com, msi_block):
+        if msi_block:
+            msi_block.check_block()
+            srv_com.set_result(
+                "{}, {}".format(
+                    msi_block.get_info(),
+                    msi_block.pid_check_string,
+                ),
+                server_command.SRV_REPLY_STATE_OK if msi_block.pid_checks_failed == 0 else server_command.SRV_REPLY_STATE_ERROR,
+            )
+        else:
+            srv_com.set_result(
+                "no MSI-block defined",
+                SRV_REPLY_STATE_WARN,
+            )
+
     def _recv_command(self, zmq_sock):
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)  # @UndefinedVariable
@@ -187,7 +203,7 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             srv_com.update_source()
             srv_com.set_result("ok")
             if srv_com["command"].text == "status":
-                srv_com.check_msi_block(self.__msi_block)
+                self._check_srv_com_msi_block(srv_com, self.__msi_block)
             elif srv_com["*command"] in ["msi_exists", "msi_stop", "msi_restart", "msi_force_stop", "msi_force_restart"]:
                 msi_block = self._get_msi_block(srv_com)
                 if msi_block is not None:
@@ -353,78 +369,17 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         act_time = time.time()
         del_list = []
         mem_info_dict = {}
-        act_tc_dict = process_tools.get_process_id_list(True, True)
-        act_pid_dict = process_tools.get_proc_list_new(int_pid_list=act_tc_dict.keys())
+        act_pid_dict = process_tools.get_proc_list()
         _check_mem = act_time > self.__last_memcheck_time + global_config["MIN_MEMCHECK_TIME"] and global_config["TRACK_CSW_MEMORY"]
         if _check_mem:
             self.__last_memcheck_time = act_time
         # import pprint
         # pprint.pprint(act_pid_dict)
         # print act_pid_list
+        problems = []
         for key, struct in self.__msi_dict.iteritems():
-            struct.check_block(act_tc_dict, act_pid_dict)
-            if struct.pid_checks_failed:
-                pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
-                do_sthg = (struct.pid_checks_failed >= 2 and pids_failed_time >= global_config["FAILED_CHECK_TIME"])
-                self.log(
-                    "*** unit {} (pid check failed for {}, {}): {} remaining, grace time {}, {}".format(
-                        key,
-                        logging_tools.get_plural("time", struct.pid_checks_failed),
-                        struct.pid_check_string,
-                        logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
-                        logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
-                        do_sthg and "starting countermeasures" or "still waiting...",
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
-                )
-                if do_sthg:
-                    mail_text = [
-                        "check failed for {}: {}".format(
-                            key,
-                            struct.pid_check_string),
-                        "starting repair sequence",
-                        "",
-                    ]
-                    self.log(
-                        "*** starting repair sequence",
-                        logging_tools.LOG_LEVEL_WARN
-                    )
-                    if struct.stop_command:
-                        self._call_command(struct.stop_command)
-                        mail_text.extend(
-                            [
-                                "issued the stop command : {} in 1 minute".format(struct.stop_command),
-                                "",
-                            ]
-                        )
-                    if struct.kill_pids:
-                        kill_info = struct.kill_all_found_pids()
-                        self.log(
-                            "  *** kill info: {}".format(kill_info),
-                            logging_tools.LOG_LEVEL_WARN
-                        )
-                        mail_text.extend(
-                            [
-                                "trying to kill the remaining pids, kill info : {}".format(kill_info),
-                                "",
-                            ]
-                        )
-                    if struct.start_command:
-                        self._call_command(struct.start_command)
-                        mail_text.extend(
-                            [
-                                "issued the start command : {} in 2 minutes".format(struct.start_command),
-                                "",
-                            ]
-                        )
-                    self.__new_mail.init_text()
-                    self.__new_mail.set_subject("problem with {} on {} (meta-server)".format(key, global_config["SERVER_FULL_NAME"]))
-                    self.__new_mail.append_text(mail_text)
-                    struct.remove_meta_block()
-                    _sm_stat, log_lines = self.__new_mail.send_mail()
-                    for line in log_lines:
-                        self.log(line)
-                    del_list.append(key)
+            if struct.check_block(act_pid_dict):
+                problems.append((key, struct))
             else:
                 # check memory consumption if everything is ok
                 if struct.check_memory and _check_mem:
@@ -432,9 +387,69 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                     if pids:
                         # only count memory for one pid
                         mem_info_dict[key] = {pid: (struct.get_process_name(pid), process_tools.get_mem_info(pid)) for pid in pids}
-                    # else:
-                    #     mem_info_dict[key] = None
-        if mem_info_dict:
+        for key, struct in problems:
+            pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
+            do_sthg = (struct.pid_checks_failed >= 2 and pids_failed_time >= global_config["FAILED_CHECK_TIME"])
+            self.log(
+                "*** unit {} (pid check failed for {}, {}): {} remaining, grace time {}, {}".format(
+                    key,
+                    logging_tools.get_plural("time", struct.pid_checks_failed),
+                    struct.pid_check_string,
+                    logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
+                    logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
+                    do_sthg and "starting countermeasures" or "still waiting...",
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
+            if do_sthg:
+                mail_text = [
+                    "check failed for {}: {}".format(
+                        key,
+                        struct.pid_check_string),
+                    "starting repair sequence",
+                    "",
+                ]
+                self.log(
+                    "*** starting repair sequence",
+                    logging_tools.LOG_LEVEL_WARN
+                )
+                if struct.stop_command:
+                    self._call_command(struct.stop_command)
+                    mail_text.extend(
+                        [
+                            "issued the stop command : {} in 1 minute".format(struct.stop_command),
+                            "",
+                        ]
+                    )
+                if struct.kill_pids:
+                    kill_info = struct.kill_all_found_pids()
+                    self.log(
+                        "  *** kill info: {}".format(kill_info),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+                    mail_text.extend(
+                        [
+                            "trying to kill the remaining pids, kill info : {}".format(kill_info),
+                            "",
+                        ]
+                    )
+                if struct.start_command:
+                    self._call_command(struct.start_command)
+                    mail_text.extend(
+                        [
+                            "issued the start command : {} in 2 minutes".format(struct.start_command),
+                            "",
+                        ]
+                    )
+                self.__new_mail.init_text()
+                self.__new_mail.set_subject("problem with {} on {} (meta-server)".format(key, global_config["SERVER_FULL_NAME"]))
+                self.__new_mail.append_text(mail_text)
+                struct.remove_meta_block()
+                _sm_stat, log_lines = self.__new_mail.send_mail()
+                for line in log_lines:
+                    self.log(line)
+                del_list.append(key)
+        if _check_mem and mem_info_dict:
             self._show_meminfo(mem_info_dict)
         if del_list:
             del_list.sort()
@@ -475,7 +490,12 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         if file_name in self.__file_lut:
             self._delete_msi_by_name(self.__file_lut[file_name])
         else:
-            self.log("MSI for file_name {} not defined".format(file_name), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "MSI for file_name {} not defined".format(
+                    file_name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _update_or_create_msi_by_file_name(self, file_name):
         if file_name in self.__file_lut:
@@ -502,7 +522,18 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         if act_meminfo_keys != self.__last_meminfo_keys or self.__act_meminfo_line > 100:
             self.__act_meminfo_line = 0
             self.__last_meminfo_keys = act_meminfo_keys
-            self.log("Memory info mapping: {}".format(", ".join(["{:d}: {}".format(act_meminfo_keys.index(key) + 1, key) for key in act_meminfo_keys])))
+            self.log(
+                "Memory info mapping: {}".format(
+                    ", ".join(
+                        [
+                            "{:d}: {}".format(
+                                act_meminfo_keys.index(key) + 1,
+                                key
+                            ) for key in act_meminfo_keys
+                        ]
+                    )
+                )
+            )
         if hm_classes and self.vector_socket:
             drop_com = server_command.srv_command(command="set_vector")
             mv_valid = act_time + 2 * global_config["MIN_MEMCHECK_TIME"]
@@ -545,16 +576,18 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                     del self.mis_dict[del_key]
         self.log(
             "Memory info: {}".format(
-                " / ".join([
-                    process_tools.beautify_mem_info(
-                        sum(
-                            [
-                                value[1] for value in mem_info_dict.get(key, {}).itervalues()
-                            ]
-                        ),
-                        short=True
-                    ) for key in act_meminfo_keys
-                ])
+                " / ".join(
+                    [
+                        process_tools.beautify_mem_info(
+                            sum(
+                                [
+                                    value[1] for value in mem_info_dict.get(key, {}).itervalues()
+                                ]
+                            ),
+                            short=True
+                        ) for key in act_meminfo_keys
+                    ]
+                )
             )
         )
 
