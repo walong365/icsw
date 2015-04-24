@@ -120,23 +120,6 @@ class ServiceContainer(object):
                     cur_el.attrib[key] = def_value
         return instance_xml
 
-    def get_default_ns(self):
-        def_ns = argparse.Namespace(
-            all=True,
-            instance=[],
-            system=[],
-            server=[],
-            client=[],
-            memory=True,
-            database=True,
-            pid=True,
-            started=True,
-            thread=True,
-            no_database=False,
-            version=True,
-        )
-        return def_ns
-
     def _check_simple(self, entry):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         if os.path.isfile(init_script_name):
@@ -300,7 +283,7 @@ class ServiceContainer(object):
         _prev_db_check = None
         for entry in instance_xml.xpath("instance[@to_check='1']"):
             dev_config = []
-            if config_tools and not opt_ns.no_database and entry.find(".//config_names/config_name") is not None:
+            if config_tools and entry.find(".//config_names/config_name") is not None:
                 # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
                 _conf_names = [_entry.text for _entry in entry.findall(".//config_names/config_name")]
                 for _conf_name in _conf_names:
@@ -531,44 +514,76 @@ def log_com(what, log_level):
     print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
 
-class ServiceParser(argparse.ArgumentParser):
+class ICSWParser(object):
     def __init__(self):
-        argparse.ArgumentParser.__init__(self)
-        self.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview [%(default)s]")
-        self.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
-        self.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info [%(default)s]")
-        self.add_argument("-d", dest="database", action="store_true", default=False, help="show database info [%(default)s]")
-        self.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption [%(default)s]")
-        self.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
-        self.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
-        self.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
-        self.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
-        self.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names [%(default)s]")
-        self.add_argument("--client", type=str, nargs="+", default=[], help="client entity names [%(default)s]")
-        self.add_argument("--server", type=str, nargs="+", default=[], help="server entity names [%(default)s]")
-        self.add_argument("--system", type=str, nargs="+", default=[], help="system entity names [%(default)s]")
-        self.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
-        self.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
-        self.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
-        self.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
-        self.add_argument("--no-database", default=False, action="store_true", help="disable use of database [%(default)s]")
+        self._parser = argparse.ArgumentParser(prog="icsw")
+        sub_parser = self._parser.add_subparsers(help="sub-command help")
+        self._add_status_parser(sub_parser)
+        self._add_action_parser(sub_parser)
+
+    def _add_status_parser(self, sub_parser):
+        _srvc = sub_parser.add_parser("status", help="service status")
+        _srvc.set_defaults(subcom="status")
+        _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview [%(default)s]")
+        _srvc.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
+        _srvc.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info [%(default)s]")
+        _srvc.add_argument("-d", dest="database", action="store_true", default=False, help="show database info [%(default)s]")
+        _srvc.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption [%(default)s]")
+        _srvc.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
+        _srvc.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
+        _srvc.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
+        self._add_iccs_sel(_srvc)
+        # _srvc.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
+        _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
+        _srvc.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
+
+    def _add_action_parser(self, sub_parser):
+        _act = sub_parser.add_parser("action", help="service action")
+        _act.set_defaults(subcom="action")
+        _act.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
+        _act.add_argument("--mode", type=str, default="start", choices=["stop", "start", "restart"], help="operation mode [%(default)s]")
+        _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
+        self._add_iccs_sel(_act)
+
+    def _add_iccs_sel(self, _parser):
+        _parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names [%(default)s]")
+        _parser.add_argument("--client", type=str, nargs="+", default=[], help="client entity names [%(default)s]")
+        _parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names [%(default)s]")
+        _parser.add_argument("--system", type=str, nargs="+", default=[], help="system entity names [%(default)s]")
+
+    @staticmethod
+    def get_default_ns():
+        def_ns = argparse.Namespace(
+            all=True,
+            instance=[],
+            system=[],
+            server=[],
+            client=[],
+            memory=True,
+            database=True,
+            pid=True,
+            started=True,
+            thread=True,
+            version=True,
+        )
+        return def_ns
 
     def parse_args(self):
-        opt_ns = argparse.ArgumentParser.parse_args(self)
-        if opt_ns.all or opt_ns.almost_all:
-            opt_ns.thread = True
-            opt_ns.pid = True
-            opt_ns.memory = True
-            opt_ns.version = True
-        if opt_ns.all:
-            opt_ns.started = True
-            opt_ns.database = True
+        opt_ns = self._parser.parse_args()
+        if opt_ns.mode == "status":
+            if opt_ns.all or opt_ns.almost_all:
+                opt_ns.thread = True
+                opt_ns.pid = True
+                opt_ns.memory = True
+                opt_ns.version = True
+            if opt_ns.all:
+                opt_ns.started = True
         return opt_ns
 
 
 def main():
     cur_c = ServiceContainer(log_com)
-    opt_ns = ServiceParser().parse_args()
+    opt_ns = ICSWParser().parse_args()
     if os.getuid():
         print("Not running as root, information may be incomplete, disabling display of memory")
         opt_ns.memory = False
@@ -577,7 +592,7 @@ def main():
         print("Nothing to do")
         sys.exit(1)
 
-    if opt_ns.mode == "show":
+    if opt_ns.subcom == "status":
         _iter = 0
         while True:
             try:
@@ -591,7 +606,7 @@ def main():
             except KeyboardInterrupt:
                 print("exiting...")
                 break
-    elif opt_ns.mode in ["start", "stop", "restart"]:
+    elif opt_ns.subcom == "action":
         do_action_xml(opt_ns, ret_xml, opt_ns.mode)
 
 if __name__ == "__main__":

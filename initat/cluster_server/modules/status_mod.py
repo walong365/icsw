@@ -58,7 +58,7 @@ class status(cs_base_class.server_com):
 class server_status(cs_base_class.server_com):
     def _call(self, cur_inst):
         _cs = check_scripts.ServiceContainer(cur_inst.log)
-        default_ns = _cs.get_default_ns()
+        default_ns = check_scripts.ICSWParser.get_default_ns()
         default_ns.instance = ["ALL"]
         stat_xml = _cs.check_system(default_ns)
         cur_inst.srv_com["status"] = stat_xml
@@ -135,7 +135,7 @@ class modify_service(cs_base_class.server_com):
 # merged from check_server_mod, still needed ?
 class check_server(cs_base_class.server_com):
     def _call(self, cur_inst):
-        def_ns = check_scripts.get_default_ns()
+        def_ns = check_scripts.ICSWParser.get_default_ns()
         # def_ns["full_status"] = True
         # def_ns["mem_info"] = True
         ret_dict = check_scripts.check_system(def_ns)
