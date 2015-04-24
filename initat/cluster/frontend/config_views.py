@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -48,10 +48,10 @@ import copy
 import datetime
 import json
 import logging
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import re
-import server_command
+from initat.tools import server_command
 import time
 
 logger = logging.getLogger("cluster.config")
@@ -86,36 +86,29 @@ def delete_object(request, del_obj, **kwargs):
 def _get_device_configs(sel_list, **kwargs):
     dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
     devg_list = [key.split("__")[1] for key in sel_list if key.startswith("devg__")]
-    all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(
-        Q(enabled=True) & Q(device_group__enabled=True) & (
-            Q(pk__in=dev_list)))  # | Q(device_group__in=devg_list)))
+    all_devs = device.all_real_enabled.filter(Q(pk__in=dev_list))
     # all meta devices
-    meta_devs = device.objects.filter(
-        Q(enabled=True) &
-        Q(device_group__enabled=True) & (
-            Q(device_type__identifier="MD") & (
-                Q(device_group__in=devg_list) | Q(device_group__device_group__in=dev_list)
-            )
-        )
+    meta_devs = device.all_meta_enabled.filter(
+        Q(device_group__in=devg_list) | Q(device_group__device_group__in=dev_list)
     ).distinct()
-    # print meta_devs, devg_list, device.objects.filter(Q(device__device_group__enabled=True)
-    #    & (Q(device_type__identifier="MD"))), "*"
     meta_confs = device_config.objects.filter(
         Q(device__enabled=True) & Q(device__device_group__enabled=True) & Q(device__in=meta_devs)
     ).select_related("device")
     # print len(meta_confs), len(meta_devs)
     if "conf" in kwargs:
         all_confs = device_config.objects.filter(
-            Q(device__enabled=True) & Q(device__device_group__enabled=True) & (
-                Q(config=kwargs["conf"]) & Q(device__in=dev_list)
-            )
-        )  # | Q(device__device_group__in=devg_list))))
+            Q(device__enabled=True) &
+            Q(device__device_group__enabled=True) &
+            Q(config=kwargs["conf"]) &
+            Q(device__in=dev_list)
+        )
         meta_confs = meta_confs.filter(config=kwargs["conf"])
     else:
         all_confs = device_config.objects.filter(
-            Q(device__enabled=True) & Q(device__device_group__enabled=True) & (
+            Q(device__enabled=True) &
+            Q(device__device_group__enabled=True) & (
                 Q(device__in=dev_list) | (
-                    Q(device__device_group__in=devg_list) & Q(device__device_type__identifier="MD")
+                    Q(device__device_group__in=devg_list) & Q(device__is_meta_device=True)
                 )
             )
         )
@@ -160,11 +153,11 @@ class alter_config_cb(View):
             dev_id, conf_id = (int(_post["id"].split("__")[1]),
                                int(_post["id"].split("__")[3]))
         cur_dev, cur_conf = (
-            device.objects.select_related("device_type").get(Q(pk=dev_id)),
+            device.objects.get(Q(pk=dev_id)),
             getattr(config, "objects").get(Q(pk=conf_id))
         )
         # is metadevice ?
-        is_meta = cur_dev.device_type.identifier == "MD"
+        is_meta = cur_dev.is_meta_device
         # all devices of device_group
         all_devs = cur_dev.device_group.device_group.all()
         logger.info(u"device {} [{}]/ config {}: {} ({} in device_group)".format(
@@ -208,7 +201,7 @@ class alter_config_cb(View):
         else:
             # get meta device
             try:
-                meta_dev = cur_dev.device_group.device_group.get(Q(device_type__identifier="MD"))
+                meta_dev = cur_dev.device_group.device_group.get(Q(is_meta_device=True))
             except device.DoesNotExist:
                 meta_dev = None
             # handling of actions for non-meta devices

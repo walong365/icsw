@@ -28,13 +28,13 @@ django.setup()
 
 from initat.cluster.backbone.models import LogSource
 from initat.collectd.config_static import COMMAND_PORT
-from initat.collectd.version import VERSION_STRING
+from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
-import cluster_location
-import config_tools
-import configfile
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
 import daemon
-import process_tools
+from initat.tools import process_tools
 import sys
 import time
 

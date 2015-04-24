@@ -37,21 +37,21 @@ from initat.md_config_server.icinga_log_reader.log_reader import host_service_id
 from lxml.builder import E  # @UnresolvedImport
 import codecs
 import commands
-import config_tools
-import configfile
-import logging_tools
-import net_tools
+from initat.tools import config_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import net_tools
 import networkx
 import operator
 import json
 import time
 import os
 import os.path
-import process_tools
-import server_command
+from initat.tools import process_tools
+from initat.tools import server_command
 import signal
 import stat
-import threading_tools
+from initat.tools import threading_tools
 import time
 
 
@@ -1441,7 +1441,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-        return device.objects.exclude(Q(device_type__identifier="MD")).filter(h_filter).count()
+        return device.objects.exclude(Q(is_meta_device=True)).filter(h_filter).count()
 
     def _create_host_config_files(self, _bc, cur_gc, d_map, hdep_from_topo):
         """
@@ -1496,10 +1496,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):  # @UndefinedVariable
             ps_dict[ps_config.name] = ps_config.parent_config.name
-        _bc.set_host_list(device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).values_list("pk", flat=True))
+        _bc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(h_filter).values_list("pk", flat=True))
         meta_devices = {
             md.device_group.pk: md for md in device.objects.filter(
-                Q(device_type__identifier='MD')
+                Q(is_meta_device=True)
             ).prefetch_related(
                 "device_config_set",
                 "device_config_set__config"

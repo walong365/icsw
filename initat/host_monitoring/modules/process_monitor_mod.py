@@ -30,9 +30,9 @@ import time
 
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
-import affinity_tools
-import logging_tools
-import process_tools
+from initat.tools import affinity_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import psutil
 
 

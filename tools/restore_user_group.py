@@ -30,7 +30,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import group, user
 from lxml import etree  # @UnresolvedImport
 import codecs
-import logging_tools
+from initat.tools import logging_tools
 import sys
 
 OBJ_DICT = {

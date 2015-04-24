@@ -182,7 +182,6 @@ user_module = angular.module(
                 $scope.home_export_list = data[4]
                 # beautify permission list
                 for entry in $scope.csw_permission_list
-                    #info_str = entry.content_type.app_label + " | " + entry.content_type.name + " | " + entry.name + " | " + (if entry.valid_for_object_level then "G/O" else "G")
                     info_str = "#{entry.name} (" + (if entry.valid_for_object_level then "G/O" else "G") + ")"
                     entry.info = info_str
                     if entry.valid_for_object_level

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2006,2007,2009,2010,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2006-2011,2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of logging-server
 #
@@ -19,10 +19,10 @@
 #
 """ client for logging-server """
 
-import io_stream_helper
-import logging_tools
+from initat.tools import io_stream_helper
+from initat.tools import logging_tools
 import argparse
-import threading_tools
+from initat.tools import threading_tools
 
 
 class my_options(argparse.ArgumentParser):
@@ -95,9 +95,9 @@ class my_thread_pool(threading_tools.process_pool):
         self.__bytes_total += num_bytes
         self.__processes_running -= 1
         if self.__processes_running:
-            self.log("%s still logging" % (logging_tools.get_plural("process", self.__processes_running)))
+            self.log("{} still logging".format(logging_tools.get_plural("process", self.__processes_running)))
         else:
-            self.log("bytes emitted: %s" % (logging_tools.get_size_str(self.__bytes_total)))
+            self.log("bytes emitted: {}".format(logging_tools.get_size_str(self.__bytes_total)))
             self["exit_requested"] = True
 
     def loop_post(self):

@@ -20,7 +20,7 @@
 import re
 
 from initat.host_monitoring import limits, hm_classes
-import logging_tools
+from initat.tools import logging_tools
 
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
 

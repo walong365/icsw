@@ -36,8 +36,8 @@ import dateutil.parser
 import dateutil.tz
 import json
 import logging
-import logging_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.rrd")
 
@@ -54,8 +54,16 @@ class merge_cds(View):
     def post(self, request):
         # return the RRD tree with selected controlling devices
         dev_pks = [_pk for _pk in request.POST.getlist("pks[]")]
-        devs = device.objects.filter(Q(pk__in=dev_pks))
-        cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=devs)).values_list("pk", flat=True))
+        devs = device.all_real_enabled.filter(Q(pk__in=dev_pks))
+        cd_pks = list(
+            device.all_real_enabled.filter(
+                (
+                    Q(ipmi_capable=True) |
+                    Q(snmp_schemes__power_control=True)
+                ) &
+                Q(master_connections__in=devs)
+            ).values_list("pk", flat=True)
+        )
         return _get_node_rrd(request, dev_pks + cd_pks)
 
 
@@ -94,7 +102,16 @@ class graph_rrds(View):
             json.loads(_post["keys"])
         )
         if int(self._parse_post_boolean(_post, "cds_already_merged", "0")):
-            cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=pk_list)).values_list("pk", flat=True))
+            # FIXME
+            cd_pks = list(
+                device.all_real_enabled.filter(
+                    (
+                        Q(ipmi_capable=True) |
+                        Q(snmp_schemes__power_control=True)
+                    ) &
+                    Q(master_connections__in=devs)
+                ).values_list("pk", flat=True)
+            )
         else:
             cd_pks = []
         srv_com["device_list"] = E.device_list(

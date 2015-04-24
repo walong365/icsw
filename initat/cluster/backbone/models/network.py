@@ -7,10 +7,10 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
 from initat.cluster.backbone.signals import bootsettings_changed
-import ipvx_tools
+from initat.tools import ipvx_tools
 import logging
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import re
 
 __all__ = [
@@ -531,7 +531,7 @@ def netdevice_pre_save(sender, **kwargs):
         if cur_inst.force_network_device_type_match:
             nd_type = cur_inst.find_matching_network_device_type()
             if not nd_type:
-                raise ValidationError("no matching device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
+                raise ValidationError("no matching network_device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
             cur_inst.network_device_type = nd_type
         else:
             if not cur_inst.network_device_type_id:

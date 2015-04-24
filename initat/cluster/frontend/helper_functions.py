@@ -28,9 +28,9 @@ from initat.cluster.backbone import routing
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
 import email.mime
-import logging_tools
-import net_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import net_tools
+from initat.tools import process_tools
 import smtplib
 
 
@@ -287,7 +287,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
                         logging_tools.get_plural("device", len(cur_router.no_bootserver_devices)),
                         ", ".join(sorted([_v[1] for _v in cur_router.no_bootserver_devices])),
                     ),
-                    logging_tools.LOG_LEVEL_ERROR
+                    logging_tools.LOG_LEVEL_WARN
                 )
         else:
             send_list = [(None, send_com)]

@@ -33,7 +33,7 @@ import pytz
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from django.core.cache import cache
-from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
+from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
 from initat.cluster.frontend.common import duration_utils
@@ -56,9 +56,9 @@ import base64
 import itertools
 import json
 import logging
-import logging_tools
-import process_tools
-import server_command
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 import socket
 import cairosvg
 import StringIO
@@ -269,10 +269,10 @@ class get_mon_vars(View):
     def post(self, request):
         _post = request.POST
         _dev_pks = [int(_post["device_pk"])]
-        _dev = device.objects.select_related("device_type", "device_group").get(Q(pk=_dev_pks[0]))
-        if _dev.device_type.identifier == "H":
+        _dev = device.objects.select_related("device_group").get(Q(pk=_dev_pks[0]))
+        if not _dev.is_meta_device:
             # add meta device
-            _dev_pks.append(_dev.device_group.device_group.filter(Q(device_type__identifier="MD"))[0].pk)
+            _dev_pks.append(_dev.device_group.device_group.filter(Q(is_meta_device=True))[0].pk)
         res_list = []
         mon_check_commands = mon_check_command.objects.filter(
             Q(config__device_config__device__in=_dev_pks)
@@ -407,7 +407,7 @@ class create_device(permission_required_mixin, View):
                 try:
                     cur_dev = device.objects.create(
                         device_group=cur_dg,
-                        device_type=device_type.objects.get(Q(identifier="H")),
+                        is_meta_device=False,
                         domain_tree_node=dnt_node,
                         name=short_name,
                         mon_resolve_name=device_data["resolve_via_ip"],

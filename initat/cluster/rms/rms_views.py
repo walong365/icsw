@@ -39,9 +39,9 @@ from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
 import json
 import logging
-import logging_tools
+from initat.tools import logging_tools
 import pprint  # @UnusedImport
-import server_command
+from initat.tools import server_command
 import sys
 import threading
 import time
@@ -49,7 +49,7 @@ import datetime
 from collections import namedtuple
 
 try:
-    import sge_tools
+    from initat.tools import sge_tools
 except ImportError:
     sge_tools = None
 

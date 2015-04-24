@@ -23,7 +23,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import monitoring_hint
 from initat.md_config_server.special_commands.base import SpecialBase
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
-import logging_tools
+from initat.tools import logging_tools
 
 
 class special_eonstor(SpecialBase):

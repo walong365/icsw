@@ -33,7 +33,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml import etree  # @UnusedImport
 import json
 import logging
-import server_command
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.main")
 

@@ -20,9 +20,9 @@
 from initat.host_monitoring import limits
 from initat.snmp.struct import snmp_oid, value_cache
 import cStringIO
-import logging_tools
+from initat.tools import logging_tools
 import argparse
-import process_tools
+from initat.tools import process_tools
 import socket
 import sys
 import time

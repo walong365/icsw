@@ -24,7 +24,7 @@
 
 from django.db import models
 import logging
-import server_command
+from initat.tools import server_command
 
 logger = logging.getLogger(__name__)
 

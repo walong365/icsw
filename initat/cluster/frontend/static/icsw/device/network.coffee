@@ -804,7 +804,7 @@ angular.module(
                 # beef up node structure
                 if scope.click_node?
                     scope.click_node.idx = scope.click_node.id
-                    scope.click_node.device_type_identifier = "D"
+                    #scope.click_node.device_type_identifier = "D"
                     DeviceOverviewService.NewOverview(event, scope.click_node)
             scope.$watch(attrs["icswDeviceNetworkNodeDblClick"], (click_node) ->
                 scope.click_node = click_node

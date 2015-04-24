@@ -22,9 +22,9 @@
 from initat.cluster.backbone.models import mon_device_templ, mon_service_templ, \
     TOP_MONITORING_CATEGORY, parse_commandline
 from initat.md_config_server.config.mon_config import mon_config
-import configfile
-import logging_tools
-import process_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
 __all__ = [

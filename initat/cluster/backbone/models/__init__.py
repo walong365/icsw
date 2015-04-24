@@ -41,17 +41,17 @@ from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt
 import datetime
-import ipvx_tools
+from initat.tools import ipvx_tools
 import json
 import logging
-import logging_tools
+from initat.tools import logging_tools
 import marshal
-import net_tools
-import process_tools
+from initat.tools import net_tools
+from initat.tools import process_tools
 import pytz
 import random
 import re
-import server_command
+from initat.tools import server_command
 import time
 import uuid
 
@@ -214,7 +214,7 @@ class home_export_list(object):
         exp_entries = device_config.objects.filter(
             Q(config__name__icontains="homedir") &
             Q(config__name__icontains="export") &
-            Q(device__device_type__identifier="H")
+            Q(device__is_meta_device=False)
         ).prefetch_related(
             "config__config_str_set"
         ).select_related(
@@ -340,7 +340,8 @@ class device_variable(models.Model):
         return "{}[{}] = {}".format(
             self.name,
             self.var_type,
-            str(self.get_value()))
+            str(self.get_value())
+        )
 
     def init_as_gauge(self, max_value, start=0):
         self.__max, self.__cur = (max_value, start)
@@ -429,16 +430,27 @@ class DeviceEnabledManager(models.Manager):
         return super(DeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True))
 
 
+class RealDeviceEnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(RealDeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=False))
+
+
+class MetaDeviceEnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(MetaDeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(is_meta_device=True))
+
+
 class device(models.Model):
     objects = models.Manager()
     all_enabled = DeviceEnabledManager()
+    all_real_enabled = RealDeviceEnabledManager()
+    all_meta_enabled = MetaDeviceEnabledManager()
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
     # no dots allowed (these parts are now in domain_tree_node)
     name = models.CharField(max_length=192)
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
-    device_type = models.ForeignKey("device_type")
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
     mon_device_templ = models.ForeignKey("backbone.mon_device_templ", null=True, blank=True)
@@ -446,18 +458,16 @@ class device(models.Model):
     mon_ext_host = models.ForeignKey("backbone.mon_ext_host", null=True, blank=True)
     etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
-    newkernel = models.CharField(max_length=192, blank=True)
     new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
-    actkernel = models.CharField(max_length=192, blank=True)
-    act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
-    act_kernel_build = models.IntegerField(null=True, blank=True)
-    kernelversion = models.CharField(max_length=192, blank=True)
+    # act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
+    # act_kernel_build = models.IntegerField(null=True, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True, default="CPIO")
-    newimage = models.CharField(max_length=765, blank=True)
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
-    actimage = models.CharField(max_length=765, blank=True)
-    act_image = models.ForeignKey("image", null=True, related_name="act_image")
-    imageversion = models.CharField(max_length=192, blank=True)
+    # act_image = models.ForeignKey("image", null=True, related_name="act_image")
+    # kernel version running
+    # kernelversion = models.CharField(max_length=192, blank=True, default="")
+    # image version running
+    # imageversion = models.CharField(max_length=192, blank=True, default="")
     # new partition table
     partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="new_partition_table")
     # current partition table
@@ -500,15 +510,6 @@ class device(models.Model):
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64)  # , unique=True)
-    # cluster url, no longer in use, will be removed in a few months
-    curl = models.CharField(default="ssh://", max_length=512)
-    # , choices=[
-    #    ("ssh://", "ssh://"),
-    #    ("snmp://", "snmp://"),
-    #    ("ipmi://", "ipmi://"),
-    #    ("ilo4://", "ilo4://"), # no longer used ?
-    #    ]
-    # )
     date = models.DateTimeField(auto_now_add=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
@@ -535,7 +536,9 @@ class device(models.Model):
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
     # has an IPMI interface
-    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple")
+    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
+    # flag: is meta device ?
+    is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
     # scan active ?
@@ -577,7 +580,7 @@ class device(models.Model):
     def display_name(self):
         # like full_name but replaces METADEV_ with group
         _name = self.full_name
-        if self.device_type.identifier == "MD" and _name.startswith("METADEV_"):
+        if self.is_meta_device and _name.startswith("METADEV_"):
             _name = "group {}".format(_name[8:])
         return _name
 
@@ -593,12 +596,6 @@ class device(models.Model):
 
     def root_passwd_set(self):
         return True if self.root_passwd else False
-
-    def is_meta_device(self):
-        return self.device_type.identifier == "MD"
-
-    def device_type_identifier(self):
-        return self.device_type.identifier
 
     def device_group_name(self):
         return self.device_group.name
@@ -653,6 +650,20 @@ class device(models.Model):
 
     def get_slave_cons(self):
         return [entry for entry in self.cd_cons if entry.child_id == self.pk]
+
+    def get_act_image(self):
+        if self.imagedevicehistory_set.all().count():
+            _ho = self.imagedevicehistory_set.all()[0]
+            return (_ho.image_id, _ho.version, _ho.release)
+        else:
+            return None
+
+    def get_act_kernel(self):
+        if self.kerneldevicehistory_set.all().count():
+            _ho = self.kerneldevicehistory_set.all()[0]
+            return (_ho.kernel_id, _ho.version, _ho.release)
+        else:
+            return None
 
     def valid_state(self):
         _rs = ""
@@ -762,6 +773,11 @@ class device(models.Model):
         else:
             return "?.?"
 
+    def create_boot_history(self):
+        return DeviceBootHistory.objects.create(
+            device=self,
+        )
+
     def __unicode__(self):
         return u"{}{}".format(
             self.name,
@@ -785,6 +801,7 @@ class device(models.Model):
         )
         fk_ignore_list = [
             "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", "DeviceLogEntry",
+            "KernelDeviceHistory", "ImageDeviceHistory", "DeviceBootHistory",
             "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
             "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
             "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
@@ -796,6 +813,14 @@ class device(models.Model):
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
         verbose_name = u'Device'
+
+
+class DeviceBootHistory(models.Model):
+    # new kernel and / or image changes are connected to the device via this structure
+    # might be empty if we only boot
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device")
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class device_selection(object):
@@ -811,7 +836,7 @@ def device_post_save(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         if _cur_inst.bootserver_id:
             bootsettings_changed.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
-        if _cur_inst.device_type.identifier in ["MD"]:
+        if _cur_inst.is_meta_device:
             _stripped = strip_metadevice_name(_cur_inst.name)
             if _stripped != _cur_inst.device_group.name:
                 _cur_inst.device_group.name = _stripped
@@ -909,15 +934,14 @@ def device_pre_save(sender, **kwargs):
                     )
                 )
         # check for device group
-        if cur_inst.device_group.cluster_device_group and cur_inst.device_type.identifier not in ["MD"]:
+        if cur_inst.device_group.cluster_device_group and not cur_inst.is_meta_device:
             raise ValidationError("no devices allowed in cluster_device_group")
         # Check if the device limit is reached, disabled as of 2013-10-14 (AL)
         if False:
             dev_count = settings.CLUSTER_LICENSE["device_count"]
 
             # Exclude special meta devices
-            md_type = device_type.objects.get(identifier="MD")
-            current_count = device.objects.exclude(device_type=md_type).count()
+            current_count = device.objects.exclude(is_meta_device=True).count()
 
             if dev_count > 0 and current_count >= dev_count:
                 logger.warning("Device limit {:d} reached".format(dev_count))
@@ -982,12 +1006,13 @@ class device_group(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def _add_meta_device(self):
-        new_md = device(name=self.get_metadevice_name(),
-                        device_group=self,
-                        domain_tree_node=self.domain_tree_node,
-                        enabled=self.enabled,
-                        # device_class=device_class.objects.get(Q(pk=1)),
-                        device_type=device_type.objects.get(Q(identifier="MD")))
+        new_md = device(
+            name=self.get_metadevice_name(),
+            device_group=self,
+            domain_tree_node=self.domain_tree_node,
+            enabled=self.enabled,
+            is_meta_device=True,
+        )
         new_md.save()
         self.device = new_md
         self.save()
@@ -1112,21 +1137,6 @@ class device_rsync_config(models.Model):
 
     class Meta:
         db_table = u'device_rsync_config'
-
-
-class device_type(models.Model):
-    idx = models.AutoField(db_column="device_type_idx", primary_key=True)
-    identifier = models.CharField(unique=True, max_length=24)
-    # for ordering
-    priority = models.IntegerField(default=0)
-    description = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return self.description
-
-    class Meta:
-        db_table = u'device_type'
 
 
 class DeviceLogEntry(models.Model):

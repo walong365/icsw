@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005-2010,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2010,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,9 +23,9 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
-import logging_tools
+from initat.tools import logging_tools
 import os
-import sge_license_tools
+from initat.tools import sge_license_tools
 import stat
 import sys
 import time

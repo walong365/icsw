@@ -27,9 +27,9 @@ from initat.cluster.backbone.routing import get_server_uuid, get_type_from_confi
 from initat.cluster_config_server.build_client import build_client
 from initat.cluster_config_server.build_container import generated_tree, build_container
 from initat.cluster_config_server.config import global_config
-import config_tools
-import logging_tools
-import threading_tools
+from initat.tools import config_tools
+from initat.tools import logging_tools
+from initat.tools import threading_tools
 import time
 
 
@@ -124,12 +124,12 @@ class build_process(threading_tools.process_obj):
         # get device by name
         try:
             if cur_c.name.count("."):
-                b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
+                b_dev = device.objects.select_related("device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
                     Q(name=cur_c.name.split(".")[0]) &
                     Q(domain_tree_node__full_name=cur_c.name.split(".", 1)[1])
                     )
             else:
-                b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
+                b_dev = device.objects.select_related("device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
                     Q(name=cur_c.name))
         except device.DoesNotExist:
             cur_c.log("device not found by name", logging_tools.LOG_LEVEL_ERROR, state="done")
@@ -341,7 +341,7 @@ class build_process(threading_tools.process_obj):
             config_pks = list(config.objects.filter(
                 Q(device_config__device=b_dev) | (
                     Q(device_config__device__device_group=b_dev.device_group_id) &
-                    Q(device_config__device__device_type__identifier="MD")
+                    Q(device_config__device__is_meta_device=True)
                 )
             ). order_by("-priority", "name").distinct().values_list("pk", flat=True))
             parent_pks = []

@@ -21,13 +21,13 @@ from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
 import commands
 import datetime
-import logging_tools
+from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
-import process_tools
+from initat.tools import process_tools
 import psutil
 import re
-import server_command
+from initat.tools import server_command
 import stat
 import subprocess
 import time
@@ -216,6 +216,9 @@ class _general(hm_classes.hm_module):
         return self.__argus_map
 
     def _check_free_space(self):
+        if not os.path.exists(ARGUS_TARGET):
+            self.log("{} not found".format(ARGUS_TARGET), logging_tools.LOG_LEVEL_ERROR)
+            return False
         _stat = os.statvfs(ARGUS_TARGET)
         _cur_free = _stat.f_bavail * _stat.f_bsize
         if _cur_free > ARGUS_MIN_FREE:

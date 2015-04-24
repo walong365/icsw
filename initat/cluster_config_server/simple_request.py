@@ -21,9 +21,9 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import config, config_str, device_variable
-import config_tools
-import logging_tools
-import server_command
+from initat.tools import config_tools
+from initat.tools import logging_tools
+from initat.tools import server_command
 
 
 # copy from md-config-server
@@ -109,7 +109,7 @@ class simple_request(object):
         config_pks = config.objects.filter(
             Q(device_config__device=self.cc.device) | (
                 Q(device_config__device__device_group=self.cc.device.device_group_id) &
-                Q(device_config__device__device_type__identifier="MD")
+                Q(device_config__device__is_meta_device=True)
             )
         ).order_by("-priority", "name").distinct().values_list("pk", flat=True)
         c_vars = config_str.objects.filter(Q(config__in=config_pks) & Q(name=cs_name))

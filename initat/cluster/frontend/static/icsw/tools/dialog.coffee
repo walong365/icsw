@@ -5,9 +5,9 @@ angular.module(
     ]
 ).service('icswDialogDeleteObjects',
     ['icswParseXMLResponseService', 'icswCallAjaxService', 'icswToolsSimpleModalService', 'ICSW_URLS', '$rootScope',
-    '$compile', '$templateCache', 'toaster', 'blockUI', '$interval',
+    '$compile', '$templateCache', 'toaster', 'blockUI', 'icswDialogDeleteCheckDeletionService',
     (icswParseXMLResponseService, icswCallAjaxService, icswToolsSimpleModalService, ICSW_URLS, $rootScope,
-    $compile, $templateCache, toaster, blockUI, $interval) ->
+    $compile, $templateCache, toaster, blockUI, icswDialogDeleteCheckDeletionService) ->
         # Ask whether to delete object, then deal with references (show popup querying user for actions)
 
         # we have 3 functions here:
@@ -63,43 +63,11 @@ angular.module(
                         success: (xml) ->
                             icswParseXMLResponseService(xml)
 
+                icswDialogDeleteCheckDeletionService.add_to_check_list(del_pks, model, async, after_delete)
 
-                last_msg = undefined
-                interval_promise = null
-                interval_fn = () ->
-                    icswCallAjaxService
-                        url: ICSW_URLS.BASE_CHECK_DELETION_STATUS
-                        data:
-                            model: model
-                            obj_pks: JSON.stringify(del_pks)
-                        success: (xml) ->
-                            if icswParseXMLResponseService(xml)
-                                # handle msg
-                                msg = $(xml).find("value[name='msg']").text()
-                                if async
-                                    if last_msg != msg
-                                        toaster.pop("success", "", msg)
-                                else
-                                    blockUI.message(msg)
-
-                                last_msg = msg
-
-                                # check if we are done
-                                num_remaining = parseInt($(xml).find("value[name='num_remaining']").text())
-                                if num_remaining == 0
-                                    if after_delete?
-                                        after_delete()
-
-                                    if !async
-                                        blockUI.stop()
-
-                                    $interval.cancel(interval_promise)
-                interval_promise = $interval(interval_fn, 1000)
-
+                # refresh page right away
                 if async && after_delete?
                     after_delete()
-
-                interval_fn()  # check right away as well
 
             show_delete_dialog = (related_objects, deletable_objects) ->
                 # shows dialog if objs to delete have hard references
@@ -221,4 +189,69 @@ angular.module(
 
 
             try_delete()
+]).service('icswDialogDeleteCheckDeletionService',
+    ['ICSW_URLS', 'blockUI', 'icswCallAjaxService', '$interval', 'icswParseXMLResponseService', 'toaster', '$rootScope'
+    (ICSW_URLS, blockUI, icswCallAjaxService, $interval, icswParseXMLResponseService, toaster, $rootScope) ->
+
+        check_list = {}
+        next_delete_request_id = 0
+        interval_promise = null
+        add_to_check_list = (del_pks, model, async, after_delete) ->
+            # this can also be used for sync delete, but then no other entry must
+            # be added to the check list while this is running, else there are issues with blockUI
+
+            if Object.keys(check_list).length == 0
+                # start checking
+                interval_promise = $interval(interval_fn, 1000)
+            # add entry with unique id
+            next_delete_request_id += 1
+            check_list[next_delete_request_id] = {
+                del_pks: del_pks
+                model: model
+                async: async
+                after_delete: after_delete
+                last_msg: undefined
+            }
+            # also check right away
+            interval_fn()
+
+        interval_fn = () ->
+            request_params = {}
+            for k, v of check_list
+                request_params[k] = [v.model, v.del_pks]
+            icswCallAjaxService
+                url: ICSW_URLS.BASE_CHECK_DELETION_STATUS
+                data:
+                    del_requests: JSON.stringify(request_params)
+                success: (xml) ->
+                    if icswParseXMLResponseService(xml)
+                        remove_list = []
+                        for k, check_list_entry of check_list
+                            # handle msg
+                            msg = $(xml).find("value[name='msg_#{k}']").text()
+                            if msg != ""  # this is "" if the msg is not defined in case check_list here is not current
+                                if check_list_entry.async
+                                    if check_list_entry.last_msg != msg
+                                        toaster.pop("success", "", msg)
+                                else
+                                    blockUI.message(msg)
+                                check_list_entry.last_msg = msg
+                                # check if we are done
+                                num_remaining = parseInt($(xml).find("value[name='num_remaining_#{k}']").text())
+                                # this is Nan on invalid entry, and NaN != 0, which we want here
+                                if num_remaining == 0
+                                    if check_list_entry.after_delete?
+                                        $rootScope.$apply(
+                                            check_list_entry.after_delete()
+                                        )
+                                    if !check_list_entry.async
+                                        blockUI.stop()
+                                    remove_list.push(k)
+                        for k in remove_list
+                            delete check_list[k]
+                        if Object.keys(check_list).length == 0
+                            $interval.cancel(interval_promise)
+        return {
+            add_to_check_list: add_to_check_list
+        }
 ])

@@ -25,10 +25,10 @@ from initat.cluster.backbone.models import MachineVector, MVStructEntry, MVValue
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-import logging_tools
+from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
-import process_tools
+from initat.tools import process_tools
 import re
 import time
 
@@ -290,7 +290,6 @@ class DataStore(object):
         self.mv = machine_vector
         self.pk = machine_vector.device.pk
         self.name = unicode(machine_vector.device.full_name)
-        # self.xml_vector = E.machine_vector()
         # link
         DataStore.__devices[self.pk] = self
 
@@ -348,6 +347,17 @@ class DataStore(object):
 
     @staticmethod
     def has_machine_vector(dev_pk):
+        if pk not in DataStore.__devices:
+            try:
+                _mv = MachineVector.objects.get(
+                    Q(device__pk=pk) &
+                    Q(device__enabled=True) &
+                    Q(device__device_group__enabled=True)
+                )
+            except MachineVector.DoesNotExist:
+                pass
+            else:
+                DataStore.__devices[pk] = _mv
         return dev_pk in DataStore.__devices
 
     @staticmethod

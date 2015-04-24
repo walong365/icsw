@@ -199,6 +199,7 @@ angular.module(
                             size: BootstrapDialog.SIZE_WIDE
                             closable: true
                             closeByBackdrop: false
+                            cssClass: "modal-tall"
                             onhidden: () =>
                                 scope.modal_active = false
                             onshow: (modal) =>

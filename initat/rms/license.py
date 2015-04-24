@@ -39,11 +39,11 @@ from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
-import logging_tools
-import process_tools
-import server_command
-import sge_license_tools
-import threading_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import sge_license_tools
+from initat.tools import threading_tools
 import zmq
 
 

@@ -21,14 +21,14 @@
 
 from initat.package_install.client.command import simple_command
 from initat.package_install.client.config import global_config
-from initat.package_install.client.version import VERSION_STRING
+from initat.client_version import VERSION_STRING
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 

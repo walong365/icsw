@@ -20,8 +20,8 @@
 """ basic structures """
 
 from initat.host_monitoring import limits
-import ipvx_tools
-import server_command
+from initat.tools import ipvx_tools
+from initat.tools import server_command
 import time
 
 

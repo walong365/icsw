@@ -489,13 +489,6 @@ class device_tree_form(ModelForm):
             Field("name"),
             Field("comment"),
             Field(
-                "device_type",
-                repeat="value.idx as value in rest_data.device_type | filter:ignore_md",
-                placeholder="Select the device type",
-                display="description",
-                filter="{description:$select.search}",
-            ),
-            Field(
                 "device_group",
                 repeat="value.idx as value in rest_data.device_group | filter:ignore_cdg",
                 placeholder="Select the device group",
@@ -559,7 +552,6 @@ class device_tree_form(ModelForm):
         model = device
         exclude = ()
         widgets = {
-            "device_type": ui_select_widget(),
             "device_group": ui_select_widget(),
             "domain_tree_node": ui_select_widget(),
             "bootserver": ui_select_widget(),
@@ -576,7 +568,6 @@ class device_tree_many_form(ModelForm):
     helper.field_class = 'col-sm-8'
     helper.ng_model = "edit_obj"
     helper.ng_submit = "modify_many()"
-    change_device_type = BooleanField(label="DeviceType", required=False)
     change_device_group = BooleanField(label="DeviceGroup", required=False)
     root_passwd = CharField(widget=PasswordInput, required=False)
     change_root_passwd = BooleanField(label="pwd", required=False)
@@ -593,15 +584,6 @@ class device_tree_many_form(ModelForm):
     for fs_string, el_list in [
         (
             "Basic settings", [
-                (
-                    "device_type",
-                    {
-                        "repeat": "value.idx as value in rest_data.device_type | filter:ignore_md",
-                        "placeholder": "Select the device type",
-                        "display": "description",
-                        "filter": "{description:$select.search}",
-                    }
-                ),
                 (
                     "device_group",
                     {
@@ -688,7 +670,6 @@ class device_tree_many_form(ModelForm):
         model = device
         exclude = ()
         widgets = {
-            "device_type": ui_select_widget(),
             "device_group": ui_select_widget(),
             "domain_tree_node": ui_select_widget(),
             "bootserver": ui_select_widget(),

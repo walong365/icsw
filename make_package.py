@@ -22,10 +22,10 @@
 """ fronted for creating packages """
 
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
-import rpm_build_tools
+from initat.tools import process_tools
+from initat.tools import rpm_build_tools
 import shutil
 import sys
 import time

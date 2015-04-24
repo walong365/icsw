@@ -26,12 +26,12 @@ from initat.rms.config import global_config
 from initat.rms.license import license_process
 from initat.rms.rmsmon import rms_mon_process
 from django.db import connection
-import cluster_location
-import configfile
-import logging_tools
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import cluster_location
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import zmq
 
 
@@ -105,7 +105,7 @@ class server_process(threading_tools.process_pool):
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("rms_server")
+            msi_block = process_tools.meta_server_info("rms-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
             msi_block.start_command = "/etc/init.d/rms-server start"

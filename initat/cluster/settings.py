@@ -8,7 +8,7 @@ from lxml import etree
 from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
-import logging_tools
+from initat.tools import logging_tools
 
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
@@ -348,13 +348,10 @@ ADDITIONAL_ANGULAR_APPS = []
 ADDITIONAL_URLS = []
 ADDITIONAL_JS = []
 
+# my authentication backend
 AUTHENTICATION_BACKENDS = (
     "initat.cluster.backbone.cluster_auth.db_backend",
 )
-AUTH_USER_MODEL = "backbone.user"
-
-# my authentication backend
-
 
 ICSW_ADDON_APPS = []
 # add everything below cluster
@@ -395,10 +392,16 @@ for sub_dir in os.listdir(dir_name):
 
 ADDITIONAL_JS = tuple(ADDITIONAL_JS)
 
-for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
-    add_app = os.environ[add_app_key]
-    if add_app not in INSTALLED_APPS:
-        INSTALLED_APPS.append(add_app)
+for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REMOVE_APP_NAME")]:
+    rem_app = os.environ[rem_app_key]
+    if rem_app.endswith("."):
+        INSTALLED_APPS = [_entry for _entry in INSTALLED_APPS if not _entry.startswith(rem_app)]
+    else:
+        if rem_app in INSTALLED_APPS:
+            INSTALLED_APPS.remove(rem_app)
+
+if any([_app.startswith("initat.cluster.") for _app in INSTALLED_APPS]):
+    AUTH_USER_MODEL = "backbone.user"
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
@@ -598,7 +601,7 @@ LOGGING = {
     'disable_existing_loggers': True,
     'formatters': {
         "initat": {
-            "()": "logging_tools.initat_formatter",
+            "()": "initat.tools.logging_tools.initat_formatter",
         },
         'verbose': {
             'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
@@ -610,17 +613,17 @@ LOGGING = {
     'handlers': {
         "init_unified": {
             "level": "INFO" if DEBUG else "WARN",
-            "class": "logging_tools.init_handler_unified",
+            "class": "initat.tools.logging_tools.init_handler_unified",
             "formatter": "initat",
         },
         "init": {
             "level": 'INFO' if DEBUG else "WARN",
-            "class": "logging_tools.init_handler",
+            "class": "initat.tools.logging_tools.init_handler",
             "formatter": "initat",
         },
         "init_mail": {
             "level": "ERROR",
-            "class": "logging_tools.init_email_handler",
+            "class": "initat.tools.logging_tools.init_email_handler",
             "formatter": "initat",
         },
     },

@@ -25,10 +25,10 @@ import sys
 import optparse
 import os
 import os.path
-import logging_tools
-import net_tools
-import server_command
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import net_tools
+from initat.tools import server_command
+from initat.tools import process_tools
 import re
 import pprint
 sys.path.append("/usr/local/sbin")

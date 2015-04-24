@@ -18,7 +18,7 @@
 
 from initat.cluster_server.modules import cs_base_class
 import os
-import process_tools
+from initat.tools import process_tools
 
 imp_dir = os.path.dirname(__file__)
 

@@ -23,7 +23,7 @@
 
 import os
 import sys
-import logging_tools
+from initat.tools import logging_tools
 
 
 def main():

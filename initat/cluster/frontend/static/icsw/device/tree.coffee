@@ -36,7 +36,6 @@ device_module = angular.module(
         $scope.rest_map = [
             {"short" : "device", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}}
             {"short" : "device_group", "url" : ICSW_URLS.REST_DEVICE_GROUP_LIST}
-            {"short" : "device_type", "url" : ICSW_URLS.REST_DEVICE_TYPE_LIST}
             {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
             {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
@@ -101,7 +100,7 @@ device_module = angular.module(
                 $scope.update_entries_st_attrs()  # this depends on rest data
             )
         $scope.dg_present = () ->
-            return (entry for entry in $scope.entries when entry.device_type_identifier == "MD").length > 1
+            return (entry for entry in $scope.entries when entry.is_meta_device).length > 1
         $scope.modify = () ->
             if not $scope.form.$invalid
                 rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
@@ -165,7 +164,6 @@ device_module = angular.module(
             $scope._array_name = "device_many"
             edit_obj = {
                 "many_form"          : true
-                "device_type"        : (entry.idx for entry in $scope.rest_data.device_type when entry.identifier == "H")[0]
                 "device_group"       : (entry.idx for entry in $scope.rest_data.device_group when entry.cluster_device_group == false)[0]
                 "domain_tree_node"   : (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
                 "root_passwd"        : ""
@@ -272,7 +270,6 @@ device_module = angular.module(
             else
                 new_obj.name = "dev"
                 new_obj.comment = "new device"
-                new_obj.device_type = (entry.idx for entry in $scope.rest_data.device_type when entry.identifier == "H")[0]
                 if parent_obj
                     new_obj.device_group = parent_obj.idx
                     new_obj.domain_tree_node = parent_obj.domain_tree_node
@@ -323,7 +320,6 @@ device_module = angular.module(
                         st_attrs['name'] = obj.name
                         st_attrs['description'] = obj.comment
                         st_attrs['enabled'] = obj.enabled
-                        st_attrs['type'] = array_lookupFilter(obj.device_type, $scope.rest_data.device_type, "description")
                         st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.domain_tree_node, $scope.rest_data.domain_tree_node))
                         st_attrs['rrd_store'] = obj.store_rrd_data
                         st_attrs['ipmi_capable'] = obj.ipmi_capable

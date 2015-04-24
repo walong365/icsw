@@ -25,7 +25,7 @@ from django.core.management.base import BaseCommand
 from initat.cluster.backbone.models import config, config_catalog
 from initat.cluster.backbone.models import log_status, devicelog, log_source, \
     LogLevel, LogSource, DeviceLogEntry, user, background, background_job_run
-import logging_tools
+from initat.tools import logging_tools
 from django.db.models import Q
 
 

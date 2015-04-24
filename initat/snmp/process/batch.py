@@ -24,7 +24,7 @@ from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher  # @UnresolvedIm
 from pysnmp.proto import rfc1155, rfc1902, api  # @UnresolvedImport
 from pysnmp.smi import exval  # @UnresolvedImport
 from pysnmp.smi.exval import noSuchInstance
-import logging_tools
+from initat.tools import logging_tools
 import pprint  # @UnusedImport
 import pyasn1  # @UnresolvedImport
 import time

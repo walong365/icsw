@@ -19,7 +19,7 @@
 
 from initat.cluster_server.capabilities.base import bg_stuff
 import commands
-import logging_tools
+from initat.tools import logging_tools
 
 
 class usv_server_stuff(bg_stuff):

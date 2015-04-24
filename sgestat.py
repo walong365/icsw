@@ -22,9 +22,9 @@
 """ frontend for SGE qstat """
 
 import argparse
-import logging_tools
+from initat.tools import logging_tools
 import os
-import sge_tools
+from initat.tools import sge_tools
 import sys
 import time
 import urwid
@@ -323,7 +323,7 @@ def get_server():
 
 
 def stress_system():
-    import process_tools
+    from initat.tools import process_tools
     # stress sge info
     s_si = sge_tools.sge_info(
         server="localhost",

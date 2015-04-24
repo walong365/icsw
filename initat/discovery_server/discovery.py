@@ -28,11 +28,11 @@ from initat.snmp.struct import ResultNode, simple_snmp_oid
 from initat.snmp.functions import simplify_dict, oid_to_str
 from initat.snmp.sink import SNMPSink
 from initat.snmp.databasemap import Schemes
-import logging_tools
+from initat.tools import logging_tools
 import pprint  # @UnusedImport
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import time
 
 

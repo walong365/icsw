@@ -30,10 +30,10 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_variable
 import argparse
 import base64
-import ipvx_tools
-import logging_tools
-import net_tools
-    import server_command
+from initat.tools import ipvx_tools
+from initat.tools import logging_tools
+from initat.tools import net_tools
+    from initat.tools import server_command
 
 # also used in generators.py
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2011-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,16 +21,17 @@
 #
 """ logcheck-server (to be run on a syslog_server), server process """
 
+import os
+
 from django.db import connection
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.struct import machine
-import cluster_location
-import configfile
-import logging_tools
-import os
-import process_tools
+from initat.tools import cluster_location
+from initat.tools import configfile
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import psutil
-import threading_tools
+from initat.tools import threading_tools
 
 
 class server_process(threading_tools.process_pool):
@@ -116,7 +117,7 @@ class server_process(threading_tools.process_pool):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("logcheck")
+        msi_block = process_tools.meta_server_info("logcheck-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
         msi_block.start_command = "/etc/init.d/logcheck-server start"
@@ -203,7 +204,7 @@ class server_process(threading_tools.process_pool):
                 syslog_found = True
                 break
         if syslog_found:
-            c_stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
+            c_stat, out_f = process_tools.submit_at_command("{} restart".format(syslog_rc), 0)
             self.log(u"restarting {} gave {:d}:".format(syslog_rc, c_stat))
             for line in out_f:
                 self.log(line)

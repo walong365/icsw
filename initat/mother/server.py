@@ -28,18 +28,20 @@ from initat.cluster.backbone.routing import get_server_uuid
 from initat.mother.config import global_config
 from initat.snmp.process import snmp_process
 from lxml import etree  # @UnresolvedImports
-import cluster_location
-import configfile
+from initat.tools import cluster_location
+from initat.tools import configfile
+import initat.mother
+import initat.mother.command
 import initat.mother.command
 import initat.mother.control
 import initat.mother.kernel
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import psutil
-import server_command
-import threading_tools
-import uuid_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
+from initat.tools import uuid_tools
 import zmq
 
 
@@ -53,6 +55,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # close db connection (for daemonizing)
         connection.close()
+        self.log("open")
         # log config
         self._log_config()
         self._re_insert_config()
@@ -474,11 +477,11 @@ class server_process(threading_tools.process_pool):
             self._disable_syslog_ng()
 
     def _enable_rsyslog(self):
-        import initat.mother.syslog_scan
+        from initat.mother import syslog_scan
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary {}".format(initat.mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),  # @UndefinedVariable
+            "$actionomprogbinary {}".format(syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),  # @UndefinedVariable
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
             ""]

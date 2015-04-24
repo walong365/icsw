@@ -35,8 +35,8 @@ import time
 import tempfile
 
 from django.utils.crypto import get_random_string
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
 DB_PRESENT = {}
@@ -337,10 +337,15 @@ def create_db_cf(opts, default_engine, default_database):
         if c_dict["_engine"] == "sqlite":
 
             if opts.db_path is None or opts.db_file_owner is None or opts.db_file_group is None:
-                print("please set path to the sqlite file directory via --db-path and owner and group " +
-                      "for the database file via --db-file-owner and --db-file-group")
+                print(
+                    "please set path to the sqlite file directory via --db-path and owner and group " +
+                    "for the database file via --db-file-owner and --db-file-group"
+                )
                 return False
 
+            if not os.path.isdir(opts.db_path):
+                print("database dir {} does not exist, creating...".format(opts.db_path))
+                os.makedirs(opts.db_path)
             file_path = os.path.join(opts.db_path, opts.database)
 
             # try numeric
@@ -473,21 +478,64 @@ def check_for_pre17(opts):
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
 
 
+class DirSave(object):
+    def __init__(self, dir_name, min_idx):
+        self.__dir_name = dir_name
+        self.__tmp_dir = tempfile.mkdtemp()
+        self.__min_idx = min_idx
+        self.save()
+
+    def _match(self, f_name):
+        return True if f_name[0:4].isdigit() and int(f_name[0:4]) > self.__min_idx else False
+
+    def save(self):
+        self.__move_files = [
+            _entry for _entry in os.listdir(self.__dir_name) if _entry.endswith(".py") and self._match(_entry)
+        ]
+        print(
+            "moving away migrations above {:04d}_* ({}) to {}".format(
+                self.__min_idx,
+                logging_tools.get_plural("file", len(self.__move_files)),
+                self.__tmp_dir,
+            )
+        )
+        for _move_file in self.__move_files:
+            shutil.move(os.path.join(self.__dir_name, _move_file), os.path.join(self.__tmp_dir, _move_file))
+
+    def restore(self, idx=None):
+        if idx is not None:
+            __move_files = [_entry for _entry in self.__move_files if int(_entry[0:4]) == idx]
+        else:
+            __move_files = self.__move_files
+        self.__move_files = [_entry for _entry in self.__move_files if _entry not in __move_files]
+        print(
+            "moving back {} above {:04d}_* ({})".format(
+                logging_tools.get_plural("migration", len(__move_files)),
+                self.__min_idx,
+                logging_tools.get_plural("file", len(__move_files)))
+        )
+        for _move_file in __move_files:
+            shutil.move(os.path.join(self.__tmp_dir, _move_file), os.path.join(self.__dir_name, _move_file))
+
+    def cleanup(self):
+        shutil.rmtree(self.__tmp_dir)
+
+
 def check_for_0800(opts):
+    # move away all migrations above 0800
+    ds0 = DirSave(CMIG_DIR, 800)
     _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
+    ds0.restore()
+    ds0.cleanup()
     if not _list_stat:
         sys.exit(7)
     applied = True if _list_out.count("[X] 0800_base") else False
     if applied:
         print("0800_base already applied")
     else:
-        tmp_dir = tempfile.mkdtemp()
-        print("0800_base not reached, migrating to stable 0800 (tmp_dir is {})".format(tmp_dir))
+        print("0800_base not reached, migrating to stable 0800")
         # move away all migrations >= 0800
-        _move_files = [_entry for _entry in os.listdir(CMIG_DIR) if _entry.endswith(".py") and _entry[0:4].isdigit() and int(_entry[0:4]) >= 800]
-        print("moving away new migrations ({})".format(logging_tools.get_plural("file", len(_move_files))))
-        for _move_file in _move_files:
-            shutil.move(os.path.join(CMIG_DIR, _move_file), os.path.join(tmp_dir, _move_file))
+        ds1 = DirSave(CMIG_DIR, 799)
         # rename models dir
         os.rename(MODELS_DIR, MODELS_DIR_SAVE)
         os.rename(Z800_MODELS_DIR, MODELS_DIR)
@@ -496,18 +544,13 @@ def check_for_0800(opts):
         # move back
         os.rename(MODELS_DIR, Z800_MODELS_DIR)
         os.rename(MODELS_DIR_SAVE, MODELS_DIR)
-        # move all files back from tmp_dir
-        base_mig = [_entry for _entry in _move_files if _entry[0:4] == "0800"][0]
-        _move_files.remove(base_mig)
-        print("moving back base file {}".format(base_mig))
-        shutil.move(os.path.join(tmp_dir, base_mig), os.path.join(CMIG_DIR, base_mig))
+        # move all files back
+        ds1.restore(800)
         # fake migration
         call_manage(["makemigrations", "backbone", "--merge", "--noinput"])
         call_manage(["migrate", "backbone", "--noinput"])
-        print("moving back migrations")
-        for _move_file in _move_files:
-            shutil.move(os.path.join(tmp_dir, _move_file), os.path.join(CMIG_DIR, _move_file))
-        sys.exit(6)
+        ds1.restore()
+        ds1.cleanup()
 
 
 def migrate_app(_app, **kwargs):
@@ -532,11 +575,27 @@ def create_db(opts):
     #     clear_migrations()
     # check_migrations()
     # schemamigrations
-    for _app in ["django.contrib.contenttypes", "django.contrib.sites", "django.contrib.auth", "reversion", "backbone"]:
-        # migrate_app(_app)
+    ds0 = DirSave(CMIG_DIR, 799)
+    os.environ["INIT_REMOVE_APP_NAME_1"] = "django.contrib.sites"
+    os.environ["INIT_REMOVE_APP_NAME_2"] = "initat.cluster."
+    for _app in ["auth", "contenttypes"]:
+        apply_migration(_app)
+    del os.environ["INIT_REMOVE_APP_NAME_1"]
+    for _app in ["sites"]:
+        apply_migration(_app)
+    del os.environ["INIT_REMOVE_APP_NAME_2"]
+    ds0.restore()
+    ds0.cleanup()
+    # we now go for the 0800
+    check_for_0800(opts)
+    apply_migration("backbone")
+    # reversion needs access to proper user model
+    apply_migration("reversion")
+
+    # migrate apps without any dependencies
+    for _app in ["django.contrib.admin", "django.contrib.sessions"]:
         apply_migration(_app)
 
-    call_manage(["createinitialrevisions"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -548,6 +607,7 @@ def create_db(opts):
             print("creating superuser {} (email {}, password is {})".format(opts.superuser, opts.email, su_pw))
             call_manage(["createsuperuser", "--login={}".format(opts.superuser), "--email={}".format(opts.email), "--noinput"])
             del os.environ["DJANGO_SUPERUSER_PASSWORD"]
+        call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
 
 
@@ -563,7 +623,7 @@ def migrate_db(opts):
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
                 # call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
-        for _app in ["backbone", "django.contrib.auth", "reversion"]:
+        for _app in ["backbone", "django.contrib.auth", "reversion", "django.contrib.admin", "django.contrib.sessions"]:
             print("migrating app {}".format(_app))
             apply_migration(_app)
         print("")
@@ -581,7 +641,6 @@ def call_update_funcs(opts):
     call_manage(["migrate_to_new_logging_scheme"])
     call_manage(["migrate_to_config_catalog"])
     call_manage(["ensure_cluster_id"])
-    call_manage(["rewrite_curl"])
 
 
 def create_fixtures():
@@ -628,7 +687,7 @@ def main():
     db_flags.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
     db_flags.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
     db_flags.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
-    db_flags.add_argument("--database", type=str, help="set name of cluster database")
+    db_flags.add_argument("--database", type=str, help="set name of cluster database", default="cdbase")
     db_flags.add_argument("--host", type=str, default="localhost", help="set database host")
     mig_opts = my_p.add_argument_group("migration options")
     mig_opts.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
@@ -647,12 +706,12 @@ def main():
     upd_opts = my_p.add_argument_group("update options")
     upd_opts.add_argument("--only-fixtures", default=False, action="store_true", help="only call create_fixtures")
     auc_flags = my_p.add_argument_group("automatic update options")
-    auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
+    # auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
     auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
     sqlite_db_opts = my_p.add_argument_group("sqlite database file options")
-    sqlite_db_opts.add_argument("--db-path", type=str, help="path to sqlite database file directory")
-    sqlite_db_opts.add_argument("--db-file-owner", type=str, help="owner of the database file")
-    sqlite_db_opts.add_argument("--db-file-group", type=str, help="group of the database file")
+    sqlite_db_opts.add_argument("--db-path", type=str, help="path to sqlite database file directory", default="/opt/cluster/db")
+    sqlite_db_opts.add_argument("--db-file-owner", type=str, help="owner of the database file", default="wwwrun")
+    sqlite_db_opts.add_argument("--db-file-group", type=str, help="group of the database file", default="idg")
     sqlite_db_opts.add_argument("--db-file-mode", type=str, default="660", help="database file access mode")
     opts = my_p.parse_args()
     _check_dirs()
@@ -670,18 +729,7 @@ def main():
         print("No database access libraries installed, please install some of them")
         sys.exit(1)
     # flag: setup db_cf data
-    if opts.enable_auto_update:
-        if os.path.exists(AUTO_FLAG):
-            print("auto_udpate_flag {} already exists".format(AUTO_FLAG))
-        else:
-            try:
-                file(AUTO_FLAG, "w").write("\n")
-            except:
-                print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
-                sys.exit(-1)
-            else:
-                print("created auto_update_flag {}".format(AUTO_FLAG))
-    elif opts.disable_auto_update:
+    if opts.disable_auto_update:
         if os.path.isfile(AUTO_FLAG):
             try:
                 os.unlink(AUTO_FLAG)
@@ -693,46 +741,57 @@ def main():
         else:
             print("auto_udpate_flag {} not present".format(AUTO_FLAG))
     else:
-        db_exists = os.path.exists(DB_FILE)
-        call_create_db = True
-        call_migrate_db = False
-        call_create_fixtures = False
-        if db_exists:
-            if opts.only_fixtures:
-                setup_db_cf = False
-                call_create_db = False
-                call_migrate_db = False
-                call_create_fixtures = True
-            elif opts.migrate:
-                setup_db_cf = False
-                call_create_db = False
-                call_migrate_db = True
-            else:
-                if opts.use_existing:
-                    # use existing db_cf
-                    setup_db_cf = False
-                else:
-                    if opts.ignore_existing:
-                        print("DB access file {} already exists, ignoring ...".format(DB_FILE))
-                        setup_db_cf = True
-                    else:
-                        print("DB access file {} already exists, exiting ...".format(DB_FILE))
-                        sys.exit(1)
+        if os.path.exists(AUTO_FLAG):
+            pass
+            # print("auto_udpate_flag {} already exists".format(AUTO_FLAG))
         else:
-            setup_db_cf = True
+            try:
+                file(AUTO_FLAG, "w").write("\n")
+            except:
+                print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
+                sys.exit(-1)
+            else:
+                print("created auto_update_flag {}".format(AUTO_FLAG))
+    db_exists = os.path.exists(DB_FILE)
+    call_create_db = True
+    call_migrate_db = False
+    call_create_fixtures = False
+    if db_exists:
+        if opts.only_fixtures:
+            setup_db_cf = False
+            call_create_db = False
+            call_migrate_db = False
+            call_create_fixtures = True
+        elif opts.migrate:
+            setup_db_cf = False
+            call_create_db = False
+            call_migrate_db = True
+        else:
             if opts.use_existing:
-                print("DB access file {} does not exist ...".format(DB_FILE))
-        if setup_db_cf:
-            if not create_db_cf(opts, default_engine, default_database):
-                print("Creation of {} not successfull, exiting".format(DB_FILE))
-                sys.exit(3)
-        check_db_rights()
-        if call_create_db:
-            create_db(opts)
-        if call_migrate_db:
-            migrate_db(opts)
-        if call_create_fixtures:
-            create_fixtures()
+                # use existing db_cf
+                setup_db_cf = False
+            else:
+                if opts.ignore_existing:
+                    print("DB access file {} already exists, ignoring ...".format(DB_FILE))
+                    setup_db_cf = True
+                else:
+                    print("DB access file {} already exists, exiting ...".format(DB_FILE))
+                    sys.exit(1)
+    else:
+        setup_db_cf = True
+        if opts.use_existing:
+            print("DB access file {} does not exist ...".format(DB_FILE))
+    if setup_db_cf:
+        if not create_db_cf(opts, default_engine, default_database):
+            print("Creation of {} not successfull, exiting".format(DB_FILE))
+            sys.exit(3)
+    check_db_rights()
+    if call_create_db:
+        create_db(opts)
+    if call_migrate_db:
+        migrate_db(opts)
+    if call_create_fixtures:
+        create_fixtures()
 
 if __name__ == "__main__":
     main()

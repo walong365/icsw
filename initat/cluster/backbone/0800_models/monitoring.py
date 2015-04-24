@@ -27,7 +27,7 @@ from django.dispatch import receiver
 import datetime
 from collections import defaultdict
 import json
-import logging_tools
+from initat.tools import logging_tools
 import re
 import operator
 

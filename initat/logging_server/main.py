@@ -21,13 +21,13 @@
 #
 """ logging server, central logging facility, main part """
 
-from initat.logging_server import version
+from initat.client_version import VERSION_STRING
 from initat.logging_server.config import global_config
 from initat.logging_server.server import main_process
-import configfile
+from initat.tools import configfile
 import daemon
 import os
-import process_tools
+from initat.tools import process_tools
 import socket
 import stat
 import sys
@@ -65,7 +65,7 @@ def main():
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(
-        description="logging server, version is {}".format(version.VERSION_STRING),
+        description="logging server, version is {}".format(VERSION_STRING),
         add_auto_config_option=True
     )
     if not global_config.show_autoconfig():

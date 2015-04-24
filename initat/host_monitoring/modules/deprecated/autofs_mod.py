@@ -24,7 +24,7 @@ from initat.host_monitoring import limits
 from initat.host_monitoring import hm_classes
 import os
 import os.path
-import process_tools
+from initat.tools import process_tools
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):

@@ -11,7 +11,7 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-import server_command
+from initat.tools import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
     category_tree, location_gfx, DeleteRequest
@@ -24,8 +24,8 @@ import initat.cluster.backbone.models
 import json
 import PIL
 import logging
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import pprint
 
 logger = logging.getLogger("cluster.base")
@@ -332,18 +332,22 @@ class CheckDeletionStatus(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        obj_pks = json.loads(request.POST.get("obj_pks"))
-        model = getattr(initat.cluster.backbone.models, request.POST.get("model"))
+        del_requests = json.loads(request.POST.get("del_requests"))
 
-        num_remaining_objs = len(model.objects.filter(pk__in=obj_pks))
+        for k, del_request in del_requests.iteritems():
 
-        request.xml_response['num_remaining'] = num_remaining_objs
+            model_name, obj_pks = del_request
+            model = getattr(initat.cluster.backbone.models, model_name)
 
-        if num_remaining_objs == 0:
-            msg = "Finished deleting {}".format(logging_tools.get_plural("object", len(obj_pks)))
-        else:
-            additional = " ({} remaining)".format(num_remaining_objs) if len(obj_pks) > 1 else ""
-            msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
+            num_remaining_objs = len(model.objects.filter(pk__in=obj_pks))
 
-        request.xml_response['msg'] = msg
+            request.xml_response['num_remaining_{}'.format(k)] = num_remaining_objs
+
+            if num_remaining_objs == 0:
+                msg = "Finished deleting {}".format(logging_tools.get_plural("object", len(obj_pks)))
+            else:
+                additional = " ({} remaining)".format(num_remaining_objs) if len(obj_pks) > 1 else ""
+                msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
+
+            request.xml_response['msg_{}'.format(k)] = msg
 

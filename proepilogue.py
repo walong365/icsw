@@ -28,19 +28,28 @@ import sys
 # clean sys.path, remove all pathes not starting with /opt
 sys.path = [entry for entry in sys.path if entry.startswith("/opt")]
 
-import configfile
 import grp
-import logging_tools
-import net_tools
 import os
 import pprint
-import process_tools
 import pwd
-import server_command
 import socket
 import stat
-import threading_tools
 import time
+try:
+    from initat.tools import threading_tools
+    from initat.tools import configfile
+    from initat.tools import logging_tools
+    from initat.tools import net_tools
+    from initat.tools import process_tools
+    from initat.tools import server_command
+except ImportError:
+    # for running on nodes
+    import threading_tools
+    import configfile
+    import net_tools
+    import process_tools
+    import server_command
+
 
 SEP_LEN = 70
 LOCAL_IP = "127.0.0.1"
@@ -68,8 +77,8 @@ class job_object(object):
         self.p_pool = p_pool
         self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (
             global_config["JOB_ID"],
-            ".%s" % (os.environ["SGE_TASK_ID"]) if os.environ.get("SGE_TASK_ID", "undefined") != "undefined" else "")
-        self.__log_name = "%s" % (self.__log_dir)
+            ".{}".format(os.environ["SGE_TASK_ID"]) if os.environ.get("SGE_TASK_ID", "undefined") != "undefined" else "")
+        self.__log_name = "{}".format(self.__log_dir)
         self.__log_template = logging_tools.get_logger(
             "%s.%s/log" % (global_config["LOG_NAME"],
                            self.__log_name.replace(".", "\.")),
@@ -98,9 +107,13 @@ class job_object(object):
         try:
             print what
         except:
-            self.log("cannot print '%s': %s" % (what,
-                                                process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                u"cannot print '{}': {}".format(
+                    what,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
     # wrapper script tools
 
     def _get_wrapper_script_name(self):
@@ -121,7 +134,7 @@ class job_object(object):
         dst_file = self._get_wrapper_script_name()
         var_file = self._get_var_script_name()
         if not dst_file.startswith("/"):
-            self.log("refuse to create wrapper script %s" % (dst_file),
+            self.log("refuse to create wrapper script {}".format(dst_file),
                      logging_tools.LOG_LEVEL_ERROR)
             return
         self.log(
@@ -138,21 +151,25 @@ class job_object(object):
         # cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
         no_cpuset_cause = []
         if no_cpuset_cause:
-            self.log("not using cpuset because: %s" % (", ".join(no_cpuset_cause)))
+            self.log("not using cpuset because: {}".format(", ".join(no_cpuset_cause)))
         if shell_start_mode == "posix_compliant" and shell_path:
-            df_lines = ["#!%s" % ("/bin/sh"),
-                        "echo 'wrapper_script, no cpu_set'",
-                        "export BASH_ENV=$HOME/.bashrc",
-                        ". %s" % (var_file),
-                        "exec %s %s $*" % (shell_path, src_file),
-                        ""]
+            df_lines = [
+                "#!{}".format("/bin/sh"),
+                "echo 'wrapper_script, no cpu_set'",
+                "export BASH_ENV=$HOME/.bashrc",
+                ". {}".format(var_file),
+                "exec {} {} $*".format(shell_path, src_file),
+                "",
+            ]
         else:
-            df_lines = ["#!%s" % ("/bin/sh"),
-                        "echo 'wrapper_script, no cpu_set'",
-                        "export BASH_ENV=$HOME/.bashrc",
-                        ". %s" % (var_file),
-                        "exec %s $*" % (src_file),
-                        ""]
+            df_lines = [
+                "#!{}".format("/bin/sh"),
+                "echo 'wrapper_script, no cpu_set'",
+                "export BASH_ENV=$HOME/.bashrc",
+                ". {}".format(var_file),
+                "exec {} $*".format(src_file),
+                "",
+            ]
         file(dst_file, "w").write("\n".join(df_lines))
         file(var_file, "w").write("#!/bin/bash\n")
         self.write_file("wrapper_script", df_lines)
@@ -164,7 +181,7 @@ class job_object(object):
         src_file = self.__env_dict["JOB_SCRIPT"]
         dst_file = self._get_wrapper_script_name()
         if not dst_file.startswith("/"):
-            self.log("refuse to delete wrapper script %s" % (dst_file),
+            self.log("refuse to delete wrapper script {}".format(dst_file),
                      logging_tools.LOG_LEVEL_ERROR)
             return
         self.log("Deleting wrapper-script (%s for %s)" % (dst_file,
@@ -173,13 +190,17 @@ class job_object(object):
             try:
                 os.unlink(dst_file)
             except:
-                self.log("error deleting %s: %s" % (dst_file,
-                                                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error deleting {}: {}".format(
+                        dst_file,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
-                self.log("deleted %s" % (dst_file))
+                self.log("deleted {}".format(dst_file))
         else:
-            self.log("no such file: %s" % (dst_file),
+            self.log("no such file: {}".format(dst_file),
                      logging_tools.LOG_LEVEL_ERROR)
 
     def _add_script_var(self, key, value):
@@ -242,7 +263,7 @@ class job_object(object):
         conf_info = global_config.get_config_info()
         self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
 
     def write_file(self, name, content, **args):
         ss_time = time.time()
@@ -293,8 +314,10 @@ class job_object(object):
             self.__env_int_dict = {}
 
     def _parse_server_addresses(self):
-        for src_file, key, default in [("/etc/motherserver", "MOTHER_SERVER", "localhost"),
-                                       ("/etc/sge_server", "SGE_SERVER", "localhost")]:
+        for src_file, key, default in [
+            ("/etc/motherserver", "MOTHER_SERVER", "localhost"),
+            ("/etc/sge_server", "SGE_SERVER", "localhost")
+        ]:
             if os.path.isfile(src_file):
                 try:
                     act_val = file(src_file, "r").read().split()[0]
@@ -389,7 +412,7 @@ class job_object(object):
                     try:
                         self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
                     except:
-                        self.log("error writing jobscript: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                        self.log("error writing jobscript: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
 
@@ -407,8 +430,10 @@ class job_object(object):
                 try:
                     task_id = int(os.environ["SGE_TASK_ID"])
                 except:
-                    self.log("error extracting SGE_TASK_ID: %s" % (process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error extracting SGE_TASK_ID: {}".format(process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     task_id = 0
                 else:
                     pass
@@ -418,8 +443,12 @@ class job_object(object):
             global_config["JOB_ID"],
             ".{:d}".format(task_id) if task_id else ""
         )
-        global_config.add_config_entries([("TASK_ID", configfile.int_c_var(task_id, source="env")),
-                                          ("FULL_JOB_ID", configfile.str_c_var(full_job_id, source="env"))])
+        global_config.add_config_entries(
+            [
+                ("TASK_ID", configfile.int_c_var(task_id, source="env")),
+                ("FULL_JOB_ID", configfile.str_c_var(full_job_id, source="env"))
+            ]
+        )
 
     def _check_user(self):
         try:
@@ -453,11 +482,13 @@ class job_object(object):
                 )
             else:
                 group = grp_data[0]
-        global_config.add_config_entries([
-            ("GROUP", configfile.str_c_var(group, source="env")),
-            ("UID", configfile.int_c_var(uid, source="env")),
-            ("GID", configfile.int_c_var(gid, source="env"))
-        ])
+        global_config.add_config_entries(
+            [
+                ("GROUP", configfile.str_c_var(group, source="env")),
+                ("UID", configfile.int_c_var(uid, source="env")),
+                ("GID", configfile.int_c_var(gid, source="env"))
+            ]
+        )
 
     def get_stat_str(self, ret_value):
         stat_dict = {
@@ -1225,7 +1256,7 @@ class process_pool(threading_tools.process_pool):
         print("")
 
     def loop_end(self):
-        self.log("execution time was %s" % (logging_tools.get_diff_time_str(time.time() - self.start_time)))
+        self.log("execution time was {}".format(logging_tools.get_diff_time_str(time.time() - self.start_time)))
 
     def loop_post(self):
         self._job.close()

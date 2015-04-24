@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,24 +18,26 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, device, \
-    domain_tree_node, config, network, device_type
+    domain_tree_node, config, network
 from initat.cluster_server.config import global_config
 import commands
 import codecs
-import config_tools
+from initat.tools import config_tools
 import cs_base_class
 import grp
-import ipvx_tools
-import logging_tools
+from initat.tools import ipvx_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import pwd
-import server_command
+from initat.tools import server_command
 import time
+
 
 class write_nameserver_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["name_server"]
+
     def _call(self, cur_inst):
         _log_lines, sys_dict = process_tools.fetch_sysinfo("/")
         sys_version = sys_dict["version"]
@@ -100,7 +102,6 @@ class write_nameserver_config(cs_base_class.server_com):
             ncf_lines.append("  forwarders {\n%s\n  };" % ("\n".join(["    %s;" % (x) for x in forwarders if x])))
         ncf_lines.append("  listen-on {")
         server_idxs = [self.server_idx]
-        # my_netdev_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
         my_ips = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).values_list("ip", flat=True)
         for my_ip in my_ips:
             ncf_lines.append("    %s;" % (my_ip))
@@ -229,8 +230,8 @@ class write_nameserver_config(cs_base_class.server_com):
                 _form = logging_tools.form_list()
                 _form.set_format_string(3, "s", "-", "; ")
                 _form.add_line([" ", "IN NS", "%s." % (global_config["SERVER_SHORT_NAME"]), ""])
-                for dev_type in device_type.objects.all():
-                    addstr = dev_type.description
+                for dev_type in [0]:
+                    addstr = "real"
                     # if net.identifier == "l":
                     #    sel_str = " AND d.name='%s'" % (global_config["SERVER_SHORT_NAME"])
                     # else:
@@ -239,13 +240,16 @@ class write_nameserver_config(cs_base_class.server_com):
                         Q(domain_tree_node=cur_dtn) &
                         Q(netdevice__device__enabled=True) & Q(netdevice__device__device_group__enabled=True) &
                         Q(domain_tree_node__write_nameserver_config=True) &
-                        Q(netdevice__device__device_type=dev_type)
-                        ).select_related("netdevice__device", "domain_tree_node").order_by("ip")
+                        Q(netdevice__device__is_meta_device=False)
+                    ).select_related("netdevice__device", "domain_tree_node").order_by("ip")
                     num_ips = print_ips.count()
                     if num_ips:
                         _form.add_line(
-                            "; %s %s" % (addstr,
-                                logging_tools.get_plural("record", num_ips)))
+                            "; {} {}".format(
+                                addstr,
+                                logging_tools.get_plural("record", num_ips)
+                            )
+                        )
                         for ret in print_ips:
                             out_names = []
                             if not (ret.alias.strip() and ret.alias_excl):
@@ -332,8 +336,8 @@ class write_nameserver_config(cs_base_class.server_com):
                 _form = logging_tools.form_list()
                 _form.set_format_string(3, "s", "-", "; ")
                 _form.add_line([" ", "IN NS", "%s%s.%s." % (global_config["SERVER_SHORT_NAME"], "init", "at"), ""])
-                for dev_type in device_type.objects.all():
-                    addstr = dev_type.description
+                for dev_type in [0]:
+                    addstr = "real"
                     # if net.identifier == "l":
                     #    sel_str = " AND d.name='%s'" % (global_config["SERVER_SHORT_NAME"])
                     # else:
@@ -341,13 +345,16 @@ class write_nameserver_config(cs_base_class.server_com):
                     print_ips = net_ip.objects.filter(
                         Q(netdevice__device__enabled=True) & Q(netdevice__device__device_group__enabled=True) &
                         Q(domain_tree_node__write_nameserver_config=True) &
-                        Q(netdevice__device__device_type=dev_type) &
+                        Q(netdevice__device__is_meta_device=False) &
                         Q(network=net)).select_related("netdevice__device", "domain_tree_node").order_by("ip")
                     num_ips = print_ips.count()
                     if num_ips:
                         _form.add_line(
-                            "; %s %s" % (addstr,
-                                logging_tools.get_plural("record", num_ips)))
+                            "; {} {}".format(
+                                addstr,
+                                logging_tools.get_plural("record", num_ips)
+                            )
+                        )
                         for ret in print_ips:
                             host_part = str(ipvx_tools.ipv4(ret.ip) & (~ipvx_tools.ipv4(net.network))).split(".")
                             host_part.reverse()

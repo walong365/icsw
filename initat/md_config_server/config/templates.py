@@ -20,7 +20,7 @@
 """ config part of md-config-server """
 
 from initat.cluster.backbone.models import mon_device_templ, mon_service_templ
-import logging_tools
+from initat.tools import logging_tools
 
 
 __all__ = [

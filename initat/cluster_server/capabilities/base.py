@@ -18,8 +18,8 @@
 """ cluster-server, background base object """
 
 from initat.cluster_server.config import global_config
-import logging_tools
-import mail_tools
+from initat.tools import logging_tools
+from initat.tools import mail_tools
 
 
 class bg_stuff(object):

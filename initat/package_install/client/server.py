@@ -22,14 +22,14 @@
 from initat.package_install.client.config import global_config
 from initat.package_install.client.install_process import yum_install_process, zypper_install_process, \
     get_srv_command
-import configfile
-import logging_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
 import os
-import process_tools
-import server_command
-import threading_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import time
-import uuid_tools
+from initat.tools import uuid_tools
 import zmq
 
 

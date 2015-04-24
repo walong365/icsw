@@ -20,9 +20,9 @@
 #
 
 import commands
-import logging_tools
+from initat.tools import logging_tools
 import os
-import process_tools
+from initat.tools import process_tools
 import pprint
 import sys
 from initat.host_monitoring import limits, hm_classes

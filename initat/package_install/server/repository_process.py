@@ -27,10 +27,10 @@ from initat.cluster.backbone.models import package_search
 from initat.package_install.server.config import global_config
 from initat.package_install.server.structs import repo_type_rpm_yum, repo_type_rpm_zypper, \
     subprocess_struct
-import logging_tools
+from initat.tools import logging_tools
 import os
-import server_command
-import threading_tools
+from initat.tools import server_command
+from initat.tools import threading_tools
 import time
 
 

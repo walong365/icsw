@@ -23,10 +23,10 @@ import os
 import os.path
 import time
 from initat.host_monitoring import limits
-import logging_tools
+from initat.tools import logging_tools
 import commands
 from initat.host_monitoring import hm_classes
-import process_tools
+from initat.tools import process_tools
 import pprint
 
 SCALIX_QUEUES = ["BB",

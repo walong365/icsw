@@ -19,8 +19,8 @@
 
 from initat.host_monitoring import hm_classes
 import commands
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 from lxml import etree  # @UnusedImport
 
 COM_NAME = "nvidia-smi"

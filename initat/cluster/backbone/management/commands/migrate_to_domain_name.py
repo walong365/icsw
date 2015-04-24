@@ -24,7 +24,7 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from initat.cluster.backbone.models import domain_tree_node, network, net_ip, domain_name_tree, device
-import logging_tools
+from initat.tools import logging_tools
 
 
 class tree_node(object):

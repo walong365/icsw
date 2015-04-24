@@ -21,7 +21,7 @@
 
 from initat.md_config_server.config.content_emitter import content_emitter
 from lxml.builder import E  # @UnresolvedImport
-import logging_tools
+from initat.tools import logging_tools
 
 
 __all__ = [

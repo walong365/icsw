@@ -24,10 +24,10 @@ from initat.cluster.backbone.models import device, device_group, mon_check_comma
     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
 from initat.md_config_server.config.var_cache import var_cache
 from initat.snmp.sink import SNMPSink
-import configfile
+from initat.tools import configfile
 import json
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import time
 
 
@@ -77,7 +77,6 @@ class build_cache(object):
             cur_dev.pk: cur_dev for cur_dev in device.objects.filter(
                 Q(device_group__enabled=True) & Q(enabled=True)
             ).select_related(
-                "device_type",
                 "domain_tree_node",
                 "device_group"
             ).prefetch_related("mon_trace_set")

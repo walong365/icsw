@@ -34,20 +34,20 @@ from initat.collectd.dbsync import SyncProcess
 from initat.snmp.process import snmp_process_container
 from lxml import etree
 from lxml.builder import E  # @UnresolvedImports
-import cluster_location
-import config_tools
-import configfile
-import logging_tools
+from initat.tools import cluster_location
+from initat.tools import config_tools
+from initat.tools import configfile
+from initat.tools import logging_tools
 import os
 import pprint
-import process_tools
+from initat.tools import process_tools
 import re
-import server_command
-import server_mixins
+from initat.tools import server_command
+from initat.tools import server_mixins
 import socket
-import threading_tools
+from initat.tools import threading_tools
 import time
-import uuid_tools
+from initat.tools import uuid_tools
 import zmq
 
 
@@ -385,10 +385,11 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                 logging_tools.LOG_LEVEL_ERROR
             )
         if _reachable:
+            _reach = sorted(list(set([unicode(_dev) for _dev, _ip, _vars in _reachable])))
             self.log(
                 "{}: {}".format(
-                    logging_tools.get_plural("reachable {} device".format(_type), len(_reachable)),
-                    logging_tools.compress_list([unicode(_dev) for _dev, _ip, _vars in _reachable])
+                    logging_tools.get_plural("reachable {} device".format(_type), len(_reach)),
+                    logging_tools.reduce_list(_reach, top_join_str=", ")
                 ),
             )
         return _reachable

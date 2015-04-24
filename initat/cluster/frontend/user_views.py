@@ -49,8 +49,8 @@ from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from lxml.builder import E  # @UnresolvedImport
-import config_tools
-import server_command
+from initat.tools import config_tools
+from initat.tools import server_command
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.frontend.common import duration_utils
 
@@ -167,7 +167,7 @@ class change_object_permission(View):
         obj_pk = int(_post["obj_idx"])
         add = True if int(_post["set"]) else False
         level = int(_post["level"])
-        perm_model = apps.get_model(set_perm.content_type.app_label, set_perm.content_type.name).objects.get(Q(pk=obj_pk))
+        perm_model = apps.get_model(set_perm.content_type.app_label, set_perm.content_type.mode_class().__name__).objects.get(Q(pk=obj_pk))
         # print perm_model, auth_obj, set_perm
         if add:
             if not auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
