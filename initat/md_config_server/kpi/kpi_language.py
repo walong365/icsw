@@ -370,9 +370,16 @@ class KpiOperation(object):
         self.operands = operands
         self.arguments = arguments
 
+    @property
+    def type_for_client(self):
+        if self.type == self.Type.union:
+            return "+"
+        else:
+            return self.type.name
+
     def serialize(self):
         return {
-            'type': self.type.name,
+            'type': self.type_for_client,
             'operands': [oper.serialize() for oper in self.operands],
             'arguments': self.arguments,
         }

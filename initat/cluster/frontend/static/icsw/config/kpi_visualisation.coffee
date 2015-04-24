@@ -148,11 +148,15 @@ angular.module(
 
                     node
                         .html((d) ->
-                            res = "<circle r=\"4.5\"></circle>"
+                            res = "<circle r=\"4\"></circle>"
                             if d.hide_children and d.origin.type != 'initial'
                                 res += "<circle r=\"1.5\" fill=\"white\"></circle>"
                             res += "{"
                             cur_height = 3
+
+                            if d.depth == 0
+                                # result (we could also check for not having a parent)
+                                res += "<text style=\"font-size: 11px\" dx=\"-8\" dy=\"#{cur_height}\" text-anchor=\"end\">kpi = </text>"
 
                             if d.origin.type == 'initial'
                                 res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> initial data (#{d.objects.length} objects) </text>"
@@ -163,21 +167,29 @@ angular.module(
                                     res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{d.objects.length} objects </text>"
                                 else
                                     i = 0
+                                    kpi_obj_height = cur_height
                                     for kpi_obj in d.objects
                                         if i > 2 # only 3 elems
-                                            res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> ... </text>"
+                                            res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{kpi_obj_height}\"> ... </text>"
                                             break
                                         s = icswConfigKpiVisUtils.kpi_obj_to_string(kpi_obj)
                                         s = $filter('limit_text')(s, 17)
-                                        res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{s} </text>"
-                                        cur_height += 14
+                                        res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{kpi_obj_height}\"> #{s} </text>"
+                                        kpi_obj_height += 14
                                         i += 1
 
                                 # operation
                                 res += "<text style=\"font-size: 11px; font-style: italic;\" dx=\"0\" dy=\"-22\" text-anchor=\"middle\">"
-                                operation = "#{d.origin.type}  (" + (k+"="+v for k, v of d.origin.arguments).join(", ")
-                                res += $filter('limit_text')(operation, 25) + ")"
+
+                                is_method = d.origin.type.match(/^[a-zA-Z_\-]*$/i)
+                                if is_method
+                                    operation = "#{d.origin.type}(" + (k+"="+v for k, v of d.origin.arguments).join(", ")
+                                    res += $filter('limit_text')(operation, 25) + ")"
+                                else  # is operator
+                                    res += "#{d.origin.type}"
+
                                 res += "</text>"
+
                             return res
                         )
                         #.text((d) ->
@@ -293,6 +305,7 @@ angular.module(
 ]).service("icswConfigKpiVisUtils", () ->
     ret = {
         kpi_obj_to_string: (kpi_obj, verbose) ->
+            # verbose is currently not used
             kpi_obj_to_string_concise = (kpi_obj) ->
                 parts = []
                 if kpi_obj.host_name
@@ -303,7 +316,8 @@ angular.module(
                     parts.push kpi_obj.check_command
 
                 if kpi_obj.aggregated_tl?
-                    parts.push "{" + ( "#{k}: #{(v*100).toFixed(2)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
+                    # parts.push "{" + ( "#{k}: #{(v*100).toFixed(2)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
+                    parts.push "timeline"
 
                 if kpi_obj.result?
                     parts.push kpi_obj.result
