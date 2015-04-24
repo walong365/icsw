@@ -19,7 +19,6 @@
 #
 """ usefull server mixins """
 
-from initat.cluster.backbone.routing import get_server_uuid
 from initat.tools import cluster_location
 from initat.tools import logging_tools
 from initat.tools import process_tools
@@ -57,6 +56,7 @@ class network_bind_mixin(object):
             self.bind_id = process_tools.get_client_uuid(kwargs["client_type"])
             dev_r = None
         else:
+            from initat.cluster.backbone.routing import get_server_uuid
             self.bind_id = get_server_uuid(kwargs["server_type"])
             # device recognition
             dev_r = cluster_location.device_recognition()
