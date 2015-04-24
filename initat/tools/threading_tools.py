@@ -560,7 +560,6 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         # run flag
         # process priority: when stopping processes start with the lowest priority and end with the highest
         self["priority"] = kwargs.get("priority", 0)
-        self.cb_func = kwargs.get("cb_func", None)
         # copy kwargs for reference
         self.start_kwargs = kwargs
         self.__exit_locked = False
@@ -866,8 +865,6 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                         )
                     )
                     raise
-            if self["run_flag"] and self.cb_func:
-                self.cb_func()
 
 
 class process_pool(timer_base, poller_obj, process_base, exception_handling_mixin):

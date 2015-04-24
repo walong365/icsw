@@ -73,6 +73,11 @@ SERVICE_NOT_CONFIGURED = 6
 
 
 class ServiceContainer(object):
+    _COMPAT_DICT = {
+        "rms-server": "rms_server",
+        "logcheck-server": "logcheck",
+    }
+
     def __init__(self, log_com):
         self.__log_com = log_com
 
@@ -156,6 +161,11 @@ class ServiceContainer(object):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         c_name = entry.attrib["meta_server_name"]
         ms_name = os.path.join("/var", "lib", "meta-server", c_name)
+        # compat layer for buggy specs
+        if not os.path.exists(ms_name) and c_name in self._COMPAT_DICT:
+            _ms_name = os.path.join("/var", "lib", "meta-server", self._COMPAT_DICT[c_name])
+            if os.path.exists(_ms_name):
+                ms_name = _ms_name
         if os.path.exists(ms_name):
             ms_block = process_tools.meta_server_info(ms_name)
             start_time = ms_block.start_time
@@ -544,18 +554,22 @@ class ServiceParser(argparse.ArgumentParser):
         self.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
         self.add_argument("--no-database", default=False, action="store_true", help="disable use of database [%(default)s]")
 
+    def parse_args(self):
+        opt_ns = argparse.ArgumentParser.parse_args(self)
+        if opt_ns.all or opt_ns.almost_all:
+            opt_ns.thread = True
+            opt_ns.pid = True
+            opt_ns.memory = True
+            opt_ns.version = True
+        if opt_ns.all:
+            opt_ns.started = True
+            opt_ns.database = True
+        return opt_ns
+
 
 def main():
     cur_c = ServiceContainer(log_com)
     opt_ns = ServiceParser().parse_args()
-    if opt_ns.all or opt_ns.almost_all:
-        opt_ns.thread = True
-        opt_ns.pid = True
-        opt_ns.memory = True
-        opt_ns.version = True
-    if opt_ns.all:
-        opt_ns.started = True
-        opt_ns.database = True
     if os.getuid():
         print("Not running as root, information may be incomplete, disabling display of memory")
         opt_ns.memory = False

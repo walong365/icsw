@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2010-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,48 +21,47 @@
 #
 """ meta-server, server process """
 
+import os
+import signal
+import stat
+import time
+
 from initat.meta_server.config import global_config
 from initat.tools import configfile
 from initat.tools import logging_tools
 from initat.tools import mail_tools
-import os
 from initat.tools import process_tools
 from initat.tools import server_command
-import signal
-import stat
-import subprocess  # @UnusedImport
 from initat.tools import threading_tools
-import time
+from initat.tools import server_mixins
+from initat.tools import inotify_tools
 import zmq
-
 from initat.host_monitoring import hm_classes
 from initat.client_version import VERSION_STRING
 
 
-class main_process(threading_tools.process_pool):
+class main_process(threading_tools.process_pool, server_mixins.network_bind_mixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice()
         # check for correct rights
         self._check_dirs()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._init_msi_block()
         self._init_network_sockets()
+        self._init_inotify()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         # init stuff for mailing
         self.__new_mail = mail_tools.mail(None, "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]), global_config["TO_ADDR"])
         self.__new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
-        # check
-        self.__check_dict = {}
+        # msi dict
         self.__last_update_time = time.time() - 2 * global_config["MIN_CHECK_TIME"]
         self.__last_memcheck_time = time.time() - 2 * global_config["MIN_MEMCHECK_TIME"]
-        self.__problem_list = []
         self._init_meminfo()
         self._show_config()
-        act_commands = self._check_for_new_info([])
-        self._call_commands(act_commands)
+        self._scan_meta_dir()
         self.register_timer(self._check, 30, instant=True)
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -70,6 +69,37 @@ class main_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
+    def _init_inotify(self):
+        self.__watcher = inotify_tools.InotifyWatcher(log_com=self.log)
+        self.__watcher.add_watcher(
+            "main",
+            global_config["MAIN_DIR"],
+            inotify_tools.IN_CLOSE_WRITE | inotify_tools.IN_DELETE,
+            self._inotify_event,
+        )
+        # register watcher fd with 0MQ poller
+        self.register_poller(self.__watcher._fd, zmq.POLLIN, self._inotify_check)
+
+    def _inotify_check(self, *args, **kwargs):
+        try:
+            self.__watcher.process()
+        except:
+            self.log(
+                "exception occured in watcher.process(): {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            pass
+
+    def _inotify_event(self, *args, **kwargs):
+        _event = args[0]
+        if _event.mask & inotify_tools.IN_DELETE:
+            self._delete_msi_by_file_name(_event.pathname)
+        elif _event.mask & inotify_tools.IN_CLOSE_WRITE:
+            self._update_or_create_msi_by_file_name(_event.pathname)
 
     def _check_dirs(self):
         main_dir = global_config["MAIN_DIR"]
@@ -79,11 +109,13 @@ class main_process(threading_tools.process_pool):
         cur_stat = os.stat(main_dir)[stat.ST_MODE]
         new_stat = cur_stat | stat.S_IWGRP | stat.S_IRGRP | stat.S_IRUSR | stat.S_IWUSR | stat.S_IWOTH | stat.S_IROTH
         if cur_stat != new_stat:
-            self.log("modifing stat of {} from {:o} to {:o}".format(
-                main_dir,
-                cur_stat,
-                new_stat,
-                ))
+            self.log(
+                "modifing stat of {} from {:o} to {:o}".format(
+                    main_dir,
+                    cur_stat,
+                    new_stat,
+                )
+            )
             os.chmod(main_dir, new_stat)
 
     def _init_msi_block(self):
@@ -93,18 +125,15 @@ class main_process(threading_tools.process_pool):
         _spm = global_config.single_process_mode()
         if not _spm:
             process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
-        if True:  # not self.__options.DEBUG:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("meta-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
-            if not _spm:
-                msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
-            msi_block.start_command = "/etc/init.d/meta-server start"
-            msi_block.stop_command = "/etc/init.d/meta-server force-stop"
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("meta-server")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
+        if not _spm:
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
+        msi_block.start_command = "/etc/init.d/meta-server start"
+        msi_block.stop_command = "/etc/init.d/meta-server force-stop"
+        msi_block.kill_pids = True
+        msi_block.save_block()
         self.__msi_block = msi_block
 
     def _sigint(self, err_cause):
@@ -114,23 +143,12 @@ class main_process(threading_tools.process_pool):
             self["exit_requested"] = True
 
     def _init_network_sockets(self):
-        client = process_tools.get_socket(
-            self.zmq_context,
-            "ROUTER",
-            identity=process_tools.get_client_uuid("meta"),
+        self.network_bind(
+            bind_port=global_config["COM_PORT"],
+            bind_to_localhost=True,
+            pollin=self._recv_command,
+            client_type="meta",
         )
-        try:
-            client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
-        except zmq.ZMQError:
-            self.log(
-                "error binding to {:d}: {}".format(
-                    global_config["COM_PORT"],
-                    process_tools.get_except_info()),
-                logging_tools.LOG_LEVEL_CRITICAL)
-            raise
-        else:
-            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
-        self.network_socket = client
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         if hm_classes and global_config["TRACK_CSW_MEMORY"]:
             vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
@@ -148,15 +166,10 @@ class main_process(threading_tools.process_pool):
         _args = srv_com["*arg_list"].strip()
         if _args:
             msi_name = _args.split()[0]
-            if msi_name in self.__check_dict:
-                _msi_block = self.__check_dict[msi_name]
+            if msi_name in self.__msi_dict:
+                _msi_block = self.__msi_dict[msi_name]
             else:
-                # check for new instances
-                self._check_for_new_info([], ignore_commands=True)
-                if msi_name in self.__check_dict:
-                    _msi_block = self.__check_dict[msi_name]
-                else:
-                    srv_com.set_result("msi block '{}' does not exist".format(msi_name), server_command.SRV_REPLY_STATE_ERROR)
+                srv_com.set_result("msi block '{}' does not exist".format(msi_name), server_command.SRV_REPLY_STATE_ERROR)
         else:
             srv_com.set_result("no args given", server_command.SRV_REPLY_STATE_ERROR)
         return _msi_block
@@ -221,8 +234,6 @@ class main_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-        if self.vector_socket:
-            self.vector_socket.close()
 
     def _handle_msi_command(self, srv_com, msi_block):
         command = srv_com["*command"]
@@ -261,10 +272,6 @@ class main_process(threading_tools.process_pool):
                     self._srv_com = None
                 else:
                     srv_com.set_result("no stop or start command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
-
-    def _call_commands(self, act_commands):
-        for _com in act_commands:
-            self._call_command(_com)
 
     def _alarm(self, *args, **kwargs):
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
@@ -308,106 +315,25 @@ class main_process(threading_tools.process_pool):
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
 
-    def _check_for_new_info(self, problem_list, ignore_commands=False):
-        # problem_list: list of problematic blocks we have to check
-        change, act_commands = (False, [])
+    def _scan_meta_dir(self):
+        # initial scan
+        _list = []
         if os.path.isdir(global_config["MAIN_DIR"]):
             for fname in os.listdir(global_config["MAIN_DIR"]):
                 full_name = os.path.join(global_config["MAIN_DIR"], fname)
-                if fname == ".command":
-                    if not ignore_commands:
-                        try:
-                            act_commands = [
-                                s_line for s_line in [
-                                    line.strip() for line in file(full_name, "r").read().split("\n")
-                                ] if not s_line.startswith("#") and s_line
-                            ]
-                        except:
-                            self.log("error reading {} file {}: {}".format(fname, full_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                            act_commands = []
-                        else:
-                            act_time = time.localtime()
-                            new_name = "{}_{:04d}{:02d}{:02d}_{:02d}:{:02d}:{:02d}".format(
-                                fname,
-                                act_time[0],
-                                act_time[1],
-                                act_time[2],
-                                act_time[3],
-                                act_time[4],
-                                act_time[5]
-                            )
-                            self.log(
-                                "read {} from {} file {}, renaming to {}".format(
-                                    logging_tools.get_plural(
-                                        "command",
-                                        len(act_commands)
-                                    ),
-                                    fname, full_name, new_name
-                                )
-                            )
-                            try:
-                                os.rename(full_name, os.path.join(global_config["MAIN_DIR"], new_name))
-                            except:
-                                self.log("error renaming {} to {}: {}".format(fname, new_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                            else:
-                                pass
-                elif fname.startswith(".command_"):
-                    # ignore old command files
-                    pass
-                elif fname.endswith(".hb"):
-                    # ignore heartbeat files
-                    pass
-                else:
-                    fn_dict = {m_block.file_name: m_block for m_block in self.__check_dict.itervalues()}
-                    if full_name not in fn_dict:
-                        new_meta_info = process_tools.meta_server_info(full_name)
-                        nm_name = new_meta_info.name
-                        if nm_name:
-                            self.__check_dict[nm_name] = new_meta_info
-                            self.log(
-                                "discovered new meta_info_block for {} (file {}, info: {})".format(
-                                    new_meta_info.name,
-                                    full_name,
-                                    new_meta_info.get_info()
-                                )
-                            )
-                            change = True
-                        else:
-                            self.log(
-                                "error reading meta_info_block {} (name returned None)".format(fname),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                    else:
-                        file_time = os.stat(full_name)[stat.ST_MTIME]
-                        if file_time > fn_dict[full_name].file_init_time or fname in problem_list:
-                            new_meta_info = process_tools.meta_server_info(full_name)
-                            nm_name = new_meta_info.name
-                            if nm_name:
-                                # copy checks_failed info
-                                new_meta_info.set_last_pid_check_ok_time(self.__check_dict[nm_name].get_last_pid_check_ok_time())
-                                new_meta_info.pid_checks_failed = self.__check_dict[nm_name].pid_checks_failed
-                                self.__check_dict[nm_name] = new_meta_info
-                                self.log(
-                                    "updated meta_info_block for {} (from file {}, info: {})".format(
-                                        new_meta_info.name,
-                                        full_name,
-                                        new_meta_info.get_info()
-                                    )
-                                )
-                                change = True
-        del_list = []
-        for cname in self.__check_dict.keys():
-            full_name = os.path.join(global_config["MAIN_DIR"], cname)
-            if not os.path.isfile(full_name):
-                self.log("removed meta_info_block for {} (file {} no longer present)".format(cname, full_name))
-                del_list.append(cname)
-                change = True
-        for d_p in del_list:
-            del self.__check_dict[d_p]
-        if change:
-            all_names = sorted(self.__check_dict.keys())
-            self.log("{} present: {}".format(logging_tools.get_plural("meta_info_block", len(all_names)), ", ".join(all_names)))
-        return act_commands
+                new_meta_info = self._read_msi_from_disk(full_name)
+                if new_meta_info:
+                    _list.append(new_meta_info)
+        self.__msi_dict = {msi.name: msi for msi in _list}
+        # build file lut
+        self.__file_lut = {msi.file_name: msi.name for msi in self.__msi_dict.itervalues()}
+        all_names = sorted(self.__msi_dict.keys())
+        self.log(
+            "{} found: {}".format(
+                logging_tools.get_plural("meta_info_block", len(all_names)),
+                ", ".join(all_names)
+            )
+        )
 
     def _check(self):
         act_time = time.time()
@@ -415,12 +341,12 @@ class main_process(threading_tools.process_pool):
             self.log(
                 "last check only {} ago ({:.2f} needed), skipping...".format(
                     logging_tools.get_diff_time_str(abs(act_time - self.__last_update_time)),
-                    global_config["MIN_CHECK_TIME"]),
-                logging_tools.LOG_LEVEL_WARN)
+                    global_config["MIN_CHECK_TIME"],
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
         else:
             self.__last_update_time = act_time
-            act_commands = self._check_for_new_info(self.__problem_list)
-            self._call_commands(act_commands)
             self._check_processes()
 
     def _check_processes(self):
@@ -435,11 +361,9 @@ class main_process(threading_tools.process_pool):
         # import pprint
         # pprint.pprint(act_pid_dict)
         # print act_pid_list
-        self.__problem_list = []
-        for key, struct in self.__check_dict.iteritems():
+        for key, struct in self.__msi_dict.iteritems():
             struct.check_block(act_tc_dict, act_pid_dict)
             if struct.pid_checks_failed:
-                self.__problem_list.append(key)
                 pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
                 do_sthg = (struct.pid_checks_failed >= 2 and pids_failed_time >= global_config["FAILED_CHECK_TIME"])
                 self.log(
@@ -475,8 +399,10 @@ class main_process(threading_tools.process_pool):
                         )
                     if struct.kill_pids:
                         kill_info = struct.kill_all_found_pids()
-                        self.log("  *** kill info: {}".format(kill_info),
-                                 logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "  *** kill info: {}".format(kill_info),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                         mail_text.extend(
                             [
                                 "trying to kill the remaining pids, kill info : {}".format(kill_info),
@@ -506,15 +432,68 @@ class main_process(threading_tools.process_pool):
                     if pids:
                         # only count memory for one pid
                         mem_info_dict[key] = {pid: (struct.get_process_name(pid), process_tools.get_mem_info(pid)) for pid in pids}
-                    else:
-                        mem_info_dict[key] = None
+                    # else:
+                    #     mem_info_dict[key] = None
         if mem_info_dict:
             self._show_meminfo(mem_info_dict)
         if del_list:
             del_list.sort()
-            self.log("removed {}: {}".format(logging_tools.get_plural("block", len(del_list)), ", ".join(del_list)))
+            self.log(
+                "removed {}: {}".format(
+                    logging_tools.get_plural("block", len(del_list)),
+                    ", ".join(del_list)
+                )
+            )
             for d_p in del_list:
-                del self.__check_dict[d_p]
+                self._delete_msi_by_name(d_p)
+
+    def _read_msi_from_disk(self, file_name):
+        new_meta_info = process_tools.meta_server_info(file_name, self.log)
+        if new_meta_info.name:
+            self.log(
+                "read meta_info_block for {} (file {}, info: {})".format(
+                    new_meta_info.name,
+                    file_name,
+                    new_meta_info.get_info()
+                )
+            )
+        else:
+            self.log(
+                "error reading meta_info_block from {} (name returned None)".format(file_name),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            new_meta_info = None
+        return new_meta_info
+
+    def _delete_msi_by_name(self, msi_name):
+        msi = self.__msi_dict[msi_name]
+        self.log("removing MSI-block {}".format(msi_name))
+        del self.__file_lut[msi.file_name]
+        del self.__msi_dict[msi.name]
+
+    def _delete_msi_by_file_name(self, file_name):
+        if file_name in self.__file_lut:
+            self._delete_msi_by_name(self.__file_lut[file_name])
+        else:
+            self.log("MSI for file_name {} not defined".format(file_name), logging_tools.LOG_LEVEL_ERROR)
+
+    def _update_or_create_msi_by_file_name(self, file_name):
+        if file_name in self.__file_lut:
+            cur_meta_info = self.__msi_dict[self.__file_lut[file_name]]
+            new_meta_info = self._read_msi_from_disk(file_name)
+            if new_meta_info:
+                self.__msi_dict[new_meta_info.name] = new_meta_info
+                new_meta_info.set_last_pid_check_ok_time(cur_meta_info.get_last_pid_check_ok_time())
+                new_meta_info.pid_checks_failed = cur_meta_info.pid_checks_failed
+                # self.log("updated MSI-block for {}".format(new_meta_info.name))
+            else:
+                self._delete_msi_by_file_name(file_name)
+        else:
+            # create new msi
+            new_meta_info = self._read_msi_from_disk(file_name)
+            if new_meta_info:
+                self.__msi_dict[new_meta_info.name] = new_meta_info
+                self.__file_lut[new_meta_info.file_name] = new_meta_info.name
 
     def _show_meminfo(self, mem_info_dict):
         act_time = time.time()
@@ -580,5 +559,8 @@ class main_process(threading_tools.process_pool):
         )
 
     def loop_post(self):
-        self.network_socket.close()
+        self.network_unbind()
+        # close vector socket if set
+        if self.vector_socket:
+            self.vector_socket.close()
         self.__log_template.close()

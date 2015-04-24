@@ -439,7 +439,8 @@ class int_error(error):
 
 
 class meta_server_info(object):
-    def __init__(self, name):
+    def __init__(self, name, log_com=None):
+        self.__log_com = log_com
         self.__prop_list = [
             ("start_command", "s", None),
             ("stop_command", "s", None),
@@ -451,6 +452,9 @@ class meta_server_info(object):
         self._reset()
         if name.startswith("/"):
             parsed = self._parse_file(name)
+            if not parsed:
+                # unparseable, set name to None
+                name = None
         else:
             parsed = False
         if parsed:
@@ -468,6 +472,12 @@ class meta_server_info(object):
         self.parsed = parsed
         self.file_init_time = time.time()
 
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if self.__log_com:
+            self.__log_com("[MSI] {}".format(what), log_level)
+        else:
+            logging_tools.my_syslog(what)
+
     def _reset(self):
         self.__pids = []
         self.__pid_names = {}
@@ -483,11 +493,12 @@ class meta_server_info(object):
         try:
             xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
         except:
-            logging_tools.my_syslog(
+            self.log(
                 "error parsing XML file {} (meta_server_info): {}".format(
                     name,
                     get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
             parsed = False
         else:
@@ -601,11 +612,12 @@ class meta_server_info(object):
         try:
             _ps_name = psutil.Process(pid=act_pid).name()
         except:
-            logging_tools.my_syslog(
+            self.log(
                 "cannot get name of process {:d} :{}".format(
                     act_pid,
                     get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
             _ps_name = ""
         self.__pids.extend(mult * [act_pid])
@@ -720,7 +732,13 @@ class meta_server_info(object):
         try:
             open(self.__file_name, "w").write(file_content)
         except:
-            logging_tools.my_syslog("error writing file {} (meta_server_info for {})".format(self.__file_name, self.__name))
+            self.log(
+                "error writing file {} (meta_server_info for {})".format(
+                    self.__file_name,
+                    self.__name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def __eq__(self, other):
         return self.__name == other.name and self.__pids == other.get_pids()
@@ -734,12 +752,13 @@ class meta_server_info(object):
         try:
             os.unlink(self.__file_name)
         except:
-            logging_tools.my_syslog(
+            self.log(
                 "error removing file {} (meta_server_info for {}): {}".format(
                     self.__file_name,
                     self.__name,
                     get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
 
     def check_block(self, act_tc_dict=None, act_dict={}):
@@ -750,6 +769,7 @@ class meta_server_info(object):
             if not act_dict:
                 act_dict = get_proc_list_new()
             # search pids
+            print act_dict.keys()
             pids_found = [key for key, value in act_dict.iteritems() if value.name() == self.__exe_name]
             self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
             self.__pid_names.update({key: self.__exe_name for key in pids_found})
