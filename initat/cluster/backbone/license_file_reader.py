@@ -66,6 +66,7 @@ class LicenseFileReader(object):
 
         signed_content_xml = etree.fromstring(signed_content_str)
 
+        # noinspection PyUnresolvedReferences
         ng = etree.RelaxNG(etree.fromstring(LIC_FILE_RELAX_NG_DEFINITION))
         if not ng.validate(signed_content_xml):
             raise LicenseFileReader.InvalidLicenseFile("Invalid license file structure")
@@ -169,10 +170,21 @@ class LicenseFileReader(object):
             }
 
         def extract_cluster_data(cluster_xml):
+            def int_or_none(x):
+                try:
+                    return int(x)
+                except ValueError:
+                    return None
+
+            def parse_parameters(parameters_xml):
+                return {param_xml.get('name'): int_or_none(param_xml.text)
+                        for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)}
+
             return [{
                 'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
                 'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
                 'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
             } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)]
 
         return [extract_package_data(pack_xml) for pack_xml in package_uuid_map.itervalues()]
@@ -263,4 +275,3 @@ class LicenseFeatureMapReader(object):
             'name': lic_xml.findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
             'description': lic_xml.findtext("icsw:description", namespaces=ICSW_XML_NS_MAP),
         } for lic_xml in licenses_xml]
-

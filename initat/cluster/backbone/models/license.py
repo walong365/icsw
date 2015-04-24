@@ -22,6 +22,7 @@
 """ database definitions for licenses """
 import logging
 
+# noinspection PyUnresolvedReferences
 from lxml import etree
 
 from django.db import models
@@ -218,6 +219,17 @@ LIC_FILE_RELAX_NG_DEFINITION = """
                                      <element name="valid-to">
                                          <text/>
                                      </element>
+                                     <element name="parameters">
+
+                                        <oneOrMore>
+                                            <element name="parameter">
+                                                <attribute name="id"/>
+                                                <attribute name="name"/>
+                                                <text/>
+                                            </element>
+                                        </oneOrMore>
+
+                                     </element>
                                  </element>
                              </oneOrMore>
 
@@ -235,4 +247,3 @@ LIC_FILE_RELAX_NG_DEFINITION = """
 
 </element>
 """
-

@@ -77,6 +77,7 @@
                 <th st-sort="description">Description</th>
                 <th colspan="2">Status</th>
                 <th></th>
+                <th>Parameters</th>
                 <th>Type</th>
                 <th>License package</th>
             </tr>
@@ -92,6 +93,11 @@
                     {{get_license_state(lic.id).state_str}}
                 </td>
                 <td>{{get_license_state(lic.id).date_info}}</td>
+                <td>
+                    <div ng-repeat="(param_type, param_value) in get_license_state(lic.id).lic.parameters">
+                        <strong>{{param_type}}</strong>: {{param_value}}
+                    </div>
+                </td>
                 <td>{{get_license_state(lic.id).package.type_name}}</td>
                 <td>{{get_license_state(lic.id).package.name}}</td>
             </tr>
@@ -136,6 +142,7 @@
                                 <th width="100" colspan="2">State</th>
                                 <th st-sort="valid_from">Valid from</th>
                                 <th st-sort="valid_to">Valid to</th>
+                                <th>Parameters</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -149,6 +156,11 @@
                                 </td>
                                 <td>{{pack_lic.valid_from | date:'yyyy-MM-dd'}}</td>
                                 <td>{{pack_lic.valid_to | date:'yyyy-MM-dd'}}</td>
+                                <td>
+                                    <div ng-repeat="(param_type, param_value) in pack_lic.parameters">
+                                        <strong>{{param_type}}</strong>: {{param_value}}
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
