@@ -7,8 +7,6 @@ SERVER_LIST = [
     "host-monitoring-zmq.py",
     "md-config-server.py",
     "meta-server.py",
-    "package-client.py",
-    "package-server.py",
     "rms-server.py",
     "snmp-relay.py",
 ]

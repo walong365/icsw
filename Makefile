@@ -203,8 +203,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} meta-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
-	${INSTALL} ${INSTALL_OPTS} init_scripts/package-server.rc ${DESTDIR}${INIT}/package-server
-	${INSTALL} ${INSTALL_OPTS} init_scripts/package-client.rc ${DESTDIR}${INIT}/package-client
 	install ${INSTALL_OPTS} md-config-server ${DESTDIR}/${INIT}/md-config-server
 	${INSTALL} ${INSTALL_OPTS} rms-server.rc ${DESTDIR}${INIT}/rms-server
 	# SGE stuff ICSW_SGE
@@ -227,8 +225,6 @@ install:
 	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules
 	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
 	${LN} -s ${INIT}/logging-server ${DESTDIR}/${USRSBIN}/rclogging-server
-	${LN} -s ${INIT}/package-server ${DESTDIR}${USRSBIN}/rcpackage-server
-	${LN} -s ${INIT}/package-client ${DESTDIR}${USRSBIN}/rcpackage-client
 	${LN} -s ${INIT}/rms-server ${DESTDIR}${USRSBIN}/rcrms-server
 	${LN} -s ${INIT}/md-config-server ${DESTDIR}${USRSBIN}/rcmd-config-server
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server

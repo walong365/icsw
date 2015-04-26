@@ -46,8 +46,6 @@ def main():
         ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
-        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER", configfile.str_c_var("idpacks", help_string="user to run as [%(default)s]")),
         ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS", configfile.array_c_var(["idg"])),
@@ -74,13 +72,12 @@ def main():
     if not sql_info.effective_device:
         print "not a package_server"
         return 5
-    if global_config["CHECK"]:
-        return 0
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
-    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     global_config.add_config_entries(
         [
+            (
+                "SERVER_IDX",
+                configfile.int_c_var(sql_info.effective_device.pk, database=False)
+            ),
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(LogSource.new("package-server", device=sql_info.effective_device).pk)
@@ -101,20 +98,10 @@ def main():
         global_config["GROUP"]
     )
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
-    if not global_config["DEBUG"]:
-        # close DB connection
-        connection.close()
-        with daemon.DaemonContext():
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
-            run_code()
-            configfile.terminate_manager()
-        os.kill(os.getpid(), 9)
-    else:
-        print "Debugging package-server on {}".format(long_host_name)
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
-        run_code()
-    return 0
+    # close DB connection
+    connection.close()
+    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+    configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
+    run_code()
+    configfile.terminate_manager()
+    os.kill(os.getpid(), 9)

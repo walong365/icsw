@@ -13,6 +13,12 @@
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idpacks</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <module-name>package_install.server</module-name>
+        <old-binary>package-server</old-binary>
     </instance>
     <instance check_type="meta" name="mother" pid_file_name="mother/mother.pid" has_force_stop="1">
         <config_names>
