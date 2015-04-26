@@ -3,7 +3,6 @@ from distutils.core import setup
 SERVER_LIST = [
     "cluster-config-server.py",
     "cluster-server.py",
-    "collectd-init.py",
     "discovery-server.py",
     "host-monitoring-zmq.py",
     "logcheck-server.py",
