@@ -63,7 +63,7 @@ class main_process(threading_tools.process_pool):
         # self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        self.register_timer(self._update, 10 if global_config["DEBUG"] else 60)
+        self.register_timer(self._update, 60)
         os.umask(2)
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
         self.__num_forward_ok, self.__num_forward_error = (0, 0)

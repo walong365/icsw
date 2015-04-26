@@ -522,17 +522,23 @@ class ServiceContainer(object):
         # print cur_name, self.service_ok(entry)
         # return
         if not os.fork():
-            print os.getpid(), psutil.Process(pid=os.getpid()).get_num_threads()
-            with daemon.DaemonContext():
-                connection.close()
-                sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-                sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-                sys.argv = [_prog_name]
-                setproctitle.setproctitle(_prog_title)
-                _module = importlib.import_module(_module_name)
-                # print _module
-                # importlib.import_module(_module).main()
-                _module.main()
+            subprocess.call(["/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py", _prog_name, _module_name, _prog_title])
+            os._exit(1)
+            if False:
+                print os.getpid(), psutil.Process(pid=os.getpid()).get_num_threads()
+                with daemon.DaemonContext(detach_process=True):
+                    connection.close()
+                    file("/tmp/.l", "a").write(str(psutil.Process(pid=os.getpid()).num_threads()) + " pf\n")
+                    # sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+                    # sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+                    sys.argv = [_prog_name]
+                    file("/tmp/.l", "a").write(str(psutil.Process(pid=os.getpid()).num_threads()) + " sf\n")
+                    setproctitle.setproctitle(_prog_title)
+                    _module = importlib.import_module(_module_name)
+                    # print _module
+                    # importlib.import_module(_module).main()
+                    _module.main()
+        time.sleep(3600)
         print "cont"
 
 
