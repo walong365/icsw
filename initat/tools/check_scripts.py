@@ -199,11 +199,11 @@ class ServiceContainer(object):
             # print act_pids, ms_block.pids
             self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid())
         else:
-            self._add_non_running(entry, result)
+            self._add_non_running(entry, result, check_init_script=False)
 
-    def _add_non_running(self, entry, result):
+    def _add_non_running(self, entry, result, check_init_script=True):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
-        if os.path.isfile(init_script_name):
+        if os.path.isfile(init_script_name) or check_init_script == False:
             act_state = SERVICE_DEAD
             result.append(
                 E.state_info(
@@ -223,8 +223,12 @@ class ServiceContainer(object):
     def _check_processes(self, entry, pids):
         name = entry.attrib["name"]
         any_ok = True if int(entry.attrib["any_threads_ok"]) else False
-        unique_pids = {key: pids.count(key) for key in set(pids)}
-        pids_found = {key: self.__act_proc_dict[key].num_threads() for key in set(pids)}
+        unique_pids = {
+            key: pids.count(key) for key in set(pids)
+        }
+        pids_found = {
+            key: self.__act_proc_dict[key].num_threads() for key in set(pids) if key in self.__act_proc_dict
+        }
         num_started = sum(unique_pids.values()) if unique_pids else 0
         num_found = sum(pids_found.values()) if pids_found else 0
         # check for extra Nagios2.x thread
@@ -514,13 +518,34 @@ class ServiceContainer(object):
             _prog_name = entry.attrib["name"]
         return _prog_name
 
+    def _get_module_name(self, entry):
+        _mod_name = entry.findtext(".//module-name")
+        if _mod_name:
+            _mod_name = _mod_name.strip()
+        else:
+            _mod_name = entry.attrib["name"].replace("-", "_")
+        return _mod_name
+
     def start_service(self, opt_ns, entry):
         cur_name = entry.attrib["name"]
         _prog_name = self._get_prog_name(entry)
         _prog_title = self._get_prog_title(entry)
-        _module_name = entry.get("module", "initat.{}.main".format(cur_name.replace("-", "_")))
+        arg_dict = {_val.get("key"): _val.text.strip() for _val in entry.findall(".//arg[@key]")}
+
+        print arg_dict
+        _module_name = entry.get("module", "initat.{}.main".format(self._get_module_name(entry)))
+        _arg_list = [
+            "/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py",
+            _prog_name,
+            _module_name,
+            _prog_title,
+        ]
+        for _add_key in ["user", "group"]:
+            if _add_key in arg_dict:
+                _arg_list.append(arg_dict[_add_key])
+        print _arg_list
         if not os.fork():
-            subprocess.call(["/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py", _prog_name, _module_name, _prog_title])
+            subprocess.call(_arg_list)
             os._exit(1)
 
 

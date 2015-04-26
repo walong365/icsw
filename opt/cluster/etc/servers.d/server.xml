@@ -18,6 +18,14 @@
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idrrd</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <module-name>collectd</module-name>
+        <programm-name>collectd</programm-name>
+        <programm-title>icsw.collectd</programm-title>
+        <old-binary>collectd-init</old-binary>
     </instance>
     <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
         <config_names>

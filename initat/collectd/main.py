@@ -116,12 +116,6 @@ def main():
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     if global_config["CHECK"]:
         sys.exit(0)
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(
-            "{}.py".format(prog_name),
-            ignore_names=[],
-        )
-
     global_config.add_config_entries(
         [
             (
