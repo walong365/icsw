@@ -242,6 +242,12 @@ def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]
     else:
+
+        # debug code
+        # file("/tmp/frame_info", "a").write("---------\n")
+        # for _frame in inspect.getouterframes(inspect.currentframe()):
+        #     file("/tmp/frame_info", "a").write(os.path.basename(_frame[1]) + "\n")
+
         outest_frame = inspect.getouterframes(inspect.currentframe())[-1]
         s_name = os.path.basename(outest_frame[1])
         s_name = s_name.replace("-", "_").replace("__", "_").replace("__", "_")
@@ -641,7 +647,8 @@ class meta_server_info(object):
         else:
             while act_pid in self.__pids:
                 self.__pids.remove(act_pid)
-        self.__pids.sort()
+        # do NOT sort the pids
+        # self.__pids.sort()
 
     def get_pids(self, process_name=None, name=None):
         pid_list = self.__pids
@@ -761,6 +768,13 @@ class meta_server_info(object):
                 logging_tools.LOG_LEVEL_ERROR
             )
 
+    def get_main_pid(self):
+        main_pids = [_key for _key, _value in self.__pid_names.iteritems() if _value == "main"]
+        if main_pids:
+            return main_pids[0]
+        else:
+            return None
+
     def check_block(self, act_dict={}):
         if not self.__pids:
             if not act_dict:
@@ -838,10 +852,10 @@ class meta_server_info(object):
                     cur_pid,
                     "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in self.missing_list else (
                         "{:d} {}, {:d} found)".format(
-                            abs(bound_dict[cur_pid]),
+                            abs(self.bound_dict[cur_pid]),
                             "missing (lower bound is {:d}".format(
                                 self.__pids_expected[cur_pid][0]
-                            ) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
+                            ) if self.bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
                                 self.__pids_expected[cur_pid][1]
                             ),
                             self.__pids_found.get(cur_pid, 0),

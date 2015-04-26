@@ -33,12 +33,16 @@ from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import argparse
 import commands
+import daemon
 import datetime
 from initat.tools import logging_tools
 from initat.tools import process_tools
+from initat.tools.io_stream_helper import io_stream
 import psutil
 import stat
 import subprocess
+import setproctitle
+import importlib
 import time
 
 try:
@@ -47,6 +51,7 @@ except:
     settings = None
     config_tools = None
 else:
+    from django.db import connection
     try:
         _sm = settings.SATELLITE_MODE
     except:
@@ -72,7 +77,54 @@ SERVICE_NOT_INSTALLED = 5
 SERVICE_NOT_CONFIGURED = 6
 
 
+class InstanceXML(object):
+    def __init__(self, log_com):
+        self.__log_com = log_com
+        self.read()
+        self.normalize()
+
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[iXML] {}".format(what), level)
+
+    def read(self):
+        self.tree = E.instances()
+        # check for additional instances
+        if os.path.isdir(SERVERS_DIR):
+            for entry in os.listdir(SERVERS_DIR):
+                if entry.endswith(".xml"):
+                    try:
+                        add_inst_list = etree.fromstring(open(os.path.join(SERVERS_DIR, entry), "r").read())  # @UndefinedVariable
+                    except:
+                        self.log(
+                            "cannot read entry '{}' from {}: {}".format(
+                                entry,
+                                SERVERS_DIR,
+                                process_tools.get_except_info(),
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                    else:
+                        for sub_inst in add_inst_list.findall("instance"):
+                            self.tree.append(sub_inst)
+
+    def normalize(self):
+        for cur_el in self.tree.findall("instance"):
+            name = cur_el.attrib["name"]
+            for key, def_value in [
+                ("runs_on", "server"),
+                ("any_threads_ok", "0"),
+                ("pid_file_name", "{}.pid".format(name)),
+                ("init_script_name", name),
+                ("startstop", "1"),
+                ("process_name", name),
+                ("meta_server_name", name),
+            ]:
+                if key not in cur_el.attrib:
+                    cur_el.attrib[key] = def_value
+
+
 class ServiceContainer(object):
+    INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
     _COMPAT_DICT = {
         "rms-server": "rms_server",
         "logcheck-server": "logcheck",
@@ -84,43 +136,7 @@ class ServiceContainer(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SrvC] {}".format(what), log_level)
 
-    def get_instance_xml(self):
-        instance_xml = E.instances()
-        # check for additional instances
-        if os.path.isdir(SERVERS_DIR):
-            for entry in os.listdir(SERVERS_DIR):
-                if entry.endswith(".xml"):
-                    try:
-                        add_inst_list = etree.fromstring(open(os.path.join(SERVERS_DIR, entry), "r").read())  # @UndefinedVariable
-                    except:
-                        print(
-                            "cannot read entry '{}' from {}: {}".format(
-                                entry,
-                                SERVERS_DIR,
-                                process_tools.get_except_info(),
-                            )
-                        )
-                    else:
-                        for sub_inst in add_inst_list.findall("instance"):
-                            instance_xml.append(sub_inst)
-        for cur_el in instance_xml.findall("instance"):
-            name = cur_el.attrib["name"]
-            for key, def_value in [
-                ("runs_on", "server"),
-                ("any_threads_ok", "0"),
-                ("pid_file_name", "{}.pid".format(name)),
-                ("init_script_name", name),
-                ("startstop", "1"),
-                ("checked", "0"),
-                ("to_check", "0"),
-                ("process_name", name),
-                ("meta_server_name", name),
-            ]:
-                if key not in cur_el.attrib:
-                    cur_el.attrib[key] = def_value
-        return instance_xml
-
-    def _check_simple(self, entry):
+    def _check_simple(self, entry, result):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         if os.path.isfile(init_script_name):
             act_pids = []
@@ -132,15 +148,14 @@ class ServiceContainer(object):
                     pass
             if act_pids:
                 act_state, act_str = (SERVICE_OK, "running")
-                self._add_pids(entry, act_pids)
+                self._add_pids(result, act_pids)
             else:
                 act_state, act_str = (SERVICE_DEAD, "not running")
         else:
             act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
-        entry.append(E.state_info(act_str, state="{:d}".format(act_state)))
-        entry.attrib["check_source"] = "simple"
+        result.append(E.state_info(act_str, check_source="simple", state="{:d}".format(act_state)))
 
-    def _check_meta(self, entry):
+    def _check_meta(self, entry, result):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         c_name = entry.attrib["meta_server_name"]
         ms_name = os.path.join("/var", "lib", "meta-server", c_name)
@@ -165,8 +180,7 @@ class ServiceContainer(object):
                 num_found = num_started
             num_diff = diff_threads
             # print ms_block.pids, ms_block.pid_check_string
-            entry.attrib["check_source"] = "meta"
-            entry.append(
+            result.append(
                 E.state_info(
                     *[
                         E.diff_info(
@@ -174,6 +188,7 @@ class ServiceContainer(object):
                             diff="{:d}".format(value)
                         ) for key, value in diff_dict.iteritems()
                     ],
+                    check_source="meta",
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
                     num_diff="{:d}".format(num_diff),
@@ -181,15 +196,16 @@ class ServiceContainer(object):
                     state="{:d}".format(act_state)
                 ),
             )
-            self._add_pids(entry, act_pids)
+            print act_pids, ms_block.pids
+            self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid())
         else:
-            self._add_non_running(entry)
+            self._add_non_running(entry, result)
 
-    def _add_non_running(self, entry):
+    def _add_non_running(self, entry, result):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         if os.path.isfile(init_script_name):
             act_state = SERVICE_DEAD
-            entry.append(
+            result.append(
                 E.state_info(
                     "no threads",
                     state="{:d}".format(act_state),
@@ -197,7 +213,7 @@ class ServiceContainer(object):
             )
         else:
             act_state = SERVICE_NOT_INSTALLED
-            entry.append(
+            result.append(
                 E.state_info(
                     "not installed",
                     state="{:d}".format(act_state),
@@ -220,7 +236,7 @@ class ServiceContainer(object):
             ret_state = SERVICE_NOT_CONFIGURED
         return ret_state, num_started, num_found
 
-    def _check_pid_file(self, entry):
+    def _check_pid_file(self, entry, result):
         name = entry.attrib["name"]
         pid_file_name = entry.attrib["pid_file_name"]
         if not pid_file_name.startswith("/"):
@@ -231,8 +247,7 @@ class ServiceContainer(object):
             act_state, num_started, num_found = self._check_processes(entry, act_pids)
             num_diff = 0
             diff_dict = {}
-            entry.attrib["check_source"] = "pid"
-            entry.append(
+            result.append(
                 E.state_info(
                     *[
                         E.diff_info(
@@ -240,6 +255,7 @@ class ServiceContainer(object):
                             diff="{:d}".format(value)
                         ) for key, value in diff_dict.iteritems()
                     ],
+                    check_source="pid",
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
                     num_diff="{:d}".format(num_diff),
@@ -247,26 +263,109 @@ class ServiceContainer(object):
                     state="{:d}".format(act_state)
                 ),
             )
-            self._add_pids(entry, act_pids)
+            self._add_pids(result, act_pids)
         else:
-            self._add_non_running(entry)
+            self._add_non_running(entry, result)
 
-    def _add_pids(self, entry, act_pids):
+    def _add_pids(self, result, act_pids, main_pid=None):
+        print "+", main_pid
         if act_pids:
-            entry.append(
+            result.append(
                 E.pids(
-                    *[E.pid("{:d}".format(cur_pid), count="{:d}".format(act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
+                    *[
+                        E.pid(
+                            "{:d}".format(cur_pid),
+                            count="{:d}".format(act_pids.count(cur_pid)),
+                            main="1" if cur_pid == main_pid else "0",
+                        ) for cur_pid in set(act_pids)
+                    ]
                 )
             )
-            entry.append(
+            result.append(
                 E.memory_info(
-                    "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
+                    "{:d}".format(
+                        sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))
+                    ) if act_pids else "",
                 )
             )
 
-    def check_system(self, opt_ns):
-        INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
-        instance_xml = self.get_instance_xml()
+    def check_service(self, opt_ns, entry, **kwargs):
+        if not kwargs.get("use_cache", False):
+            self.__act_proc_dict = process_tools.get_proc_list()
+        if entry.find("result"):
+            if kwargs.get("refresh", False):
+                # remove current result record
+                entry.remove(entry.find("result"))
+            else:
+                # result record already present, return
+                return
+        dev_config = []
+        if config_tools and entry.find(".//config_names/config_name") is not None:
+            # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
+            _conf_names = [_entry.text for _entry in entry.findall(".//config_names/config_name")]
+            for _conf_name in _conf_names:
+                _cr = config_tools.server_check(server_type=_conf_name)
+                if _cr.effective_device:
+                    dev_config.append(_cr)
+
+        name = entry.attrib["name"]
+        _result = E.result()
+        entry.append(_result)
+        init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
+        if entry.attrib["check_type"] == "simple":
+            self._check_simple(entry, _result)
+        elif entry.attrib["check_type"] == "meta":
+            self._check_meta(entry, _result)
+        elif entry.attrib["check_type"] == "pid_file":
+            self._check_pid_file(entry, _result)
+        else:
+            _result.append(E.state_info("unknown check_type '{}'".format(entry.attrib["check_type"]), state="1"))
+        act_state = int(_result.find("state_info").attrib["state"])
+        if entry.attrib["runs_on"] == "server":
+            if dev_config:  # is not None:
+                sql_info = ", ".join([_dc.server_info_str for _dc in dev_config])
+            else:
+                act_state = SERVICE_NOT_CONFIGURED
+                sql_info = "not configured"
+                # update state info
+                _state_info = _result.find("state_info")
+                _state_info.text = "not configured"
+                _state_info.attrib["state"] = "{:d}".format(act_state)
+        else:
+            sql_info = entry.attrib["runs_on"]
+        if type(sql_info) == str:
+            _result.append(
+                E.sql_info(str(sql_info))
+            )
+        else:
+            _result.append(
+                E.sql_info("{} ({})".format(
+                    sql_info.server_info_str,
+                    sql_info.config_name),
+                )
+            )
+        if entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
+            _result.attrib["version_ok"] = "0"
+            try:
+                if "version_file" in entry.attrib:
+                    _path = entry.attrib["version_file"]
+                else:
+                    _path = "%{{INIT_BASE}}/{runs_on}_version.py".format(**dict(entry.attrib))
+                _path = _path.replace("%{INIT_BASE}", self.INIT_BASE)
+                _lines = file(_path, "r").read().split("\n")
+                _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
+                if _vers_lines:
+                    _result.attrib["version_ok"] = "1"
+                    _result.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
+                else:
+                    _result.attrib["version"] = "no version lines found in '{}'".format(_path)
+            except:
+                _result.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
+
+    def get_instance_xml(self):
+        return InstanceXML(self.__log_com).tree
+
+    def apply_filter(self, opt_ns, instance_xml):
         set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
         set_all_clients = True if (opt_ns.client == ["ALL"] or opt_ns.instance == ["ALL"]) else False
         set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
@@ -276,75 +375,165 @@ class ServiceContainer(object):
             opt_ns.client = instance_xml.xpath(".//*[@runs_on='client']/@name", smart_strings=False)
         if set_all_system:
             opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name", smart_strings=False)
+        check_list = []
         for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
             if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
-                cur_el.attrib["to_check"] = "1"
-        self.__act_proc_dict = process_tools.get_proc_list()
-        _prev_db_check = None
-        for entry in instance_xml.xpath("instance[@to_check='1']"):
-            dev_config = []
-            if config_tools and entry.find(".//config_names/config_name") is not None:
-                # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
-                _conf_names = [_entry.text for _entry in entry.findall(".//config_names/config_name")]
-                for _conf_name in _conf_names:
-                    _cr = config_tools.server_check(server_type=_conf_name, prev_check=_prev_db_check)
-                    _prev_db_check = _cr
-                    if _cr.effective_device:
-                        dev_config.append(_cr)
+                check_list.append(cur_el)
+        return check_list
 
-            name = entry.attrib["name"]
-            entry.attrib["checked"] = "1"
-            init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
-            if entry.attrib["check_type"] == "simple":
-                self._check_simple(entry)
-            elif entry.attrib["check_type"] == "meta":
-                self._check_meta(entry)
-            elif entry.attrib["check_type"] == "pid_file":
-                self._check_pid_file(entry)
+    def check_system(self, opt_ns, instance_xml, **kwargs):
+        check_list = self.apply_filter(opt_ns, instance_xml)
+        self.__act_proc_dict = process_tools.get_proc_list()
+        if kwargs.get("refresh", False):
+            # delete all previous result records
+            for _result in instance_xml.findall("instance/result"):
+                _result.getparent().remove(_result)
+        for entry in check_list:
+            self.check_service(opt_ns, entry, use_cache=True)
+
+    def actions(self, opt_ns, instance_xml):
+        # mother of action, decide what to do
+        check_list = self.apply_filter(opt_ns, instance_xml)
+        self.__act_proc_dict = process_tools.get_proc_list()
+        for entry in check_list:
+            self.action(opt_ns, entry)
+
+    def service_ok(self, entry):
+        # return True if the service in entry is running
+        _si = entry.find(".//state_info")
+        if _si is not None:
+            _state = int(_si.get("state"))
+            return True if _state == SERVICE_OK else False
+        else:
+            return False
+
+    def decide(self, opt_ns, entry):
+        # based on the entry state and the command given in opt_ns decide what to do
+        _state = self.service_ok(entry)
+        _mode = opt_ns.mode
+        _act_list = {
+            False: {
+                "start": ["cleanup", "start"],
+                "stop": ["cleanup"],
+                "restart": ["cleanup", "start"],
+            },
+            True: {
+                "start": [],
+                "stop": ["stop"],
+                "restart": ["stop", "start"],
+            }
+        }[_state][_mode]
+        return _act_list
+
+    def action(self, opt_ns, entry):
+        self.check_service(opt_ns, entry)
+        _action_list = self.decide(opt_ns, entry)
+        if _action_list:
+            print entry.get("name"), _action_list
+        for _action in _action_list:
+            {
+                "stop": self.stop_service,
+                "start": self.start_service,
+                "cleanup": self.cleanup_service,
+            }[_action](opt_ns, entry)
+
+    def stop_service(self, opt_ns, entry):
+        _main_pids = [int(_val.text) for _val in entry.findall(".//pids/pid[@main='1']")]
+        _meta_pids = [int(_val.text) for _val in entry.findall(".//pids/pid")]
+        # print etree.tostring(entry, pretty_print=True)
+        if len(_meta_pids):
+            if _main_pids:
+                os.kill(_main_pids[0], 15)
             else:
-                entry.append(E.state_info("unknown check_type '{}'".format(entry.attrib["check_type"]), state="1"))
-            act_state = int(entry.find("state_info").attrib["state"])
-            if entry.attrib["runs_on"] == "server":
-                if dev_config:  # is not None:
-                    sql_info = ", ".join([_dc.server_info_str for _dc in dev_config])
-                else:
-                    act_state = SERVICE_NOT_CONFIGURED
-                    sql_info = "not configured"
-                    # update state info
-                    _state_info = entry.find("state_info")
-                    _state_info.text = "not configured"
-                    _state_info.attrib["state"] = "{:d}".format(act_state)
+                os.kill(_meta_pids[0], 15)
+            # print "stop", _main_pids, _meta_pids
+
+    def cleanup_service(self, opt_ns, entry):
+        # print etree.tostring(entry)
+        _meta_pids = set([int(_val.text) for _val in entry.findall(".//pids/pid")])
+        _proc_pids = self._find_pids_by_name(entry)
+        _all_pids = _meta_pids | _proc_pids
+        if _all_pids:
+            for _pid in _all_pids:
+                os.kill(_pid, 9)
+        # print "cleanup", _meta_pids, _proc_pids
+        # import pprint
+        # pprint.pprint(self.__act_proc_dict)
+
+    def _find_pids_by_name(self, entry):
+        _new_title = self._get_prog_title(entry)
+        _old_bin = self._get_old_binary(entry)
+        print _new_title, _old_bin
+        _pid_list = set()
+        for _key, _value in self.__act_proc_dict.iteritems():
+            try:
+                _cmdline = _value.cmdline()
+            except:
+                pass
             else:
-                sql_info = entry.attrib["runs_on"]
-            if type(sql_info) == str:
-                entry.append(
-                    E.sql_info(str(sql_info))
-                )
-            else:
-                entry.append(
-                    E.sql_info("{} ({})".format(
-                        sql_info.server_info_str,
-                        sql_info.config_name),
-                    )
-                )
-            if entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
-                entry.attrib["version_ok"] = "0"
-                try:
-                    if "version_file" in entry.attrib:
-                        _path = entry.attrib["version_file"]
-                    else:
-                        _path = "%{{INIT_BASE}}/{runs_on}_version.py".format(**dict(entry.attrib))
-                    _path = _path.replace("%{INIT_BASE}", INIT_BASE)
-                    _lines = file(_path, "r").read().split("\n")
-                    _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
-                    if _vers_lines:
-                        entry.attrib["version_ok"] = "1"
-                        entry.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
-                    else:
-                        entry.attrib["version"] = "no version lines found in '{}'".format(_path)
-                except:
-                    entry.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
-        return instance_xml
+                if _cmdline:
+                    _cmdline = sum([_part.strip().split() for _part in _cmdline], [])
+                    if _cmdline[0] == _new_title:
+                        # print "+", _cmdline, _new_title
+                        _pid_list.add(_key)
+                    elif _cmdline[0].endswith("python-init"):
+                        # print _cmdline
+                        _icsw_found, _old_found = (any([_part.count("icsw") or _part.count("check_scripts") for _part in _cmdline]), False)
+                        # print "*", _cmdline
+                        for _part in _cmdline:
+                            if _part.count(_old_bin):
+                                # match
+                                _old_found = True
+                        # print _old_found, _icsw_found
+                        if _old_found and not _icsw_found:
+                            _pid_list.add(_key)
+        return _pid_list
+
+    def _get_old_binary(self, entry):
+        # returns name of old binary
+        _old_bin = entry.findtext(".//old-binary")
+        if _old_bin:
+            _old_bin = _old_bin.strip()
+        else:
+            _old_bin = entry.get("name")
+        return _old_bin
+
+    def _get_prog_title(self, entry):
+        _prog_title = entry.findtext(".//programm-title")
+        if _prog_title:
+            _prog_title = _prog_title.strip()
+        else:
+            _prog_title = "icsw.{}".format(entry.get("name"))
+        return _prog_title
+
+    def start_service(self, opt_ns, entry):
+        print "start"
+        cur_name = entry.attrib["name"]
+        _prog_name = entry.findtext(".//programm-name")
+        if _prog_name:
+            _prog_name = _prog_name.strip()
+        else:
+            _prog_name = cur_name
+        _prog_title = self._get_prog_title(entry)
+        # print etree.tostring(entry, pretty_print=True)
+        _module_name = entry.get("module", "initat.{}.main".format(cur_name.replace("-", "_")))
+        # print cur_name, mode, _module_name, _prog_name, os.getpid(), psutil.Process(pid=os.getpid()).get_num_threads()
+# _test = file("/tmp/Zusammenfassung_Workshop_20150326.pdf", "r")
+        # print cur_name, self.service_ok(entry)
+        # return
+        if not os.fork():
+            print os.getpid(), psutil.Process(pid=os.getpid()).get_num_threads()
+            with daemon.DaemonContext():
+                connection.close()
+                sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+                sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+                sys.argv = [_prog_name]
+                setproctitle.setproctitle(_prog_title)
+                _module = importlib.import_module(_module_name)
+                # print _module
+                # importlib.import_module(_module).main()
+                _module.main()
+        print "cont"
 
 
 def show_xml(opt_ns, res_xml, iteration=0):
@@ -362,17 +551,27 @@ def show_xml(opt_ns, res_xml, iteration=0):
         SERVICE_NOT_CONFIGURED: (1, "not configured"),
     }
     rc_strs = {
-        key: "{}{}{}".format(col_str_dict[wc], value, col_str_dict[3]) for key, (wc, value) in rc_dict.iteritems()
+        key: "{}{}{}".format(
+            col_str_dict[wc],
+            value,
+            col_str_dict[3]
+        ) for key, (wc, value) in rc_dict.iteritems()
     }
     out_bl = logging_tools.new_form_list()
     types = ["client", "server", "system"]
-    _list = sum([res_xml.xpath("instance[@checked='1' and @runs_on='{}']".format(_type)) for _type in types], [])
+    _list = sum(
+        [
+            res_xml.xpath("instance[result and @runs_on='{}']".format(_type)) for _type in types
+        ],
+        []
+    )
     for act_struct in _list:
+        _res = act_struct.find("result")
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
         cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
-        cur_line.append(logging_tools.form_entry(act_struct.attrib.get("check_source", "N/A"), header="source"))
+        cur_line.append(logging_tools.form_entry(_res.find("state_info").get("check_source", "N/A"), header="source"))
         if opt_ns.thread:
-            s_info = act_struct.find("state_info")
+            s_info = act_struct.find(".//state_info")
             if "num_started" not in s_info.attrib:
                 cur_line.append(logging_tools.form_entry(s_info.text))
             else:
@@ -412,7 +611,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
                         ret_str = "the thread is running" if num_started == 1 else "all {:d} threads running".format(num_started)
                 cur_line.append(logging_tools.form_entry(ret_str, header="Thread info"))
         if opt_ns.started:
-            start_time = int(act_struct.find("state_info").get("start_time", "0"))
+            start_time = int(act_struct.find(".//state_info").get("start_time", "0"))
             if start_time:
                 diff_time = max(0, time.mktime(time.localtime()) - start_time)
                 diff_days = int(diff_time / (3600 * 24))
@@ -448,7 +647,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
         if opt_ns.database:
             cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
         if opt_ns.memory:
-            cur_mem = act_struct.find("memory_info")
+            cur_mem = act_struct.find(".//memory_info")
             if cur_mem is not None:
                 mem_str = process_tools.beautify_mem_info(int(cur_mem.text))
             else:
@@ -456,12 +655,12 @@ def show_xml(opt_ns, res_xml, iteration=0):
                 mem_str = ""
             cur_line.append(logging_tools.form_entry_right(mem_str, header="Memory"))
         if opt_ns.version:
-            if "version" in act_struct.attrib:
-                _version = act_struct.attrib["version"]
+            if "version" in _res.attrib:
+                _version = _res.attrib["version"]
             else:
                 _version = ""
             cur_line.append(logging_tools.form_entry_right(_version, header="Version"))
-        cur_state = int(act_struct.find("state_info").get("state", "1"))
+        cur_state = int(act_struct.find(".//state_info").get("state", "1"))
         cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
         if not opt_ns.failed or (opt_ns.failed and cur_state in [SERVICE_DEAD, SERVICE_NOT_CONFIGURED]):
             out_bl.append(cur_line)
@@ -474,11 +673,12 @@ def show_xml(opt_ns, res_xml, iteration=0):
     print(unicode(out_bl))
 
 
-def do_action_xml(opt_ns, res_xml, mode):
+def do_action_xml(opt_ns, res_xml):
+    mode = opt_ns.mode
     if mode in ["restart", "start"]:
-        structs = res_xml.xpath("instance[@checked='1' and @startstop='1' and not (.//pid)]")
+        structs = res_xml.xpath("instance[result and @startstop='1' and not (.//pid)]")
     elif mode in ["stop"]:
-        structs = res_xml.xpath("instance[@checked='1' and @startstop='1' and (.//pid)]")
+        structs = res_xml.xpath("instance[result and @startstop='1' and (.//pid)]")
     else:
         structs = []
     if not opt_ns.quiet:
@@ -570,7 +770,10 @@ class ICSWParser(object):
 
     def parse_args(self):
         opt_ns = self._parser.parse_args()
-        if opt_ns.mode == "status":
+        if hasattr(opt_ns, "instance"):
+            if not opt_ns.instance and not opt_ns.client and not opt_ns.server and not opt_ns.system:
+                opt_ns.instance = ["ALL"]
+        if opt_ns.subcom == "status":
             if opt_ns.all or opt_ns.almost_all:
                 opt_ns.thread = True
                 opt_ns.pid = True
@@ -587,19 +790,20 @@ def main():
     if os.getuid():
         print("Not running as root, information may be incomplete, disabling display of memory")
         opt_ns.memory = False
-    ret_xml = cur_c.check_system(opt_ns)
-    if not len(ret_xml.xpath("instance[@checked='1']")):
-        print("Nothing to do")
-        sys.exit(1)
+    inst_xml = cur_c.get_instance_xml()
+    # if not len(inst_xml.xpath("instance[result]")):
+    #    print("Nothing to do")
+    #    sys.exit(1)
 
     if opt_ns.subcom == "status":
+        cur_c.check_system(opt_ns, inst_xml)
         _iter = 0
         while True:
             try:
-                show_xml(opt_ns, ret_xml, _iter)
+                show_xml(opt_ns, inst_xml, _iter)
                 if opt_ns.every:
                     time.sleep(opt_ns.every)
-                    ret_xml = check_system(opt_ns)
+                    cur_c.check_system(opt_ns, inst_xml)
                     _iter += 1
                 else:
                     break
@@ -607,7 +811,7 @@ def main():
                 print("exiting...")
                 break
     elif opt_ns.subcom == "action":
-        do_action_xml(opt_ns, ret_xml, opt_ns.mode)
+        cur_c.actions(opt_ns, inst_xml)
 
 if __name__ == "__main__":
     main()

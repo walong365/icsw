@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -75,6 +75,7 @@ class server_process(threading_tools.process_pool):
         self.register_func("contact_hoststatus", self._contact_hoststatus)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '{}'".format(my_uuid.get_urn()))
+        # self.log("threads: {:d}".format(psutil.Process(pid=os.getpid()).get_num_threads()))
         if self._init_network_sockets():
             self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
             self.add_process(initat.mother.command.external_command_process("command"), start=True)

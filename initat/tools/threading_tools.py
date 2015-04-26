@@ -22,22 +22,21 @@
 """ classes for multiprocessing (using multiprocessing) """
 
 import inspect
-from initat.tools import io_stream_helper
-from initat.tools import logging_tools
 import multiprocessing
-import psutil
 import os
-from initat.tools import process_tools
 import signal
 import sys
 import threading
 import time
 import traceback
+
+import setproctitle
+from initat.tools import io_stream_helper
+from initat.tools import logging_tools
+import psutil
+from initat.tools import process_tools
 import zmq
-try:
-    from threading_tools_ancient import thread_obj, thread_pool, twisted_main_thread  # @UnusedImport
-except:
-    pass
+
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
@@ -882,7 +881,13 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         else:
             self.zmq_context = zmq.Context(kwargs.pop("zmq_contexts", 1))
         self.loop_granularity = kwargs.get("loop_granularity", 1000)
-        self.queue_name = process_tools.get_zmq_ipc_name("internal")
+        _proc_title = setproctitle.getproctitle()
+        if _proc_title.startswith("icsw."):
+            # if process title is set and starts with icsw then set this as service_name
+            s_name = _proc_title.split(".", 1)[1]
+            self.queue_name = process_tools.get_zmq_ipc_name("internal", s_name=s_name)
+        else:
+            self.queue_name = process_tools.get_zmq_ipc_name("internal")
         self._add_com_socket()
         self.__processes_running = 0
         # blocking main-loop
@@ -982,7 +987,12 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            self.log("reniced pid {:d} to {:d}".format(self.pid, nice_level))
+            self.log(
+                "reniced pid {:d} to {:d}".format(
+                    self.pid,
+                    nice_level
+                )
+            )
 
     def get_name(self):
         return self.name
