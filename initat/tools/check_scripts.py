@@ -203,7 +203,7 @@ class ServiceContainer(object):
 
     def _add_non_running(self, entry, result, check_init_script=True):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
-        if os.path.isfile(init_script_name) or check_init_script == False:
+        if os.path.isfile(init_script_name) or check_init_script is False:
             act_state = SERVICE_DEAD
             result.append(
                 E.state_info(

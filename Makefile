@@ -204,10 +204,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} meta-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
-	${INSTALL} ${INSTALL_OPTS} init_scripts/mother ${DESTDIR}${INIT}/
 	${INSTALL} ${INSTALL_OPTS} init_scripts/package-server.rc ${DESTDIR}${INIT}/package-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/package-client.rc ${DESTDIR}${INIT}/package-client
-	cp -a rrd-grapher ${DESTDIR}/${INIT}
 	install ${INSTALL_OPTS} md-config-server ${DESTDIR}/${INIT}/md-config-server
 	${INSTALL} ${INSTALL_OPTS} rms-server.rc ${DESTDIR}${INIT}/rms-server
 	# SGE stuff ICSW_SGE
@@ -233,8 +231,6 @@ install:
 	${LN} -s ${INIT}/package-server ${DESTDIR}${USRSBIN}/rcpackage-server
 	${LN} -s ${INIT}/package-client ${DESTDIR}${USRSBIN}/rcpackage-client
 	${LN} -s ${INIT}/rms-server ${DESTDIR}${USRSBIN}/rcrms-server
-	${LN} -s ${INIT}/rrd-grapher ${DESTDIR}${USRSBIN}/rcrrd-grapher
-	${LN} -s ${INIT}/mother ${DESTDIR}${USRSBIN}/rcmother
 	${LN} -s ${INIT}/logcheck-server ${DESTDIR}${USRSBIN}/rclogcheck-server
 	${LN} -s ${INIT}/md-config-server ${DESTDIR}${USRSBIN}/rcmd-config-server
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server

@@ -62,7 +62,6 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-            ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
             ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
             ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
             ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
@@ -101,12 +100,6 @@ def main():
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     if global_config["CHECK"]:
         sys.exit(0)
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(
-            "{}.py".format(prog_name),
-            ignore_names=[],
-        )
-
     global_config.add_config_entries(
         [
             (
@@ -156,18 +149,7 @@ def main():
         ]
     )
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
-    if not global_config["DEBUG"]:
-        with daemon.DaemonContext(
-            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
-            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
-        ):
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            run_code()
-            configfile.terminate_manager()
-    else:
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        print("Debugging rrd-grapher on {}".format(long_host_name))
-        run_code()
+    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+    run_code()
+    configfile.terminate_manager()
     sys.exit(0)

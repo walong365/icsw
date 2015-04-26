@@ -83,8 +83,6 @@ def main():
         sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     cluster_location.read_config_from_db(
         global_config,
         "mother_server",
@@ -116,16 +114,5 @@ def main():
     process_tools.renice()
     global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code()
-    if False:
-        if not global_config["DEBUG"]:
-            with daemon.DaemonContext():
-                global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-                sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-                run_code()
-                configfile.terminate_manager()
-        else:
-            print "Debugging mother"
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            run_code()
+    configfile.terminate_manager()
     sys.exit(0)

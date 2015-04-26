@@ -8,11 +8,9 @@ SERVER_LIST = [
     "logcheck-server.py",
     "md-config-server.py",
     "meta-server.py",
-    "mother.py",
     "package-client.py",
     "package-server.py",
     "rms-server.py",
-    "rrd-grapher.py",
     "snmp-relay.py",
 ]
 

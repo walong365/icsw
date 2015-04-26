@@ -57,6 +57,14 @@
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idrrd</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <module-name>rrd_grapher</module-name>
+        <programm-name>rrd-grapher</programm-name>
+        <programm-title>icsw.rrd-grapher</programm-title>
+        <old-binary>rrd-grapher</old-binary>
     </instance>
     <instance check_type="meta" name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server">
         <config_names>
