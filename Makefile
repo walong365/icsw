@@ -167,7 +167,6 @@ install:
 	# Create to ICSW_SBIN
 	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collclient.py
 	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collrelay.py
-	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collserver.py
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
 	# ICSW_BIN
@@ -195,14 +194,12 @@ install:
 	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
 	${INSTALL} ${INSTALL_OPTS} cluster-config-server ${DESTDIR}/${INIT}/cluster-config-server
-	cp -a collectd-init ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} discovery-server ${DESTDIR}/${INIT}/discovery-server
 	${INSTALL} ${INSTALL_OPTS} logging-server.rc ${DESTDIR}/${INIT}/logging-server
 	${INSTALL} ${INSTALL_OPTS} loadmodules ${DESTDIR}/${INIT}/loadmodules
 	${INSTALL} ${INSTALL_OPTS} logcheck-server ${DESTDIR}/${INIT}/
 	${INSTALL} ${INSTALL_OPTS} cluster-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} scripts/host-relay.rc ${DESTDIR}/${INIT}/host-relay
-	${INSTALL} ${INSTALL_OPTS} scripts/host-monitoring.rc ${DESTDIR}/${INIT}/host-monitoring
 	${INSTALL} ${INSTALL_OPTS} scripts/snmp-relay.rc ${DESTDIR}/${INIT}/snmp-relay
 	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} meta-server ${DESTDIR}/${INIT}
@@ -243,7 +240,6 @@ install:
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server
 	${LN} -s ${INIT}/discovery-server ${DESTDIR}${USRSBIN}/rcdiscovery-server
 	${LN} -s ${INIT}/cluster-server ${DESTDIR}${USRSBIN}/rccluster-server
-	${LN} -s ${INIT}/collectd-init ${DESTDIR}${USRSBIN}/rccollectd-init
 	${LN} -s ${INIT}/cluster-config-server ${DESTDIR}${USRSBIN}/rccluster-config-server
 	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${USRSBIN}/rchost-monitoring
 	${LN} -s ${INIT}/host-relay ${DESTDIR}/${USRSBIN}/rchost-relay
