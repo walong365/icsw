@@ -197,7 +197,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} discovery-server ${DESTDIR}/${INIT}/discovery-server
 	${INSTALL} ${INSTALL_OPTS} logging-server.rc ${DESTDIR}/${INIT}/logging-server
 	${INSTALL} ${INSTALL_OPTS} loadmodules ${DESTDIR}/${INIT}/loadmodules
-	${INSTALL} ${INSTALL_OPTS} logcheck-server ${DESTDIR}/${INIT}/
 	${INSTALL} ${INSTALL_OPTS} cluster-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} scripts/host-relay.rc ${DESTDIR}/${INIT}/host-relay
 	${INSTALL} ${INSTALL_OPTS} scripts/snmp-relay.rc ${DESTDIR}/${INIT}/snmp-relay
@@ -231,7 +230,6 @@ install:
 	${LN} -s ${INIT}/package-server ${DESTDIR}${USRSBIN}/rcpackage-server
 	${LN} -s ${INIT}/package-client ${DESTDIR}${USRSBIN}/rcpackage-client
 	${LN} -s ${INIT}/rms-server ${DESTDIR}${USRSBIN}/rcrms-server
-	${LN} -s ${INIT}/logcheck-server ${DESTDIR}${USRSBIN}/rclogcheck-server
 	${LN} -s ${INIT}/md-config-server ${DESTDIR}${USRSBIN}/rcmd-config-server
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server
 	${LN} -s ${INIT}/discovery-server ${DESTDIR}${USRSBIN}/rcdiscovery-server

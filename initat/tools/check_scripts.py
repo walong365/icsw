@@ -414,7 +414,7 @@ class ServiceContainer(object):
     def decide(self, opt_ns, entry):
         # based on the entry state and the command given in opt_ns decide what to do
         _state = self.service_ok(entry)
-        _mode = opt_ns.mode
+        _subcom = opt_ns.subcom
         _act_list = {
             False: {
                 "start": ["cleanup", "start"],
@@ -426,7 +426,7 @@ class ServiceContainer(object):
                 "stop": ["stop"],
                 "restart": ["stop", "start"],
             }
-        }[_state][_mode]
+        }[_state][_subcom]
         return _act_list
 
     def action(self, opt_ns, entry):
@@ -732,7 +732,9 @@ class ICSWParser(object):
         self._parser = argparse.ArgumentParser(prog="icsw")
         sub_parser = self._parser.add_subparsers(help="sub-command help")
         self._add_status_parser(sub_parser)
-        self._add_action_parser(sub_parser)
+        self._add_start_parser(sub_parser)
+        self._add_stop_parser(sub_parser)
+        self._add_restart_parser(sub_parser)
 
     def _add_status_parser(self, sub_parser):
         _srvc = sub_parser.add_parser("status", help="service status")
@@ -750,11 +752,21 @@ class ICSWParser(object):
         _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
         _srvc.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
 
-    def _add_action_parser(self, sub_parser):
-        _act = sub_parser.add_parser("action", help="service action")
-        _act.set_defaults(subcom="action")
-        _act.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
-        _act.add_argument("--mode", type=str, default="start", choices=["stop", "start", "restart"], help="operation mode [%(default)s]")
+    def _add_start_parser(self, sub_parser):
+        _act = sub_parser.add_parser("start", help="start service")
+        _act.set_defaults(subcom="start")
+        _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
+        self._add_iccs_sel(_act)
+
+    def _add_stop_parser(self, sub_parser):
+        _act = sub_parser.add_parser("stop", help="stop service")
+        _act.set_defaults(subcom="stop")
+        _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
+        self._add_iccs_sel(_act)
+
+    def _add_restart_parser(self, sub_parser):
+        _act = sub_parser.add_parser("restart", help="restart service")
+        _act.set_defaults(subcom="restart")
         _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
         self._add_iccs_sel(_act)
 
@@ -823,7 +835,7 @@ def main():
             except KeyboardInterrupt:
                 print("exiting...")
                 break
-    elif opt_ns.subcom == "action":
+    elif opt_ns.subcom in ["start", "stop", "restart"]:
         cur_c.actions(opt_ns, inst_xml)
 
 if __name__ == "__main__":

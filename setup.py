@@ -5,7 +5,6 @@ SERVER_LIST = [
     "cluster-server.py",
     "discovery-server.py",
     "host-monitoring-zmq.py",
-    "logcheck-server.py",
     "md-config-server.py",
     "meta-server.py",
     "package-client.py",

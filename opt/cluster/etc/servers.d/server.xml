@@ -3,6 +3,11 @@
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idlog</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <old-binary>logcheck-server</old-binary>
     </instance>
     <instance check_type="meta" name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
         <config_names>
