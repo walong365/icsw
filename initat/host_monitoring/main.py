@@ -190,14 +190,9 @@ def main():
         ret_state = 0
     else:
         global_config.write_file()
-        if True:  # prog_name.startswith("icsw."):
-            # started via meta-server, already safe
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            ret_state = run_code(prog_name, None)
-            configfile.terminate_manager()
-        else:
-            if global_config["KILL_RUNNING"]:
-                process_tools.kill_running_processes()
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        ret_state = run_code(prog_name, global_config)
+        if False:
             if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
                 with daemon.DaemonContext():
                     sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")

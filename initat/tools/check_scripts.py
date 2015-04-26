@@ -196,7 +196,7 @@ class ServiceContainer(object):
                     state="{:d}".format(act_state)
                 ),
             )
-            print act_pids, ms_block.pids
+            # print act_pids, ms_block.pids
             self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid())
         else:
             self._add_non_running(entry, result)
@@ -268,7 +268,7 @@ class ServiceContainer(object):
             self._add_non_running(entry, result)
 
     def _add_pids(self, result, act_pids, main_pid=None):
-        print "+", main_pid
+        # print "+", main_pid
         if act_pids:
             result.append(
                 E.pids(
@@ -506,40 +506,22 @@ class ServiceContainer(object):
             _prog_title = "icsw.{}".format(entry.get("name"))
         return _prog_title
 
-    def start_service(self, opt_ns, entry):
-        print "start"
-        cur_name = entry.attrib["name"]
+    def _get_prog_name(self, entry):
         _prog_name = entry.findtext(".//programm-name")
         if _prog_name:
             _prog_name = _prog_name.strip()
         else:
-            _prog_name = cur_name
+            _prog_name = entry.attrib["name"]
+        return _prog_name
+
+    def start_service(self, opt_ns, entry):
+        cur_name = entry.attrib["name"]
+        _prog_name = self._get_prog_name(entry)
         _prog_title = self._get_prog_title(entry)
-        # print etree.tostring(entry, pretty_print=True)
         _module_name = entry.get("module", "initat.{}.main".format(cur_name.replace("-", "_")))
-        # print cur_name, mode, _module_name, _prog_name, os.getpid(), psutil.Process(pid=os.getpid()).get_num_threads()
-# _test = file("/tmp/Zusammenfassung_Workshop_20150326.pdf", "r")
-        # print cur_name, self.service_ok(entry)
-        # return
         if not os.fork():
             subprocess.call(["/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py", _prog_name, _module_name, _prog_title])
             os._exit(1)
-            if False:
-                print os.getpid(), psutil.Process(pid=os.getpid()).get_num_threads()
-                with daemon.DaemonContext(detach_process=True):
-                    connection.close()
-                    file("/tmp/.l", "a").write(str(psutil.Process(pid=os.getpid()).num_threads()) + " pf\n")
-                    # sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-                    # sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-                    sys.argv = [_prog_name]
-                    file("/tmp/.l", "a").write(str(psutil.Process(pid=os.getpid()).num_threads()) + " sf\n")
-                    setproctitle.setproctitle(_prog_title)
-                    _module = importlib.import_module(_module_name)
-                    # print _module
-                    # importlib.import_module(_module).main()
-                    _module.main()
-        time.sleep(3600)
-        print "cont"
 
 
 def show_xml(opt_ns, res_xml, iteration=0):

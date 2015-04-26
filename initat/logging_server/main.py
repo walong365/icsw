@@ -50,7 +50,6 @@ def main():
             ("STATISTICS_TIMER", configfile.int_c_var(600, help_string="how often we should log statistical information [%(default)i]")),
             ("SEND_ERROR_MAILS", configfile.bool_c_var(True, help_string="send error mails")),
             ("LOG_COMMANDS", configfile.bool_c_var(True, autoconf_exclude=True)),
-            ("KILL_RUNNING", configfile.bool_c_var(True, autoconf_exclude=True)),
             ("EXCESS_LIMIT", configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
             ("FORWARDER", configfile.str_c_var("", help_string="Address to forwared all logs to")),
             ("ONLY_FORWARD", configfile.bool_c_var(False, help_string="only forward (no local logging)")),
@@ -69,8 +68,6 @@ def main():
         add_auto_config_option=True
     )
     if not global_config.show_autoconfig():
-        if global_config["KILL_RUNNING"]:
-            process_tools.kill_running_processes()
         try:
             os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
             os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
