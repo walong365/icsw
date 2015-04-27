@@ -527,6 +527,7 @@ class ServiceContainer(object):
         _module_name = entry.get("module", self._get_module_name(entry))
         _arg_list = [
             "/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py",
+            "-d",
             "--progname",
             _prog_name,
             "--modname",
