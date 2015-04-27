@@ -67,6 +67,10 @@ angular.module(
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = "revert"
             ret_obj.icon_class = "fa fa-undo"
+        else if type == "submit"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.button_value = gettextCatalog.getString("submit")
+            ret_obj.icon_class = "fa fa-arrow-circle-right"
         else
             console.error "Invalid button type: #{type}"
         return ret_obj
