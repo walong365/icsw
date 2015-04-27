@@ -160,8 +160,6 @@ class server_process(threading_tools.process_pool):
         msi_block = process_tools.meta_server_info("snmp-relay")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=cf_pids, process_name="manager")
-        msi_block.start_command = "/etc/init.d/snmp-relay start"
-        msi_block.stop_command = "/etc/init.d/snmp-relay force-stop"
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 120
         msi_block.save_block()

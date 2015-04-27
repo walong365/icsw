@@ -208,8 +208,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         msi_block = process_tools.meta_server_info("rrd-grapher")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
-        msi_block.start_command = "/etc/init.d/rrd-grapher start"
-        msi_block.stop_command = "/etc/init.d/rrd-grapher force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block

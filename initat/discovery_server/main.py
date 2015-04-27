@@ -27,6 +27,7 @@ import django
 django.setup()
 
 from initat.discovery_server.config_static import SERVER_PORT
+from initat.discovery_server.config import global_config
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
@@ -43,7 +44,6 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
@@ -86,7 +86,6 @@ def main():
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/discovery-server"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code()
     configfile.terminate_manager()
     # exit
