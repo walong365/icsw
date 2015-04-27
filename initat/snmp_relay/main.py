@@ -64,8 +64,6 @@ def main():
         add_writeback_option=True,
     )
     global_config.write_file()
-    if global_config["KILL_RUNNING"]:
-        process_tools.kill_running_processes()
     process_tools.ALLOW_MULTIPLE_INSTANCES = False
     process_tools.renice()
     global_config = configfile.get_global_config(prog_name, parent_object=global_config)

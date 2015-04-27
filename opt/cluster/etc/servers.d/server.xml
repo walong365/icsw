@@ -117,7 +117,8 @@
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
-        <module-name>initat.host_monitoring.relay</module-name>
+        <programm-name>collrelay</programm-name>
+        <module-name>initat.host_monitoring.main</module-name>
         <old-binary>collrelay</old-binary>
     </instance>
     <instance check_type="meta" name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1">
