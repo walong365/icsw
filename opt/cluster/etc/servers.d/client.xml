@@ -11,7 +11,7 @@
         <old-binary>collserver.py</old-binary>
     </instance>
     <instance check_type="meta" name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
-        <module-name>package_install.client</module-name>
+        <module-name>initat.package_install.client.main</module-name>
         <old-binary>package-client</old-binary>
     </instance>
 </instances>

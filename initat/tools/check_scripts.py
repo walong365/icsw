@@ -514,7 +514,7 @@ class ServiceContainer(object):
         if _mod_name:
             _mod_name = _mod_name.strip()
         else:
-            _mod_name = entry.attrib["name"].replace("-", "_")
+            _mod_name = "initat.{}.main".format(entry.attrib["name"].replace("-", "_"))
         return _mod_name
 
     def start_service(self, opt_ns, entry):
@@ -524,7 +524,7 @@ class ServiceContainer(object):
         arg_dict = {_val.get("key"): _val.text.strip() for _val in entry.findall(".//arg[@key]")}
 
         print arg_dict
-        _module_name = entry.get("module", "initat.{}.main".format(self._get_module_name(entry)))
+        _module_name = entry.get("module", self._get_module_name(entry))
         _arg_list = [
             "/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py",
             _prog_name,
