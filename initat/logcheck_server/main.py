@@ -56,8 +56,6 @@ def main():
             ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
             ("FORCE", configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("USER", configfile.str_c_var("idlog", help_string="user to run as [%(default)s]")),
-            ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
             ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ]
@@ -99,9 +97,6 @@ def main():
         ]
     )
     process_tools.renice()
-    # need root rights to change syslog and log rotation
-    # global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
-    # process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     run_code(options)
     configfile.terminate_manager()
     os._exit(0)

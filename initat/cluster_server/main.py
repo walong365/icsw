@@ -98,7 +98,8 @@ def main():
     options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING
+        ),
         add_writeback_option=True,
         positional_arguments=False
     )
