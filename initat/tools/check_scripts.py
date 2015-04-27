@@ -457,7 +457,7 @@ class ServiceContainer(object):
     def _find_pids_by_name(self, entry):
         _new_title = self._get_prog_title(entry)
         _old_bins = self._get_old_binary(entry).strip().split(",")
-        print _new_title, _old_bin
+        print _new_title, _old_bins
         _pid_list = set()
         for _key, _value in self.__act_proc_dict.iteritems():
             try:

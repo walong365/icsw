@@ -3,6 +3,8 @@
 import argparse
 import datetime
 import sys
+import os
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -13,8 +15,10 @@ def main():
     _now = datetime.datetime.now()
     content = [
         "# version file, created on {}".format(str(_now.strftime("%a, %d. %b %Y %H:%M:%S"))),
+        "",
         "VERSION_STRING = \"{}-{}\"".format(opts.version, opts.release),
         "BUILD_TIME = \"{}\"".format(_now.strftime("%Y-%m-%d %H:%M:%S")),
+        "BUILD_MACHINE = \"{}\"".format(os.uname()[1]),
         "",
     ]
     file(opts.target, "w").write("\n".join(content))
