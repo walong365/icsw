@@ -82,7 +82,6 @@ def main():
     _parser.add_argument("--groups", type=str, default="", help="coma-separated list of groups for the process [%(default)s]")
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     opts = _parser.parse_args()
-    prog_name, module_name, prog_title = sys.argv[1:4]
     if opts.user != "root":
         uid = get_uid_from_name(opts.user)[0]
     else:
@@ -103,6 +102,7 @@ def main():
     sys.argv = [opts.progname]
     setproctitle.setproctitle(opts.proctitle)
     main_module = importlib.import_module(opts.modname)
+    print main_module
     if opts.daemonize:
         sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
         sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")

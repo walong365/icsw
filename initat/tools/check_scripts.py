@@ -24,8 +24,6 @@
 
 import os
 
-# sys.path.insert(0, "/usr/local/share/home/local/development/git/icsw/")
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from lxml import etree  # @UnresolvedImport
@@ -404,11 +402,13 @@ class ServiceContainer(object):
                 "start": ["cleanup", "start"],
                 "stop": ["cleanup"],
                 "restart": ["cleanup", "start"],
+                "debug": ["cleanup", "debug"],
             },
             True: {
                 "start": [],
                 "stop": ["stop"],
                 "restart": ["stop", "cleanup", "start"],
+                "debug": ["stop", "cleanup", "debug"],
             }
         }[_state][_subcom]
         return _act_list
@@ -423,6 +423,7 @@ class ServiceContainer(object):
                 "stop": self.stop_service,
                 "start": self.start_service,
                 "cleanup": self.cleanup_service,
+                "debug": self.debug_service,
             }[_action](opt_ns, entry)
 
     def stop_service(self, opt_ns, entry):
@@ -530,20 +531,36 @@ class ServiceContainer(object):
         else:
             self.start_service_py(opt_ns, entry)
 
+    def debug_service(self, opt_ns, entry):
+        if not int(entry.get("startstop", "1")):
+            return
+        if entry.get("check_type") == "simple":
+            return
+        else:
+            self.debug_service_py(opt_ns, entry)
+
     def handle_service_rc(self, opt_ns, entry, command):
         _init_rc = self._get_init_script_name(entry)
         process_tools.call_command("{} {}".format(_init_rc, command), self.log)
 
     def start_service_py(self, opt_ns, entry):
+        arg_list = self._generate_py_arg_list(opt_ns, entry)
+        if not os.fork():
+            subprocess.call(arg_list + ["-d"])
+            os._exit(1)
+
+    def debug_service_py(self, opt_ns, entry):
+        arg_list = self._generate_py_arg_list(opt_ns, entry)
+        subprocess.call(" ".join(arg_list), shell=True)
+
+    def _generate_py_arg_list(self, opt_ns, entry):
         cur_name = entry.attrib["name"]
         _prog_name = self._get_prog_name(entry)
         _prog_title = self._get_prog_title(entry)
         arg_dict = {_val.get("key"): _val.text.strip() for _val in entry.findall(".//arg[@key]")}
-        print arg_dict
         _module_name = entry.get("module", self._get_module_name(entry))
         _arg_list = [
             "/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py",
-            "-d",
             "--progname",
             _prog_name,
             "--modname",
@@ -584,10 +601,7 @@ class ServiceContainer(object):
                     process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
                     process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
                 )
-        print " ".join(_arg_list)
-        if not os.fork():
-            subprocess.call(_arg_list)
-            os._exit(1)
+        return _arg_list
 
 
 def show_xml(opt_ns, res_xml, iteration=0):
@@ -739,6 +753,7 @@ class ICSWParser(object):
         self._add_start_parser(sub_parser)
         self._add_stop_parser(sub_parser)
         self._add_restart_parser(sub_parser)
+        self._add_debug_parser(sub_parser)
 
     def _add_status_parser(self, sub_parser):
         _srvc = sub_parser.add_parser("status", help="service status")
@@ -762,6 +777,11 @@ class ICSWParser(object):
         _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
         self._add_iccs_sel(_act)
 
+    def _add_debug_parser(self, sub_parser):
+        _act = sub_parser.add_parser("debug", help="debug service")
+        _act.set_defaults(subcom="debug")
+        _act.add_argument("service", nargs=1, type=str, help="service to debug")
+
     def _add_stop_parser(self, sub_parser):
         _act = sub_parser.add_parser("stop", help="stop service")
         _act.set_defaults(subcom="stop")
@@ -780,6 +800,7 @@ class ICSWParser(object):
     @staticmethod
     def get_default_ns():
         def_ns = argparse.Namespace(
+            subcom="status",
             all=True,
             instance=[],
             system=[],
@@ -836,7 +857,7 @@ def main():
             except KeyboardInterrupt:
                 print("exiting...")
                 break
-    elif opt_ns.subcom in ["start", "stop", "restart"]:
+    elif opt_ns.subcom in ["start", "stop", "restart", "debug"]:
         cur_c.actions(opt_ns, inst_xml)
 
 if __name__ == "__main__":

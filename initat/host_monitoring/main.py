@@ -23,6 +23,7 @@
 """ host-monitoring, main part """
 
 from initat.host_monitoring import hm_classes
+from initat.host_monitoring.config import global_config
 from initat.client_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import configfile
@@ -82,7 +83,6 @@ def run_code(prog_name, global_config):
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
@@ -190,26 +190,5 @@ def main():
         ret_state = 0
     else:
         global_config.write_file()
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
         ret_state = run_code(prog_name, global_config)
-        if False:
-            if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
-                with daemon.DaemonContext():
-                    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-                    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-                    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                    run_code(prog_name, None)
-                    configfile.terminate_manager()
-                # exit
-                os._exit(0)
-            else:
-                if prog_name in ["collserver", "collrelay"]:
-                    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                    print(
-                        "Debugging {} on {}".format(
-                            prog_name,
-                            process_tools.get_machine_name()
-                        )
-                    )
-                ret_state = run_code(prog_name, global_config)
     return ret_state

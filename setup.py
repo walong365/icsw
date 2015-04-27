@@ -1,9 +1,5 @@
 from distutils.core import setup
 
-SERVER_LIST = [
-    "host-monitoring-zmq.py",
-]
-
 setup(
     name="icsw",
     version="3.0.0",
@@ -99,10 +95,6 @@ setup(
                 # license
                 "opt/cluster/bin/license_server_tool.py",
             ]
-        ),
-        (
-            "/opt/cluster/sbin",
-            SERVER_LIST,
         ),
         (
             "/opt/cluster/sbin/pis",
