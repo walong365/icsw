@@ -456,7 +456,7 @@ class ServiceContainer(object):
 
     def _find_pids_by_name(self, entry):
         _new_title = self._get_prog_title(entry)
-        _old_bin = self._get_old_binary(entry)
+        _old_bins = self._get_old_binary(entry).strip().split(",")
         print _new_title, _old_bin
         _pid_list = set()
         for _key, _value in self.__act_proc_dict.iteritems():
@@ -475,7 +475,7 @@ class ServiceContainer(object):
                         _icsw_found, _old_found = (any([_part.count("icsw") or _part.count("check_scripts") for _part in _cmdline]), False)
                         # print "*", _cmdline
                         for _part in _cmdline:
-                            if _part.count(_old_bin):
+                            if any([_part.count(_old_bin) for _old_bin in _old_bins]):
                                 # match
                                 _old_found = True
                         # print _old_found, _icsw_found
@@ -555,8 +555,8 @@ class ServiceContainer(object):
             if os.path.isfile(_file_el.get("value")):
                 os.chown(
                     _file_el.get("value"),
-                    process_tools.get_uid_from_name(_file_el.get("user", "root")),
-                    process_tools.get_gid_from_name(_file_el.get("group", "root")),
+                    process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
+                    process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
                 )
         print " ".join(_arg_list)
         if not os.fork():
