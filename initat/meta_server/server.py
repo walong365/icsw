@@ -44,7 +44,6 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq_debug=global_config["ZMQ_DEBUG"])
-        self.renice()
         # check for correct rights
         self._check_dirs()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)

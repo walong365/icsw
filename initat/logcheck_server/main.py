@@ -84,7 +84,6 @@ def main():
             ("LOGSCAN_TIME", configfile.int_c_var(60, info="time in minutes between two logscan iterations"))
         ]
     )
-    process_tools.renice()
     server_process(options).loop()
     configfile.terminate_manager()
     os._exit(0)

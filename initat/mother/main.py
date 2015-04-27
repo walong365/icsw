@@ -96,7 +96,6 @@ def main():
             ("NODE_SOURCE_IDX", configfile.int_c_var(LogSource.new("node").pk)),
         ]
     )
-    process_tools.renice()
     initat.mother.server.server_process().loop()
     configfile.terminate_manager()
     sys.exit(0)

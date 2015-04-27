@@ -29,6 +29,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
+from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.cluster_config_server_version import VERSION_STRING
 from initat.cluster_config_server.config_static import SERVER_PORT, NCS_PORT
 from initat.cluster.backbone.models import LogSource
@@ -46,7 +47,6 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -89,22 +89,12 @@ def main():
             ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
             ("IMAGE_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "images"))),
             ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels")))
-        ]
-    )
-    global_config.add_config_entries(
-        [
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(LogSource.new("config-server", device=sql_info.effective_device).pk)
             )
         ]
     )
-    process_tools.renice()
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/cluster-config-server"])
-    # global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
     run_code()
     configfile.terminate_manager()
     # exit

@@ -255,9 +255,15 @@ def main():
                 pass
             else:
                 target_license = arg
-    process_tools.fix_directories(target_user, target_group, [LICENSE_LOG_DIR,
-                                                              LICENSE_SCRIPT_DIR,
-                                                              LICENSE_PID_DIR])
+    process_tools.fix_directories(
+        target_user,
+        target_group,
+        [
+            LICENSE_LOG_DIR,
+            LICENSE_SCRIPT_DIR,
+            LICENSE_PID_DIR,
+        ]
+    )
     ok_commands = ["start", "stop", "status"]
     if len(args) != 1:
         print "Need argument (one of %s)" % (", ".join(ok_commands))

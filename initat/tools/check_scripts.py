@@ -567,6 +567,16 @@ class ServiceContainer(object):
                 ]
             )
         # check access rights
+        for _dir_el in entry.findall(".//access-rights/file[@value]"):
+            _dir = _dir_el.get("value")
+            if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
+                os.makedirs(_dir)
+            if os.path.isdir(_dir):
+                os.chown(
+                    _dir,
+                    process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
+                    process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
+                )
         for _file_el in entry.findall(".//access-rights/file[@value]"):
             if os.path.isfile(_file_el.get("value")):
                 os.chown(

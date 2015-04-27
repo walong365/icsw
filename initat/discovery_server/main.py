@@ -64,11 +64,13 @@ def main():
     )
     global_config.parse_file()
     _options = global_config.handle_commandline(
-        description="%s, version is %s" % (
+        description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING
+        ),
         add_writeback_option=True,
-        positional_arguments=False)
+        positional_arguments=False
+    )
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="discovery_server")
     if not sql_info.effective_device:
@@ -83,9 +85,6 @@ def main():
             ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
         ]
     )
-    process_tools.renice()
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/discovery-server"])
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     run_code()
     configfile.terminate_manager()
     # exit

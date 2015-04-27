@@ -45,7 +45,6 @@ class server_process(threading_tools.process_pool):
             zmq=True,
             zmq_debug=global_config["ZMQ_DEBUG"]
         )
-        self.renice()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._init_msi_block()
         self._init_ipc_sockets()

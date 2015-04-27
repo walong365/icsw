@@ -150,24 +150,6 @@ def main():
         ("HOST_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
         ("SAFE_NAMES", configfile.bool_c_var(False, help_string="convert all command descriptions to safe names (without spaces), [%(default)s]")),
     ])
-    process_tools.renice()
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
-    if global_config["ENABLE_NAGVIS"]:
-        process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [
-            {
-                "name": os.path.join(global_config["NAGVIS_DIR"], "etc"),
-                "walk_dir": False
-            },
-            {
-                "name": os.path.join(global_config["NAGVIS_DIR"], "etc", "maps"),
-                "walk_dir": False
-            }
-        ])
-        process_tools.fix_files(global_config["USER"], global_config["GROUP"], [
-            os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db"),
-            os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php"),
-            os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php"),
-        ])
     global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code()
     configfile.terminate_manager()

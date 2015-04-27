@@ -1467,25 +1467,6 @@ def fix_directories(user, group, f_list):
                     get_except_info()))
 
 
-def fix_files(user, group, f_dict):
-    try:
-        named_uid = pwd.getpwnam(user)[2]
-    except KeyError:
-        named_uid = 0
-        logging_tools.my_syslog("Cannot find user '{}', using root (0)".format(user))
-    try:
-        named_gid = grp.getgrnam(group)[2]
-    except KeyError:
-        named_gid = 0
-        logging_tools.my_syslog("Cannot find group '{}', using root (0)".format(group))
-    for act_file in f_dict:
-        if os.path.isfile(act_file):
-            try:
-                os.chown(act_file, named_uid, named_gid)
-            except:
-                pass
-
-
 def is_linux():
     return sys.platform in ["linux2", "linux3", "linux"]
 
@@ -1844,4 +1825,3 @@ def create_password(**kwargs):
 
 def get_sys_bits():
     return int(platform.architecture()[0][0:2])
-

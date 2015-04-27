@@ -29,6 +29,7 @@ django.setup()
 from django.conf import settings
 from initat.cluster.backbone.models import LogSource
 from initat.rrd_grapher.config_static import SERVER_COM_PORT
+from initat.rrd_grapher.config import global_config
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import config_tools
@@ -43,19 +44,7 @@ def run_code():
     server_process().loop()
 
 
-def _create_dirs(global_config):
-    graph_root = global_config["GRAPH_ROOT"]
-    if not os.path.isdir(graph_root):
-        try:
-            os.makedirs(graph_root)
-        except:
-            print("*** cannot create graph_root '{}': {}".format(graph_root, process_tools.get_except_info()))
-        else:
-            print("created graph_root '{}'".format(graph_root))
-
-
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
@@ -138,18 +127,6 @@ def main():
     )
     if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
         global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
-    _create_dirs(global_config)
-
-    process_tools.renice()
-    process_tools.fix_directories(
-        global_config["USER"],
-        global_config["GROUP"],
-        [
-            "/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["GRAPH_ROOT_DEBUG"], global_config["RRD_DIR"]
-        ]
-    )
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code()
     configfile.terminate_manager()
     sys.exit(0)

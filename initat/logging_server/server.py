@@ -58,7 +58,6 @@ class main_process(threading_tools.process_pool):
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
         self.change_resource()
-        self.renice()
         self._init_msi_block()
         # self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()

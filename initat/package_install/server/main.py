@@ -89,23 +89,9 @@ def main():
             )
         ]
     )
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/package-server"])
-    process_tools.renice()
-    process_tools.change_user_group_path(
-        os.path.dirname(
-            os.path.join(
-                process_tools.RUN_DIR,
-                global_config["PID_NAME"]
-            )
-        ),
-        global_config["USER"],
-        global_config["GROUP"]
-    )
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     # close DB connection
     connection.close()
     global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-    configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
     run_code()
     configfile.terminate_manager()
     os._exit(0)

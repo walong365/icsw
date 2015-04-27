@@ -17,12 +17,11 @@
 #
 """ SNMP relayer """
 
-from io_stream_helper import io_stream
-from initat.tools import configfile
-import daemon
 import os
+
+from initat.tools import configfile
 from initat.tools import process_tools
-import sys
+from initat.snmp_relay.config import global_config
 
 
 def run_code():
@@ -32,31 +31,32 @@ def run_code():
 
 def main():
     # read global configfile
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("BASEDIR_NAME", configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("VERBOSE", configfile.int_c_var(0)),
-        ("DAEMONIZE", configfile.bool_c_var(True)),
-        ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
-        ("MAIN_TIMER", configfile.int_c_var(60, help_string="main timer [%(default)d]")),
-        ("BACKLOG_SIZE", configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
-        ("LOG_NAME", configfile.str_c_var("snmp-relay")),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
-        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        (
-            "PID_NAME",
-            configfile.str_c_var(
-                "%s/%s" % (
-                    prog_name,
-                    prog_name
+    global_config.add_config_entries(
+        [
+            ("BASEDIR_NAME", configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("VERBOSE", configfile.int_c_var(0)),
+            ("DAEMONIZE", configfile.bool_c_var(True)),
+            ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
+            ("MAIN_TIMER", configfile.int_c_var(60, help_string="main timer [%(default)d]")),
+            ("BACKLOG_SIZE", configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
+            ("LOG_NAME", configfile.str_c_var("snmp-relay")),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            (
+                "PID_NAME",
+                configfile.str_c_var(
+                    os.path.join(
+                        prog_name,
+                        prog_name
+                    )
                 )
-            )
-        )
-    ])
+            ),
+        ]
+    )
     global_config.parse_file()
     _options = global_config.handle_commandline(
         positional_arguments=False,
@@ -65,8 +65,6 @@ def main():
     )
     global_config.write_file()
     process_tools.ALLOW_MULTIPLE_INSTANCES = False
-    process_tools.renice()
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code()
     configfile.terminate_manager()
     # exit

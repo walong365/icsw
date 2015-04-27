@@ -69,7 +69,6 @@ def main():
     )
     if not global_config.show_autoconfig():
         global_config.write_file()
-        # process_tools.fix_directories("root", "root", [(glob_config["MAIN_DIR"], 0777)])
         main_process().loop()
         os._exit(0)
     return 0

@@ -57,17 +57,6 @@ def kill_previous():
                 pass
 
 
-def _create_dirs(global_config):
-    graph_root = global_config["RRD_DIR"]
-    if not os.path.isdir(graph_root):
-        try:
-            os.makedirs(graph_root)
-        except:
-            print("*** cannot create graph_root '{}': {}".format(graph_root, process_tools.get_except_info()))
-        else:
-            print("created graph_root '{}'".format(graph_root))
-
-
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
@@ -142,18 +131,7 @@ def main():
     ])
     if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
         global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
-    _create_dirs(global_config)
-
-    process_tools.renice()
-    process_tools.fix_directories(
-        global_config["USER"],
-        global_config["GROUP"],
-        [
-            "/var/run/collectd-init", global_config["RRD_DIR"], global_config["RRD_CACHED_DIR"],
-        ]
-    )
     kill_previous()
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     # late load after population of global_config
     from initat.collectd.server import server_process
     server_process().loop()

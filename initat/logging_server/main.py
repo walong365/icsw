@@ -74,7 +74,5 @@ def main():
         except:
             pass
         global_config.write_file()
-        process_tools.renice()
-        process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
         main_process(options).loop()
     return 0
