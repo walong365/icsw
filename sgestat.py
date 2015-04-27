@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,12 +22,14 @@
 """ frontend for SGE qstat """
 
 import argparse
-from initat.tools import logging_tools
 import os
-from initat.tools import sge_tools
 import sys
 import time
+
 import urwid
+
+from initat.tools import logging_tools
+from initat.tools import sge_tools
 
 
 def check_environment():
@@ -61,7 +63,9 @@ def sjs(s_info, opt_dict):
         ret_list.append(
             "{}, showing only {:d} (due to filter)".format(
                 logging_tools.get_plural("running job", int(run_list.get("total"))),
-                len(run_list)))
+                len(run_list)
+            )
+        )
     if r_out_list:
         ret_list.append(str(r_out_list))
     # waiting jobs

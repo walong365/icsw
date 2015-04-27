@@ -292,7 +292,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             )
             com_obj = initat.cluster_server.modules.command_dict[com_name]
             # check config status
-            do_it, srv_origin, err_str = com_obj.check_config(global_config, global_config["FORCE"])
+            do_it, srv_origin, err_str = com_obj.check_config(global_config)
             self.log(
                 "checking the config gave: {} ({}) {}".format(
                     str(do_it),

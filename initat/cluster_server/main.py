@@ -173,6 +173,7 @@ def main():
     #    with daemon.DaemonContext():
     global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code(options)
+
     configfile.terminate_manager()
     # exit
-    os._exit(0)
+    return 0

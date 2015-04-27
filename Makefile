@@ -134,6 +134,10 @@ install:
 	for file in log_error.py logging-client.py collclient.py ; do \
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
+	for file in cluster-server.py ; do \
+	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
+	done
+
 	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \

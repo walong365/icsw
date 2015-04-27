@@ -94,7 +94,7 @@ def main():
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(
-                    LogSource.new(
+                LogSource.new(
                         "rrd-grapher", device=sql_info.effective_device
                     ).pk
                 )
