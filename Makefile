@@ -131,7 +131,7 @@ install:
 	# INSTALL to ICSW_SBIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
-	for file in log_error.py logging-client.py ; do \
+	for file in log_error.py logging-client.py collclient.py ; do \
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
