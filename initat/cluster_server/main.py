@@ -61,9 +61,6 @@ def main():
         ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("PID_NAME", configfile.str_c_var("%s" % (prog_name))),
-        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("FORCE", configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
-        ("CHECK", configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
         ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME", configfile.str_c_var(prog_name)),
         ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
@@ -129,11 +126,9 @@ def main():
                 ("EFFECTIVE_DEVICE_IDX", configfile.int_c_var(0, database=False)),
             ]
         )
-    if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
+    if not global_config["SERVER_IDX"]:
         sys.stderr.write(" {} is no cluster-server, exiting...".format(long_host_name))
         sys.exit(5)
-    if global_config["CHECK"]:
-        sys.exit(0)
     global_config.add_config_entries(
         [
             (
@@ -146,43 +141,37 @@ def main():
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many LogSources with my id present, exiting..."
         sys.exit(5)
-    if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
-    cluster_location.read_config_from_db(global_config, "server", [
-        ("COM_PORT", configfile.int_c_var(SERVER_PORT)),
-        ("IMAGE_SOURCE_DIR", configfile.str_c_var("/opt/cluster/system/images")),
-        # ("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
-        ("MAILSERVER", configfile.str_c_var("localhost")),
-        ("FROM_NAME", configfile.str_c_var("quotawarning")),
-        ("FROM_ADDR", configfile.str_c_var(long_host_name)),
-        ("VERSION", configfile.str_c_var(VERSION_STRING, database=False)),
-        ("QUOTA_ADMINS", configfile.str_c_var("cluster@init.at")),
-        ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, info="enabled quota usage tracking")),
-        ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, info="also track quotas without limit")),
-        ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
-        ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, info="time in seconds between two mails")),
-        ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, database=False)),
-        ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
-        ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
-        ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
-        ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
-        ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, info="raise an error if not all bind() calls are successfull")),
-    ])
+    # if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
+    #    _log_lines = process_tools.kill_running_processes(prog_name + ".py")
+    cluster_location.read_config_from_db(
+        global_config,
+        "server",
+        [
+            ("COM_PORT", configfile.int_c_var(SERVER_PORT)),
+            ("IMAGE_SOURCE_DIR", configfile.str_c_var("/opt/cluster/system/images")),
+            # ("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
+            ("MAILSERVER", configfile.str_c_var("localhost")),
+            ("FROM_NAME", configfile.str_c_var("quotawarning")),
+            ("FROM_ADDR", configfile.str_c_var(long_host_name)),
+            ("VERSION", configfile.str_c_var(VERSION_STRING, database=False)),
+            ("QUOTA_ADMINS", configfile.str_c_var("cluster@init.at")),
+            ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, info="enabled quota usage tracking")),
+            ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, info="also track quotas without limit")),
+            ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
+            ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, info="time in seconds between two mails")),
+            ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, database=False)),
+            ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
+            ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
+            ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
+            ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
+            ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, info="raise an error if not all bind() calls are successfull")),
+        ]
+    )
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
-    if not global_config["DEBUG"] and not global_config["COMMAND"]:
-        with daemon.DaemonContext():
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            run_code(options)
-            configfile.terminate_manager()
-        # exit
-        os._exit(0)
-    else:
-        print("Debugging cluster-server on {}".format(long_host_name))
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        run_code(options)
-    if global_config["DATABASE_DEBUG"]:
-        from initat.cluster.backbone.middleware import show_database_calls
-        show_database_calls()
-    return 0
+    # if not global_config["DEBUG"] and not global_config["COMMAND"]:
+    #    with daemon.DaemonContext():
+    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+    run_code(options)
+    configfile.terminate_manager()
+    # exit
+    os._exit(0)

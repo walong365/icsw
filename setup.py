@@ -1,7 +1,6 @@
 from distutils.core import setup
 
 SERVER_LIST = [
-    "cluster-server.py",
     "host-monitoring-zmq.py",
     "meta-server.py",
 ]
