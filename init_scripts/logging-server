@@ -54,9 +54,9 @@ case "$1" in
         echo -n "Starting logging-server"
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
-        } || {
+        else
 	    /opt/cluster/sbin/icsw start logging-server
-        }
+        fi
         rc_status -v
     ;;
     stop)
