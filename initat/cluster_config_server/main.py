@@ -33,8 +33,6 @@ from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.cluster_config_server_version import VERSION_STRING
 from initat.cluster_config_server.config_static import SERVER_PORT, NCS_PORT
 from initat.cluster.backbone.models import LogSource
-import daemon
-from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile

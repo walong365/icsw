@@ -435,9 +435,11 @@ class ServiceContainer(object):
             self.stop_service_py(opt_ns, entry)
 
     def stop_service_py(self, opt_ns, entry):
+        print "sspy"
         _main_pids = [int(_val.text) for _val in entry.findall(".//pids/pid[@main='1']")]
         _meta_pids = [int(_val.text) for _val in entry.findall(".//pids/pid")]
         # print etree.tostring(entry, pretty_print=True)
+        print _main_pids, _meta_pids
         if len(_meta_pids):
             if _main_pids:
                 os.kill(_main_pids[0], 15)

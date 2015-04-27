@@ -23,14 +23,12 @@
 
 import os
 import socket
-import sys
 
 from initat.meta_server.config import global_config
 from initat.meta_server.server import main_process
 from initat.tools import configfile
 from initat.tools import process_tools
 from initat.client_version import VERSION_STRING
-from initat.tools.io_stream_helper import io_stream
 
 
 def main():
