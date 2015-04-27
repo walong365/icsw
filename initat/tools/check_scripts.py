@@ -34,6 +34,7 @@ from initat.tools import logging_tools
 from initat.tools import process_tools
 import psutil
 import stat
+import urwid
 import subprocess
 import time
 
@@ -377,13 +378,6 @@ class ServiceContainer(object):
         for entry in check_list:
             self.check_service(opt_ns, entry, use_cache=True)
 
-    def actions(self, opt_ns, instance_xml):
-        # mother of action, decide what to do
-        check_list = self.apply_filter(opt_ns, instance_xml)
-        self.__act_proc_dict = process_tools.get_proc_list()
-        for entry in check_list:
-            self.action(opt_ns, entry)
-
     def service_ok(self, entry):
         # return True if the service in entry is running
         _si = entry.find(".//state_info")
@@ -406,25 +400,72 @@ class ServiceContainer(object):
             },
             True: {
                 "start": [],
-                "stop": ["stop"],
-                "restart": ["stop", "cleanup", "start"],
-                "debug": ["stop", "cleanup", "debug"],
+                "stop": ["stop", "wait"],
+                "restart": ["stop", "wait", "cleanup", "start"],
+                "debug": ["stop", "wait", "cleanup", "debug"],
             }
         }[_state][_subcom]
         return _act_list
 
+    def actions(self, opt_ns, instance_xml):
+        # mother of action, decide what to do
+        check_list = self.apply_filter(opt_ns, instance_xml)
+        self.__act_proc_dict = process_tools.get_proc_list()
+        _pre_wait_list, _wait_list, _post_wait_list = ([], [], [])
+        for entry in check_list:
+            _cur_list = self.action(opt_ns, entry)
+            _wait_found = False
+            # sort
+            for _action in _cur_list:
+                if _action == "wait":
+                    _wait_found = True
+                    _wait_list.append(entry)
+                else:
+                    if _wait_found:
+                        _post_wait_list.append((_action, entry))
+                    else:
+                        _pre_wait_list.append((_action, entry))
+        # handle pre_wait_list
+        for _action, _entry in _pre_wait_list:
+            self._do_action(_action, opt_ns, _entry)
+        if _wait_list:
+            self._do_wait(opt_ns, _wait_list)
+        for _action, _entry in _post_wait_list:
+            self._do_action(_action, opt_ns, _entry)
+
     def action(self, opt_ns, entry):
         self.check_service(opt_ns, entry)
-        _action_list = self.decide(opt_ns, entry)
-        if _action_list:
-            print entry.get("name"), _action_list
-        for _action in _action_list:
-            {
-                "stop": self.stop_service,
-                "start": self.start_service,
-                "cleanup": self.cleanup_service,
-                "debug": self.debug_service,
-            }[_action](opt_ns, entry)
+        return self.decide(opt_ns, entry)
+
+    def _do_wait(self, opt_ns, wait_list, **kwargs):
+        # waits until all entries are gone
+        # wait for 5 iterations (== 2.5 seconds)
+        iters = kwargs.get("iterations", 3)
+        for _iter in xrange(iters):
+            time.sleep(0.5)
+            _pids_pending = {}
+            for _entry in wait_list:
+                self.check_service(opt_ns, _entry, refresh=True)
+                _pids_pending[_entry.get("name")] = len(_entry.findall(".//result/pids/pid"))
+            # print "*", _pids_pending
+            if not sum(_pids_pending.values()):
+                break
+
+    def _do_action(self, action, opt_ns, entry):
+        {
+            "stop": self.stop_service,
+            "start": self.start_service,
+            "cleanup": self.cleanup_service,
+            "wait": self.wait_service,
+            "debug": self.debug_service,
+        }[action](opt_ns, entry)
+
+    def wait_service(self, opt_ns, entry):
+        if not int(entry.get("startstop", "1")):
+            return
+        if entry.get("check_type") == "simple":
+            return
+        print "wait..."
 
     def stop_service(self, opt_ns, entry):
         if not int(entry.get("startstop", "1")):
@@ -448,6 +489,10 @@ class ServiceContainer(object):
             # print "stop", _main_pids, _meta_pids
 
     def cleanup_service(self, opt_ns, entry):
+        if not int(entry.get("startstop", "1")):
+            return
+        if entry.get("check_type") == "simple":
+            return
         # print etree.tostring(entry)
         _meta_pids = set([int(_val.text) for _val in entry.findall(".//pids/pid")])
         _proc_pids = self._find_pids_by_name(entry)
@@ -862,5 +907,73 @@ def main():
     elif opt_ns.subcom in ["start", "stop", "restart", "debug"]:
         cur_c.actions(opt_ns, inst_xml)
 
+
+class dummy_text(urwid.Text):
+    def get_text(self):
+        return ("\n".join(10 * ["test"]), [("bottom", 6), ("bottom", 0)])
+
+    def pack(self, **kwargs):
+        return (10, 10)
+
+    def rows(self, *args, **kwargs):
+        return 10
+
+
+class SrvController(object):
+    def __init__(self):
+        self.top_text = urwid.Text(("banner", "CORVUS by init.at"), align="left")
+        self.main_text = urwid.Text("Wait please...", align="left")
+        self.bottom_text = urwid.Text("bpttp,", align="left")
+        palette = [
+            ('banner', 'black', 'light gray', 'standout,underline'),
+            ('streak', 'black', 'dark red', 'standout'),
+            ('bg', 'white', 'dark blue'),
+        ]
+        urwid_map = urwid.AttrMap(
+            urwid.Filler(
+                urwid.Pile(
+                    [
+                        urwid.AttrMap(
+                            self.top_text,
+                            "streak"
+                        ),
+                        urwid.Columns(
+                            [
+                                ("weight", 60, dummy_text("")),
+                                ("weight", 40, urwid.AttrMap(
+                                    self.main_text,
+                                    "banner"
+                                )),
+
+                            ]
+                        ),
+                        urwid.AttrMap(
+                            self.bottom_text,
+                            "bottom"
+                        ),
+                    ]
+                ),
+                "top"
+            ),
+            "banner"
+        )
+        self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
+
+    def _handler_data(self, in_char):
+        if in_char == "q":
+            self.close()
+
+    def loop(self):
+        self.mainloop.run()
+
+    def close(self):
+        raise urwid.ExitMainLoop()
+
+
+def urwid_test():
+    SrvController().loop()
+
+
 if __name__ == "__main__":
+    # urwid_test()
     main()

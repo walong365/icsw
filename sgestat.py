@@ -141,18 +141,26 @@ class window(object):
         ]
         urwid_map = urwid.AttrMap(
             urwid.Filler(
-                urwid.Pile([
-                    urwid.AttrMap(
-                        self.top_text,
-                        "streak"),
-                    urwid.AttrMap(
-                        self.main_text,
-                        "banner"),
-                    urwid.AttrMap(
-                        self.bottom_text,
-                        "streak")]),
-                "top"),
-            "banner")
+                urwid.Pile(
+                    [
+                        urwid.AttrMap(
+                            self.top_text,
+                            "streak"
+                        ),
+                        urwid.AttrMap(
+                            self.main_text,
+                            "banner"
+                        ),
+                        urwid.AttrMap(
+                            self.bottom_text,
+                            "streak"
+                        )
+                    ]
+                ),
+                "top"
+            ),
+            "banner"
+        )
         self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
         self._update_screen()
         self.mainloop.set_alarm_in(10, self._alarm_callback)
