@@ -18,17 +18,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ package server """
+import sys
+import os
 
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import django
+django.setup()
+
+import daemon
 from django.db import connection
 from initat.cluster.backbone.models import LogSource
 from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
 from io_stream_helper import io_stream
 from initat.tools import config_tools
 from initat.tools import configfile
-import daemon
-import os
 from initat.tools import process_tools
-import sys
 
 from initat.server_version import VERSION_STRING
 

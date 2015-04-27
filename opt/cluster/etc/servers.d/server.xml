@@ -92,6 +92,11 @@
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">iddis</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <old-binary>discovery-server</old-binary>
     </instance>
     <instance check_type="meta" name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
         <config_names>
@@ -115,5 +120,10 @@
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>-
+        <start-argument>
+            <arg key="user">idnagios</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <old-binary>md-config-server</old-binary>
     </instance>
 </instances>
