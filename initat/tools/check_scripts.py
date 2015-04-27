@@ -137,7 +137,7 @@ class ServiceContainer(object):
         self.__log_com(u"[SrvC] {}".format(what), log_level)
 
     def _check_simple(self, entry, result):
-        init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
+        init_script_name = self._get_init_script_name(entry)
         if os.path.isfile(init_script_name):
             act_pids = []
             for _proc in psutil.process_iter():
@@ -432,6 +432,14 @@ class ServiceContainer(object):
             }[_action](opt_ns, entry)
 
     def stop_service(self, opt_ns, entry):
+        if not int(entry.get("startstop", "1")):
+            return
+        if entry.get("check_type") == "simple":
+            self.handle_service_rc(opt_ns, entry, "stop")
+        else:
+            self.stop_service_py(opt_ns, entry)
+
+    def stop_service_py(self, opt_ns, entry):
         _main_pids = [int(_val.text) for _val in entry.findall(".//pids/pid[@main='1']")]
         _meta_pids = [int(_val.text) for _val in entry.findall(".//pids/pid")]
         # print etree.tostring(entry, pretty_print=True)
@@ -457,7 +465,7 @@ class ServiceContainer(object):
     def _find_pids_by_name(self, entry):
         _new_title = self._get_prog_title(entry)
         _old_bins = self._get_old_binary(entry).strip().split(",")
-        print _new_title, _old_bins
+        print _new_title, "old_bins", _old_bins
         _pid_list = set()
         for _key, _value in self.__act_proc_dict.iteritems():
             try:
@@ -483,6 +491,9 @@ class ServiceContainer(object):
                             _pid_list.add(_key)
         print "found", _pid_list
         return _pid_list
+
+    def _get_init_script_name(self, entry):
+        return os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
 
     def _get_old_binary(self, entry):
         # returns name of old binary
@@ -518,11 +529,22 @@ class ServiceContainer(object):
         return _mod_name
 
     def start_service(self, opt_ns, entry):
+        if not int(entry.get("startstop", "1")):
+            return
+        if entry.get("check_type") == "simple":
+            self.handle_service_rc(opt_ns, entry, "start")
+        else:
+            self.start_service_py(opt_ns, entry)
+
+    def handle_service_rc(self, opt_ns, entry, command):
+        _init_rc = self._get_init_script_name(entry)
+        process_tools.call_command("{} {}".format(_init_rc, command), self.log)
+
+    def start_service_py(self, opt_ns, entry):
         cur_name = entry.attrib["name"]
         _prog_name = self._get_prog_name(entry)
         _prog_title = self._get_prog_title(entry)
         arg_dict = {_val.get("key"): _val.text.strip() for _val in entry.findall(".//arg[@key]")}
-
         print arg_dict
         _module_name = entry.get("module", self._get_module_name(entry))
         _arg_list = [

@@ -159,10 +159,12 @@ def call_command(act_command, log_com, close_fds=False):
     ret_code = _sub.wait()
     _stdout, _stderr = _sub.communicate()
     e_time = time.time()
-    log_com("execution took {}, return code was {:d}".format(
-        logging_tools.get_diff_time_str(e_time - s_time),
-        ret_code,
-        ))
+    log_com(
+        "execution took {}, return code was {:d}".format(
+            logging_tools.get_diff_time_str(e_time - s_time),
+            ret_code,
+        )
+    )
     for _val, _name, _lev in [(_stdout, "stdout", logging_tools.LOG_LEVEL_OK), (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)]:
         if _val.strip():
             _lines = _val.split("\n")
