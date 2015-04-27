@@ -63,7 +63,6 @@ case "$1" in
         echo -n "Stopping logging-server"
         if [ -f ${SERVER_PID} ] ; then
 	    /opt/cluster/sbin/icsw stop logging-server
-            kill -s 15 `cat ${SERVER_PID} | head -n 1`
             for i in $(seq 10) ; do
                 echo -n "."
                 if [ -x /bin/usleep ] ; then
