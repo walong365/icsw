@@ -2,7 +2,6 @@ from distutils.core import setup
 
 SERVER_LIST = [
     "host-monitoring-zmq.py",
-    "meta-server.py",
 ]
 
 setup(
