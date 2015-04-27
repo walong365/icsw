@@ -650,142 +650,141 @@ class ServiceContainer(object):
                 )
         return _arg_list
 
-
-def show_xml(opt_ns, res_xml, iteration=0):
-    # color strings (green / blue / red / normal)
-    col_str_dict = {
-        0: "\033[1;32m",
-        1: "\033[1;34m",
-        2: "\033[1;31m",
-        3: "\033[m\017",
-    }
-    rc_dict = {
-        SERVICE_OK: (0, "running"),
-        SERVICE_DEAD: (2, "error"),
-        SERVICE_NOT_INSTALLED: (1, "not installed"),
-        SERVICE_NOT_CONFIGURED: (1, "not configured"),
-    }
-    rc_strs = {
-        key: "{}{}{}".format(
-            col_str_dict[wc],
-            value,
-            col_str_dict[3]
-        ) for key, (wc, value) in rc_dict.iteritems()
-    }
-    out_bl = logging_tools.new_form_list()
-    types = ["client", "server", "system"]
-    _list = sum(
-        [
-            res_xml.xpath("instance[result and @runs_on='{}']".format(_type)) for _type in types
-        ],
-        []
-    )
-    for act_struct in _list:
-        _res = act_struct.find("result")
-        cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
-        cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
-        cur_line.append(logging_tools.form_entry(_res.find("state_info").get("check_source", "N/A"), header="source"))
-        if opt_ns.thread:
-            s_info = act_struct.find(".//state_info")
-            if "num_started" not in s_info.attrib:
-                cur_line.append(logging_tools.form_entry(s_info.text))
-            else:
-                num_started, num_found, num_diff, any_ok = (
-                    int(s_info.get("num_started")),
-                    int(s_info.get("num_found")),
-                    int(s_info.get("num_diff")),
-                    True if int(act_struct.attrib["any_threads_ok"]) else False
-                )
-                # print etree.tostring(act_struct, pretty_print=True)
-                if any_ok:
-                    ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
+    def show_xml(self, opt_ns, res_xml, iteration=0):
+        # color strings (green / blue / red / normal)
+        col_str_dict = {
+            0: "\033[1;32m",
+            1: "\033[1;34m",
+            2: "\033[1;31m",
+            3: "\033[m\017",
+        }
+        rc_dict = {
+            SERVICE_OK: (0, "running"),
+            SERVICE_DEAD: (2, "error"),
+            SERVICE_NOT_INSTALLED: (1, "not installed"),
+            SERVICE_NOT_CONFIGURED: (1, "not configured"),
+        }
+        rc_strs = {
+            key: "{}{}{}".format(
+                col_str_dict[wc],
+                value,
+                col_str_dict[3]
+            ) for key, (wc, value) in rc_dict.iteritems()
+        }
+        out_bl = logging_tools.new_form_list()
+        types = ["client", "server", "system"]
+        _list = sum(
+            [
+                res_xml.xpath("instance[result and @runs_on='{}']".format(_type)) for _type in types
+            ],
+            []
+        )
+        for act_struct in _list:
+            _res = act_struct.find("result")
+            cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
+            cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
+            cur_line.append(logging_tools.form_entry(_res.find("state_info").get("check_source", "N/A"), header="source"))
+            if opt_ns.thread:
+                s_info = act_struct.find(".//state_info")
+                if "num_started" not in s_info.attrib:
+                    cur_line.append(logging_tools.form_entry(s_info.text))
                 else:
-                    diffs_found = s_info.findall("diff_info")
-                    if diffs_found:
-                        diff_str = ", [diff: {}]".format(
-                            ", ".join(
-                                [
-                                    "{:d}: {:d}".format(int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found
-                                ]
-                            )
-                        )
-                    else:
-                        diff_str = ""
-                    if num_diff < 0:
-                        ret_str = "{} {} missing{}".format(
-                            logging_tools.get_plural("thread", -num_diff),
-                            num_diff == 1 and "is" or "are",
-                            diff_str,
-                            )
-                    elif num_diff > 0:
-                        ret_str = "{} too much{}".format(
-                            logging_tools.get_plural("thread", num_diff),
-                            diff_str,
-                        )
-                    else:
-                        ret_str = "the thread is running" if num_started == 1 else "all {:d} threads running".format(num_started)
-                cur_line.append(logging_tools.form_entry(ret_str, header="Thread info"))
-        if opt_ns.started:
-            start_time = int(act_struct.find(".//state_info").get("start_time", "0"))
-            if start_time:
-                diff_time = max(0, time.mktime(time.localtime()) - start_time)
-                diff_days = int(diff_time / (3600 * 24))
-                diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
-                diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
-                diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
-                ret_str = "{}".format(
-                    time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(start_time))
-                )
-            else:
-                ret_str = "no start info found"
-            cur_line.append(logging_tools.form_entry(ret_str, header="started"))
-        if opt_ns.pid:
-            pid_dict = {}
-            for cur_pid in act_struct.findall(".//pids/pid"):
-                pid_dict[int(cur_pid.text)] = int(cur_pid.get("count", "1"))
-            if pid_dict:
-                p_list = sorted(pid_dict.keys())
-                if max(pid_dict.values()) == 1:
-                    cur_line.append(logging_tools.form_entry(logging_tools.compress_num_list(p_list), header="pids"))
-                else:
-                    cur_line.append(
-                        logging_tools.form_entry(
-                            ",".join(["{:d}{}".format(
-                                key,
-                                " ({:d})".format(pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]
-                            ),
-                            header="pids"
-                        )
+                    num_started, num_found, num_diff, any_ok = (
+                        int(s_info.get("num_started")),
+                        int(s_info.get("num_found")),
+                        int(s_info.get("num_diff")),
+                        True if int(act_struct.attrib["any_threads_ok"]) else False
                     )
-            else:
-                cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
-        if opt_ns.database:
-            cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
-        if opt_ns.memory:
-            cur_mem = act_struct.find(".//memory_info")
-            if cur_mem is not None:
-                mem_str = process_tools.beautify_mem_info(int(cur_mem.text))
-            else:
-                # no pids hence no memory info
-                mem_str = ""
-            cur_line.append(logging_tools.form_entry_right(mem_str, header="Memory"))
-        if opt_ns.version:
-            if "version" in _res.attrib:
-                _version = _res.attrib["version"]
-            else:
-                _version = ""
-            cur_line.append(logging_tools.form_entry_right(_version, header="Version"))
-        cur_state = int(act_struct.find(".//state_info").get("state", "1"))
-        cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
-        if not opt_ns.failed or (opt_ns.failed and cur_state in [SERVICE_DEAD, SERVICE_NOT_CONFIGURED]):
-            out_bl.append(cur_line)
-    print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
-    # _lines = unicode(out_bl).split("\n")
-    # if iteration and len(_lines) > 2:
-    #    print "\n".join(_lines[2:])
-    # else:
-    #    print "\n".join(_lines)
-    print(unicode(out_bl))
+                    # print etree.tostring(act_struct, pretty_print=True)
+                    if any_ok:
+                        ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
+                    else:
+                        diffs_found = s_info.findall("diff_info")
+                        if diffs_found:
+                            diff_str = ", [diff: {}]".format(
+                                ", ".join(
+                                    [
+                                        "{:d}: {:d}".format(int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found
+                                    ]
+                                )
+                            )
+                        else:
+                            diff_str = ""
+                        if num_diff < 0:
+                            ret_str = "{} {} missing{}".format(
+                                logging_tools.get_plural("thread", -num_diff),
+                                num_diff == 1 and "is" or "are",
+                                diff_str,
+                                )
+                        elif num_diff > 0:
+                            ret_str = "{} too much{}".format(
+                                logging_tools.get_plural("thread", num_diff),
+                                diff_str,
+                            )
+                        else:
+                            ret_str = "the thread is running" if num_started == 1 else "all {:d} threads running".format(num_started)
+                    cur_line.append(logging_tools.form_entry(ret_str, header="Thread info"))
+            if opt_ns.started:
+                start_time = int(act_struct.find(".//state_info").get("start_time", "0"))
+                if start_time:
+                    diff_time = max(0, time.mktime(time.localtime()) - start_time)
+                    diff_days = int(diff_time / (3600 * 24))
+                    diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
+                    diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
+                    diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
+                    ret_str = "{}".format(
+                        time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(start_time))
+                    )
+                else:
+                    ret_str = "no start info found"
+                cur_line.append(logging_tools.form_entry(ret_str, header="started"))
+            if opt_ns.pid:
+                pid_dict = {}
+                for cur_pid in act_struct.findall(".//pids/pid"):
+                    pid_dict[int(cur_pid.text)] = int(cur_pid.get("count", "1"))
+                if pid_dict:
+                    p_list = sorted(pid_dict.keys())
+                    if max(pid_dict.values()) == 1:
+                        cur_line.append(logging_tools.form_entry(logging_tools.compress_num_list(p_list), header="pids"))
+                    else:
+                        cur_line.append(
+                            logging_tools.form_entry(
+                                ",".join(["{:d}{}".format(
+                                    key,
+                                    " ({:d})".format(pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]
+                                ),
+                                header="pids"
+                            )
+                        )
+                else:
+                    cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
+            if opt_ns.database:
+                cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
+            if opt_ns.memory:
+                cur_mem = act_struct.find(".//memory_info")
+                if cur_mem is not None:
+                    mem_str = process_tools.beautify_mem_info(int(cur_mem.text))
+                else:
+                    # no pids hence no memory info
+                    mem_str = ""
+                cur_line.append(logging_tools.form_entry_right(mem_str, header="Memory"))
+            if opt_ns.version:
+                if "version" in _res.attrib:
+                    _version = _res.attrib["version"]
+                else:
+                    _version = ""
+                cur_line.append(logging_tools.form_entry_right(_version, header="Version"))
+            cur_state = int(act_struct.find(".//state_info").get("state", "1"))
+            cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
+            if not opt_ns.failed or (opt_ns.failed and cur_state in [SERVICE_DEAD, SERVICE_NOT_CONFIGURED]):
+                out_bl.append(cur_line)
+        print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
+        # _lines = unicode(out_bl).split("\n")
+        # if iteration and len(_lines) > 2:
+        #    print "\n".join(_lines[2:])
+        # else:
+        #    print "\n".join(_lines)
+        print(unicode(out_bl))
 
 
 def log_com(what, log_level):
@@ -894,7 +893,7 @@ def main():
         _iter = 0
         while True:
             try:
-                show_xml(opt_ns, inst_xml, _iter)
+                cur_c.show_xml(opt_ns, inst_xml, _iter)
                 if opt_ns.every:
                     time.sleep(opt_ns.every)
                     cur_c.check_system(opt_ns, inst_xml)
