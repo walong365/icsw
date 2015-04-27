@@ -16,6 +16,7 @@
 ### END INIT INFO
 
 export SYSTEMD_NO_WRAP="1"
+
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -24,24 +25,18 @@ fi
 . /etc/init.d/ics_tools.sh
 
 META_FILE=/var/lib/meta-server/meta-server
-SERVER_BIN=/opt/cluster/sbin/meta-server.py
 SERVER_PID=/var/run/meta-server.pid
-SERVER_ARGS=""
-
-test -x ${SERVER_BIN} || exit 5
 
 rc_reset
 
-if [ -d /opt/python-init/bin ] ; then
-    export PATH=/opt/python-init/bin:${PATH}
-fi
-
+export PATH=/opt/python-init/bin:${PATH}
 export PYTHONOPTIMIZE="yes"
 export PYTHONBUFFER="yes"
 export HOSTNAME=`/bin/hostname`
+
 case "$1" in
     start)
-        echo -n "Starting meta-server.py "
+        echo -n "Starting meta-server "
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
@@ -50,7 +45,7 @@ case "$1" in
         rc_status -v
     ;;
     stop)
-        echo -n "Stopping meta-server.py "
+        echo -n "Stopping meta-server "
         if [ -f ${SERVER_PID} ] ; then
 	    /opt/cluster/sbin/icsw stop meta-server
         else
@@ -60,8 +55,9 @@ case "$1" in
         rc_status -v
     ;;
     force-stop)
-        echo -n "Force stopping meta-server.py"
+        echo -n "Force stopping meta-server "
         if [ -f ${SERVER_PID} ] ; then
+	    /opt/cluster/sbin/icsw stop meta-server
             kill -9 `cat ${SERVER_PID} ` || rc_failed
         else
             rc_failed
@@ -71,14 +67,14 @@ case "$1" in
     ;;
     status)
         /opt/cluster/sbin/icsw status meta-server
-        rc_status -v ; 
+        rc_status -v 
     ;;
     restart)
-        echo "Restarting $(basename $SERVER_BIN)"
+        echo "Restarting meta-server "
         $0 stop && sleep 2 ; $0 start || return=$rc_failed
         ;;
     force-restart)
-        echo "Force-restarting $(basename $SERVER_BIN)"
+        echo "Force-restarting meta-server "
         $0 force-stop && sleep 2 ; $0 start || return=$rc_failed
     ;;
     *)
