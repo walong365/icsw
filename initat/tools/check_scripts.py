@@ -543,6 +543,21 @@ class ServiceContainer(object):
                         arg_dict[_add_key],
                     ]
                 )
+        if entry.find("nice-level"):
+            _arg_list.extend(
+                [
+                    "--nice",
+                    "{:d}".format(int(entry.findtext("nice-level").strip())),
+                ]
+            )
+        # check access rights
+        for _file_el in entry.findall(".//access-rights/file[@value]"):
+            if os.path.isfile(_file_el.get("value")):
+                os.chown(
+                    _file_el.get("value"),
+                    process_tools.get_uid_from_name(_file_el.get("user", "root")),
+                    process_tools.get_gid_from_name(_file_el.get("group", "root")),
+                )
         print " ".join(_arg_list)
         if not os.fork():
             subprocess.call(_arg_list)

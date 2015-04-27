@@ -82,7 +82,11 @@
             <arg key="group">sge</arg>
             <arg key="groups">idg</arg>
         </start-argument>
+        <nice-level>15</nice-level>
         <module-name>initat.rms.main</module-name>
+        <access-rights>
+            <file value="/etc/sysconfig/licenses/.license_policy" user="sge" group="sge"/>
+        </access-rights>
     </instance>
     <instance check_type="meta" name="cluster-server" has_force_stop="1">
         <config_names>

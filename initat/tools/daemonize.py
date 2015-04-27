@@ -80,6 +80,7 @@ def main():
     _parser.add_argument("--user", type=str, default="root", help="user to use for the process [%(default)s]")
     _parser.add_argument("--group", type=str, default="root", help="group to use for the process [%(default)s]")
     _parser.add_argument("--groups", type=str, default="", help="coma-separated list of groups for the process [%(default)s]")
+    _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     opts = _parser.parse_args()
     prog_name, module_name, prog_title = sys.argv[1:4]
     if opts.user != "root":
@@ -95,6 +96,8 @@ def main():
     else:
         gids = []
     _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid, gids=gids)
+    if opts.nice:
+        os.nice(opts.nice)
     if opts.daemonize:
         _daemon_context.open()
     sys.argv = [opts.progname]
