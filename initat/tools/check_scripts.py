@@ -25,7 +25,7 @@
 import os
 import sys
 
-sys.path.insert(0, "/usr/local/share/home/local/development/git/icsw/")
+# sys.path.insert(0, "/usr/local/share/home/local/development/git/icsw/")
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -370,19 +370,9 @@ class ServiceContainer(object):
         return InstanceXML(self.__log_com).tree
 
     def apply_filter(self, opt_ns, instance_xml):
-        set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
-        set_all_clients = True if (opt_ns.client == ["ALL"] or opt_ns.instance == ["ALL"]) else False
-        set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
-        if set_all_servers:
-            opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name", smart_strings=False)
-        if set_all_clients:
-            opt_ns.client = instance_xml.xpath(".//*[@runs_on='client']/@name", smart_strings=False)
-        if set_all_system:
-            opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name", smart_strings=False)
-        check_list = []
-        for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
-            if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
-                check_list.append(cur_el)
+        check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
+        if opt_ns.service:
+            check_list = [_entry for _entry in check_list if _entry.get("name") in opt_ns.service]
         return check_list
 
     def check_system(self, opt_ns, instance_xml, **kwargs):
@@ -772,10 +762,7 @@ class ICSWParser(object):
         self._add_iccs_sel(_act)
 
     def _add_iccs_sel(self, _parser):
-        _parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names [%(default)s]")
-        _parser.add_argument("--client", type=str, nargs="+", default=[], help="client entity names [%(default)s]")
-        _parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names [%(default)s]")
-        _parser.add_argument("--system", type=str, nargs="+", default=[], help="system entity names [%(default)s]")
+        _parser.add_argument("service", nargs="*", type=str, help="list of services")
 
     @staticmethod
     def get_default_ns():
