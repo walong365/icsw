@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -42,7 +42,6 @@ def main():
         ("DAEMONIZE", configfile.bool_c_var(True)),
         ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
         ("MAIN_TIMER", configfile.int_c_var(60, help_string="main timer [%(default)d]")),
-        ("KILL_RUNNING", configfile.bool_c_var(True)),
         ("BACKLOG_SIZE", configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("LOG_NAME", configfile.str_c_var("snmp-relay")),
         ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
@@ -69,17 +68,8 @@ def main():
         process_tools.kill_running_processes()
     process_tools.ALLOW_MULTIPLE_INSTANCES = False
     process_tools.renice()
-    if global_config["DAEMONIZE"] and not global_config["DEBUG"]:
-        with daemon.DaemonContext():
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            run_code()
-            configfile.terminate_manager()
-        # exit
-        os._exit(0)
-    else:
-        print "Debugging snmp-relayer"
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        run_code()
-    sys.exit(0)
+    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+    run_code()
+    configfile.terminate_manager()
+    # exit
+    os._exit(0)

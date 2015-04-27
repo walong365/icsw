@@ -197,7 +197,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} loadmodules ${DESTDIR}/${INIT}/loadmodules
 	${INSTALL} ${INSTALL_OPTS} cluster-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} scripts/host-relay.rc ${DESTDIR}/${INIT}/host-relay
-	${INSTALL} ${INSTALL_OPTS} scripts/snmp-relay.rc ${DESTDIR}/${INIT}/snmp-relay
 	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} meta-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
@@ -225,7 +224,6 @@ install:
 	${LN} -s ${INIT}/cluster-server ${DESTDIR}${USRSBIN}/rccluster-server
 	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${USRSBIN}/rchost-monitoring
 	${LN} -s ${INIT}/host-relay ${DESTDIR}/${USRSBIN}/rchost-relay
-	${LN} -s ${INIT}/snmp-relay ${DESTDIR}/${USRSBIN}/rcsnmp-relay
 	# SYSCONF
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/cluster
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/init-license-server.d

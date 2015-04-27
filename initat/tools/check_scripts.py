@@ -424,7 +424,7 @@ class ServiceContainer(object):
             True: {
                 "start": [],
                 "stop": ["stop"],
-                "restart": ["stop", "start"],
+                "restart": ["stop", "cleanup", "start"],
             }
         }[_state][_subcom]
         return _act_list
@@ -491,6 +491,7 @@ class ServiceContainer(object):
                         # print _old_found, _icsw_found
                         if _old_found and not _icsw_found:
                             _pid_list.add(_key)
+        print "found", _pid_list
         return _pid_list
 
     def _get_old_binary(self, entry):

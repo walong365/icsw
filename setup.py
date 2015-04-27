@@ -4,7 +4,6 @@ SERVER_LIST = [
     "cluster-server.py",
     "host-monitoring-zmq.py",
     "meta-server.py",
-    "snmp-relay.py",
 ]
 
 setup(
