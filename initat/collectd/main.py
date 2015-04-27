@@ -28,8 +28,7 @@ django.setup()
 
 from initat.cluster.backbone.models import LogSource
 from initat.collectd.config_static import COMMAND_PORT
-from intiat.collectd.config import global_config
-from intiat.collectd.server import server_process
+from initat.collectd.config import global_config
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
@@ -155,6 +154,8 @@ def main():
     )
     kill_previous()
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
+    # late load after population of global_config
+    from initat.collectd.server import server_process
     server_process().loop()
     configfile.terminate_manager()
     os._exit(0)
