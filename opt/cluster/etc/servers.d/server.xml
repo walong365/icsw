@@ -82,6 +82,7 @@
             <arg key="group">sge</arg>
             <arg key="groups">idg</arg>
         </start-argument>
+        <module-name>initat.rms.main</module-name>
     </instance>
     <instance check_type="meta" name="cluster-server" has_force_stop="1">
         <config_names>

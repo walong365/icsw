@@ -27,6 +27,7 @@ django.setup()
 
 from initat.rms.config_static import COM_PORT
 from initat.rms.functions import call_command
+from initat.rms.config import global_config
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
@@ -44,7 +45,6 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
@@ -90,18 +90,12 @@ def main():
         if os.path.isfile(v_src):
             sge_dict[v_name] = file(v_src, "r").read().strip()
         else:
-            if global_config["FORCE"]:
-                sge_dict[v_name] = v_default
-            else:
-                print "error: Cannot read %s from file %s, exiting..." % (v_name, v_src)
-                sys.exit(2)
+            print("error: Cannot read {} from file {}, exiting...".format(v_name, v_src))
+            sys.exit(2)
     stat, sge_dict["SGE_ARCH"], _log_lines = call_command("/{}/util/arch".format(sge_dict["SGE_ROOT"]))
     if stat:
-        if global_config["FORCE"]:
-            sge_dict["SGE_ARCH"] = "lx26_amd64"
-        else:
-            print "error Cannot evaluate SGE_ARCH"
-            sys.exit(1)
+        print "error Cannot evaluate SGE_ARCH"
+        sys.exit(1)
     cluster_location.read_config_from_db(
         global_config,
         "rms_server",
@@ -128,7 +122,6 @@ def main():
     pid_dir = "/var/run/{}".format(os.path.dirname(global_config["PID_NAME"]))
     if pid_dir not in ["/var/run", "/var/run/"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code()
     configfile.terminate_manager()
     # exit
