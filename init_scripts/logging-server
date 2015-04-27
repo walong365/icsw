@@ -52,7 +52,7 @@ export HOSTNAME=`/bin/hostname`
 case "$1" in
     start)
         echo -n "Starting logging-server"
-        check_threads_ok $SERVER_PID && {
+        if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         } || {
 	    /opt/cluster/sbin/icsw start logging-server

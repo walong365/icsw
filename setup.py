@@ -96,7 +96,6 @@ setup(
                 "opt/cluster/bin/migrate_repos.py",
                 # icsw helper
                 "opt/cluster/bin/ics_tools.sh",
-                "opt/cluster/bin/ics_tools.py",
                 # license
                 "opt/cluster/bin/license_server_tool.py",
             ]

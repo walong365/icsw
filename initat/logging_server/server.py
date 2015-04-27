@@ -216,8 +216,6 @@ class main_process(threading_tools.process_pool):
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logserver")
         msi_block.add_actual_pid(mult=3, process_name="main")
-        msi_block.start_command = "/etc/init.d/logging-server start"
-        msi_block.stop_command = "/etc/init.d/logging-server force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
