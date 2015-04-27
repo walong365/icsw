@@ -91,7 +91,6 @@ def main():
     )
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/package-server"])
     process_tools.renice()
-    process_tools.fix_sysconfig_rights()
     process_tools.change_user_group_path(
         os.path.dirname(
             os.path.join(
@@ -109,4 +108,4 @@ def main():
     configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
     run_code()
     configfile.terminate_manager()
-    os.kill(os.getpid(), 9)
+    os._exit(0)

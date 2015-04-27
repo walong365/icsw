@@ -53,9 +53,6 @@ def main():
         ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
-        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("FORCE", configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
-        ("CHECK", configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
         ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME", configfile.str_c_var(prog_name)),
         ("USER", configfile.str_c_var("idccs", help_string="user to run as [%(default)s]")),
@@ -72,16 +69,13 @@ def main():
             prog_name,
             VERSION_STRING),
         add_writeback_option=True,
-        positional_arguments=False)
+        positional_arguments=False
+    )
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="config_server")
     if not sql_info.effective_device:
         print "not a config_server"
         sys.exit(5)
-    if global_config["CHECK"]:
-        sys.exit(0)
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     cluster_location.read_config_from_db(global_config, "config_server", [
         ("TFTP_DIR", configfile.str_c_var("/tftpboot")),
         ("MONITORING_PORT", configfile.int_c_var(NCS_PORT)),
@@ -108,21 +102,10 @@ def main():
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/cluster-config-server"])
     # global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
-    if not global_config["DEBUG"]:
-        with daemon.DaemonContext(
-            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
-            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
-        ):
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            run_code()
-            configfile.terminate_manager()
-        # exit
-        os._exit(0)
-    else:
-        process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
-        print("Debugging cluster-config-server on {}".format(long_host_name))
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        run_code()
-    sys.exit(0)
+    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+    run_code()
+    configfile.terminate_manager()
+    # exit
+    os._exit(0)

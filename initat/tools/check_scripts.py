@@ -540,10 +540,10 @@ class ServiceContainer(object):
             _module_name,
             _prog_title,
         ]
-        for _add_key in ["user", "group"]:
+        for _add_key in ["user", "group", "groups"]:
             if _add_key in arg_dict:
                 _arg_list.append(arg_dict[_add_key])
-        print _arg_list
+        print " ".join(_arg_list)
         if not os.fork():
             subprocess.call(_arg_list)
             os._exit(1)

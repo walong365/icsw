@@ -193,7 +193,6 @@ install:
 	${LN} -s ${PYTHON_SITE}/send_mail.py ${DESTDIR}/${ICSW_BIN}/
 	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
-	${INSTALL} ${INSTALL_OPTS} cluster-config-server ${DESTDIR}/${INIT}/cluster-config-server
 	${INSTALL} ${INSTALL_OPTS} logging-server.rc ${DESTDIR}/${INIT}/logging-server
 	${INSTALL} ${INSTALL_OPTS} loadmodules ${DESTDIR}/${INIT}/loadmodules
 	${INSTALL} ${INSTALL_OPTS} cluster-server ${DESTDIR}/${INIT}
@@ -202,7 +201,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} meta-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
-	${INSTALL} ${INSTALL_OPTS} rms-server.rc ${DESTDIR}${INIT}/rms-server
 	# SGE stuff ICSW_SGE
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SGE}/init.d
 	for name in sgemaster sgeexecd ; do \
@@ -223,10 +221,8 @@ install:
 	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules
 	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
 	${LN} -s ${INIT}/logging-server ${DESTDIR}/${USRSBIN}/rclogging-server
-	${LN} -s ${INIT}/rms-server ${DESTDIR}${USRSBIN}/rcrms-server
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server
 	${LN} -s ${INIT}/cluster-server ${DESTDIR}${USRSBIN}/rccluster-server
-	${LN} -s ${INIT}/cluster-config-server ${DESTDIR}${USRSBIN}/rccluster-config-server
 	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${USRSBIN}/rchost-monitoring
 	${LN} -s ${INIT}/host-relay ${DESTDIR}/${USRSBIN}/rchost-relay
 	${LN} -s ${INIT}/snmp-relay ${DESTDIR}/${USRSBIN}/rcsnmp-relay

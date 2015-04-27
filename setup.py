@@ -1,11 +1,9 @@
 from distutils.core import setup
 
 SERVER_LIST = [
-    "cluster-config-server.py",
     "cluster-server.py",
     "host-monitoring-zmq.py",
     "meta-server.py",
-    "rms-server.py",
     "snmp-relay.py",
 ]
 

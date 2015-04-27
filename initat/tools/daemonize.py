@@ -31,6 +31,19 @@ import daemon
 from initat.tools.io_stream_helper import io_stream
 
 
+def get_gid_from_name(group):
+    try:
+        if type(group) in [int, long]:
+            gid_stuff = grp.getgrgid(group)
+        else:
+            gid_stuff = grp.getgrnam(group)
+        new_gid, new_gid_name = (gid_stuff[2], gid_stuff[0])
+    except KeyError:
+        new_gid, new_gid_name = (0, "root")
+        logging_tools.my_syslog("Cannot find group '{}', using {} ({:d})".format(group, new_gid_name, new_gid))
+    return new_gid, new_gid_name
+
+
 def get_uid_from_name(user):
     try:
         if type(user) in [int, long]:
@@ -63,7 +76,11 @@ def main():
         user_name, group_name = sys.argv[4:6]
         uid = get_uid_from_name(user_name)[0]
         gid = get_gid_from_name(group_name)[0]
-        _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid)
+        if len(sys.argv) > 6:
+            gids = [get_gid_from_name(_gid)[0] for _gid in sys.argv[6].split(",")]
+            _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid, gids=gids)
+        else:
+            _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid)
     else:
         _daemon_context = daemon.DaemonContext(detach_process=True)
     _daemon_context.open()

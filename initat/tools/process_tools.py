@@ -1223,13 +1223,6 @@ def change_user_group(user, group, groups=[], **kwargs):
     return ok
 
 
-def fix_sysconfig_rights():
-    conf_dir = "/etc/sysconfig/cluster"
-    target_group = "idg"
-    os.chown(conf_dir, 0, grp.getgrnam(target_group)[2])
-    os.chmod(conf_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
-
-
 def change_user_group_path(path, user, group, **kwargs):
     if "log_com" in kwargs:
         log_com = kwargs["log_com"]

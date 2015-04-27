@@ -82,6 +82,11 @@
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">sge</arg>
+            <arg key="group">sge</arg>
+            <arg key="groups">idg</arg>
+        </start-argument>
     </instance>
     <instance check_type="meta" name="cluster-server" has_force_stop="1">
         <config_names>
@@ -102,6 +107,11 @@
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idccs</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <old-binary>cluster-config-server</old-binary>
     </instance>
     <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
         <config_names>
