@@ -141,9 +141,6 @@ install:
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for script in start_node.sh stop_node.sh check_node.sh ; do \
-	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
-	done
 	for name in fetch_ssh_keys.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
 	done
@@ -152,9 +149,6 @@ install:
 	done
 	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
-	done
-	for sbin_file in start_cluster.sh stop_cluster.sh start_server.sh stop_server.sh check_cluster.sh check_server.sh; do \
-	    ${INSTALL} ${INSTALL_OPTS} opt/cluster/bin/$$sbin_file ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
