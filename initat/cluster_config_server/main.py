@@ -88,7 +88,7 @@ def main():
         [
             ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
             ("IMAGE_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "images"))),
-            ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels")))
+            ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels"))),
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(LogSource.new("config-server", device=sql_info.effective_device).pk)
