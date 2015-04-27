@@ -23,7 +23,6 @@
 """ checks installed servers on system """
 
 import os
-import sys
 
 # sys.path.insert(0, "/usr/local/share/home/local/development/git/icsw/")
 
@@ -32,17 +31,12 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import argparse
-import commands
-import daemon
 import datetime
 from initat.tools import logging_tools
 from initat.tools import process_tools
-from initat.tools.io_stream_helper import io_stream
 import psutil
 import stat
 import subprocess
-import setproctitle
-import importlib
 import time
 
 try:
@@ -721,43 +715,6 @@ def show_xml(opt_ns, res_xml, iteration=0):
     # else:
     #    print "\n".join(_lines)
     print(unicode(out_bl))
-
-
-def do_action_xml(opt_ns, res_xml):
-    mode = opt_ns.mode
-    if mode in ["restart", "start"]:
-        structs = res_xml.xpath("instance[result and @startstop='1' and not (.//pid)]")
-    elif mode in ["stop"]:
-        structs = res_xml.xpath("instance[result and @startstop='1' and (.//pid)]")
-    else:
-        structs = []
-    if not opt_ns.quiet:
-        print(
-            "{}ing {}: {}".format(
-                mode,
-                logging_tools.get_plural("instance", len(structs)),
-                ", ".join([cur_el.attrib["name"] for cur_el in structs])
-            )
-        )
-    for cur_el in structs:
-        cur_name = cur_el.attrib["name"]
-        init_script = os.path.join("/", "etc", "init.d", cur_el.get("init_script_name", cur_name))
-        if os.path.exists(init_script):
-            op_mode = "start" if mode == "start" else ("force-{}".format(mode) if opt_ns.force and int(cur_el.get("has_force_stop", "0")) else mode)
-            cur_com = "{} {}".format(
-                init_script, op_mode
-            )
-            if not opt_ns.quiet:
-                print("calling {}".format(cur_com))
-            _ret_val = subprocess.call(cur_com, shell=True)
-        else:
-            if not opt_ns.quiet:
-                print(
-                    "init-script '{}' for {} does not exist".format(
-                        init_script,
-                        cur_name,
-                    )
-                )
 
 
 def log_com(what, log_level):
