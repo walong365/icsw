@@ -527,13 +527,21 @@ class ServiceContainer(object):
         _module_name = entry.get("module", self._get_module_name(entry))
         _arg_list = [
             "/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py",
+            "--progname",
             _prog_name,
+            "--modname",
             _module_name,
+            "--proctitle",
             _prog_title,
         ]
         for _add_key in ["user", "group", "groups"]:
             if _add_key in arg_dict:
-                _arg_list.append(arg_dict[_add_key])
+                _arg_list.extend(
+                    [
+                        "--{}".format(_add_key),
+                        arg_dict[_add_key],
+                    ]
+                )
         print " ".join(_arg_list)
         if not os.fork():
             subprocess.call(_arg_list)

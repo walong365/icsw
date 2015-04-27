@@ -21,6 +21,7 @@
 
 """ daemonizes a given server """
 
+import argparse
 import setproctitle
 import sys
 import importlib
@@ -71,22 +72,36 @@ def get_gid_from_name(group):
 
 
 def main():
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument("-d", dest="daemonize", default=False, action="store_true", help="daemonize process [%(default)s]")
+    _parser.add_argument("--progname", default="", type=str, help="programm name for sys.argv [%(default)s]")
+    _parser.add_argument("--modname", default="", type=str, help="python module to load [%(default)s]")
+    _parser.add_argument("--proctitle", default="", type=str, help="process title to set [%(default)s]")
+    _parser.add_argument("--user", type=str, default="root", help="user to use for the process [%(default)s]")
+    _parser.add_argument("--group", type=str, default="root", help="group to use for the process [%(default)s]")
+    _parser.add_argument("--groups", type=str, default="", help="coma-separated list of groups for the process [%(default)s]")
+    opts = _parser.parse_args()
+    print opts
+    sys.exit(0)
     prog_name, module_name, prog_title = sys.argv[1:4]
-    if len(sys.argv) > 4:
-        user_name, group_name = sys.argv[4:6]
-        uid = get_uid_from_name(user_name)[0]
-        gid = get_gid_from_name(group_name)[0]
-        if len(sys.argv) > 6:
-            gids = [get_gid_from_name(_gid)[0] for _gid in sys.argv[6].split(",")]
-            _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid, gids=gids)
-        else:
-            _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid)
+    if opts.user != "root":
+        uid = get_uid_from_name(opts.user)[0]
     else:
-        _daemon_context = daemon.DaemonContext(detach_process=True)
-    _daemon_context.open()
-    sys.argv = [prog_name]
-    setproctitle.setproctitle(prog_title)
-    main_module = importlib.import_module(module_name)
+        uid = 0
+    if opts.group != "root":
+        gid = get_gid_from_name(opts.group)[0]
+    else:
+        gid = 0
+    if opts.groups.strip():
+        gids = [get_gid_from_name(_gid)[0] for _gid in opts.groups.strip().split(",")]
+    else:
+        gids = []
+    _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid, gids=gids)
+    if opts.daemonize:
+        _daemon_context.open()
+    sys.argv = [opts.progname]
+    setproctitle.setproctitle(otps.proctitle)
+    main_module = importlib.import_module(opts.modname)
     sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
     sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
     main_module.main()
