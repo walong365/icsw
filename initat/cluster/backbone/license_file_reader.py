@@ -32,7 +32,7 @@ from dateutil import relativedelta
 from initat.tools import process_tools
 import pytz
 
-from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, Feature
+from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP
 from initat.cluster.settings import TIME_ZONE
 
 
@@ -40,8 +40,7 @@ logger = logging.getLogger("cluster.licadmin")
 
 CERT_DIR = "/opt/cluster/share/cert"
 
-
-LICENSE_FEATURE_MAP_FILE = "/opt/cluster/share/cert/license_feature_map.xml"
+LICENSE_LIST_FILE = "/opt/cluster/share/cert/license_list.xml"
 
 
 class LicenseFileReader(object):
@@ -177,7 +176,7 @@ class LicenseFileReader(object):
                     return None
 
             def parse_parameters(parameters_xml):
-                return {param_xml.get('name'): int_or_none(param_xml.text)
+                return {param_xml.get('id'): int_or_none(param_xml.text)
                         for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)}
 
             return [{
@@ -248,30 +247,14 @@ class LicenseFileReader(object):
         return "LicenseFileReader(file_name={})".format(self.file_name)
 
 
-class LicenseFeatureMapReader(object):
+class LicenseListReader(object):
     def __init__(self):
-        signed_map_file_xml = etree.fromstring(codecs.open(LICENSE_FEATURE_MAP_FILE, "r", "utf-8").read())
-        map_xml = signed_map_file_xml.find("icsw:license-feature-map", ICSW_XML_NS_MAP)
-        signature_xml = signed_map_file_xml.find("icsw:signature", ICSW_XML_NS_MAP)
-
-        if not LicenseFileReader.verify_signature(map_xml, signature_xml):
-            raise Exception("Invalid license feature map signature")
-
-        self.map_xml = map_xml
-
-    def get_licenses_providing_feature(self, feature):
-        licenses_xml = self.map_xml.xpath("//icsw:license[icsw:feature/text()='{}']".format(feature.name),
-                                          namespaces=ICSW_XML_NS_MAP)
-        return [lic.get('id') for lic in licenses_xml]
-
-    def get_all_features(self):
-        features_xml = self.map_xml.xpath("//icsw:license/icsw:feature/text()", namespaces=ICSW_XML_NS_MAP)
-        return set(Feature[unicode(i)] for i in features_xml)
+        self.xml_file = etree.fromstring(codecs.open(LICENSE_LIST_FILE, "r", "utf-8").read())
 
     def get_all_licenses(self):
-        licenses_xml = self.map_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)
+        attributes = ['id', 'name', 'description']
         return [{
-            'id': lic_xml.get("id"),
-            'name': lic_xml.findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
-            'description': lic_xml.findtext("icsw:description", namespaces=ICSW_XML_NS_MAP),
-        } for lic_xml in licenses_xml]
+            'id': feature.get('id'),
+            'name': feature.get('name'),
+            'description': feature.get('description'),
+        } for feature in self.xml_file.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)]

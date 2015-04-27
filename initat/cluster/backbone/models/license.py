@@ -32,20 +32,9 @@ from django.utils.functional import cached_property
 import enum
 
 __all__ = [
-    "Feature",
     "LicenseState",
     "License",
 ]
-
-# features are only relevant to the code, so we store them here
-# licenses are only relevant to the user, so we store them in the db
-# the mapping is done in a signed xml file which we ship
-
-# in code, licenses are usually passed by their identifying string and features as their enum
-
-Feature = enum.Enum("Features",
-                    ['webfrontend', 'md-config-server', 'peering', 'monitoring-overview',
-                     'graphing', 'discovery-server'])
 
 logger = logging.getLogger("cluster.icsw_license")
 
@@ -73,22 +62,8 @@ class _LicenseManager(models.Manager):
         """Returns whether we currently have this license"""
         return self.get_license_state(license) in (LicenseState.valid, LicenseState.grace, LicenseState.new_install)
 
-    def has_license_for(self, feature):
-        """Returns whether we can currently access the feature"""
-        licenses = self.get_licenses_providing_feature(feature)
-        return any(self.has_valid_license(lic) for lic in licenses)
-
-    def get_licenses_providing_feature(self, feature):
-        """Returns list of license id strings which provide the feature"""
-        return self._license_feature_map_reader.get_licenses_providing_feature(feature)
-
-    def get_activated_features(self):
-        return [feature for feature in self._license_feature_map_reader.get_all_features()
-                if self.has_license_for(feature)]
-
     def get_all_licenses(self):
-        """Returns list of dicts containing 'id', 'name' and 'description' of all available licenses."""
-        return self._license_feature_map_reader.get_all_licenses()
+        return self._license_list_reader.get_all_licenses()
 
     def get_license_packages(self):
         """Returns license packages in custom format."""
@@ -116,9 +91,9 @@ class _LicenseManager(models.Manager):
             pass
 
     @cached_property
-    def _license_feature_map_reader(self):
-        from initat.cluster.backbone.license_file_reader import LicenseFeatureMapReader
-        return LicenseFeatureMapReader()
+    def _license_list_reader(self):
+        from initat.cluster.backbone.license_file_reader import LicenseListReader
+        return LicenseListReader()
 
 
 class License(models.Model):
@@ -221,13 +196,13 @@ LIC_FILE_RELAX_NG_DEFINITION = """
                                      </element>
                                      <element name="parameters">
 
-                                        <oneOrMore>
+                                        <zeroOrMore>
                                             <element name="parameter">
                                                 <attribute name="id"/>
                                                 <attribute name="name"/>
                                                 <text/>
                                             </element>
-                                        </oneOrMore>
+                                        </zeroOrMore>
 
                                      </element>
                                  </element>
