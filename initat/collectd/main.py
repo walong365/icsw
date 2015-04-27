@@ -28,6 +28,8 @@ django.setup()
 
 from initat.cluster.backbone.models import LogSource
 from initat.collectd.config_static import COMMAND_PORT
+from intiat.collectd.config import global_config
+from intiat.collectd.server import server_process
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
@@ -37,11 +39,6 @@ import daemon
 from initat.tools import process_tools
 import sys
 import time
-
-
-def run_code():
-    from initat.collectd.server import server_process
-    server_process().loop()
 
 
 def kill_previous():
@@ -73,15 +70,12 @@ def _create_dirs(global_config):
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
-        ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
         ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS", configfile.array_c_var([])),
@@ -114,8 +108,6 @@ def main():
         sys.exit(5)
     else:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
-    if global_config["CHECK"]:
-        sys.exit(0)
     global_config.add_config_entries(
         [
             (
@@ -163,18 +155,6 @@ def main():
     )
     kill_previous()
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
-    if not global_config["DEBUG"]:
-        with daemon.DaemonContext(
-            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
-            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
-        ):
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            run_code()
-            configfile.terminate_manager()
-    else:
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        print("Debugging collectd-init on {}".format(long_host_name))
-        run_code()
-    sys.exit(0)
+    server_process().loop()
+    configfile.terminate_manager()
+    os._exit(0)

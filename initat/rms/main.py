@@ -28,6 +28,7 @@ django.setup()
 from initat.rms.config_static import COM_PORT
 from initat.rms.functions import call_command
 from initat.rms.config import global_config
+from initat.rms.server import server_process
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
@@ -37,11 +38,6 @@ import daemon
 from initat.tools import process_tools
 from initat.tools import sge_license_tools
 import sys
-
-
-def run_code():
-    from initat.rms.server import server_process
-    server_process().loop()
 
 
 def main():
@@ -119,10 +115,7 @@ def main():
     )
     # check modify_sge_global flag and set filesystem flag accordingly
     sge_license_tools.handle_license_policy(global_config["LICENSE_BASE"], global_config["MODIFY_SGE_GLOBAL"])
-    pid_dir = "/var/run/{}".format(os.path.dirname(global_config["PID_NAME"]))
-    if pid_dir not in ["/var/run", "/var/run/"]:
-        process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
-    run_code()
+    server_process().loop()
     configfile.terminate_manager()
     # exit
     os._exit(0)

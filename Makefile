@@ -208,6 +208,7 @@ install:
 	echo "proepilogue.py qlogin_wrapper.sh sge_starter.sh" > ${DESTDIR}/${ICSW_SGE}/.party_files
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
+	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
 	${LN} -s ${INIT}/logging-server ${DESTDIR}${USRSBIN}/rclogging-server
 	${LN} -s ${INIT}/hoststatus ${DESTDIR}${USRSBIN}/rchoststatus
 	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules

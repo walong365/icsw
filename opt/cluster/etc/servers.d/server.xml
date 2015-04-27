@@ -21,7 +21,7 @@
             <config_name>mother_server</config_name>
         </config_names>
     </instance>
-    <instance check_type="meta" name="collectd-init" runs_on="server" has_force_stop="1" pid_file_name="collectd-init/collectd-init.pid" meta_server_name="collectd-init">
+    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" meta_server_name="collectd">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
