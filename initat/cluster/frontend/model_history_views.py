@@ -56,7 +56,11 @@ class get_historical_data(ListAPIView):
     @rest_logging
     def list(self, request, *args, **kwargs):
         model_name = request.GET['model']
-        model = getattr(initat.cluster.backbone.models, model_name)
+        # try currently registered models
+        try:
+            model = [i for i in icsw_register.REGISTERED_MODELS if i.__name__ == model_name][0]
+        except IndexError:
+            model = getattr(initat.cluster.backbone.models, model_name)
         object_id = request.GET.get("object_id", None)
 
         def format_version(version):
@@ -181,4 +185,3 @@ class get_historical_data(ListAPIView):
 
         # NOTE: entries must be in chronological, earliest first
         return Response(sorted_data)
-
