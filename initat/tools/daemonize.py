@@ -81,8 +81,6 @@ def main():
     _parser.add_argument("--group", type=str, default="root", help="group to use for the process [%(default)s]")
     _parser.add_argument("--groups", type=str, default="", help="coma-separated list of groups for the process [%(default)s]")
     opts = _parser.parse_args()
-    print opts
-    sys.exit(0)
     prog_name, module_name, prog_title = sys.argv[1:4]
     if opts.user != "root":
         uid = get_uid_from_name(opts.user)[0]
@@ -100,10 +98,11 @@ def main():
     if opts.daemonize:
         _daemon_context.open()
     sys.argv = [opts.progname]
-    setproctitle.setproctitle(otps.proctitle)
+    setproctitle.setproctitle(opts.proctitle)
     main_module = importlib.import_module(opts.modname)
-    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+    if opts.daemonize:
+        sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+        sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
     main_module.main()
 
 
