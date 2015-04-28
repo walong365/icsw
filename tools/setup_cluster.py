@@ -35,14 +35,7 @@ import sys
 import time
 import tempfile
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-import django
-django.setup()
 from django.utils.crypto import get_random_string
-from django.db.migrations.recorder import MigrationRecorder
-from django.apps import apps
-from django.db import connection
 from initat.tools import logging_tools
 from initat.tools import process_tools
 
@@ -681,6 +674,17 @@ def _check_dirs():
 
 
 def app_has_unapplied_migrations(app_name):
+    # Note: We cannot configure Django globally, because some config files
+    # might not exist yet.
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+    import django
+    django.setup()
+
+    from django.db.migrations.recorder import MigrationRecorder
+    from django.apps import apps
+    from django.db import connection
+
     recorder = MigrationRecorder(connection)
     applied_migrations = {
         migration_name for app_name_, migration_name in recorder.applied_migrations()
