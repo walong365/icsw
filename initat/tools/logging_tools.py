@@ -873,9 +873,10 @@ class new_form_list(object):
 
     def _apply_da_map(self, entry, max_len):
         _str = entry.format(max_len)
-        da_name = getattr(entry, "display_attribute", None)
-        if da_name in self.__da_map:
-            _str = self.__da_map[da_name].format(_str)
+        if self.__da_map:
+            da_name = getattr(entry, "display_attribute", None)
+            if da_name in self.__da_map:
+                _str = self.__da_map[da_name].format(_str)
         return _str
 
     def __len__(self):
