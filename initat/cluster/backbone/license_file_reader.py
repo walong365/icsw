@@ -32,7 +32,7 @@ import pytz
 
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP
 from initat.cluster.settings import TIME_ZONE
-from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.tools import process_tools
 
 
@@ -86,11 +86,12 @@ class LicenseFileReader(object):
         q = "//icsw:package-list/icsw:package/icsw:cluster-id"
         return set(elem.get('id') for elem in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP))
 
-    def get_license_state(self, license):
+    def get_license_state(self, license, parameters=None):
         """Returns a LicenseState for the local cluster_id and the given license combination
         for the current point in time, or None if no license exists
 
         :type license: LicenseEnum
+        :param parameters: {LicenseParameterTypeEnum: quantity} of required parameters
         """
         parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
 
@@ -104,7 +105,7 @@ class LicenseFileReader(object):
             valid_to_plus_grace = valid_to + grace_period
             today = datetime.date.today()
 
-            # semantics: valid_from is from 00:00 of that day, valid to is till 23:59 of that day
+            # semantics: valid_from is from 00:00:00 of that day, valid to is till 23:59:59 of that day
 
             if today < valid_from:
                 return LicenseState.valid_in_future
@@ -117,14 +118,23 @@ class LicenseFileReader(object):
 
         state = None
 
+        # check parameters via xpath
+        license_parameter_check = ""
+        if parameters is not None:
+            for lic_param_type, value in parameters.iteritems():
+                license_parameter_check +=\
+                    "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(lic_param_type.name, value)
+
         from initat.cluster.backbone.models import device_variable
 
         q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
             device_variable.objects.get_cluster_id()
         )
-        q += "/icsw:license[icsw:id/text()='{}']".format(license.name)
+        q += "/icsw:license[icsw:id/text()='{}' {}]".format(license.name, license_parameter_check)
 
         for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
+            # these licenses match id and parameter, check if they are also valid right now
+
             s = get_state_from_license_xml(lic_xml)
             if state is None or s > state:
                 state = s

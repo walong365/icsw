@@ -31,6 +31,9 @@ __all__ = ['get_available_licenses', 'LicenseEnum']
 LicenseEnum = Enum('LicenseEnum', 'kpi ext_lic package_install virtual_desktop a')
 
 
+LicenseParameterTypeEnum = Enum('LicenseParameterTypeEnum', 'services node user ext_lic')
+
+
 def get_available_licenses():
     AvailableLicense = namedtuple('AvailableLicense', ['id', 'name', 'description'])
 
