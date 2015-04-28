@@ -33,6 +33,7 @@ export PATH=/opt/python-init/bin:${PATH}
 export PYTHONOPTIMIZE="yes"
 export PYTHONBUFFER="yes"
 export HOSTNAME=`/bin/hostname`
+export ICSW=/opt/cluster/sbin/icsw
 
 case "$1" in
     start)
@@ -40,25 +41,14 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
-	    /opt/cluster/sbin/icsw start meta-server
+	    ${ICSW}/icsw start meta-server
         fi
         rc_status -v
     ;;
     stop)
         echo -n "Stopping meta-server "
         if [ -f ${SERVER_PID} ] ; then
-	    /opt/cluster/sbin/icsw stop meta-server
-        else
-            rc_failed
-        fi
-        rm -f ${SERVER_PID} ${META_FILE}
-        rc_status -v
-    ;;
-    force-stop)
-        echo -n "Force stopping meta-server "
-        if [ -f ${SERVER_PID} ] ; then
-	    /opt/cluster/sbin/icsw stop meta-server
-            kill -9 `cat ${SERVER_PID} ` || rc_failed
+	    ${ICSW}/icsw stop meta-server
         else
             rc_failed
         fi
@@ -66,19 +56,11 @@ case "$1" in
         rc_status -v
     ;;
     status)
-        /opt/cluster/sbin/icsw status meta-server
+        ${ICSW}/icsw status meta-server
         rc_status -v 
     ;;
-    restart)
-        echo "Restarting meta-server "
-        $0 stop && sleep 2 ; $0 start || return=$rc_failed
-        ;;
-    force-restart)
-        echo "Force-restarting meta-server "
-        $0 force-stop && sleep 2 ; $0 start || return=$rc_failed
-    ;;
     *)
-        echo "Usage: $0 {start|stop|status|force-stop|restart|force-restart}"
+        echo "Usage: $0 {start|stop|status}"
         exit 1
     ;;
 esac

@@ -20,6 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ logging tools """
+
 import bz2
 import datetime
 import gzip
@@ -34,15 +35,11 @@ import string
 import sys
 import threading
 import time
+import syslog
 import traceback
 
-if sys.platform in ["linux2", "linux3", "linux"]:
-    import syslog
+import zmq
 
-try:
-    import zmq
-except ImportError:
-    zmq = None
 
 LOG_LEVEL_OK = 20
 LOG_LEVEL_WARN = 30
@@ -84,6 +81,15 @@ def map_log_level_to_log_status(log_lev):
         LOG_LEVEL_ERROR: "e",
         LOG_LEVEL_CRITICAL: "c",
     }.get(log_lev, "c")
+
+
+def get_log_level_str(level):
+    return {
+        LOG_LEVEL_OK: "ok",
+        LOG_LEVEL_WARN: "warn",
+        LOG_LEVEL_ERROR: "err",
+        LOG_LEVEL_CRITICAL: "crit"
+    }.get(level, "lev{:d}".format(level))
 
 
 def get_relative_dt(dt_struct):
@@ -165,14 +171,16 @@ def interpret_size_str(in_str, **kwargs):
     if size_m:
         value = float(size_m.group("value"))
         pfix = size_m.group("pfix").lower()
-        value = int(value * {
-            "m": 1024 * 1024,
-            "mi": 1000 * 1000,
-            "g": 1024 * 1024 * 1024,
-            "gi": 1000 * 1000 * 1000,
-            "t": 1024 * 1024 * 1024 * 1024,
-            "ti": 1000 * 1000 * 1000 * 1000,
-        }.get(pfix, 1))
+        value = int(
+            value * {
+                "m": 1024 * 1024,
+                "mi": 1000 * 1000,
+                "g": 1024 * 1024 * 1024,
+                "gi": 1000 * 1000 * 1000,
+                "t": 1024 * 1024 * 1024 * 1024,
+                "ti": 1000 * 1000 * 1000 * 1000,
+            }.get(pfix, 1)
+        )
         return value
     else:
         return 0
@@ -237,31 +245,6 @@ def get_time_str(secs):
                 hms_f.append("{:02d}".format(int(hms)))
     out_f.append(":".join(hms_f))
     return " ".join(out_f)
-
-
-class twisted_log_observer(object):
-    def __init__(self, name, destination, **kwargs):
-        kwargs.update({"init_logger": True})
-        self.__logger = get_logger(name,
-                                   destination,
-                                   **kwargs)
-        self.__last_cinfo = 0.0
-
-    def __call__(self, in_dict):
-        for line in in_dict["message"]:
-            self.__logger.log(in_dict.get("log_level", LOG_LEVEL_OK), line)
-        if in_dict["isError"]:
-            if in_dict.get("why", None):
-                self.__logger.log(LOG_LEVEL_CRITICAL, in_dict["why"])
-            act_time = time.time()
-            if abs(act_time - self.__last_cinfo) > 1:
-                self.__last_cinfo = act_time
-            for line in in_dict["failure"].getTraceback().split("\n"):
-                self.__logger.log(LOG_LEVEL_CRITICAL, line)
-
-    def close(self):
-        for handle in self.__logger.logger.handlers:
-            handle.close()
 
 
 def get_logger(name, destination, **kwargs):
@@ -743,16 +726,19 @@ class form_entry(object):
         self.post_str = ""
         for key, value in kwargs.iteritems():
             setattr(self, key, value)
-        setattr(self, "content_type", {
-            str: "s",
-            unicode: "s",
-            type(None): "s",
-            int: "d",
-            long: "d",
-            float: "f",
-            datetime.date: "s",
-            datetime.datetime: "s"
-        }.get(type(self.content), "s"))
+        setattr(
+            self,
+            "content_type", {
+                str: "s",
+                unicode: "s",
+                type(None): "s",
+                int: "d",
+                long: "d",
+                float: "f",
+                datetime.date: "s",
+                datetime.datetime: "s"
+            }.get(type(self.content), "s")
+        )
 
     def has_key(self, key):
         return hasattr(self, key)
@@ -802,6 +788,7 @@ class new_form_list(object):
         self.__col_sep = kwargs.get("column_separator", " ")
         self.__strict_mode = kwargs.get("strict_mode", False)
         self.__none_string = kwargs.get("none_string", "None")
+        self.__da_map = kwargs.get("display_attribute_map", None)
         # self.__format_dict = {}
 
     def append(self, add_list):
@@ -819,7 +806,16 @@ class new_form_list(object):
     def __str__(self):
         return unicode(self)
 
-    def __unicode__(self):
+    def get_da_map(self):
+        return self.__da_map
+
+    def set_da_map(self, value):
+        self.__da_map = value
+
+    display_attribute_map = property(get_da_map, set_da_map)
+
+    def __unicode__(self, **kwargs):
+        da_map = kwargs.get("display_attribute_map", None)
         if not self.__content:
             if self.__strict_mode:
                 raise ValueError("empty list (no lines)")
@@ -829,7 +825,8 @@ class new_form_list(object):
         row_count = [len(line) for line in self.__content]
         _min_rows, max_rows = (
             min(row_count),
-            max(row_count))
+            max(row_count),
+        )
         row_lens = [0] * max_rows
         for line in self.__content:
             line_rows = len(line)
@@ -840,14 +837,24 @@ class new_form_list(object):
             if line_rows < max_rows:
                 if line_rows > 1:
                     # only count the first (line_rows - 1) rows
-                    row_lens = [max(old_len, new_len) for old_len, new_len in zip(
-                        row_lens[:line_rows - 1],
-                        line_lens[:line_rows - 1])] + row_lens[line_rows - 1:]
+                    row_lens = [
+                        max(old_len, new_len) for old_len, new_len in zip(
+                            row_lens[:line_rows - 1],
+                            line_lens[:line_rows - 1]
+                        )
+                    ] + row_lens[line_rows - 1:]
             else:
                 # count all rows
-                row_lens = [max(old_len, new_len) for old_len, new_len in zip(row_lens, line_lens)]
+                row_lens = [
+                    max(old_len, new_len) for old_len, new_len in zip(row_lens, line_lens)
+                ]
         # take header into account
-        row_lens = [max(old_len, len(self.__header_dict.get(idx, (True, ""))[1])) for idx, old_len in enumerate(row_lens)]
+        row_lens = [
+            max(
+                old_len,
+                len(self.__header_dict.get(idx, (True, ""))[1])
+            ) for idx, old_len in enumerate(row_lens)
+        ]
         out_lines = []
         if self.__header_dict:
             header_list = [self.__header_dict.get(idx, (True, "")) for idx in xrange(max_rows)]
@@ -855,8 +862,22 @@ class new_form_list(object):
             out_lines.append(form_str.format(*[_e[1] for _e in header_list]).rstrip())
             out_lines.append("-" * len(out_lines[-1]))
         for line in self.__content:
-            out_lines.append(self.__col_sep.join([entry.format(max_len) for entry, max_len in zip(line, row_lens[:len(line)])]))
+            out_lines.append(
+                self.__col_sep.join(
+                    [
+                        self._apply_da_map(entry, max_len) for entry, max_len in zip(line, row_lens[:len(line)])
+                    ]
+                )
+            )
         return "\n".join(map(lambda line: line.rstrip(), out_lines))
+
+    def _apply_da_map(self, entry, max_len):
+        _str = entry.format(max_len)
+        if self.__da_map:
+            da_name = getattr(entry, "display_attribute", None)
+            if da_name in self.__da_map:
+                _str = self.__da_map[da_name].format(_str)
+        return _str
 
     def __len__(self):
         return len(self.__content)
@@ -972,15 +993,6 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
                 )
     if out:
         print(out_str)
-
-
-def get_log_level_str(level):
-    return {
-        LOG_LEVEL_OK: "ok",
-        LOG_LEVEL_WARN: "warn",
-        LOG_LEVEL_ERROR: "err",
-        LOG_LEVEL_CRITICAL: "crit"
-    }.get(level, "lev{:d}".format(level))
 
 
 class my_formatter(logging.Formatter):

@@ -48,6 +48,7 @@ rc_reset
 setup
 
 export HOSTNAME=`/bin/hostname`
+export ICSW=/opt/cluster/sbin/icsw
 
 case "$1" in
     start)
@@ -55,14 +56,14 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
-	    /opt/cluster/sbin/icsw start logging-server
+	    ${ICSW}/icsw start logging-server
         fi
         rc_status -v
     ;;
     stop)
         echo -n "Stopping logging-server"
         if [ -f ${SERVER_PID} ] ; then
-	    /opt/cluster/sbin/icsw stop logging-server
+	    ${ICSW}/icsw stop logging-server
             for i in $(seq 10) ; do
                 echo -n "."
                 if [ -x /bin/usleep ] ; then
@@ -78,31 +79,12 @@ case "$1" in
         fi
         rc_status -v
     ;;
-    force-stop)
-        echo -n "Force stopping logging-server"
-        if [ -f ${SERVER_PID} ] ; then
-            /opt/cluster/sbin/icsw stop logging-server
-            kill -9 `cat ${SERVER_PID} ` || rc_failed
-        else
-            rc_failed
-        fi
-        rm -f ${SERVER_PID} ${META_FILE}
-        rc_status -v
-    ;;
     status)
-        /opt/cluster/sbin/icsw status logging-server
+        ${ICSW}/icsw status logging-server
         rc_status -v
-    ;;
-    restart)
-        echo "Restarting logging-server "
-        $0 stop ; sleep 1 ; $0 start || return=$rc_failed
-    ;;
-    force-restart)
-        echo "Force-restarting logging-server "
-        $0 force-stop ; sleep 1 ; $0 start || return=$rc_failed
     ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|force-stop|force-restart}"
+        echo "Usage: $0 {start|stop|status}"
         exit 1
     ;;
 esac
