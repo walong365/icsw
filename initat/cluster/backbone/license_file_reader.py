@@ -22,7 +22,6 @@
 
 import base64
 import bz2
-import codecs
 import glob
 from lxml import etree
 import datetime
@@ -245,16 +244,3 @@ class LicenseFileReader(object):
 
     def __repr__(self):
         return "LicenseFileReader(file_name={})".format(self.file_name)
-
-
-class LicenseListReader(object):
-    def __init__(self):
-        self.xml_file = etree.fromstring(codecs.open(LICENSE_LIST_FILE, "r", "utf-8").read())
-
-    def get_all_licenses(self):
-        attributes = ['id', 'name', 'description']
-        return [{
-            'id': feature.get('id'),
-            'name': feature.get('name'),
-            'description': feature.get('description'),
-        } for feature in self.xml_file.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)]

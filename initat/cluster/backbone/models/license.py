@@ -30,6 +30,7 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.functional import cached_property
 import enum
+from initat.cluster.backbone.available_licenses import get_available_licenses
 
 __all__ = [
     "LicenseState",
@@ -63,7 +64,7 @@ class _LicenseManager(models.Manager):
         return self.get_license_state(license) in (LicenseState.valid, LicenseState.grace, LicenseState.new_install)
 
     def get_all_licenses(self):
-        return self._license_list_reader.get_all_licenses()
+        return get_available_licenses()
 
     def get_license_packages(self):
         """Returns license packages in custom format."""
@@ -89,11 +90,6 @@ class _LicenseManager(models.Manager):
             del self._license_readers
         except AttributeError:
             pass
-
-    @cached_property
-    def _license_list_reader(self):
-        from initat.cluster.backbone.license_file_reader import LicenseListReader
-        return LicenseListReader()
 
 
 class License(models.Model):
