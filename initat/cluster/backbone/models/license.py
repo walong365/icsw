@@ -63,10 +63,12 @@ class _LicenseManager(models.Manager):
         return max([r.get_license_state(license, parameters) for r in self._license_readers])
 
     def has_valid_license(self, license, parameters=None):
-        """Returns whether we currently have this license
+        """Returns whether we currently have this license in some valid state.
 
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: int} of required parameters
+
+        :return: bool
         """
         return self.get_license_state(license, parameters) in (LicenseState.valid, LicenseState.grace,
                                                                LicenseState.new_install)
