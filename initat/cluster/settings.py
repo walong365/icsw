@@ -528,7 +528,7 @@ for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
                 continue
             for _file in _filelist:
                 if _file.endswith(".html"):
-                    print "*", _dir, _file
+                    # print "*", _dir, _file
                     SSI_FILES.append(os.path.join(_dir, _file))
         SSI_ROOTS.append(_SSI_ROOT)
 ALLOWED_INCLUDE_ROOTS = SSI_ROOTS
