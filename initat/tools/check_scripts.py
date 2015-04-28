@@ -672,7 +672,7 @@ class ServiceContainer(object):
             ) for key, (wc, value) in rc_dict.iteritems()
         }
         out_bl = logging_tools.new_form_list()
-        types = ["client", "server", "system"]
+        types = sorted(list(set(res_xml.xpath(".//instance/@runs_on", start_strings=False))))
         _list = sum(
             [
                 res_xml.xpath("instance[result and @runs_on='{}']".format(_type)) for _type in types
