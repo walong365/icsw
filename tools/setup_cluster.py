@@ -25,6 +25,7 @@ import argparse
 import commands
 import os
 import pwd
+import fnmatch
 import grp
 import random
 import shutil
@@ -34,7 +35,14 @@ import sys
 import time
 import tempfile
 
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import django
+django.setup()
 from django.utils.crypto import get_random_string
+from django.db.migrations.recorder import MigrationRecorder
+from django.apps import apps
+from django.db import connection
 from initat.tools import logging_tools
 from initat.tools import process_tools
 
@@ -670,6 +678,21 @@ def _check_dirs():
     if _missing_dirs:
         print("{} missing: {}".format(logging_tools.get_plural("directory", len(_missing_dirs)), ", ".join(sorted(_missing_dirs))))
         sys.exit(6)
+
+
+def app_has_unapplied_migrations(app_name):
+    recorder = MigrationRecorder(connection)
+    applied_migrations = {
+        migration_name for app_name_, migration_name in recorder.applied_migrations()
+        if app_name_ == app_name
+    }
+    migration_directory = os.path.join(apps.get_app_path(app_name), "migrations")
+    migrations_on_disk = set(
+        fnmatch.filter(os.listdir(migration_directory), "*.py")
+    )
+    migrations_on_disk = {os.path.splitext(i)[0] for i in migrations_on_disk}
+    migrations_on_disk.remove("__init__")
+    return len(migrations_on_disk - applied_migrations) > 0
 
 
 def main():
