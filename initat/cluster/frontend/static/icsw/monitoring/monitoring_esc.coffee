@@ -19,7 +19,8 @@
 #
 
 monitoring_cluster_module = angular.module("icsw.monitoring.escalation",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button"])
+        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+         "icsw.tools.table", "icsw.tools.button", "icsw.monitoring.monitoring_basic"])
 
 
 monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
@@ -34,16 +35,8 @@ monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
         mon_device_esc_templ    : get_rest(ICSW_URLS.REST_MON_DEVICE_ESC_TEMPL_LIST.slice(1))
         mon_service_esc_templ   : get_rest(ICSW_URLS.REST_MON_SERVICE_ESC_TEMPL_LIST.slice(1))
     }
-    _rest_data_present = (tables) ->
-        ok = true
-        for table in tables
-            if not data[table].length
-                ok = false
-        return ok
-    data['_rest_data_present'] = _rest_data_present
-
     return data
-]).service('icswMonitoringServiceEscalationService', ["icswMonitoringEscalationRestService", (icswMonitoringEscalationRestService) ->
+]).service('icswMonitoringServiceEscalationService', ["icswMonitoringEscalationRestService", "icswMonitoringUtilService", (icswMonitoringEscalationRestService, icswMonitoringUtilService) ->
     return {
         rest_handle         : icswMonitoringEscalationRestService.mon_service_esc_templ
         edit_template       : "mon.service.esc.templ.form"
@@ -61,10 +54,12 @@ monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
                 "ncritical" : true
             }
         object_created  : (new_obj) -> new_obj.name = ""
-        rest_data_present  : () ->
-            return icswMonitoringEscalationRestService._rest_data_present(["mon_period"])
+        get_data_incomplete_error : () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringEscalationRestService,
+                [["mon_period", "period"]]
+            )
     }
-]).service('icswMonitoringDeviceEscalationService', ["icswMonitoringEscalationRestService", (icswMonitoringEscalationRestService) ->
+]).service('icswMonitoringDeviceEscalationService', ["icswMonitoringEscalationRestService", "icswMonitoringUtilService", (icswMonitoringEscalationRestService, icswMonitoringUtilService) ->
     return  {
         rest_handle           : icswMonitoringEscalationRestService.mon_device_esc_templ
         edit_template         : "mon.device.esc.templ.form"
@@ -84,7 +79,9 @@ monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
                 "ndown" : true
             }
         object_created  : (new_obj) -> new_obj.name = ""
-        rest_data_present  : () ->
-            return icswMonitoringEscalationRestService._rest_data_present(["mon_period", "mon_service_esc_templ"])
+        get_data_incomplete_error : () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringEscalationRestService,
+                [["mon_period", "period"], ["mon_service_esc_templ", "service escalation template"]]
+            )
     }
 ])
