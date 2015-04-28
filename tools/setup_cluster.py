@@ -625,8 +625,11 @@ def migrate_db(opts):
                 # call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
         for _app in ["backbone", "django.contrib.auth", "reversion", "django.contrib.admin", "django.contrib.sessions"]:
-            print("migrating app {}".format(_app))
-            apply_migration(_app)
+            if app_has_unapplied_migrations(_app.split(".")[-1]):
+                print("migrating app {}".format(_app))
+                apply_migration(_app)
+            else:
+                print("no unapplied migrations found for app {}".format(_app))
         print("")
         call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
