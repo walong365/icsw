@@ -53,14 +53,19 @@ class LicenseState(enum.IntEnum):
 class _LicenseManager(models.Manager):
 
     def get_license_state(self, license):
-        """Returns the license state for this license"""
+        """Returns the license state for this license
+        :type license: LicenseEnum
+        """
         # TODO: new_install?
         if not self._license_readers:
             return LicenseState.expired
         return max([r.get_license_state(license) for r in self._license_readers])
 
     def has_valid_license(self, license):
-        """Returns whether we currently have this license"""
+        """Returns whether we currently have this license
+
+        :type license: LicenseEnum
+        """
         return self.get_license_state(license) in (LicenseState.valid, LicenseState.grace, LicenseState.new_install)
 
     def get_all_licenses(self):

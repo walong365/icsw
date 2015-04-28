@@ -28,11 +28,12 @@ import datetime
 import logging
 import M2Crypto
 from dateutil import relativedelta
-from initat.tools import process_tools
 import pytz
 
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP
 from initat.cluster.settings import TIME_ZONE
+from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.tools import process_tools
 
 
 logger = logging.getLogger("cluster.licadmin")
@@ -87,8 +88,10 @@ class LicenseFileReader(object):
 
     def get_license_state(self, license):
         """Returns a LicenseState for the local cluster_id and the given license combination
-        for the current point in time, or None if no license exists"""
+        for the current point in time, or None if no license exists
 
+        :type license: LicenseEnum
+        """
         parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
 
         def get_state_from_license_xml(lic_xml):
@@ -119,7 +122,7 @@ class LicenseFileReader(object):
         q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
             device_variable.objects.get_cluster_id()
         )
-        q += "/icsw:license[icsw:id/text()='{}']".format(license)
+        q += "/icsw:license[icsw:id/text()='{}']".format(license.name)
 
         for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
             s = get_state_from_license_xml(lic_xml)

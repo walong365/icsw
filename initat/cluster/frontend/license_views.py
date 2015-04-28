@@ -40,7 +40,16 @@ class get_all_licenses(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        return Response(License.objects.get_all_licenses())
+        # pseudo-serialize named dict
+        return Response(
+            [
+                {
+                    'id': lic.id,
+                    'name': lic.name,
+                    'description': lic.description,
+                } for lic in License.objects.get_all_licenses()
+            ]
+        )
 
 
 class get_license_packages(ListAPIView):
