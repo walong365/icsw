@@ -399,12 +399,12 @@ rms_module = angular.module(
                             if $scope.io_dict[_id].update
                                 fetch_list.push($scope.io_dict[_id].get_id())
                         if fetch_list.length
-                            is_ie = /MSIE/.test($window.navigator.userAgent)
+                            is_ie_below_eleven = /MSIE/.test($window.navigator.userAgent)
                             icswCallAjaxService
                                 url     : ICSW_URLS.RMS_GET_FILE_CONTENT
                                 data    :
                                     file_ids: angular.toJson(fetch_list)
-                                    is_ie: if is_ie then 1 else 0
+                                    is_ie: if is_ie_below_eleven then 1 else 0
                                 success : (xml) =>
                                     icswParseXMLResponseService(xml)
                                     xml = $(xml)
