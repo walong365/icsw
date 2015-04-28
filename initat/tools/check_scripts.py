@@ -455,16 +455,9 @@ class ServiceContainer(object):
             "stop": self.stop_service,
             "start": self.start_service,
             "cleanup": self.cleanup_service,
-            "wait": self.wait_service,
+            "wait": None,
             "debug": self.debug_service,
         }[action](opt_ns, entry)
-
-    def wait_service(self, opt_ns, entry):
-        if not int(entry.get("startstop", "1")):
-            return
-        if entry.get("check_type") == "simple":
-            return
-        print "wait..."
 
     def stop_service(self, opt_ns, entry):
         if not int(entry.get("startstop", "1")):
@@ -475,11 +468,10 @@ class ServiceContainer(object):
             self.stop_service_py(opt_ns, entry)
 
     def stop_service_py(self, opt_ns, entry):
-        print "sspy"
         _main_pids = [int(_val.text) for _val in entry.findall(".//pids/pid[@main='1']")]
         _meta_pids = [int(_val.text) for _val in entry.findall(".//pids/pid")]
         # print etree.tostring(entry, pretty_print=True)
-        print _main_pids, _meta_pids
+        # print _main_pids, _meta_pids
         if len(_meta_pids):
             if _main_pids:
                 os.kill(_main_pids[0], 15)
@@ -506,7 +498,7 @@ class ServiceContainer(object):
     def _find_pids_by_name(self, entry):
         _new_title = self._get_prog_title(entry)
         _old_bins = self._get_old_binary(entry).strip().split(",")
-        print _new_title, "old_bins", _old_bins
+        # print _new_title, "old_bins", _old_bins
         _pid_list = set()
         for _key, _value in self.__act_proc_dict.iteritems():
             try:
@@ -530,7 +522,7 @@ class ServiceContainer(object):
                         # print _old_found, _icsw_found
                         if _old_found and not _icsw_found:
                             _pid_list.add(_key)
-        print "found", _pid_list
+        # print "found", _pid_list
         return _pid_list
 
     def _get_init_script_name(self, entry):
