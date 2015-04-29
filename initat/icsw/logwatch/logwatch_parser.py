@@ -25,25 +25,22 @@
 import argparse
 import os
 import re
-import datetime
-import time
-import stat
 
-from initat.tools import logging_tools
 from initat.tools import process_tools
 
-global opts
+
+LOGSERVER_ROOT = "/var/log/cluster/logging-server"
 
 
 class Parser(object):
     def link(self, sub_parser):
-        self._add_lw_parser(sub_parser)
+        return self._add_lw_parser(sub_parser)
 
     def _add_lw_parser(self, sub_parser):
         _mach_name = process_tools.get_machine_name(short=True)
         parser = sub_parser.add_parser("logwatch", help="watch icsw logs")
         parser.set_defaults(subcom="status", execute=self._execute)
-        parser.add_argument("--root", type=str, default="/var/log/cluster/logging-server", help="root directory [%(default)s]")
+        parser.add_argument("--root", type=str, default=LOGSERVER_ROOT, help="root directory [%(default)s]")
         parser.add_argument("--machine", type=str, default=_mach_name, help="machine to use [%(default)s]")
         parser.add_argument("-n", type=int, default=400, help="show latest [%(default)d] lines")
         parser.add_argument("--format", type=str, default="%a %b %d %H:%M:%S %Y", help="argument for parsing loglines [%(default)s]")
@@ -52,6 +49,13 @@ class Parser(object):
         parser.add_argument("--with-nodes", default=False, action="store_true", help="add node logs [%(default)s]")
         parser.add_argument("--node-filter", type=str, default=".*", help="regexp filter for nodes [%(default)s]")
         parser.add_argument("--verbose", default=False, action="store_true", help="enable verbose mode [%(default)s]")
+        return parser
+
+    @staticmethod
+    def get_default_ns():
+        sub_parser = argparse.ArgumentParser().add_subparsers()
+        def_ns = Parser().link(sub_parser).parse_args([])
+        return def_ns
 
     def _execute(self, opt_ns):
         from .main import main

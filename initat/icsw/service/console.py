@@ -39,20 +39,6 @@ import subprocess
 import time
 
 
-class dummy_text(urwid.Text):
-    def get_text(self):
-        return (
-            "\n".join(10 * [",".join(["test{:d}:".format(_idx) for _idx in xrange(10)])]),
-            [("bottom", 10), ("streak", 5), ("bottom", 500)]
-        )
-
-    def pack(self, **kwargs):
-        return (10, 10)
-
-    def rows(self, *args, **kwargs):
-        return 10
-
-
 class ServiceOutput(urwid.Text):
     def __init__(self, opt_ns, srv_c, inst_xml):
         self.opt_ns = opt_ns
@@ -82,12 +68,11 @@ class SrvController(object):
     def __init__(self, opt_ns, srv_c, inst_xml):
         self.srv_text = ServiceOutput(opt_ns, srv_c, inst_xml)
         self.top_text = HeaderText("", align="left")
+        self.bottom_text = urwid.Text("bottom", align="left")
         self.main_text = urwid.Text("Wait please...", align="left")
         # self.bottom_text = urwid.Text("bottom", align="left")
         palette = [
             ('banner', 'black', 'light gray', 'standout,underline'),
-            ('streak', 'black', 'dark red', 'standout'),
-            ('bg', 'white', 'dark blue'),
             ("", "default", "default"),
             ("ok", "dark green,bold", "black"),
             ("warning", "yellow,bold", "black"),
@@ -99,7 +84,7 @@ class SrvController(object):
                     [
                         urwid.AttrMap(
                             self.top_text,
-                            "streak"
+                            "banner"
                         ),
                         urwid.Columns(
                             [
@@ -111,10 +96,14 @@ class SrvController(object):
 
                             ]
                         ),
-                        # urwid.AttrMap(
-                        #    self.bottom_text,
-                        #    "bottom"
-                        # ),
+                        urwid.AttrMap(
+                            urwid.Pile(
+                                [
+                                    self.bottom_text,
+                                ]
+                            ),
+                            "banner"
+                        ),
                     ]
                 ),
                 "top"
