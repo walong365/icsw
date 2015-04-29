@@ -11,6 +11,8 @@ setup(
     packages=[
         "initat",
         "initat.icsw",
+        "initat.icsw.logwatch",
+        "initat.icsw.setup",
         "initat.icsw.service",
         "initat.tools",
         "initat.rms",
