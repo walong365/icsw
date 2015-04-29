@@ -776,92 +776,6 @@ def log_com(what, log_level):
     print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
 
-class ICSWParser(object):
-    def __init__(self):
-        self._parser = argparse.ArgumentParser(prog="icsw")
-        sub_parser = self._parser.add_subparsers(help="sub-command help")
-        self._add_status_parser(sub_parser)
-        self._add_start_parser(sub_parser)
-        self._add_stop_parser(sub_parser)
-        self._add_restart_parser(sub_parser)
-        self._add_debug_parser(sub_parser)
-
-    def _add_status_parser(self, sub_parser):
-        _srvc = sub_parser.add_parser("status", help="service status")
-        _srvc.set_defaults(subcom="status")
-        _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview [%(default)s]")
-        _srvc.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
-        _srvc.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info [%(default)s]")
-        _srvc.add_argument("-d", dest="database", action="store_true", default=False, help="show database info [%(default)s]")
-        _srvc.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption [%(default)s]")
-        _srvc.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
-        _srvc.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
-        _srvc.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
-        self._add_iccs_sel(_srvc)
-        # _srvc.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
-        _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
-        _srvc.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
-
-    def _add_start_parser(self, sub_parser):
-        _act = sub_parser.add_parser("start", help="start service")
-        _act.set_defaults(subcom="start")
-        _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
-        self._add_iccs_sel(_act)
-
-    def _add_debug_parser(self, sub_parser):
-        _act = sub_parser.add_parser("debug", help="debug service")
-        _act.set_defaults(subcom="debug")
-        _act.add_argument("service", nargs=1, type=str, help="service to debug")
-
-    def _add_stop_parser(self, sub_parser):
-        _act = sub_parser.add_parser("stop", help="stop service")
-        _act.set_defaults(subcom="stop")
-        _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
-        self._add_iccs_sel(_act)
-
-    def _add_restart_parser(self, sub_parser):
-        _act = sub_parser.add_parser("restart", help="restart service")
-        _act.set_defaults(subcom="restart")
-        _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
-        self._add_iccs_sel(_act)
-
-    def _add_iccs_sel(self, _parser):
-        _parser.add_argument("service", nargs="*", type=str, help="list of services")
-
-    @staticmethod
-    def get_default_ns():
-        def_ns = argparse.Namespace(
-            subcom="status",
-            all=True,
-            instance=[],
-            system=[],
-            server=[],
-            client=[],
-            memory=True,
-            database=True,
-            pid=True,
-            started=True,
-            thread=True,
-            version=True,
-        )
-        return def_ns
-
-    def parse_args(self):
-        opt_ns = self._parser.parse_args()
-        if hasattr(opt_ns, "instance"):
-            if not opt_ns.instance and not opt_ns.client and not opt_ns.server and not opt_ns.system:
-                opt_ns.instance = ["ALL"]
-        if opt_ns.subcom == "status":
-            if opt_ns.all or opt_ns.almost_all:
-                opt_ns.thread = True
-                opt_ns.memory = True
-                opt_ns.version = True
-            if opt_ns.all:
-                opt_ns.pid = True
-                opt_ns.started = True
-        return opt_ns
-
-
 def show_form_list(form_list, _iter):
     # color strings (green / blue / red / normal)
     d_map = {
@@ -972,8 +886,3 @@ class SrvController(object):
 
 def urwid_test():
     SrvController().loop()
-
-
-if __name__ == "__main__":
-    # urwid_test()
-    main()
