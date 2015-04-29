@@ -81,7 +81,8 @@ class _LicenseManager(models.Manager):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         return LicenseFileReader.get_license_packages(self._license_readers)
 
-    @cached_property
+    # @cached_property
+    @property
     def _license_readers(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         readers = []
@@ -95,11 +96,11 @@ class _LicenseManager(models.Manager):
 
         return readers
 
-    def _update_license_readers(self):
-        try:
-            del self._license_readers
-        except AttributeError:
-            pass
+    # def _update_license_readers(self):
+    #     try:
+    #         del self._license_readers
+    #     except AttributeError:
+    #         pass
 
 
 class License(models.Model):
@@ -115,10 +116,10 @@ class License(models.Model):
         verbose_name = "License"
 
 
-@receiver(signals.post_save, sender=License)
-@receiver(signals.post_delete, sender=License)
-def license_save(sender, **kwargs):
-    License.objects._update_license_readers()
+# @receiver(signals.post_save, sender=License)
+# @receiver(signals.post_delete, sender=License)
+# def license_save(sender, **kwargs):
+#     License.objects._update_license_readers()
 
 
 ICSW_XML_NS = "http://www.initat.org/lxml/ns"

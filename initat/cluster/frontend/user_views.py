@@ -284,7 +284,6 @@ class upload_license_file(View):
                     msg += "\nThis cluster has the id {}.".format(local_cluster_id)
                     request.xml_response.error(msg)
                 else:
-
                     License(file_name=lic_file.name, license_file=lic_file_content).save()
                     request.xml_response.info("Successfully uploaded license file")
             else:

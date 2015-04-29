@@ -25,6 +25,7 @@
 import argparse
 from .service.service_parser import Parser as ServiceParser
 from .logwatch.logwatch_parser import Parser as LogwatchParser
+from .license.license_parser import Parser as LicenseParser
 try:
     from .setup.parser import Parser as SetupParser
 except ImportError:
@@ -37,6 +38,7 @@ class ICSWParser(object):
         sub_parser = self._parser.add_subparsers(help="sub-command help")
         ServiceParser().link(sub_parser)
         LogwatchParser().link(sub_parser)
+        LicenseParser().link(sub_parser)
         if SetupParser is not None:
             SetupParser(sub_parser)
 
