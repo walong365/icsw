@@ -138,7 +138,6 @@ install:
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
 	done
 
-	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
@@ -157,7 +156,7 @@ install:
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for pyf in db_magic check_local_settings create_django_users setup_cluster restore_user_group fix_models ; do \
+	for pyf in db_magic check_local_settings create_django_users restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
 	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}
