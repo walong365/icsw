@@ -134,7 +134,7 @@ install:
 	for file in log_error.py logging-client.py collclient.py ; do \
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for file in cluster-server.py ; do \
+	for file in cluster-server.py icsw; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
 	done
 
@@ -157,7 +157,7 @@ install:
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for pyf in db_magic check_local_settings create_django_users setup_cluster restore_user_group fix_models ; do \
+	for pyf in db_magic check_local_settings create_django_users restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
 	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}

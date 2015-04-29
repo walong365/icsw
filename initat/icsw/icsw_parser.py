@@ -24,6 +24,7 @@
 
 import argparse
 from .service.service_parser import Parser as ServiceParser
+from .setup.parser import Parser as SetupParser
 
 
 class ICSWParser(object):
@@ -31,6 +32,7 @@ class ICSWParser(object):
         self._parser = argparse.ArgumentParser(prog="icsw")
         sub_parser = self._parser.add_subparsers(help="sub-command help")
         ServiceParser().link(sub_parser)
+        SetupParser(sub_parser)
 
     def parse_args(self):
         opt_ns = self._parser.parse_args()

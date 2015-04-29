@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2014-2015 Andreas Lang-Nevyjel init.at
 #
@@ -21,28 +21,27 @@
 #
 """ database setup for NOCTUA / CORVUS / NESTOR """
 
-import argparse
-import commands
 import os
 import pwd
+import importlib
 import fnmatch
 import grp
-import random
 import shutil
 import stat
-import string
 import sys
 import time
-import tempfile
+import subprocess
 
 from django.utils.crypto import get_random_string
 from initat.tools import logging_tools
 from initat.tools import process_tools
 
+from .utils import generate_password, DirSave, get_icsw_root
+from .connection_tests import test_psql, test_mysql, test_sqlite
 
-DB_PRESENT = {}
-LIB_DIR = "/opt/python-init/lib/python/site-packages"
-CMIG_DIR = os.path.join(LIB_DIR, "initat", "cluster", "backbone", "migrations")
+
+ICSW_ROOT = get_icsw_root()
+CMIG_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone", "migrations")
 MIGRATION_DIRS = [
     "reversion",
     "django/contrib/auth",
@@ -57,41 +56,48 @@ SYNC_APPS = ["liebherr", "licadmin"]
 
 NEEDED_DIRS = ["/var/log/cluster"]
 
-BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
+BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat/cluster/backbone")
 PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
 MODELS_DIR = os.path.join(BACKBONE_DIR, "models")
 MODELS_DIR_SAVE = os.path.join(BACKBONE_DIR, ".models_save")
 Z800_MODELS_DIR = os.path.join(BACKBONE_DIR, "0800_models")
 
-try:
-    import psycopg2  # @UnresolvedImport
-except:
-    DB_PRESENT["psql"] = False
-else:
-    DB_PRESENT["psql"] = True
+#
+# Database related values
+#
 
-try:
-    import MySQLdb  # @UnresolvedImport
-except:
-    DB_PRESENT["mysql"] = False
-else:
-    DB_PRESENT["mysql"] = True
+DEFAULT_DATABASE = "cdbase"
+DB_PRESENT = {
+    "psql": True,
+    "mysql": True,
+    "sqlite": True,
+}
+for module_name, key in (
+    ("psycopg2", "psql"),
+    ("MySQLdb", "mysql"),
+    ("sqlite3", "sqlite"),
+):
+    try:
+        importlib.import_module(module_name)
+    except:
+        DB_PRESENT[key] = False
 
-try:
-    import sqlite3  # @UnresolvedImport
-except:
-    DB_PRESENT["sqlite"] = False
+AVAILABLE_DATABASES = [key for key, value in DB_PRESENT.items() if value]
+if "psql" in AVAILABLE_DATABASES:
+    DEFAULT_ENGINE = "psql"
 else:
-    DB_PRESENT["sqlite"] = True
+    try:
+        DEFAULT_ENGINE = AVAILABLE_DATABASES[0]
+    except IndexError:
+        DEFAULT_ENGINE = ""
 
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 
 
-# copy from check_local_settings.py
 def check_local_settings():
-    LS_DIR = os.path.dirname(LS_FILE)
-    sys.path.append(LS_DIR)
+    directory = os.path.dirname(LS_FILE)
+    sys.path.append(directory)
     try:
         from local_settings import SECRET_KEY  # @UnresolvedImports
     except:
@@ -108,14 +114,21 @@ def check_local_settings():
                 ]
             )
         )
-    sys.path.remove(LS_DIR)
+    sys.path.remove(directory)
 
 
 def call_manage(args, **kwargs):
     _output = kwargs.get("output", False)
-    com_str = " ".join([os.path.join(LIB_DIR, "initat", "cluster", "manage.py")] + args)
+    command = [os.path.join(ICSW_ROOT, "initat", "cluster", "manage.py")] + args
+    com_str = " ".join(command)
     s_time = time.time()
-    c_stat, c_out = commands.getstatusoutput(com_str)
+    c_stat = 0
+    try:
+        c_out = subprocess.check_output(command)
+    except subprocess.CalledProcessError as e:
+        c_stat = e.returncode
+        c_out = e.output
+
     e_time = time.time()
     if c_stat == 256 and c_out.lower().count("nothing seems to have changed"):
         c_stat = 0
@@ -190,116 +203,11 @@ def _input(in_str, default, **kwargs):
     return _cur_inp
 
 
-class test_db(dict):
-    def __init__(self, db_type, c_dict):
-        self.db_type = db_type
-        dict.__init__(self)
-        self.update(c_dict)
-
-    def test_connection(self):
-        return True if self.get_connection() is not None else False
-
-    def get_connection(self):
-        return None
-
-    def show_config(self):
-        return "No config help defined for db_type {}".format(self.db_type)
-
-
-class test_psql(test_db):
-    def __init__(self, c_dict):
-        test_db.__init__(self, "psql", c_dict)
-
-    def get_connection(self):
-        dsn = "dbname={} user={} host={} password={} port={:d}".format(
-            self["database"],
-            self["user"],
-            self["host"],
-            self["passwd"],
-            self["port"],
-        )
-        print("dsn is '{}'".format(dsn))
-        try:
-            conn = psycopg2.connect(dsn)
-        except:
-            print("cannot connect: {}".format(process_tools.get_except_info()))
-            conn = None
-        return conn
-
-    def show_config(self):
-        print("")
-        print("you can create the database and the user with")
-        print("")
-        print("CREATE USER {} LOGIN NOCREATEDB UNENCRYPTED PASSWORD '{}';".format(self["user"], self["passwd"]))
-        print("CREATE DATABASE {} OWNER {};".format(self["database"], self["user"]))
-        print("")
-        print("depending on your connection type (via TCP socket or unix domain socket) enter one of the following lines to pg_hba.conf:")
-        print("")
-        print("local   {:<16s}{:<16s}                md5".format(self["database"], self["user"]))
-        print("host    {:<16s}{:<16s}127.0.0.1/32    md5".format(self["database"], self["user"]))
-        print("host    {:<16s}{:<16s}::1/128         md5".format(self["database"], self["user"]))
-        print("")
-
-
-class test_mysql(test_db):
-    def __init__(self, c_dict):
-        test_db.__init__(self, "mysql", c_dict)
-
-    def get_connection(self):
-        try:
-            conn = MySQLdb.connect(
-                host=self["host"],
-                user=self["user"],
-                passwd=self["passwd"],
-                db=self["database"],
-                port=self["port"]
-            )
-        except:
-            print("cannot connect: {}".format(process_tools.get_except_info()))
-            conn = None
-        return conn
-
-    def show_config(self):
-        print("")
-        print("you can create the database and the user with")
-        print("")
-        print("CREATE USER '{}'@'localhost' IDENTIFIED BY '{}';".format(self["user"], self["passwd"]))
-        print("CREATE DATABASE {};".format(self["database"]))
-        print("GRANT ALL ON {}.* TO '{}'@'localhost' IDENTIFIED BY '{}';".format(self["database"], self["user"], self["passwd"]))
-        print("FLUSH PRIVILEGES;")
-        print("")
-
-
-class test_sqlite(test_db):
-    def __init__(self, c_dict):
-        test_db.__init__(self, "sqlite", c_dict)
-
-    def get_connection(self):
-        try:
-            conn = sqlite3.connect(
-                database=self["database"],
-            )
-        except:
-            print("cannot connect: {}".format(process_tools.get_except_info()))
-            conn = None
-        return conn
-
-    def show_config(self):
-        print("")
-        print("you can create the database and the user with")
-        print("")
-        print("CREATE USER '{}'@'localhost' IDENTIFIED BY '{}';".format(self["user"], self["passwd"]))
-        print("CREATE DATABASE {};".format(self["database"]))
-        print("GRANT ALL ON {}.* TO '{}'@'localhost' IDENTIFIED BY '{}';".format(self["database"], self["user"], self["passwd"]))
-        print("FLUSH PRIVILEGES;")
-        print("")
-
-
-def enter_data(c_dict, db_choices, engine_selected, database_selected):
+def enter_data(c_dict, engine_selected, database_selected):
     print("-" * 20)
     print("enter exit to exit installation")
     if not engine_selected:
-        c_dict["_engine"] = _input("DB engine", c_dict["_engine"], choices=db_choices)
+        c_dict["_engine"] = _input("DB engine", c_dict["_engine"], choices=AVAILABLE_DATABASES)
     if c_dict["_engine"] == "sqlite":
         c_dict["host"] = ""
         c_dict["user"] = ""
@@ -322,18 +230,17 @@ def enter_data(c_dict, db_choices, engine_selected, database_selected):
         }[c_dict["_engine"]]
 
 
-def create_db_cf(opts, default_engine, default_database):
-    db_choices = [_key for _key in ["psql", "mysql", "sqlite"] if DB_PRESENT[_key]]
+def create_db_cf(opts):
     c_dict = {
         "host": opts.host,
         "user": opts.user,
-        "database": opts.database if opts.database is not None else default_database,
+        "database": opts.database if opts.database is not None else DEFAULT_DATABASE,
         "passwd": opts.passwd,
-        "_engine": opts.engine if opts.engine is not None else default_engine,  # "psql" if "psql" in db_choices else db_choices[0],
+        "_engine": opts.engine if opts.engine is not None else DEFAULT_ENGINE,
     }
     while True:
         # enter all relevant data
-        enter_data(c_dict, db_choices, opts.engine is not None, opts.database is not None)
+        enter_data(c_dict, opts.engine is not None, opts.database is not None)
 
         if c_dict["_engine"] == "sqlite":
 
@@ -409,7 +316,7 @@ def create_db_cf(opts, default_engine, default_database):
 def clear_migrations():
     print("clearing existing migrations")
     for mig_dir in MIGRATION_DIRS:
-        fm_dir = os.path.join(LIB_DIR, mig_dir, "migrations")
+        fm_dir = os.path.join(ICSW_ROOT, mig_dir, "migrations")
         if os.path.isdir(fm_dir):
             print("clearing migrations for {}".format(mig_dir))
             shutil.rmtree(fm_dir)
@@ -419,7 +326,7 @@ def check_migrations():
     print("checking existing migrations")
     any_found = False
     for mig_dir in MIGRATION_DIRS:
-        fm_dir = os.path.join(LIB_DIR, mig_dir, "migrations")
+        fm_dir = os.path.join(ICSW_ROOT, mig_dir, "migrations")
         if os.path.isdir(fm_dir):
             print("Found an existing migration dir {} for {}".format(fm_dir, mig_dir))
             any_found = True
@@ -430,12 +337,7 @@ def check_migrations():
         print("no migrations found, OK")
 
 
-def get_pw(size=10):
-    return "".join([string.ascii_letters[random.randint(0, len(string.ascii_letters) - 1)] for _idx in xrange(size)])
-
-
 def check_for_pre17(opts):
-    # BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
     if os.path.isdir(PRE_MODELS_DIR):
         print("pre-1.7 models dir {} found".format(PRE_MODELS_DIR))
         # first step: move 1.7 models / serializers away
@@ -477,49 +379,6 @@ def check_for_pre17(opts):
         # next step: move 1.7 models back in place
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
-
-
-class DirSave(object):
-    def __init__(self, dir_name, min_idx):
-        self.__dir_name = dir_name
-        self.__tmp_dir = tempfile.mkdtemp()
-        self.__min_idx = min_idx
-        self.save()
-
-    def _match(self, f_name):
-        return True if f_name[0:4].isdigit() and int(f_name[0:4]) > self.__min_idx else False
-
-    def save(self):
-        self.__move_files = [
-            _entry for _entry in os.listdir(self.__dir_name) if _entry.endswith(".py") and self._match(_entry)
-        ]
-        print(
-            "moving away migrations above {:04d}_* ({}) to {}".format(
-                self.__min_idx,
-                logging_tools.get_plural("file", len(self.__move_files)),
-                self.__tmp_dir,
-            )
-        )
-        for _move_file in self.__move_files:
-            shutil.move(os.path.join(self.__dir_name, _move_file), os.path.join(self.__tmp_dir, _move_file))
-
-    def restore(self, idx=None):
-        if idx is not None:
-            __move_files = [_entry for _entry in self.__move_files if int(_entry[0:4]) == idx]
-        else:
-            __move_files = self.__move_files
-        self.__move_files = [_entry for _entry in self.__move_files if _entry not in __move_files]
-        print(
-            "moving back {} above {:04d}_* ({})".format(
-                logging_tools.get_plural("migration", len(__move_files)),
-                self.__min_idx,
-                logging_tools.get_plural("file", len(__move_files)))
-        )
-        for _move_file in __move_files:
-            shutil.move(os.path.join(self.__tmp_dir, _move_file), os.path.join(self.__dir_name, _move_file))
-
-    def cleanup(self):
-        shutil.rmtree(self.__tmp_dir)
 
 
 def check_for_0800(opts):
@@ -603,7 +462,7 @@ def create_db(opts):
         print("")
     else:
         if not opts.no_superuser:
-            su_pw = get_pw(size=8)
+            su_pw = generate_password(size=8)
             os.environ["DJANGO_SUPERUSER_PASSWORD"] = su_pw
             print("creating superuser {} (email {}, password is {})".format(opts.superuser, opts.email, su_pw))
             call_manage(["createsuperuser", "--login={}".format(opts.superuser), "--email={}".format(opts.email), "--noinput"])
@@ -618,7 +477,7 @@ def migrate_db(opts):
         check_for_0800(opts)
         print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
-            _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
+            _app_dir = os.path.join(ICSW_ROOT, "initat", "cluster", _sync_app)
             if os.path.isdir(_app_dir):
                 print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
@@ -640,7 +499,7 @@ def migrate_db(opts):
 
 def call_update_funcs(opts):
     create_fixtures()
-    call_manage(["create_cdg --name {}".format(opts.system_group_name)])
+    call_manage(["create_cdg", "--name", opts.system_group_name])
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_new_logging_scheme"])
     call_manage(["migrate_to_config_catalog"])
@@ -702,48 +561,7 @@ def app_has_unapplied_migrations(app_name):
     return len(migrations_on_disk - applied_migrations) > 0
 
 
-def main():
-    default_pw = get_pw()
-    my_p = argparse.ArgumentParser()
-    db_choices = [_key for _key in ["psql", "mysql", "sqlite"] if DB_PRESENT[_key]]
-    if db_choices:
-        default_engine = "psql" if "psql" in db_choices else db_choices[0]
-    else:
-        default_engine = ""
-    default_database = "cdbase"
-    db_flags = my_p.add_argument_group("database options")
-    db_flags.add_argument("--ignore-existing", default=False, action="store_true", help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE))
-    db_flags.add_argument("--engine", type=str, help="choose database engine [%(default)s]", choices=db_choices)
-    db_flags.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
-    db_flags.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
-    db_flags.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
-    db_flags.add_argument("--database", type=str, help="set name of cluster database", default="cdbase")
-    db_flags.add_argument("--host", type=str, default="localhost", help="set database host")
-    mig_opts = my_p.add_argument_group("migration options")
-    mig_opts.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
-    mig_opts.add_argument(
-        "--no-initial-data",
-        default=False,
-        action="store_true",
-        help="disable inserting of initial data [%(default)s], only usefull for the migration form an older version of the clustersoftware"
-    )
-    mig_opts.add_argument("--migrate", default=False, action="store_true", help="migrate current cluster database [%(default)s]")
-    create_opts = my_p.add_argument_group("database creation options")
-    create_opts.add_argument("--superuser", default="admin", type=str, help="name of the superuser [%(default)s]")
-    create_opts.add_argument("--email", default="admin@localhost", type=str, help="admin address of superuser [%(default)s]")
-    create_opts.add_argument("--no-superuser", default=False, action="store_true", help="do not create a superuser [%(default)s]")
-    create_opts.add_argument("--system-group-name", default="system", type=str, help="name of system group [%(default)s]")
-    upd_opts = my_p.add_argument_group("update options")
-    upd_opts.add_argument("--only-fixtures", default=False, action="store_true", help="only call create_fixtures")
-    auc_flags = my_p.add_argument_group("automatic update options")
-    # auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
-    auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
-    sqlite_db_opts = my_p.add_argument_group("sqlite database file options")
-    sqlite_db_opts.add_argument("--db-path", type=str, help="path to sqlite database file directory", default="/opt/cluster/db")
-    sqlite_db_opts.add_argument("--db-file-owner", type=str, help="owner of the database file", default="wwwrun")
-    sqlite_db_opts.add_argument("--db-file-group", type=str, help="group of the database file", default="idg")
-    sqlite_db_opts.add_argument("--db-file-mode", type=str, default="660", help="database file access mode")
-    opts = my_p.parse_args()
+def main(args):
     _check_dirs()
     DB_MAPPINGS = {
         "psql": "python-modules-psycopg2",
@@ -758,8 +576,9 @@ def main():
     if not any(DB_PRESENT.values()):
         print("No database access libraries installed, please install some of them")
         sys.exit(1)
+
     # flag: setup db_cf data
-    if opts.disable_auto_update:
+    if args.disable_auto_update:
         if os.path.isfile(AUTO_FLAG):
             try:
                 os.unlink(AUTO_FLAG)
@@ -787,21 +606,21 @@ def main():
     call_migrate_db = False
     call_create_fixtures = False
     if db_exists:
-        if opts.only_fixtures:
+        if args.only_fixtures:
             setup_db_cf = False
             call_create_db = False
             call_migrate_db = False
             call_create_fixtures = True
-        elif opts.migrate:
+        elif args.migrate:
             setup_db_cf = False
             call_create_db = False
             call_migrate_db = True
         else:
-            if opts.use_existing:
+            if args.use_existing:
                 # use existing db_cf
                 setup_db_cf = False
             else:
-                if opts.ignore_existing:
+                if args.ignore_existing:
                     print("DB access file {} already exists, ignoring ...".format(DB_FILE))
                     setup_db_cf = True
                 else:
@@ -809,19 +628,16 @@ def main():
                     sys.exit(1)
     else:
         setup_db_cf = True
-        if opts.use_existing:
+        if args.use_existing:
             print("DB access file {} does not exist ...".format(DB_FILE))
     if setup_db_cf:
-        if not create_db_cf(opts, default_engine, default_database):
+        if not create_db_cf(args):
             print("Creation of {} not successfull, exiting".format(DB_FILE))
             sys.exit(3)
     check_db_rights()
     if call_create_db:
-        create_db(opts)
+        create_db(args)
     if call_migrate_db:
-        migrate_db(opts)
+        migrate_db(args)
     if call_create_fixtures:
         create_fixtures()
-
-if __name__ == "__main__":
-    main()
