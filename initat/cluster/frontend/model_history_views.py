@@ -23,6 +23,7 @@ import json
 import user
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import ForeignKey
 import itertools
 from django.http import HttpResponse
@@ -124,10 +125,12 @@ class get_historical_data(ListAPIView):
             try:
                 return unicode(target_model.objects.get(pk=foreign_key_val))
             except target_model.DoesNotExist:
-                # field might not have existed at the time of saving, so check
-                deleted_queryset = reversion.get_deleted(target_model)
-                # unicode on Version object gives the saved object repr, which we use here
-                return unicode(deleted_queryset.get(object_id=foreign_key_val))
+                try:
+                    deleted_queryset = reversion.get_deleted(target_model)
+                    # unicode on Version object gives the saved object repr, which we use here
+                    return unicode(deleted_queryset.get(object_id=foreign_key_val))
+                except ObjectDoesNotExist:
+                    return u"untracked object"
 
         def get_human_readable_value(key, value):
             if value is None:
