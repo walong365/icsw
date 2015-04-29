@@ -134,7 +134,7 @@ install:
 	for file in log_error.py logging-client.py collclient.py ; do \
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for file in cluster-server.py icsw; do \
+	for file in cluster-server.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
 	done
 
