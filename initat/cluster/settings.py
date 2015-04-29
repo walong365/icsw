@@ -386,8 +386,11 @@ for sub_dir in os.listdir(dir_name):
                             ]
                         )
                         js_full_paths = glob.glob(os.path.join(full_path, "static", "js", "*.js"))
-                        ADDITIONAL_JS.extend([os.path.join("js", os.path.basename(js_file))
-                                              for js_file in js_full_paths])
+                        ADDITIONAL_JS.extend(
+                            [
+                                os.path.join("js", os.path.basename(js_file)) for js_file in js_full_paths
+                            ]
+                        )
                 INSTALLED_APPS.append(add_app)
 
 ADDITIONAL_JS = tuple(ADDITIONAL_JS)
@@ -448,7 +451,7 @@ PIPELINE_JS = {
     "js_base": {
         "source_filenames": (
             "js/jquery-ui-1.10.2.custom.js",
-            "js/angular-1.3.14.js",
+            "js/angular-1.3.15.js",
             "js/lodash.js",
             "js/bluebird.js",
             "js/codemirror/codemirror.js",
@@ -514,14 +517,18 @@ PIPELINE_JS = {
 
 SSI_ROOTS = []
 SSI_FILES = []
+SSI_ROOT_DICT = {}
 for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
     _SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", _local_ssi_root, "static", "icsw"))
+    SSI_ROOT_DICT[_local_ssi_root] = _SSI_ROOT
+    # print _SSI_ROOT
     if os.path.exists(_SSI_ROOT):
         for _dir, _dirlist, _filelist in os.walk(_SSI_ROOT):
             if _dir == _SSI_ROOT:
                 continue
             for _file in _filelist:
                 if _file.endswith(".html"):
+                    # print "*", _dir, _file
                     SSI_FILES.append(os.path.join(_dir, _file))
         SSI_ROOTS.append(_SSI_ROOT)
 ALLOWED_INCLUDE_ROOTS = SSI_ROOTS

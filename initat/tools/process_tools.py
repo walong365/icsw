@@ -159,10 +159,12 @@ def call_command(act_command, log_com, close_fds=False):
     ret_code = _sub.wait()
     _stdout, _stderr = _sub.communicate()
     e_time = time.time()
-    log_com("execution took {}, return code was {:d}".format(
-        logging_tools.get_diff_time_str(e_time - s_time),
-        ret_code,
-        ))
+    log_com(
+        "execution took {}, return code was {:d}".format(
+            logging_tools.get_diff_time_str(e_time - s_time),
+            ret_code,
+        )
+    )
     for _val, _name, _lev in [(_stdout, "stdout", logging_tools.LOG_LEVEL_OK), (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)]:
         if _val.strip():
             _lines = _val.split("\n")
@@ -242,6 +244,12 @@ def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]
     else:
+
+        # debug code
+        # file("/tmp/frame_info", "a").write("---------\n")
+        # for _frame in inspect.getouterframes(inspect.currentframe()):
+        #     file("/tmp/frame_info", "a").write(os.path.basename(_frame[1]) + "\n")
+
         outest_frame = inspect.getouterframes(inspect.currentframe())[-1]
         s_name = os.path.basename(outest_frame[1])
         s_name = s_name.replace("-", "_").replace("__", "_").replace("__", "_")
@@ -439,7 +447,8 @@ class int_error(error):
 
 
 class meta_server_info(object):
-    def __init__(self, name):
+    def __init__(self, name, log_com=None):
+        self.__log_com = log_com
         self.__prop_list = [
             ("start_command", "s", None),
             ("stop_command", "s", None),
@@ -451,6 +460,9 @@ class meta_server_info(object):
         self._reset()
         if name.startswith("/"):
             parsed = self._parse_file(name)
+            if not parsed:
+                # unparseable, set name to None
+                name = None
         else:
             parsed = False
         if parsed:
@@ -468,6 +480,12 @@ class meta_server_info(object):
         self.parsed = parsed
         self.file_init_time = time.time()
 
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if self.__log_com:
+            self.__log_com("[MSI] {}".format(what), log_level)
+        else:
+            logging_tools.my_syslog(what)
+
     def _reset(self):
         self.__pids = []
         self.__pid_names = {}
@@ -483,11 +501,12 @@ class meta_server_info(object):
         try:
             xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
         except:
-            logging_tools.my_syslog(
+            self.log(
                 "error parsing XML file {} (meta_server_info): {}".format(
                     name,
                     get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
             parsed = False
         else:
@@ -601,11 +620,12 @@ class meta_server_info(object):
         try:
             _ps_name = psutil.Process(pid=act_pid).name()
         except:
-            logging_tools.my_syslog(
+            self.log(
                 "cannot get name of process {:d} :{}".format(
                     act_pid,
                     get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
             _ps_name = ""
         self.__pids.extend(mult * [act_pid])
@@ -629,7 +649,8 @@ class meta_server_info(object):
         else:
             while act_pid in self.__pids:
                 self.__pids.remove(act_pid)
-        self.__pids.sort()
+        # do NOT sort the pids
+        # self.__pids.sort()
 
     def get_pids(self, process_name=None, name=None):
         pid_list = self.__pids
@@ -720,7 +741,13 @@ class meta_server_info(object):
         try:
             open(self.__file_name, "w").write(file_content)
         except:
-            logging_tools.my_syslog("error writing file {} (meta_server_info for {})".format(self.__file_name, self.__name))
+            self.log(
+                "error writing file {} (meta_server_info for {})".format(
+                    self.__file_name,
+                    self.__name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def __eq__(self, other):
         return self.__name == other.name and self.__pids == other.get_pids()
@@ -734,29 +761,44 @@ class meta_server_info(object):
         try:
             os.unlink(self.__file_name)
         except:
-            logging_tools.my_syslog(
+            self.log(
                 "error removing file {} (meta_server_info for {}): {}".format(
                     self.__file_name,
                     self.__name,
                     get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
 
-    def check_block(self, act_tc_dict=None, act_dict={}):
-        # threadcount dict
-        if not act_tc_dict:
-            act_tc_dict = get_process_id_list(True, True)
+    def get_main_pid(self):
+        main_pids = [_key for _key, _value in self.__pid_names.iteritems() if _value == "main"]
+        if main_pids:
+            return main_pids[0]
+        else:
+            return None
+
+    def check_block(self, act_dict={}):
         if not self.__pids:
             if not act_dict:
-                act_dict = get_proc_list_new()
+                act_dict = get_proc_list()
             # search pids
-            pids_found = [key for key, value in act_dict.iteritems() if value.name() == self.__exe_name]
-            self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
+            # print act_dict.keys()
+            pids_found = [
+                key for key, value in act_dict.iteritems() if value.name() == self.__exe_name
+            ]
+            self.__pids = sum([[key] * act_dict[key].num_threads() for key in pids_found], [])
             self.__pid_names.update({key: self.__exe_name for key in pids_found})
             self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})
-        self.__pids_found = {cur_pid: act_tc_dict[cur_pid] for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()}
-        # structure for check_scripts
-        self.pids_found = sum([[cur_pid] * act_tc_dict.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
+        # thread multiply dict
+        self.__pids_found = {
+            cur_pid: act_dict[cur_pid].num_threads() for cur_pid in self.__pids if cur_pid in act_dict
+        }
+        self.pids_found = sum(
+            [
+                [cur_pid] * self.__pids_found[cur_pid] for cur_pid in self.__pids_found.iterkeys() if cur_pid in act_dict
+            ],
+            []
+        )
         self.__pids_expected = {
             cur_pid: (
                 self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[0],
@@ -782,35 +824,48 @@ class meta_server_info(object):
                     bound_dict[unique_pid] = p_f - u_c
                 else:
                     bound_dict[unique_pid] = 0
+        self.missing_list = missing_list
         self.bound_dict = bound_dict
         # num_found = sum([value for value in self.__pids_found.values()])
         # num_expected = sum([value for value in self.__pids_expected.values()])
-        self.pid_check_string = ", ".join(["{:d}: {}".format(
-            cur_pid,
-            "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in missing_list else (
-                "{:d} {}, {:d} found)".format(
-                    abs(bound_dict[cur_pid]),
-                    "missing (lower bound is {:d}".format(
-                        self.__pids_expected[cur_pid][0]
-                    ) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
-                        self.__pids_expected[cur_pid][1]
-                    ),
-                    self.__pids_found.get(cur_pid, 0),
-                ) if bound_dict[cur_pid] else "OK"
-            )
-            ) for cur_pid in sorted(bound_dict.iterkeys())]) or "no PIDs"
         if any([value != 0 for value in bound_dict.itervalues()]):
             self.pid_checks_failed += 1
+            _error = True
         else:
             if not self.__pids_found and self.__need_any_pids:
                 self.pid_checks_failed += 1
+                _error = True
             elif any([value > 0 for value in bound_dict.itervalues()]):
                 self.pid_checks_failed += 1
+                _error = True
             else:
                 # clear failed_checks
                 self.pid_checks_failed = 0
                 self.pid_checks_ok += 1
                 self.__last_check_ok = time.time()
+                _error = False
+        return _error
+
+    @property
+    def pid_check_string(self):
+        return ", ".join(
+            [
+                "{:d}: {}".format(
+                    cur_pid,
+                    "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in self.missing_list else (
+                        "{:d} {}, {:d} found)".format(
+                            abs(self.bound_dict[cur_pid]),
+                            "missing (lower bound is {:d}".format(
+                                self.__pids_expected[cur_pid][0]
+                            ) if self.bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
+                                self.__pids_expected[cur_pid][1]
+                            ),
+                            self.__pids_found.get(cur_pid, 0),
+                        ) if self.bound_dict[cur_pid] else "OK"
+                    )
+                ) for cur_pid in sorted(self.bound_dict.iterkeys())
+            ]
+        ) or "no PIDs"
 
     def kill_all_found_pids(self):
         all_pids = sorted(self.__pids_found.keys())
@@ -1170,13 +1225,6 @@ def change_user_group(user, group, groups=[], **kwargs):
     return ok
 
 
-def fix_sysconfig_rights():
-    conf_dir = "/etc/sysconfig/cluster"
-    target_group = "idg"
-    os.chown(conf_dir, 0, grp.getgrnam(target_group)[2])
-    os.chmod(conf_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
-
-
 def change_user_group_path(path, user, group, **kwargs):
     if "log_com" in kwargs:
         log_com = kwargs["log_com"]
@@ -1233,181 +1281,24 @@ def change_user_group_path(path, user, group, **kwargs):
     return ok
 
 
-def get_process_id_list(with_threadcount=True, with_dotprocs=False):
-    max_try_count = 10
-    for _idx in xrange(max_try_count):
-        try:
-            _proc_list = os.listdir("/proc")
-            if with_dotprocs:
-                pid_list, dotpid_list = (
-                    [int(x) for x in _proc_list if x.isdigit()],
-                    [int(x[1:]) for x in _proc_list if x.startswith(".") and x[1:].isdigit()]
-                )
-            else:
-                pid_list, dotpid_list = (
-                    [int(x) for x in _proc_list if x.isdigit()],
-                    []
-                )
-        except:
-            pid_list, dotpid_list = ([], [])
-        else:
-            break
-    if with_threadcount:
-        pid_dict = {}
-        for pid in pid_list:
-            stat_f = "/proc/{:d}/status".format(pid)
-            if os.path.isfile(stat_f):
-                try:
-                    _threads = 1
-                    for _line in open(stat_f, "r"):
-                        if _line.startswith("Threads"):
-                            _threads = int(_line.split()[1])
-                            break
-                except:
-                    _threads = 1
-                pid_dict[pid] = _threads
-            else:
-                pid_dict[pid] = 1
-        # add dotpid-files
-        for pid in dotpid_list:
-            stat_f = "/proc/.{:d}/status".format(pid)
-            if os.path.isfile(stat_f):
-                try:
-                    _ppid = 0
-                    for _line in open(stat_f, "r"):
-                        if _line.startswith("PPid"):
-                            _ppid = int(_line.split()[1])
-                            break
-                except:
-                    _ppid = 0
-                else:
-                    if _ppid in pid_dict:
-                        pid_dict[_ppid] += 1
-        return pid_dict
-    else:
-        return pid_list + [".{:d}".format(x) for x in dotpid_list]
-
-
-def get_proc_list_new(**kwargs):
+def get_proc_list(**kwargs):
     attrs = kwargs.get("attrs", None)
     proc_name_list = set(kwargs.get("proc_name_list", []))
-    try:
-        if "int_pid_list" in kwargs:
-            pid_list = kwargs["int_pid_list"]
-        else:
-            pid_list = set(psutil.pids())
-    except:
-        p_dict = None
+    p_dict = {}
+    if attrs:
+        for cur_proc in psutil.process_iter():
+            try:
+                p_dict[cur_proc.pid] = cur_proc.as_dict(attrs)
+            except psutil.NoSuchProcess:
+                pass
     else:
-        p_dict = {}
-        if attrs:
+        if proc_name_list:
             for cur_proc in psutil.process_iter():
-                try:
-                    p_dict[cur_proc.pid] = cur_proc.as_dict(attrs)
-                except psutil.NoSuchProcess:
-                    pass
+                if cur_proc.name() in proc_name_list:
+                    p_dict[cur_proc.pid] = cur_proc
         else:
-            for pid in pid_list:
-                try:
-                    cur_proc = psutil.Process(pid)
-                    if proc_name_list:
-                        if cur_proc.name() in proc_name_list:
-                            p_dict[pid] = cur_proc
-                    else:
-                        p_dict[pid] = cur_proc
-                except psutil.NoSuchProcess:
-                    pass
-    return p_dict
-
-
-def get_proc_list(**kwargs):
-    # s_time = time.time()
-    s_fields = ["name", "state"]
-    i_fields = ["pid", "uid", "gid", "ppid"]
-    proc_name_list = set(kwargs.get("proc_name_list", []))
-    add_stat = kwargs.get("add_stat_info", False)
-    add_affinity = kwargs.get("add_affinity", False)
-    add_cmdline = kwargs.get("add_cmdline", True)
-    add_exe = kwargs.get("add_exe", True)
-    try:
-        if "int_pid_list" in kwargs:
-            pid_list = kwargs["int_pid_list"]
-        else:
-            pid_list = set([int(key) for key in os.listdir("/proc") if key.isdigit()])
-    except:
-        p_dict = None
-    else:
-        p_dict = {}
-        for pid in pid_list:
-            check_pid = True
-            if check_pid:
-                try:
-                    t_dict = {}
-                    _lnum = 0
-                    _affinity_lines = []
-                    for line in open("/proc/{:d}/status".format(pid), "r"):
-                        _parts = line.split()
-                        if not _lnum:
-                            # first line, check for exclusion criteria
-                            if proc_name_list and _parts[1] not in proc_name_list:
-                                # leave inner loop
-                                break
-                        if len(_parts) >= 2:
-                            what, rest = _parts[0:2]
-                            r_what = what.lower()[:-1]
-                            if r_what in s_fields:
-                                t_dict[r_what] = rest
-                            elif r_what in i_fields:
-                                t_dict[r_what] = int(rest)
-                            if add_affinity:
-                                _affinity_lines.append(line.strip().lower())
-                        _lnum += 1
-                    if not _lnum:
-                        # inner loop was not finished, ignore this process
-                        continue
-                except IOError:
-                    pass
-                else:
-                    # t_dict = {"name" : status_lines[0][1]}
-                    if proc_name_list and t_dict["name"] not in proc_name_list:
-                        continue
-                    # for what, rest in status_lines:
-                    #    r_what = what.lower()[:-1]
-                    #    if r_what in s_fields:
-                    #        t_dict[r_what] = rest
-                    #    elif r_what in i_fields:
-                    #        t_dict[r_what] = int(rest)
-                    if add_cmdline:
-                        try:
-                            t_dict["cmdline"] = [line for line in codecs.open("/proc/{:d}/cmdline".format(pid), "r", "utf-8").read().split("\x00") if line]
-                        except:
-                            t_dict["cmdline"] = [get_except_info()]
-                    if add_exe:
-                        try:
-                            t_dict["exe"] = os.readlink("/proc/{:d}/exe".format(pid))
-                        except:
-                            t_dict["exe"] = None
-                    if t_dict["pid"] == pid:
-                        p_dict[pid] = t_dict
-                    if add_affinity:
-                        try:
-                            t_dict["affinity"] = affinity_tools.get_process_affinity_mask_from_status_lines(_affinity_lines)
-                        except:
-                            # process has gone away ?
-                            pass
-                    if add_stat:
-                        try:
-                            stat_content = open("/proc/{:d}/stat".format(pid), "r").read().strip()
-                        except IOError:
-                            pass
-                        else:
-                            stat_fields = stat_content.split(")", 1)[1].split()
-                            if len(stat_fields) > 36:
-                                t_dict["last_cpu"] = int(stat_fields[36])
-                            else:
-                                t_dict["last_cpu"] = 0
-                            t_dict["stat_info"] = _build_stat_dict(stat_content)
-    # print time.time()-s_time
+            for cur_proc in psutil.process_iter():
+                p_dict[cur_proc.pid] = cur_proc
     return p_dict
 
 
@@ -1434,7 +1325,7 @@ def build_ppid_list(p_dict, pid=None):
 
 def build_kill_dict(name, exclude_list=[]):
     # process dict
-    pdict = get_proc_list_new()
+    pdict = get_proc_list()
     # list of parent pids (up to init)
     ppl = build_ppid_list(pdict, os.getpid())
     kill_dict = {}
@@ -1574,25 +1465,6 @@ def fix_directories(user, group, f_list):
                     named_uid,
                     named_gid,
                     get_except_info()))
-
-
-def fix_files(user, group, f_dict):
-    try:
-        named_uid = pwd.getpwnam(user)[2]
-    except KeyError:
-        named_uid = 0
-        logging_tools.my_syslog("Cannot find user '{}', using root (0)".format(user))
-    try:
-        named_gid = grp.getgrnam(group)[2]
-    except KeyError:
-        named_gid = 0
-        logging_tools.my_syslog("Cannot find group '{}', using root (0)".format(group))
-    for act_file in f_dict:
-        if os.path.isfile(act_file):
-            try:
-                os.chown(act_file, named_uid, named_gid)
-            except:
-                pass
 
 
 def is_linux():
@@ -1953,15 +1825,3 @@ def create_password(**kwargs):
 
 def get_sys_bits():
     return int(platform.architecture()[0][0:2])
-
-
-if __name__ == "__main__":
-    num = 100
-    for call in [get_proc_list, get_proc_list_new]:
-        s_time = time.time()
-        for i in xrange(num):
-            a = call(add_affinity=True, add_stat_info=True)
-        e_time = time.time()
-        d_time = e_time - s_time
-        print "stresstest {:d} : {:.2f} sec ({:.8f} per call)".format(num, d_time, d_time / num)
-    # pprint.pprint(a)

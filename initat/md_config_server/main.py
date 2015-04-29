@@ -55,8 +55,6 @@ def main():
     global_config.add_config_entries([
         ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER", configfile.str_c_var("idnagios", help_string="user to run as [%(default)s]")),
         ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS", configfile.array_c_var([])),
@@ -98,14 +96,6 @@ def main():
         sys.exit(5)
     else:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
-    if global_config["CHECK"]:
-        sys.exit(0)
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(
-            "%s.py" % (prog_name),
-            ignore_names=["icinga"],
-        )
-
     global_config.add_config_entries(
         [
             ("LOG_SOURCE_IDX", configfile.int_c_var(LogSource.new("mon-server", device=sql_info.device).pk))
@@ -160,39 +150,8 @@ def main():
         ("HOST_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
         ("SAFE_NAMES", configfile.bool_c_var(False, help_string="convert all command descriptions to safe names (without spaces), [%(default)s]")),
     ])
-    process_tools.renice()
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
-    if global_config["ENABLE_NAGVIS"]:
-        process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [
-            {
-                "name": os.path.join(global_config["NAGVIS_DIR"], "etc"),
-                "walk_dir": False
-            },
-            {
-                "name": os.path.join(global_config["NAGVIS_DIR"], "etc", "maps"),
-                "walk_dir": False
-            }
-        ])
-        process_tools.fix_files(global_config["USER"], global_config["GROUP"], [
-            os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db"),
-            os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php"),
-            os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php"),
-        ])
-    if not global_config["DEBUG"]:
-        with daemon.DaemonContext(
-            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
-            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
-        ):
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            run_code()
-            configfile.terminate_manager()
-        # exit
-        os._exit(0)
-    else:
-        process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
-        print("Debugging md-config-server on {}".format(long_host_name))
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        run_code()
-    sys.exit(0)
+    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+    run_code()
+    configfile.terminate_manager()
+    # exit
+    os._exit(0)

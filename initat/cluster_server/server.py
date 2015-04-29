@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -159,8 +159,6 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             msi_block = process_tools.meta_server_info(self.__pid_name)
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
-            msi_block.start_command = "/etc/init.d/cluster-server start"
-            msi_block.stop_command = "/etc/init.d/cluster-server force-stop"
             msi_block.kill_pids = True
             msi_block.save_block()
         else:
@@ -294,7 +292,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             )
             com_obj = initat.cluster_server.modules.command_dict[com_name]
             # check config status
-            do_it, srv_origin, err_str = com_obj.check_config(global_config, global_config["FORCE"])
+            do_it, srv_origin, err_str = com_obj.check_config(global_config)
             self.log(
                 "checking the config gave: {} ({}) {}".format(
                     str(do_it),

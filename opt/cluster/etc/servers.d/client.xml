@@ -2,11 +2,20 @@
     <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="client">
     </instance>
     <instance check_type="meta" name="logging-server" runs_on="client" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver">
+        <nice-level>15</nice-level>
     </instance>
     <instance check_type="meta" name="meta-server" runs_on="client"  has_force_stop="1">
+        <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="host-monitoring" runs_on="client" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver">
+    <instance check_type="meta" name="host-monitoring" runs_on="client" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver" module="initat.host_monitoring.main">
+        <programm-name>collserver</programm-name>
+        <programm-title>icsw.collserver</programm-title>
+        <old-binary>collserver.py</old-binary>
+        <nice-level>15</nice-level>
     </instance>
     <instance check_type="meta" name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
+        <module-name>initat.package_install.client.main</module-name>
+        <old-binary>package-client</old-binary>
+        <nice-level>15</nice-level>
     </instance>
 </instances>

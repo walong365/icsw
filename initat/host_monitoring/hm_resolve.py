@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,12 +22,14 @@
 
 """ caching resolver """
 
+import socket
+import time
+
 from initat.host_monitoring.config import global_config
 from initat.tools import logging_tools
 from initat.tools import process_tools
-import socket
 from initat.tools import threading_tools
-import time
+
 
 CACHE_TIMEOUT = 10
 

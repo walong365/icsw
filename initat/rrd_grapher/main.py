@@ -29,6 +29,7 @@ django.setup()
 from django.conf import settings
 from initat.cluster.backbone.models import LogSource
 from initat.rrd_grapher.config_static import SERVER_COM_PORT
+from initat.rrd_grapher.config import global_config
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import config_tools
@@ -43,26 +44,13 @@ def run_code():
     server_process().loop()
 
 
-def _create_dirs(global_config):
-    graph_root = global_config["GRAPH_ROOT"]
-    if not os.path.isdir(graph_root):
-        try:
-            os.makedirs(graph_root)
-        except:
-            print("*** cannot create graph_root '{}': {}".format(graph_root, process_tools.get_except_info()))
-        else:
-            print("created graph_root '{}'".format(graph_root))
-
-
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-            ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
             ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
             ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
             ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
@@ -101,18 +89,12 @@ def main():
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     if global_config["CHECK"]:
         sys.exit(0)
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(
-            "{}.py".format(prog_name),
-            ignore_names=[],
-        )
-
     global_config.add_config_entries(
         [
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(
-                    LogSource.new(
+                LogSource.new(
                         "rrd-grapher", device=sql_info.effective_device
                     ).pk
                 )
@@ -145,29 +127,6 @@ def main():
     )
     if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
         global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
-    _create_dirs(global_config)
-
-    process_tools.renice()
-    process_tools.fix_directories(
-        global_config["USER"],
-        global_config["GROUP"],
-        [
-            "/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["GRAPH_ROOT_DEBUG"], global_config["RRD_DIR"]
-        ]
-    )
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
-    if not global_config["DEBUG"]:
-        with daemon.DaemonContext(
-            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
-            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
-        ):
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            run_code()
-            configfile.terminate_manager()
-    else:
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        print("Debugging rrd-grapher on {}".format(long_host_name))
-        run_code()
+    run_code()
+    configfile.terminate_manager()
     sys.exit(0)

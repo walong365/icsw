@@ -275,7 +275,7 @@ class csw_object_permission(models.Model):
             obj = model_class.objects.get(pk=self.object_pk)
         except model_class.DoesNotExist:
             obj = "deleted object (pk: {})".format(self.object_pk)
-        return "{} on {}".format(unicode(self.csw_permission), obj)
+        return u"{} on {}".format(unicode(self.csw_permission), obj)
 
     class Meta:
         app_label = "backbone"
@@ -345,7 +345,7 @@ class user_permission(models.Model):
         verbose_name = "Global permissions of users"
 
     def __unicode__(self):
-        return "Permission {} for user {}".format(self.csw_permission, self.user)
+        return u"Permission {} for user {}".format(self.csw_permission, self.user)
 
 
 @receiver(signals.post_save, sender=user_permission)
@@ -387,7 +387,7 @@ class user_object_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "Permission {} for user {}".format(self.csw_object_permission, self.user)
+        return u"Permission {} for user {}".format(self.csw_object_permission, self.user)
 
     class Meta:
         app_label = "backbone"

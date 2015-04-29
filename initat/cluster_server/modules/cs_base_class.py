@@ -230,7 +230,7 @@ class server_com(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.main_proc.log(u"[com] {}".format(what), log_level)
 
-    def check_config(self, loc_config, force=False):
+    def check_config(self, loc_config):
         self.server_idx, self.act_config_name = (0, "")
         doit, srv_origin, err_str = (False, "---", "OK")
         if self.Meta.needed_configs:
@@ -244,10 +244,7 @@ class server_com(object):
             if doit:
                 self.Meta.actual_configs = self.Meta.needed_configs
             else:
-                if force:
-                    doit = True
-                else:
-                    err_str = "Server {} has no {} attribute".format(loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
+                err_str = "Server {} has no {} attribute".format(loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
         else:
             doit = True
         if doit and self.Meta.needed_config_keys:

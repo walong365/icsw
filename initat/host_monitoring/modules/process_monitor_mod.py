@@ -175,7 +175,7 @@ class _general(hm_classes.hm_module):
             mv.register_entry("proc.{}".format(key), 0, value)
 
     def update_machine_vector(self, mv):
-        pdict = process_tools.get_proc_list_new()  # (add_stat_info=self.check_affinity, add_cmdline=False, add_exe=False)
+        pdict = process_tools.get_proc_list()  # (add_stat_info=self.check_affinity, add_cmdline=False, add_exe=False)
         if self.check_affinity:
             self.af_struct.feed(pdict)
         pids = pdict.keys()
@@ -227,7 +227,7 @@ class procstat_command(hm_classes.hm_command):
         else:
             name_list = []
         _p_dict = {}
-        for key, value in process_tools.get_proc_list_new(proc_name_list=name_list).iteritems():
+        for key, value in process_tools.get_proc_list(proc_name_list=name_list).iteritems():
             try:
                 if value.is_running():
                     _p_dict[key] = value.as_dict(
@@ -368,9 +368,11 @@ class proclist_command(hm_classes.hm_command):
         srv_com["psutil"] = "yes"
         srv_com["num_cores"] = psutil.cpu_count(logical=True)
         srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(
-            process_tools.get_proc_list_new(attrs=[
-                "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
-            ])
+            process_tools.get_proc_list(
+                attrs=[
+                    "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
+                ]
+            )
         )))
 
     def interpret(self, srv_com, cur_ns):
@@ -567,7 +569,7 @@ class signal_command(hm_classes.hm_command):
                 ", ".join(include_list) or "<empty>"
             )
             self.log(sig_str)
-            pid_list = find_pids(process_tools.get_proc_list_new(), priv_check)
+            pid_list = find_pids(process_tools.get_proc_list(), priv_check)
             for struct in pid_list:
                 try:
                     _name = struct.name()
