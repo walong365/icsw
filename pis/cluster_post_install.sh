@@ -14,13 +14,13 @@ fi
 if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     # already installed
     if [ -f /etc/sysconfig/cluster/db_auto_update ] ; then
-        echo "running auto-update script ${CLUSTER_PATH}/sbin/setup_cluster.py --migrate"
-        ${CLUSTER_PATH}/sbin/setup_cluster.py --migrate
+        echo "running auto-update script ${CLUSTER_PATH}/sbin/icsw setup --migrate"
+        ${CLUSTER_PATH}/sbin/icsw setup --migrate
     else
         echo "to update the current database schema via django please use ${CLUSTER_PATH}/sbin/setup_cluster.py --migrate"
     fi
 else
-    echo "to create a new database use ${CLUSTER_PATH}/sbin/setup_cluster.py"
+    echo "to create a new database use ${CLUSTER_PATH}/sbin/icsw setup"
 
     # do not show, only for ALN
     # echo "to migrate the database to a django-support format please use %{CLUSTER_PATH}/sbin/migrate_to_django.sh"
