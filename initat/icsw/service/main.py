@@ -51,20 +51,24 @@ def main(opt_ns):
     cur_c = container.ServiceContainer(log_com)
 
     if opt_ns.subcom == "status":
-        cur_c.check_system(opt_ns, inst_xml)
-        _iter = 0
-        while True:
-            try:
-                form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
-                show_form_list(form_list, _iter)
-                if opt_ns.every:
-                    time.sleep(opt_ns.every)
-                    cur_c.check_system(opt_ns, inst_xml)
-                    _iter += 1
-                else:
+        if opt_ns.interactive:
+            from . import console
+            console.main(opt_ns, cur_c, inst_xml)
+        else:
+            cur_c.check_system(opt_ns, inst_xml)
+            _iter = 0
+            while True:
+                try:
+                    form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
+                    show_form_list(form_list, _iter)
+                    if opt_ns.every:
+                        time.sleep(opt_ns.every)
+                        cur_c.check_system(opt_ns, inst_xml)
+                        _iter += 1
+                    else:
+                        break
+                except KeyboardInterrupt:
+                    print("exiting...")
                     break
-            except KeyboardInterrupt:
-                print("exiting...")
-                break
     elif opt_ns.subcom in ["start", "stop", "restart", "debug"]:
         cur_c.actions(opt_ns, inst_xml)

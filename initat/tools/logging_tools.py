@@ -814,13 +814,18 @@ class new_form_list(object):
 
     display_attribute_map = property(get_da_map, set_da_map)
 
-    def __unicode__(self, **kwargs):
-        da_map = kwargs.get("display_attribute_map", None)
+    def __unicode__(self):
         if not self.__content:
             if self.__strict_mode:
                 raise ValueError("empty list (no lines)")
             else:
                 return ""
+        return self._format()
+
+    def urwid_encode(self):
+        return self._format(urwid=True)
+
+    def _format(self, urwid=False):
         # count number of rows
         row_count = [len(line) for line in self.__content]
         _min_rows, max_rows = (
@@ -858,18 +863,57 @@ class new_form_list(object):
         out_lines = []
         if self.__header_dict:
             header_list = [self.__header_dict.get(idx, (True, "")) for idx in xrange(max_rows)]
-            form_str = self.__col_sep.join(["{{:{}{:d}s}}".format("<" if header_list[idx][0] else "", row_len) for idx, row_len in enumerate(row_lens)])
-            out_lines.append(form_str.format(*[_e[1] for _e in header_list]).rstrip())
-            out_lines.append("-" * len(out_lines[-1]))
-        for line in self.__content:
-            out_lines.append(
-                self.__col_sep.join(
-                    [
-                        self._apply_da_map(entry, max_len) for entry, max_len in zip(line, row_lens[:len(line)])
-                    ]
-                )
+            form_str = self.__col_sep.join(
+                [
+                    "{{:{}{:d}s}}".format(
+                        "<" if header_list[idx][0] else "",
+                        row_len
+                    ) for idx, row_len in enumerate(row_lens)
+                ]
             )
-        return "\n".join(map(lambda line: line.rstrip(), out_lines))
+            out_lines.append(
+                form_str.format(*[_e[1] for _e in header_list]).rstrip()
+            )
+            out_lines.append(
+                "-" * len(out_lines[-1])
+            )
+        if urwid:
+            # add one for CR
+            urwid_rlc = [("", len(_line) + 1) for _line in out_lines]
+            for line in self.__content:
+                _line = []
+                for _idx, (entry, max_len) in enumerate(zip(line, row_lens[:len(line)])):
+                    last = _idx == len(line) - 1
+                    _str = entry.format(max_len)
+                    if last:
+                        _str = _str.rstrip()
+                    _line.append(_str)
+                    urwid_rlc.append(
+                        (getattr(entry, "display_attribute", ""), len(_str))
+                    )
+                    if last:
+                        # for CR
+                        urwid_rlc.append(
+                            ("", 1)
+                        )
+                    else:
+                        urwid_rlc.append(
+                            ("", len(self.__col_sep))
+                        )
+                out_lines.append(
+                    self.__col_sep.join(_line)
+                )
+            return ("\n".join(out_lines), urwid_rlc)
+        else:
+            for line in self.__content:
+                out_lines.append(
+                    self.__col_sep.join(
+                        [
+                            self._apply_da_map(entry, max_len) for entry, max_len in zip(line, row_lens[:len(line)])
+                        ]
+                    )
+                )
+            return "\n".join(map(lambda line: line.rstrip(), out_lines))
 
     def _apply_da_map(self, entry, max_len):
         _str = entry.format(max_len)

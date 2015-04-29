@@ -621,7 +621,7 @@ class ServiceContainer(object):
                         )
                         # print etree.tostring(act_struct, pretty_print=True)
                         num_pids = len(_res.findall(".//pids/pid"))
-                        da_name = None
+                        da_name = ""
                         if any_ok:
                             ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
                         else:
