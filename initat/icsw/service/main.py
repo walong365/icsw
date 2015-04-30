@@ -23,15 +23,18 @@
 """ checks installed servers on system """
 
 import os
-import datetime
+
 import time
+import datetime
+import logging_tools
 
 from . import instance
 from . import container
-from ..dummy_logger import stdout_logger as log_com
+from . import logging
+from . import transition
 
 
-def show_form_list(form_list, _iter):
+def show_form_list(form_list):
     # color strings (green / blue / red / normal)
     d_map = {
         "ok": "\033[1;32m{}\033[m\017",
@@ -44,8 +47,9 @@ def show_form_list(form_list, _iter):
 
 
 def main(opt_ns):
+    log_com = logging.get_logger(opt_ns.logger)
     if os.getuid():
-        print("Not running as root, information may be incomplete, disabling display of memory")
+        log_com("Not running as root, information may be incomplete, disabling display of memory", logging_tools.LOG_LEVEL_ERROR)
         opt_ns.memory = False
     inst_xml = instance.InstanceXML(log_com).tree
     cur_c = container.ServiceContainer(log_com)
@@ -56,19 +60,13 @@ def main(opt_ns):
             console.main(opt_ns, cur_c, inst_xml)
         else:
             cur_c.check_system(opt_ns, inst_xml)
-            _iter = 0
-            while True:
-                try:
-                    form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
-                    show_form_list(form_list, _iter)
-                    if opt_ns.every:
-                        time.sleep(opt_ns.every)
-                        cur_c.check_system(opt_ns, inst_xml)
-                        _iter += 1
-                    else:
-                        break
-                except KeyboardInterrupt:
-                    print("exiting...")
-                    break
+            form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
+            show_form_list(form_list)
     elif opt_ns.subcom in ["start", "stop", "restart", "debug"]:
-        cur_c.actions(opt_ns, inst_xml)
+        cur_t = transition.ServiceTransition(opt_ns, cur_c, inst_xml, log_com)
+        while True:
+            _left = cur_t.step(cur_c)
+            if _left:
+                time.sleep(1)
+            else:
+                break

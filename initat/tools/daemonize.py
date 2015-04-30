@@ -102,7 +102,6 @@ def main():
     sys.argv = [opts.progname]
     setproctitle.setproctitle(opts.proctitle)
     main_module = importlib.import_module(opts.modname)
-    print main_module
     if opts.daemonize:
         sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
         sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")

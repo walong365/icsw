@@ -46,7 +46,6 @@ class Parser(object):
         self._add_iccs_sel(_srvc)
         # _srvc.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
         _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
-        _srvc.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
         return _srvc
 
     def _add_start_parser(self, sub_parser):

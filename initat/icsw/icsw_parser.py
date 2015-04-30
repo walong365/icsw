@@ -34,6 +34,7 @@ except ImportError:
 class ICSWParser(object):
     def __init__(self):
         self._parser = argparse.ArgumentParser(prog="icsw")
+        self._parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
         sub_parser = self._parser.add_subparsers(help="sub-command help")
         ServiceParser().link(sub_parser)
         LogwatchParser().link(sub_parser)

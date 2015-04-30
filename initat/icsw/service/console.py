@@ -32,6 +32,7 @@ import argparse
 import datetime
 from initat.tools import logging_tools
 from initat.tools import process_tools
+from urwid import curses_display
 import psutil
 import stat
 import urwid

@@ -790,9 +790,13 @@ class meta_server_info(object):
             self.__pid_names.update({key: self.__exe_name for key in pids_found})
             self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})
         # thread multiply dict
-        self.__pids_found = {
-            cur_pid: act_dict[cur_pid].num_threads() for cur_pid in self.__pids if cur_pid in act_dict
-        }
+        self.__pids_found = {}
+        for cur_pid in self.__pids:
+            if cur_pid in act_dict:
+                try:
+                    self.__pids_found[cur_pid] = act_dict[cur_pid].num_threads()
+                except psutil.NoSuchProcess:
+                    pass
         self.pids_found = sum(
             [
                 [cur_pid] * self.__pids_found[cur_pid] for cur_pid in self.__pids_found.iterkeys() if cur_pid in act_dict
