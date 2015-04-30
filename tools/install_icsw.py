@@ -61,8 +61,8 @@ class OSHandler(object):
             return AptgetHandler(opts)
         else:
             raise RuntimeError(
-                "This install script does not support your platform: {}\n".format(platform.linux_distribution()[0]) +
-                "Supported platforms are: {}".format(supported_dists)
+                "This install script does not support your platform: {p}\n".format(p=platform.linux_distribution()[0]) +
+                "Supported platforms are: {s}".format(s=supported_dists)
             )
 
     def add_repos(self):
@@ -77,6 +77,14 @@ class OSHandler(object):
         else:
             print("Running:", " ".join(cmd))
             return subprocess.call(cmd)
+
+    def create_file(self, file_path, file_content):
+        if self.opts.show_commands:
+            print("Create file {f} with content:".format(f=file_path))
+            print(file_content)
+        else:
+            with open(file_path, 'w') as repo_file:
+                repo_file.write(file_content)
 
 
 class SuseHandler(OSHandler):
@@ -102,7 +110,7 @@ class SuseHandler(OSHandler):
                 command = ("zypper", "addrepo", repo_url, repo_name)
                 self.process_command(command)
             else:
-                log.debug("Repo {} already installed".format(repo_name))
+                log.debug("Repo {r} already installed".format(r=repo_name))
 
     def install_icsw(self):
         commands = [
@@ -116,13 +124,46 @@ class SuseHandler(OSHandler):
 
 class CentosHandler(OSHandler):
     def add_repos(self):
-        raise NotImplementedError()
+        version = platform.linux_distribution()[1].lower()[0]
+        if version == '5':
+            version = "5.11"
+        elif version == '6':
+            version = "6.2"
+        elif version == '7':
+            version = "7.0"
+        else:
+            raise RuntimeError("Unsupported Centos version: {v}\n".format(v=platform.linux_distribution()) +
+                               "Supported versions are 5, 6 and 7.")
+
+        repos = (
+            (
+                "initat_cluster_devel",
+                "http://www.initat.org/cluster/RPMs/rhel_{version}/cluster-devel".format(version=version),
+            ),
+            (
+                "initat_extra",
+                "http://www.initat.org/cluster/RPMs/rhel_{version}/extra".format(version=version)
+            )
+        )
+
+        repo_template = """[{repo_name}]
+name={repo_name}
+enabled=1
+autorefresh=1
+baseurl={repo_url}
+type=rpm-md
+"""
+        for repo_name, repo_url in repos:
+            full_path = os.path.join("/etc/yum.repos.d", "{0}.repo".format(repo_name))
+            if not os.path.exists(full_path):
+                self.create_file(full_path, repo_template.format(repo_name=repo_name, repo_url=repo_url))
 
     def install_icsw(self):
-        raise NotImplementedError()
+        self.process_command(("yum", "--assumeyes", "install", "icsw-server"))
 
 
 class AptgetHandler(OSHandler):
+
     def add_repos(self):
         distro = platform.linux_distribution()[0].lower()
 
@@ -146,7 +187,7 @@ class AptgetHandler(OSHandler):
             elif debian_version.startswith("7"):
                 debian_release = "wheezy"
             else:
-                raise RuntimeError("Unsupported debian version: {}.\n".format(platform.linux_distribution()) +
+                raise RuntimeError("Unsupported debian version: {v}.\n".format(v=platform.linux_distribution()) +
                                    "Currently squeeze and wheezy are supporeted.")
 
             repos = (
@@ -161,19 +202,18 @@ class AptgetHandler(OSHandler):
                 )
             )
         else:
-            raise RuntimeError("Unsupported debian platform: {}.\n".format(platform.linux_distribution()))
+            raise RuntimeError("Unsupported debian platform: {v}.\n".format(v=platform.linux_distribution()))
 
         for repo_file_name, file_content in repos:
             full_repo_file_path = os.path.join("/etc/apt/sources.list.d", repo_file_name)
             if not os.path.exists(full_repo_file_path):
-                with open(full_repo_file_path, 'w') as repo_file:
-                    repo_file.write(file_content)
+                self.create_file(full_repo_file_path, file_content)
             else:
-                log.debug("file {} already exists.".format(full_repo_file_path))
+                log.debug("File {f} already exists.".format(f=full_repo_file_path))
 
     def install_icsw(self):
         self.process_command(("apt-get", "update"))
-        self.process_command(("apt-get", "install", "icsw-server"))
+        self.process_command(("apt-get", "--yes", "--allow-unauthenticated", "install", "icsw-server"))
 
 
 def parse_args():
@@ -217,7 +257,7 @@ def main():
     log.debug("Installing license file")
     local_os.process_command(
         (
-            "icsw",
+            "/opt/cluster/sbin/icsw",
             "license",
             "--user", opts.user,
             "--password", opts.password,
@@ -229,4 +269,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
