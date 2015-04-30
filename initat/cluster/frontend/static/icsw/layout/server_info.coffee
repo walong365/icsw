@@ -136,8 +136,8 @@ angular.module(
                 return "text-success"
         get_version_class: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.attr("version_ok")?
-                _vers_ok = parseInt(_xml.attr("version_ok"))
+            if _xml.find("result").attr("version_ok")?
+                _vers_ok = parseInt(_xml.find("result").attr("version_ok"))
                 if _vers_ok
                     return "text-success"
                 else
@@ -146,8 +146,8 @@ angular.module(
                 return "text-warn"
         get_version: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.attr("version_ok")?
-                return _xml.attr("version").replace("-", "&ndash;")
+            if _xml.find("result").attr("version_ok")?
+                return _xml.find("result").attr("version").replace("-", "&ndash;")
             else
                 return ""
         has_startstop: (instance) ->
@@ -187,7 +187,7 @@ angular.module(
             _mem = @xml.find("instance[name='#{instance}'] memory_info").text()
             return parseInt((parseInt(_mem) * 100) / @max_mem)
         get_check_source: (instance) ->
-            return @xml.find("instance[name='#{instance}']").attr("check_source")
+            return @xml.find("instance[name='#{instance}']").attr("check_type")
 
 ).directive("icswLayoutServerInfoInstance", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
