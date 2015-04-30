@@ -107,8 +107,6 @@ angular.module(
             return ($(entry).attr("name") for entry in @xml.find("instance"))
         get_state: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            #if _xml.attr("name") == "hoststatus"
-            #    console.log _xml[0]
             if _xml.length
                 _state_info = _xml.find("state_info")
                 if _xml.attr("check_type") == "simple"

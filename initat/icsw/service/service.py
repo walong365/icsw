@@ -25,7 +25,7 @@
 import os
 import stat
 import subprocess
-import time
+import sys
 
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools
@@ -399,7 +399,8 @@ class Service(object):
             self._debug_py()
 
     def _debug_py(self):
-        arg_list = self._generate_py_arg_list()
+        arg_list = self._generate_py_arg_list(debug=True)
+        arg_list.append("--debug")
         self.log("debug, arg_list is '{}'".format(" ".join(arg_list)))
         subprocess.call(" ".join(arg_list), shell=True)
 
@@ -431,14 +432,18 @@ class Service(object):
             subprocess.call(arg_list + ["-d"])
             os._exit(1)
 
-    def _generate_py_arg_list(self):
+    def _generate_py_arg_list(self, debug=False):
         cur_name = self.name
         _prog_name = self.prog_name
         _prog_title = self.prog_title
         arg_dict = {_val.get("key"): _val.text.strip() for _val in self.__entry.findall(".//arg[@key]")}
         _module_name = self.__entry.get("module", self.module_name)
+        if debug:
+            _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
+        else:
+            _daemon_path = "/opt/python-init/lib/python/site-packages/initat"
         _arg_list = [
-            "/opt/python-init/lib/python/site-packages/initat/tools/daemonize.py",
+            os.path.join(_daemon_path, "tools", "daemonize.py"),
             "--progname",
             _prog_name,
             "--modname",

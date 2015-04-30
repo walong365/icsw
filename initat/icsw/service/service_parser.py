@@ -76,10 +76,7 @@ class Parser(object):
 
     def _execute(self, opt_ns):
         from .main import main
-        # cleanup parser
-        if hasattr(opt_ns, "instance"):
-            if not opt_ns.instance and not opt_ns.client and not opt_ns.server and not opt_ns.system:
-                opt_ns.instance = ["ALL"]
+        # cleanup parsed args
         if opt_ns.subcom == "status":
             if opt_ns.all or opt_ns.almost_all:
                 opt_ns.thread = True
@@ -93,7 +90,7 @@ class Parser(object):
     @staticmethod
     def get_default_ns():
         sub_parser = argparse.ArgumentParser().add_subparsers()
-        def_ns = Parser()._add_status_parser(sub_parser).parse_args(["status"])
+        def_ns = Parser()._add_status_parser(sub_parser).parse_args([])
         def_ns.all = True
         def_ns.memory = True
         def_ns.database = True

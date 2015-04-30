@@ -17,19 +17,22 @@
 #
 """ returns status of the cluster and updates the cluster_name if necessary """
 
+import os
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
-from initat.tools import check_scripts
+from initat.icsw.service import instance, container, service_parser, transition
 from initat.tools import cluster_location
-import cs_base_class
 import initat.cluster_server
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import uuid_tools
+
+import cs_base_class
 
 
 class status(cs_base_class.server_com):
@@ -57,11 +60,11 @@ class status(cs_base_class.server_com):
 
 class server_status(cs_base_class.server_com):
     def _call(self, cur_inst):
-        _cs = check_scripts.ServiceContainer(cur_inst.log)
-        default_ns = check_scripts.ICSWParser.get_default_ns()
-        default_ns.instance = ["ALL"]
-        stat_xml = _cs.check_system(default_ns)
-        cur_inst.srv_com["status"] = stat_xml
+        inst_xml = instance.InstanceXML(cur_inst.log).tree
+        cur_c = container.ServiceContainer(cur_inst.log)
+        _def_ns = service_parser.Parser.get_default_ns()
+        cur_c.check_system(_def_ns, inst_xml)
+        cur_inst.srv_com["status"] = inst_xml
         cur_inst.srv_com.set_result(
             "checked system",
         )
@@ -70,33 +73,26 @@ class server_status(cs_base_class.server_com):
 class server_control(cs_base_class.server_com):
     def _call(self, cur_inst):
         cmd = cur_inst.srv_com["*control"]
-        instance = cur_inst.srv_com["*instance"]
-        cur_inst.log("command {} for instance {}".format(cmd, instance))
-        _cs = check_scripts.ServiceContainer(cur_inst.log)
-        inst_xml = _cs.get_instance_xml().find("instance[@name='{}']".format(instance))
-        if inst_xml is None:
-            cur_inst.srv_com.set_result(
-                "instance {} not found".format(instance),
-                server_command.SRV_REPLY_STATE_ERROR,
-            )
-        else:
-            if "init_script_name" in inst_xml.attrib:
-                cur_com = "/etc/init.d/{} {}".format(inst_xml.get("init_script_name"), cmd)
-                ret_stat, _stdout, _stderr = process_tools.call_command(cur_com, cur_inst.log)
-                if ret_stat:
-                    cur_inst.srv_com.set_result(
-                        "error calling '{}': {}".format(cur_com, "{} {}".format(_stdout, _stderr)),
-                        server_command.SRV_REPLY_STATE_ERROR,
-                    )
-                else:
-                    cur_inst.srv_com.set_result(
-                        "ok called '{}': {}".format(cur_com, "{} {}".format(_stdout, _stderr).strip()),
-                    )
+        service = cur_inst.srv_com["*instance"]
+        cur_inst.log("command {} for instance {}".format(cmd, service))
+        inst_xml = instance.InstanceXML(cur_inst.log).tree
+        cur_c = container.ServiceContainer(cur_inst.log)
+
+        _def_ns = service_parser.Parser.get_default_ns()
+        _def_ns.service = [service]
+        _def_ns.subcom = cmd
+        cur_t = transition.ServiceTransition(_def_ns, cur_c, inst_xml, cur_inst.log)
+        while True:
+            _left = cur_t.step(cur_c)
+            if _left:
+                time.sleep(0.2)
             else:
-                cur_inst.srv_com.set_result(
-                    "instance {} has not init script".format(instance),
-                    server_command.SRV_REPLY_STATE_ERROR,
-                )
+                break
+        cur_inst.srv_com.set_result(
+            "done",
+            server_command.SRV_REPLY_STATE_OK,
+
+        )
 
 
 # merged from modify_service_mod
