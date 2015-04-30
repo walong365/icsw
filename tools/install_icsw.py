@@ -20,12 +20,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import argparse
+import logging
 
 import platform
 import os
 import os.path
 import subprocess
 import sys
+
+
+log = logging.getLogger("install_icsw")
 
 
 try:
@@ -97,6 +101,8 @@ class SuseHandler(OSHandler):
             if repo_url not in str(repo_list):
                 command = ("zypper", "addrepo", repo_url, repo_name)
                 self.process_command(command)
+            else:
+                log.debug("Repo {} already installed".format(repo_name))
 
     def install_icsw(self):
         commands = [
@@ -118,10 +124,56 @@ class CentosHandler(OSHandler):
 
 class AptgetHandler(OSHandler):
     def add_repos(self):
-        raise NotImplementedError()
+        distro = platform.linux_distribution()[0].lower()
+
+        if distro == "ubuntu":
+            # we only support 12.04 explicitly as of now
+            repos = (
+                (
+                    "initat_cluster_devel.list",
+                    "deb http://www.initat.org/cluster/DEBs/ubuntu_12.04/cluster-devel precise main\n",
+                ),
+                (
+                    "initat_extra.list",
+                    "deb http://www.initat.org/cluster/DEBs/ubuntu_12.04/extra precise main\n"
+                )
+            )
+        elif distro == "debian":
+            debian_version = platform.linux_distribution()[1]
+
+            if debian_version.startswith("6"):
+                debian_release = "squeeze"
+            elif debian_version.startswith("7"):
+                debian_release = "wheezy"
+            else:
+                raise RuntimeError("Unsupported debian version: {}.\n".format(platform.linux_distribution()) +
+                                   "Currently squeeze and wheezy are supporeted.")
+
+            repos = (
+                (
+                    "initat_cluster_devel.list",
+                    "deb http://www.initat.org/cluster/DEBs/debian_{rel}/cluster-devel {rel} main\n".format(
+                        rel=debian_release)
+                ),
+                (
+                    "initat_extra.list",
+                    "deb http://www.initat.org/cluster/DEBs/debian_{rel}/extra {rel} main\n".format(rel=debian_release)
+                )
+            )
+        else:
+            raise RuntimeError("Unsupported debian platform: {}.\n".format(platform.linux_distribution()))
+
+        for repo_file_name, file_content in repos:
+            full_repo_file_path = os.path.join("/etc/apt/sources.list.d", repo_file_name)
+            if not os.path.exists(full_repo_file_path):
+                with open(full_repo_file_path, 'w') as repo_file:
+                    repo_file.write(file_content)
+            else:
+                log.debug("file {} already exists.".format(full_repo_file_path))
 
     def install_icsw(self):
-        raise NotImplementedError()
+        self.process_command(("apt-get", "update"))
+        self.process_command(("apt-get", "install", "icsw-server"))
 
 
 def parse_args():
@@ -140,10 +192,11 @@ def parse_args():
 
 def main():
 
+    logging.basicConfig(level=logging.DEBUG)
+
     opts = parse_args()
 
     if not opts.show_commands:
-        print(input)
         answer = input("This script will add repositories and install packages using your package management. " +
                        "Continue? (y/n) ")
         if answer.lower() != "y":
@@ -155,10 +208,13 @@ def main():
 
     local_os = OSHandler.get_local_os(opts)
 
+    log.debug("Adding repos")
     local_os.add_repos()
 
+    log.debug("Installing packages")
     local_os.install_icsw()
 
+    log.debug("Installing license file")
     local_os.process_command(
         (
             "icsw",
