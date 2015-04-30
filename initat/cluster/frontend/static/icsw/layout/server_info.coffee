@@ -172,9 +172,6 @@ angular.module(
                         return "#{_found} (#{-_diff} too much)"
                     else
                         return "#{_found} (#{-_diff} missing)"
-        has_force_option: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            return parseInt(_xml.attr("has_force_stop"))
         stop_allowed: (instance) ->
             if instance in ["memcached", "uwsg-init"]
                 return false
@@ -209,8 +206,6 @@ angular.module(
                 return scope.srv_info.get_mem_info(scope.instance)
             scope.get_mem_value = () ->
                 return scope.srv_info.get_mem_value(scope.instance)
-            scope.has_force_option = () ->
-                return scope.srv_info.has_force_option(scope.instance)
             scope.stop_allowed = () ->
                 return scope.srv_info.stop_allowed(scope.instance)
             scope.action = (type) ->
