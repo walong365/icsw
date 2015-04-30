@@ -48,7 +48,7 @@ class Service(object):
         self.__attrib = dict(self.__entry.attrib)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(log_level, u"[srv {}] {}".format(self.name, what))
+        self.__log_com(u"[srv {}] {}".format(self.name, what), log_level)
 
     @property
     def entry(self):
