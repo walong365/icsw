@@ -1073,7 +1073,10 @@ class logfile(logging.handlers.BaseRotatingHandler):
     def shouldRollover(self, record):
         do_rollover = False
         if self.__max_size > 0:
-            msg = u"{}\n".format(self.format(record))
+            try:
+                msg = u"{}\n".format(self.format(record))
+            except:
+                msg = self.format(record) + "\n"
             try:
                 if self.stream.tell() + len(msg) > self.__max_size:
                     do_rollover = True

@@ -20,6 +20,8 @@
 
 """ parser for the icsw service subcommand """
 
+import argparse
+
 
 class Parser(object):
     def link(self, sub_parser):
@@ -45,6 +47,7 @@ class Parser(object):
         # _srvc.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
         _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
         _srvc.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
+        return _srvc
 
     def _add_start_parser(self, sub_parser):
         _act = sub_parser.add_parser("start", help="start service")
@@ -90,18 +93,12 @@ class Parser(object):
 
     @staticmethod
     def get_default_ns():
-        def_ns = argparse.Namespace(
-            subcom="status",
-            all=True,
-            instance=[],
-            system=[],
-            server=[],
-            client=[],
-            memory=True,
-            database=True,
-            pid=True,
-            started=True,
-            thread=True,
-            version=True,
-        )
+        sub_parser = argparse.ArgumentParser().add_subparsers()
+        def_ns = Parser()._add_status_parser(sub_parser).parse_args(["status"])
+        def_ns.all = True
+        def_ns.memory = True
+        def_ns.database = True
+        def_ns.pid = True
+        def_ns.started = True
+        def_ns.thread = True
         return def_ns
