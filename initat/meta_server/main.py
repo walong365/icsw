@@ -49,6 +49,7 @@ def main():
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log", autoconf_exclude=True)),
             ("LOG_NAME", configfile.str_c_var("meta-server", autoconf_exclude=True)),
             ("MAIN_DIR", configfile.str_c_var("/var/lib/meta-server", autoconf_exclude=True)),
+            ("STATE_DIR", configfile.str_c_var("/var/lib/meta-server/.srvstate", autoconf_exclude=True)),
             ("FROM_NAME", configfile.str_c_var("meta-server", help_string="from address for info mails [%(default)s]")),
             ("FROM_ADDR", configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),
             ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),

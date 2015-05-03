@@ -65,11 +65,18 @@ class HeaderText(urwid.Text):
         self.set_text("Service overview ({})".format(time.ctime(time.time())))
 
 
+class LogwatchView(urwid.GridFlow):
+    _sizing = frozenset(["box"])
+
+    def render(self, *args, **kwargs):
+        print args, kwargs
+
+
 class SrvController(object):
     def __init__(self, opt_ns, srv_c, inst_xml):
         self.srv_text = ServiceOutput(opt_ns, srv_c, inst_xml)
         self.top_text = HeaderText("", align="left")
-        self.bottom_text = urwid.Text("bottom", align="left")
+        self.bottom_text = urwid.Text("bottom text", align="left")
         self.main_text = urwid.Text("Wait please...", align="left")
         # self.bottom_text = urwid.Text("bottom", align="left")
         palette = [
@@ -79,40 +86,36 @@ class SrvController(object):
             ("warning", "yellow,bold", "black"),
             ("critical", "dark red,bold", "black"),
         ]
-        urwid_map = urwid.AttrMap(
-            urwid.Filler(
-                urwid.Pile(
-                    [
-                        urwid.AttrMap(
-                            self.top_text,
-                            "banner"
-                        ),
-                        urwid.Columns(
+        urwid_map = urwid.Frame(
+            urwid.ListBox(
+                [
+                    urwid.AttrMap(
+                        self.top_text,
+                        "banner"
+                    ),
+                    urwid.Columns(
+                        [
+                            ("weight", 80, self.srv_text),
+                            # ("weight", 40, urwid.AttrMap(
+                            #    self.main_text,
+                            #    "banner"
+                            # )),
+                        ],
+                    ),
+                    urwid.AttrMap(
+                        urwid.Pile(
                             [
-                                ("weight", 60, self.srv_text),
-                                ("weight", 40, urwid.AttrMap(
-                                    self.main_text,
-                                    "banner"
-                                )),
-
+                                self.bottom_text,
                             ]
                         ),
-                        urwid.AttrMap(
-                            urwid.Pile(
-                                [
-                                    self.bottom_text,
-                                ]
-                            ),
-                            "banner"
-                        ),
-                    ]
-                ),
-                "top"
-            ),
-            ""
+                        "banner"
+                    ),
+                ]
+            )
         )
         self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
         self.mainloop.set_alarm_in(10, self._alarm_callback)
+        self.mainloop.screen.clear()
         self._update_screen()
 
     def _handler_data(self, in_char):

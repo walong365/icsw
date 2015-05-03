@@ -26,7 +26,10 @@ import signal
 import stat
 import time
 
+import argparse
 from initat.meta_server.config import global_config
+from initat.meta_server.servicestate import ServiceState
+from initat.icsw.service import container, transition, instance, service_parser
 from initat.tools import configfile
 from initat.tools import logging_tools
 from initat.tools import mail_tools
@@ -35,6 +38,7 @@ from initat.tools import server_command
 from initat.tools import threading_tools
 from initat.tools import server_mixins
 from initat.tools import inotify_tools
+from lxml import etree
 import zmq
 from initat.host_monitoring import hm_classes
 from initat.client_version import VERSION_STRING
@@ -42,6 +46,7 @@ from initat.client_version import VERSION_STRING
 
 class main_process(threading_tools.process_pool, server_mixins.network_bind_mixin):
     def __init__(self):
+        self.__debug = global_config["DEBUG"]
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq_debug=global_config["ZMQ_DEBUG"])
         # check for correct rights
@@ -60,7 +65,8 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         self.__last_memcheck_time = time.time() - 2 * global_config["MIN_MEMCHECK_TIME"]
         self._init_meminfo()
         self._show_config()
-        self._scan_meta_dir()
+        self._init_statemachine()
+        # self._scan_meta_dir()
         self.register_timer(self._check, 30, instant=True)
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -69,7 +75,23 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         else:
             self.__log_cache.append((lev, what))
 
+
+    def _init_statemachine(self):
+        self.__transitions = []
+        self.def_ns = service_parser.Parser.get_default_ns()
+        self.service_state = ServiceState(self.log)
+        self.server_instance = instance.InstanceXML(self.log)
+        self.container = container.ServiceContainer(self.log)
+        self.service_state.sync_with_instance(self.server_instance)
+        self.__watcher.add_watcher(
+            "xml",
+            self.server_instance.source_dir,
+            inotify_tools.IN_CLOSE_WRITE | inotify_tools.IN_DELETE,
+            self._instance_event,
+        )
+
     def _init_inotify(self):
+        self.__loopcount = 0
         self.__watcher = inotify_tools.InotifyWatcher(log_com=self.log)
         self.__watcher.add_watcher(
             "main",
@@ -93,6 +115,12 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         else:
             pass
 
+    def _instance_event(self, *args, **kwargs):
+        self.log("instance directory changed")
+        # check for pending changes ?
+        self.server_instance.reread()
+        self.service_state.sync_with_instance(self.server_instance)
+
     def _inotify_event(self, *args, **kwargs):
         _event = args[0]
         if _event.mask & inotify_tools.IN_DELETE:
@@ -109,7 +137,7 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         new_stat = cur_stat | stat.S_IWGRP | stat.S_IRGRP | stat.S_IRUSR | stat.S_IWUSR | stat.S_IWOTH | stat.S_IROTH
         if cur_stat != new_stat:
             self.log(
-                "modifing stat of {} from {:o} to {:o}".format(
+                "modifying stat of {} from {:o} to {:o}".format(
                     main_dir,
                     cur_stat,
                     new_stat,
@@ -129,8 +157,6 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
         if not _spm:
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
-        msi_block.start_command = "/etc/init.d/meta-server start"
-        msi_block.stop_command = "/etc/init.d/meta-server force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
@@ -150,6 +176,7 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         )
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         if hm_classes and global_config["TRACK_CSW_MEMORY"]:
+            self.log("CSW memory tracking enabled, target is {}".format(conn_str))
             vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
             vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
             vector_socket.connect(conn_str)
@@ -330,25 +357,25 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
 
-    def _scan_meta_dir(self):
-        # initial scan
-        _list = []
-        if os.path.isdir(global_config["MAIN_DIR"]):
-            for fname in os.listdir(global_config["MAIN_DIR"]):
-                full_name = os.path.join(global_config["MAIN_DIR"], fname)
-                new_meta_info = self._read_msi_from_disk(full_name)
-                if new_meta_info:
-                    _list.append(new_meta_info)
-        self.__msi_dict = {msi.name: msi for msi in _list}
-        # build file lut
-        self.__file_lut = {msi.file_name: msi.name for msi in self.__msi_dict.itervalues()}
-        all_names = sorted(self.__msi_dict.keys())
-        self.log(
-            "{} found: {}".format(
-                logging_tools.get_plural("meta_info_block", len(all_names)),
-                ", ".join(all_names)
-            )
-        )
+    # def _scan_meta_dir(self):
+    #    # initial scan
+    #    _list = []
+    #    if os.path.isdir(global_config["MAIN_DIR"]):
+    #        for fname in os.listdir(global_config["MAIN_DIR"]):
+    #            full_name = os.path.join(global_config["MAIN_DIR"], fname)
+    #            new_meta_info = self._read_msi_from_disk(full_name)
+    #            if new_meta_info:
+    #                _list.append(new_meta_info)
+    #    self.__msi_dict = {msi.name: msi for msi in _list}
+    #    # build file lut
+    #    self.__file_lut = {msi.file_name: msi.name for msi in self.__msi_dict.itervalues()}
+    #    all_names = sorted(self.__msi_dict.keys())
+    #    self.log(
+    #        "{} found: {}".format(
+    #            logging_tools.get_plural("meta_info_block", len(all_names)),
+    #            ", ".join(all_names)
+    #        )
+    #    )
 
     def _check(self):
         act_time = time.time()
@@ -364,11 +391,19 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             self.__last_update_time = act_time
             self._check_processes()
 
+    def _handle_transition(self):
+        new_list = []
+        for _trans in self.__transitions:
+            if _trans.step(self.container):
+                new_list.append(_trans)
+        self.__transitions = new_list
+        if not self.__transitions:
+            self.unregister_timer(self._handle_transition)
+
     def _check_processes(self):
+        self.__loopcount += 1
         act_time = time.time()
-        del_list = []
-        mem_info_dict = {}
-        act_pid_dict = process_tools.get_proc_list()
+        # act_pid_dict = process_tools.get_proc_list()
         _check_mem = act_time > self.__last_memcheck_time + global_config["MIN_MEMCHECK_TIME"] and global_config["TRACK_CSW_MEMORY"]
         if _check_mem:
             self.__last_memcheck_time = act_time
@@ -376,16 +411,37 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         # pprint.pprint(act_pid_dict)
         # print act_pid_list
         problems = []
-        for key, struct in self.__msi_dict.iteritems():
-            if struct.check_block(act_pid_dict):
-                problems.append((key, struct))
+        _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
+        trans_list = self.service_state.update(_res_list)
+        if trans_list:
+            if self.__debug:
+                self.log(
+                    "handling {}: {}".format(
+                        logging_tools.get_plural("transition", len(trans_list)),
+                        ", ".join(["{} -> {}".format(_name, _action) for _name, _action in trans_list])
+                    )
+                )
             else:
-                # check memory consumption if everything is ok
-                if struct.check_memory and _check_mem:
-                    pids = struct.get_unique_pids()
-                    if pids:
-                        # only count memory for one pid
-                        mem_info_dict[key] = {pid: (struct.get_process_name(pid), process_tools.get_mem_info(pid)) for pid in pids}
+                self.log(
+                    "handling {}".format(
+                        logging_tools.get_plural("transition", len(trans_list)),
+                    )
+                )
+            for name, command in trans_list:
+                _new_t = transition.ServiceTransition(
+                    argparse.Namespace(subcom=command, service=[name]),
+                    self.container,
+                    self.server_instance.tree,
+                    self.log
+                )
+                if _new_t.step(self.container):
+                    self.__transitions.append(_new_t)
+            if not self.__transitions:
+                self.register_timer(self._handle_transition, 5, instant=True)
+        if False:
+            for key, struct in self.__msi_dict.iteritems():
+                if struct.check_block(act_pid_dict):
+                    problems.append((key, struct))
         for key, struct in problems:
             pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
             do_sthg = (struct.pid_checks_failed >= 2 and pids_failed_time >= global_config["FAILED_CHECK_TIME"])
@@ -448,18 +504,28 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                 for line in log_lines:
                     self.log(line)
                 del_list.append(key)
-        if _check_mem and mem_info_dict:
-            self._show_meminfo(mem_info_dict)
-        if del_list:
-            del_list.sort()
+        if _check_mem and _res_list:
+            self._show_meminfo(_res_list)
+        end_time = time.time()
+        if end_time - act_time > 1:
             self.log(
-                "removed {}: {}".format(
-                    logging_tools.get_plural("block", len(del_list)),
-                    ", ".join(del_list)
+                "update {:d} took {}".format(
+                    self.__loopcount,
+                    logging_tools.get_diff_time_str(end_time - act_time),
                 )
             )
-            for d_p in del_list:
-                self._delete_msi_by_name(d_p)
+        if False:
+            # now handled in service container
+            if del_list:
+                del_list.sort()
+                self.log(
+                    "removed {}: {}".format(
+                        logging_tools.get_plural("block", len(del_list)),
+                        ", ".join(del_list)
+                    )
+                )
+                for d_p in del_list:
+                    self._delete_msi_by_name(d_p)
 
     def _read_msi_from_disk(self, file_name):
         new_meta_info = process_tools.meta_server_info(file_name, self.log)
@@ -479,45 +545,20 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             new_meta_info = None
         return new_meta_info
 
-    def _delete_msi_by_name(self, msi_name):
-        msi = self.__msi_dict[msi_name]
-        self.log("removing MSI-block {}".format(msi_name))
-        del self.__file_lut[msi.file_name]
-        del self.__msi_dict[msi.name]
-
     def _delete_msi_by_file_name(self, file_name):
-        if file_name in self.__file_lut:
-            self._delete_msi_by_name(self.__file_lut[file_name])
-        else:
-            self.log(
-                "MSI for file_name {} not defined".format(
-                    file_name
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
+        self.log("msi file {} has been removed, triggering check".format(file_name))
+        self._check_processes()
 
     def _update_or_create_msi_by_file_name(self, file_name):
-        if file_name in self.__file_lut:
-            cur_meta_info = self.__msi_dict[self.__file_lut[file_name]]
-            new_meta_info = self._read_msi_from_disk(file_name)
-            if new_meta_info:
-                self.__msi_dict[new_meta_info.name] = new_meta_info
-                new_meta_info.set_last_pid_check_ok_time(cur_meta_info.get_last_pid_check_ok_time())
-                new_meta_info.pid_checks_failed = cur_meta_info.pid_checks_failed
-                # self.log("updated MSI-block for {}".format(new_meta_info.name))
-            else:
-                self._delete_msi_by_file_name(file_name)
-        else:
-            # create new msi
-            new_meta_info = self._read_msi_from_disk(file_name)
-            if new_meta_info:
-                self.__msi_dict[new_meta_info.name] = new_meta_info
-                self.__file_lut[new_meta_info.file_name] = new_meta_info.name
+        self.log("file {} has been changed or created, triggering check".format(file_name))
+        # changes in MSI-blocks are now handled in the state machine
+        self._check_processes()
 
-    def _show_meminfo(self, mem_info_dict):
+    def _show_meminfo(self, res_list):
         act_time = time.time()
         self.__act_meminfo_line += 1
-        act_meminfo_keys = sorted(mem_info_dict.keys())
+        valid_entries = [entry for entry in res_list if entry.entry.find(".//memory_info[@valid='1']") is not None]
+        act_meminfo_keys = [entry.name for entry in valid_entries]
         if act_meminfo_keys != self.__last_meminfo_keys or self.__act_meminfo_line > 100:
             self.__act_meminfo_line = 0
             self.__last_meminfo_keys = act_meminfo_keys
@@ -540,20 +581,30 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             # handle removal of old keys, track pids, TODO, FIXME
             old_keys = set(self.mis_dict.keys())
             new_keys = set()
-            for key in act_meminfo_keys:
+            for entry in valid_entries:
+                key = entry.name
                 tot_mem = 0
-                for proc_name, mem_usage in mem_info_dict[key].itervalues():
-                    tot_mem += mem_usage
-                    f_key = (key, proc_name)
-                    info_str = "memory usage of {} ({})".format(key, proc_name)
-                    if f_key not in self.mis_dict:
-                        self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.{}.{}".format(key, proc_name), info=info_str, default=0, unit="Byte", base=1024)
-                    self.mis_dict[f_key].update(mem_usage)
-                    self.mis_dict[f_key].info = info_str
-                    self.mis_dict[f_key].valid_until = mv_valid
-                    new_keys.add(f_key)
-                    my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
-                if proc_name not in self.mis_dict:
+                mem_el = entry.entry.find(".//memory_info")
+                tot_mem = int(mem_el.text.strip())
+                if mem_el.find("details") is not None:
+                    for _detail in mem_el.findall("details/mem"):
+                        proc_name = _detail.get("name")
+                        f_key = (key, proc_name)
+                        info_str = "memory usage of {} ({})".format(key, proc_name)
+                        if f_key not in self.mis_dict:
+                            self.mis_dict[f_key] = hm_classes.mvect_entry(
+                                "mem.icsw.{}.{}".format(key, proc_name),
+                                info=info_str,
+                                default=0,
+                                unit="Byte",
+                                base=1024
+                            )
+                        self.mis_dict[f_key].update(int(_detail.text))
+                        self.mis_dict[f_key].info = info_str
+                        self.mis_dict[f_key].valid_until = mv_valid
+                        new_keys.add(f_key)
+                        my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
+                if key not in self.mis_dict:
                     self.mis_dict[key] = hm_classes.mvect_entry(
                         "mem.icsw.{}.total".format(key),
                         info="memory usage of {}".format(key),
@@ -578,13 +629,9 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                 " / ".join(
                     [
                         process_tools.beautify_mem_info(
-                            sum(
-                                [
-                                    value[1] for value in mem_info_dict.get(key, {}).itervalues()
-                                ]
-                            ),
+                            int(_el.entry.find(".//memory_info").text),
                             short=True
-                        ) for key in act_meminfo_keys
+                        ) for _el in valid_entries
                     ]
                 )
             )

@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ package server """
-import sys
+
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
@@ -26,11 +26,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-import daemon
 from django.db import connection
 from initat.cluster.backbone.models import LogSource
 from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
-from io_stream_helper import io_stream
 from initat.tools import config_tools
 from initat.tools import configfile
 from initat.tools import process_tools
@@ -44,25 +42,27 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
+    global_config = configfile.configuration(process_tools.get_programm_name())
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
-        ("USER", configfile.str_c_var("idpacks", help_string="user to run as [%(default)s]")),
-        ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
-        ("GROUPS", configfile.array_c_var(["idg"])),
-        ("FORCE", configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME", configfile.str_c_var(prog_name)),
-        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("SERVER_PUB_PORT", configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
-        ("NODE_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
-        ("DELETE_MISSING_REPOS", configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
-        ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]")),
-    ])
+    global_config.add_config_entries(
+        [
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
+            ("USER", configfile.str_c_var("idpacks", help_string="user to run as [%(default)s]")),
+            ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
+            ("GROUPS", configfile.array_c_var(["idg"])),
+            ("FORCE", configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            ("SERVER_PUB_PORT", configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
+            ("NODE_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
+            ("DELETE_MISSING_REPOS", configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
+            ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]")),
+        ]
+    )
     global_config.parse_file()
     _options = global_config.handle_commandline(
         description="{}, version is {}".format(
@@ -91,7 +91,6 @@ def main():
     )
     # close DB connection
     connection.close()
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code()
     configfile.terminate_manager()
     os._exit(0)

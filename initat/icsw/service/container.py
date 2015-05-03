@@ -91,6 +91,7 @@ class ServiceContainer(object):
         self.update_proc_dict()
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True)
+        return check_list
 
     def decide(self, subcom, service):
         # based on the entry state and the command given in opt_ns decide what to do
@@ -136,9 +137,7 @@ class ServiceContainer(object):
                     if "num_started" not in s_info.attrib:
                         cur_line.append(logging_tools.form_entry(s_info.text))
                     else:
-                        num_started, num_found, num_diff, any_ok = (
-                            int(s_info.get("num_started")),
-                            int(s_info.get("num_found")),
+                        num_diff, any_ok = (
                             int(s_info.get("num_diff")),
                             True if int(act_struct.attrib["any_threads_ok"]) else False
                         )
@@ -146,39 +145,13 @@ class ServiceContainer(object):
                         num_pids = len(_res.findall(".//pids/pid"))
                         da_name = ""
                         if any_ok:
-                            ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
+                            pass
                         else:
-                            diffs_found = s_info.findall("diff_info")
-                            if diffs_found:
-                                diff_str = ", [diff: {}]".format(
-                                    ", ".join(
-                                        [
-                                            "{:d}: {:d}".format(int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found
-                                        ]
-                                    )
-                                )
-                            else:
-                                diff_str = ""
                             if num_diff < 0:
-                                ret_str = "{} {} missing{}".format(
-                                    logging_tools.get_plural("thread", -num_diff),
-                                    num_diff == 1 and "is" or "are",
-                                    diff_str,
-                                )
                                 da_name = "critical"
                             elif num_diff > 0:
-                                ret_str = "{} too much{}".format(
-                                    logging_tools.get_plural("thread", num_diff),
-                                    diff_str,
-                                )
                                 da_name = "warning"
-                            else:
-                                ret_str = "the thread is running" if num_started == 1 else "{}{} ({}) running".format(
-                                    "all " if num_pids > 1 else "",
-                                    logging_tools.get_plural("process", num_pids),
-                                    logging_tools.get_plural("thread", num_started),
-                                )
-                        cur_line.append(logging_tools.form_entry(ret_str, header="Thread info", display_attribute=da_name))
+                        cur_line.append(logging_tools.form_entry(s_info.attrib["proc_info_str"], header="Thread info", display_attribute=da_name))
                 if opt_ns.started:
                     start_time = int(act_struct.find(".//state_info").get("start_time", "0"))
                     if start_time:

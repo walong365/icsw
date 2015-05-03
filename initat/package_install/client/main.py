@@ -35,7 +35,7 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
+    global_config = configfile.configuration(process_tools.get_programm_name())
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
@@ -69,7 +69,8 @@ def main():
         add_exit_after_writeback_option=True,
         positional_arguments=False,
         add_auto_config_option=True,
-        partial=False)
+        partial=False
+    )
     ret_code = 0
     if _options.exit_after_writeback and _options.writeback:
         pass
@@ -99,7 +100,6 @@ def main():
         if not ret_code:
             global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
             process_tools.renice(global_config["NICE_LEVEL"])
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
             run_code()
             configfile.terminate_manager()
             # exit

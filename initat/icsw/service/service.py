@@ -25,6 +25,7 @@
 import os
 import stat
 import subprocess
+import signal
 import sys
 
 from lxml.builder import E  # @UnresolvedImport
@@ -204,16 +205,25 @@ class Service(object):
                 act_state, act_str = (SERVICE_DEAD, "not running")
         else:
             act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
-        result.append(E.state_info(act_str, check_source="simple", state="{:d}".format(act_state)))
+        result.append(
+            E.state_info(
+                act_str,
+                check_source="simple",
+                state="{:d}".format(act_state),
+                proc_info_str=act_str,
+            ),
+        )
 
     def _check_meta(self, result, act_proc_dict):
         init_script_name = self.init_script_name
         c_name = self.__attrib["meta_server_name"]
         ms_name = self.msi_name
         if os.path.exists(ms_name):
+            # TODO : cache msi files
             ms_block = process_tools.meta_server_info(ms_name)
             start_time = ms_block.start_time
-            ms_block.check_block(act_proc_dict)
+            if not ms_block.check_block(act_proc_dict):
+                print self.name, ms_block.pid_check_string
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
             act_pids = ms_block.pids_found
@@ -239,11 +249,19 @@ class Service(object):
                     num_found="{:d}".format(num_found),
                     num_diff="{:d}".format(num_diff),
                     start_time="{:d}".format(int(start_time)),
-                    state="{:d}".format(act_state)
+                    state="{:d}".format(act_state),
+                    proc_info_str=self._get_proc_info_str(
+                        num_started,
+                        num_found,
+                        num_diff,
+                        len(act_pids),
+                        diff_dict,
+                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                    )
                 ),
             )
             # print act_pids, ms_block.pids
-            self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid())
+            self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid(), msi_block=ms_block)
         else:
             self._add_non_running(result, check_init_script=False)
 
@@ -271,12 +289,55 @@ class Service(object):
                     num_found="{:d}".format(num_found),
                     num_diff="{:d}".format(num_diff),
                     start_time="{:d}".format(start_time),
-                    state="{:d}".format(act_state)
+                    state="{:d}".format(act_state),
+                    proc_info_str=self._get_proc_info_str(
+                        num_started,
+                        num_found,
+                        num_diff,
+                        len(act_pids),
+                        diff_dict,
+                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                    )
                 ),
             )
             self._add_pids(result, act_pids)
         else:
             self._add_non_running(result)
+
+    def _get_proc_info_str(self, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
+        if any_ok:
+            ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
+        else:
+            if diff_dict:
+                diff_str = ", [diff: {}]".format(
+                    ", ".join(
+                        [
+                            "{:d}: {:d}".format(_key, _value) for _key, _value in diff_dict.iteritems()
+                        ]
+                    )
+                )
+            else:
+                diff_str = ""
+            if num_diff < 0:
+                ret_str = "{} {} missing{}".format(
+                    logging_tools.get_plural("thread", -num_diff),
+                    num_diff == 1 and "is" or "are",
+                    diff_str,
+                )
+                da_name = "critical"
+            elif num_diff > 0:
+                ret_str = "{} too much{}".format(
+                    logging_tools.get_plural("thread", num_diff),
+                    diff_str,
+                )
+                da_name = "warning"
+            else:
+                ret_str = "the thread is running" if num_started == 1 else "{}{} ({}) running".format(
+                    "all " if num_pids > 1 else "",
+                    logging_tools.get_plural("process", num_pids),
+                    logging_tools.get_plural("thread", num_started),
+                )
+        return ret_str
 
     def _check_processes(self, pids, act_proc_dict):
         name = self.name
@@ -317,7 +378,7 @@ class Service(object):
                 )
             )
 
-    def _add_pids(self, result, act_pids, main_pid=None):
+    def _add_pids(self, result, act_pids, main_pid=None, msi_block=None):
         # print "+", main_pid
         if act_pids:
             result.append(
@@ -331,13 +392,25 @@ class Service(object):
                     ]
                 )
             )
-            result.append(
-                E.memory_info(
-                    "{:d}".format(
-                        sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))
-                    ) if act_pids else "",
-                )
+            mem_dict = {
+                cur_pid: process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids)
+            }
+
+            _mem_info = E.memory_info(
+                "{:d}".format(
+                    sum(mem_dict.values()),
+                ) if act_pids else "",
+                valid="1" if act_pids else "0",
             )
+            if msi_block and act_pids:
+                _mem_info.append(
+                    E.details(
+                        *[
+                            E.mem("{:d}".format(_value), name=msi_block.get_process_name(_key)) for _key, _value in mem_dict.iteritems()
+                        ]
+                    )
+                )
+            result.append(_mem_info)
 
     # action commands
     def action(self, action, act_proc_dict):
@@ -383,7 +456,7 @@ class Service(object):
                 except OSError:
                     self.log("process {:d} has vanished".format(_pid), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.log("sent 9 to {:d}".format(_pid))
+                    self.log("sent signal 9 to {:d}".format(_pid))
         # remove meta server
         ms_name = self.msi_name
         if os.path.exists(ms_name):
@@ -399,6 +472,8 @@ class Service(object):
             self._debug_py()
 
     def _debug_py(self):
+        # ignore sigint to catch keyboard interrupt
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         arg_list = self._generate_py_arg_list(debug=True)
         arg_list.append("--debug")
         self.log("debug, arg_list is '{}'".format(" ".join(arg_list)))
@@ -413,10 +488,10 @@ class Service(object):
             try:
                 if _main_pids:
                     os.kill(_main_pids[0], 15)
-                    self.log("sent 15 to {:d}".format(_main_pids[0]))
+                    self.log("sent signal 15 to {:d}".format(_main_pids[0]))
                 else:
                     os.kill(_meta_pids[0], 15)
-                    self.log("sent 15 to {:d}".format(_meta_pids[0]))
+                    self.log("sent signal 15 to {:d}".format(_meta_pids[0]))
             except OSError:
                 self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -431,6 +506,8 @@ class Service(object):
         if not os.fork():
             subprocess.call(arg_list + ["-d"])
             os._exit(1)
+        else:
+            print os.wait()
 
     def _generate_py_arg_list(self, debug=False):
         cur_name = self.name
@@ -467,15 +544,15 @@ class Service(object):
                 ]
             )
         # check access rights
-        for _dir_el in self.__entry.findall(".//access-rights/file[@value]"):
+        for _dir_el in self.__entry.findall(".//access-rights/dir[@value]"):
             _dir = _dir_el.get("value")
             if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
                 os.makedirs(_dir)
             if os.path.isdir(_dir):
                 os.chown(
                     _dir,
-                    process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
-                    process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
+                    process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
+                    process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
                 )
         for _file_el in self.__entry.findall(".//access-rights/file[@value]"):
             if os.path.isfile(_file_el.get("value")):

@@ -467,14 +467,11 @@ class meta_server_info(object):
             parsed = False
         if parsed:
             self.__meta_server_dir = os.path.dirname(name)
-            self.pid_checks_ok, self.pid_checks_failed = (0, 0)
-            self.set_last_pid_check_ok_time()
         else:
             self.__start_time = time.time()
             self.__file_name = None
             self.set_meta_server_dir("/var/lib/meta-server")
             self.__name = name
-            self.pid_checks_ok, self.pid_checks_failed = (0, 0)
             for opt, val_type, def_val in self.__prop_list:
                 setattr(self, opt, def_val)
         self.parsed = parsed
@@ -555,12 +552,6 @@ class meta_server_info(object):
     @property
     def start_time(self):
         return self.__start_time
-
-    def get_last_pid_check_ok_time(self):
-        return self.__last_check_ok
-
-    def set_last_pid_check_ok_time(self, last_t=None):
-        self.__last_check_ok = last_t or time.time()
 
     def set_meta_server_dir(self, msd):
         self.__meta_server_dir = msd
@@ -830,25 +821,16 @@ class meta_server_info(object):
                     bound_dict[unique_pid] = 0
         self.missing_list = missing_list
         self.bound_dict = bound_dict
-        # num_found = sum([value for value in self.__pids_found.values()])
-        # num_expected = sum([value for value in self.__pids_expected.values()])
         if any([value != 0 for value in bound_dict.itervalues()]):
-            self.pid_checks_failed += 1
-            _error = True
+            _ok = False
         else:
             if not self.__pids_found and self.__need_any_pids:
-                self.pid_checks_failed += 1
-                _error = True
+                _ok = False
             elif any([value > 0 for value in bound_dict.itervalues()]):
-                self.pid_checks_failed += 1
-                _error = True
+                _ok = False
             else:
-                # clear failed_checks
-                self.pid_checks_failed = 0
-                self.pid_checks_ok += 1
-                self.__last_check_ok = time.time()
-                _error = False
-        return _error
+                _ok = True
+        return _ok
 
     @property
     def pid_check_string(self):
