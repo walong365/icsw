@@ -30,9 +30,16 @@ def stdout_logger(what, log_level=logging_tools.LOG_LEVEL_OK):
         print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
 
-def get_logger(log_type):
+def stdout_all_logger(what, log_level=logging_tools.LOG_LEVEL_OK):
+    print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
+
+
+def get_logger(log_type, **kwargs):
     if log_type == "stdout":
-        return stdout_logger
+        if kwargs.get("all", False):
+            return stdout_all_logger
+        else:
+            return stdout_logger
     else:
         return logging_tools.get_logger(
             ""

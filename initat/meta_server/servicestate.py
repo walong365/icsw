@@ -28,7 +28,7 @@ import sqlite3
 import time
 
 from initat.meta_server.config import global_config
-from initat.tools import logging_tools
+from initat.tools import logging_tools, server_command
 from initat.icsw.service import constants
 
 
@@ -178,6 +178,16 @@ class ServiceState(object):
             # transition lock dict
             self.__transition_lock_dict = {}
 
+    def _update_target_dict(self):
+        _changed = False
+        with self.get_cursor(cached=False) as crsr:
+            for _name, _target_state in crsr.execute("SELECT name, target_state FROM service"):
+                if _name in self.__target_dict:
+                    if self.__target_dict[_name] != _target_state:
+                        self.__target_dict[_name] = _target_state
+                        _changed = True
+        return _changed
+
     def _update_state(self, name, state, running, proc_info_str):
         _save = False
         if (state, running) != self.__state_dict.get(name, None):
@@ -295,6 +305,7 @@ class ServiceState(object):
                     _pids = _res.findall(".//pid")
                     _proc_info_str = _res.find("state_info").get("proc_info_str", "")
                     _running = 1 if len(_pids) else 0
+                    # todo: enable a forced-mode in case the target_state was changed
                     _is_ok = self._update_state(_el.name, _state, _running, _proc_info_str)
                     if not _is_ok:
                         _stable = self._check_for_stable_state(_el.name)
@@ -317,3 +328,79 @@ class ServiceState(object):
         self.conn.commit()
         return t_list
         # print _res, etree.tostring(_el.entry, pretty_print=True)
+
+    def handle_command(self, srv_com):
+        # returns True if the state machine should be triggered
+        trigger = False
+        _com = srv_com["command"].text[5:]
+        _bldr = srv_com.builder()
+        cur_time = time.time()
+        if _com == "overview":
+            instances = _bldr.instances()
+            services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+            with self.get_cursor() as crsr:
+                with self.get_cursor() as state_crsr:
+                    for _srv_id, name, target_state, active in crsr.execute("SELECT idx, name, target_state, active FROM service ORDER BY name"):
+                        if services and name not in services:
+                            continue
+                        instances.append(
+                            _bldr.instance(
+                                _bldr.states(
+                                    *[
+                                        _bldr.state(
+                                            state="{:d}".format(int(state)),
+                                            running="{:d}".format(int(running)),
+                                            created="{:d}".format(int(created)),
+                                            proc_info_str=proc_info_str,
+                                        ) for state, running, created, proc_info_str in state_crsr.execute(
+                                            "SELECT state, running, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                                            (_srv_id, cur_time - 24 * 3600),
+                                        )
+                                    ]
+                                ),
+                                name=name,
+                                target_state="{:d}".format(target_state),
+                                active="{:d}".format(active),
+                            )
+                        )
+            srv_com["overview"] = instances
+        elif _com == "enable":
+            services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+            with self.get_cursor(cached=False) as crsr:
+                enable_list = [
+                    (_entry[0], _entry[1]) for _entry in crsr.execute(
+                        "SELECT idx, name FROM service WHERE target_state=0"
+                    ).fetchall() if _entry[1] in services
+                ]
+                for _idx, _name in enable_list:
+                    crsr.execute("UPDATE service SET target_state=1 WHERE idx=?", (_idx,))
+            srv_com.set_result(
+                "enabled {}: {}".format(
+                    logging_tools.get_plural("service", len(enable_list)),
+                    ", ".join([_name for _id, _name in enable_list]) or "none",
+                )
+            )
+            trigger = self._update_target_dict()
+        elif _com == "disable":
+            services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+            with self.get_cursor(cached=False) as crsr:
+                disable_list = [
+                    (_entry[0], _entry[1]) for _entry in crsr.execute(
+                        "SELECT idx, name FROM service WHERE target_state=1"
+                    ).fetchall() if _entry[1] in services
+                ]
+                for _idx, _name in disable_list:
+                    crsr.execute("UPDATE service SET target_state=0 WHERE idx=?", (_idx,))
+            srv_com.set_result(
+                "disabled {}: {}".format(
+                    logging_tools.get_plural("service", len(disable_list)),
+                    ", ".join([_name for _id, _name in disable_list]) or "none",
+                )
+            )
+            trigger = self._update_target_dict()
+        else:
+            srv_com.set_result(
+                "command {} not defined".format(srv_com["command"].text),
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+        return trigger

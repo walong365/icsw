@@ -23,10 +23,11 @@
 """ checks installed servers on system """
 
 import os
-
 import time
 import datetime
-import logging_tools
+import sys
+
+from initat.tools import logging_tools, net_tools, server_command
 
 from . import instance
 from . import container
@@ -44,6 +45,35 @@ def show_form_list(form_list):
     print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
     form_list.display_attribute_map = d_map
     print(unicode(form_list))
+
+
+def _state_overview(opt_ns, result):
+    _instances = result.xpath(".//ns:instances/ns:instance")
+    print("instances reported: {}".format(logging_tools.get_plural("instance", len(_instances))))
+    for _inst in _instances:
+        _trans = []
+        last_trans = None
+        for _src_trans in result.xpath(".//ns:state", start_el=_inst):
+            # todo: remove duplicates
+            _trans.append(_src_trans)
+        print(
+            "{:<30s}, target state is {:<20s} [{}], {} in the last 24 hours".format(
+                _inst.get("name"),
+                {0: "stopped", 1: "started"}[int(_inst.attrib["target_state"])],
+                "active" if int(_inst.attrib["active"]) else "inactive",
+                logging_tools.get_plural("transition", len(_trans)),
+            )
+        )
+        if opt_ns.trans:
+            for _cur_t in _trans:
+                print(
+                    "    {} state={}, running={} [{}]".format(
+                        time.ctime(int(_cur_t.attrib["created"])),
+                        _cur_t.attrib["state"],
+                        _cur_t.attrib["running"],
+                        _cur_t.attrib["proc_info_str"],
+                    )
+                )
 
 
 def main(opt_ns):
@@ -70,3 +100,23 @@ def main(opt_ns):
                 time.sleep(1)
             else:
                 break
+    elif opt_ns.subcom in ["state"]:
+        # override logger
+        log_com = logging.get_logger(opt_ns.logger, all=True)
+        # contact meta-server at localhost
+        _result = net_tools.zmq_connection(
+            "icsw_state_{:d}".format(os.getpid())
+        ).add_connection(
+            "tcp://localhost:8012",
+            server_command.srv_command(
+                command="state{}".format(opt_ns.statecom),
+                services=",".join(opt_ns.service),
+            ),
+        )
+        if _result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
+            log_com(*_result.get_log_tuple())
+            sys.exit(1)
+        if opt_ns.statecom == "overview":
+            _state_overview(opt_ns, _result)
+        elif opt_ns.statecom in ["disable", "enable"]:
+            log_com(*_result.get_log_tuple())

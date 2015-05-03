@@ -75,7 +75,6 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         else:
             self.__log_cache.append((lev, what))
 
-
     def _init_statemachine(self):
         self.__transitions = []
         self.def_ns = service_parser.Parser.get_default_ns()
@@ -217,6 +216,7 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             )
 
     def _recv_command(self, zmq_sock):
+        trigger_sm = False
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)  # @UndefinedVariable
         if more:
@@ -230,6 +230,9 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             srv_com.set_result("ok")
             if srv_com["command"].text == "status":
                 self._check_srv_com_msi_block(srv_com, self.__msi_block)
+            elif srv_com["command"].text.startswith("state"):
+                # trigger state machine when necessary
+                trigger_sm = self.service_state.handle_command(srv_com)
             elif srv_com["*command"] in ["msi_exists", "msi_stop", "msi_restart", "msi_force_stop", "msi_force_restart"]:
                 msi_block = self._get_msi_block(srv_com)
                 if msi_block is not None:
@@ -259,6 +262,8 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+        if trigger_sm:
+            self._check_processes()
 
     def _show_config(self):
         try:
