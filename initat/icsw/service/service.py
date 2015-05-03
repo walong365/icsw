@@ -222,8 +222,8 @@ class Service(object):
             # TODO : cache msi files
             ms_block = process_tools.meta_server_info(ms_name)
             start_time = ms_block.start_time
-            if not ms_block.check_block(act_proc_dict):
-                print self.name, ms_block.pid_check_string
+            # if not ms_block.check_block(act_proc_dict):
+            #    print self.name, ms_block.pid_check_string
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
             act_pids = ms_block.pids_found
@@ -507,7 +507,7 @@ class Service(object):
             subprocess.call(arg_list + ["-d"])
             os._exit(1)
         else:
-            print os.wait()
+            _child_pid, _child_state = os.wait()
 
     def _generate_py_arg_list(self, debug=False):
         cur_name = self.name

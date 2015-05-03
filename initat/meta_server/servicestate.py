@@ -104,16 +104,16 @@ class ServiceState(object):
             ],
             "action": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
-                "state INTEGER",
-                # 0 ... stop, 1 ... start, 2 ... restart
-                "action INTEGER DEFAULT 0",
+                "service INTEGER",
+                # action (stop, start, restart)
+                "action TEXT NOT NULL",
                 # success of operation (0 ... no success, 1 ... success)
                 "success INTEGER DEFAULT 0",
                 # runtime in seconds
                 "runtime REAL DEFAULT 0.0",
                 # creation time
                 "created INTEGER NOT NULL",
-                "FOREIGN KEY(state) REFERENCES state(idx)",
+                "FOREIGN KEY(service) REFERENCES service(idx)",
             ]
         }
         all_tables = {_entry[0]: _entry[1] for _entry in conn.execute("SELECT name, sql FROM sqlite_master WHERE type='table';").fetchall()}
@@ -238,12 +238,29 @@ class ServiceState(object):
             return []
         else:
             self.__transition_lock_dict[name] = cur_time
+            _action = {0: "stop", 1: "restart"}[self.__target_dict[name]]
+            with self.get_cursor() as crs:
+                crs.execute(
+                    "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
+                    (self.__service_lut[name], _action, int(time.time())),
+                )
+                trans_id = crs.lastrowid
             return [
                 (
                     name,
-                    {0: "stop", 1: "restart"}[self.__target_dict[name]],
+                    _action,
+                    trans_id,
                 )
             ]
+
+    def transition_finished(self, trans):
+        id = trans.id
+        self.log("transition {:d} finished".format(id))
+        with self.get_cursor(cached=False) as crs:
+            crs.execute(
+                "UPDATE action SET runtime=? WHERE idx=?",
+                (abs(time.time() - trans.init_time), id),
+            )
 
     def update(self, res_list):
         # return a transition list

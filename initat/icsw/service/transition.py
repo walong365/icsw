@@ -40,9 +40,10 @@ WAIT_TIME = 5
 
 
 class ServiceTransition(object):
-    def __init__(self, opt_ns, cur_c, inst_xml, log_com):
+    def __init__(self, opt_ns, cur_c, inst_xml, log_com, id=None):
         self.__log_com = log_com
         self.target = opt_ns.subcom
+        self.id = id
         self.list = cur_c.apply_filter(opt_ns, inst_xml)
         self.finished = False
         self.__step_num = 0
@@ -54,6 +55,10 @@ class ServiceTransition(object):
             )
         )
         self.__init_time = time.time()
+
+    @property
+    def init_time(self):
+        return self.__init_time
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SrvT] {}".format(what), log_level)

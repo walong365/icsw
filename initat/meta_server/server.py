@@ -396,6 +396,8 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         for _trans in self.__transitions:
             if _trans.step(self.container):
                 new_list.append(_trans)
+            else:
+                self.service_state.transition_finished(_trans)
         self.__transitions = new_list
         if not self.__transitions:
             self.unregister_timer(self._handle_transition)
@@ -418,7 +420,7 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                 self.log(
                     "handling {}: {}".format(
                         logging_tools.get_plural("transition", len(trans_list)),
-                        ", ".join(["{} -> {}".format(_name, _action) for _name, _action in trans_list])
+                        ", ".join(["{} -> {}".format(_name, _action) for _name, _action, _id in trans_list])
                     )
                 )
             else:
@@ -427,15 +429,18 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                         logging_tools.get_plural("transition", len(trans_list)),
                     )
                 )
-            for name, command in trans_list:
+            for name, command, trans_id in trans_list:
                 _new_t = transition.ServiceTransition(
                     argparse.Namespace(subcom=command, service=[name]),
                     self.container,
                     self.server_instance.tree,
-                    self.log
+                    self.log,
+                    trans_id,
                 )
                 if _new_t.step(self.container):
                     self.__transitions.append(_new_t)
+                else:
+                    self.service_state.transition_finished(_new_t)
             if not self.__transitions:
                 self.register_timer(self._handle_transition, 5, instant=True)
         if False:
