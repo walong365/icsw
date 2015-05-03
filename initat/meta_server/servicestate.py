@@ -51,13 +51,22 @@ STATE_DICT = {
     (constants.SERVICE_OK, 0): "pids missing",
     (constants.SERVICE_OK, 1): "OK",
     (constants.SERVICE_DEAD, 0): "not running",
-    (constants.SERVICE_DEAD, 1): "nearly running",
+    (constants.SERVICE_DEAD, 1): "incompletely running",
     (constants.SERVICE_NOT_INSTALLED, 0): "not installed",
     (constants.SERVICE_NOT_INSTALLED, 1): "strange",
     (constants.SERVICE_NOT_CONFIGURED, 0): "not configured",
     # ??? FIXME
     (constants.SERVICE_NOT_CONFIGURED, 1): "unlicensend",
 }
+
+
+TARGET_STATE_STOPPED = 0
+TARGET_STATE_RUNNING = 1
+
+SERVICE_OK_LIST = [
+    (TARGET_STATE_STOPPED, (constants.SERVICE_DEAD, 0)),
+    (TARGET_STATE_RUNNING, (constants.SERVICE_OK, 1)),
+]
 
 
 class ServiceState(object):
@@ -185,13 +194,14 @@ class ServiceState(object):
                     (self.__service_lut[name], running, state, proc_info_str, int(time.time())),
                 )
         # check if the current state is in sync with the targetstate
-        is_ok = (self.__target_dict[name], self.__state_dict[name]) in [
-            (0, (constants.SERVICE_DEAD, 0)), (1, (constants.SERVICE_OK, 1)),
-        ]
+        is_ok = (self.__target_dict[name], self.__state_dict[name]) in SERVICE_OK_LIST
         return is_ok
 
     def _check_for_stable_state(self, name):
-        C_TIME = 60 * 1
+        # interval for which the state has be stable
+        STABLE_INTERVAL = 60 * 1
+        # how old the latest state entry must be at least
+        MIN_STATE_TIME = 20
         # check database for state records
         cur_time = int(time.time())
         with self.get_cursor() as crs:
@@ -204,8 +214,8 @@ class ServiceState(object):
             _first = _records.pop(0)
             _stable_time = _first[2]
             for _rec in _records:
-                if _rec[2] < C_TIME:
-                    # only compare records which are not older than C_TIME
+                if _rec[2] < STABLE_INTERVAL:
+                    # only compare records which are not older than STABLE_INTERVAL
                     if _rec[0:2] != _first[0:2]:
                         _stable = False
                         break
@@ -216,10 +226,20 @@ class ServiceState(object):
                 "state for service {} is not stable ({} < {})".format(
                     name,
                     logging_tools.get_diff_time_str(_stable_time),
-                    logging_tools.get_diff_time_str(C_TIME),
+                    logging_tools.get_diff_time_str(STABLE_INTERVAL),
                 ),
                 logging_tools.LOG_LEVEL_WARN
             )
+        else:
+            # compare record for SERVICE_OK_LIST
+            c_rec = (self.__target_dict[name], tuple(_first[0:2]))
+            # print _first, c_rec
+            if c_rec not in SERVICE_OK_LIST and _first[2] < MIN_STATE_TIME:
+                self.log("state is OK", logging_tools.LOG_LEVEL_WARN)
+                _stable = False
+            elif _first[2] < MIN_STATE_TIME:
+                self.log("state not old enough ({:.2f} < {:.2f})".format(_first[2], MIN_STATE_TIME), logging_tools.LOG_LEVEL_WARN)
+                _stable = False
         return _stable
 
     def _generate_transition(self, name):
