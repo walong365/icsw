@@ -22,8 +22,10 @@
 """ inotify tools """
 
 import logging
+
 from initat.tools import logging_tools
 import pyinotify
+
 
 pyinotify.log.setLevel(logging.CRITICAL)
 

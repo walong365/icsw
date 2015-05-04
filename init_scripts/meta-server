@@ -41,14 +41,14 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
-	    ${ICSW}/icsw start meta-server
+	    ${ICSW} start meta-server
         fi
         rc_status -v
     ;;
     stop)
         echo -n "Stopping meta-server "
         if [ -f ${SERVER_PID} ] ; then
-	    ${ICSW}/icsw stop meta-server
+	    ${ICSW} stop meta-server
         else
             rc_failed
         fi
@@ -56,11 +56,15 @@ case "$1" in
         rc_status -v
     ;;
     status)
-        ${ICSW}/icsw status meta-server
+        ${ICSW} status meta-server
         rc_status -v 
     ;;
+    restart)
+        ${ICSW} restart meta-server
+        rc_status -v
+    ;;
     *)
-        echo "Usage: $0 {start|stop|status}"
+        echo "Usage: $0 {start|stop|restart|status}"
         exit 1
     ;;
 esac

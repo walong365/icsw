@@ -83,7 +83,8 @@ class Parser(object):
     def _add_state_overview_parser(self, sub_parser):
         _act = sub_parser.add_parser("overview", help="state overview")
         _act.set_defaults(statecom="overview")
-        _act.add_argument("--trans", default=False, action="store_true", help="show transitions [%(default)s]")
+        _act.add_argument("--state", default=False, action="store_true", help="show states [%(default)s]")
+        _act.add_argument("--action", default=False, action="store_true", help="show actions [%(default)s]")
         self._add_iccs_sel(_act)
 
     def _add_state_enable_parser(self, sub_parser):

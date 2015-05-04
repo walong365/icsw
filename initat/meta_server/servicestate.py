@@ -80,6 +80,7 @@ class ServiceState(object):
         self._db_path = os.path.join(self._path, "servicestate.sqlite")
         self.init_db()
         self.init_states()
+        self.__shutdown = False
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[SrvState] {}".format(what), log_level)
@@ -87,6 +88,12 @@ class ServiceState(object):
     def init_db(self):
         self.conn = sqlite3.connect(self._db_path)
         self.check_schema(self.conn)
+
+    def enable_shutdown_mode(self):
+        self.log("enable shutdown mode")
+        self.__shutdown = True
+        for _key in self.__target_dict.iterkeys():
+            self.__target_dict[_key] = TARGET_STATE_STOPPED
 
     def check_schema(self, conn):
         _table_dict = {
@@ -120,6 +127,8 @@ class ServiceState(object):
                 "success INTEGER DEFAULT 0",
                 # runtime in seconds
                 "runtime REAL DEFAULT 0.0",
+                # finished
+                "finished INTEGER DEFAULT 0",
                 # creation time
                 "created INTEGER NOT NULL",
                 "FOREIGN KEY(service) REFERENCES service(idx)",
@@ -147,7 +156,7 @@ class ServiceState(object):
         return DBCursor(self.conn, cached)
 
     def sync_with_instance(self, inst_xml):
-        with self.get_cursor() as cursor:
+        with self.get_cursor(cached=False) as cursor:
             _current_names = [_entry[0] for _entry in cursor.execute("SELECT name FROM service").fetchall()]
             _new_names = inst_xml.tree.xpath(".//instance[@startstop='1']/@name", smart_strings=False)
             new_services = set(_new_names) - set(_current_names)
@@ -288,11 +297,15 @@ class ServiceState(object):
         self.log("transition {:d} finished".format(id))
         with self.get_cursor(cached=False) as crs:
             crs.execute(
-                "UPDATE action SET runtime=? WHERE idx=?",
+                "UPDATE action SET runtime=?, finished=1 WHERE idx=?",
                 (abs(time.time() - trans.init_time), id),
             )
 
-    def update(self, res_list):
+    def update(self, res_list, **kwargs):
+        # services to exclude from transition
+        exclude = kwargs.get("exclude", [])
+        # force mode
+        force = kwargs.get("force", False)
         # return a transition list
         t_list = []
         for _el in res_list:
@@ -308,19 +321,24 @@ class ServiceState(object):
                     # todo: enable a forced-mode in case the target_state was changed
                     _is_ok = self._update_state(_el.name, _state, _running, _proc_info_str)
                     if not _is_ok:
-                        _stable = self._check_for_stable_state(_el.name)
-                        _el.log(
-                            "not OK ({}, state {} [{}], {}, {})".format(
-                                "should run" if self.__target_dict[_el.name] else "should not run",
-                                STATE_DICT[(_state, _running)],
-                                "stable" if _stable else "not stable",
-                                logging_tools.get_plural("pid", len(_pids)),
-                                _proc_info_str or '---',
-                            ),
-                            logging_tools.LOG_LEVEL_WARN
-                        )
-                        if _stable:
-                            t_list.extend(self._generate_transition(_el.name))
+                        if self.__shutdown:
+                            if _el.name not in exclude:
+                                t_list.extend(self._generate_transition(_el.name))
+                        else:
+                            _stable = self._check_for_stable_state(_el.name)
+                            _el.log(
+                                "not OK ({}, state {} [{}], {}, {})".format(
+                                    "should run" if self.__target_dict[_el.name] else "should not run",
+                                    STATE_DICT[(_state, _running)],
+                                    "stable" if _stable else "not stable",
+                                    logging_tools.get_plural("pid", len(_pids)),
+                                    _proc_info_str or '---',
+                                ),
+                                logging_tools.LOG_LEVEL_WARN
+                            )
+                            if _stable or force:
+                                if _el.name not in exclude:
+                                    t_list.extend(self._generate_transition(_el.name))
                     # if _state or True:
                     #    print "*", _el.name, _state, len(_pids)
                 else:
@@ -332,6 +350,13 @@ class ServiceState(object):
     def handle_command(self, srv_com):
         # returns True if the state machine should be triggered
         trigger = False
+        if self.__shutdown:
+            # ignore commands when in shutdown mode
+            srv_com.set_result(
+                "server is shutting down",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+            return trigger
         _com = srv_com["command"].text[5:]
         _bldr = srv_com.builder()
         cur_time = time.time()
@@ -348,12 +373,26 @@ class ServiceState(object):
                                 _bldr.states(
                                     *[
                                         _bldr.state(
-                                            state="{:d}".format(int(state)),
-                                            running="{:d}".format(int(running)),
+                                            state="{:d}".format(state),
+                                            running="{:d}".format(running),
                                             created="{:d}".format(int(created)),
                                             proc_info_str=proc_info_str,
                                         ) for state, running, created, proc_info_str in state_crsr.execute(
                                             "SELECT state, running, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                                            (_srv_id, cur_time - 24 * 3600),
+                                        )
+                                    ]
+                                ),
+                                _bldr.actions(
+                                    *[
+                                        _bldr.action(
+                                            action="{:s}".format(action),
+                                            success="{:d}".format(success),
+                                            runtime="{:.2f}".format(runtime),
+                                            finished="{:d}".format(finished),
+                                            created="{:d}".format(int(created)),
+                                        ) for action, success, runtime, finished, created in state_crsr.execute(
+                                            "SELECT action, success, runtime, finished, created FROM action WHERE service=? AND created > ? ORDER BY -created",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )
                                     ]

@@ -29,8 +29,7 @@ import signal
 import sys
 
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 import psutil
 
 from .constants import *
@@ -420,6 +419,8 @@ class Service(object):
             "cleanup": self.cleanup,
             "wait": self.wait,
             "debug": self.debug,
+            # special command when active service is restart: signal a simple restart command
+            "signal_restart": self.signal_restart,
         }[action](act_proc_dict)
 
     def wait(self, act_proc_dict):
@@ -432,6 +433,29 @@ class Service(object):
             self._handle_service_rc("stop")
         else:
             self._stop_service_py()
+
+    def signal_restart(self, act_proc_dict):
+        if not int(self.__entry.get("startstop", "1")):
+            return
+        if self.__entry.get("check_type") == "simple":
+            return
+        else:
+            self._signal_restart_py()
+
+    def _signal_restart_py(self):
+        if self.name in ["meta-server"]:
+            from initat.tools import net_tools, server_command
+            self.log("sending signal-restart")
+            _result = net_tools.zmq_connection(
+                "icsw_restart_{:d}".format(os.getpid())
+            ).add_connection(
+                "tcp://localhost:8012",
+                server_command.srv_command(
+                    command="next-stop-is-restart",
+                ),
+            )
+            if _result is not None:
+                self.log(*_result.get_log_tuple())
 
     def start(self, act_proc_dict):
         if not int(self.__entry.get("startstop", "1")):

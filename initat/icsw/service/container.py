@@ -105,7 +105,7 @@ class ServiceContainer(object):
             True: {
                 "start": [],
                 "stop": ["stop", "wait", "cleanup"],
-                "restart": ["stop", "wait", "cleanup", "start"],
+                "restart": ["signal_restart", "stop", "wait", "cleanup", "start"],
                 "debug": ["stop", "wait", "cleanup", "debug"],
             }
         }[service.is_ok][subcom]

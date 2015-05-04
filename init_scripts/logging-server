@@ -56,14 +56,14 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
-	    ${ICSW}/icsw start logging-server
+	    ${ICSW} start logging-server
         fi
         rc_status -v
     ;;
     stop)
         echo -n "Stopping logging-server"
         if [ -f ${SERVER_PID} ] ; then
-	    ${ICSW}/icsw stop logging-server
+	    ${ICSW} stop logging-server
             for i in $(seq 10) ; do
                 echo -n "."
                 if [ -x /bin/usleep ] ; then
@@ -80,7 +80,7 @@ case "$1" in
         rc_status -v
     ;;
     status)
-        ${ICSW}/icsw status logging-server
+        ${ICSW} status logging-server
         rc_status -v
     ;;
     *)
