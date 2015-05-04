@@ -33,9 +33,11 @@ import pytz
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from django.core.cache import cache
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseUsageDeviceService
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data, \
@@ -599,7 +601,12 @@ class get_hist_device_data(ListAPIView):
 
         data_merged_state_types = {}
         for device_id, device_data in data_per_device.iteritems():
-            data_merged_state_types[device_id] = _device_status_history_util.merge_state_types(device_data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
+            data_merged_state_types[device_id] = _device_status_history_util.merge_state_types(
+                device_data,
+                trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+            )
+
+        LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.device, data_merged_state_types.iterkeys())
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
 
@@ -616,7 +623,8 @@ class get_hist_service_data(ListAPIView):
 
         def get_data_per_device(device_ids, timespans_db):
 
-            queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan__in=timespans_db)
+            queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids,
+                                                                             timespan__in=timespans_db)
             # can't do regular prefetch_related for queryset, this seems to work
 
             data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
@@ -668,8 +676,12 @@ class get_hist_service_data(ListAPIView):
         if int(request.GET.get("merge_services", 0)):
             return_data = merge_services(data_per_device)
 
+            LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.device, return_data.iterkeys())
+
         else:
             return_data = merge_state_types_per_device(data_per_device)
+
+            LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.service, return_data)
 
         return Response([return_data])  # fake a list, see coffeescript
 

@@ -30,7 +30,8 @@ import M2Crypto
 from dateutil import relativedelta
 import pytz
 
-from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP
+from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
+    LicenseUsage, LicenseViolation
 from initat.cluster.settings import TIME_ZONE
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.tools import process_tools
@@ -93,53 +94,55 @@ class LicenseFileReader(object):
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: quantity} of required parameters
         """
-        parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
+        if LicenseViolation.objects.is_violated(license):
+            state = LicenseState.violated
+        else:
+            parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
 
-        def get_state_from_license_xml(lic_xml):
+            def get_state_from_license_xml(lic_xml):
+                valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
+                valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)
+                valid_to_plus_grace = valid_to + LicenseUsage.GRACE_PERIOD
+                today = datetime.date.today()
 
-            # NOTE: keep in sync with js
-            grace_period = relativedelta.relativedelta(weeks=2)
+                # semantics: valid_from is from 00:00:00 of that day, valid to is till 23:59:59 of that day
 
-            valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
-            valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)
-            valid_to_plus_grace = valid_to + grace_period
-            today = datetime.date.today()
+                if today < valid_from:
+                    return LicenseState.valid_in_future
+                elif today > valid_to_plus_grace:
+                    return LicenseState.expired
+                elif today > valid_to:
+                    return LicenseState.grace
+                else:
+                    return LicenseState.valid
 
-            # semantics: valid_from is from 00:00:00 of that day, valid to is till 23:59:59 of that day
+            # check parameters via xpath
+            license_parameter_check = ""
+            if parameters is not None:
+                for lic_param_type, value in parameters.iteritems():
+                    license_parameter_check +=\
+                        "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(lic_param_type.name, value)
 
-            if today < valid_from:
-                return LicenseState.valid_in_future
-            elif today > valid_to_plus_grace:
-                return LicenseState.expired
-            elif today > valid_to:
-                return LicenseState.grace
-            else:
-                return LicenseState.valid
+            from initat.cluster.backbone.models import device_variable
 
-        state = None
+            q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
+                device_variable.objects.get_cluster_id()
+            )
+            q += "/icsw:license[icsw:id/text()='{}' {}]".format(license.name, license_parameter_check)
 
-        # check parameters via xpath
-        license_parameter_check = ""
-        if parameters is not None:
-            for lic_param_type, value in parameters.iteritems():
-                license_parameter_check +=\
-                    "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(lic_param_type.name, value)
+            state = LicenseState.none
+            for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
+                # these licenses match id and parameter, check if they are also valid right now
 
-        from initat.cluster.backbone.models import device_variable
-
-        q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
-            device_variable.objects.get_cluster_id()
-        )
-        q += "/icsw:license[icsw:id/text()='{}' {}]".format(license.name, license_parameter_check)
-
-        for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
-            # these licenses match id and parameter, check if they are also valid right now
-
-            s = get_state_from_license_xml(lic_xml)
-            if state is None or s > state:
-                state = s
+                s = get_state_from_license_xml(lic_xml)
+                if s > state:
+                    state = s
 
         return state
+
+    def get_valid_licenses(self):
+        pass
+        # LICTODO
 
     def get_license_packages_xml(self):
         return self.content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP)

@@ -28,7 +28,9 @@ from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.license import LicenseUsage
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImports
 import datetime
@@ -46,6 +48,7 @@ class device_rrds(View):
     @method_decorator(login_required)
     def post(self, request):
         dev_pks = request.POST.getlist("pks[]")
+        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         return _get_node_rrd(request, dev_pks)
 
 
