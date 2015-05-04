@@ -23,12 +23,10 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service",
+    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
-        $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
-        $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
         $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
         $scope.SERVICE_TYPES = $window.SERVICE_TYPES
         $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT
@@ -40,15 +38,7 @@ menu_module = angular.module(
         else
             $scope.HANDBOOK_CHUNKS_PRESENT = 0
             $scope.HANDBOOK_PAGE = "---"
-        $scope.check_perm = (p_name) ->
-            if p_name.split(".").length == 2
-                p_name = "backbone.#{p_name}"
-            if p_name of GLOBAL_PERMISSIONS
-                return true
-            else if p_name of OBJECT_PERMISSIONS
-                return true
-            else
-                return false
+        $scope.has_menu_permission = access_level_service.has_menu_permission
         $scope.progress_iters = 0
         $scope.cur_gauges = {}
         $scope.num_gauges = 0
@@ -101,7 +91,7 @@ menu_module = angular.module(
             )
             return false
         $scope.redirect_to_bgj_info = () ->
-            if $scope.check_perm('background_job.show_background')
+            if $scope.has_menu_permission('background_job.show_background')
                 window.location = ICSW_URLS.USER_BACKGROUND_JOB_INFO
             return false
         $scope.get_background_job_class = () ->

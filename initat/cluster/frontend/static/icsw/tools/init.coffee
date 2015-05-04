@@ -349,7 +349,11 @@ angular.module(
         #    console.log "s", in_dict["success"]
         cur_xhr = $.ajax(in_dict)
         return cur_xhr
-]).service("access_level_service", () ->
+]).service("access_level_service", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+    global_permissions = Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET().$object
+    # these are not permissions for single objects, but the merged permission set of all objects
+    object_permissions = Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET().$object
+
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
         if ac_name.split(".").length != 3
@@ -370,7 +374,7 @@ angular.module(
                 return false
         else
             # check global permissions
-            obj = GLOBAL_PERMISSIONS
+            obj = global_permissions
             if ac_name of obj
                 if any
                     if mask
@@ -381,7 +385,18 @@ angular.module(
                     return (obj[ac_name] & mask) == mask
             else
                 return false
+    has_menu_permission = (p_name) ->
+        if angular.isArray(p_name)
+            for p in p_name
+                if has_menu_permission(p)
+                    return true
+            return false
+        else
+            if p_name.split(".").length == 2
+                p_name = "backbone.#{p_name}"
+            return p_name of global_permissions or p_name of object_permissions
     func_dict = {
+        # functions to check permissions for single objects
         "acl_delete" : (obj, ac_name) ->
             return check_level(obj, ac_name, 4, true)
         "acl_create" : (obj, ac_name) ->
@@ -395,17 +410,14 @@ angular.module(
         "acl_all" : (obj, ac_name, mask) ->
             return check_level(obj, ac_name, mask, false)
 
+        # check if permission exists for any object (used for show/hide of entries of menu)
+        has_menu_permission: has_menu_permission
     }
-    return {
-        "install" : (scope) ->
-            scope.acl_create = func_dict["acl_create"]
-            scope.acl_modify = func_dict["acl_modify"]
-            scope.acl_delete = func_dict["acl_delete"]
-            scope.acl_read = func_dict["acl_read"]
-            scope.acl_any = func_dict["acl_any"]
-            scope.acl_all = func_dict["acl_all"]
-   }
-).config(['$httpProvider', 
+    return angular.extend({
+        install : (scope) ->
+            angular.extend(scope, func_dict)
+   }, func_dict)
+]).config(['$httpProvider',
     ($httpProvider) ->
         $httpProvider.defaults.xsrfCookieName = 'csrftoken'
         $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'

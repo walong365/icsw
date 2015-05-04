@@ -38,7 +38,7 @@ import itertools
 from initat.cluster.backbone.models.model_history import icsw_deletion_record
 from rest_framework.response import Response
 import reversion
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 import initat.cluster
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
@@ -342,3 +342,25 @@ class get_device_ip(View):
         return HttpResponse(json.dumps({"ip": ip}), content_type="application/json")
 
 
+class GetGlobalPermissions(RetrieveAPIView):
+    @staticmethod
+    def _unfold(in_dict):
+        # provide perms as "backbone.user.modify_tree: 0" as well as as "backbone { user { modify_tree: 0 } }"
+        _keys = in_dict.keys()
+        # unfold dictionary
+        for _key in _keys:
+            _parts = _key.split(".")
+            in_dict.setdefault(_parts[0], {}).setdefault(_parts[1], {})[_parts[2]] = in_dict[_key]
+        return in_dict
+
+    @method_decorator(login_required)
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return Response(self._unfold(request.user.get_global_permissions()))
+
+
+class GetObjectPermissions(RetrieveAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return Response(GetGlobalPermissions._unfold(request.user.get_all_object_perms(None)))

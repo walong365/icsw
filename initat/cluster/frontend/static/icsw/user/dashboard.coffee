@@ -147,8 +147,8 @@ dashboard_module = angular.module(
                 blob = new Blob(content, {type: "text/plain;charset=utf-8"});
                 # use FileSaver.js
                 saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
-]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS",
-    ($scope, $timeout, $window, ICSW_URLS) ->
+]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS", "access_level_service"
+    ($scope, $timeout, $window, ICSW_URLS, access_level_service) ->
         $scope.ICSW_URLS = ICSW_URLS
         $scope.show_index = true
         $scope.quick_open = true
@@ -158,16 +158,8 @@ dashboard_module = angular.module(
         $scope.jobinfo_open = true
         $scope.show_devices = false
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
-        $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
-        $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
         $scope.NUM_QUOTA_SERVERS = $window.NUM_QUOTA_SERVERS
-        $scope.check_perm = (p_name) ->
-            if p_name of GLOBAL_PERMISSIONS
-                return true
-            else if p_name of OBJECT_PERMISSIONS
-                return true
-            else
-                return false
+        $scope.has_menu_permission = access_level_service.has_menu_permission
 ]).directive("indexView", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
