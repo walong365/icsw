@@ -35,16 +35,13 @@ import psutil
 from .service import Service
 from .constants import *
 
-# wait 5 seconds before killing processes
-WAIT_TIME = 5
-
 
 class ServiceTransition(object):
     def __init__(self, opt_ns, cur_c, inst_xml, log_com, id=None):
         self.__log_com = log_com
         self.target = opt_ns.subcom
         self.id = id
-        self.list = cur_c.apply_filter(opt_ns, inst_xml)
+        self.list = cur_c.apply_filter(opt_ns.service, inst_xml)
         self.finished = False
         self.__step_num = 0
         self.log(
@@ -86,7 +83,7 @@ class ServiceTransition(object):
                 cur_time = time.time()
                 _doit = True
                 if entry.name in self.__wait_dict:
-                    if abs(cur_time - self.__wait_dict[entry.name]) < WAIT_TIME:
+                    if abs(cur_time - self.__wait_dict[entry.name]) < int(entry.attrib["wait_time"]):
                         new_list.append((_action, entry))
                         _doit = False
                     else:

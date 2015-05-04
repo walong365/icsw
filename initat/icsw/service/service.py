@@ -41,6 +41,18 @@ class Service(object):
         "logcheck-server": "logcheck",
     }
 
+    def __new__(cls, entry, log_com):
+        _ct = entry.attrib["check_type"]
+        if _ct == "simple":
+            new_cls = SimpleService  # (entry, log_com)
+        elif _ct == "meta":
+            new_cls = MetaService  # (entry, log_com)
+        elif _ct == "pid_file":
+            new_cls = PIDService  # (entry, log_com)
+        else:
+            raise KeyError("unknown check_type '{}'".format(_ct))
+        return super(Service, new_cls).__new__(new_cls)
+
     def __init__(self, entry, log_com):
         self.__log_com = log_com
         self.name = entry.attrib["name"]
@@ -51,16 +63,20 @@ class Service(object):
         self.__log_com(u"[srv {}] {}".format(self.name, what), log_level)
 
     @property
+    def attrib(self):
+        return self.__attrib
+
+    @property
     def entry(self):
         return self.__entry
 
     @property
     def init_script_name(self):
-        return os.path.join("/etc", "init.d", self.__attrib["init_script_name"])
+        return os.path.join("/etc", "init.d", self.attrib["init_script_name"])
 
     @property
     def msi_name(self):
-        c_name = self.__attrib["meta_server_name"]
+        c_name = self.attrib["meta_server_name"]
         _path = os.path.join("/var", "lib", "meta-server", c_name)
         # compat layer for buggy specs
         if not os.path.exists(_path) and c_name in self._COMPAT_DICT:
@@ -72,7 +88,7 @@ class Service(object):
     @property
     def old_binary(self):
         # returns name of old binary
-        _old_bin = self.__entry.findtext(".//old-binary")
+        _old_bin = self.entry.findtext(".//old-binary")
         if _old_bin:
             _old_bin = _old_bin.strip()
         else:
@@ -81,7 +97,7 @@ class Service(object):
 
     @property
     def prog_title(self):
-        _prog_title = self.__entry.findtext(".//programm-title")
+        _prog_title = self.entry.findtext(".//programm-title")
         if _prog_title:
             _prog_title = _prog_title.strip()
         else:
@@ -90,7 +106,7 @@ class Service(object):
 
     @property
     def prog_name(self):
-        _prog_name = self.__entry.findtext(".//programm-name")
+        _prog_name = self.entry.findtext(".//programm-name")
         if _prog_name:
             _prog_name = _prog_name.strip()
         else:
@@ -99,7 +115,7 @@ class Service(object):
 
     @property
     def module_name(self):
-        _mod_name = self.__entry.findtext(".//module-name")
+        _mod_name = self.entry.findtext(".//module-name")
         if _mod_name:
             _mod_name = _mod_name.strip()
         else:
@@ -109,7 +125,7 @@ class Service(object):
     @property
     def is_ok(self):
         # return True if the service in entry is running
-        _si = self.__entry.find(".//state_info")
+        _si = self.entry.find(".//state_info")
         if _si is not None:
             _state = int(_si.get("state"))
             return True if _state == SERVICE_OK else False
@@ -117,36 +133,29 @@ class Service(object):
             return False
 
     def check(self, act_proc_dict, refresh=True, config_tools=None):
-        if self.__entry.find("result") is not None:
+        if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
-                self.__entry.remove(self.__entry.find("result"))
+                self.entry.remove(self.entry.find("result"))
             else:
                 # result record already present, return
                 return
         dev_config = []
         if config_tools is not None:
-            if self.__entry.find(".//config_names/config_name") is not None:
+            if self.entry.find(".//config_names/config_name") is not None:
                 # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
-                _conf_names = [_entry.text for _entry in self.__entry.findall(".//config_names/config_name")]
+                _conf_names = [_entry.text for _entry in self.entry.findall(".//config_names/config_name")]
                 for _conf_name in _conf_names:
                     _cr = config_tools.server_check(server_type=_conf_name)
                     if _cr.effective_device:
                         dev_config.append(_cr)
         _result = E.result()
-        self.__entry.append(_result)
+        self.entry.append(_result)
 
-        if self.__attrib["check_type"] == "simple":
-            self._check_simple(_result)
-        elif self.__attrib["check_type"] == "meta":
-            self._check_meta(_result, act_proc_dict)
-        elif self.__attrib["check_type"] == "pid_file":
-            self._check_pid_file(_result, act_proc_dict)
-        else:
-            _result.append(E.state_info("unknown check_type '{}'".format(self.__attrib["check_type"]), state="1"))
+        self._check(_result, act_proc_dict)
 
         act_state = int(_result.find("state_info").attrib["state"])
-        if self.__attrib["runs_on"] == "server":
+        if self.attrib["runs_on"] == "server":
             if dev_config:  # is not None:
                 sql_info = ", ".join([_dc.server_info_str for _dc in dev_config])
             else:
@@ -157,7 +166,7 @@ class Service(object):
                 _state_info.text = "not configured"
                 _state_info.attrib["state"] = "{:d}".format(act_state)
         else:
-            sql_info = self.__attrib["runs_on"]
+            sql_info = self.attrib["runs_on"]
         if type(sql_info) == str:
             _result.append(
                 E.sql_info(str(sql_info))
@@ -169,13 +178,13 @@ class Service(object):
                     sql_info.config_name),
                 )
             )
-        if self.__entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
+        if self.entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
             _result.attrib["version_ok"] = "0"
             try:
-                if "version_file" in self.__attrib:
-                    _path = self.__attrib["version_file"]
+                if "version_file" in self.attrib:
+                    _path = self.attrib["version_file"]
                 else:
-                    _path = "%{{INIT_BASE}}/{runs_on}_version.py".format(**self.__attrib)
+                    _path = "%{{INIT_BASE}}/{runs_on}_version.py".format(**self.attrib)
                 _path = _path.replace("%{INIT_BASE}", INIT_BASE)
                 _lines = file(_path, "r").read().split("\n")
                 _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
@@ -186,122 +195,6 @@ class Service(object):
                     _result.attrib["version"] = "no version lines found in '{}'".format(_path)
             except:
                 _result.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
-
-    def _check_simple(self, result):
-        init_script_name = self.init_script_name
-        if os.path.isfile(init_script_name):
-            act_pids = []
-            for _proc in psutil.process_iter():
-                try:
-                    if _proc.is_running() and _proc.name() == self.__attrib["process_name"]:
-                        act_pids.append(_proc.pid)
-                except psutil.NoSuchProcess:
-                    pass
-            if act_pids:
-                act_state, act_str = (SERVICE_OK, "running")
-                self._add_pids(result, act_pids)
-            else:
-                act_state, act_str = (SERVICE_DEAD, "not running")
-        else:
-            act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
-        result.append(
-            E.state_info(
-                act_str,
-                check_source="simple",
-                state="{:d}".format(act_state),
-                proc_info_str=act_str,
-            ),
-        )
-
-    def _check_meta(self, result, act_proc_dict):
-        init_script_name = self.init_script_name
-        c_name = self.__attrib["meta_server_name"]
-        ms_name = self.msi_name
-        if os.path.exists(ms_name):
-            # TODO : cache msi files
-            ms_block = process_tools.meta_server_info(ms_name)
-            start_time = ms_block.start_time
-            _check = ms_block.check_block(act_proc_dict)
-            #    print self.name, ms_block.pid_check_string
-            diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
-            diff_threads = sum(ms_block.bound_dict.values())
-            act_pids = ms_block.pids_found
-            num_started = len(act_pids)
-            if diff_threads:
-                act_state = SERVICE_DEAD
-                num_found = num_started
-            else:
-                act_state = SERVICE_OK
-                num_found = num_started
-            num_diff = diff_threads
-            # print ms_block.pids, ms_block.pid_check_string
-            result.append(
-                E.state_info(
-                    *[
-                        E.diff_info(
-                            pid="{:d}".format(key),
-                            diff="{:d}".format(value)
-                        ) for key, value in diff_dict.iteritems()
-                    ],
-                    check_source="meta",
-                    num_started="{:d}".format(num_started),
-                    num_found="{:d}".format(num_found),
-                    num_diff="{:d}".format(num_diff),
-                    start_time="{:d}".format(int(start_time)),
-                    state="{:d}".format(act_state),
-                    proc_info_str=self._get_proc_info_str(
-                        num_started,
-                        num_found,
-                        num_diff,
-                        len(act_pids),
-                        diff_dict,
-                        True if int(self.entry.attrib["any_threads_ok"]) else False,
-                    )
-                ),
-            )
-            # print act_pids, ms_block.pids
-            self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid(), msi_block=ms_block)
-        else:
-            self._add_non_running(result, check_init_script=False)
-
-    def _check_pid_file(self, result, act_proc_dict):
-        name = self.name
-        pid_file_name = self.__attrib["pid_file_name"]
-        if not pid_file_name.startswith("/"):
-            pid_file_name = os.path.join("/var", "run", pid_file_name)
-        if os.path.isfile(pid_file_name):
-            start_time = os.stat(pid_file_name)[stat.ST_CTIME]
-            act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
-            act_state, num_started, num_found = self._check_processes(act_pids, act_proc_dict)
-            num_diff = 0
-            diff_dict = {}
-            result.append(
-                E.state_info(
-                    *[
-                        E.diff_info(
-                            pid="{:d}".format(key),
-                            diff="{:d}".format(value)
-                        ) for key, value in diff_dict.iteritems()
-                    ],
-                    check_source="pid",
-                    num_started="{:d}".format(num_started),
-                    num_found="{:d}".format(num_found),
-                    num_diff="{:d}".format(num_diff),
-                    start_time="{:d}".format(start_time),
-                    state="{:d}".format(act_state),
-                    proc_info_str=self._get_proc_info_str(
-                        num_started,
-                        num_found,
-                        num_diff,
-                        len(act_pids),
-                        diff_dict,
-                        True if int(self.entry.attrib["any_threads_ok"]) else False,
-                    )
-                ),
-            )
-            self._add_pids(result, act_pids)
-        else:
-            self._add_non_running(result)
 
     def _get_proc_info_str(self, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
         if any_ok:
@@ -340,7 +233,7 @@ class Service(object):
 
     def _check_processes(self, pids, act_proc_dict):
         name = self.name
-        any_ok = True if int(self.__attrib["any_threads_ok"]) else False
+        any_ok = True if int(self.attrib["any_threads_ok"]) else False
         unique_pids = {
             key: pids.count(key) for key in set(pids)
         }
@@ -426,51 +319,45 @@ class Service(object):
     def wait(self, act_proc_dict):
         return
 
-    def stop(self, act_proc_dict):
-        if not int(self.__entry.get("startstop", "1")):
+    def start(self, act_proc_dict):
+        if not int(self.entry.get("startstop", "1")):
             return
-        if self.__entry.get("check_type") == "simple":
-            self._handle_service_rc("stop")
-        else:
-            self._stop_service_py()
+        self._start()
+
+    def _start(self):
+        # for subclasses
+        pass
+
+    def stop(self, act_proc_dict):
+        if not int(self.entry.get("startstop", "1")):
+            return
+        self._stop()
+
+    def _stop(self):
+        pass
+
+    def debug(self, act_proc_dict):
+        if not int(self.entry.get("startstop", "1")):
+            return
+        self._debug()
+
+    def _debug(self):
+        # for subclasses
+        pass
 
     def signal_restart(self, act_proc_dict):
-        if not int(self.__entry.get("startstop", "1")):
+        if not int(self.entry.get("startstop", "1")):
             return
-        if self.__entry.get("check_type") == "simple":
-            return
-        else:
-            self._signal_restart_py()
+        self._signal_restart()
 
-    def _signal_restart_py(self):
-        if self.name in ["meta-server"]:
-            from initat.tools import net_tools, server_command
-            self.log("sending signal-restart")
-            _result = net_tools.zmq_connection(
-                "icsw_restart_{:d}".format(os.getpid())
-            ).add_connection(
-                "tcp://localhost:8012",
-                server_command.srv_command(
-                    command="next-stop-is-restart",
-                ),
-            )
-            if _result is not None:
-                self.log(*_result.get_log_tuple())
-
-    def start(self, act_proc_dict):
-        if not int(self.__entry.get("startstop", "1")):
-            return
-        if self.__entry.get("check_type") == "simple":
-            self._handle_service_rc("start")
-        else:
-            self._start_service_py()
+    def _signal_restart(self):
+        # for subclasses
+        pass
 
     def cleanup(self, act_proc_dict):
-        if not int(self.__entry.get("startstop", "1")):
+        if not int(self.entry.get("startstop", "1")):
             return
-        if self.__entry.get("check_type") == "simple":
-            return
-        _meta_pids = set([int(_val.text) for _val in self.__entry.findall(".//pids/pid")])
+        _meta_pids = set([int(_val.text) for _val in self.entry.findall(".//pids/pid")])
         _proc_pids = self._find_pids_by_name(act_proc_dict)
         _all_pids = _meta_pids | _proc_pids
         if _all_pids:
@@ -486,106 +373,6 @@ class Service(object):
         if os.path.exists(ms_name):
             self.log("removing msi-block {}".format(ms_name))
             os.unlink(ms_name)
-
-    def debug(self, act_proc_dict):
-        if not int(self.__entry.get("startstop", "1")):
-            return
-        if self.__entry.get("check_type") == "simple":
-            return
-        else:
-            self._debug_py()
-
-    def _debug_py(self):
-        # ignore sigint to catch keyboard interrupt
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        arg_list = self._generate_py_arg_list(debug=True)
-        arg_list.append("--debug")
-        self.log("debug, arg_list is '{}'".format(" ".join(arg_list)))
-        subprocess.call(" ".join(arg_list), shell=True)
-
-    def _stop_service_py(self):
-        _main_pids = [int(_val.text) for _val in self.__entry.findall(".//pids/pid[@main='1']")]
-        _meta_pids = [int(_val.text) for _val in self.__entry.findall(".//pids/pid")]
-        # print etree.tostring(entry, pretty_print=True)
-        # print _main_pids, _meta_pids
-        if len(_meta_pids):
-            try:
-                if _main_pids:
-                    os.kill(_main_pids[0], 15)
-                    self.log("sent signal 15 to {:d}".format(_main_pids[0]))
-                else:
-                    os.kill(_meta_pids[0], 15)
-                    self.log("sent signal 15 to {:d}".format(_meta_pids[0]))
-            except OSError:
-                self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("no pids to kill")
-
-    def _handle_service_rc(self, command):
-        process_tools.call_command("{} {}".format(self.init_script_name, command), self.log)
-
-    def _start_service_py(self):
-        arg_list = self._generate_py_arg_list()
-        self.log("starting: {}".format(" ".join(arg_list)))
-        if not os.fork():
-            subprocess.call(arg_list + ["-d"])
-            os._exit(1)
-        else:
-            _child_pid, _child_state = os.wait()
-
-    def _generate_py_arg_list(self, debug=False):
-        cur_name = self.name
-        _prog_name = self.prog_name
-        _prog_title = self.prog_title
-        arg_dict = {_val.get("key"): _val.text.strip() for _val in self.__entry.findall(".//arg[@key]")}
-        _module_name = self.__entry.get("module", self.module_name)
-        if debug:
-            _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
-        else:
-            _daemon_path = "/opt/python-init/lib/python/site-packages/initat"
-        _arg_list = [
-            os.path.join(_daemon_path, "tools", "daemonize.py"),
-            "--progname",
-            _prog_name,
-            "--modname",
-            _module_name,
-            "--proctitle",
-            _prog_title,
-        ]
-        for _add_key in ["user", "group", "groups"]:
-            if _add_key in arg_dict:
-                _arg_list.extend(
-                    [
-                        "--{}".format(_add_key),
-                        arg_dict[_add_key],
-                    ]
-                )
-        if self.__entry.find("nice-level"):
-            _arg_list.extend(
-                [
-                    "--nice",
-                    "{:d}".format(int(self.__entry.findtext("nice-level").strip())),
-                ]
-            )
-        # check access rights
-        for _dir_el in self.__entry.findall(".//access-rights/dir[@value]"):
-            _dir = _dir_el.get("value")
-            if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
-                os.makedirs(_dir)
-            if os.path.isdir(_dir):
-                os.chown(
-                    _dir,
-                    process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
-                    process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
-                )
-        for _file_el in self.__entry.findall(".//access-rights/file[@value]"):
-            if os.path.isfile(_file_el.get("value")):
-                os.chown(
-                    _file_el.get("value"),
-                    process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
-                    process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
-                )
-        return _arg_list
 
     def _find_pids_by_name(self, act_proc_dict):
         _new_title = self.prog_title
@@ -616,3 +403,241 @@ class Service(object):
                             _pid_list.add(_key)
         # print "found", _pid_list
         return _pid_list
+
+
+class SimpleService(Service):
+    # Service backup up by an init-RC script
+    def _check(self, result, act_proc_dict):
+        init_script_name = self.init_script_name
+        if os.path.isfile(init_script_name):
+            act_pids = []
+            for _proc in psutil.process_iter():
+                try:
+                    if _proc.is_running() and _proc.name() == self.attrib["process_name"]:
+                        act_pids.append(_proc.pid)
+                except psutil.NoSuchProcess:
+                    pass
+            if act_pids:
+                act_state, act_str = (SERVICE_OK, "running")
+                self._add_pids(result, act_pids)
+            else:
+                act_state, act_str = (SERVICE_DEAD, "not running")
+        else:
+            act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
+        result.append(
+            E.state_info(
+                act_str,
+                check_source="simple",
+                state="{:d}".format(act_state),
+                proc_info_str=act_str,
+            ),
+        )
+
+    def _start(self):
+        self._handle_service_rc("start")
+
+    def _stop(self):
+        self._handle_service_rc("stop")
+
+    def _handle_service_rc(self, command):
+        process_tools.call_command("{} {}".format(self.init_script_name, command), self.log)
+
+
+class PIDService(Service):
+    # Service backup up by a PID-file
+    def _check(self, result, act_proc_dict):
+        name = self.name
+        pid_file_name = self.attrib["pid_file_name"]
+        if not pid_file_name.startswith("/"):
+            pid_file_name = os.path.join("/var", "run", pid_file_name)
+        if os.path.isfile(pid_file_name):
+            start_time = os.stat(pid_file_name)[stat.ST_CTIME]
+            act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
+            act_state, num_started, num_found = self._check_processes(act_pids, act_proc_dict)
+            num_diff = 0
+            diff_dict = {}
+            result.append(
+                E.state_info(
+                    *[
+                        E.diff_info(
+                            pid="{:d}".format(key),
+                            diff="{:d}".format(value)
+                        ) for key, value in diff_dict.iteritems()
+                    ],
+                    check_source="pid",
+                    num_started="{:d}".format(num_started),
+                    num_found="{:d}".format(num_found),
+                    num_diff="{:d}".format(num_diff),
+                    start_time="{:d}".format(start_time),
+                    state="{:d}".format(act_state),
+                    proc_info_str=self._get_proc_info_str(
+                        num_started,
+                        num_found,
+                        num_diff,
+                        len(act_pids),
+                        diff_dict,
+                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                    )
+                ),
+            )
+            self._add_pids(result, act_pids)
+        else:
+            self._add_non_running(result)
+
+
+class MetaService(Service):
+    # Service backup up by a meta-server file
+    def _check(self, result, act_proc_dict):
+        init_script_name = self.init_script_name
+        c_name = self.attrib["meta_server_name"]
+        ms_name = self.msi_name
+        if os.path.exists(ms_name):
+            # TODO : cache msi files
+            ms_block = process_tools.meta_server_info(ms_name)
+            start_time = ms_block.start_time
+            _check = ms_block.check_block(act_proc_dict)
+            #    print self.name, ms_block.pid_check_string
+            diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
+            diff_threads = sum(ms_block.bound_dict.values())
+            act_pids = ms_block.pids_found
+            num_started = len(act_pids)
+            if diff_threads:
+                act_state = SERVICE_DEAD
+                num_found = num_started
+            else:
+                act_state = SERVICE_OK
+                num_found = num_started
+            num_diff = diff_threads
+            # print ms_block.pids, ms_block.pid_check_string
+            result.append(
+                E.state_info(
+                    *[
+                        E.diff_info(
+                            pid="{:d}".format(key),
+                            diff="{:d}".format(value)
+                        ) for key, value in diff_dict.iteritems()
+                    ],
+                    check_source="meta",
+                    num_started="{:d}".format(num_started),
+                    num_found="{:d}".format(num_found),
+                    num_diff="{:d}".format(num_diff),
+                    start_time="{:d}".format(int(start_time)),
+                    state="{:d}".format(act_state),
+                    proc_info_str=self._get_proc_info_str(
+                        num_started,
+                        num_found,
+                        num_diff,
+                        len(act_pids),
+                        diff_dict,
+                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                    )
+                ),
+            )
+            # print act_pids, ms_block.pids
+            self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid(), msi_block=ms_block)
+        else:
+            self._add_non_running(result, check_init_script=False)
+
+    def _stop(self):
+        _main_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid[@main='1']")]
+        _meta_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid")]
+        # print etree.tostring(entry, pretty_print=True)
+        # print _main_pids, _meta_pids
+        if len(_meta_pids):
+            try:
+                if _main_pids:
+                    os.kill(_main_pids[0], 15)
+                    self.log("sent signal 15 to {:d}".format(_main_pids[0]))
+                else:
+                    os.kill(_meta_pids[0], 15)
+                    self.log("sent signal 15 to {:d}".format(_meta_pids[0]))
+            except OSError:
+                self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no pids to kill")
+
+    def _start(self):
+        arg_list = self._generate_py_arg_list()
+        self.log("starting: {}".format(" ".join(arg_list)))
+        if not os.fork():
+            subprocess.call(arg_list + ["-d"])
+            os._exit(1)
+        else:
+            _child_pid, _child_state = os.wait()
+
+    def _debug(self):
+        # ignore sigint to catch keyboard interrupt
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        arg_list = self._generate_py_arg_list(debug=True)
+        arg_list.append("--debug")
+        self.log("debug, arg_list is '{}'".format(" ".join(arg_list)))
+        subprocess.call(" ".join(arg_list), shell=True)
+
+    def _signal_restart(self):
+        if self.name in ["meta-server"]:
+            from initat.tools import net_tools, server_command
+            self.log("sending signal-restart")
+            _result = net_tools.zmq_connection(
+                "icsw_restart_{:d}".format(os.getpid())
+            ).add_connection(
+                "tcp://localhost:8012",
+                server_command.srv_command(
+                    command="next-stop-is-restart",
+                ),
+            )
+            if _result is not None:
+                self.log(*_result.get_log_tuple())
+
+    def _generate_py_arg_list(self, debug=False):
+        cur_name = self.name
+        _prog_name = self.prog_name
+        _prog_title = self.prog_title
+        arg_dict = {_val.get("key"): _val.text.strip() for _val in self.entry.findall(".//arg[@key]")}
+        _module_name = self.entry.get("module", self.module_name)
+        if debug:
+            _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
+        else:
+            _daemon_path = "/opt/python-init/lib/python/site-packages/initat"
+        _arg_list = [
+            os.path.join(_daemon_path, "tools", "daemonize.py"),
+            "--progname",
+            _prog_name,
+            "--modname",
+            _module_name,
+            "--proctitle",
+            _prog_title,
+        ]
+        for _add_key in ["user", "group", "groups"]:
+            if _add_key in arg_dict:
+                _arg_list.extend(
+                    [
+                        "--{}".format(_add_key),
+                        arg_dict[_add_key],
+                    ]
+                )
+        if self.entry.find("nice-level"):
+            _arg_list.extend(
+                [
+                    "--nice",
+                    "{:d}".format(int(self.entry.findtext("nice-level").strip())),
+                ]
+            )
+        # check access rights
+        for _dir_el in self.entry.findall(".//access-rights/dir[@value]"):
+            _dir = _dir_el.get("value")
+            if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
+                os.makedirs(_dir)
+            if os.path.isdir(_dir):
+                os.chown(
+                    _dir,
+                    process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
+                    process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
+                )
+        for _file_el in self.entry.findall(".//access-rights/file[@value]"):
+            if os.path.isfile(_file_el.get("value")):
+                os.chown(
+                    _file_el.get("value"),
+                    process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
+                    process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
+                )
+        return _arg_list

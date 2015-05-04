@@ -216,7 +216,8 @@ class ServiceState(object):
         is_ok = (self.__target_dict[name], self.__state_dict[name]) in SERVICE_OK_LIST
         return is_ok
 
-    def _check_for_stable_state(self, name):
+    def _check_for_stable_state(self, service):
+        name = service.name
         # interval for which the state has be stable
         STABLE_INTERVAL = 60 * 1
         # how old the latest state entry must be at least
@@ -241,9 +242,8 @@ class ServiceState(object):
                     else:
                         _stable_time = _rec[2]
         if not _stable:
-            self.log(
-                "state for service {} is not stable ({} < {})".format(
-                    name,
+            service.log(
+                "state is not stable ({} < {})".format(
                     logging_tools.get_diff_time_str(_stable_time),
                     logging_tools.get_diff_time_str(STABLE_INTERVAL),
                 ),
@@ -254,10 +254,10 @@ class ServiceState(object):
             c_rec = (self.__target_dict[name], tuple(_first[0:2]))
             # print _first, c_rec
             if c_rec not in SERVICE_OK_LIST and _first[2] < MIN_STATE_TIME:
-                self.log("state is OK", logging_tools.LOG_LEVEL_WARN)
+                service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
                 _stable = False
             elif _first[2] < MIN_STATE_TIME:
-                self.log("state not old enough ({:.2f} < {:.2f})".format(_first[2], MIN_STATE_TIME), logging_tools.LOG_LEVEL_WARN)
+                service.log("state not old enough ({:.2f} < {:.2f})".format(_first[2], MIN_STATE_TIME), logging_tools.LOG_LEVEL_WARN)
                 _stable = False
         return _stable
 
@@ -277,7 +277,7 @@ class ServiceState(object):
             return []
         else:
             self.__transition_lock_dict[name] = cur_time
-            _action = {0: "stop", 1: "restart"}[self.__target_dict[name]]
+            _action = {0: "stop", 1: "start"}[self.__target_dict[name]]
             with self.get_cursor() as crs:
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
@@ -325,7 +325,7 @@ class ServiceState(object):
                             if _el.name not in exclude:
                                 t_list.extend(self._generate_transition(_el.name))
                         else:
-                            _stable = self._check_for_stable_state(_el.name)
+                            _stable = self._check_for_stable_state(_el)
                             _el.log(
                                 "not OK ({}, state {} [{}], {}, {})".format(
                                     "should run" if self.__target_dict[_el.name] else "should not run",

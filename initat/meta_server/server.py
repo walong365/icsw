@@ -319,18 +319,21 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         if self.__transitions:
             self._enable_transition_timer()
 
-    def _check_processes(self):
+    def _check_processes(self, service_list=None):
         self.__loopcount += 1
         act_time = time.time()
         # act_pid_dict = process_tools.get_proc_list()
         _check_mem = act_time > self.__last_memcheck_time + global_config["MIN_MEMCHECK_TIME"] and global_config["TRACK_CSW_MEMORY"]
         if _check_mem:
             self.__last_memcheck_time = act_time
-        # import pprint
-        # pprint.pprint(act_pid_dict)
-        # print act_pid_list
         problems = []
+        if service_list is not None:
+            self.def_ns.service = service_list
+        else:
+            self.def_ns.service = []
         _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
+        # always reset service to the empty list
+        self.def_ns.service = []
         trans_list = self.service_state.update(
             _res_list,
             exclude=["meta-server", "logging-server"],
@@ -450,7 +453,11 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
     def _update_or_create_msi_by_file_name(self, file_name):
         self.log("file {} has been changed or created, triggering check".format(file_name))
         # changes in MSI-blocks are now handled in the state machine
-        self._check_processes()
+        _service_list = self.container.filter_msi_file_name(self.container.apply_filter([], self.server_instance.tree), file_name)
+        if len(_service_list):
+            self._check_processes(service_list=[_entry.name for _entry in _service_list])
+        else:
+            self._check_processes()
 
     def _show_meminfo(self, res_list):
         act_time = time.time()
