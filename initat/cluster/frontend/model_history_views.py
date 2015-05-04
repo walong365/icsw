@@ -25,6 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import ForeignKey
+from django.db import IntegrityError
 import itertools
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
@@ -32,6 +33,9 @@ from django.views.generic import View
 from rest_framework.response import Response
 import reversion
 import initat
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.license import LicenseUsage
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from initat.cluster.frontend.rest_views import rest_logging
@@ -53,6 +57,7 @@ class get_models_with_history(RetrieveAPIView):
 
 
 class get_historical_data(ListAPIView):
+    # noinspection PyUnresolvedReferences
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
@@ -185,6 +190,12 @@ class get_historical_data(ListAPIView):
 
             last_entry_by_pk[pk] = entry['data']
             del entry['data']
+
+            try:
+                # we log each pk individually in order to catch errors for devices which do not exist any more
+                LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, pk)
+            except IntegrityError:
+                pass
 
         # NOTE: entries must be in chronological, earliest first
         return Response(sorted_data)

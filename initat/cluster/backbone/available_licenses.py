@@ -28,7 +28,7 @@ from enum import Enum
 __all__ = ['get_available_licenses', 'LicenseEnum', 'LicenseParameterTypeEnum']
 
 
-LicenseEnum = Enum('LicenseEnum', 'kpi ext_lic package_install virtual_desktop a monitoring_dashboard reporting')
+LicenseEnum = Enum('LicenseEnum', 'kpi ext_lic package_install virtual_desktop a monitoring_dashboard reporting snapshot')
 
 
 LicenseParameterTypeEnum = Enum('LicenseParameterTypeEnum', 'user ext_lic service device')
@@ -46,5 +46,6 @@ def get_available_licenses():
     available_licenses.append(AvailableLicense(id=u'a', name=u'b', description=u''))
     available_licenses.append(AvailableLicense(id=u'monitoring_dashboard', name=u'Monitoring Dashboard', description=u''))
     available_licenses.append(AvailableLicense(id=u'reporting', name=u'Reporting', description=u''))
+    available_licenses.append(AvailableLicense(id=u'snapshot', name=u'Database snapshot', description=u''))
 
     return available_licenses

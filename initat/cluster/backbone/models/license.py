@@ -30,7 +30,7 @@ import django.utils.timezone
 from dateutil import relativedelta
 import django
 
-from django.db import models, transaction
+from django.db import models, transaction, IntegrityError
 from django.db.models import signals, BooleanField
 from django.dispatch import receiver
 from django.utils.functional import cached_property
