@@ -73,9 +73,13 @@ class OSHandler(object):
     def process_command(self, cmd):
         if self.opts.show_commands:
             print(" ".join(cmd))
+            return 0
         else:
             print("Running:", " ".join(cmd))
-            return subprocess.call(cmd)
+            ret = subprocess.call(cmd)
+            if ret != 0:
+                raise RuntimeError("Failed to execute command: {c}".format(c=" ".join(cmd)))
+            return ret
 
     def create_file(self, file_path, file_content):
         if self.opts.show_commands:
