@@ -436,4 +436,3 @@ class srv_command(object):
 
     def __len__(self):
         return len(etree.tostring(self.tree))  # @UndefinedVariable
-

@@ -106,16 +106,14 @@
             <div class="col-xs-3" style="height:10px;">
                 <progressbar value="get_mem_value()" animate="false"></progressbar>
             </div>
-            <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop()"">
+            <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop()">
                 <div class="btn-group">
                     <button type="button" class="btn btn-xs btn-warning dropdown-toggle" data-toggle="dropdown">
                         Action <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
                         <li ng-show="stop_allowed()" ng-click="action('stop')"><a href="#">Stop</a></li>
-                        <li ng-show="has_force_option()" ng-click="action('force-stop')"><a href="#">Force Stop</a></li>
                         <li ng-click="action('restart')"><a href="#">Restart</a></li>
-                        <li ng-show="has_force_option()" ng-click="action('force-restart')"><a href="#">Force Restart</a></li>
                     </ul>
                 </div>
             </div>

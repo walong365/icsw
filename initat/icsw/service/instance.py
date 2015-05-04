@@ -40,6 +40,14 @@ class InstanceXML(object):
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[iXML] {}".format(what), level)
 
+    @property
+    def source_dir(self):
+        return SERVERS_DIR
+
+    def reread(self):
+        self.read()
+        self.normalize()
+
     def read(self):
         self.tree = E.instances()
         # check for additional instances

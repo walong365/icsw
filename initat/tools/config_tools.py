@@ -29,14 +29,15 @@ if __name__ == "__main__":
     import django
     django.setup()
 
+import array
+import netifaces
+import sys
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
     netdevice, peer_information, config_int, config_blob, config_str, config_bool
-import array
-import netifaces
 import networkx
-import sys
-import time
 from initat.tools import configfile
 from initat.tools import logging_tools
 from initat.tools import process_tools

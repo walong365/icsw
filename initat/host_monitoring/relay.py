@@ -22,6 +22,18 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
+from lxml import etree  # @UnresolvedImport
+import StringIO
+import base64
+import bz2
+import commands
+import marshal
+import os
+import resource
+import socket
+import sys
+import time
+
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
@@ -30,23 +42,12 @@ from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.struct import host_connection, host_message
 from initat.host_monitoring.tools import my_cached_file
 from initat.client_version import VERSION_STRING
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-import StringIO
-import base64
-import bz2
-import commands
 from initat.tools import configfile
 from initat.tools import logging_tools
-import marshal
-import os
 from initat.tools import process_tools
-import resource
 from initat.tools import server_command
-import socket
-import sys
 from initat.tools import threading_tools
-import time
 from initat.tools import uuid_tools
 import zmq
 
@@ -432,7 +433,7 @@ class relay_code(threading_tools.process_pool):
         ]
         [setattr(self, "{}_socket".format(short_sock_name), None) for _sock_proto, short_sock_name, _a0, _b0 in sock_list]
         for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
-            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="collrelay")
             file_name = sock_name[5:]
             self.log(
                 "init {} ipc_socket '{}' (HWM: {:d})".format(

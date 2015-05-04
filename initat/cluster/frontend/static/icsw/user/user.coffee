@@ -455,7 +455,6 @@ user_module = angular.module(
                     blob = new Blob([ script ], { type : 'application/x-bat' });
                     # console.log "blob", blob
                     vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
-                    console.log "set testurl", vdus.testurl
 ]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "$window",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, $window) ->
         $scope.virtual_desktop_user_setting = []

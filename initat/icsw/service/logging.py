@@ -20,10 +20,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" dummy logger for commandline usage """
+""" loggers for commandline usage """
 
 from initat.tools import logging_tools
 
 
-def stdout_logger(what, log_level):
+def stdout_logger(what, log_level=logging_tools.LOG_LEVEL_OK):
+    if log_level > logging_tools.LOG_LEVEL_OK:
+        print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
+
+
+def stdout_all_logger(what, log_level=logging_tools.LOG_LEVEL_OK):
     print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
+
+
+def get_logger(log_type, **kwargs):
+    if log_type == "stdout":
+        if kwargs.get("all", False):
+            return stdout_all_logger
+        else:
+            return stdout_logger
+    else:
+        return logging_tools.get_logger(
+            ""
+            "init.at.icsw", "uds:/var/lib/logging-server/py_log_zmq",
+        ).log

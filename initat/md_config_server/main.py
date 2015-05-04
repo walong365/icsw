@@ -49,7 +49,7 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
+    global_config = configfile.configuration(process_tools.get_programm_name())
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -102,55 +102,58 @@ def main():
         ]
     )
 
-    cluster_location.read_config_from_db(global_config, "monitor_server", [
-        ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
-        ("NETSPEED_WARN_MULT", configfile.float_c_var(0.85)),
-        ("NETSPEED_CRITICAL_MULT", configfile.float_c_var(0.95)),
-        ("NETSPEED_DEFAULT_VALUE", configfile.int_c_var(10000000)),
-        ("CHECK_HOST_ALIVE_PINGS", configfile.int_c_var(5)),
-        ("CHECK_HOST_ALIVE_TIMEOUT", configfile.float_c_var(5.0)),
-        ("ENABLE_COLLECTD", configfile.bool_c_var(False)),
-        ("ENABLE_LIVESTATUS", configfile.bool_c_var(True)),
-        ("ENABLE_NDO", configfile.bool_c_var(False)),
-        ("ENABLE_NAGVIS", configfile.bool_c_var(False)),
-        ("ENABLE_FLAP_DETECTION", configfile.bool_c_var(False)),
-        ("NAGVIS_DIR", configfile.str_c_var("/opt/nagvis4icinga")),
-        ("NAGVIS_URL", configfile.str_c_var("/nagvis")),
-        ("NONE_CONTACT_GROUP", configfile.str_c_var("none_group")),
-        ("FROM_ADDR", configfile.str_c_var(long_host_name)),
-        ("LOG_EXTERNAL_COMMANDS", configfile.bool_c_var(False)),
-        ("LOG_PASSIVE_CHECKS", configfile.bool_c_var(False)),
-        ("BUILD_CONFIG_ON_STARTUP", configfile.bool_c_var(True)),
-        ("RELOAD_ON_STARTUP", configfile.bool_c_var(True)),
-        ("RETAIN_HOST_STATUS", configfile.bool_c_var(True)),
-        ("RETAIN_SERVICE_STATUS", configfile.bool_c_var(True)),
-        ("PASSIVE_HOST_CHECKS_ARE_SOFT", configfile.bool_c_var(True)),
-        ("RETAIN_PROGRAM_STATE", configfile.bool_c_var(False)),
-        ("USE_HOST_DEPENDENCIES", configfile.bool_c_var(False)),
-        ("USE_SERVICE_DEPENDENCIES", configfile.bool_c_var(False)),
-        ("TRANSLATE_PASSIVE_HOST_CHECKS", configfile.bool_c_var(True)),
-        ("USE_ONLY_ALIAS_FOR_ALIAS", configfile.bool_c_var(False)),
-        ("HOST_DEPENDENCIES_FROM_TOPOLOGY", configfile.bool_c_var(False)),
-        (
-            "NDO_DATA_PROCESSING_OPTIONS", configfile.int_c_var(
-                (2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA)
-            )
-        ),
-        ("EVENT_BROKER_OPTIONS", configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
-        ("CCOLLCLIENT_TIMEOUT", configfile.int_c_var(10)),
-        ("CSNMPCLIENT_TIMEOUT", configfile.int_c_var(20)),
-        ("MAX_SERVICE_CHECK_SPREAD", configfile.int_c_var(5)),
-        ("MAX_HOST_CHECK_SPREAD", configfile.int_c_var(5)),
-        ("MAX_CONCURRENT_CHECKS", configfile.int_c_var(500)),
-        ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
-        ("CHECK_SERVICE_FRESHNESS", configfile.bool_c_var(True, help_string="enable service freshness checking")),
-        ("CHECK_HOST_FRESHNESS", configfile.bool_c_var(True, help_string="enable host freshness checking")),
-        ("SAFE_CC_NAME", configfile.bool_c_var(False)),
-        ("SERVICE_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
-        ("HOST_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
-        ("SAFE_NAMES", configfile.bool_c_var(False, help_string="convert all command descriptions to safe names (without spaces), [%(default)s]")),
-    ])
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+    cluster_location.read_config_from_db(
+        global_config,
+        "monitor_server",
+        [
+            ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
+            ("NETSPEED_WARN_MULT", configfile.float_c_var(0.85)),
+            ("NETSPEED_CRITICAL_MULT", configfile.float_c_var(0.95)),
+            ("NETSPEED_DEFAULT_VALUE", configfile.int_c_var(10000000)),
+            ("CHECK_HOST_ALIVE_PINGS", configfile.int_c_var(5)),
+            ("CHECK_HOST_ALIVE_TIMEOUT", configfile.float_c_var(5.0)),
+            ("ENABLE_COLLECTD", configfile.bool_c_var(False)),
+            ("ENABLE_LIVESTATUS", configfile.bool_c_var(True)),
+            ("ENABLE_NDO", configfile.bool_c_var(False)),
+            ("ENABLE_NAGVIS", configfile.bool_c_var(False)),
+            ("ENABLE_FLAP_DETECTION", configfile.bool_c_var(False)),
+            ("NAGVIS_DIR", configfile.str_c_var("/opt/nagvis4icinga")),
+            ("NAGVIS_URL", configfile.str_c_var("/nagvis")),
+            ("NONE_CONTACT_GROUP", configfile.str_c_var("none_group")),
+            ("FROM_ADDR", configfile.str_c_var(long_host_name)),
+            ("LOG_EXTERNAL_COMMANDS", configfile.bool_c_var(False)),
+            ("LOG_PASSIVE_CHECKS", configfile.bool_c_var(False)),
+            ("BUILD_CONFIG_ON_STARTUP", configfile.bool_c_var(True)),
+            ("RELOAD_ON_STARTUP", configfile.bool_c_var(True)),
+            ("RETAIN_HOST_STATUS", configfile.bool_c_var(True)),
+            ("RETAIN_SERVICE_STATUS", configfile.bool_c_var(True)),
+            ("PASSIVE_HOST_CHECKS_ARE_SOFT", configfile.bool_c_var(True)),
+            ("RETAIN_PROGRAM_STATE", configfile.bool_c_var(False)),
+            ("USE_HOST_DEPENDENCIES", configfile.bool_c_var(False)),
+            ("USE_SERVICE_DEPENDENCIES", configfile.bool_c_var(False)),
+            ("TRANSLATE_PASSIVE_HOST_CHECKS", configfile.bool_c_var(True)),
+            ("USE_ONLY_ALIAS_FOR_ALIAS", configfile.bool_c_var(False)),
+            ("HOST_DEPENDENCIES_FROM_TOPOLOGY", configfile.bool_c_var(False)),
+            (
+                "NDO_DATA_PROCESSING_OPTIONS", configfile.int_c_var(
+                    (2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA)
+                )
+            ),
+            ("EVENT_BROKER_OPTIONS", configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
+            ("CCOLLCLIENT_TIMEOUT", configfile.int_c_var(10)),
+            ("CSNMPCLIENT_TIMEOUT", configfile.int_c_var(20)),
+            ("MAX_SERVICE_CHECK_SPREAD", configfile.int_c_var(5)),
+            ("MAX_HOST_CHECK_SPREAD", configfile.int_c_var(5)),
+            ("MAX_CONCURRENT_CHECKS", configfile.int_c_var(500)),
+            ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
+            ("CHECK_SERVICE_FRESHNESS", configfile.bool_c_var(True, help_string="enable service freshness checking")),
+            ("CHECK_HOST_FRESHNESS", configfile.bool_c_var(True, help_string="enable host freshness checking")),
+            ("SAFE_CC_NAME", configfile.bool_c_var(False)),
+            ("SERVICE_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
+            ("HOST_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
+            ("SAFE_NAMES", configfile.bool_c_var(False, help_string="convert all command descriptions to safe names (without spaces), [%(default)s]")),
+        ]
+    )
     run_code()
     configfile.terminate_manager()
     # exit

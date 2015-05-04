@@ -107,8 +107,6 @@ angular.module(
             return ($(entry).attr("name") for entry in @xml.find("instance"))
         get_state: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            #if _xml.attr("name") == "hoststatus"
-            #    console.log _xml[0]
             if _xml.length
                 _state_info = _xml.find("state_info")
                 if _xml.attr("check_type") == "simple"
@@ -138,8 +136,8 @@ angular.module(
                 return "text-success"
         get_version_class: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.attr("version_ok")?
-                _vers_ok = parseInt(_xml.attr("version_ok"))
+            if _xml.find("result").attr("version_ok")?
+                _vers_ok = parseInt(_xml.find("result").attr("version_ok"))
                 if _vers_ok
                     return "text-success"
                 else
@@ -148,8 +146,8 @@ angular.module(
                 return "text-warn"
         get_version: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.attr("version_ok")?
-                return _xml.attr("version").replace("-", "&ndash;")
+            if _xml.find("result").attr("version_ok")?
+                return _xml.find("result").attr("version").replace("-", "&ndash;")
             else
                 return ""
         has_startstop: (instance) ->
@@ -174,9 +172,6 @@ angular.module(
                         return "#{_found} (#{-_diff} too much)"
                     else
                         return "#{_found} (#{-_diff} missing)"
-        has_force_option: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            return parseInt(_xml.attr("has_force_stop"))
         stop_allowed: (instance) ->
             if instance in ["memcached", "uwsg-init"]
                 return false
@@ -189,7 +184,7 @@ angular.module(
             _mem = @xml.find("instance[name='#{instance}'] memory_info").text()
             return parseInt((parseInt(_mem) * 100) / @max_mem)
         get_check_source: (instance) ->
-            return @xml.find("instance[name='#{instance}']").attr("check_source")
+            return @xml.find("instance[name='#{instance}']").attr("check_type")
 
 ).directive("icswLayoutServerInfoInstance", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
@@ -211,8 +206,6 @@ angular.module(
                 return scope.srv_info.get_mem_info(scope.instance)
             scope.get_mem_value = () ->
                 return scope.srv_info.get_mem_value(scope.instance)
-            scope.has_force_option = () ->
-                return scope.srv_info.has_force_option(scope.instance)
             scope.stop_allowed = () ->
                 return scope.srv_info.stop_allowed(scope.instance)
             scope.action = (type) ->

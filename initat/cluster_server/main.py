@@ -53,7 +53,7 @@ def show_commands():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
+    global_config = configfile.configuration(process_tools.get_programm_name())
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -171,7 +171,6 @@ def main():
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     # if not global_config["DEBUG"] and not global_config["COMMAND"]:
     #    with daemon.DaemonContext():
-    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
     run_code(options)
 
     configfile.terminate_manager()

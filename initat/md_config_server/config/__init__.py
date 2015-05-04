@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -23,7 +23,6 @@ from initat.tools import configfile
 from initat.tools import process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
-
 
 from initat.md_config_server.config.mon_config import *
 from initat.md_config_server.config.base_config import base_config

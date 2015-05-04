@@ -27,9 +27,9 @@ import sys
 import importlib
 import pwd
 import grp
+import os
 
 import daemon
-from initat.tools.io_stream_helper import io_stream
 
 
 def get_gid_from_name(group):
@@ -81,7 +81,9 @@ def main():
     _parser.add_argument("--group", type=str, default="root", help="group to use for the process [%(default)s]")
     _parser.add_argument("--groups", type=str, default="", help="coma-separated list of groups for the process [%(default)s]")
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
+    _parser.add_argument("--debug", default=False, action="store_true", help="enable debug mode (modify sys.path), [%(default)s]")
     opts = _parser.parse_args()
+    _args = [opts.progname]
     if opts.user != "root":
         uid = get_uid_from_name(opts.user)[0]
     else:
@@ -99,10 +101,15 @@ def main():
         os.nice(opts.nice)
     if opts.daemonize:
         _daemon_context.open()
-    sys.argv = [opts.progname]
+    if opts.debug:
+        abs_path = os.path.dirname(__file__)
+        abs_path = os.path.split(os.path.split(abs_path)[0])[0]
+        sys.path.insert(0, abs_path)
+        _args.append("-d")
+    sys.argv = _args
     setproctitle.setproctitle(opts.proctitle)
     main_module = importlib.import_module(opts.modname)
-    print main_module
+    from initat.tools.io_stream_helper import io_stream
     if opts.daemonize:
         sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
         sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
