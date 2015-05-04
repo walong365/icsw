@@ -145,7 +145,7 @@ class _LicenseUsageBase(models.Model):
 
     date = models.DateTimeField(auto_now_add=True)
 
-    feature = models.CharField(max_length=30, db_index=True)
+    license = models.CharField(max_length=30, db_index=True)
 
     class Meta:
         abstract = True
@@ -168,13 +168,14 @@ class _LicenseUsageUser(models.Model):
 
 
 class _LicenseUsageExtLicense(models.Model):
-    user = models.ForeignKey(ext_license, db_index=True)
+    ext_license = models.ForeignKey(ext_license, db_index=True)
 
     class Meta:
         abstract = True
 
 
 class LicenseUsage(object):
+    # utility
 
     # NOTE: keep in sync with js
     GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
@@ -184,46 +185,33 @@ class LicenseUsage(object):
         """
         :type license: LicenseEnum
         :type param_type: LicenseParameterTypeEnum
-        :type devices: Iterable[device] | device | dict[device, Iterable[mon_check_command]] | dict[device, dict[mon_check_command, object]]
         """
-        # LICTODO
+        # assume obj is pk if it isn't the obj
+        to_pk = lambda obj, klass: obj.pk if isinstance(obj, klass) else obj
 
-        """
-        any entry for device may also be an int
+        from initat.cluster.backbone.models import device, user
 
-        current input:
-        list[device]
-        dict[device, list[mon_check_command]]
-        dict[device, dict[mon_check_command, object]]
-        """
-
-        """
-        if isinstance(devices, collections.Mapping):
-
-        if not isinstance(devices, collections.Iterable):
-            devices = (devices, )
-
-        if services and not isinstance(services, collections.Iterable):
-            services = (services, )
-        """
-
-        """
+        common_params = {"license": license.name}
         with transaction.atomic():
-            for dev in devices:
-                LicenseUsageDeviceService.objects.get_or_create(
-                    feature=license.name,
-                    device=dev,
-                )
-
-                if services:
-                    for service in services:
-                        LicenseUsageDeviceService.objects.get_or_create(
-                            feature=license.name,
-                            device=device,
-                            service=service,
-                        )
-        """
-
+            if param_type == LicenseParameterTypeEnum.device:
+                if not isinstance(value, collections.Iterable):
+                    value = (value, )
+                for dev in value:
+                    LicenseUsageDeviceService.objects.get_or_create(device_id=to_pk(dev, device),
+                                                                    service=None,
+                                                                    **common_params)
+            elif param_type == LicenseParameterTypeEnum.service:
+                for dev, serv_list in value.iteritems():
+                    for serv in serv_list:
+                        LicenseUsageDeviceService.objects.get_or_create(device_id=to_pk(dev, device),
+                                                                        service_id=to_pk(serv, mon_check_command),
+                                                                        **common_params)
+            elif param_type == LicenseParameterTypeEnum.ext_license:
+                LicenseUsageExtLicense.objects.get_or_create(ext_license_id=to_pk(value, ext_license), **common_params)
+            elif param_type == LicenseParameterTypeEnum.user:
+                LicenseUsageExtLicense.objects.get_or_create(user_id=to_pk(value, user), **common_params)
+            else:
+                raise RuntimeError("Invalid license parameter type id: {}".format(param_type))
 
     @staticmethod
     def get_license_usage(license):

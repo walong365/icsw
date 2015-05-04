@@ -21,6 +21,7 @@
 #
 
 """ monitoring views """
+import collections
 import datetime
 
 from django.contrib.auth.decorators import login_required
@@ -58,6 +59,7 @@ import base64
 import itertools
 import json
 import logging
+from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
@@ -225,6 +227,7 @@ class get_node_status(View):
         _post = request.POST
         pk_list = json.loads(_post["pk_list"])
         srv_com = server_command.srv_command(command="get_node_status")
+        # noinspection PyUnresolvedReferences
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="{:d}".format(int(cur_pk))) for cur_pk in pk_list if cur_pk]
         )
@@ -238,6 +241,30 @@ class get_node_status(View):
                 # simply copy json dump
                 request.xml_response["host_result"] = host_results[0]
                 request.xml_response["service_result"] = service_results[0]
+
+                # log access
+                device_data = set()
+                for dev_res in json.loads(host_results[0]):
+                    for entry in dev_res['custom_variables'].split(","):
+                        split = entry.split("|")
+                        if len(split) == 2 and split[0].lower() == "device_pk":
+                            try:
+                                device_data.add(int(split[1]))
+                            except ValueError:
+                                logger.warn("Invalid device pk in get_node_result access logging: {}".format(entry))
+
+                LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.device, device_data)
+
+                service_data = collections.defaultdict(lambda: [])
+                for serv_res in json.loads(service_results[0]):
+                    parsed = host_service_id_util.parse_host_service_description(serv_res['description'],
+                                                                                 log=logger.error)
+                    if parsed:
+                        host_pk, service_pk, _ = parsed
+                        service_data[host_pk].append(service_pk)
+                LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.service,
+                                       service_data)
+
             else:
                 request.xml_response.error("no service or node_results", logger=logger)
 
