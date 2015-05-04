@@ -111,7 +111,7 @@ class ServiceContainer(object):
                 "restart": ["signal_restart", "stop", "wait", "cleanup", "start"],
                 "debug": ["signal_restart", "stop", "wait", "cleanup", "debug"],
             }
-        }[service.is_ok][subcom]
+        }[service.is_running][subcom]
 
     def instance_to_form_list(self, opt_ns, res_xml):
         rc_dict = {
@@ -190,7 +190,7 @@ class ServiceContainer(object):
                     else:
                         cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
                 if opt_ns.database:
-                    cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
+                    cur_line.append(logging_tools.form_entry(_res.findtext("sql_info"), header="DB info"))
                 if opt_ns.memory:
                     cur_mem = act_struct.find(".//memory_info")
                     if cur_mem is not None:

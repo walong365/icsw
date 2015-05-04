@@ -56,7 +56,7 @@ STATE_DICT = {
     (constants.SERVICE_NOT_INSTALLED, 1): "strange",
     (constants.SERVICE_NOT_CONFIGURED, 0): "not configured",
     # ??? FIXME
-    (constants.SERVICE_NOT_CONFIGURED, 1): "unlicensend",
+    (constants.SERVICE_NOT_CONFIGURED, 1): "unlicensed",
 }
 
 
@@ -64,7 +64,13 @@ TARGET_STATE_STOPPED = 0
 TARGET_STATE_RUNNING = 1
 
 SERVICE_OK_LIST = [
+    # should be stopped and not running
     (TARGET_STATE_STOPPED, (constants.SERVICE_DEAD, 0)),
+    # should be stopped and not configured
+    (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_CONFIGURED, 0)),
+    # should be running and not configured
+    (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_CONFIGURED, 0)),
+    # running and running
     (TARGET_STATE_RUNNING, (constants.SERVICE_OK, 1)),
 ]
 
@@ -261,7 +267,8 @@ class ServiceState(object):
                 _stable = False
         return _stable
 
-    def _generate_transition(self, name):
+    def _generate_transition(self, service):
+        name = service.name
         cur_time = time.time()
         LOCK_TIMEOUT = 30
         if name in self.__transition_lock_dict and self.__transition_lock_dict[name] + LOCK_TIMEOUT > cur_time:
@@ -276,14 +283,19 @@ class ServiceState(object):
             )
             return []
         else:
-            self.__transition_lock_dict[name] = cur_time
             _action = {0: "stop", 1: "start"}[self.__target_dict[name]]
+            _res_node = service.entry.find(".//result")
+            if _res_node is not None:
+                _state = int(_res_node.find("state_info").attrib["state"])
+                if _state == constants.SERVICE_NOT_CONFIGURED:
+                    _action = "stop"
             with self.get_cursor() as crs:
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
                     (self.__service_lut[name], _action, int(time.time())),
                 )
                 trans_id = crs.lastrowid
+                self.__transition_lock_dict[name] = cur_time
             return [
                 (
                     name,
@@ -300,11 +312,18 @@ class ServiceState(object):
                 "UPDATE action SET runtime=?, finished=1 WHERE idx=?",
                 (abs(time.time() - trans.init_time), id),
             )
+            # get service
+            name = crs.execute(
+                "SELECT s.name FROM service s, action a WHERE a.service=s.idx AND a.idx=?",
+                (id,),
+            ).fetchone()[0]
+            if name in self.__transition_lock_dict:
+                del self.__transition_lock_dict[name]
 
     def update(self, res_list, **kwargs):
         # services to exclude from transition
         exclude = kwargs.get("exclude", [])
-        # force mode
+        # force mode (for first call or command-line induced)
         force = kwargs.get("force", False)
         # return a transition list
         t_list = []
@@ -318,12 +337,11 @@ class ServiceState(object):
                     _pids = _res.findall(".//pid")
                     _proc_info_str = _res.find("state_info").get("proc_info_str", "")
                     _running = 1 if len(_pids) else 0
-                    # todo: enable a forced-mode in case the target_state was changed
                     _is_ok = self._update_state(_el.name, _state, _running, _proc_info_str)
                     if not _is_ok:
                         if self.__shutdown:
                             if _el.name not in exclude:
-                                t_list.extend(self._generate_transition(_el.name))
+                                t_list.extend(self._generate_transition(_el))
                         else:
                             _stable = self._check_for_stable_state(_el)
                             _el.log(
@@ -338,7 +356,7 @@ class ServiceState(object):
                             )
                             if _stable or force:
                                 if _el.name not in exclude:
-                                    t_list.extend(self._generate_transition(_el.name))
+                                    t_list.extend(self._generate_transition(_el))
                     # if _state or True:
                     #    print "*", _el.name, _state, len(_pids)
                 else:

@@ -123,12 +123,10 @@ class Service(object):
         return _mod_name
 
     @property
-    def is_ok(self):
-        # return True if the service in entry is running
-        _si = self.entry.find(".//state_info")
-        if _si is not None:
-            _state = int(_si.get("state"))
-            return True if _state == SERVICE_OK else False
+    def is_running(self):
+        # return True if the service in entry is running (also partially)
+        if len(self.entry.findall(".//pids/pid")):
+            return True
         else:
             return False
 
@@ -146,9 +144,17 @@ class Service(object):
                 # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
                 _conf_names = [_entry.text for _entry in self.entry.findall(".//config_names/config_name")]
                 for _conf_name in _conf_names:
-                    _cr = config_tools.server_check(server_type=_conf_name)
-                    if _cr.effective_device:
-                        dev_config.append(_cr)
+                    try:
+                        _cr = config_tools.server_check(server_type=_conf_name)
+                    except:
+                        config_tools.close_db_connection()
+                        try:
+                            _cr = config_tools.server_check(server_type=_conf_name)
+                        except:
+                            _cr = None
+                    if _cr is not None:
+                        if _cr.effective_device:
+                            dev_config.append(_cr)
         _result = E.result()
         self.entry.append(_result)
 
@@ -157,14 +163,21 @@ class Service(object):
         act_state = int(_result.find("state_info").attrib["state"])
         if self.attrib["runs_on"] == "server":
             if dev_config:  # is not None:
-                sql_info = ", ".join([_dc.server_info_str for _dc in dev_config])
+                sql_info = ", ".join(
+                    [
+                        _dc.server_info_str for _dc in dev_config
+                    ]
+                )
             else:
-                act_state = SERVICE_NOT_CONFIGURED
-                sql_info = "not configured"
-                # update state info
-                _state_info = _result.find("state_info")
-                _state_info.text = "not configured"
-                _state_info.attrib["state"] = "{:d}".format(act_state)
+                if self.entry.find(".//ignore-missing-database") is not None:
+                    sql_info = "relayer mode"
+                else:
+                    act_state = SERVICE_NOT_CONFIGURED
+                    sql_info = "not configured"
+                    # update state info
+                    _state_info = _result.find("state_info")
+                    _state_info.text = "no processes"
+                    _state_info.attrib["state"] = "{:d}".format(act_state)
         else:
             sql_info = self.attrib["runs_on"]
         if type(sql_info) == str:
@@ -257,7 +270,7 @@ class Service(object):
             act_state = SERVICE_DEAD
             result.append(
                 E.state_info(
-                    "no threads",
+                    "no processes",
                     state="{:d}".format(act_state),
                 )
             )
@@ -363,11 +376,16 @@ class Service(object):
         if _all_pids:
             for _pid in _all_pids:
                 try:
-                    os.kill(_pid, 9)
-                except OSError:
-                    self.log("process {:d} has vanished".format(_pid), logging_tools.LOG_LEVEL_ERROR)
+                    cur_proc = psutil.Process(_pid)
+                except psutil.NoSuchProcess:
+                    self.log("process {:d} no longer exists".format(_pid), logging_tools.LOG_LEVEL_WARN)
                 else:
-                    self.log("sent signal 9 to {:d}".format(_pid))
+                    try:
+                        os.kill(_pid, 9)
+                    except OSError:
+                        self.log("process {:d} has vanished".format(_pid), logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("sent signal 9 to {:d}".format(_pid))
         # remove meta server
         ms_name = self.msi_name
         if os.path.exists(ms_name):

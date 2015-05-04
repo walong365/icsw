@@ -103,7 +103,7 @@ class ServiceTransition(object):
                 self.__step_num,
                 logging_tools.get_diff_time_str(e_time - s_time),
                 len(self._action_list),
-                " (LC: {:d})".format(_loopcount) if _loopcount > 1 else "",
+                " (inner loops: {:d})".format(_loopcount) if _loopcount > 1 else "",
             )
         )
         if not self._action_list:
