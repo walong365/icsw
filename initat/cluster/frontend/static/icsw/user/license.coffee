@@ -267,4 +267,12 @@ angular.module(
             return state
 
     }
+]).run(["ICSW_URLS", "Restangular", "toaster", (ICSW_URLS, Restangular, toaster) ->
+    # check for license violation
+    Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS.slice(1)).getList().then((new_data) ->
+        if new_data.length
+            for violation in new_data
+                toaster.pop("warning", "License violated", "Your license for #{violation.license} is violated.", 10000)
+    )
 ])
+

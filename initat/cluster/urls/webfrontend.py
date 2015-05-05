@@ -125,6 +125,7 @@ icsw_lic_patterns = patterns(
     "initat.cluster.license",
     url("^get_all_licenses$", license_views.get_all_licenses.as_view(), name="get_all_licenses"),
     url("^get_license_packages$", license_views.get_license_packages.as_view(), name="get_license_packages"),
+    url("^GetLicenseViolations$", license_views.GetLicenseViolations.as_view(), name="GetLicenseViolations"),
 )
 
 network_patterns = patterns(

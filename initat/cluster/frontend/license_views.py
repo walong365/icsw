@@ -28,6 +28,8 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.cluster.backbone.models.license import LicenseViolation
 from initat.cluster.frontend.rest_views import rest_logging
 
 from initat.cluster.backbone.models import License
@@ -59,3 +61,14 @@ class get_license_packages(ListAPIView):
         return Response(License.objects.get_license_packages())
 
 
+class GetLicenseViolations(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        def to_user_str(license_name):
+            try:
+                return LicenseEnum[license_name].get_name_for_user()
+            except KeyError:
+                return license_name
+
+        return Response([{"license": to_user_str(viol.license)} for viol in LicenseViolation.objects.all()])

@@ -218,39 +218,32 @@ class LicenseUsage(object):
 
     @staticmethod
     def get_license_usage(license):
-        return {
+        usage = {
             LicenseParameterTypeEnum.device:
-                LicenseUsageDeviceService.filter(license=license.name, service=None).count(),
+                LicenseUsageDeviceService.objects.filter(license=license.name, service=None).count(),
             LicenseParameterTypeEnum.service:
-                LicenseUsageDeviceService.filter(license=license.name, service__isnull=False).count(),
+                LicenseUsageDeviceService.objects.filter(license=license.name, service__isnull=False).count(),
             LicenseParameterTypeEnum.user:
-                LicenseUsageUser.filter(license=license.name).count(),
+                LicenseUsageUser.objects.filter(license=license.name).count(),
             LicenseParameterTypeEnum.ext_license:
-                LicenseUsageExtLicense.filter(license=license.name).count(),
+                LicenseUsageExtLicense.objects.filter(license=license.name).count(),
         }
+        return {k: v for k, v in usage.iteritems() if v > 0}
 
-    @staticmethod
-    def check_for_violations():
-        for license in LicenseEnum:
-            usage = LicenseUsage.get_license_usage(license)
-            violated = License.objects.has_valid_license(license, usage)
 
-            try:
-                violation = LicenseViolation.objects.get(feature=license.name)
-                if not violated:
-                    violation.delete()
-                else:
-                    # still violate, check if now grace period is violated too
-                    if not violation.hard and violation.date > django.utils.timezone.now() + License.GRACE_PERIOD:
-                        violation.hard = True
-                        violation.save()
-            except LicenseViolation.DoesNotExist:
-                if violated:
-                    LicenseViolation(feature=license.name).save()
+class _LicenseViolationManager(models.Manager):
+    def is_violated(self, license):
+        # only hard violations are actual violations, else it's a warning (grace)
+        return LicenseViolation.objects.filter(license=license.name, hard=True).exists()
 
 
 class LicenseViolation(_LicenseUsageBase):
+    objects = _LicenseViolationManager()
+
     hard = models.BooleanField(default=False)
+
+    def __repr__(self):
+        return "LicenseViolation(license={})".format(self.license)
 
 
 class LicenseUsageDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):

@@ -29,6 +29,11 @@ __all__ = ['get_available_licenses', 'LicenseEnum', 'LicenseParameterTypeEnum']
 
 
 LicenseEnum = Enum('LicenseEnum', 'kpi ext_license package_install virtual_desktop monitoring_dashboard reporting snapshot notification rms')
+def get_name_for_user(self):
+    d = dict(((LicenseEnum.kpi, 'KPI'), (LicenseEnum.ext_license, 'License Optimization Management'), (LicenseEnum.package_install, 'Package Install'), (LicenseEnum.virtual_desktop, 'Virtual Desktop'), (LicenseEnum.monitoring_dashboard, 'Monitoring Dashboard'), (LicenseEnum.reporting, 'Reporting'), (LicenseEnum.snapshot, 'Database snapshot'), (LicenseEnum.notification, 'Notification'), (LicenseEnum.rms, 'Resource Management System (RMS)')))
+    return d.get(self, None)
+
+LicenseEnum.get_name_for_user = get_name_for_user
 
 
 LicenseParameterTypeEnum = Enum('LicenseParameterTypeEnum', 'user service device ext_license')

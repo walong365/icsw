@@ -20,6 +20,7 @@
 """ server process for md-config-server """
 
 import os
+from initat.md_config_server.license_checker import LicenseChecker
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -83,6 +84,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.add_process(syncer_process("syncer"), start=True)
             self.add_process(dynconfig_process("dynconfig"), start=True)
             self.add_process(icinga_log_reader("icinga_log_reader"), start=True)
+            self.add_process(LicenseChecker("license_checker"), start=True)
             # wait for the processes to start
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
@@ -363,7 +365,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("md-config-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=7, process_name="manager")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=8, process_name="manager")  # MARKER to cause conflict when the branches kpi and license are merged
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
@@ -512,6 +514,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self.send_to_process("dynconfig", cur_com, unicode(srv_com))
                     if cur_com == "passive_check_result":
                         send_return = True
+                elif cur_com == "check_license":
+                    self.send_to_process("license_checker", "check_license", src_id, unicode(srv_com))
                 else:
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
