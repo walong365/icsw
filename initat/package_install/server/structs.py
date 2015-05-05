@@ -19,6 +19,13 @@
 #
 """ package server, base structures """
 
+from lxml import etree  # @UnresolvedImport
+import commands
+import datetime
+import os
+import subprocess
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
     package_search_result, device_variable, device, package_device_connection, \
@@ -28,17 +35,11 @@ from initat.cluster.backbone.serializers import package_device_connection_wp_ser
 from initat.package_install.server.config import global_config
 from initat.package_install.server.constants import CONFIG_NAME, \
     PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 from rest_framework.renderers import XMLRenderer
-import commands
-import datetime
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
 from initat.tools import server_command
-import subprocess
-import time
 
 
 class repository(object):
@@ -580,12 +581,16 @@ class client(object):
         return var.replace("%{ROOT_IMPORT_DIR}", global_config["ROOT_IMPORT_DIR"])
 
     def _get_package_list(self, srv_com):
-        cur_image = self.device.act_image
-        # for testing
-        # cur_image = self.device.new_image
-        cur_kernel = self.device.act_kernel
-        # for testing
-        # cur_kernel = self.device.new_kernel
+        _kernels = self.device.kerneldevicehistory_set.all()
+        if _kernels.count():
+            cur_kernel = _kernels[0].kernel
+        else:
+            cur_kernel = None
+        _images = self.device.imagedevicehistory_set.all()
+        if _images.count():
+            cur_image = _images[0].image
+        else:
+            cur_image = None
         pdc_list = package_device_connection.objects.filter(
             Q(device=self.device)
         ).prefetch_related(

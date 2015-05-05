@@ -75,6 +75,13 @@ SERVICE_OK_LIST = [
 ]
 
 
+class ServiceStateTranstaction(object):
+    def __init__(self, name, action, trans_id):
+        self.name = name
+        self.action = action
+        self.trans_id = trans_id
+
+
 class ServiceState(object):
     def __init__(self, log_com):
         self.__log_com = log_com
@@ -297,7 +304,7 @@ class ServiceState(object):
                 trans_id = crs.lastrowid
                 self.__transition_lock_dict[name] = cur_time
             return [
-                (
+                ServiceStateTranstaction(
                     name,
                     _action,
                     trans_id,
@@ -364,6 +371,63 @@ class ServiceState(object):
         self.conn.commit()
         return t_list
         # print _res, etree.tostring(_el.entry, pretty_print=True)
+
+    def get_mail_text(self, trans_list):
+        cur_time = time.time()
+        REPORT_TIME = 3600
+        # return a mail text body for the given transaction list
+        mail_text = [
+            "Local time: {}".format(time.ctime(cur_time)),
+            "{} initiated:".format(logging_tools.get_plural("transaction", len(trans_list))),
+            "",
+        ] + [
+            "   - {} -> {}".format(_trans.name, _trans.action) for _trans in trans_list
+        ] + [
+            ""
+        ]
+        with self.get_cursor() as crsr:
+            for _trans in trans_list:
+                _srv_id = crsr.execute(
+                    "SELECT idx FROM service WHERE name=?",
+                    (_trans.name,),
+                ).fetchone()[0]
+                _states = crsr.execute(
+                    "SELECT state, running, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                    (_srv_id, cur_time - REPORT_TIME)
+                ).fetchall()
+                _actions = crsr.execute(
+                    "SELECT action, success, runtime, finished, created FROM action WHERE service=? AND created > ? ORDER BY -created",
+                    (_srv_id, cur_time - REPORT_TIME)
+                ).fetchall()
+                mail_text.extend(
+                    [
+                        "{} and {} for service {} in the last {}:".format(
+                            logging_tools.get_plural("state", len(_states)),
+                            logging_tools.get_plural("action", len(_states)),
+                            _trans.name,
+                            logging_tools.get_diff_time_str(REPORT_TIME),
+                        ),
+                        "",
+                    ] + [
+                        "{} state={}, running={} [{}]".format(
+                            time.ctime(int(_state[2])),
+                            _state[0],
+                            _state[1],
+                            _state[3],
+                        ) for _state in _states
+                    ] + [
+                        ""
+                    ] + [
+                        "{} action={}, runtime={:.2f} [{} / {}]".format(
+                            time.ctime(int(_action[4])),
+                            _action[0],
+                            _action[2],
+                            _action[1],
+                            _action[3],
+                        ) for _action in _actions
+                    ]
+                )
+        return mail_text
 
     def handle_command(self, srv_com):
         # returns True if the state machine should be triggered

@@ -123,12 +123,21 @@ class Service(object):
         return _mod_name
 
     @property
-    def is_running(self):
-        # return True if the service in entry is running (also partially)
+    def run_state(self):
+        # return
+        # - "ok" if the service in entry is running completely (no processes missing)
+        # - "warn" if the service is only running partially
+        # - "error" if the service is not running
         if len(self.entry.findall(".//pids/pid")):
-            return True
+            # any pids found
+            _si = self.entry.find(".//state_info")
+            if _si is not None:
+                _state = int(_si.get("state"))
+                return "ok" if _state in [SERVICE_OK, SERVICE_NOT_CONFIGURED] else "warn"
+            else:
+                return "error"
         else:
-            return False
+            return "error"
 
     def check(self, act_proc_dict, refresh=True, config_tools=None):
         if self.entry.find("result") is not None:
