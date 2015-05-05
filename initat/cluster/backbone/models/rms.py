@@ -25,6 +25,8 @@ import datetime
 import time
 
 from django.db import models
+from django.db.models import signals
+from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
 
 
@@ -242,6 +244,15 @@ class rms_job_run(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+
+@receiver(signals.post_save, sender=rms_job_run)
+def _rms_job_run_post_save(sender, instance, raw, **kwargs):
+    from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+    from initat.cluster.backbone.models import LicenseUsage
+    if not raw:
+        if instance.device is not None:
+            LicenseUsage.log_usage(LicenseEnum.rms, LicenseParameterTypeEnum.device, instance.device)
 
 
 class rms_pe_info(models.Model):
