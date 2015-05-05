@@ -65,6 +65,9 @@ class ServiceContainer(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SrvC] {}".format(what), log_level)
 
+    def filter_msi_file_name(self, check_list, file_name):
+        return [entry for entry in check_list if entry.msi_name == file_name]
+
     @property
     def proc_dict(self):
         return self.__act_proc_dict
@@ -77,17 +80,17 @@ class ServiceContainer(object):
             self.update_proc_dict()
         entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools)
 
-    def apply_filter(self, opt_ns, instance_xml):
+    def apply_filter(self, service_list, instance_xml):
         check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
-        if opt_ns.service:
-            check_list = [Service(_entry, self.__log_com) for _entry in check_list if _entry.get("name") in opt_ns.service]
+        if service_list:
+            check_list = [Service(_entry, self.__log_com) for _entry in check_list if _entry.get("name") in service_list]
         else:
             check_list = [Service(_entry, self.__log_com) for _entry in check_list]
         return check_list
 
     # main entry point: check_system
     def check_system(self, opt_ns, instance_xml):
-        check_list = self.apply_filter(opt_ns, instance_xml)
+        check_list = self.apply_filter(opt_ns.service, instance_xml)
         self.update_proc_dict()
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True)
@@ -96,19 +99,25 @@ class ServiceContainer(object):
     def decide(self, subcom, service):
         # based on the entry state and the command given in opt_ns decide what to do
         return {
-            False: {
+            "error": {
                 "start": ["cleanup", "start"],
                 "stop": ["cleanup"],
                 "restart": ["cleanup", "start"],
                 "debug": ["cleanup", "debug"],
             },
-            True: {
-                "start": [],
+            "warn": {
+                "start": ["stop", "wait", "cleanup", "start"],
                 "stop": ["stop", "wait", "cleanup"],
                 "restart": ["stop", "wait", "cleanup", "start"],
                 "debug": ["stop", "wait", "cleanup", "debug"],
+            },
+            "ok": {
+                "start": [],
+                "stop": ["stop", "wait", "cleanup"],
+                "restart": ["signal_restart", "stop", "wait", "cleanup", "start"],
+                "debug": ["signal_restart", "stop", "wait", "cleanup", "debug"],
             }
-        }[service.is_ok][subcom]
+        }[service.run_state][subcom]
 
     def instance_to_form_list(self, opt_ns, res_xml):
         rc_dict = {
@@ -187,7 +196,7 @@ class ServiceContainer(object):
                     else:
                         cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
                 if opt_ns.database:
-                    cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
+                    cur_line.append(logging_tools.form_entry(_res.findtext("sql_info"), header="DB info"))
                 if opt_ns.memory:
                     cur_mem = act_struct.find(".//memory_info")
                     if cur_mem is not None:

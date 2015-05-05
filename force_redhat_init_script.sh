@@ -22,10 +22,11 @@
 
 file=/etc/init.d/$1
 
-tmpfile=$(mktemp /tmp/.init_XXXXXX)
+if [ -f ${file} ] ; then
+    tmpfile=$(mktemp /tmp/.init_XXXXXX)
+    cat $file | grep  INIT\ INFO -A 100 | grep INIT\ INFO -B 100 | diff - $file | grep \> | sed s/^\>\ //g > $tmpfile
+    cat $tmpfile > $file
+    rm -f $tmpfile
+fi
 
-cat $file | grep  INIT\ INFO -A 100 | grep INIT\ INFO -B 100 | diff - $file | grep \> | sed s/^\>\ //g > $tmpfile
-
-cat $tmpfile > $file
-
-rm -f $tmpfile
+exit 0

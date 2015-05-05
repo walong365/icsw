@@ -29,9 +29,8 @@ django.setup()
 from django.db import connection
 from initat.cluster.backbone.models import LogSource
 from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.package_install.server.config import global_config
+from initat.tools import config_tools, configfile, process_tools
 
 from initat.server_version import VERSION_STRING
 
@@ -42,7 +41,6 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name())
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(

@@ -26,12 +26,11 @@ django.setup()
 
 from django.conf import settings
 from initat.cluster.backbone.models import LogSource
-from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
-import daemon
 from initat.tools import process_tools
+from initat.cluster_server.config import global_config
 import sys
 
 from initat.server_version import VERSION_STRING
@@ -53,7 +52,6 @@ def show_commands():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name())
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -172,7 +170,6 @@ def main():
     # if not global_config["DEBUG"] and not global_config["COMMAND"]:
     #    with daemon.DaemonContext():
     run_code(options)
-
     configfile.terminate_manager()
     # exit
     return 0

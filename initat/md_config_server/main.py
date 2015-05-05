@@ -40,6 +40,7 @@ from initat.tools import config_tools
 from initat.tools import configfile
 import daemon
 from initat.tools import process_tools
+from initat.md_config_server.config import global_config
 import sys
 
 
@@ -49,7 +50,6 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name())
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([

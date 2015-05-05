@@ -20,6 +20,7 @@
 """ daemon to automatically install packages (.rpm, .deb) """
 
 from initat.package_install.client.constants import P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
+from initat.package_install.client.config import global_config
 from initat.client_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import configfile
@@ -35,7 +36,6 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name())
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),

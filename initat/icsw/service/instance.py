@@ -80,6 +80,8 @@ class InstanceXML(object):
                 ("startstop", "1"),
                 ("process_name", name),
                 ("meta_server_name", name),
+                # default wait time before killing processes
+                ("wait_time", "10"),
             ]:
                 if key not in cur_el.attrib:
                     cur_el.attrib[key] = def_value

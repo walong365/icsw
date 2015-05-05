@@ -51,27 +51,40 @@ def _state_overview(opt_ns, result):
     _instances = result.xpath(".//ns:instances/ns:instance")
     print("instances reported: {}".format(logging_tools.get_plural("instance", len(_instances))))
     for _inst in _instances:
-        _trans = []
-        last_trans = None
-        for _src_trans in result.xpath(".//ns:state", start_el=_inst):
+        _states = []
+        last_states = None
+        for _src_state in result.xpath(".//ns:state", start_el=_inst):
             # todo: remove duplicates
-            _trans.append(_src_trans)
+            _states.append(_src_state)
+        _actions = result.xpath(".//ns:action", start_el=_inst)
         print(
-            "{:<30s}, target state is {:<20s} [{}], {} in the last 24 hours".format(
+            "{:<30s}, target state is {:<20s} [{}], {} / {} in the last 24 hours".format(
                 _inst.get("name"),
                 {0: "stopped", 1: "started"}[int(_inst.attrib["target_state"])],
                 "active" if int(_inst.attrib["active"]) else "inactive",
-                logging_tools.get_plural("transition", len(_trans)),
+                logging_tools.get_plural("state", len(_states)),
+                logging_tools.get_plural("action", len(_actions)),
             )
         )
-        if opt_ns.trans:
-            for _cur_t in _trans:
+        if opt_ns.state:
+            for _cur_s in _states:
                 print(
                     "    {} state={}, running={} [{}]".format(
-                        time.ctime(int(_cur_t.attrib["created"])),
-                        _cur_t.attrib["state"],
-                        _cur_t.attrib["running"],
-                        _cur_t.attrib["proc_info_str"],
+                        time.ctime(int(_cur_s.attrib["created"])),
+                        _cur_s.attrib["state"],
+                        _cur_s.attrib["running"],
+                        _cur_s.attrib["proc_info_str"],
+                    )
+                )
+        if opt_ns.action:
+            for _cur_a in _actions:
+                print(
+                    "    {} action={}, runtime={} [{} / {}]".format(
+                        time.ctime(int(_cur_a.attrib["created"])),
+                        _cur_a.attrib["action"],
+                        _cur_a.attrib["runtime"],
+                        _cur_a.attrib["finished"],
+                        _cur_a.attrib["success"],
                     )
                 )
 
