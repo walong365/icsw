@@ -78,4 +78,7 @@ class GetValidLicenses(RetrieveAPIView):
     @method_decorator(login_required)
     @rest_logging
     def get(self, request, *args, **kwargs):
-        return Response(License.objects.get_valid_licenses())
+        return Response({
+            'valid_licenses': License.objects.get_valid_licenses(),
+            'all_licenses': [l.name for l in LicenseEnum],
+        })

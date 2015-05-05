@@ -28,9 +28,9 @@ from enum import Enum
 __all__ = ['get_available_licenses', 'LicenseEnum', 'LicenseParameterTypeEnum']
 
 
-LicenseEnum = Enum('LicenseEnum', 'kpi ext_license package_install virtual_desktop monitoring_dashboard reporting snapshot notification rms')
+LicenseEnum = Enum('LicenseEnum', 'kpi ext_license package_install virtual_desktop monitoring_dashboard reporting snapshot notification rms graphing')
 def get_name_for_user(self):
-    d = dict(((LicenseEnum.kpi, 'KPI'), (LicenseEnum.ext_license, 'License Optimization Management'), (LicenseEnum.package_install, 'Package Install'), (LicenseEnum.virtual_desktop, 'Virtual Desktop'), (LicenseEnum.monitoring_dashboard, 'Monitoring Dashboard'), (LicenseEnum.reporting, 'Reporting'), (LicenseEnum.snapshot, 'Database snapshot'), (LicenseEnum.notification, 'Notification'), (LicenseEnum.rms, 'Resource Management System (RMS)')))
+    d = dict(((LicenseEnum.kpi, 'KPI'), (LicenseEnum.ext_license, 'License Optimization Management'), (LicenseEnum.package_install, 'Package Install'), (LicenseEnum.virtual_desktop, 'Virtual Desktop'), (LicenseEnum.monitoring_dashboard, 'Monitoring Dashboard'), (LicenseEnum.reporting, 'Reporting'), (LicenseEnum.snapshot, 'Database snapshot'), (LicenseEnum.notification, 'Notification'), (LicenseEnum.rms, 'Resource Management System (RMS)'), (LicenseEnum.graphing, 'Graphing')))
     return d.get(self, None)
 
 LicenseEnum.get_name_for_user = get_name_for_user
@@ -53,5 +53,6 @@ def get_available_licenses():
     available_licenses.append(AvailableLicense(id=u'snapshot', name=u'Database snapshot', description=u''))
     available_licenses.append(AvailableLicense(id=u'notification', name=u'Notification', description=u''))
     available_licenses.append(AvailableLicense(id=u'rms', name=u'Resource Management System (RMS)', description=u''))
+    available_licenses.append(AvailableLicense(id=u'graphing', name=u'Graphing', description=u''))
 
     return available_licenses

@@ -354,7 +354,7 @@ angular.module(
     # these are not permissions for single objects, but the merged permission set of all objects
     object_permissions = Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET().$object
 
-    valid_licenses = Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).getList().$object
+    license_data = Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET().$object
 
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
@@ -416,8 +416,13 @@ angular.module(
         has_menu_permission: has_menu_permission
 
         has_valid_license: (license) ->
-            console.log 'lic check', license, valid_licenses, license in valid_licenses
-            return license in valid_licenses
+            if Object.keys(license_data).length == 0
+                # not loaded yet
+                return false
+            else
+                if license not in license_data.all_licenses
+                    console.warn("Invalid license check for #{license}. Licenses are: #{license_data.all_licenses}")
+                return license in license_data.valid_licenses
     }
     return angular.extend({
         install : (scope) ->

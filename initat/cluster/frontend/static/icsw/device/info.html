@@ -84,7 +84,7 @@
             </icsw-device-mon-config>
         </tab>
         <!-- also check for grapher in service list -->
-        <tab ng-if="acl_read(null, 'backbone.device.show_graphs')" select="activate('graphing')" active="graphing_active">
+        <tab ng-if="acl_read(null, 'backbone.device.show_graphs') && has_valid_license('graphing')" select="activate('graphing')" active="graphing_active">
             <tab-heading>
                 Graph{{ addon_text }}
             </tab-heading>
