@@ -29,12 +29,15 @@ def call_command(command, log_com=None):
     start_time = time.time()
     stat, out = commands.getstatusoutput(command)
     end_time = time.time()
-    log_lines = ["calling '{}' took {}, result (stat {:d}) is {} ({})".format(
-        command,
-        logging_tools.get_diff_time_str(end_time - start_time),
-        stat,
-        logging_tools.get_plural("byte", len(out)),
-        logging_tools.get_plural("line", len(out.split("\n"))))]
+    log_lines = [
+        "calling '{}' took {}, result (stat {:d}) is {} ({})".format(
+            command,
+            logging_tools.get_diff_time_str(end_time - start_time),
+            stat,
+            logging_tools.get_plural("byte", len(out)),
+            logging_tools.get_plural("line", len(out.split("\n")))
+        )
+    ]
     if log_com:
         for log_line in log_lines:
             log_com(" - {}".format(log_line))

@@ -436,19 +436,3 @@ class srv_command(object):
 
     def __len__(self):
         return len(etree.tostring(self.tree))  # @UndefinedVariable
-
-    def check_msi_block(self, msi_block):
-        if msi_block:
-            msi_block.check_block()
-            self.set_result(
-                "{}, {}".format(
-                    msi_block.get_info(),
-                    msi_block.pid_check_string,
-                ),
-                SRV_REPLY_STATE_OK if msi_block.pid_checks_failed == 0 else SRV_REPLY_STATE_ERROR,
-            )
-        else:
-            self.set_result(
-                "no MSI-block defined",
-                SRV_REPLY_STATE_WARN,
-            )

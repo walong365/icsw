@@ -28,6 +28,7 @@ django.setup()
 
 from initat.cluster.backbone.models import LogSource
 from initat.collectd.config_static import COMMAND_PORT
+from initat.collectd.config import global_config
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location
@@ -39,14 +40,9 @@ import sys
 import time
 
 
-def run_code():
-    from initat.collectd.server import server_process
-    server_process().loop()
-
-
 def kill_previous():
     # check for already running rrdcached processes and kill them
-    proc_dict = process_tools.get_proc_list_new(proc_name_list=["rrdcached", "collectd"])
+    proc_dict = process_tools.get_proc_list(proc_name_list=["rrdcached", "collectd"])
     if proc_dict:
         for _key in proc_dict.iterkeys():
             try:
@@ -61,27 +57,13 @@ def kill_previous():
                 pass
 
 
-def _create_dirs(global_config):
-    graph_root = global_config["RRD_DIR"]
-    if not os.path.isdir(graph_root):
-        try:
-            os.makedirs(graph_root)
-        except:
-            print("*** cannot create graph_root '{}': {}".format(graph_root, process_tools.get_except_info()))
-        else:
-            print("created graph_root '{}'".format(graph_root))
-
-
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
-        ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
         ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS", configfile.array_c_var([])),
@@ -114,14 +96,6 @@ def main():
         sys.exit(5)
     else:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
-    if global_config["CHECK"]:
-        sys.exit(0)
-    if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(
-            "{}.py".format(prog_name),
-            ignore_names=[],
-        )
-
     global_config.add_config_entries(
         [
             (
@@ -157,30 +131,9 @@ def main():
     ])
     if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
         global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
-    _create_dirs(global_config)
-
-    process_tools.renice()
-    process_tools.fix_directories(
-        global_config["USER"],
-        global_config["GROUP"],
-        [
-            "/var/run/collectd-init", global_config["RRD_DIR"], global_config["RRD_CACHED_DIR"],
-        ]
-    )
     kill_previous()
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
-    if not global_config["DEBUG"]:
-        with daemon.DaemonContext(
-            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
-            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
-        ):
-            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            run_code()
-            configfile.terminate_manager()
-    else:
-        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-        print("Debugging collectd-init on {}".format(long_host_name))
-        run_code()
-    sys.exit(0)
+    # late load after population of global_config
+    from initat.collectd.server import server_process
+    server_process().loop()
+    configfile.terminate_manager()
+    os._exit(0)

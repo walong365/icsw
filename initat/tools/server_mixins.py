@@ -19,10 +19,7 @@
 #
 """ usefull server mixins """
 
-from initat.cluster.backbone.routing import get_server_uuid
-from initat.tools import cluster_location
 from initat.tools import logging_tools
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import threading_tools
 import zmq
@@ -54,15 +51,21 @@ class network_bind_mixin(object):
         immediate = kwargs.get("immediate", True)
         bind_port = kwargs["bind_port"]
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
-        self.bind_id = get_server_uuid(kwargs["server_type"])
-        # device recognition
-        dev_r = cluster_location.device_recognition()
+        if "client_type" in kwargs:
+            self.bind_id = process_tools.get_client_uuid(kwargs["client_type"])
+            dev_r = None
+        else:
+            from initat.tools import cluster_location
+            from initat.cluster.backbone.routing import get_server_uuid
+            self.bind_id = get_server_uuid(kwargs["server_type"])
+            # device recognition
+            dev_r = cluster_location.device_recognition()
         # virtual sockets
         self.virtual_sockets = []
         # main sockets
         self.main_socket = None
         # create bind list
-        if dev_r.device_dict:
+        if dev_r and dev_r.device_dict:
             _bind_ips = set(list(dev_r.local_ips) + sum([_list for _dev, _list in dev_r.ip_r_lut.iteritems()], []))
             # complex bind
             master_bind_list = [

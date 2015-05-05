@@ -22,16 +22,17 @@
 
 """ host-monitoring, inotify thread """
 
-from initat.host_monitoring.config import global_config
 import fnmatch
+import os
+import stat
+import time
+
+from initat.host_monitoring.config import global_config
 from initat.tools import inotify_tools
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
 from initat.tools import server_command
-import stat
 from initat.tools import threading_tools
-import time
 from initat.tools import uuid_tools
 import zmq
 
@@ -188,13 +189,16 @@ class file_watcher(object):
                                 reg_mask,
                                 inotify_tools.mask_to_str(reg_mask),
                                 logging_tools.get_plural("directory", len(new_dirs)),
-                                ", ".join(sorted(new_dirs))))
+                                ", ".join(sorted(new_dirs))
+                            )
+                        )
                         for add_dir in new_dirs:
                             self.__process.inotify_watcher.add_watcher(
                                 self.fw_id,
                                 add_dir,
                                 reg_mask,
-                                self._process_event)
+                                self._process_event
+                            )
                         self.__act_dirs.extend(new_dirs)
                     if old_dirs:
                         self.log(
@@ -217,12 +221,15 @@ class file_watcher(object):
 
     def _process_event(self, event):
         if self.__verbose:
-            self.log("Got inotify_event for path '{}', name '{}' (mask 0x{:x} [{}], dir is {})".format(
-                event.path,
-                event.name,
-                event.mask,
-                inotify_tools.mask_to_str(event.mask),
-                event.dir))
+            self.log(
+                "Got inotify_event for path '{}', name '{}' (mask 0x{:x} [{}], dir is {})".format(
+                    event.path,
+                    event.name,
+                    event.mask,
+                    inotify_tools.mask_to_str(event.mask),
+                    event.dir
+                )
+            )
         self.update(event)
 
     def _hello_timeout(self):
@@ -265,7 +272,9 @@ class file_watcher(object):
                     "adding file {} to inotify_watcher (mask {:d} [{}])".format(
                         new_file,
                         reg_mask,
-                        inotify_tools.mask_to_str(reg_mask)))
+                        inotify_tools.mask_to_str(reg_mask)
+                    )
+                )
                 self.__process.inotify_watcher.add_watcher(
                     self.fw_id,
                     new_file,
@@ -392,8 +401,8 @@ class file_watcher(object):
 
 class inotify_process(threading_tools.process_obj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        self.__watcher = inotify_tools.inotify_watcher()
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], context=self.zmq_context)
+        self.__watcher = inotify_tools.InotifyWatcher()
         self.__idle_timeout = global_config["INOTIFY_IDLE_TIMEOUT"]
         # self.__watcher.add_watcher("internal", "/etc/sysconfig/host-monitoring.d", inotify_tools.IN_CREATE | inotify_tools.IN_MODIFY, self._trigger)
         self.__file_watcher_dict = {}
@@ -404,8 +413,10 @@ class inotify_process(threading_tools.process_obj):
         self.register_exception("term_error", self._sigint)
         self.allow_signal(15)
         self.register_func("fw_handle", self._fw_handle)
-        self.cb_func = self._check
+        # register watcher fd with 0MQ poller
+        self.register_poller(self.__watcher._fd, zmq.POLLIN, self._inotify_check)
         self.log("idle_timeout is {:d}".format(self.__idle_timeout))
+        self.register_timer(self._fw_timeout, 1000)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -416,16 +427,20 @@ class inotify_process(threading_tools.process_obj):
     def _trigger(self, event):
         print event, "*", dir(event)
 
-    def _check(self):
+    def _inotify_check(self, *args, **kwargs):
         try:
-            self.__watcher.check(self.__idle_timeout * 1000)
+            self.__watcher.process()
         except:
-            if self.signals:
-                self.log("excepted, signals: {}".format(", ".join(["{:d}".format(_sign) for _sign in self.signals])))
-                # we received some signals, reduce idle_timeout
-                self.__idle_timeout = 0.1
-            else:
-                self.log("excepted")
+            self.log(
+                "exception occured in watcher.process(): {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            pass
+
+    def _fw_timeout(self):
         remove_ids = []
         for fw_id, fw_struct in self.__file_watcher_dict.iteritems():
             if not fw_struct.inotify():
@@ -438,7 +453,9 @@ class inotify_process(threading_tools.process_obj):
             self.log(
                 "removing {}: {}".format(
                     logging_tools.get_plural("watcher_id", len(remove_ids)),
-                    ", ".join(remove_ids)))
+                    ", ".join(remove_ids)
+                )
+            )
             dummy_com = server_command.srv_command(command="dummy")
             dummy_com["result"] = None
             for rem_id in remove_ids:

@@ -23,6 +23,7 @@
 """ host-monitoring, main part """
 
 from initat.host_monitoring import hm_classes
+from initat.host_monitoring.config import global_config
 from initat.client_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import configfile
@@ -66,10 +67,10 @@ def show_command_info():
 
 
 def run_code(prog_name, global_config):
-    if prog_name == "collserver":
+    if prog_name in ["collserver"]:
         from initat.host_monitoring.server import server_code
         ret_state = server_code().loop()
-    elif prog_name == "collrelay":
+    elif prog_name in ["collrelay"]:
         from initat.host_monitoring.relay import relay_code
         ret_state = relay_code().loop()
     elif prog_name == "collclient":
@@ -82,7 +83,6 @@ def run_code(prog_name, global_config):
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
@@ -108,7 +108,7 @@ def main():
             )
         ]
     )
-    if prog_name == "collserver":
+    if prog_name in ["collserver"]:
         global_config.add_config_entries(
             [
                 (
@@ -162,7 +162,7 @@ def main():
                 ("HOST", configfile.str_c_var("localhost", help_string="host to connect to")),
             ]
         )
-    elif prog_name == "collrelay":
+    elif prog_name in ["collrelay"]:
         global_config.add_config_entries(
             [
                 ("COM_PORT", configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
@@ -177,7 +177,8 @@ def main():
     options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING
+        ),
         add_writeback_option=prog_name in ["collserver", "collrelay"],
         positional_arguments=prog_name in ["collclient"],
         partial=prog_name in ["collclient"],
@@ -189,25 +190,5 @@ def main():
         ret_state = 0
     else:
         global_config.write_file()
-        if global_config["KILL_RUNNING"]:
-            process_tools.kill_running_processes()
-        if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
-            with daemon.DaemonContext():
-                sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-                sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-                global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                run_code(prog_name, None)
-                configfile.terminate_manager()
-            # exit
-            os._exit(0)
-        else:
-            if prog_name in ["collserver", "collrelay"]:
-                global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                print(
-                    "Debugging {} on {}".format(
-                        prog_name,
-                        process_tools.get_machine_name()
-                    )
-                )
-            ret_state = run_code(prog_name, global_config)
+        ret_state = run_code(prog_name, global_config)
     return ret_state

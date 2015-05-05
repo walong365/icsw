@@ -88,7 +88,8 @@
     <tab heading="Contacts">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactService">
             <h2>Contacts ({{entries.length}} entries),
-                <icsw-tools-button ng-show="config_service.rest_data_present()" type="create" value="create new"
+                <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                   style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
                                    ng-click="create($event)"></icsw-tools-button>
             </h2>
             <table st-table="entries_displayed" st-safe-src="entries"
@@ -149,7 +150,11 @@
 
     <tab heading="Service templates">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceTemplateService">
-            <h2>Service templates ({{entries.length}} entries), <icsw-tools-button ng-show="config_service.rest_data_present()" type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+            <h2>Service templates ({{entries.length}} entries),
+                <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                   style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                   ng-click="create($event)"></icsw-tools-button>
+            </h2>
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-condensed table-hover" style="width:auto;">
                 <thead>
@@ -221,7 +226,11 @@
 
     <tab heading="Device templates">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceTemplateService">
-                <h2>Device templates ({{entries.length}} entries), <icsw-tools-button ng-show="config_service.rest_data_present()" type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+                <h2>Device templates ({{entries.length}} entries),
+                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       ng-click="create($event)"></icsw-tools-button>
+                </h2>
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-condensed table-hover" style="width:auto;">
                 <thead>

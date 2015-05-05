@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -255,9 +255,15 @@ def main():
                 pass
             else:
                 target_license = arg
-    process_tools.fix_directories(target_user, target_group, [LICENSE_LOG_DIR,
-                                                              LICENSE_SCRIPT_DIR,
-                                                              LICENSE_PID_DIR])
+    process_tools.fix_directories(
+        target_user,
+        target_group,
+        [
+            LICENSE_LOG_DIR,
+            LICENSE_SCRIPT_DIR,
+            LICENSE_PID_DIR,
+        ]
+    )
     ok_commands = ["start", "stop", "status"]
     if len(args) != 1:
         print "Need argument (one of %s)" % (", ".join(ok_commands))

@@ -27,28 +27,6 @@
 # Short-Description: dummy for ics_tools
 ### END INIT INFO
 
-check_threads() {
-    if [ -n "$1" ] ; then
-        ret=$(/opt/cluster/bin/ics_tools.py $1)
-    else 
-        ret=$(/opt/cluster/bin/ics_tools.py $SERVER_PID)
-    fi
-    ret_val=$?
-    echo -n $ret
-    return $ret_val
-}
-
-check_threads_ok() {
-    if [ -n "$1" ] ; then
-        ret=$(/opt/cluster/bin/ics_tools.py -o $1)
-    else 
-        ret=$(/opt/cluster/bin/ics_tools.py -o $SERVER_PID)
-    fi
-    ret_val=$?
-    echo -n $ret
-    return $ret_val
-}
-
 # check for redhat
 if [ -f /etc/redhat-release ] ; then
     export IS_REDHAT=1

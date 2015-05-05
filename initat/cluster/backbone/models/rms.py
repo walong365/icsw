@@ -21,12 +21,12 @@
 #
 """ database definitions for RMS """
 
-# from django.db.models import Q, signals, get_model
-# from django.dispatch import receiver
-from django.db import models
-from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
 import datetime
 import time
+
+from django.db import models
+from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
+
 
 __all__ = [
     "rms_job",

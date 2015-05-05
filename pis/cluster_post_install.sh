@@ -11,18 +11,24 @@ if [ -x ${CLUSTER_PATH}/sbin/check_local_settings.py ] ; then
     ${CLUSTER_PATH}/sbin/check_local_settings.py
 fi
 
+# add idg to webserver group
+
+if [ -f /etc/debian_version ] ; then
+    usermod -G idg www-data
+elif [ -f /etc/redhat-release ] ; then
+    usermod -G idg apache
+else
+    usermod -G idg wwwrun
+fi
+
 if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     # already installed
     if [ -f /etc/sysconfig/cluster/db_auto_update ] ; then
-        echo "running auto-update script ${CLUSTER_PATH}/sbin/setup_cluster.py --migrate"
-        ${CLUSTER_PATH}/sbin/setup_cluster.py --migrate
+        echo "running auto-update script ${CLUSTER_PATH}/sbin/icsw setup --migrate"
+        ${CLUSTER_PATH}/sbin/icsw setup --migrate
     else
         echo "to update the current database schema via django please use ${CLUSTER_PATH}/sbin/setup_cluster.py --migrate"
     fi
 else
-    echo "to create a new database use ${CLUSTER_PATH}/sbin/setup_cluster.py"
-
-    # do not show, only for ALN
-    # echo "to migrate the database to a django-support format please use %{CLUSTER_PATH}/sbin/migrate_to_django.sh"
-    # echo "to migrate the current user structure use %{CLUSTER_PATH}/sbin/create_django_users.py"
+    echo "to create a new database use ${CLUSTER_PATH}/sbin/icsw setup"
 fi

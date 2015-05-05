@@ -1,5 +1,5 @@
 #
-# this file is part of collectd-init
+# this file is part of collectd
 #
 # Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
 #
@@ -18,7 +18,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" collectd-init, server part """
+""" collectd, server part """
 
 from django.conf import settings
 from django.db import connection
@@ -156,20 +156,18 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             self.__msi_block.save_block()
 
     def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.save_pid(self.__pid_name, mult=5)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("collectd-init")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block = process_tools.meta_server_info("collectd")
+        msi_block.add_actual_pid(mult=5, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, fuzzy_ceiling=3, process_name="manager")
-        msi_block.start_command = "/etc/init.d/collectd-init start"
-        msi_block.stop_command = "/etc/init.d/collectd-init force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block
 
     def _init_network_sockets(self):
-        self.bind_id = get_server_uuid("collectd-init")
+        self.bind_id = get_server_uuid("collectd")
         client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id, immediate=True)
         bind_str = "tcp://*:{:d}".format(global_config["COMMAND_PORT"])
         try:
@@ -177,7 +175,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         except zmq.ZMQError:
             self.log(
                 "error binding to {:d}: {}".format(
-                    global_config["COM_PORT"],
+                    global_config["COMMAND_PORT"],
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL

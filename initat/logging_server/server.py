@@ -58,12 +58,11 @@ class main_process(threading_tools.process_pool):
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
         self.change_resource()
-        self.renice()
         self._init_msi_block()
         # self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        self.register_timer(self._update, 10 if global_config["DEBUG"] else 60)
+        self.register_timer(self._update, 60)
         os.umask(2)
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
         self.__num_forward_ok, self.__num_forward_error = (0, 0)
@@ -216,8 +215,6 @@ class main_process(threading_tools.process_pool):
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logserver")
         msi_block.add_actual_pid(mult=3, process_name="main")
-        msi_block.start_command = "/etc/init.d/logging-server start"
-        msi_block.stop_command = "/etc/init.d/logging-server force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block

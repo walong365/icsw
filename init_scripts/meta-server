@@ -1,0 +1,72 @@
+#! /bin/bash
+#
+# Copyright (c) 2003-2005,2011-2014 Andreas Lang-Nevyjel init.at
+#
+# RedHat stuff
+# chkconfig: 2345 79 21
+# description: meta-server
+#
+### BEGIN INIT INFO
+# Provides:      meta-server
+# Required-Start: $network $syslog logging-server
+# Required-Stop: $network $syslog logging-server
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
+# Description:   starts meta-server
+### END INIT INFO
+
+export SYSTEMD_NO_WRAP="1"
+
+if [ -f /etc/rc.status ] ; then
+    . /etc/rc.status
+else
+    . /etc/rc.status_suse
+fi
+. /etc/init.d/ics_tools.sh
+
+META_FILE=/var/lib/meta-server/meta-server
+SERVER_PID=/var/run/meta-server.pid
+
+rc_reset
+
+export PATH=/opt/python-init/bin:${PATH}
+export PYTHONOPTIMIZE="yes"
+export PYTHONBUFFER="yes"
+export HOSTNAME=`/bin/hostname`
+export ICSW=/opt/cluster/sbin/icsw
+
+case "$1" in
+    start)
+        echo -n "Starting meta-server "
+        if [ -f ${SERVER_PID} ] ; then
+            echo -n " ... already running"
+        else
+	    ${ICSW} start meta-server
+        fi
+        rc_status -v
+    ;;
+    stop)
+        echo -n "Stopping meta-server "
+        if [ -f ${SERVER_PID} ] ; then
+	    ${ICSW} stop meta-server
+        else
+            rc_failed
+        fi
+        rm -f ${SERVER_PID} ${META_FILE}
+        rc_status -v
+    ;;
+    status)
+        ${ICSW} status meta-server
+        rc_status -v 
+    ;;
+    restart)
+        ${ICSW} restart meta-server
+        rc_status -v
+    ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+    ;;
+esac
+
+rc_exit

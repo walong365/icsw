@@ -520,7 +520,7 @@ class csw_object_list(viewsets.ViewSet):
         group_list = []
         for perm_ct in perm_cts:
             cur_group = csw_object_group(
-                "{}.{}".format(perm_ct.app_label, perm_ct.name),
+                "{}.{}".format(perm_ct.app_label, perm_ct.model_class().__name__),
                 perm_ct.pk,
                 self._get_objects(perm_ct, [ct_perm for ct_perm in all_db_perms if ct_perm.content_type_id == perm_ct.pk])
             )
@@ -529,9 +529,9 @@ class csw_object_list(viewsets.ViewSet):
         return Response(_ser.data)
 
     def _get_objects(self, cur_ct, perm_list):
-        cur_model = apps.get_model(cur_ct.app_label, cur_ct.name)
+        cur_model = apps.get_model(cur_ct.app_label, cur_ct.model_class().__name__)
         _q = cur_model.objects
-        _key = "{}.{}".format(cur_ct.app_label, cur_ct.name)
+        _key = "{}.{}".format(cur_ct.app_label, cur_ct.model_class().__name__)
         if _key == "backbone.device":
             _q = _q.select_related("device_group"). \
                 filter(Q(enabled=True, device_group__enabled=True)). \

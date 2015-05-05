@@ -131,19 +131,19 @@ install:
 	# INSTALL to ICSW_SBIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
-	for file in logging-server.py log_error.py logging-client.py ; do \
+	for file in log_error.py logging-client.py collclient.py ; do \
 		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
+	for file in cluster-server.py ; do \
+	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
+	done
+
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for script in start_node.sh stop_node.sh check_node.sh ; do \
-	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
-	done
 	for name in fetch_ssh_keys.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
 	done
@@ -153,21 +153,14 @@ install:
 	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
 	done
-	for sbin_file in start_cluster.sh stop_cluster.sh start_server.sh stop_server.sh check_cluster.sh check_server.sh; do \
-	    ${INSTALL} ${INSTALL_OPTS} opt/cluster/bin/$$sbin_file ${DESTDIR}/${ICSW_SBIN}; \
-	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for pyf in db_magic check_local_settings create_django_users setup_cluster restore_user_group fix_models ; do \
+	for pyf in db_magic check_local_settings create_django_users restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
 	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} get_pids_from_meta.py ${DESTDIR}/${ICSW_SBIN}/
 	# Create to ICSW_SBIN
-	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collclient.py
-	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collrelay.py
-	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collserver.py
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
 	# ICSW_BIN
@@ -194,25 +187,11 @@ install:
 	${LN} -s ${PYTHON_SITE}/send_mail.py ${DESTDIR}/${ICSW_BIN}/
 	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
-	${INSTALL} ${INSTALL_OPTS} cluster-config-server ${DESTDIR}/${INIT}/cluster-config-server
-	cp -a collectd-init ${DESTDIR}/${INIT}
-	${INSTALL} ${INSTALL_OPTS} discovery-server ${DESTDIR}/${INIT}/discovery-server
-	${INSTALL} ${INSTALL_OPTS} logging-server.rc ${DESTDIR}/${INIT}/logging-server
 	${INSTALL} ${INSTALL_OPTS} loadmodules ${DESTDIR}/${INIT}/loadmodules
-	${INSTALL} ${INSTALL_OPTS} logcheck-server ${DESTDIR}/${INIT}/
-	${INSTALL} ${INSTALL_OPTS} cluster-server ${DESTDIR}/${INIT}
-	${INSTALL} ${INSTALL_OPTS} scripts/host-relay.rc ${DESTDIR}/${INIT}/host-relay
-	${INSTALL} ${INSTALL_OPTS} scripts/host-monitoring.rc ${DESTDIR}/${INIT}/host-monitoring
-	${INSTALL} ${INSTALL_OPTS} scripts/snmp-relay.rc ${DESTDIR}/${INIT}/snmp-relay
 	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
-	${INSTALL} ${INSTALL_OPTS} meta-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
-	${INSTALL} ${INSTALL_OPTS} init_scripts/mother ${DESTDIR}${INIT}/
-	${INSTALL} ${INSTALL_OPTS} init_scripts/package-server.rc ${DESTDIR}${INIT}/package-server
-	${INSTALL} ${INSTALL_OPTS} init_scripts/package-client.rc ${DESTDIR}${INIT}/package-client
-	cp -a rrd-grapher ${DESTDIR}/${INIT}
-	install ${INSTALL_OPTS} md-config-server ${DESTDIR}/${INIT}/md-config-server
-	${INSTALL} ${INSTALL_OPTS} rms-server.rc ${DESTDIR}${INIT}/rms-server
+	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
+	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
 	# SGE stuff ICSW_SGE
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SGE}/init.d
 	for name in sgemaster sgeexecd ; do \
@@ -229,25 +208,11 @@ install:
 	echo "proepilogue.py qlogin_wrapper.sh sge_starter.sh" > ${DESTDIR}/${ICSW_SGE}/.party_files
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
+	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
+	${LN} -s ${INIT}/logging-server ${DESTDIR}${USRSBIN}/rclogging-server
 	${LN} -s ${INIT}/hoststatus ${DESTDIR}${USRSBIN}/rchoststatus
 	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules
-	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
-	${LN} -s ${INIT}/logging-server ${DESTDIR}/${USRSBIN}/rclogging-server
-	${LN} -s ${INIT}/package-server ${DESTDIR}${USRSBIN}/rcpackage-server
-	${LN} -s ${INIT}/package-client ${DESTDIR}${USRSBIN}/rcpackage-client
-	${LN} -s ${INIT}/rms-server ${DESTDIR}${USRSBIN}/rcrms-server
-	${LN} -s ${INIT}/rrd-grapher ${DESTDIR}${USRSBIN}/rcrrd-grapher
-	${LN} -s ${INIT}/mother ${DESTDIR}${USRSBIN}/rcmother
-	${LN} -s ${INIT}/logcheck-server ${DESTDIR}${USRSBIN}/rclogcheck-server
-	${LN} -s ${INIT}/md-config-server ${DESTDIR}${USRSBIN}/rcmd-config-server
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server
-	${LN} -s ${INIT}/discovery-server ${DESTDIR}${USRSBIN}/rcdiscovery-server
-	${LN} -s ${INIT}/cluster-server ${DESTDIR}${USRSBIN}/rccluster-server
-	${LN} -s ${INIT}/collectd-init ${DESTDIR}${USRSBIN}/rccollectd-init
-	${LN} -s ${INIT}/cluster-config-server ${DESTDIR}${USRSBIN}/rccluster-config-server
-	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${USRSBIN}/rchost-monitoring
-	${LN} -s ${INIT}/host-relay ${DESTDIR}/${USRSBIN}/rchost-relay
-	${LN} -s ${INIT}/snmp-relay ${DESTDIR}/${USRSBIN}/rcsnmp-relay
 	# SYSCONF
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/cluster
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/init-license-server.d
@@ -317,7 +282,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${CONFDIR_HM}
 	${INSTALL} ${INSTALL_OPTS} configs/remote_ping.test ${DESTDIR}/${CONFDIR_HM}
 	${INSTALL} ${INSTALL_OPTS} configs/host-monitoring ${DESTDIR}/${SYSCONF}/host-monitoring
-	${INSTALL} ${INSTALL_OPTS} configs/host-relay ${DESTDIR}/${SYSCONF}/host-relay
 	# uwsgi 
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/
@@ -330,8 +294,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} scripts/register_file_watch ${DESTDIR}/${SCRIPTDIR}
 	${INSTALL} ${INSTALL_OPTS} scripts/unregister_file_watch ${DESTDIR}/${SCRIPTDIR}
 	./init_proprietary.py ${DESTDIR}
-	# check scripts
-	${LN} -s ${PYTHON_SITE}/initat/tools/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
+	# icsw
+	${LN} -s ${PYTHON_SITE}/initat/icsw/main.py ${DESTDIR}/${ICSW_SBIN}/icsw
 	# remove deprecated
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc

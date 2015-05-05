@@ -3,21 +3,46 @@
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
+        <old-binary>logcheck-server</old-binary>
+        <nice-level>15</nice-level>
     </instance>
     <instance check_type="meta" name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idpacks</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <module-name>initat.package_install.server.main</module-name>
+        <old-binary>package-server</old-binary>
+        <access-rights>
+            <dir value="/var/run/packge-server" user="idpacks" group="idg" create="1"/>
+        </access-rights>
     </instance>
     <instance check_type="meta" name="mother" pid_file_name="mother/mother.pid" has_force_stop="1">
         <config_names>
             <config_name>mother_server</config_name>
         </config_names>
+        <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="collectd-init" runs_on="server" has_force_stop="1" pid_file_name="collectd-init/collectd-init.pid" meta_server_name="collectd-init">
+    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idrrd</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <module-name>initat.collectd.main</module-name>
+        <programm-name>collectd</programm-name>
+        <programm-title>icsw.collectd</programm-title>
+        <old-binary>collectd-init</old-binary>
+        <access-rights>
+            <dir value="/var/run/collectd" user="idrrd" group="idg" create="1"/>
+            <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
+            <dir value="/var/run/rrdcached" user="idrrd" group="idg" create="1"/>
+        </access-rights>
     </instance>
     <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
         <config_names>
@@ -29,7 +54,7 @@
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance name="icinga" check_type="simple" pid_file_name="/opt/icinga/var/icinga.lock" any_threads_ok="1" runs_on="system">
+    <instance name="icinga" check_type="simple" pid_file_name="/opt/icinga/var/icinga.lock" any_threads_ok="1" runs_on="system" wait_time="20">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
@@ -49,12 +74,35 @@
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idrrd</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <programm-name>rrd-grapher</programm-name>
+        <programm-title>icsw.rrd-grapher</programm-title>
+        <old-binary>rrd-grapher</old-binary>
+        <access-rights>
+            <dir value="/var/run/rrd-grapher" user="idrrd" group="idg" create="1"/>
+            <dir value="/tmp/.icsw/static/graphs" user="idrrd" group="idg"/>
+            <dir value="/srv/www/htdocs/icsw/static/graphs" user="idrrd" group="idg" create="1"/>
+            <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
+        </access-rights>
     </instance>
     <instance check_type="meta" name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">sge</arg>
+            <arg key="group">sge</arg>
+            <arg key="groups">idg</arg>
+        </start-argument>
+        <nice-level>15</nice-level>
+        <module-name>initat.rms.main</module-name>
+        <access-rights>
+            <file value="/etc/sysconfig/licenses/.license_policy" user="sge" group="sge"/>
+        </access-rights>
     </instance>
     <instance check_type="meta" name="cluster-server" has_force_stop="1">
         <config_names>
@@ -65,28 +113,67 @@
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">iddis</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <old-binary>discovery-server</old-binary>
+        <nice-level>15</nice-level>
+        <access-rights>
+            <dir value="/var/run/discovery-server" user="iddis" group="idg" create="1"/>
+        </access-rights>
     </instance>
     <instance check_type="meta" name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
+        <start-argument>
+            <arg key="user">idccs</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <old-binary>cluster-config-server</old-binary>
+        <nice-level>15</nice-level>
+        <access-rights>
+            <dir value="/var/run/cluster-config-server" user="idccs" group="idg" create="1"/>
+        </access-rights>
     </instance>
     <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
+        <!-- special flag: ignore missing database connection, for relayer operation -->
+        <ignore-missing-database/>
+        <programm-name>collrelay</programm-name>
+        <module-name>initat.host_monitoring.main</module-name>
+        <old-binary>collrelay</old-binary>
     </instance>
     <instance check_type="meta" name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
+        <ignore-missing-database/>
+        <old-binary>snmp-relay</old-binary>
+        <nice-level>15</nice-level>
     </instance>
     <instance check_type="meta" name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>-
+        <start-argument>
+            <arg key="user">idnagios</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <old-binary>md-config-server</old-binary>
+        <access-rights>
+            <dir value="/var/run/md-config-server" user="idnagios" group="idg" create="1"/>
+            <dir value="/opt/nagvis4icinga/etc/" user="idnagios" group="idg"/>
+            <dir value="/opt/nagvis4icinga/etc/maps" user="idnagios" group="idg"/>
+            <file value="/opt/nagvis4icinga/etc/auth.db" user="idnagios" group="idg"/>
+            <file value="/opt/nagvis4icinga/etc/nagvis.ini.php" user="idnagios" group="idg"/>
+            <file value="/opt/nagvis4icinga/share/server/core/defined/global.php" user="idnagios" group="idg"/>
+        </access-rights>
     </instance>
 </instances>

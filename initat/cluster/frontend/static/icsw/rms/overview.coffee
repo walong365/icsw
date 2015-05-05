@@ -210,8 +210,8 @@ rms_module = angular.module(
         lineNumbers: true
         matchBrackets: true
     }
-}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "$window"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, $window) ->
         access_level_service.install($scope)
         $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
@@ -399,10 +399,12 @@ rms_module = angular.module(
                             if $scope.io_dict[_id].update
                                 fetch_list.push($scope.io_dict[_id].get_id())
                         if fetch_list.length
+                            is_ie_below_eleven = /MSIE/.test($window.navigator.userAgent)
                             icswCallAjaxService
                                 url     : ICSW_URLS.RMS_GET_FILE_CONTENT
                                 data    :
-                                    "file_ids" : angular.toJson(fetch_list)
+                                    file_ids: angular.toJson(fetch_list)
+                                    is_ie: if is_ie_below_eleven then 1 else 0
                                 success : (xml) =>
                                     icswParseXMLResponseService(xml)
                                     xml = $(xml)
