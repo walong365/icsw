@@ -1239,7 +1239,8 @@ class virtual_desktop_user_setting(models.Model):
 
     last_start_attempt = models.DateTimeField(default=datetime.datetime.fromtimestamp(0), blank=True)
 
-    # set when this is about to be deleted (this is necessary as only cluster-server may do it as soon as session is shut down)
+    # set when this is about to be deleted
+    # (this is necessary as only cluster-server may do it as soon as session is shut down)
     to_delete = models.BooleanField(default=False, blank=True)
 
     state = models.IntegerField(default=State.DISABLED)
@@ -1266,7 +1267,7 @@ class virtual_desktop_user_setting(models.Model):
 
 
 @receiver(signals.post_save, sender=virtual_desktop_user_setting)
-def virtual_desktop_user_setting_save(sender, **kwargs):
+def virtual_desktop_user_setting_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst._send_signals:

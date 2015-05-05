@@ -533,12 +533,13 @@ def mon_check_command_pre_save(sender, **kwargs):
 
 
 @receiver(signals.post_save, sender=mon_check_command)
-def _mon_check_command_post(sender, instance, **kwargs):
-    if instance.mon_service_templ is not None and instance.mon_service_templ.any_notification_enabled():
-        log_usage_data = {}
-        for dev_pk in instance.get_configured_device_pks():
-            log_usage_data[dev_pk] = [instance]
-        LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
+def _mon_check_command_post(sender, instance, raw, **kwargs):
+    if not raw:
+        if instance.mon_service_templ is not None and instance.mon_service_templ.any_notification_enabled():
+            log_usage_data = {}
+            for dev_pk in instance.get_configured_device_pks():
+                log_usage_data[dev_pk] = [instance]
+            LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class mon_check_command_type(models.Model):
@@ -1080,16 +1081,17 @@ class mon_service_templ(models.Model):
 
 
 @receiver(signals.post_save, sender=mon_service_templ)
-def _service_templ_save(sender, instance, **kwargs):
-    # log here because services which have a template might get a notification by enabling it here
-    if instance.any_notification_enabled():
-        log_usage_data = defaultdict(lambda: [])
+def _service_templ_post_save(sender, instance, raw, **kwargs):
+    if not raw:
+        # log here because services which have a template might get a notification by enabling it here
+        if instance.any_notification_enabled():
+            log_usage_data = defaultdict(lambda: [])
 
-        for mcc in instance.mon_check_command_set.all():
-            for dev_pk in mcc.get_configured_device_pks():
-                log_usage_data[dev_pk].append(mcc)
+            for mcc in instance.mon_check_command_set.all():
+                for dev_pk in mcc.get_configured_device_pks():
+                    log_usage_data[dev_pk].append(mcc)
 
-        LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
+            LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 @receiver(signals.pre_save, sender=mon_service_templ)
