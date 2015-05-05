@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from initat.cluster.backbone.models import LicenseUsage, LicenseParameterTypeEnum, LicenseEnum
 from initat.cluster.backbone.models.functions import _check_empty_string
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
@@ -447,3 +448,9 @@ def package_device_connection_pre_save(sender, **kwargs):
             cur_inst.target_state = "upgrade"
         if cur_inst.target_state not in ["upgrade", "keep", "install", "erase"]:
             raise ValidationError("unknown target state '{}'".format(cur_inst.target_state))
+
+
+@receiver(signals.post_save, sender=package_device_connection)
+def package_device_connection_post_save(sender, instance, raw, **kwargs):
+    if not raw:
+        LicenseUsage.log_usage(LicenseEnum.package_install, LicenseParameterTypeEnum.device, instance.device)

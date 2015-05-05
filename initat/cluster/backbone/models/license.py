@@ -41,6 +41,8 @@ from initat.cluster.backbone.models.rms import ext_license
 __all__ = [
     "LicenseState",
     "License",
+    "LicenseEnum",
+    "LicenseParameterTypeEnum",
 ]
 
 logger = logging.getLogger("cluster.icsw_license")
