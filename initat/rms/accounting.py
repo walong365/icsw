@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -29,12 +29,17 @@ from initat.rms.functions import call_command
 from lxml import etree  # @UnresolvedImport @UnusedImport
 import commands
 import datetime
-from initat.tools import logging_tools
 import os
 import pprint  # @UnusedImport
-from initat.tools import server_command
-from initat.tools import threading_tools
 import time
+try:
+    from initat.tools import logging_tools
+    from initat.tools import server_command
+    from initat.tools import threading_tools
+except:
+    import logging_tools
+    import server_command
+    import threading_tools
 
 _OBJ_DICT = {
     "rms_queue": rms_queue,
@@ -42,30 +47,6 @@ _OBJ_DICT = {
     "rms_department": rms_department,
     "rms_pe": rms_pe,
 }
-
-
-def call_command(command, log_com=None):
-    start_time = time.time()
-    stat, out = commands.getstatusoutput(command)
-    end_time = time.time()
-    log_lines = ["calling '{}' took {}, result (stat {:d}) is {} ({})".format(
-        command,
-        logging_tools.get_diff_time_str(end_time - start_time),
-        stat,
-        logging_tools.get_plural("byte", len(out)),
-        logging_tools.get_plural("line", len(out.split("\n"))))]
-    if log_com:
-        for log_line in log_lines:
-            log_com(" - {}".format(log_line))
-        if stat:
-            for log_line in out.split("\n"):
-                log_com(" - {}".format(log_line))
-        return stat, out
-    else:
-        if stat:
-            # append output to log_lines if error
-            log_lines.extend([" - {}".format(line) for line in out.split("\n")])
-        return stat, out, log_lines
 
 
 class accounting_process(threading_tools.process_obj):
@@ -134,15 +115,28 @@ class accounting_process(threading_tools.process_obj):
         self.__cache.update({key: {} for key in _OBJ_DICT.iterkeys()})
 
     def _get_missing_dict(self):
-        _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("idx", "rms_job__jobid", "rms_job__taskid")
+        # clean old jobs without a valid accounting log
+        invalid_runs = rms_job_run.objects.filter(
+            Q(qacct_called=False) &
+            Q(end_time=None) &
+            Q(start_time=None) &
+            Q(start_time_py__lt=datetime.datetime.now() - datetime.timedelta(seconds=31 * 24 * 3600))
+        )
+        self.log("invalid runs found: {:d}".format(invalid_runs.count()))
+        _missing_ids = rms_job_run.objects.filter(
+            Q(qacct_called=False)
+        ).values_list(
+            "idx", "rms_job__jobid", "rms_job__taskid"
+        )
         _mis_dict = {}
         for _entry in _missing_ids:
-            _id = "{:d}".format(_entry[1])
             if _entry[2]:
-                _id = "{}.{:d}".format(
-                    _id,
+                _id = "{:d}.{:d}".format(
+                    _entry[1],
                     _entry[2],
                 )
+            else:
+                _id = "{:d}".format(_entry[1])
             _mis_dict.setdefault(_id, []).append(_entry[0])
         return _mis_dict
 
@@ -186,7 +180,10 @@ class accounting_process(threading_tools.process_obj):
                 self._call_qacct("-b", _data["start_time"], "-j")
             else:
                 self.log(
-                    "cannot parse args / kwargs: {}, {}".format(str(args), str(kwargs)),
+                    "cannot parse args / kwargs: {}, {}".format(
+                        str(args),
+                        str(kwargs)
+                    ),
                     logging_tools.LOG_LEVEL_ERROR,
                 )
         else:
@@ -214,21 +211,35 @@ class accounting_process(threading_tools.process_obj):
             else:
                 self._log_missing(_mis_dict)
                 for _id in sorted(_mis_dict.iterkeys()):
-                    self._call_qacct("-j", "{}".format(_id))
+                    self._call_qacct("-j", "{}".format(_id), mult=len(_mis_dict[_id]))
                 self._log_stats()
         if self.__jobs_added:
             self.log("added {}".format(logging_tools.get_plural("job", self.__jobs_added)))
 
-    def _call_qacct(self, *args):
-        cur_stat, cur_out = call_command(
+    def _call_qacct(self, *args, **kwargs):
+        cur_stat, cur_out, log_lines = call_command(
             "{} {}".format(
                 self._get_sge_bin("qacct"),
                 " ".join(args) if args else "",
             ),
-            log_com=self.log,
         )
-        if not cur_stat:
-            self._interpret_qacct(cur_out)
+        if cur_stat:
+            for _line in log_lines:
+                self.log(
+                    _line,
+                    logging_tools.LOG_LEVEL_ERROR,
+                )
+            _found, _matched = (None, None)
+        else:
+            _found, _matched = self._interpret_qacct(cur_out)
+            log_lines[0] = "{} (needed {:d}, found {:d}, matched {:d})".format(
+                log_lines[0],
+                kwargs.get("mult", 1),
+                _found,
+                _matched,
+            )
+            [self.log(_line) for _line in log_lines]
+        return _found, _matched
 
     def _log_stats(self):
         self.log(
@@ -240,11 +251,13 @@ class accounting_process(threading_tools.process_obj):
         )
 
     def _interpret_qacct(self, cur_out):
+        _found, _matched = (0, 0)
         _dict = {}
         for _line in cur_out.split("\n"):
             if _line.startswith("==="):
                 if "jobnumber" in _dict:
-                    self._feed_qacct(_dict)
+                    _found += 1
+                    _matched += self._feed_qacct(_dict)
                 _dict = {}
             else:
                 if _line.strip():
@@ -260,12 +273,15 @@ class accounting_process(threading_tools.process_obj):
                             _value = cluster_timezone.localize(datetime.datetime.strptime(_value, "%a %b %d %H:%M:%S %Y"))
                         _dict[_key] = _value
         if "jobnumber" in _dict:
-            self._feed_qacct(_dict)
+            _found += 1
+            _matched += self._feed_qacct(_dict)
+        return _found, _matched
 
     def _feed_qacct(self, in_dict):
+        _matched = 0
         if not in_dict["start_time"] or not in_dict["end_time"]:
             # start or end time not set, forget it (crippled entry)
-            return
+            return _matched
         _job_id = "{:d}{}".format(
             in_dict["jobnumber"],
             ".{:d}".format(in_dict["taskid"]) if in_dict["taskid"] else "",
@@ -277,11 +293,17 @@ class accounting_process(threading_tools.process_obj):
             self._log_stats()
 
         try:
-            _cur_job_run = rms_job_run.objects.get(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
+            _cur_job_run = rms_job_run.objects.get(
+                Q(rms_job__jobid=in_dict["jobnumber"]) &
+                Q(rms_job__taskid=in_dict["taskid"])
+            )
         except rms_job_run.DoesNotExist:
             _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
         except rms_job_run.MultipleObjectsReturned:
-            _job_runs = rms_job_run.objects.filter(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
+            _job_runs = rms_job_run.objects.filter(
+                Q(rms_job__jobid=in_dict["jobnumber"]) &
+                Q(rms_job__taskid=in_dict["taskid"])
+            )
             # find matching objects
             _match = [
                 _cur_job_run for _cur_job_run in _job_runs if _cur_job_run.start_time == in_dict["start_time"] and _cur_job_run.end_time == in_dict["end_time"]
@@ -294,7 +316,6 @@ class accounting_process(threading_tools.process_obj):
                             len(_match),
                             _job_id,
                         ),
-                        logging_tools.LOG_LEVEL_OK
                     )
                 _cur_job_run = _match[0]
                 # print "*", len(_match), _cur_job_run.qacct_called, _job_id, len(_job_runs)
@@ -302,15 +323,18 @@ class accounting_process(threading_tools.process_obj):
                 #    for _e in _job_runs:
                 #        print _e.start_time, _e.end_time
             else:
+                self.log("creating new job_run for job_id {}".format(_job_id), logging_tools.LOG_LEVEL_WARN)
                 # create new run
                 _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
 
         if _cur_job_run is not None:
+            # self.log("got {:d} ({})".format(_cur_job_run.idx, _cur_job_run.qacct_called))
             if _cur_job_run.qacct_called:
                 if _cur_job_run.start_time and _cur_job_run.end_time:
                     if _cur_job_run.start_time == in_dict["start_time"] and \
                             _cur_job_run.end_time == in_dict["end_time"]:
                         # pure duplicate
+                        # self.log("dup")
                         _cur_job_run = None
                     else:
                         self.log(
@@ -328,6 +352,8 @@ class accounting_process(threading_tools.process_obj):
                     if in_dict[key]:
                         in_dict[key] = self._get_object(obj_name, in_dict[key])
                 _cur_job_run.feed_qacct_data(in_dict)
+                _matched = 1
+        return _matched
 
     def _add_job_from_qacct(self, _job_id, in_dict):
         self.__jobs_added += 1
@@ -349,8 +375,7 @@ class accounting_process(threading_tools.process_obj):
         # set slots to the default value
         _cur_job_run.slots = in_dict["slots"]
         _cur_job_run.save()
-        if not self.__use_cache:
-            self.log("added new {}".format(unicode(_cur_job_run)))
+        self.log("added new {}".format(unicode(_cur_job_run)))
         return _cur_job_run
 
     def _get_object(self, obj_name, name):

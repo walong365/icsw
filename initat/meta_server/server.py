@@ -169,12 +169,11 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             if not self.__next_stop_is_restart:
                 self.service_state.enable_shutdown_mode()
                 _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
-                self._new_transitions(
-                    self.service_state.update(
-                        _res_list,
-                        exclude=["logging-server", "meta-server"],
-                    )
+                trans_list = self.service_state.update(
+                    _res_list,
+                    exclude=["logging-server", "meta-server"],
                 )
+                self._new_transitions(trans_list)
                 if not self.__transitions:
                     self["exit_requested"] = True
             else:
@@ -254,7 +253,7 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                 logging_tools.LOG_LEVEL_ERROR
             )
         if trigger_sm:
-            self._check_processes()
+            self._check_processes(force=True)
 
     def _show_config(self):
         try:
@@ -304,13 +303,14 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                 self["exit_requested"] = True
 
     def _new_transitions(self, trans_list):
-        for name, command, trans_id in trans_list:
+        self._log_transaction(trans_list)
+        for _trans in trans_list:
             _new_t = transition.ServiceTransition(
-                argparse.Namespace(subcom=command, service=[name]),
+                argparse.Namespace(subcom=_trans.action, service=[_trans.name]),
                 self.container,
                 self.server_instance.tree,
                 self.log,
-                trans_id,
+                _trans.trans_id,
             )
             if _new_t.step(self.container):
                 self.__transitions.append(_new_t)
@@ -319,14 +319,28 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         if self.__transitions:
             self._enable_transition_timer()
 
-    def _check_processes(self, service_list=None):
+    def _log_transaction(self, trans_list):
+        if self.__debug:
+            self.log(
+                "handling {}: {}".format(
+                    logging_tools.get_plural("transition", len(trans_list)),
+                    ", ".join(["{} -> {}".format(_trans.name, _trans.action) for _trans in trans_list])
+                )
+            )
+        else:
+            self.log(
+                "handling {}".format(
+                    logging_tools.get_plural("transition", len(trans_list)),
+                )
+            )
+
+    def _check_processes(self, service_list=None, force=False):
         self.__loopcount += 1
         act_time = time.time()
         # act_pid_dict = process_tools.get_proc_list()
         _check_mem = act_time > self.__last_memcheck_time + global_config["MIN_MEMCHECK_TIME"] and global_config["TRACK_CSW_MEMORY"]
         if _check_mem:
             self.__last_memcheck_time = act_time
-        problems = []
         if service_list is not None:
             self.def_ns.service = service_list
         else:
@@ -338,85 +352,22 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
             _res_list,
             exclude=["meta-server", "logging-server"],
             # force first call
-            force=self.__loopcount == 1,
+            force=(self.__loopcount == 1 or force),
         )
         if trans_list:
-            if self.__debug:
-                self.log(
-                    "handling {}: {}".format(
-                        logging_tools.get_plural("transition", len(trans_list)),
-                        ", ".join(["{} -> {}".format(_name, _action) for _name, _action, _id in trans_list])
-                    )
-                )
-            else:
-                self.log(
-                    "handling {}".format(
-                        logging_tools.get_plural("transition", len(trans_list)),
-                    )
-                )
             self._new_transitions(trans_list)
-        for key, struct in problems:
-            pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
-            do_sthg = (struct.pid_checks_failed >= 2 and pids_failed_time >= global_config["FAILED_CHECK_TIME"])
-            self.log(
-                "*** unit {} (pid check failed for {}, {}): {} remaining, grace time {}, {}".format(
-                    key,
-                    logging_tools.get_plural("time", struct.pid_checks_failed),
-                    struct.pid_check_string,
-                    logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
-                    logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
-                    do_sthg and "starting countermeasures" or "still waiting...",
-                ),
-                logging_tools.LOG_LEVEL_WARN
-            )
-            if do_sthg:
-                mail_text = [
-                    "check failed for {}: {}".format(
-                        key,
-                        struct.pid_check_string),
-                    "starting repair sequence",
-                    "",
-                ]
-                self.log(
-                    "*** starting repair sequence",
-                    logging_tools.LOG_LEVEL_WARN
-                )
-                if struct.stop_command:
-                    self._call_command(struct.stop_command)
-                    mail_text.extend(
-                        [
-                            "issued the stop command : {} in 1 minute".format(struct.stop_command),
-                            "",
-                        ]
-                    )
-                if struct.kill_pids:
-                    kill_info = struct.kill_all_found_pids()
-                    self.log(
-                        "  *** kill info: {}".format(kill_info),
-                        logging_tools.LOG_LEVEL_WARN
-                    )
-                    mail_text.extend(
-                        [
-                            "trying to kill the remaining pids, kill info : {}".format(kill_info),
-                            "",
-                        ]
-                    )
-                if struct.start_command:
-                    self._call_command(struct.start_command)
-                    mail_text.extend(
-                        [
-                            "issued the start command : {} in 2 minutes".format(struct.start_command),
-                            "",
-                        ]
-                    )
+            if self.__loopcount > 1 and not force:
+                mail_text = self.service_state.get_mail_text(trans_list)
                 self.__new_mail.init_text()
-                self.__new_mail.set_subject("problem with {} on {} (meta-server)".format(key, global_config["SERVER_FULL_NAME"]))
+                self.__new_mail.set_subject(
+                    "Transaction Info from {} (meta-server)".format(
+                        global_config["SERVER_FULL_NAME"]
+                    )
+                )
                 self.__new_mail.append_text(mail_text)
-                struct.remove_meta_block()
                 _sm_stat, log_lines = self.__new_mail.send_mail()
                 for line in log_lines:
                     self.log(line)
-                del_list.append(key)
         if _check_mem and _res_list:
             self._show_meminfo(_res_list)
         end_time = time.time()

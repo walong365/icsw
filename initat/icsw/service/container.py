@@ -99,19 +99,25 @@ class ServiceContainer(object):
     def decide(self, subcom, service):
         # based on the entry state and the command given in opt_ns decide what to do
         return {
-            False: {
+            "error": {
                 "start": ["cleanup", "start"],
                 "stop": ["cleanup"],
                 "restart": ["cleanup", "start"],
                 "debug": ["cleanup", "debug"],
             },
-            True: {
+            "warn": {
+                "start": ["stop", "wait", "cleanup", "start"],
+                "stop": ["stop", "wait", "cleanup"],
+                "restart": ["stop", "wait", "cleanup", "start"],
+                "debug": ["stop", "wait", "cleanup", "debug"],
+            },
+            "ok": {
                 "start": [],
                 "stop": ["stop", "wait", "cleanup"],
                 "restart": ["signal_restart", "stop", "wait", "cleanup", "start"],
                 "debug": ["signal_restart", "stop", "wait", "cleanup", "debug"],
             }
-        }[service.is_running][subcom]
+        }[service.run_state][subcom]
 
     def instance_to_form_list(self, opt_ns, res_xml):
         rc_dict = {
