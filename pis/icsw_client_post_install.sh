@@ -36,6 +36,7 @@ for file in $PY_FILES ; do
     rm -f ${ICSW_SBIN}/$file.pyc
 done
 
+# modify root bashrc
 if [ -f /root/.bashrc ] ; then
     grep ${ICSW_BIN} /root/.bashrc >/dev/null || echo "export PATH=\$PATH:${ICSW_BIN}:${ICSW_SBIN}" >> /root/.bashrc
 else
@@ -57,7 +58,7 @@ if [ -f /etc/debian_version ] ; then
     ${USRSBIN}/update-rc.d meta-server start 21 2 3 5 . stop 79 0 1 4 6 .
     ${USRSBIN}/update-rc.d loadmodules start 8 2 3 5 . stop 92 0 1 4 6 .
     for client in logging-server hoststatus ; do
-	${USRSBIN}/update-rc.d ${client} start 25 2 3 5 . stop 75 0 1 4 6 .
+        ${USRSBIN}/update-rc.d ${client} start 25 2 3 5 . stop 75 0 1 4 6 .
     done
 fi
 # generate package-client config if not present
@@ -66,14 +67,13 @@ fi
 
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
-# meta-server
+# logging-server
 ${ICSW_SBIN}/icsw restart logging-server
+${INIT}/hoststatus restart
 
 if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
     # start / stop to force restart of all services
-    echo -e "\n${GREEN}restarting all services${OFF}\n"
+    echo -e "\n${GREEN}restarting all ICSW related services${OFF}\n"
     ${ICSW_SBIN}/icsw stop meta-server
     ${ICSW_SBIN}/icsw start meta-server
 fi
-
-${INIT}/hoststatus restart
