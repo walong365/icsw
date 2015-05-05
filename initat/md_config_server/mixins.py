@@ -103,40 +103,7 @@ class version_check_mixin(object):
         self.log("monitor-daemon version discovery took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
     def _check_relay_version(self):
-        start_time = time.time()
-        relay_version = "unknown"
-        if os.path.isfile("/etc/debian_version"):
-            cstat, cout = commands.getstatusoutput("dpkg -s host-relay")
-            if not cstat:
-                deb_version = [y for y in [x.strip() for x in cout.split("\n")] if y.startswith("Version")]
-                if deb_version:
-                    relay_version = deb_version[0].split(":")[1].strip()
-                else:
-                    self.log("No Version-info found in dpkg-list", logging_tools.LOG_LEVEL_WARN)
-            else:
-                self.log("Package host-relay not found in dpkg-list", logging_tools.LOG_LEVEL_ERROR)
-        else:
-            cstat, cout = commands.getstatusoutput("rpm -q host-relay")
-            if not cstat:
-                rpm_m = re.match("^host-relay-(?P<version>.*)$", cout.split()[0].strip())
-                if rpm_m:
-                    relay_version = rpm_m.group("version")
-                else:
-                    self.log("Cannot parse {}".format(cout.split()[0].strip()), logging_tools.LOG_LEVEL_WARN)
-            else:
-                self.log("Package host-relay not found in RPM db", logging_tools.LOG_LEVEL_ERROR)
-        if relay_version != "unknown":
-            relay_split = [int(value) for value in relay_version.split("-")[0].split(".")]
-            has_snmp_relayer = False
-            if relay_split[0] > 0 or (len(relay_split) == 2 and (relay_split[0] == 0 and relay_split[1] > 4)):
-                has_snmp_relayer = True
-            if has_snmp_relayer:
-                global_config.add_config_entries([("HAS_SNMP_RELAYER", configfile.bool_c_var(True))])
-                self.log("host-relay package has snmp-relayer, rewriting database entries for icinga")
-        # device_variable local to the server
-        if relay_version == "unknown":
-            self.log("No installed host-relay found", logging_tools.LOG_LEVEL_WARN)
-        else:
-            self.log("Discovered installed host-relay version {}".format(relay_version))
-        end_time = time.time()
-        self.log("host-relay version discovery took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
+        from initat.client_version import VERSION_STRING as relay_version
+        relay_split = [int(value) for value in relay_version.split("-")[0].split(".")]
+        global_config.add_config_entries([("HAS_SNMP_RELAYER", configfile.bool_c_var(True))])
+        self.log("host-relay version {}".format(relay_version))
