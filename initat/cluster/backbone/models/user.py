@@ -39,6 +39,8 @@ from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.models import LicenseUsage
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
@@ -1272,6 +1274,9 @@ def virtual_desktop_user_setting_post_save(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         if _cur_inst._send_signals:
             virtual_desktop_user_setting_changed.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
+
+        if _cur_inst.is_running and not _cur_inst.to_delete:
+            LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)
 
 
 class virtual_desktop_protocol(models.Model):

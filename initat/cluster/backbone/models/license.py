@@ -210,7 +210,7 @@ class LicenseUsage(object):
             elif param_type == LicenseParameterTypeEnum.ext_license:
                 LicenseUsageExtLicense.objects.get_or_create(ext_license_id=to_pk(value, ext_license), **common_params)
             elif param_type == LicenseParameterTypeEnum.user:
-                LicenseUsageExtLicense.objects.get_or_create(user_id=to_pk(value, user), **common_params)
+                LicenseUsageUser.objects.get_or_create(user_id=to_pk(value, user), **common_params)
             else:
                 raise RuntimeError("Invalid license parameter type id: {}".format(param_type))
 
