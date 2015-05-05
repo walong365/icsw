@@ -51,3 +51,8 @@ done
 [ -x ${ICSW_PIS}/cluster_post_install.sh ] && ${ICSW_PIS}/cluster_post_install.sh
 
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
+
+# start / stop to force restart of all services
+${ICSW_SBIN}/icsw stop meta-server
+${ICSW_SBIN}/icsw start meta-server
+

@@ -62,7 +62,11 @@ fi
 
 # meta-server
 ${ICSW_SBIN}/icsw restart logging-server
-# start / stop to force restart of all services
-${ICSW_SBIN}/icsw stop meta-server
-${ICSW_SBIN}/icsw start meta-server
+
+if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
+    # start / stop to force restart of all services
+    ${ICSW_SBIN}/icsw stop meta-server
+    ${ICSW_SBIN}/icsw start meta-server
+fi
+
 ${INIT}/hoststatus restart
