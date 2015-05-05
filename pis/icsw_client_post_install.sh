@@ -14,6 +14,12 @@ USRSBIN=/usr/sbin
 USRBIN=/usr/bin
 INIT=/etc/init.d
 
+BOLD="\033[1m"
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+OFF="\033[m"
+
 /sbin/ldconfig
 
 # some cleanup tasks
@@ -65,6 +71,7 @@ ${ICSW_SBIN}/icsw restart logging-server
 
 if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
     # start / stop to force restart of all services
+    echo -e "\n${GREEN}restarting all services${OFF}\n"
     ${ICSW_SBIN}/icsw stop meta-server
     ${ICSW_SBIN}/icsw start meta-server
 fi
