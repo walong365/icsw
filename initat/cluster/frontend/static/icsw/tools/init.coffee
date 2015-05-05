@@ -354,6 +354,8 @@ angular.module(
     # these are not permissions for single objects, but the merged permission set of all objects
     object_permissions = Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET().$object
 
+    valid_licenses = Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).getList().$object
+
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
         if ac_name.split(".").length != 3
@@ -412,6 +414,10 @@ angular.module(
 
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission
+
+        has_valid_license: (license) ->
+            console.log 'lic check', license, valid_licenses, license in valid_licenses
+            return license in valid_licenses
     }
     return angular.extend({
         install : (scope) ->

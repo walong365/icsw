@@ -59,8 +59,16 @@ class LicenseState(enum.IntEnum):
     valid_in_future = 20  # license will be valid in the future
     none = 0              # license not present
 
+    def is_valid(self):
+        # states where we consider the license to be valid, i.e. the user may access the feature
+        return self in (LicenseState.valid, LicenseState.grace, LicenseState.new_install)
+
 
 class _LicenseManager(models.Manager):
+    """
+    Interface to licenses in db.
+    NOTE: These functions currently return license ids as strings, not as enums.
+    """
 
     def get_license_state(self, license, parameters=None):
         """Returns the license state for this license
@@ -80,18 +88,17 @@ class _LicenseManager(models.Manager):
 
         :return: bool
         """
-        return self.get_license_state(license, parameters) in (LicenseState.valid, LicenseState.grace,
-                                                               LicenseState.new_install)
+        return self.get_license_state(license, parameters).is_valid()
 
     def get_valid_licenses(self):
-        pass
-        # LICTODO
+        """Returns all licenses which are active (and should be displayed to the user)"""
+        return set().union(*[r.get_valid_licenses() for r in self._license_readers])
 
     def get_all_licenses(self):
         return get_available_licenses()
 
     def get_license_packages(self):
-        """Returns license packages in custom format."""
+        """Returns license packages in custom format for the client."""
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         return LicenseFileReader.get_license_packages(self._license_readers)
 
