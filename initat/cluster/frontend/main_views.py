@@ -22,6 +22,9 @@
 
 """ main views """
 
+import json
+import logging
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils.decorators import method_decorator
@@ -30,10 +33,8 @@ from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from lxml import etree  # @UnusedImport
-import json
-import logging
 from initat.tools import server_command
+
 
 logger = logging.getLogger("cluster.main")
 
@@ -100,12 +101,18 @@ class server_control(View):
         _cmd = json.loads(request.POST["cmd"])
         # import pprint
         # pprint.pprint(_cmd)
-        logger.info("got server_control '{0}' for instance {1} (server_id {2:d})".format(
-            _cmd["type"],
-            _cmd["instance"],
-            int(_cmd["server_id"]),
-        ))
-        srv_com = server_command.srv_command(command="server_control", control=_cmd["type"], instance=_cmd["instance"])
+        logger.info(
+            "got server_control '{0}' for instance {1} (server_id {2:d})".format(
+                _cmd["type"],
+                _cmd["instance"],
+                int(_cmd["server_id"]),
+            )
+        )
+        srv_com = server_command.srv_command(
+            command="server_control",
+            control=_cmd["type"],
+            services=_cmd["instance"]
+        )
         # cur_routing = routing.srv_type_routing()
         request.xml_response["result"] = contact_server(
             request,
@@ -125,6 +132,6 @@ class virtual_desktop_viewer(View):
             "virtual_desktop_viewer.html",
             {
                 # "hide_sidebar": True,
-                "vdus_index":   request.GET.get("vdus_index", 0),
+                "vdus_index": request.GET.get("vdus_index", 0),
             }
         )()

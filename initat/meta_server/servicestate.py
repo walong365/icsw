@@ -432,17 +432,16 @@ class ServiceState(object):
     def handle_command(self, srv_com):
         # returns True if the state machine should be triggered
         trigger = False
+        _com = srv_com["command"].text[5:]
+        _bldr = srv_com.builder()
+        cur_time = time.time()
         if self.__shutdown:
             # ignore commands when in shutdown mode
             srv_com.set_result(
                 "server is shutting down",
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-            return trigger
-        _com = srv_com["command"].text[5:]
-        _bldr = srv_com.builder()
-        cur_time = time.time()
-        if _com == "overview":
+        elif _com == "overview":
             instances = _bldr.instances()
             services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
             with self.get_cursor() as crsr:

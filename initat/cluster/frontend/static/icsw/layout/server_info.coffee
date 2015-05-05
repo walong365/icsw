@@ -87,7 +87,7 @@ angular.module(
             @server_state = parseInt(@result.attr("state"))
             @server_reply = @result.attr("reply")
             @valid = if @server_state == 0 then true else false
-            _mem_vector = (parseInt($(mem_info).text()) for mem_info in @xml.find("instance memory_info") when $(mem_info).text())
+            _mem_vector = (parseInt($(mem_info).contents().first().text()) for mem_info in @xml.find("instance > result > memory_info") when $(mem_info).text())
             if _mem_vector.length
                 @max_mem = _.max(_mem_vector)
                 @sum_mem = _.reduce(_mem_vector, (sum, _val) -> return sum + _val)
@@ -172,16 +172,16 @@ angular.module(
                         return "#{_found} (#{-_diff} too much)"
                     else
                         return "#{_found} (#{-_diff} missing)"
-        stop_allowed: (instance) ->
-            if instance in ["memcached", "uwsg-init"]
+        disable_allowed: (instance) ->
+            if instance in ["memcached", "uwsgi-init", "nginx", "meta-server", "logging-server"]
                 return false
             else
                 return true
         get_mem_info: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}'] memory_info")
+            _xml = @xml.find("instance[name='#{instance}'] memory_info").contents().first()
             return _xml.text()
         get_mem_value: (instance) ->
-            _mem = @xml.find("instance[name='#{instance}'] memory_info").text()
+            _mem = @xml.find("instance[name='#{instance}'] memory_info").contents().first().text()
             return parseInt((parseInt(_mem) * 100) / @max_mem)
         get_check_source: (instance) ->
             return @xml.find("instance[name='#{instance}']").attr("check_type")
@@ -206,8 +206,8 @@ angular.module(
                 return scope.srv_info.get_mem_info(scope.instance)
             scope.get_mem_value = () ->
                 return scope.srv_info.get_mem_value(scope.instance)
-            scope.stop_allowed = () ->
-                return scope.srv_info.stop_allowed(scope.instance)
+            scope.disable_allowed = () ->
+                return scope.srv_info.disable_allowed(scope.instance)
             scope.action = (type) ->
                 scope.do_action(scope.srv_info, scope.instance, type)
             new_el = $compile($templateCache.get("icsw.layout.server.info.state"))
