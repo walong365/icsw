@@ -31,7 +31,8 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
-import reversion
+from initat.cluster.backbone.available_licenses import LicenseParameterTypeEnum
+from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -40,7 +41,9 @@ from initat.cluster.backbone.models.functions import _check_empty_string, \
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt
+import collections
 import datetime
+from initat.cluster.backbone.models.license import LicenseUsage
 from initat.tools import ipvx_tools
 import json
 import logging
@@ -412,6 +415,17 @@ class device_config(models.Model):
     class Meta:
         db_table = u'device_config'
         verbose_name = "Device configuration"
+
+
+@receiver(signals.post_save, sender=device_config)
+def _device_config_post_save(sender, instance, **kwargs):
+    log_usage_data = collections.defaultdict(lambda: [])
+
+    for mcc in instance.config.mon_check_command_set.all().select_related("mon_service_templ"):
+        if mcc.mon_service_templ is not None and mcc.mon_service_templ.any_notification_enabled():
+            log_usage_data[instance.device_id].append(mcc)
+
+    LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class DeviceSNMPInfo(models.Model):

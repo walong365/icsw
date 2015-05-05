@@ -36,7 +36,6 @@ from django.dispatch import receiver
 from django.utils.functional import cached_property
 import enum
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.monitoring import mon_check_command
 from initat.cluster.backbone.models.rms import ext_license
 
 __all__ = [
@@ -154,7 +153,7 @@ class _LicenseUsageBase(models.Model):
 
 class _LicenseUsageDeviceService(models.Model):
     device = models.ForeignKey("backbone.device", db_index=True)
-    service = models.ForeignKey(mon_check_command, db_index=True, null=True, blank=True)
+    service = models.ForeignKey("backbone.mon_check_command", db_index=True, null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -189,8 +188,10 @@ class LicenseUsage(object):
         # assume obj is pk if it isn't the obj
         to_pk = lambda obj, klass: obj.pk if isinstance(obj, klass) else obj
 
-        from initat.cluster.backbone.models import device, user
+        from initat.cluster.backbone.models import device, user, mon_check_command
 
+        # this produces queries for all objects
+        # if that's too slow, we need a manual bulk get_or_create (check with one query, then create missing entries)
         common_params = {"license": license.name}
         with transaction.atomic():
             if param_type == LicenseParameterTypeEnum.device:
