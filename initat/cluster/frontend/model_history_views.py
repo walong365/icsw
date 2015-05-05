@@ -191,11 +191,12 @@ class get_historical_data(ListAPIView):
             last_entry_by_pk[pk] = entry['data']
             del entry['data']
 
-            try:
-                # we log each pk individually in order to catch errors for devices which do not exist any more
-                LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, pk)
-            except IntegrityError:
-                pass
+            if model == device:
+                try:
+                    # we log each pk individually in order to catch errors for devices which do not exist any more
+                    LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, pk)
+                except IntegrityError:
+                    pass
 
         # NOTE: entries must be in chronological, earliest first
         return Response(sorted_data)
