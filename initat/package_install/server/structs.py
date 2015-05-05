@@ -621,7 +621,7 @@ class client(object):
                     pre_delete = True
                     take = False
             if pre_delete:
-                pre_delete_list.apped(cur_pdc)
+                pre_delete_list.append(cur_pdc)
             if take:
                 send_list.append(cur_pdc)
         self.log(
