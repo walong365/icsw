@@ -108,6 +108,8 @@ setup(
                 "pis/webfrontend_pre_start.sh",
                 "pis/webfrontend_post_install.sh",
                 "pis/hpc_library_post_install.py",
+                "pis/icsw_client_post_install.sh",
+                "pis/icsw_server_post_install.sh",
             ]
         ),
     ],
