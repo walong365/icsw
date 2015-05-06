@@ -327,8 +327,8 @@ class Service(object):
             result.append(_mem_info)
 
     # action commands
-    def action(self, action, act_proc_dict):
-        return {
+    def action(self, action, act_proc_dict, debug_args=None):
+        _cmd = {
             "stop": self.stop,
             "start": self.start,
             "cleanup": self.cleanup,
@@ -336,7 +336,11 @@ class Service(object):
             "debug": self.debug,
             # special command when active service is restart: signal a simple restart command
             "signal_restart": self.signal_restart,
-        }[action](act_proc_dict)
+        }[action]
+        if action == "debug":
+            return _cmd(act_proc_dict, debug_args)
+        else:
+            return _cmd(act_proc_dict)
 
     def wait(self, act_proc_dict):
         return
@@ -358,12 +362,12 @@ class Service(object):
     def _stop(self):
         pass
 
-    def debug(self, act_proc_dict):
+    def debug(self, act_proc_dict, debug_args):
         if not int(self.entry.get("startstop", "1")):
             return
-        self._debug()
+        self._debug(debug_args)
 
-    def _debug(self):
+    def _debug(self, debug_args):
         # for subclasses
         pass
 
@@ -595,11 +599,14 @@ class MetaService(Service):
         else:
             _child_pid, _child_state = os.wait()
 
-    def _debug(self):
+    def _debug(self, debug_args):
         # ignore sigint to catch keyboard interrupt
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         arg_list = self._generate_py_arg_list(debug=True)
         arg_list.append("--debug")
+        if debug_args:
+            arg_list.append("--")
+            arg_list.extend(debug_args)
         self.log("debug, arg_list is '{}'".format(" ".join(arg_list)))
         subprocess.call(" ".join(arg_list), shell=True)
 

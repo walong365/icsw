@@ -59,6 +59,7 @@ class Parser(object):
         _act = sub_parser.add_parser("debug", help="debug service")
         _act.set_defaults(subcom="debug", execute=self._execute)
         _act.add_argument("service", nargs=1, type=str, help="service to debug")
+        _act.add_argument("debug_args", nargs="*", type=str, help="extra debug arguments")
 
     def _add_stop_parser(self, sub_parser):
         _act = sub_parser.add_parser("stop", help="stop service")

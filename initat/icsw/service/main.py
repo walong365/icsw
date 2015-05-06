@@ -106,7 +106,11 @@ def main(opt_ns):
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
             show_form_list(form_list)
     elif opt_ns.subcom in ["start", "stop", "restart", "debug"]:
-        cur_t = transition.ServiceTransition(opt_ns, cur_c, inst_xml, log_com)
+        if opt_ns.subcom == "debug":
+            debug_args = opt_ns.debug_args
+        else:
+            debug_args = None
+        cur_t = transition.ServiceTransition(opt_ns, cur_c, inst_xml, log_com, debug_args=debug_args)
         while True:
             _left = cur_t.step(cur_c)
             if _left:
