@@ -56,6 +56,7 @@ class LicenseChecker(threading_tools.process_obj):
     def _check_from_command(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         self.check()
+        srv_com.set_result("worked")  # need some result, else there is a warning
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
     def check(self):

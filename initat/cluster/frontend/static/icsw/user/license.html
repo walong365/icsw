@@ -86,20 +86,37 @@
             <tr ng-repeat="lic in entries_displayed">
                 <td><strong>{{lic.name}}</strong></td>
                 <td>{{lic.description}}</td>
-                <td ng-class="get_license_state_bootstrap_class(get_license_state(lic.id).state_id)">
-                    <i ng-attr-class="{{get_license_state_icon_class(get_license_state(lic.id).state_id)}}"></i>
+                <td ng-class="get_license_state_bootstrap_class(_state(lic.id).state_id)">
+                    <i ng-attr-class="{{get_license_state_icon_class(_state(lic.id).state_id)}}"></i>
                 </td>
-                <td ng-class="get_license_state_bootstrap_class(get_license_state(lic.id).state_id)">
-                    {{get_license_state(lic.id).state_str}}
+                <td ng-class="get_license_state_bootstrap_class(_state(lic.id).state_id)">
+                    {{_state(lic.id).state_str}}
                 </td>
-                <td>{{get_license_state(lic.id).date_info}}</td>
+                <td>{{_state(lic.id).date_info}}</td>
                 <td>
-                    <div ng-repeat="(param_type, param_value) in get_license_state(lic.id).lic.parameters">
-                        <strong>{{param_type}}</strong>: {{param_value}}
+                    <div ng-repeat="param_type in get_merged_key_list(_state(lic.id).lic.parameters, lic.parameter_usage)">
+                        <div ng-show="_state(lic.id).lic.parameters[param_type]">
+                            <div ng-show="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
+                                <!-- parameter exceeded -->
+                                <alert type="danger" style="padding: 5px">
+                                    <i class="glyphicon glyphicon-exclamation-sign"></i>
+                                    <strong>{{param_type}}</strong>: {{_state(lic.id).lic.parameters[param_type]}} (used: {{lic.parameter_usage[param_type]}})
+                                </alert>
+                            </div>
+                            <div ng-show="_state(lic.id).lic.parameters[param_type] >= lic.parameter_usage[param_type]">
+                                <!-- everything ok -->
+                                <strong>{{param_type}}</strong>: {{_state(lic.id).lic.parameters[param_type]}} (used: {{lic.parameter_usage[param_type]}})
+                            </div>
+                        </div>
+                        <alert type="danger" ng-show="!_state(lic.id).lic.parameters[param_type]" style="padding: 5px">
+                            <!-- parameter used which is not present -->
+                            <i class="glyphicon glyphicon-exclamation-sign"></i>
+                            <strong>{{param_type}}</strong>: used: {{lic.parameter_usage[param_type]}}
+                        </alert>
                     </div>
                 </td>
-                <td>{{get_license_state(lic.id).package.type_name}}</td>
-                <td>{{get_license_state(lic.id).package.name}}</td>
+                <td>{{_state(lic.id).package.type_name}}</td>
+                <td>{{_state(lic.id).package.name}}</td>
             </tr>
         </tbody>
     </table>

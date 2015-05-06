@@ -116,7 +116,21 @@ angular.module(
             scope: true
             link: (scope, el, attrs) ->
                 icswUserLicenseDataService.add_to_scope(scope)
-                scope.get_license_state = (license_id) ->
+                scope.get_merged_key_list = (a, b) ->
+                    if !a?
+                        a = {}
+                    if !b?
+                        b = {}
+                    return _.unique(Object.keys(a).concat(Object.keys(b)))
+                _lic_state_cache = {}
+                scope._state = (license_id) ->
+                    # NOTE: caching currently breaks updating info on new license file uploading new
+                    #if !_lic_state_cache[license_id]?  # calculation can also return undefined if data isn't loaded yet
+                    #    _lic_state_cache[license_id] =
+                    #        icswUserLicenseUtils.calculate_license_state(icswUserLicenseDataService.license_packages,
+                    #            license_id, $window.CLUSTER_ID)
+                    #return _lic_state_cache[license_id]
+
                     return icswUserLicenseUtils.calculate_license_state(icswUserLicenseDataService.license_packages,
                         license_id, $window.CLUSTER_ID)
         }

@@ -132,6 +132,8 @@ class License(models.Model):
 
     idx = models.AutoField(primary_key=True)
 
+    date = models.DateTimeField(auto_now_add=True)
+
     file_name = models.CharField(max_length=512)
     license_file = models.TextField()  # contains the exact file content of the respective license files
 
@@ -249,8 +251,10 @@ class LicenseViolation(_LicenseUsageBase):
 
     hard = models.BooleanField(default=False)
 
-    def __repr__(self):
-        return "LicenseViolation(license={})".format(self.license)
+    def __unicode__(self):
+        return u"LicenseViolation(license={})".format(self.license)
+
+    __repr__ = __unicode__
 
 
 class LicenseUsageDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
