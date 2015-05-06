@@ -194,7 +194,7 @@ class LicenseFileReader(object):
                     return None
 
             def parse_parameters(parameters_xml):
-                return {param_xml.get('id'): int_or_none(param_xml.text)
+                return {LicenseParameterTypeEnum.id_string_to_user_name(param_xml.get('id')): int_or_none(param_xml.text)
                         for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)}
 
             return [{

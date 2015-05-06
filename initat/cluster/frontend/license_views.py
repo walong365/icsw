@@ -65,13 +65,8 @@ class GetLicenseViolations(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        def to_user_str(license_name):
-            try:
-                return LicenseEnum[license_name].get_name_for_user()
-            except KeyError:
-                return license_name
-
-        return Response([{"license": to_user_str(viol.license)} for viol in LicenseViolation.objects.all()])
+        return Response([{"license": LicenseEnum.id_string_to_user_name(viol.license)}
+                         for viol in LicenseViolation.objects.all()])
 
 
 class GetValidLicenses(RetrieveAPIView):
