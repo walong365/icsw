@@ -60,6 +60,7 @@ class LicenseChecker(threading_tools.process_obj):
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
     def check(self):
+        self.log("starting license violation checking")
         for license in LicenseEnum:
             usage = LicenseUsage.get_license_usage(license)
             violated = False
@@ -73,7 +74,7 @@ class LicenseChecker(threading_tools.process_obj):
                     violation.delete()
                 else:
                     # still violate, check if now grace period is violated too
-                    if not violation.hard and violation.date > django.utils.timezone.now() + LicenseUsage.GRACE_PERIOD:
+                    if not violation.hard and django.utils.timezone.now() > violation.date + LicenseUsage.GRACE_PERIOD:
                         self.log("violation {} is transformed into a hard violation".format(violation))
                         violation.hard = True
                         violation.save()
