@@ -59,7 +59,10 @@ angular.module(
         $scope.get_global_bootserver_info = () ->
             if $scope.bootserver_list.length
                 if $scope.bootserver_list.length == 1
-                    return " on bootserver " + $scope.mother_servers[$scope.bootserver_list[0]].full_name
+                    if $scope.bootserver_list[0] of $scope.mother_servers
+                        return " on bootserver " + $scope.mother_servers[$scope.bootserver_list[0]].full_name
+                    else
+                        return " on bootserver #" + $scope.bootserver_list[0]
                 else
                     return ", " + $scope.bootserver_list.length + " bootservers"
             else

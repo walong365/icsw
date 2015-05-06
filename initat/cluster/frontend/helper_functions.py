@@ -304,6 +304,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
             log_result = kwargs.get("log_result", True)
             log_error = kwargs.get("log_error", True)
             cur_router.start_result_feed()
+            # merge results
             [
                 cur_router.feed_result(
                     send_com,
