@@ -33,14 +33,14 @@
                 <a class="dropdown-toggle" data-toggle="dropdown">Cluster <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled && has_menu_permission('device.change_boot')"><a href="{{ ICSW_URLS.BOOT_SHOW_BOOT }}">Nodeboot</a></li>
-                    <li ng-show="SERVICE_TYPES.package && CLUSTER_LICENSE.package.enabled && has_menu_permission('package.package_install')"><a href="{{ ICSW_URLS.PACK_REPO_OVERVIEW }}">Package install</a></li>
+                    <li ng-show="SERVICE_TYPES.package && CLUSTER_LICENSE.package.enabled && has_menu_permission('package.package_install') && has_valid_license('package_install')"><a href="{{ ICSW_URLS.PACK_REPO_OVERVIEW }}">Package install</a></li>
                     <li ng-show="CLUSTER_LICENSE.boot.enabled && SERVICE_TYPES.mother && SERVICE_TYPES.package" class="divider"></li>
                     <li ng-show="CLUSTER_LICENSE.boot.enabled && has_menu_permission('image.modify_images')"><a href="{{ ICSW_URLS.SETUP_IMAGE_OVERVIEW }}">Image overview</a></li>
                     <li ng-show="CLUSTER_LICENSE.boot.enabled && has_menu_permission('kernel.modify_kernels')"><a href="{{ ICSW_URLS.SETUP_KERNEL_OVERVIEW }}">Kernel overview</a></li>
                     <li ng-show="CLUSTER_LICENSE.boot.enabled && has_menu_permission('partition_fs.modify_partitions')"><a href="{{ ICSW_URLS.SETUP_PARTITION_OVERVIEW }}">Partition overview</a></li>
 
                     <!-- TODO: permisssion -->
-                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}">History</a></li>
+                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}" ng-show="has_valid_license('snapshot')">History</a></li>
                 </ul>
             </li>
             <li ng-show="has_menu_permission('group.group_admin')">
@@ -60,9 +60,9 @@
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank">Icinga</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_OVERVIEW }}">Monitoring Overview</a></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_OVERVIEW }}">Monitoring Overview</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_BUILD_INFO }}">Build Info</a></li>
-                    <li ng-show="SERVICE_TYPES['md-config']">
+                    <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard')">
                         <a href="{{ ICSW_URLS.MON_LIVESTATUS }}">Livestatus</a>
                     </li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
@@ -80,12 +80,12 @@
                     </li>
                 </ul>
             </li>
-            <li ng-show="CLUSTER_LICENSE.rms.enabled">
+            <li ng-show="CLUSTER_LICENSE.rms.enabled && (has_any_valid_license(['rms', 'ext_license']))">
                 <a class="dropdown-toggle" data-toggle="dropdown">RMS <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li><a href="{{ ICSW_URLS.RMS_OVERVIEW }}">RMS overview</a></li>
-                    <li><a href="{{ ICSW_URLS.LIC_OVERVIEW }}" ng-show="0">License overview</a></li>
-                    <li><a href="{{ ICSW_URLS.LIC_LICENSE_LIVEVIEW }}">License LiveView</a></li>
+                    <li><a href="{{ ICSW_URLS.RMS_OVERVIEW }}" ng-show="has_valid_license('rms')">RMS overview</a></li>
+                    <li><a href="{{ ICSW_URLS.LIC_OVERVIEW }}" ng-show="false && has_valid_license('ext_license')">License overview</a></li>
+                    <li><a href="{{ ICSW_URLS.LIC_LICENSE_LIVEVIEW }}" ng-show="has_valid_license('ext_license')">License LiveView</a></li>
                 </ul>
             </li>
             <icsw-layout-menubar-addons></icsw-layout-menubar-addons>

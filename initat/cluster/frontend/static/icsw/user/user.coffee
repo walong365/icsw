@@ -99,14 +99,15 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster, access_level_service) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
             {"level" : 3, "info" : "Modify, Create"},
             {"level" : 7, "info" : "Modify, Create, Delete"},
         ]
+        access_level_service.install($scope)
         $scope.obj_perms = {}
         $scope.tree = new user_tree($scope)
         $scope.filterstr = ""

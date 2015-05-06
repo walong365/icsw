@@ -70,29 +70,30 @@ class _LicenseManager(models.Manager):
     NOTE: These functions currently return license ids as strings, not as enums.
     """
 
-    def get_license_state(self, license, parameters=None):
+    def get_license_state(self, license, parameters=None, ignore_violations=False):
         """Returns the license state for this license
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: int} of required parameters
         """
+        if not ignore_violations and LicenseViolation.objects.is_hard_violated(license):
+            return LicenseState.violated
         # TODO: new_install?
         if not self._license_readers:
             return LicenseState.none
         return max([r.get_license_state(license, parameters) for r in self._license_readers])
 
-    def has_valid_license(self, license, parameters=None):
+    def has_valid_license(self, license, parameters=None, ignore_violations=False):
         """Returns whether we currently have this license in some valid state.
-
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: int} of required parameters
-
-        :return: bool
+        :rtype: bool
         """
-        return self.get_license_state(license, parameters).is_valid()
+        return self.get_license_state(license, parameters, ignore_violations=ignore_violations).is_valid()
 
     def get_valid_licenses(self):
         """Returns all licenses which are active (and should be displayed to the user)"""
-        return set().union(*[r.get_valid_licenses() for r in self._license_readers])
+        return [lic for lic in set().union(*[r.get_valid_licenses() for r in self._license_readers])
+                if not LicenseViolation.objects.is_hard_violated(lic)]
 
     def get_all_licenses(self):
         return get_available_licenses()
@@ -241,9 +242,14 @@ class LicenseUsage(object):
 
 
 class _LicenseViolationManager(models.Manager):
-    def is_violated(self, license):
+    def is_hard_violated(self, license):
+        """
+        :type license: LicenseEnum | str
+        """
+        if isinstance(license, LicenseEnum):
+            license = license.name
         # only hard violations are actual violations, else it's a warning (grace)
-        return LicenseViolation.objects.filter(license=license.name, hard=True).exists()
+        return LicenseViolation.objects.filter(license=license, hard=True).exists()
 
 
 class LicenseViolation(_LicenseUsageBase):

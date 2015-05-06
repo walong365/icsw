@@ -107,40 +107,39 @@ class LicenseFileReader(object):
 
     def get_license_state(self, license, parameters=None):
         """Returns a LicenseState for the local cluster_id and the given license combination
-        for the current point in time, or None if no license exists
+        for the current point in time, or LicenseState.none if no license exists.
+
+        NOTE: Does not consider license violations. This is handled by the db (i.e. License).
 
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: quantity} of required parameters
         """
-        if LicenseViolation.objects.is_violated(license):
-            state = LicenseState.violated
-        else:
-            # check parameters via xpath
-            license_parameter_check = ""
-            if parameters is not None:
-                for lic_param_type, value in parameters.iteritems():
-                    license_parameter_check +=\
-                        "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(lic_param_type.name, value)
+        # check parameters via xpath
+        license_parameter_check = ""
+        if parameters is not None:
+            for lic_param_type, value in parameters.iteritems():
+                license_parameter_check +=\
+                    "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(lic_param_type.name, value)
 
-            from initat.cluster.backbone.models import device_variable
+        from initat.cluster.backbone.models import device_variable
 
-            q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
-                device_variable.objects.get_cluster_id()
-            )
-            q += "/icsw:license[icsw:id/text()='{}' {}]".format(license.name, license_parameter_check)
+        q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
+            device_variable.objects.get_cluster_id()
+        )
+        q += "/icsw:license[icsw:id/text()='{}' {}]".format(license.name, license_parameter_check)
 
-            state = LicenseState.none
-            for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
-                # these licenses match id and parameter, check if they are also valid right now
+        state = LicenseState.none
+        for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
+            # these licenses match id and parameter, check if they are also valid right now
 
-                s = self._get_state_from_license_xml(lic_xml)
-                if s > state:
-                    state = s
+            s = self._get_state_from_license_xml(lic_xml)
+            if s > state:
+                state = s
 
         return state
 
     def get_valid_licenses(self):
-        """Returns licenses which are currently valid as license id string list"""
+        """Returns licenses which are currently valid as license id string list. Does not consider license violations!"""
         return list(set(
             lic_xml.find("icsw:id", namespaces=ICSW_XML_NS_MAP).text
             for lic_xml in self.content_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)

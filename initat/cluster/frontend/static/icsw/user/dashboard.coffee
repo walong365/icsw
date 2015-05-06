@@ -160,11 +160,13 @@ dashboard_module = angular.module(
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.NUM_QUOTA_SERVERS = $window.NUM_QUOTA_SERVERS
         $scope.has_menu_permission = access_level_service.has_menu_permission
-]).directive("indexView", ["$templateCache", ($templateCache) ->
+]).directive("indexView", ["$templateCache", "access_level_service", ($templateCache, access_level_service) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.index")
         link : (scope, element, attrs) ->
+            access_level_service.install(scope)
+
     }
 ])
 

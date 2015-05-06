@@ -350,11 +350,14 @@ angular.module(
         cur_xhr = $.ajax(in_dict)
         return cur_xhr
 ]).service("access_level_service", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
-    global_permissions = Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET().$object
-    # these are not permissions for single objects, but the merged permission set of all objects
-    object_permissions = Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET().$object
+    data = {}
+    reload = () ->
+        data.global_permissions = Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET().$object
+        # these are not permissions for single objects, but the merged permission set of all objects
+        data.object_permissions = Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET().$object
 
-    license_data = Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET().$object
+        data.license_data = Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET().$object
+    reload()
 
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
@@ -376,7 +379,7 @@ angular.module(
                 return false
         else
             # check global permissions
-            obj = global_permissions
+            obj = data.global_permissions
             if ac_name of obj
                 if any
                     if mask
@@ -396,7 +399,15 @@ angular.module(
         else
             if p_name.split(".").length == 2
                 p_name = "backbone.#{p_name}"
-            return p_name of global_permissions or p_name of object_permissions
+            return p_name of data.global_permissions or p_name of data.object_permissions
+    has_valid_license = (license) ->
+        if Object.keys(data.license_data).length == 0
+            # not loaded yet
+            return false
+        else
+            if license not in data.license_data.all_licenses
+                console.warn("Invalid license check for #{license}. Licenses are: #{data.license_data.all_licenses}")
+            return license in data.license_data.valid_licenses
     func_dict = {
         # functions to check permissions for single objects
         "acl_delete" : (obj, ac_name) ->
@@ -415,18 +426,17 @@ angular.module(
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission
 
-        has_valid_license: (license) ->
-            if Object.keys(license_data).length == 0
-                # not loaded yet
-                return false
-            else
-                if license not in license_data.all_licenses
-                    console.warn("Invalid license check for #{license}. Licenses are: #{license_data.all_licenses}")
-                return license in license_data.valid_licenses
+        has_valid_license: has_valid_license
+        has_any_valid_license: (licenses) ->
+            for l in licenses
+                if has_valid_license(l)
+                    return true
+            return false
     }
     return angular.extend({
-        install : (scope) ->
+        install: (scope) ->
             angular.extend(scope, func_dict)
+        reload: reload
    }, func_dict)
 ]).config(['$httpProvider',
     ($httpProvider) ->

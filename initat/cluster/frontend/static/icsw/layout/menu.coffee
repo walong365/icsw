@@ -38,7 +38,7 @@ menu_module = angular.module(
         else
             $scope.HANDBOOK_CHUNKS_PRESENT = 0
             $scope.HANDBOOK_PAGE = "---"
-        $scope.has_menu_permission = access_level_service.has_menu_permission
+        access_level_service.install($scope)
         $scope.progress_iters = 0
         $scope.cur_gauges = {}
         $scope.num_gauges = 0

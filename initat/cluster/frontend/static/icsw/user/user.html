@@ -1,12 +1,21 @@
 <script type="text/ng-template" id="icsw.user.vdu.overview">
     <!-- vnc viewer mode -->
+    <!-- vnc viewer mode -->
+    <div ng-if="show_single_vdus && ips_loaded">
     <div ng-if="show_single_vdus && ips_loaded">
         <vnc host="{{ ips_for_devices[single_vdus.device] }}" port="{{ single_vdus.websockify_effective_port  }}" is-connected="show_single_vdus" password="{{ single_vdus.password }}" ></vnc>
+        <vnc host="{{ ips_for_devices[single_vdus.device] }}" port="{{ single_vdus.websockify_effective_port  }}" is-connected="show_single_vdus" password="{{ single_vdus.password }}" ></vnc>
+    </div>
     </div>
     <!-- dashboard mode -->
+    <!-- dashboard mode -->
+    <div ng-if="virtual_desktop_sessions.length == 0">
     <div ng-if="virtual_desktop_sessions.length == 0">
         No virtual desktop sessions
+        No virtual desktop sessions
     </div>
+    </div>
+    <div ng-if="(!show_single_vdus) && ips_loaded">
     <div ng-if="(!show_single_vdus) && ips_loaded">
         <div class="panel panel-success" ng-repeat="vdus in virtual_desktop_sessions" style="width:650px">
             <div class="panel-heading">
@@ -81,7 +90,7 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.user.vdu.settings")
+<script type="text/ng-template" id="icsw.user.vdu.settings">
     <fieldset ng-show="true">
         <legend>Virtual Desktops</legend>
         <div ng-show="!virtual_desktop_device_available()">

@@ -26,8 +26,10 @@ angular.module(
 ).controller("icswUserLicenseCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal",
      "$window", "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService', 'icswUserLicenseDataService',
+     "access_level_service",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal,
-     $window, ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService) ->
+     $window, ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
+     access_level_service) ->
         $scope.licenses = []
         wait_list = restDataSource.add_sources([
             [ICSW_URLS.REST_CLUSTER_LICENSE_LIST, {}]
@@ -82,6 +84,7 @@ angular.module(
             response = "<document>" + response + "</document>"
             icswParseXMLResponseService(response)
             icswUserLicenseDataService.reload_data()
+            access_level_service.reload()
         $scope.uploader.onCompleteAll = () ->
             blockUI.stop()
             $scope.uploader.clearQueue()
@@ -301,7 +304,8 @@ angular.module(
         () ->
             if icswUserLicenseDataService.license_violations? and icswUserLicenseDataService.license_violations.plain?
                 for lic, data of icswUserLicenseDataService.license_violations.plain()
-                    toaster.pop("warning", "License violated", "Your license for #{data['name']} is violated.", 10000)
+                    msg = "Your license for #{data['name']} is violated.\nPlease check the license page for details."
+                    toaster.pop("warning", "License violated", msg, 10000)
     )
 ])
 

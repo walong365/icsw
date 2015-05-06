@@ -77,7 +77,7 @@
                 <icsw-user-disk-usage object="edit_obj" type="user"/>
             </div>
         </accordion-group>
-        <accordion-group is-open="vdesktop_open">
+        <accordion-group is-open="vdesktop_open" ng-show="has_valid_license('virtual_desktop')">
             <accordion-heading>
                 Virtual desktops
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': vdesktop_open, 'glyphicon-chevron-right': !vdesktop_open}"></i>
@@ -88,7 +88,7 @@
             </div>
 
         </accordion-group>
-        <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled">
+        <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled && has_valid_license('rms')">
             <accordion-heading>
                 Job info
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>

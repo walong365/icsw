@@ -65,7 +65,7 @@ class LicenseChecker(threading_tools.process_obj):
             usage = LicenseUsage.get_license_usage(license)
             violated = False
             if usage:
-                violated = not License.objects.has_valid_license(license, usage)
+                violated = not License.objects.has_valid_license(license, usage, ignore_violations=True)
 
             try:
                 violation = LicenseViolation.objects.get(license=license.name)
