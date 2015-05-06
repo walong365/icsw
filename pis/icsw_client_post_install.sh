@@ -73,7 +73,7 @@ ${INIT}/hoststatus restart
 
 if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
     # start / stop to force restart of all services
-    echo -e "\n${GREEN}restarting all ICSW related services${OFF}\n"
+    echo -e "\n${GREEN}restarting all ICSW related services (client)${OFF}\n"
     ${ICSW_SBIN}/icsw stop meta-server
     ${ICSW_SBIN}/icsw start meta-server
 fi

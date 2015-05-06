@@ -53,6 +53,6 @@ done
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
 # start / stop to force restart of all services
-echo -e "\n${GREEN}restarting all ICSW related services${OFF}\n"
+echo -e "\n${GREEN}restarting all ICSW related services (server)${OFF}\n"
 ${ICSW_SBIN}/icsw stop meta-server
 ${ICSW_SBIN}/icsw start meta-server
