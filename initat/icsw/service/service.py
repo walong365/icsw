@@ -467,7 +467,10 @@ class SimpleService(Service):
         self._handle_service_rc("stop")
 
     def _handle_service_rc(self, command):
-        process_tools.call_command("{} {}".format(self.init_script_name, command), self.log)
+        if os.path.exists(self.init_script_name):
+            process_tools.call_command("{} {}".format(self.init_script_name, command), self.log)
+        else:
+            self.log("rc-script {} does not exist".format(self.init_script_name), logging_tools.LOG_LEVEL_WARN)
 
 
 class PIDService(Service):
@@ -642,7 +645,7 @@ class MetaService(Service):
                         arg_dict[_add_key],
                     ]
                 )
-        if self.entry.find("nice-level"):
+        if self.entry.find("nice-level") is not None:
             _arg_list.extend(
                 [
                     "--nice",
