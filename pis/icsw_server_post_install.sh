@@ -14,15 +14,15 @@ USRSBIN=/usr/sbin
 USRBIN=/usr/bin
 INIT=/etc/init.d
 
-/sbin/ldconfig
+BOLD="\033[1m"
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+OFF="\033[m"
 
-# cluster-backbone-tools
-if [ -f /root/.bashrc ] ; then
-    grep ${ICSW_BASE} /root/.bashrc >/dev/null || echo "export PATH=\$PATH:${ICSW_BIN}" >> /root/.bashrc
-else
-    echo "export PATH=\$PATH:${ICSW_BIN}" > /root/.bashrc
-    chmod 0644 /root/.bashrc
-fi
+SERVER_SERVICES="mother rrd-grapher rms-server cluster-config-server collectd discovery-server md-config-server logcheck-server package-server init-license-server cluster-server snmp-relay host-relay"
+
+/sbin/ldconfig
 
 if [ -L /tftpboot ] ; then
     # /tftpboot is a link
@@ -40,7 +40,7 @@ else
     fi
 fi
 
-# deactivate all services (now handled via meta-server)
+# deactivate all server services (now handled via meta-server)
 for server in ${SERVER_SERVICES} ; do
     ${ICSW_PIS}/modify_service.sh deactivate ${server}
 done
@@ -51,3 +51,8 @@ done
 [ -x ${ICSW_PIS}/cluster_post_install.sh ] && ${ICSW_PIS}/cluster_post_install.sh
 
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
+
+# start / stop to force restart of all services
+echo -e "\n${GREEN}restarting all ICSW related services (server)${OFF}\n"
+${ICSW_SBIN}/icsw stop meta-server
+${ICSW_SBIN}/icsw start meta-server

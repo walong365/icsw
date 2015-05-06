@@ -91,8 +91,8 @@ class ServiceState(object):
             os.mkdir(self._path)
         os.chmod(self._path, 0700)
         self._db_path = os.path.join(self._path, "servicestate.sqlite")
+        self._init_states()
         self.init_db()
-        self.init_states()
         self.__shutdown = False
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -187,18 +187,23 @@ class ServiceState(object):
                     "INSERT INTO service(name, target_state, active, created) VALUES(?, ?, ?, ?)",
                     (new_service, 1, 1, int(time.time())),
                 )
-            self.__service_lut = {_entry[1]: _entry[0] for _entry in cursor.execute("SELECT idx, name FROM service")}
+            self.__service_lut = {
+                _entry[1]: _entry[0] for _entry in cursor.execute("SELECT idx, name FROM service")
+            }
+            # update states
+            self.__target_dict = {
+                _entry[0]: _entry[1] for _entry in cursor.execute("SELECT name, target_state FROM service")
+            }
 
-    def init_states(self):
+    def _init_states(self):
         # init state cache
         # instance name -> (running, ok) tuple
-        with self.get_cursor() as cursor:
-            # current state cache
-            self.__state_dict = {}
-            # target state
-            self.__target_dict = {_entry[0]: _entry[1] for _entry in cursor.execute("SELECT name, target_state FROM service")}
-            # transition lock dict
-            self.__transition_lock_dict = {}
+        # current state cache
+        self.__state_dict = {}
+        # target state
+        self.__target_dict = {}
+        # transition lock dict
+        self.__transition_lock_dict = {}
 
     def _update_target_dict(self):
         _changed = False
@@ -432,17 +437,16 @@ class ServiceState(object):
     def handle_command(self, srv_com):
         # returns True if the state machine should be triggered
         trigger = False
+        _com = srv_com["command"].text[5:]
+        _bldr = srv_com.builder()
+        cur_time = time.time()
         if self.__shutdown:
             # ignore commands when in shutdown mode
             srv_com.set_result(
                 "server is shutting down",
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-            return trigger
-        _com = srv_com["command"].text[5:]
-        _bldr = srv_com.builder()
-        cur_time = time.time()
-        if _com == "overview":
+        elif _com == "overview":
             instances = _bldr.instances()
             services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
             with self.get_cursor() as crsr:
