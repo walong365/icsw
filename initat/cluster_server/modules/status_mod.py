@@ -18,19 +18,19 @@
 """ returns status of the cluster and updates the cluster_name if necessary """
 
 import os
-import time
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
-from initat.icsw.service import instance, container, service_parser, transition
+from initat.icsw.service import instance, container, service_parser
 from initat.tools import cluster_location
 import initat.cluster_server
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import uuid_tools
+from initat.tools import net_tools
 
 import cs_base_class
 
@@ -72,27 +72,14 @@ class server_status(cs_base_class.server_com):
 
 class server_control(cs_base_class.server_com):
     def _call(self, cur_inst):
-        cmd = cur_inst.srv_com["*control"]
-        service = cur_inst.srv_com["*instance"]
-        cur_inst.log("command {} for instance {}".format(cmd, service))
-        inst_xml = instance.InstanceXML(cur_inst.log).tree
-        cur_c = container.ServiceContainer(cur_inst.log)
-
-        _def_ns = service_parser.Parser.get_default_ns()
-        _def_ns.service = [service]
-        _def_ns.subcom = cmd
-        cur_t = transition.ServiceTransition(_def_ns, cur_c, inst_xml, cur_inst.log)
-        while True:
-            _left = cur_t.step(cur_c)
-            if _left:
-                time.sleep(0.2)
-            else:
-                break
-        cur_inst.srv_com.set_result(
-            "done",
-            server_command.SRV_REPLY_STATE_OK,
-
+        cur_inst.srv_com["command"] = "state{}".format(cur_inst.srv_com["*control"])
+        _result = net_tools.zmq_connection(
+            "icsw_cssc_{:d}".format(os.getpid())
+        ).add_connection(
+            "tcp://localhost:8012",
+            cur_inst.srv_com,
         )
+        cur_inst.srv_com.set_result(*_result.get_log_tuple(map_to_log_level=False))
 
 
 # merged from modify_service_mod
