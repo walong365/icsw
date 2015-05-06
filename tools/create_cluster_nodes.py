@@ -160,10 +160,12 @@ def handle_csv(csv_reader, config, args):
     for line in csv_reader:
         name = line[CSV_NAME_COLUMN]
         # id is last part of name which is number
-        dev_id_re = re.match("^[a-zA-Z]*(\d+)$", name)
+        dev_id_re = re.match(config.CSV_DEVICE_NAME_RE, name)
         if not dev_id_re:
             raise RuntimeError("Invalid node name: {}".format(name))
         else:
+
+            # this is the number of the node which is also used for IPs
             dev_id = int(dev_id_re.groups()[0])
 
             dev_mac = parse_mac(line[CSV_DEV_MAC_COLUMN])
@@ -171,18 +173,13 @@ def handle_csv(csv_reader, config, args):
             ipmi_mac = parse_mac(line[CSV_IPMI_MAC_COLUMN])
             ipmi_ip = parse_ip(line[CSV_IPMI_IP_COLUMN])
 
+            ########################################
+            # ac2t specific configuration
+
             # infiniband: 10.0.2.NN    maggieNNib.ac2t.ib    maggieNNib
             # ipmi: 172.18.2.NN         maggieNN-ipmi.ac2t.apc    maggieNN-ipmi
             # lan: 172.16.2.NN           maggieNN.ac2t.prod     maggieNN
             # ???: 172.17.2.NN           maggieNNi.ac2t.boot    maggieNNi
-
-            ib_ip = "10.0.2.{}".format(dev_id)
-
-            dev_prod_ip = "172.16.2.{}".format(dev_id)
-            dev_boot_ip = "172.17.2.{}".format(dev_id)
-
-            dtn = domain_tree_node.objects.get(full_name=config.DEVICE_DOMAIN_TREE_NODE)
-            ipmi_dtn = domain_tree_node.objects.get(full_name=config.IPMI_DEVICE_DOMAIN_TREE_NODE)
 
             ac2t_prod_dtn = domain_tree_node.objects.get(full_name="ac2t.prod")
             ac2t_boot_dtn = domain_tree_node.objects.get(full_name="ac2t.boot")
@@ -198,14 +195,24 @@ def handle_csv(csv_reader, config, args):
                                                               full_duplex=False,
                                                               check_via_ethtool=True)
 
-            bootserver = device.objects.get(name='admin')
+            # end ac2t specific configuration
+            ########################################
 
-            actual_device_group = device_group.objects.get(name="fastnodes_new")
-            ipmi_group = device_group.objects.get(name="impi_new")
+            ipmi_switches_nds = [device.objects.get(name=sn).netdevice_set.all()[0] for sn in config.IPMI_SWITCH_NAMES]
+            ib_switches_nds = [device.objects.get(name=sn).netdevice_set.all()[0] for sn in config.IB_SWITCH_NAMES]
 
-            new_ipmi_switch_nd = device.objects.get(name="ipmiswitch2").netdevice_set.all()[0]
-            ib_switch_3_nd = device.objects.get(name="ibswitch3").netdevice_set.all()[0]
-            ib_switch_4_nd = device.objects.get(name="ibswitch4").netdevice_set.all()[0]
+            dtn = domain_tree_node.objects.get(full_name=config.DEVICE_DOMAIN_TREE_NODE)
+            ipmi_dtn = domain_tree_node.objects.get(full_name=config.IPMI_DEVICE_DOMAIN_TREE_NODE)
+
+            ib_ip = config.IB_IP_PATTERN.format(dev_id)
+
+            dev_prod_ip = config.DEVICE_PROD_IP_PATTERN.format(dev_id)
+            dev_boot_ip = config.DEVICE_BOOT_IP_PATTERN .format(dev_id)
+
+            bootserver = device.objects.get(name=config.BOOTSERVER_NAME)
+
+            actual_device_group = device_group.objects.get(name=config.DEVICE_GROUP_NAME)
+            ipmi_group = device_group.objects.get(name=config.IPMI_GROUP_NAME)
 
             actual_device, actual_nds = create_device(
                 args,
@@ -231,7 +238,7 @@ def handle_csv(csv_reader, config, args):
                         network_device_type=lo_netdevice_type,
                     ),
                     NetDeviceInfo(
-                        name="ib",
+                        name="ib0",
                         mac="00:00:00:00:00:00",
                         iplist=[IPInfo(ip=ib_ip, network=ib_network, domain_tree_node=ac2t_ib_dtn)],
                         speed=gbps1_full_duplex,
@@ -268,23 +275,20 @@ def handle_csv(csv_reader, config, args):
 
                 for ipmi_nd in ipmi_nds:
                     print 'adding ipmi peer info to {}'.format(ipmi_nd)
-                    peer_information(
-                        s_netdevice=new_ipmi_switch_nd,
-                        d_netdevice=ipmi_nd,
-                    ).save()
+                    for ipmi_switch_nd in ipmi_switches_nds:
+                        peer_information(
+                            s_netdevice=ipmi_switch_nd,
+                            d_netdevice=ipmi_nd,
+                        ).save()
 
                 for actual_nd in actual_nds:
-                    if actual_device.network_device_type == ib_netdevice_type:
+                    if actual_nd.network_device_type == ib_netdevice_type:
                         print 'adding peer info to {}'.format(actual_nd)
-                        peer_information(
-                            s_netdevice=ib_switch_3_nd,
-                            d_netdevice=actual_nd,
-                        ).save()
-
-                        peer_information(
-                            s_netdevice=ib_switch_4_nd,
-                            d_netdevice=actual_nd,
-                        ).save()
+                        for ib_switch_nd in ib_switches_nds:
+                            peer_information(
+                                s_netdevice=ib_switch_nd,
+                                d_netdevice=actual_nd,
+                            ).save()
 
 
 def parse_args():
