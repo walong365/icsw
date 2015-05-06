@@ -357,10 +357,11 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         if trans_list:
             self._new_transitions(trans_list)
             if self.__loopcount > 1 and not force:
-                mail_text = self.service_state.get_mail_text(trans_list)
+                mail_subject, mail_text = self.service_state.get_mail_text(trans_list)
                 self.__new_mail.init_text()
                 self.__new_mail.set_subject(
-                    "Transaction Info from {} (meta-server)".format(
+                    "{} from {}".format(
+                        mail_subject,
                         global_config["SERVER_FULL_NAME"]
                     )
                 )
