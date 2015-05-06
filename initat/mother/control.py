@@ -147,11 +147,14 @@ class Host(object):
     @staticmethod
     def add_lut_key(obj, key):
         if key in Host.__lut:
-            Host.g_log("key '{}' already set in Host.__lut ({} set, obj is {})".format(
-                key,
-                Host.__lut[key].name,
-                obj.name,
-                ), logging_tools.LOG_LEVEL_ERROR)
+            Host.g_log(
+                "key '{}' already set in Host.__lut ({} set, obj is {})".format(
+                    key,
+                    Host.__lut[key].name,
+                    obj.name,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             Host.__lut[key] = obj
             obj.additional_lut_keys.add(key)
@@ -466,6 +469,8 @@ class Host(object):
                 srv_dev, mach_dev = (Host.process.sc.nd_lut[_[1]], nd_lut[_[2]])
                 for cur_ip in mach_dev.net_ip_set.all():
                     cur_id = cur_ip.network.network_type.identifier
+                    if cur_id == "l":
+                        continue
                     srv_ips = list(
                         set(
                             [

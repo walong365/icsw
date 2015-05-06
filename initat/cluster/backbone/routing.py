@@ -309,6 +309,7 @@ class srv_type_routing(object):
             return []
 
     def start_result_feed(self):
+        # clear result
         self.result = None
 
     def _log(self, request, log_lines, log_str, log_level=logging_tools.LOG_LEVEL_OK):
