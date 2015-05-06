@@ -378,6 +378,10 @@ class ServiceState(object):
         # print _res, etree.tostring(_el.entry, pretty_print=True)
 
     def get_mail_text(self, trans_list):
+        subject = "ICSW Transaction info for {}: {}".format(
+            logging_tools.get_plural("transaction", len(trans_list)),
+            ", ".join(sorted([_trans.name for _trans in trans_list])),
+        )
         cur_time = time.time()
         REPORT_TIME = 3600
         # return a mail text body for the given transaction list
@@ -432,7 +436,7 @@ class ServiceState(object):
                         ) for _action in _actions
                     ]
                 )
-        return mail_text
+        return subject, mail_text
 
     def handle_command(self, srv_com):
         # returns True if the state machine should be triggered
