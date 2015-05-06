@@ -297,10 +297,11 @@ angular.module(
     return data
 ]).run(["toaster", "icswUserLicenseDataService", "$rootScope", (toaster, icswUserLicenseDataService, $rootScope) ->
     $rootScope.$watch(
-        () -> icswUserLicenseDataService.license_violations.length
+        () -> return Object.keys(icswUserLicenseDataService.license_violations).length
         () ->
-            for lic, data of icswUserLicenseDataService.license_violations
-                toaster.pop("warning", "License violated", "Your license for #{data['name']} is violated.", 10000)
+            if icswUserLicenseDataService.license_violations? and icswUserLicenseDataService.license_violations.plain?
+                for lic, data of icswUserLicenseDataService.license_violations.plain()
+                    toaster.pop("warning", "License violated", "Your license for #{data['name']} is violated.", 10000)
     )
 ])
 
