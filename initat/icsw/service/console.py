@@ -135,7 +135,11 @@ class SrvController(object):
         self.mainloop.set_alarm_in(10, self._alarm_callback)
 
     def loop(self):
-        self.mainloop.run()
+        try:
+            self.mainloop.run()
+        except KeyboardInterrupt:
+            # this is not what you are supposed to call, but it does the job:
+            self.mainloop.stop()
 
     def close(self):
         raise urwid.ExitMainLoop()

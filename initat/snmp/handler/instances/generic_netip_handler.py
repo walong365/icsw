@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,13 +19,18 @@
 #
 """ SNMP handler instances """
 
+from initat.tools import ipvx_tools
+
 from ...functions import simplify_dict
 from ...struct import ResultNode, snmp_ip
 from ..base import SNMPHandler
-from django.db.models import Q
-from initat.cluster.backbone.models import network, netdevice, domain_tree_node, \
-    network_type, net_ip
-from initat.tools import ipvx_tools
+
+try:
+    from django.db.models import Q
+    from initat.cluster.backbone.models import network, netdevice, domain_tree_node, \
+        network_type, net_ip
+except:
+    pass
 
 
 class handler(SNMPHandler):
