@@ -82,6 +82,7 @@ def main():
     _parser.add_argument("--groups", type=str, default="", help="coma-separated list of groups for the process [%(default)s]")
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     _parser.add_argument("--debug", default=False, action="store_true", help="enable debug mode (modify sys.path), [%(default)s]")
+    _parser.add_argument("extra_args", nargs="*", type=str, help="extra  arguments")
     opts = _parser.parse_args()
     _args = [opts.progname]
     if opts.user != "root":
@@ -106,6 +107,8 @@ def main():
         abs_path = os.path.split(os.path.split(abs_path)[0])[0]
         sys.path.insert(0, abs_path)
         _args.append("-d")
+    if opts.extra_args:
+        _args.extend(opts.extra_args)
     sys.argv = _args
     setproctitle.setproctitle(opts.proctitle)
     main_module = importlib.import_module(opts.modname)

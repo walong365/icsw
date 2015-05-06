@@ -37,9 +37,10 @@ from .constants import *
 
 
 class ServiceTransition(object):
-    def __init__(self, opt_ns, cur_c, inst_xml, log_com, id=None):
+    def __init__(self, opt_ns, cur_c, inst_xml, log_com, id=None, debug_args=None):
         self.__log_com = log_com
         self.target = opt_ns.subcom
+        self.debug_args = debug_args
         self.id = id
         self.list = cur_c.apply_filter(opt_ns.service, inst_xml)
         self.finished = False
@@ -92,7 +93,10 @@ class ServiceTransition(object):
                     if _action == "wait":
                         self.__wait_dict[entry.name] = cur_time
                     else:
-                        entry.action(_action, cur_c.proc_dict)
+                        if _action == "debug":
+                            entry.action(_action, cur_c.proc_dict, self.debug_args)
+                        else:
+                            entry.action(_action, cur_c.proc_dict)
             self._action_list = new_list
             if not self._check_waiting(cur_c):
                 # no processes vanished, return

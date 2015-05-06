@@ -76,8 +76,10 @@ def main():
     # check for newer rms-server
     sql_s_info = config_tools.server_check(server_type="rms_server")
     if not sql_s_info.effective_device:
-        sys.stderr.write(" %s is no sge-server, exiting..." % (long_host_name))
-        sys.exit(5)
+        sql_s_info = config_tools.server_check(server_type="sge_server")
+        if not sql_s_info.effective_device:
+            sys.stderr.write(" %s is no rms_server or sge_server, exiting..." % (long_host_name))
+            sys.exit(5)
     sge_dict = {}
     for v_name, v_src, v_default in [
         ("SGE_ROOT", "/etc/sge_root", "/opt/sge"),

@@ -19,11 +19,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import collections
 
+from __future__ import division
+
+import collections
 import os
 import re
 import sys
+import math
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -89,6 +92,7 @@ def create_device(args, name, group, domain_tree_node, netdevices, bootserver):
         device_group=group,
         domain_tree_node=domain_tree_node,
         bootserver=bootserver,
+        dhcp_write=(bootserver is not None)
     )
     if args.write_to_db:
         dev.save()
@@ -157,7 +161,15 @@ def handle_csv(csv_reader, config, args):
     CSV_DEV_MAC_2_COLUMN = 3
     CSV_IPMI_MAC_COLUMN = 5
     CSV_IPMI_IP_COLUMN = 6
-    for line in csv_reader:
+
+    lines = [i for i in csv_reader]
+
+    num_devices = len(lines)
+
+    if not args.write_to_db:
+        print 'Not actually writing to db'
+
+    for nth_device, line in enumerate(lines):
         name = line[CSV_NAME_COLUMN]
         # id is last part of name which is number
         dev_id_re = re.match(config.CSV_DEVICE_NAME_RE, name)
@@ -200,6 +212,7 @@ def handle_csv(csv_reader, config, args):
 
             ipmi_switches_nds = [device.objects.get(name=sn).netdevice_set.all()[0] for sn in config.IPMI_SWITCH_NAMES]
             ib_switches_nds = [device.objects.get(name=sn).netdevice_set.all()[0] for sn in config.IB_SWITCH_NAMES]
+            dev_switches_nds = [device.objects.get(name=sn).netdevice_set.all()[0] for sn in config.DEVICE_SWITCH_NAMES]
 
             dtn = domain_tree_node.objects.get(full_name=config.DEVICE_DOMAIN_TREE_NODE)
             ipmi_dtn = domain_tree_node.objects.get(full_name=config.IPMI_DEVICE_DOMAIN_TREE_NODE)
@@ -273,22 +286,47 @@ def handle_csv(csv_reader, config, args):
                     child=actual_device,
                 ).save()
 
-                for ipmi_nd in ipmi_nds:
-                    print 'adding ipmi peer info to {}'.format(ipmi_nd)
-                    for ipmi_switch_nd in ipmi_switches_nds:
-                        peer_information(
-                            s_netdevice=ipmi_switch_nd,
-                            d_netdevice=ipmi_nd,
-                        ).save()
+            for ipmi_nd in ipmi_nds:
+                print 'adding ipmi peer info to {}'.format(ipmi_nd)
+                for ipmi_switch_nd in ipmi_switches_nds:
+                    pi = peer_information(
+                        s_netdevice=ipmi_switch_nd,
+                        d_netdevice=ipmi_nd,
+                    )
+                    if args.write_to_db:
+                        pi.save()
 
-                for actual_nd in actual_nds:
-                    if actual_nd.network_device_type == ib_netdevice_type:
-                        print 'adding peer info to {}'.format(actual_nd)
-                        for ib_switch_nd in ib_switches_nds:
-                            peer_information(
-                                s_netdevice=ib_switch_nd,
-                                d_netdevice=actual_nd,
-                            ).save()
+            for actual_nd in actual_nds:
+                if actual_nd.network_device_type == ib_netdevice_type:
+                    devices_per_switch = int(math.ceil(num_devices / len(ib_switches_nds)))
+                    id_of_switch = nth_device // devices_per_switch
+                    print 'adding ib peer info to {}, using ib switch no {}'.format(actual_nd, id_of_switch)
+                    ib_switch_nd = ib_switches_nds[id_of_switch]
+                    pi = peer_information(
+                        s_netdevice=ib_switch_nd,
+                        d_netdevice=actual_nd,
+                    )
+                    if args.write_to_db:
+                        pi.save()
+
+                elif actual_nd.network_device_type == eth_netdevice_type:
+                    print 'adding eth peer info to {}'.format(actual_nd)
+                    for dev_switch_nd in dev_switches_nds:
+                        pi = peer_information(
+                            s_netdevice=dev_switch_nd,
+                            d_netdevice=actual_nd,
+                        )
+                        if args.write_to_db:
+                            pi.save()
+
+                elif actual_nd.network_device_type == lo_netdevice_type:
+                    print 'adding lo peer info to {}'.format(actual_nd)
+                    pi = peer_information(
+                        s_netdevice=actual_nd,
+                        d_netdevice=actual_nd,
+                    )
+                    if args.write_to_db:
+                        pi.save()
 
 
 def parse_args():

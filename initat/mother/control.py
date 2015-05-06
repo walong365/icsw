@@ -409,17 +409,39 @@ class Host(object):
 
     def check_network_settings(self):
         if self.device is None:
-            self.log("device is non in check_network_settings", logging_tools.LOG_LEVEL_WARN)
+            self.log("device is none in check_network_settings", logging_tools.LOG_LEVEL_WARN)
             return
         # bootnet device name
         self.bootnetdevice = None
         nd_list, nd_lut = (set(), {})
+        _possible_bnds = []
         for net_dev in self.device.netdevice_set.all():
             nd_list.add(net_dev.pk)
             nd_lut[net_dev.pk] = net_dev
+            if any([_ip.network.network_type.identifier == "b" for _ip in net_dev.net_ip_set.all()]):
+                _possible_bnds.append(net_dev)
             if self.device.bootnetdevice_id and net_dev.pk == self.device.bootnetdevice.pk:
                 # set bootnetdevice_name
                 self.bootnetdevice = net_dev
+        if not len(_possible_bnds):
+            if self.bootnetdevice is not None:
+                self.log("removing bootnetdevice", logging_tools.LOG_LEVEL_WARN)
+                self.bootnetdevice = None
+                self.device.bootnetdevice = self.bootnetdevice
+                self.device.save(update_fields=["bootnetdevice"])
+        elif len(_possible_bnds) == 1:
+            if _possible_bnds[0] == self.bootnetdevice:
+                pass
+            else:
+                self.log("changing bootnetdevice to {}".format(_possible_bnds[0]))
+                self.bootnetdevice = _possible_bnds[0]
+                self.device.bootnetdevice = self.bootnetdevice
+                self.device.save(update_fields=["bootnetdevice"])
+        else:
+            self.log("more than one possible bootnetdevice found ({:d})".format(len(_possible_bnds)), logging_tools.LOG_LEVEL_WARN)
+        if self.bootnetdevice is None:
+            self.log("bootnetdevice is none in check_network_settings", logging_tools.LOG_LEVEL_WARN)
+            return
         # dict: my net_ip -> dict [identifier, ip] server_net_ip
         server_ip_dict = {}
         # dict: ip -> identifier
@@ -977,24 +999,38 @@ class Host(object):
         )
         simple_command.process.set_check_freq(200)  # @UndefinedVariable
         for om_shell_com in om_shell_coms:
-            om_array = ['server 127.0.0.1',
-                        'port 7911',
-                        'connect',
-                        'new host',
-                        'set name = "{}"'.format(self.device.name)]
+            om_array = [
+                'server 127.0.0.1',
+                'port 7911',
+                'connect',
+                'new host',
+                'set name = "{}"'.format(self.device.name),
+            ]
             if om_shell_com == "write":
-                om_array.extend(['set hardware-address = {}'.format(self.device.bootnetdevice.macaddr),
-                                 'set hardware-type = 1',
-                                 'set ip-address={}'.format(ip_to_write)])
-                om_array.extend(['set statements = "' +
-                                 'supersede host-name = \\"{}\\" ;'.format(self.device.name) +
-                                 'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
-                                 'filename = \\"etherboot/pxelinux.0\\" ; ' +  # % (ip_to_write) +
-                                 '} "'])
+                om_array.extend(
+                    [
+                        'set hardware-address = {}'.format(self.device.bootnetdevice.macaddr),
+                        'set hardware-type = 1',
+                        'set ip-address={}'.format(ip_to_write),
+                    ]
+                )
+                om_array.extend(
+                    [
+                        'set statements = "' +
+                        'supersede host-name = \\"{}\\" ;'.format(self.device.name) +
+                        'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
+                        'filename = \\"etherboot/pxelinux.0\\" ; ' +
+                        '} "'
+                    ]
+                )
                 om_array.append('create')
             elif om_shell_com == "delete":
-                om_array.extend(['open',
-                                 'remove'])
+                om_array.extend(
+                    [
+                        'open',
+                        'remove',
+                    ]
+                )
             om_array.append("")
             simple_command(
                 "echo -e '{}' | /usr/bin/omshell".format(
