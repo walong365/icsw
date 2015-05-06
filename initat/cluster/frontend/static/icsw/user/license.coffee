@@ -108,8 +108,8 @@ angular.module(
             )
     }
 ]).directive("icswUserLicenseYourLicenses",
-    ["icswUserLicenseDataService", "icswUserLicenseUtils", "$window",
-     (icswUserLicenseDataService, icswUserLicenseUtils, $window) ->
+    ["icswUserLicenseDataService", "$window",
+     (icswUserLicenseDataService, $window) ->
         return {
             restrict : "EA"
             templateUrl : "icsw.user.license.your_licenses"
@@ -127,11 +127,11 @@ angular.module(
                     # NOTE: caching currently breaks updating info on new license file uploading new
                     #if !_lic_state_cache[license_id]?  # calculation can also return undefined if data isn't loaded yet
                     #    _lic_state_cache[license_id] =
-                    #        icswUserLicenseUtils.calculate_license_state(icswUserLicenseDataService.license_packages,
+                    #        icswUserLicenseDataService.calculate_license_state(icswUserLicenseDataService.license_packages,
                     #            license_id, $window.CLUSTER_ID)
                     #return _lic_state_cache[license_id]
 
-                    return icswUserLicenseUtils.calculate_license_state(icswUserLicenseDataService.license_packages,
+                    return icswUserLicenseDataService.calculate_license_state(icswUserLicenseDataService.license_packages,
                         license_id, $window.CLUSTER_ID)
         }
 ]).directive("icswUserLicensePackages", ["icswUserLicenseDataService", "$window", (icswUserLicenseDataService, $window) ->
@@ -163,10 +163,12 @@ angular.module(
                 else
                     return "Cluster #{cluster_id}"
     }
-]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "icswUserLicenseUtils", (Restangular, ICSW_URLS, icswUserLicenseUtils) ->
+]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "gettextCatalog", (Restangular, ICSW_URLS, gettextCatalog) ->
     data = {
         all_licenses: []
         license_packages: []
+        # no reload:
+        license_violations: Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS.slice(1)).customGET().$object
     }
 
     reload_data = () ->
@@ -181,6 +183,7 @@ angular.module(
             for entry in new_list
                 data.license_packages.push(entry)
         )
+
     reload_data()
 
     data.reload_data = reload_data
@@ -188,13 +191,13 @@ angular.module(
     data.get_license_by_id = (id) ->
         return _.find(data.all_licenses, (elem) -> return elem.id == id)
 
-    angular.extend(data, icswUserLicenseUtils)
     data.add_to_scope = (scope) ->
         for k, v of data
             if k != 'add_to_scope'
                 scope[k] = v
-    return data
-]).service("icswUserLicenseUtils", ["gettextCatalog", (gettextCatalog) ->
+
+
+    # NOTE: code below here is just utils, but we can't have it in a proper service since that would create a circular dependency
     _get_license_state = (lic) ->
         # NOTE: keep grace period in sync with py
         if moment(lic.valid_from) < moment() and moment() < (moment(lic.valid_to).add(2, 'weeks'))
@@ -224,18 +227,21 @@ angular.module(
             }])
     get_license_state_bootstrap_class = (state) ->
         if state?
-            return {'valid': 'success', 'expired': 'danger', 'in_grace_period': 'warning', 'valid_in_future': 'warning'}[state]
+            return {'valid': 'success', 'expired': 'danger', 'in_grace_period': 'warning', 'valid_in_future': 'warning',
+            'parameter_violated': 'danger'}[state]
         else
             return ""
     get_license_state_icon_class = (state) ->
         if state?
-            return {'valid': 'fa fa-check', 'expired': 'fa fa-times', 'in_grace_period': 'fa fa-clock-o', 'valid_in_future': 'fa fa-clock-o'}[state]
+            return {'valid': 'fa fa-check', 'expired': 'fa fa-times', 'in_grace_period': 'fa fa-clock-o', 'valid_in_future': 'fa fa-clock-o',
+            'parameter_violated': 'fa fa-times'}[state]
         else
             return ""
     get_license_state = (lic) ->
         state =  _get_license_state(lic)
         return if state? then state[1] else undefined
-    return {
+
+    angular.extend(data, {
         get_license_bootstrap_class : (lic) ->
             state = get_license_state(lic)
             return if state? then get_license_state_bootstrap_class(state.state_id) else undefined
@@ -278,15 +284,23 @@ angular.module(
                 states.sort()
                 if states.length
                     state = states[0][1]
-            return state
 
-    }
-]).run(["ICSW_URLS", "Restangular", "toaster", (ICSW_URLS, Restangular, toaster) ->
-    # check for license violation
-    Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS.slice(1)).getList().then((new_data) ->
-        if new_data.length
-            for violation in new_data
-                toaster.pop("warning", "License violated", "Your license for #{violation.license} is violated.", 10000)
+            # this is user.license only:
+            if data.license_violations[license_id]? and data.license_violations[license_id].type == 'hard'
+                if !state?
+                    state = {}
+                state.state_id = "parameter_violated"
+                state.state_str = gettextCatalog.getString('License parameter violated')
+            return state
+    })
+
+    return data
+]).run(["toaster", "icswUserLicenseDataService", "$rootScope", (toaster, icswUserLicenseDataService, $rootScope) ->
+    $rootScope.$watch(
+        () -> icswUserLicenseDataService.license_violations.length
+        () ->
+            for lic, data of icswUserLicenseDataService.license_violations
+                toaster.pop("warning", "License violated", "Your license for #{data['name']} is violated.", 10000)
     )
 ])
 

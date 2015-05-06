@@ -68,8 +68,15 @@ class GetLicenseViolations(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        return Response([{"license": LicenseEnum.id_string_to_user_name(viol.license)}
-                         for viol in LicenseViolation.objects.all()])
+        return Response(
+            {
+                viol.license: {
+                    'type': 'hard' if viol.hard else 'soft',
+                    'name': LicenseEnum.id_string_to_user_name(viol.license),
+                    }
+                for viol in LicenseViolation.objects.all()
+            }
+        )
 
 
 class GetValidLicenses(RetrieveAPIView):

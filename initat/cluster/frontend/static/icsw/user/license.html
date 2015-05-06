@@ -90,7 +90,7 @@
                     <i ng-attr-class="{{get_license_state_icon_class(_state(lic.id).state_id)}}"></i>
                 </td>
                 <td ng-class="get_license_state_bootstrap_class(_state(lic.id).state_id)">
-                    {{_state(lic.id).state_str}}
+                    <strong>{{_state(lic.id).state_str}}</strong>
                 </td>
                 <td>{{_state(lic.id).date_info}}</td>
                 <td>
