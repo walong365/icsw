@@ -22,7 +22,10 @@
 from ...functions import simplify_dict
 from ...struct import ResultNode
 from ..base import SNMPHandler
-from initat.cluster.backbone.models import DeviceSNMPInfo
+try:
+    from initat.cluster.backbone.models import DeviceSNMPInfo
+except:
+    pass
 
 
 class handler(SNMPHandler):
