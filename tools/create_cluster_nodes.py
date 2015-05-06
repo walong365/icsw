@@ -92,6 +92,7 @@ def create_device(args, name, group, domain_tree_node, netdevices, bootserver):
         device_group=group,
         domain_tree_node=domain_tree_node,
         bootserver=bootserver,
+        dhcp_write=(bootserver is not None)
     )
     if args.write_to_db:
         dev.save()
@@ -308,7 +309,7 @@ def handle_csv(csv_reader, config, args):
                     if args.write_to_db:
                         pi.save()
 
-                if actual_nd.network_device_type == eth_netdevice_type:
+                elif actual_nd.network_device_type == eth_netdevice_type:
                     print 'adding eth peer info to {}'.format(actual_nd)
                     for dev_switch_nd in dev_switches_nds:
                         pi = peer_information(
@@ -317,6 +318,15 @@ def handle_csv(csv_reader, config, args):
                         )
                         if args.write_to_db:
                             pi.save()
+
+                elif actual_nd.network_device_type == lo_netdevice_type:
+                    print 'adding lo peer info to {}'.format(actual_nd)
+                    pi = peer_information(
+                        s_netdevice=actual_nd,
+                        d_netdevice=actual_nd,
+                    )
+                    if args.write_to_db:
+                        pi.save()
 
 
 def parse_args():
