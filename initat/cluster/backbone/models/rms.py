@@ -286,6 +286,11 @@ class ext_license(ext_license_base):
     name = models.CharField(max_length=128, unique=True)
     ext_license_site = models.ForeignKey("backbone.ext_license_site")
 
+    def __unicode__(self):
+        return "ExternalLicense(name={})".format(self.name)
+
+    __repr__ = __unicode__
+
 
 class ext_license_version(ext_license_base):
     '''

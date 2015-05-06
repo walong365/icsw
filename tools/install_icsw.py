@@ -301,6 +301,7 @@ def main():
         (
             "/opt/cluster/sbin/icsw",
             "license",
+            "register_cluster",
             "--user", opts.user,
             "--password", opts.password,
             "--cluster-name", opts.cluster_name,

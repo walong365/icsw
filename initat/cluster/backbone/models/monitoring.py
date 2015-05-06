@@ -506,6 +506,8 @@ class mon_check_command(models.Model):
     def __unicode__(self):
         return "mcc_{}".format(self.name)
 
+    __repr__ = __unicode__
+
 
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_pre_save(sender, **kwargs):
