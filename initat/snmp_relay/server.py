@@ -17,21 +17,21 @@
 #
 """ SNMP relayer, server part """
 
+import difflib
+import os
+import socket
+import time
+
 from initat.host_monitoring import limits
 from initat.snmp.process import snmp_process_container
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay import snmp_relay_schemes
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 from initat.tools import configfile
-import difflib
 from initat.tools import logging_tools
-import os
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import server_command
-import socket
 from initat.tools import threading_tools
-import time
 import zmq
 
 
