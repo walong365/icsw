@@ -94,6 +94,7 @@ class Host(object):
     @staticmethod
     def setup(c_process):
         Host.process = c_process
+        Host.debug = global_config["DEBUG"]
         Host.eb_dir = global_config["ETHERBOOT_DIR"]
         Host.iso_dir = global_config["ISO_DIR"]
         Host.g_log("init (etherboot_dir={}, isos in{})".format(Host.eb_dir, Host.iso_dir))
@@ -115,11 +116,17 @@ class Host(object):
 
     @staticmethod
     def get_query(names=[], ips=[]):
-        query = device.objects.filter(Q(bootserver=Host.process.sc.effective_device)).prefetch_related(
+        query = device.all_real_enabled.filter(
+            Q(bootserver=Host.process.sc.effective_device)
+        ).prefetch_related(
+            "domain_tree_node",
             "netdevice_set",
             "netdevice_set__net_ip_set",
             "netdevice_set__net_ip_set__network",
-            "netdevice_set__net_ip_set__network__network_type")
+            "netdevice_set__net_ip_set__network__network_type",
+        ).select_related(
+            "bootnetdevice"
+        )
         if names:
             query = query.filter(Q(name__in=names))
         if ips:
@@ -136,13 +143,22 @@ class Host(object):
 
     @staticmethod
     def sync(names=[], ips=[]):
+        s_time = time.time()
         query = Host.get_query(names=names, ips=ips)
+        # from django.db import connection
+        # import pprint
+        # pprint.pprint(connection.queries)
         Host.g_log(
             "found {}: {}".format(
                 logging_tools.get_plural("device", len(query)),
-                logging_tools.compress_list([cur_dev.name for cur_dev in query])))
+                logging_tools.compress_list([cur_dev.name for cur_dev in query])
+            )
+        )
         for cur_dev in query:
             Host.set_device(cur_dev)
+        e_time = time.time()
+        Host.g_log("sync took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+        # pprint.pprint(connection.queries)
 
     @staticmethod
     def add_lut_key(obj, key):
@@ -161,8 +177,6 @@ class Host(object):
 
     @staticmethod
     def del_lut_key(obj, key):
-        # if key == "172.16.1.56":
-        #    print "+", key
         del Host.__lut[key]
         obj.additional_lut_keys.remove(key)
 
@@ -195,21 +209,29 @@ class Host(object):
         if dev_spec in Host.__lut:
             return Host.__lut[dev_spec]
         else:
-            Host.g_log("no device with spec '{}' found (not mother / bootserver ?)".format(
-                str(dev_spec),
-                ), logging_tools.LOG_LEVEL_ERROR)
+            Host.g_log(
+                "no device with spec '{}' found (not mother / bootserver ?)".format(
+                    str(dev_spec),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             return None
 
     @staticmethod
     def iterate(com_name, *args, **kwargs):
-        iter_keys = Host.__unique_keys & set(kwargs.pop("device_keys", Host.__unique_keys))
+        iter_keys = Host.__unique_keys
+        if "device_keys" in kwargs:
+            iter_keys &= set(kwargs.pop("device_keys", Host.__unique_keys))
         for u_key in iter_keys:
             cur_dev = Host.get_device(u_key)
             if hasattr(cur_dev, com_name):
                 cur_dev.log("call '{}'".format(com_name))
                 getattr(cur_dev, com_name)(*args, **kwargs)
             else:
-                cur_dev.log("call '{}' not defined".format(com_name), logging_tools.LOG_LEVEL_WARN)
+                cur_dev.log(
+                    "call '{}' not defined".format(com_name),
+                    logging_tools.LOG_LEVEL_WARN
+                )
 
     @staticmethod
     def iterate_xml(srv_com, com_name, *args, **kwargs):
@@ -257,11 +279,17 @@ class Host(object):
             srv_com["ping_list"].getparent().remove(srv_com["ping_list"])
         # all master devices, format : master_device_id, master_net_ip
         # we ignore routing
-        master_dev_list = set(device.objects.filter(Q(parent_device__child__in=keys)).select_related("netdevice_set__net_ip_set").values_list(
-            "pk",
-            "netdevice__net_ip__ip",
-            "netdevice__net_ip__network__network_type__identifier",
-            ))
+        master_dev_list = set(
+            device.objects.filter(
+                Q(parent_device__child__in=keys)
+            ).select_related(
+                "netdevice_set__net_ip_set"
+            ).values_list(
+                "pk",
+                "netdevice__net_ip__ip",
+                "netdevice__net_ip__network__network_type__identifier",
+            )
+        )
         # create dict for master / slave relations
         _master_dict = {key: value for key, value, nwt in master_dev_list if value and nwt not in ["l"]}
         cd_ping_list = _bldr.cd_ping_list()
@@ -295,10 +323,12 @@ class Host(object):
         _cdp_node = srv_com.xpath(".//ns:cd_ping_list/ns:cd_ping[text() = '{}']".format(res_dict["id"]))
         if len(_cdp_node):
             _cdp_node = _cdp_node[0]
-            _cdp_node.attrib.update({
-                "pending": "0",
-                "reachable": "1" if res_dict["recv_ok"] else "0",
-            })
+            _cdp_node.attrib.update(
+                {
+                    "pending": "0",
+                    "reachable": "1" if res_dict["recv_ok"] else "0",
+                }
+            )
         else:
             Host.g_log("unknown id_str '{}' for cdp_node".format(res_dict["id"]), logging_tools.LOG_LEVEL_ERROR)
 
@@ -312,12 +342,14 @@ class Host(object):
                 dev_node.attrib["ok"] = "{:d}".format(cur_ok)
                 dev_node.attrib["ip"] = res_dict["host"]
                 if cur_ok == 1:
-                    self.log("send hoststatus query to {}".format(res_dict["host"]))
+                    if Host.debug:
+                        self.log("send hoststatus query to {}".format(res_dict["host"]))
                     Host.process.send_pool_message(
                         "contact_hoststatus",
                         self.device.get_boot_uuid() if self.ip_dict[dev_node.attrib["ip"]].network.network_type.identifier == "b" else self.device.uuid,
                         dev_node.attrib.get("soft_command", "status"),
-                        dev_node.attrib["ip"])
+                        dev_node.attrib["ip"]
+                    )
                 # remove other ping requests for this node
                 for other_ping in srv_com.xpath(".//ns:ping[@pk='{:d}']".format(self.pk), smart_strings=False):
                     other_ping.getparent().remove(other_ping)
@@ -755,7 +787,7 @@ class Host(object):
                         "LABEL linux",
                         "IMPLICIT 0",
                         "LOCALBOOT 0",
-                        ""
+                        "",
                     ]
                 )
             )
@@ -810,14 +842,25 @@ class Host(object):
                         )
                     else:
                         link_field = [
-                            ("{}/bzImage".format(kern_abs_base_dir),
-                             "{}/bzImage".format(kern_base_dir),
-                             "{}/k".format(kern_dst_dir)),
-                            ("{}/initrd_{}.gz".format(kern_abs_base_dir, self.device.stage1_flavour),
-                             "{}/initrd_{}.gz".format(kern_base_dir, self.device.stage1_flavour),
-                             "{}/i".format(kern_dst_dir))]
+                            (
+                                "{}/bzImage".format(kern_abs_base_dir),
+                                "{}/bzImage".format(kern_base_dir),
+                                "{}/k".format(kern_dst_dir)
+                            ),
+                            (
+                                "{}/initrd_{}.gz".format(kern_abs_base_dir, self.device.stage1_flavour),
+                                "{}/initrd_{}.gz".format(kern_base_dir, self.device.stage1_flavour),
+                                "{}/i".format(kern_dst_dir)
+                            )
+                        ]
                         if new_kernel.xen_host_kernel:
-                            link_field.append(("{}/xen.gz".format(kern_abs_base_dir), "{}/xen.gz".format(kern_base_dir), "{}/x".format(kern_dst_dir)))
+                            link_field.append(
+                                (
+                                    "{}/xen.gz".format(kern_abs_base_dir),
+                                    "{}/xen.gz".format(kern_base_dir),
+                                    "{}/x".format(kern_dst_dir)
+                                )
+                            )
                         for abs_src, src, dst in link_field:
                             if new_kernel.name:
                                 if os.path.isfile(abs_src):
@@ -923,15 +966,21 @@ class Host(object):
                 )
                 if new_kernel.name:
                     if new_kernel.xen_host_kernel:
-                        pxe_lines.extend([
-                            "LABEL linux",
-                            "    KERNEL mboot.c32",
-                            "    APPEND {}".format(" --- ".join(append_field))])
+                        pxe_lines.extend(
+                            [
+                                "LABEL linux",
+                                "    KERNEL mboot.c32",
+                                "    APPEND {}".format(" --- ".join(append_field))
+                            ]
+                        )
                     else:
-                        pxe_lines.extend([
-                            "LABEL linux",
-                            "    KERNEL {}/k".format(self.maint_ip.ip),
-                            "    APPEND {}".format(total_append_string)])
+                        pxe_lines.extend(
+                            [
+                                "LABEL linux",
+                                "    KERNEL {}/k".format(self.maint_ip.ip),
+                                "    APPEND {}".format(total_append_string)
+                            ]
+                        )
                 pxe_lines.extend([""])
                 if global_config["FANCY_PXE_INFO"]:
                     menu_lines = [
@@ -975,9 +1024,10 @@ class Host(object):
         else:
             self.log("Error: etherboot-dir not defined", logging_tools.LOG_LEVEL_ERROR)
 
-    def handle_mac_command(self, com_name):
-        self.refresh_device()
-        self.check_network_settings()
+    def handle_mac_command(self, com_name, **kwargs):
+        if kwargs.get("refresh", True):
+            self.refresh_device()
+            self.check_network_settings()
         if self.maint_ip:
             ip_to_write, ip_to_write_src = (self.maint_ip.ip, "maint_ip")
         elif self.bootnetdevice and self.bootnetdevice.dhcp_device:
@@ -1279,7 +1329,6 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         # pprint.pprint(self.__work_dict)
 
     def received(self, sock):
-        #        recv_time = time.time()
         dgram = self.parse_datagram(sock.recv(1024))
         if dgram and dgram.packet_type == 0 and dgram.ident == self.__process.pid & 0x7fff:
             seqno = dgram.seqno
@@ -1318,23 +1367,14 @@ class direct_process(threading_tools.process_obj):
 
 class node_control_process(threading_tools.process_obj):
     def process_init(self):
-        # , config, db_con, **args):
-        # needed keys in config:
-        # TMP_DIR ....................... directory to create temporary files
-        # SET_DEFAULT_BUILD_MACHINE ..... flag, if true sets the build_machine to local machine name
-        # IGNORE_KERNEL_BUILD_MACHINE ... flag, if true discards kernel if build_machine != local machine name
-        # KERNEL_DIR .................... kernel directory, usually /tftpboot/kernels
-        # TFTP_DIR ...................... tftpboot directory (optional)
-        # SQL_ACCESS .................... access string for database
-        # SERVER_SHORT_NAME ............. short name of device
-        # SYNCER_ROLE ................... syncer role, mother or xen
         # check log type (queue or direct)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=self.zmq_context,
-            init_logger=True)
+            init_logger=True
+        )
         connection.close()
         self.node_src = log_source_lookup("node", None)
         self.mother_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
@@ -1448,10 +1488,11 @@ class node_control_process(threading_tools.process_obj):
             Host.iterate("refresh_target_kernel", device_keys=dev_list)
             Host.iterate("handle_mac_command", "alter", device_keys=dev_list)
         else:
+            # full refresh
             id_str, in_com = (None, None)
             # use kwargs to specify certain devices
-            Host.iterate("refresh_target_kernel")
-            Host.iterate("handle_mac_command", "alter")
+            Host.iterate("refresh_target_kernel", refresh=kwargs.get("refresh", True))
+            Host.iterate("handle_mac_command", "alter", refresh=kwargs.get("refresh", True))
         if id_str:
             in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
             self.send_pool_message("send_return", id_str, unicode(in_com))

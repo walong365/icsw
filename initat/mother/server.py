@@ -55,6 +55,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # close db connection (for daemonizing)
         connection.close()
+        self.debug = global_config["DEBUG"]
         self.log("open")
         # log config
         self._log_config()
@@ -93,7 +94,7 @@ class server_process(threading_tools.process_pool):
             )
             # restart hoststatus
             self.send_to_process("command", "delay_command", "/etc/init.d/hoststatus restart", delay_time=5)
-            self.send_to_process("control", "refresh")
+            self.send_to_process("control", "refresh", refresh=False)
         else:
             init_ok = False
         if not init_ok:
@@ -222,7 +223,8 @@ class server_process(threading_tools.process_pool):
                                 node_text = srv_com.tree.findtext(node_ct)
                                 t_proc = "control"
                                 cur_com = node_ct
-                                self.log("got command {}, sending to {} process".format(cur_com, t_proc))
+                                if self.debug:
+                                    self.log("got command {}, sending to {} process".format(cur_com, t_proc))
                                 self.send_to_process(
                                     t_proc,
                                     cur_com,
@@ -329,8 +331,8 @@ class server_process(threading_tools.process_pool):
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
-    # utility calls
+            if self.debug:
+                self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
 
     def _prepare_directories(self):
         self.log("Checking directories ...")

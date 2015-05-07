@@ -19,6 +19,8 @@
 #
 """ cluster-config-server, build process """
 
+import time
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, network, config, log_level_lookup, LogSource, \
@@ -30,7 +32,6 @@ from initat.cluster_config_server.config import global_config
 from initat.tools import config_tools
 from initat.tools import logging_tools
 from initat.tools import threading_tools
-import time
 
 
 def pretty_print(name, obj, offset):
@@ -189,7 +190,7 @@ class build_process(threading_tools.process_obj):
                             self._generate_config_step2(cur_c, b_dev, act_prod_net, boot_netdev, dev_sc)
                         elif len(net_devs_ok) > 1:
                             cur_c.log(
-                                "too many netdevices (%d) with IP in production network found" % (len(net_devs_ok)),
+                                "too many netdevices ({:d}) with IP in production network found".format(len(net_devs_ok)),
                                 logging_tools.LOG_LEVEL_ERROR,
                                 state="done"
                             )
@@ -215,9 +216,9 @@ class build_process(threading_tools.process_obj):
             dev_sc.device.add_log_entry(
                 source=self.config_src,
                 level=log_level_lookup(int(cur_c.state_level)),
-                text="built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time))
+                text="built config in {}".format(logging_tools.get_diff_time_str(e_time - s_time))
             )
-        cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+        cur_c.log("built took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             cur_c.log("queries issued: %d" % (tot_query_count))

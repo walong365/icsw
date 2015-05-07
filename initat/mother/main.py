@@ -28,6 +28,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
+from django.conf import settings
 from initat.cluster.backbone.models import LogSource
 from initat.server_version import VERSION_STRING
 from initat.tools import cluster_location
@@ -45,6 +46,7 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
             ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
@@ -97,6 +99,8 @@ def main():
             ("NODE_SOURCE_IDX", configfile.int_c_var(LogSource.new("node").pk)),
         ]
     )
+    settings.DEBUG = global_config["DATABASE_DEBUG"]
+    settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     initat.mother.server.server_process().loop()
     configfile.terminate_manager()
     sys.exit(0)
