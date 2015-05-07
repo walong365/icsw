@@ -42,7 +42,7 @@ class LicenseChecker(threading_tools.process_obj):
         connection.close()
 
         # can be triggered
-        self.register_func("check_license", self._check_from_command)
+        self.register_func("check_license_violations", self._check_from_command)
 
         # and is run periodically
         self.register_timer(self.check, 30 * 60, instant=True)
@@ -56,7 +56,7 @@ class LicenseChecker(threading_tools.process_obj):
     def _check_from_command(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         self.check()
-        srv_com.set_result("worked")  # need some result, else there is a warning
+        srv_com.set_result("finished checking license violations")  # need some result, else there is a warning
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
     def check(self):

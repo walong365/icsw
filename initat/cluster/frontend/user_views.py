@@ -287,7 +287,7 @@ class upload_license_file(View):
                     License(file_name=lic_file.name, license_file=lic_file_content).save()
                     request.xml_response.info("Successfully uploaded license file")
 
-                    srv_com = server_command.srv_command(command="check_license")
+                    srv_com = server_command.srv_command(command="check_license_violations")
                     contact_server(request, "server", srv_com, timeout=60, log_error=True, log_result=False)
             else:
                 request.xml_response.warn("This license file has already been uploaded")
