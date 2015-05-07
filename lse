@@ -26,11 +26,11 @@
 import argparse
 import commands
 import datetime
-import logging_tools
 import os
-import process_tools
 import sys
 import time
+
+from initat.tools import logging_tools, process_tools
 
 
 class error_rec(object):
