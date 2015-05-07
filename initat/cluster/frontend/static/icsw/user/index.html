@@ -88,7 +88,7 @@
             </div>
 
         </accordion-group>
-        <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled && has_valid_license('rms')">
+        <accordion-group is-open="jobinfo_open" ng-show="has_valid_license('rms')">
             <accordion-heading>
                 Job info
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>

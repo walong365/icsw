@@ -217,8 +217,6 @@ ics_app = angular.module(
     "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
     "REST_CD_CONNECTION_DETAIL": "{% url 'rest:cd_connection_detail' 1 %}"
     "REST_CD_CONNECTION_LIST": "{% url 'rest:cd_connection_list' %}"
-    "REST_CLUSTER_LICENSE_DETAIL": "{% url 'rest:cluster_license_detail' 1 %}"
-    "REST_CLUSTER_LICENSE_LIST": "{% url 'rest:cluster_license_list' %}"
     "REST_CONFIG_BLOB_DETAIL": "{% url 'rest:config_blob_detail' 1 %}"
     "REST_CONFIG_BOOL_DETAIL": "{% url 'rest:config_bool_detail' 1 %}"
     "REST_CONFIG_BOOL_LIST": "{% url 'rest:config_bool_list'%}"

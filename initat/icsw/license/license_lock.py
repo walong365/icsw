@@ -104,10 +104,10 @@ def lock_entity(opts):
     if not some_value_present:
         raise RuntimeError("Please specify some entity to lock.")
 
-        # TODO: recheck violations?
-        # make md config server recheck
-        # srv_com = server_command.srv_command(command="check_license")
-        # contact_server(request, "md-config", srv_com, timeout=60, log_error=True, log_result=False)
+    # TODO: recheck violations?
+    # make md config server recheck
+    # srv_com = server_command.srv_command(command="check_license")
+    # contact_server(request, "md-config", srv_com, timeout=60, log_error=True, log_result=False)
 
 
 def unlock_entity(opts):

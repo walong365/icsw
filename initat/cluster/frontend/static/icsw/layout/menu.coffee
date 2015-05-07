@@ -26,7 +26,6 @@ menu_module = angular.module(
 ).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service",
     ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
-        $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
         $scope.SERVICE_TYPES = $window.SERVICE_TYPES
         $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT

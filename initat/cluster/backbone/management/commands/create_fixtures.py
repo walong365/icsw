@@ -356,22 +356,6 @@ class Command(BaseCommand):
         print("creating fixtures...")
         # global settings
 
-        LICENSE_FILE = "/etc/sysconfig/cluster/cluster_license"
-        # default: disable all
-        _lic_dict = {name: False for name in ALL_LICENSES}
-        try:
-            cur_lic = etree.fromstring(file(LICENSE_FILE, "r").read())  # @UndefinedVariable
-        except:
-            pass
-        else:
-            for lic_name in ALL_LICENSES:
-                _lic = cur_lic.xpath(".//license[@short='{}']".format(lic_name))
-                if len(_lic):
-                    _lic = _lic[0]
-                    _lic_dict[lic_name] = True if _lic.get("enabled", "no").lower() in ["yes"] else False
-        # create fixtures
-        for lic_name in ALL_LICENSES:
-            factories.ClusterLicense(name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
         # LogSource
         factories.LogSourceFactory(identifier="webfrontend", description="via Webfrontend", device=None)
         factories.LogSourceFactory(identifier="commandline", description="via CommandLine", device=None)

@@ -32,8 +32,7 @@ from django.db.models import Q
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-from initat.cluster.backbone.models.license import License
-from initat.cluster.backbone.models import cluster_license_cache, background_job, device_variable
+from initat.cluster.backbone.models import background_job, device_variable
 import django.template
 
 import routing
@@ -98,10 +97,6 @@ class render_me(object):
             _num_bg_jobs = 0
             _service_types = {}
             _vars = {"sidebar_open": True}
-        # license cache
-        cur_clc = cluster_license_cache()
-        # pprint.pprint(gp_dict)
-        # pprint.pprint(op_dict)
         _cid = _get_cluster_info_dict()
         self.my_dict["CLUSTER_NAME"] = _cid.get("CLUSTER_NAME", "")
         self.my_dict["CLUSTER_ID"] = _cid.get("CLUSTER_ID", "")
@@ -114,9 +109,7 @@ class render_me(object):
         _service_types.update({key.replace("-", "_"): value for key, value in _service_types.iteritems()})
         self.my_dict["DJANGO_SERVICE_TYPES"] = _service_types
         # store as json for angular
-        self.my_dict["CLUSTER_LICENSE"] = json.dumps(cur_clc.licenses)
         # store as dict for django templates
-        self.my_dict["DJANGO_CLUSTER_LICENSE"] = cur_clc.licenses
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
         self.my_dict["NUM_BACKGROUND_JOBS"] = _num_bg_jobs
         self.my_dict["ADDITIONAL_MENU_FILES"] = json.dumps(settings.ADDITIONAL_MENU_FILES)

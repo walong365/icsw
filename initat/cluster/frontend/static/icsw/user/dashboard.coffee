@@ -157,7 +157,6 @@ dashboard_module = angular.module(
         $scope.vdesktop_open = true
         $scope.jobinfo_open = true
         $scope.show_devices = false
-        $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.NUM_QUOTA_SERVERS = $window.NUM_QUOTA_SERVERS
         $scope.has_menu_permission = access_level_service.has_menu_permission
 ]).directive("indexView", ["$templateCache", "access_level_service", ($templateCache, access_level_service) ->
