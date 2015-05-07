@@ -234,6 +234,8 @@ angular.module(
                         for pack_lic in lic_list
                             # HACK in licadmin mode, license_id is db index, and in django mode, it's id string, hence both comparisons
                             if !license_id? or pack_lic.id == license_id or pack_lic.license == license_id
+                                if !pack_lic?
+                                    return  # TODO: investigate
                                 lic_state = _get_license_state(pack_lic)
                                 lic_state[1].package = pack
                                 lic_state[1].lic = pack_lic

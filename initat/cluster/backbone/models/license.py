@@ -48,6 +48,12 @@ __all__ = [
 logger = logging.getLogger("cluster.icsw_license")
 
 
+class InitProduct(enum.Enum):
+    CORVUS = 1
+    NOCTUA = 2
+    NESTOR = 3
+
+
 class LicenseState(enum.IntEnum):
     # NOTE: this is ordered in the sense that if multiple licenses are
     # present, the higher one is actually used
