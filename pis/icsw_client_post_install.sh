@@ -36,6 +36,13 @@ for file in $PY_FILES ; do
     rm -f ${ICSW_SBIN}/$file.pyc
 done
 
+# purge debian packages
+for service in host-monitoring package-client ; do
+    if [ -f /etc/init.d/${service} ] ; then
+        aptitude purge ${service}
+    fi
+done
+
 # modify root bashrc
 if [ -f /root/.bashrc ] ; then
     grep ${ICSW_BIN} /root/.bashrc >/dev/null || echo "export PATH=\$PATH:${ICSW_BIN}:${ICSW_SBIN}" >> /root/.bashrc
