@@ -24,6 +24,15 @@ SERVER_SERVICES="mother rrd-grapher rms-server cluster-config-server collectd di
 
 /sbin/ldconfig
 
+# purge debian packages
+if [ -f /etc/debian_version ] ; then
+    for service in ${SERVER_SERVICES} ; do
+        if [ -f /etc/init.d/${service} ] ; then
+            aptitude purge ${service}
+        fi
+    done
+fi
+
 if [ -L /tftpboot ] ; then
     # /tftpboot is a link
     if [ "$(readlink /tftpboot)" != "${ICSW_TFTP}" ] ; then

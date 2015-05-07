@@ -19,6 +19,8 @@
 #
 """ cluster-config-server, build process """
 
+import time
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, network, config, log_level_lookup, LogSource, \
@@ -30,7 +32,6 @@ from initat.cluster_config_server.config import global_config
 from initat.tools import config_tools
 from initat.tools import logging_tools
 from initat.tools import threading_tools
-import time
 
 
 def pretty_print(name, obj, offset):
@@ -134,7 +135,7 @@ class build_process(threading_tools.process_obj):
         except device.DoesNotExist:
             cur_c.log("device not found by name", logging_tools.LOG_LEVEL_ERROR, state="done")
         except device.MultipleObjectsReturned:
-            cur_c.log("more than one device with name '%s' found" % (cur_c.name), logging_tools.LOG_LEVEL_ERROR, state="done")
+            cur_c.log("more than one device with name '{}' found".format(cur_c.name), logging_tools.LOG_LEVEL_ERROR, state="done")
         else:
             dev_sc = config_tools.server_check(
                 host_name=cur_c.name,
@@ -148,22 +149,28 @@ class build_process(threading_tools.process_obj):
                 cur_c.log("creating config_dir", logging_tools.LOG_LEVEL_ERROR, state="done")
             elif (b_dev.prod_link_id == 0 or not b_dev.prod_link):
                 cur_c.log("no valid production_link set", logging_tools.LOG_LEVEL_ERROR, state="done")
-            elif len(cur_net_tree.get("b", {})) > 1:
-                cur_c.log("more than one boot network found", logging_tools.LOG_LEVEL_ERROR, state="done")
+            # elif len(cur_net_tree.get("b", {})) > 1:
+            #     cur_c.log("more than one boot network found", logging_tools.LOG_LEVEL_ERROR, state="done")
             elif not len(cur_net_tree.get("b", {})):
                 cur_c.log("no boot network found", logging_tools.LOG_LEVEL_ERROR, state="done")
             elif not len(cur_net_tree.get("p", {})):
                 cur_c.log("no production networks found", logging_tools.LOG_LEVEL_ERROR, state="done")
             else:
-                cur_c.log("found %s: %s" % (
-                    logging_tools.get_plural("production network", len(cur_net_tree["p"])),
-                    ", ".join([unicode(cur_net) for cur_net in cur_net_tree["p"].itervalues()])))
+                cur_c.log(
+                    "found {}: {}".format(
+                        logging_tools.get_plural("production network", len(cur_net_tree["p"])),
+                        ", ".join([unicode(cur_net) for cur_net in cur_net_tree["p"].itervalues()]),
+                    )
+                )
                 act_prod_net = None
                 for prod_net in cur_net_tree["p"].itervalues():
                     cur_c.clean_directory(prod_net.identifier)
-                    cur_c.log("%s %s" % (
-                        "active" if prod_net.pk == b_dev.prod_link_id else "inactive",
-                        prod_net.get_info()))
+                    cur_c.log(
+                        "{} {}".format(
+                            "active" if prod_net.pk == b_dev.prod_link_id else "inactive",
+                            prod_net.get_info(),
+                        )
+                    )
                     if prod_net.pk == b_dev.prod_link.pk:
                         act_prod_net = prod_net
                 if not act_prod_net:
@@ -183,7 +190,7 @@ class build_process(threading_tools.process_obj):
                             self._generate_config_step2(cur_c, b_dev, act_prod_net, boot_netdev, dev_sc)
                         elif len(net_devs_ok) > 1:
                             cur_c.log(
-                                "too many netdevices (%d) with IP in production network found" % (len(net_devs_ok)),
+                                "too many netdevices ({:d}) with IP in production network found".format(len(net_devs_ok)),
                                 logging_tools.LOG_LEVEL_ERROR,
                                 state="done"
                             )
@@ -209,9 +216,9 @@ class build_process(threading_tools.process_obj):
             dev_sc.device.add_log_entry(
                 source=self.config_src,
                 level=log_level_lookup(int(cur_c.state_level)),
-                text="built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time))
+                text="built config in {}".format(logging_tools.get_diff_time_str(e_time - s_time))
             )
-        cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+        cur_c.log("built took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             cur_c.log("queries issued: %d" % (tot_query_count))

@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from config_tools import router_object
+from initat.tools.config_tools import router_object
 from django.db.models import Q
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
 from initat.tools import cluster_location

@@ -47,6 +47,17 @@ def show_form_list(form_list):
     print(unicode(form_list))
 
 
+def query_local_meta_server():
+    return net_tools.zmq_connection(
+        "icsw_state_{:d}".format(os.getpid())
+    ).add_connection(
+        "tcp://localhost:8012",
+        server_command.srv_command(
+            command="stateoverview",
+        ),
+    )
+
+
 def _state_overview(opt_ns, result):
     _instances = result.xpath(".//ns:instances/ns:instance")
     print("instances reported: {}".format(logging_tools.get_plural("instance", len(_instances))))

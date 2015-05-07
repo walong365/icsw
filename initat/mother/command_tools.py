@@ -119,9 +119,9 @@ class simple_command(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
-            self.__log_com("[sc %d] %s" % (self.idx, what), log_level)
+            self.__log_com("[sc {:d}] {}".format(self.idx, what), log_level)
         else:
-            simple_command.process.log("[sc %d] %s" % (self.idx, what), log_level)
+            simple_command.process.log("[sc {:d}] {}".format(self.idx, what), log_level)
 
     def terminate(self):
         if self.popen:

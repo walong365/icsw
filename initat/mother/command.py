@@ -21,16 +21,13 @@
 #
 """ external commands (dhcp, ipmi, SNMP) parts of mother """
 
-import sys
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
 from initat.snmp.sink import SNMPSink
-from initat.snmp.struct import simple_snmp_oid
 from initat.mother.config import global_config
-from initat.tools.io_stream_helper import io_stream
 from initat.tools import config_tools
 from initat.tools import logging_tools
 from initat.tools import process_tools
@@ -160,10 +157,10 @@ class hc_command(object):
                 )
 
     def _build_ipmi_com_str(self, var_dict, com_ip, command):
-        com_str = "{} {} -H {} -U {} -P {} chassis power {}".format(
+        com_str = "{}{} -H {} -U {} -P {} chassis power {}".format(
             process_tools.find_file("ipmitool"),
             # add ipmi interface if defined
-            "-I {}".format(var_dict["IPMI_INTERFACE"]) if var_dict.get("IPMI_INTERFACE", "") else "",
+            " -I {}".format(var_dict["IPMI_INTERFACE"]) if var_dict.get("IPMI_INTERFACE", "") else "",
             com_ip,
             var_dict["IPMI_USERNAME"],
             var_dict["IPMI_PASSWORD"],
@@ -289,12 +286,6 @@ class external_command_process(threading_tools.process_obj):
         self.router_obj = config_tools.router_object(self.log)
         self.snmp_sink = SNMPSink(self.log)
         self.sc = config_tools.server_check(server_type="mother_server")
-        if "b" in self.sc.identifier_ip_lut:
-            self.__kernel_ip = self.sc.identifier_ip_lut["b"][0].ip
-            self.log("IP address in boot-net is {}".format(self.__kernel_ip))
-        else:
-            self.__kernel_ip = None
-            self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         self.register_func("delay_command", self._delay_command)
         self.register_func("hard_control", self._hard_control)
         self.register_func("snmp_finished", self._snmp_finished)
@@ -312,20 +303,6 @@ class external_command_process(threading_tools.process_obj):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
         _new_sc = simple_command(args[0], delay_time=kwargs.get("delay_time", 0))
-
-    def _server_com(self, s_com):
-        dst_call = {
-            "alter_macadr": self._adw_macaddr,
-            "delete_macadr": self._adw_macaddr,
-            "write_macadr": self._adw_macaddr,
-            "syslog_line": self._syslog_line
-        }.get(s_com.get_command(), None)
-        if dst_call:
-            dst_call(s_com.get_command(), s_com)
-        else:
-            self.log("Unknown server_message_command: {}".format(s_com.get_command()), logging_tools.LOG_LEVEL_ERROR)
-        if "SIGNAL_MAIN_THREAD" in s_com.get_option_dict():
-            self.send_pool_message(s_com.get_option_dict()["SIGNAL_MAIN_THREAD"])
 
     def _check_commands(self):
         simple_command.check()

@@ -183,7 +183,7 @@ class manual_connection(View):
                 Q(snmp_schemes__power_control=True)
             )
         )
-        print cd_devices
+        # print cd_devices
         non_cd_devices = device.all_real_enabled()
         logger.info("cd / non-cd devices: {:d} / {:d}".format(cd_devices.count(), non_cd_devices.count()))
         # iterate over non-cd-device

@@ -54,44 +54,46 @@ def show_commands():
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("PID_NAME", configfile.str_c_var("%s" % (prog_name))),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME", configfile.str_c_var(prog_name)),
-        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("CONTACT", configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
-        (
-            "COMMAND", configfile.str_c_var(
-                "", short_options="c",  # choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True,
-                help_string="command to execute, for list of all commands use --show-commands"
-            )
-        ),
-        (
-            "SHOW_COMMANDS",
-            configfile.bool_c_var(
-                False, only_commandline=True, help_string="show all possible commands",
-            )
-        ),
-        (
-            "BACKUP_DATABASE", configfile.bool_c_var(
-                False, only_commandline=True,
-                help_string="start backup of database immediately [%(default)s], only works in DEBUG mode"
-            )
-        ),
-        (
-            "OPTION_KEYS", configfile.array_c_var(
-                [], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)"
-            )
-        ),
-        (
-            "SHOW_RESULT", configfile.bool_c_var(
-                False, only_commandline=True, help_string="show full XML result [%(default)s]"
-            )
-        ),
-    ])
+    global_config.add_config_entries(
+        [
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("PID_NAME", configfile.str_c_var("%s" % (prog_name))),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            ("CONTACT", configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
+            (
+                "COMMAND", configfile.str_c_var(
+                    "", short_options="c",  # choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True,
+                    help_string="command to execute, for list of all commands use --show-commands"
+                )
+            ),
+            (
+                "SHOW_COMMANDS",
+                configfile.bool_c_var(
+                    False, only_commandline=True, help_string="show all possible commands",
+                )
+            ),
+            (
+                "BACKUP_DATABASE", configfile.bool_c_var(
+                    False, only_commandline=True,
+                    help_string="start backup of database immediately [%(default)s], only works in DEBUG mode"
+                )
+            ),
+            (
+                "OPTION_KEYS", configfile.array_c_var(
+                    [], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)"
+                )
+            ),
+            (
+                "SHOW_RESULT", configfile.bool_c_var(
+                    False, only_commandline=True, help_string="show full XML result [%(default)s]"
+                )
+            ),
+        ]
+    )
     global_config.parse_file()
     options = global_config.handle_commandline(
         description="{}, version is {}".format(

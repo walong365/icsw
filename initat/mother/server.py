@@ -21,22 +21,22 @@
 #
 """ mother daemon """
 
+from lxml import etree  # @UnresolvedImports
+import os
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import network, status
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.mother.config import global_config
 from initat.snmp.process import snmp_process
-from lxml import etree  # @UnresolvedImports
 from initat.tools import cluster_location
 from initat.tools import configfile
 import initat.mother
 import initat.mother.command
-import initat.mother.command
 import initat.mother.control
 import initat.mother.kernel
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
 import psutil
 from initat.tools import server_command
@@ -55,6 +55,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # close db connection (for daemonizing)
         connection.close()
+        self.debug = global_config["DEBUG"]
         self.log("open")
         # log config
         self._log_config()
@@ -75,7 +76,6 @@ class server_process(threading_tools.process_pool):
         self.register_func("contact_hoststatus", self._contact_hoststatus)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '{}'".format(my_uuid.get_urn()))
-        # self.log("threads: {:d}".format(psutil.Process(pid=os.getpid()).get_num_threads()))
         if self._init_network_sockets():
             self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
             self.add_process(initat.mother.command.external_command_process("command"), start=True)
@@ -94,9 +94,7 @@ class server_process(threading_tools.process_pool):
             )
             # restart hoststatus
             self.send_to_process("command", "delay_command", "/etc/init.d/hoststatus restart", delay_time=5)
-            self.send_to_process("control", "refresh")
-            # self.send_to_process("control", "alter_macaddr")
-            # self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
+            self.send_to_process("control", "refresh", refresh=False)
         else:
             init_ok = False
         if not init_ok:
@@ -177,17 +175,6 @@ class server_process(threading_tools.process_pool):
                 sock_type,
                 identity=self.bind_id,
             )
-            # client = self.zmq_context.socket(sock_type)
-            # client.setsockopt(zmq.IDENTITY, self.bind_id)
-            # client.setsockopt(zmq.LINGER, 100)
-            # client.setsockopt(zmq.SNDHWM, 256)
-            # client.setsockopt(zmq.RCVHWM, 256)
-            # client.setsockopt(zmq.BACKLOG, 1)
-            # client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            # client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-            # if key == "router":
-            #    # set mandatory flag
-            #    client.setsockopt(zmq.ROUTER_MANDATORY, 1)
             conn_str = "tcp://*:{:d}".format(bind_port)
             try:
                 client.bind(conn_str)
@@ -236,12 +223,14 @@ class server_process(threading_tools.process_pool):
                                 node_text = srv_com.tree.findtext(node_ct)
                                 t_proc = "control"
                                 cur_com = node_ct
-                                self.log("got command {}, sending to {} process".format(cur_com, t_proc))
+                                if self.debug:
+                                    self.log("got command {}, sending to {} process".format(cur_com, t_proc))
                                 self.send_to_process(
                                     t_proc,
                                     cur_com,
                                     data[0],
-                                    node_text)
+                                    node_text
+                                )
                         if cur_com is None:
                             self.log(
                                 "got command '{}' from {}, ignoring".format(
@@ -252,14 +241,21 @@ class server_process(threading_tools.process_pool):
                             )
                     else:
                         srv_com.update_source()
-                        if cur_com in ["status", "refresh", "soft_control"]:  # alter_macaddr
+                        if cur_com in ["status", "refresh", "soft_control"]:
                             t_proc = "control"
-                            self.log("got command {}, sending to {} process".format(cur_com, t_proc))
+                            self.log(
+                                "got command {} from '{}', sending to {} process".format(
+                                    cur_com,
+                                    data[0],
+                                    t_proc,
+                                )
+                            )
                             self.send_to_process(
                                 t_proc,
                                 cur_com,
                                 data[0],
-                                unicode(srv_com))
+                                unicode(srv_com)
+                            )
                         elif cur_com == "get_0mq_id":
                             srv_com["zmq_id"] = self.bind_id
                             srv_com.set_result("0MQ_ID is {}".format(self.bind_id), server_command.SRV_REPLY_STATE_OK)
@@ -277,7 +273,8 @@ class server_process(threading_tools.process_pool):
                                 t_proc,
                                 cur_com,
                                 data[0],
-                                unicode(srv_com))
+                                unicode(srv_com)
+                            )
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode(unicode(srv_com))
                         elif cur_com in ["rescan_kernels"]:
@@ -287,10 +284,7 @@ class server_process(threading_tools.process_pool):
                                 cur_com,
                                 data[0],
                                 unicode(srv_com),
-                                )
-                            # srv_com.set_result("sent %s to kernel process" % (cur_com))
-                            # zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-                            # zmq_sock.send_unicode(unicode(srv_com))
+                            )
                         else:
                             srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
@@ -337,15 +331,17 @@ class server_process(threading_tools.process_pool):
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
-    # utility calls
+            if self.debug:
+                self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
 
     def _prepare_directories(self):
         self.log("Checking directories ...")
-        for d_dir in [global_config["TFTP_DIR"],
-                      global_config["ETHERBOOT_DIR"],
-                      global_config["CONFIG_DIR"],
-                      global_config["KERNEL_DIR"]]:
+        for d_dir in [
+            global_config["TFTP_DIR"],
+            global_config["ETHERBOOT_DIR"],
+            global_config["CONFIG_DIR"],
+            global_config["KERNEL_DIR"],
+        ]:
             if not os.path.isdir(d_dir):
                 self.log("trying to create directory {}".format(d_dir))
                 try:
@@ -477,13 +473,17 @@ class server_process(threading_tools.process_pool):
 
     def _enable_rsyslog(self):
         from initat.mother import syslog_scan
+        _scan_file = syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary {}".format(syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),  # @UndefinedVariable
+            "$actionomprogbinary {}".format(_scan_file),  # @UndefinedVariable
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
-            ""]
+            "",
+        ]
+        # fix rights
+        os.chmod(_scan_file, 0755)
         slcn = "/etc/rsyslog.d/mother.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
         self._reload_syslog()
@@ -508,25 +508,28 @@ class server_process(threading_tools.process_pool):
                 syslog_found = True
                 break
         if syslog_found:
-            self.log("found syslog script at %s, restarting" % (syslog_rc))
-            restart_com = "%s restart" % (syslog_rc)
+            self.log("found syslog script at {}, restarting".format(syslog_rc))
+            restart_com = "{} restart".format(syslog_rc)
         else:
             self.log("no syslog script found, reloading via systemd")
             restart_com = "/usr/bin/systemctl restart syslog.service"
         process_tools.call_command(restart_com, log_com=self.log, close_fds=True)
 
     def _check_netboot_functionality(self):
-        global_config.add_config_entries([
-            ("PXEBOOT", configfile.bool_c_var(False, source="default")),
-            ("XENBOOT", configfile.bool_c_var(False, source="default"))])
+        global_config.add_config_entries(
+            [
+                ("PXEBOOT", configfile.bool_c_var(False, source="default")),
+                ("XENBOOT", configfile.bool_c_var(False, source="default")),
+            ]
+        )
         pxe_paths = [os.path.join(global_config["SHARE_DIR"], "syslinux/pxelinux.0")]
         nb_ok = False
         for pxe_path in pxe_paths:
             if os.path.isfile(pxe_path):
                 try:
-                    pxelinux_0 = open(pxe_path, "r").read()
+                    pxelinux_0 = open(pxe_path, "rb").read()
                 except:
-                    self.log("Cannot read pxelinux.0 from %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
+                    self.log("Cannot read pxelinux.0 from {}".format(pxe_path), logging_tools.LOG_LEVEL_WARN)
                 else:
                     pxe_dir = os.path.dirname(pxe_path)
                     global_config.add_config_entries(
@@ -548,9 +551,9 @@ class server_process(threading_tools.process_pool):
         for mb32_path in mb32_paths:
             if os.path.isfile(mb32_path):
                 try:
-                    mb32_0 = open(mb32_path, "r").read()
+                    mb32_0 = open(mb32_path, "rb").read()
                 except:
-                    self.log("Cannot read mboot.c32 from %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
+                    self.log("Cannot read mboot.c32 from {}".format(mb32_path), logging_tools.LOG_LEVEL_WARN)
                 else:
                     global_config.add_config_entries(
                         [
@@ -558,8 +561,8 @@ class server_process(threading_tools.process_pool):
                             ("MBOOT.C32", configfile.blob_c_var(mb32_0, source="filesystem"))
                         ]
                     )
-                    self.log("Found mboot.c32 in %s" % (mb32_path))
+                    self.log("Found mboot.c32 in {}".format(mb32_path))
                     break
             else:
-                self.log("Found no mboot.c32 in %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
+                self.log("Found no mboot.c32 in {}".format(mb32_path), logging_tools.LOG_LEVEL_WARN)
         return nb_ok

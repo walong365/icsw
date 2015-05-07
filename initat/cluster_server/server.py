@@ -340,7 +340,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             time.sleep(1)
             srv_com.set_result(
                 "command {} not known".format(com_name),
-                server_command.SRV_REPLY_STATE_CRITICAL
+                server_command.SRV_REPLY_STATE_CRITICAL,
             )
 
     def _process_command(self, srv_com):
