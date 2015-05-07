@@ -77,6 +77,10 @@ class ca_new_cert(cs_base_class.server_com):
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _file_name = cur_inst.srv_com["server_key:cert_file"].text
         _ca_mode = cur_inst.srv_com["server_key:ca_mode"].text
+        if "server_key:cn" in cur_inst.srv_com:
+            _cn = cur_inst.srv_com["server_key:cn"].text
+        else:
+            _cn = global_config["SERVER_FULL_NAME"]
         if "server_key:add_device" in cur_inst.srv_com:
             _dev_name = cur_inst.srv_com["server_key:add_device"].text
             if _dev_name.count("."):
@@ -85,7 +89,7 @@ class ca_new_cert(cs_base_class.server_com):
                 _dev = device.objects.get(Q(name=_dev_name))
         else:
             _dev = None
-        _obj_dict = _build_obj(cur_inst, cn=global_config["SERVER_FULL_NAME"])
+        _obj_dict = _build_obj(cur_inst, cn=_cn)
         cur_ca = openssl_tools.ca(_name, cur_inst.log)
         if not cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
