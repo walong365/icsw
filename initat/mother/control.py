@@ -213,13 +213,16 @@ class Host(object):
 
     @staticmethod
     def iterate_xml(srv_com, com_name, *args, **kwargs):
+        _iter_count = 0
         for cur_dev in srv_com.xpath(".//ns:device[@pk]", smart_strings=False):
             pk = int(cur_dev.attrib["pk"])
             cur_mach = Host.get_device(pk)
             if cur_mach is None:
                 pass
             else:
+                _iter_count += 1
                 getattr(cur_mach, com_name)(cur_dev, *args, **kwargs)
+        srv_com.set_result("iterated {}".format(logging_tools.get_plural("device", _iter_count)))
 
     @staticmethod
     def ping(srv_com):
@@ -407,7 +410,9 @@ class Host(object):
         if val is not None:
             self.log("Found {}:".format(logging_tools.get_plural("valid device->server ip-mapping", len(val.keys()))))
             for my_ip, s_ip in val.iteritems():
-                self.log("  {:<15s} -> {:<15s} [{}]".format(my_ip, s_ip["ip"], s_ip["identifier"]))
+                self.log(
+                    "  {:<15s} -> {:<15s} [{}]".format(my_ip, s_ip["ip"], s_ip["identifier"])
+                )
     server_ip_dict = property(get_sip_d, set_sip_d)
 
     def check_network_settings(self):
@@ -459,12 +464,6 @@ class Host(object):
                     add_penalty=True,
                 )
             )
-            # get hopcount
-            # latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-            # my_hc = hopcount.objects.filter(
-            # Q(route_generation=latest_gen) &
-            # Q(s_netdevice__in=Host.process.sc.netdevice_idx_list) &
-            # Q(d_netdevice__in=nd_list)).order_by("value")
             for _ in all_paths:
                 srv_dev, mach_dev = (Host.process.sc.nd_lut[_[1]], nd_lut[_[2]])
                 for cur_ip in mach_dev.net_ip_set.all():
@@ -474,13 +473,17 @@ class Host(object):
                     srv_ips = list(
                         set(
                             [
-                                srv_ip.ip for srv_ip in Host.process.sc.identifier_ip_lut.get(cur_id, [])
+                                srv_ip.ip for srv_ip in Host.process.sc.identifier_ip_lut.get(cur_id, []) if srv_ip.network_id == cur_ip.network_id
                             ]
                         ) & set(
-                            [x2.ip for x2 in Host.process.sc.netdevice_ip_lut[srv_dev.pk]]
+                            [
+                                x2.ip for x2 in Host.process.sc.netdevice_ip_lut[srv_dev.pk]
+                            ]
                         )
                     )
                     if srv_ips and cur_ip.ip not in server_ip_dict:
+                        if len(srv_ips) > 1:
+                            self.log("more than on IP found: {}".format(", ".join(sorted(srv_ips))), logging_tools.LOG_LEVEL_WARN)
                         server_ip_dict[cur_ip.ip] = {
                             "identifier": cur_id,
                             "ip": srv_ips[0] if srv_ips else None
@@ -627,67 +630,68 @@ class Host(object):
         if self.is_node:
             # files to remove
             self._files_to_rm = set([self.ip_file_name, self.ip_mac_file_name, self.menu_file_name])
-            if self.device.new_kernel:
-                if not self.device.stage1_flavour:
-                    self.device.stage1_flavour = "cpio"
-                    self.log("setting stage1_flavour to '{}'".format(self.device.stage1_flavour))
-                    self.device.save(update_fields=["stage1_flavour"])
-                if not self.device.prod_link:
-                    self.log("no production link set", logging_tools.LOG_LEVEL_WARN)
-                    prod_net = None
-                else:
-                    prod_net = self.device.prod_link
-                    self.log("production network is {}".format(unicode(prod_net)))
-                if self.device.new_state:
-                    new_kernel = self.device.new_kernel
-                    new_state = self.device.new_state
-                    self.log("refresh for target_state {}, kernel {}, stage1_flavour {}".format(
+            if not self.device.stage1_flavour:
+                self.device.stage1_flavour = "cpio"
+                self.log("setting stage1_flavour to '{}'".format(self.device.stage1_flavour))
+                self.device.save(update_fields=["stage1_flavour"])
+            if not self.device.prod_link:
+                self.log("no production link set", logging_tools.LOG_LEVEL_WARN)
+                prod_net = None
+            else:
+                prod_net = self.device.prod_link
+                self.log("production network is {}".format(unicode(prod_net)))
+            if self.device.new_state:
+                new_kernel = self.device.new_kernel
+                new_state = self.device.new_state
+                self.log(
+                    "refresh for target_state {}, kernel {}, stage1_flavour {}".format(
                         unicode(self.device.new_state),
                         unicode(new_kernel),
                         self.device.stage1_flavour
-                    ))
-                else:
-                    self.log("no state set", logging_tools.LOG_LEVEL_WARN)
-                    self.clear_kernel_links()
-                    new_state, new_kernel = (None, None)
-                if new_state:
-                    if new_kernel and new_state.prod_link:
-                        if Host.process.server_ip:
-                            self.write_kernel_config(new_kernel)
-                        else:
-                            self.log("no server_ip set", logging_tools.LOG_LEVEL_ERROR)
-                    elif new_state.boot_local:
-                        # boot local
-                        self.write_localboot_config()
-                    elif new_state.memory_test:
-                        # memory test
-                        self.write_memtest_config()
-                    elif new_state.boot_iso:
-                        self.write_isoboot_config()
-                    else:
-                        self.log("cannot handle new_state '{}'".format(unicode(new_state)),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                    )
+                )
             else:
-                self.log("new_kernel not set", logging_tools.LOG_LEVEL_ERROR)
-                # self.clear_ip_mac_files()
+                self.log("no state set", logging_tools.LOG_LEVEL_WARN)
                 self.clear_kernel_links()
+                new_state, new_kernel = (None, None)
+            if new_state:
+                if new_kernel and new_state.prod_link:
+                    # print self.server_ip_dict
+                    if self.server_ip_dict:
+                        self.write_kernel_config(new_kernel)
+                    else:
+                        self.log("no server_ip_dict set", logging_tools.LOG_LEVEL_ERROR)
+                elif new_state.boot_local:
+                    # boot local
+                    self.write_localboot_config()
+                elif new_state.memory_test:
+                    # memory test
+                    self.write_memtest_config()
+                elif new_state.boot_iso:
+                    self.write_isoboot_config()
+                else:
+                    self.log(
+                        "cannot handle new_state '{}'".format(unicode(new_state)),
+                        logging_tools.LOG_LEVEL_ERROR,
+                    )
             self.remove_files()
         else:
             self.log("not node", logging_tools.LOG_LEVEL_WARN)
 
     def remove_files(self):
         for _f_name in self._files_to_rm:
-            try:
-                os.unlink(os.path.join(_f_name))
-            except:
-                self.log(
-                    "error removing file {}".format(
-                        _f_name
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            else:
-                self.log("removed file {}".format(_f_name))
+            if os.path.exists(_f_name):
+                try:
+                    os.unlink(_f_name)
+                except:
+                    self.log(
+                        "error removing file {}".format(
+                            _f_name
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    self.log("removed file {}".format(_f_name))
 
     def clear_kernel_links(self):
         for link_name in ["i", "k"]:
@@ -705,12 +709,17 @@ class Host(object):
             _iso = self.device.kernel_append
             self.log("using iso {} for booting".format(_iso))
             for name in [self.ip_file_name, self.ip_mac_file_name]:
-                self.write_file(name, "\n".join([
-                    "DEFAULT isoboot",
-                    "LABEL isoboot",
-                    "KERNEL memdisk",
-                    "APPEND iso initrd=isos/{} raw".format(_iso),
-                    ""])
+                self.write_file(
+                    name,
+                    "\n".join(
+                        [
+                            "DEFAULT isoboot",
+                            "LABEL isoboot",
+                            "KERNEL memdisk",
+                            "APPEND iso initrd=isos/{} raw".format(_iso),
+                            "",
+                        ]
+                    )
                 )
         else:
             self.log("no kernel_append (==iso filename) given", logging_tools.LOG_LEVEL_CRITICAL)
@@ -721,12 +730,18 @@ class Host(object):
             memtest_iso = iso_files[0]
             self.log("using iso {} for memtest".format(memtest_iso))
             for name in [self.ip_file_name, self.ip_mac_file_name]:
-                self.write_file(name, "\n".join([
-                    "DEFAULT memtest",
-                    "LABEL memtest",
-                    "KERNEL memdisk",
-                    "APPEND iso initrd=isos/{} raw".format(memtest_iso),
-                    ""]))
+                self.write_file(
+                    name,
+                    "\n".join(
+                        [
+                            "DEFAULT memtest",
+                            "LABEL memtest",
+                            "KERNEL memdisk",
+                            "APPEND iso initrd=isos/{} raw".format(memtest_iso),
+                            "",
+                        ]
+                    )
+                )
         else:
             self.log("no memtest iso found in {}".format(self.iso_dir), logging_tools.LOG_LEVEL_ERROR)
 
@@ -770,10 +785,13 @@ class Host(object):
                 # print kernel_stuff
                 kern_base_dir = "../../kernels/{}".format(new_kernel.name)
                 kern_abs_base_dir = "{}/kernels/{}".format(global_config["TFTP_DIR"], new_kernel.name)
-                unlink_field = ["{}/k".format(kern_dst_dir),
-                                "{}/i".format(kern_dst_dir),
-                                "{}/x".format(kern_dst_dir)]
+                unlink_field = [
+                    "{}/k".format(kern_dst_dir),
+                    "{}/i".format(kern_dst_dir),
+                    "{}/x".format(kern_dst_dir)
+                ]
                 valid_links = []
+                server_ip = self.server_ip_dict[self.maint_ip.ip]["ip"]
                 if os.path.isdir(kern_abs_base_dir):
                     # check if requested flavour is ok
                     if not hasattr(new_kernel, "stage1_{}_present".format(self.device.stage1_flavour)):
@@ -875,18 +893,20 @@ class Host(object):
                         "x dom0_mem=524288",
                         "k console=tty0 ip={}:{}::{} {}".format(
                             self.maint_ip.ip,
-                            Host.process.server_ip,
+                            server_ip,
                             ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
-                            append_string),
+                            append_string,
+                        ),
                         "i"
                     ]
                 else:
                     total_append_string = "initrd={}/i ip={}:{}::{} {}".format(
                         self.maint_ip.ip,
                         self.maint_ip.ip,
-                        Host.process.server_ip,
+                        server_ip,
                         ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
-                        append_string)
+                        append_string,
+                    )
                 pxe_lines = []
                 if global_config["NODE_BOOT_DELAY"]:
                     pxe_lines.extend(
@@ -925,7 +945,7 @@ class Host(object):
                 menu_lines.extend(
                     [
                         "Nodename  , IP : {:<30s}, {}".format(self.device.name, self.maint_ip.ip),
-                        "Servername, IP : {:<30s}, {}".format(global_config["SERVER_SHORT_NAME"], Host.process.server_ip),
+                        "Servername, IP : {:<30s}, {}".format(global_config["SERVER_SHORT_NAME"], server_ip),
                         "Netmask        : {} ({})".format(self.maint_ip.network.netmask, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask)),
                         "MACAddress     : {}".format(self.bootnetdevice.macaddr.lower()),
                         "Stage1 flavour : {}".format(self.device.stage1_flavour),
@@ -999,7 +1019,7 @@ class Host(object):
                 com_name,
                 logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
                 ", ".join(om_shell_coms),
-                ip_to_write and "ip {} from {}".format(ip_to_write, ip_to_write_src) or "no ip"
+                ip_to_write and "ip {} from {}".format(ip_to_write, ip_to_write_src) or "no ip",
             )
         )
         simple_command.process.set_check_freq(200)  # @UndefinedVariable
@@ -1087,7 +1107,7 @@ class Host(object):
             self.device.add_log_entry(
                 source=global_config["LOG_SOURCE_IDX"],
                 level=logging_tools.LOG_LEVEL_ERROR,
-                text="DHCP: {}".format(error_str)
+                text="DHCP: {}".format(error_str),
             )
         else:
             if om_sc.info == "write":
@@ -1099,7 +1119,7 @@ class Host(object):
                 new_dhcp_written = False
             self.device.add_log_entry(
                 source=global_config["LOG_SOURCE_IDX"],
-                text="DHCP {} is ok".format(om_sc.info)
+                text="DHCP {} is ok".format(om_sc.info),
             )
         if new_dhcp_written is None:
             new_dhcp_written = self.device.dhcp_written
@@ -1322,10 +1342,15 @@ class node_control_process(threading_tools.process_obj):
         simple_command.setup(self)
         self.sc = config_tools.server_check(server_type="mother_server")
         if "b" in self.sc.identifier_ip_lut:
-            self.server_ip = self.sc.identifier_ip_lut["b"][0].ip
-            self.log("IP address in boot-net is {}".format(self.server_ip))
+            _boot_ips = self.sc.identifier_ip_lut["b"]
+            self.log(
+                "{} in {}: {}".format(
+                    logging_tools.get_plural("IP-address", len(_boot_ips)),
+                    logging_tools.get_plural("boot-network", len(_boot_ips)),
+                    ", ".join([_boot_ip.ip for _boot_ip in _boot_ips]),
+                )
+            )
         else:
-            self.server_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         self.router_obj = config_tools.router_object(self.log)
         self._setup_etherboot()
@@ -1539,7 +1564,7 @@ class node_control_process(threading_tools.process_obj):
     def _syslog_line(self, *args, **kwargs):
         in_line = args[0]
         if "DHCP" not in in_line:
-            self.log("got dhcp_line {}, skip".format(in_line))
+            self.log("got non-DHCP line {}, skip".format(in_line), logging_tools.LOG_LEVEL_WARN)
         else:
             for key, cur_re in self.__dhcp_res.iteritems():
                 cur_m = cur_re.match(in_line)
@@ -1578,7 +1603,15 @@ class node_control_process(threading_tools.process_obj):
                 if ip_dev.bootserver:
                     if ip_dev.bootserver.pk == self.sc.effective_device.pk:
                         boot_dev = Host.get_device(ip_dev.name)
-                        boot_dev.log("parsed: {}".format(", ".join(["{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())])))
+                        boot_dev.log(
+                            "parsed: {}".format(
+                                ", ".join(
+                                    [
+                                        "{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())
+                                    ]
+                                )
+                            )
+                        )
                         boot_dev.feed_dhcp(in_dict, in_line)
                     else:
                         self.log(

@@ -61,11 +61,12 @@ def main():
     )
     global_config.parse_file()
     _options = global_config.handle_commandline(
-        description="%s, version is %s" % (
+        description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING
+        ),
         add_writeback_option=True,
-        positional_arguments=False
+        positional_arguments=False,
     )
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="mother_server")

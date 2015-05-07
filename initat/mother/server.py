@@ -94,8 +94,6 @@ class server_process(threading_tools.process_pool):
             # restart hoststatus
             self.send_to_process("command", "delay_command", "/etc/init.d/hoststatus restart", delay_time=5)
             self.send_to_process("control", "refresh")
-            # self.send_to_process("control", "alter_macaddr")
-            # self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
         else:
             init_ok = False
         if not init_ok:
@@ -241,7 +239,7 @@ class server_process(threading_tools.process_pool):
                             )
                     else:
                         srv_com.update_source()
-                        if cur_com in ["status", "refresh", "soft_control"]:  # alter_macaddr
+                        if cur_com in ["status", "refresh", "soft_control"]:
                             t_proc = "control"
                             self.log(
                                 "got command {} from '{}', sending to {} process".format(
@@ -473,14 +471,17 @@ class server_process(threading_tools.process_pool):
 
     def _enable_rsyslog(self):
         from initat.mother import syslog_scan
+        _scan_file = syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary {}".format(syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),  # @UndefinedVariable
+            "$actionomprogbinary {}".format(_scan_file),  # @UndefinedVariable
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
             "",
         ]
+        # fix rights
+        os.chmod(_scan_file, 0755)
         slcn = "/etc/rsyslog.d/mother.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
         self._reload_syslog()

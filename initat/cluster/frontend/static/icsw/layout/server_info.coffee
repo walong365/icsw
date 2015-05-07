@@ -105,27 +105,45 @@ angular.module(
             return parseInt(@xml.find("command").attr("server_id"))
         instance_names: () ->
             return ($(entry).attr("name") for entry in @xml.find("instance"))
+        service_enabled: (instance) ->
+            _meta_xml = @xml.find("metastatus > instances > instance[name='#{instance}']")
+            if _meta_xml.length
+                return if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
+            else
+                return false
+        service_disabled: (instance) ->
+            _meta_xml = @xml.find("metastatus > instances > instance[name='#{instance}']")
+            if _meta_xml.length
+                return if parseInt(_meta_xml.attr("target_state")) == 0 then true else false
+            else
+                return false
         get_state: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
+            _xml = @xml.find("status > instances > instance[name='#{instance}']")
             if _xml.length
                 _state_info = _xml.find("state_info")
-                if _xml.attr("check_type") == "simple"
-                    if parseInt(_state_info.attr("state")) == 5
-                        return 3
-                    else
+                if parseInt(_state_info.attr("state")) == 5
+                    # not installed
+                    return 3
+                else if parseInt(_state_info.attr("state")) == 6
+                    # not configured
+                    return 4
+                else
+                    if _xml.attr("check_type") == "simple"
                         if parseInt(_state_info.attr("state")) == 0
+                            # running
                             return 1
                         else
+                            # not running
                             return 2
-                else
-                    if parseInt(_state_info.attr("state")) == 5
-                        return 3
                     else
                         if _state_info.attr("num_started")
+                            # running
                             return 1
                         else
+                            # not running
                             return 2
             else
+                # nothing found
                 return 0
         get_run_class: (instance) ->
             _state_info = @xml.find("instance[name='#{instance}'] state_info")
@@ -172,8 +190,8 @@ angular.module(
                         return "#{_found} (#{-_diff} too much)"
                     else
                         return "#{_found} (#{-_diff} missing)"
-        disable_allowed: (instance) ->
-            if instance in ["memcached", "uwsgi-init", "nginx", "meta-server", "logging-server"]
+        enable_disable_allowed: (instance) ->
+            if instance in ["meta-server", "logging-server"]
                 return false
             else
                 return true
@@ -206,12 +224,22 @@ angular.module(
                 return scope.srv_info.get_mem_info(scope.instance)
             scope.get_mem_value = () ->
                 return scope.srv_info.get_mem_value(scope.instance)
-            scope.disable_allowed = () ->
-                return scope.srv_info.disable_allowed(scope.instance)
+            scope.enable_disable_allowed = () ->
+                return scope.srv_info.enable_disable_allowed(scope.instance)
             scope.action = (type) ->
                 scope.do_action(scope.srv_info, scope.instance, type)
             new_el = $compile($templateCache.get("icsw.layout.server.info.state"))
             element.append(new_el(scope))
+    }
+]).directive("icswServiceEnableDisable", ["$templateCache", "$compile", ($templateCache, $compile) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.service.enable.disable")
+        link : (scope, element, attrs) ->
+            scope.service_enabled = () ->
+                return scope.srv_info.service_enabled(scope.instance)
+            scope.service_disabled = () ->
+                return scope.srv_info.service_disabled(scope.instance)
     }
 ]).directive("icswLayoutServerInfoOverview", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
