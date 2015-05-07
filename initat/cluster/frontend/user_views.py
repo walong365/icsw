@@ -288,7 +288,7 @@ class upload_license_file(View):
                     request.xml_response.info("Successfully uploaded license file")
 
                     srv_com = server_command.srv_command(command="check_license")
-                    contact_server(request, "md-config", srv_com, timeout=60, log_error=True, log_result=False)
+                    contact_server(request, "server", srv_com, timeout=60, log_error=True, log_result=False)
             else:
                 request.xml_response.warn("This license file has already been uploaded")
 
