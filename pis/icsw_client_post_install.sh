@@ -37,11 +37,13 @@ for file in $PY_FILES ; do
 done
 
 # purge debian packages
-for service in host-monitoring package-client ; do
-    if [ -f /etc/init.d/${service} ] ; then
-        aptitude purge ${service}
-    fi
-done
+if [ -f /etc/debian_version ] ; then
+    for service in host-monitoring package-client ; do
+        if [ -f /etc/init.d/${service} ] ; then
+            aptitude purge ${service}
+        fi
+    done
+fi
 
 # modify root bashrc
 if [ -f /root/.bashrc ] ; then
