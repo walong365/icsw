@@ -24,6 +24,15 @@ SERVER_SERVICES="mother rrd-grapher rms-server cluster-config-server collectd di
 
 /sbin/ldconfig
 
+# purge debian packages
+if [ -f /etc/debian_version ] ; then
+    for service in ${SERVER_SERVICES} ; do
+        if [ -f /etc/init.d/${service} ] ; then
+            aptitude purge ${service}
+        fi
+    done
+fi
+
 if [ -L /tftpboot ] ; then
     # /tftpboot is a link
     if [ "$(readlink /tftpboot)" != "${ICSW_TFTP}" ] ; then
@@ -42,7 +51,9 @@ fi
 
 # deactivate all server services (now handled via meta-server)
 for server in ${SERVER_SERVICES} ; do
-    ${ICSW_PIS}/modify_service.sh deactivate ${server}
+    if [ -f /etc/init.d/${server} ] ; then
+        ${ICSW_PIS}/modify_service.sh deactivate ${server}
+    fi
 done
 
 # PostInstallScripts

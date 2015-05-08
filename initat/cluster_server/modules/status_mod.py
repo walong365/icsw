@@ -23,7 +23,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
-from initat.icsw.service import instance, container, service_parser
+from initat.icsw.service import instance, container, service_parser, main
 from initat.tools import cluster_location
 import initat.cluster_server
 from initat.tools import logging_tools
@@ -65,6 +65,7 @@ class server_status(cs_base_class.server_com):
         _def_ns = service_parser.Parser.get_default_ns()
         cur_c.check_system(_def_ns, inst_xml)
         cur_inst.srv_com["status"] = inst_xml
+        cur_inst.srv_com["metastatus"] = main.query_local_meta_server()["overview:instances"]
         cur_inst.srv_com.set_result(
             "checked system",
         )

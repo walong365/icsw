@@ -454,7 +454,10 @@ class ServiceState(object):
             )
         elif _com == "overview":
             instances = _bldr.instances()
-            services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+            if "services" in srv_com:
+                services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+            else:
+                services = []
             with self.get_cursor() as crsr:
                 with self.get_cursor() as state_crsr:
                     for _srv_id, name, target_state, active in crsr.execute("SELECT idx, name, target_state, active FROM service ORDER BY name"):

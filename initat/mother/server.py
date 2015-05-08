@@ -55,6 +55,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # close db connection (for daemonizing)
         connection.close()
+        self.debug = global_config["DEBUG"]
         self.log("open")
         # log config
         self._log_config()
@@ -62,7 +63,7 @@ class server_process(threading_tools.process_pool):
         # prepare directories
         self._prepare_directories()
         # check netboot functionality
-        init_ok = self._check_netboot_functionality()
+        self._check_netboot_functionality()
         # check nfs exports
         self._check_nfs_exports()
         # modify syslog config
@@ -93,12 +94,8 @@ class server_process(threading_tools.process_pool):
             )
             # restart hoststatus
             self.send_to_process("command", "delay_command", "/etc/init.d/hoststatus restart", delay_time=5)
-            self.send_to_process("control", "refresh")
-            # self.send_to_process("control", "alter_macaddr")
-            # self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
+            self.send_to_process("control", "refresh", refresh=False)
         else:
-            init_ok = False
-        if not init_ok:
             self._int_error("bind problem")
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -224,7 +221,8 @@ class server_process(threading_tools.process_pool):
                                 node_text = srv_com.tree.findtext(node_ct)
                                 t_proc = "control"
                                 cur_com = node_ct
-                                self.log("got command {}, sending to {} process".format(cur_com, t_proc))
+                                if self.debug:
+                                    self.log("got command {}, sending to {} process".format(cur_com, t_proc))
                                 self.send_to_process(
                                     t_proc,
                                     cur_com,
@@ -241,7 +239,7 @@ class server_process(threading_tools.process_pool):
                             )
                     else:
                         srv_com.update_source()
-                        if cur_com in ["status", "refresh", "soft_control"]:  # alter_macaddr
+                        if cur_com in ["status", "refresh", "soft_control"]:
                             t_proc = "control"
                             self.log(
                                 "got command {} from '{}', sending to {} process".format(
@@ -331,8 +329,8 @@ class server_process(threading_tools.process_pool):
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
-    # utility calls
+            if self.debug:
+                self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
 
     def _prepare_directories(self):
         self.log("Checking directories ...")
@@ -473,14 +471,17 @@ class server_process(threading_tools.process_pool):
 
     def _enable_rsyslog(self):
         from initat.mother import syslog_scan
+        _scan_file = syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary {}".format(syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),  # @UndefinedVariable
+            "$actionomprogbinary {}".format(_scan_file),  # @UndefinedVariable
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
             "",
         ]
+        # fix rights
+        os.chmod(_scan_file, 0755)
         slcn = "/etc/rsyslog.d/mother.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
         self._reload_syslog()
@@ -513,53 +514,57 @@ class server_process(threading_tools.process_pool):
         process_tools.call_command(restart_com, log_com=self.log, close_fds=True)
 
     def _check_netboot_functionality(self):
+        syslinux_dir = os.path.join(global_config["SHARE_DIR"], "syslinux")
         global_config.add_config_entries(
             [
-                ("PXEBOOT", configfile.bool_c_var(False, source="default")),
-                ("XENBOOT", configfile.bool_c_var(False, source="default")),
+                (
+                    "PXELINUX.0",
+                    configfile.blob_c_var(
+                        open(os.path.join(syslinux_dir, "bios", "core", "pxelinux.0"), "rb").read(),
+                        source="filesystem"
+                    )
+                ),
+                (
+                    "BOOTX64.EFI",
+                    configfile.blob_c_var(
+                        open(os.path.join(syslinux_dir, "efi64", "efi", "syslinux.efi"), "rb").read(),
+                        source="filesystem"
+                    )
+                ),
+                (
+                    "LDLINUX.E64",
+                    configfile.blob_c_var(
+                        file(os.path.join(syslinux_dir, "efi64", "com32", "elflink", "ldlinux", "ldlinux.e64"), "rb").read(),
+                        source="filesystem"
+                    )
+                ),
+                (
+                    "BOOTIA32.EFI",
+                    configfile.blob_c_var(
+                        open(os.path.join(syslinux_dir, "efi32", "efi", "syslinux.efi"), "rb").read(),
+                        source="filesystem"
+                    )
+                ),
+                (
+                    "MEMDISK",
+                    configfile.blob_c_var(
+                        file(os.path.join(syslinux_dir, "bios", "memdisk", "memdisk"), "rb").read(),
+                        source="filesystem"
+                    )
+                ),
+                (
+                    "LDLINUX.C32",
+                    configfile.blob_c_var(
+                        file(os.path.join(syslinux_dir, "bios", "com32", "elflink", "ldlinux", "ldlinux.c32"), "rb").read(),
+                        source="filesystem"
+                    )
+                ),
+                (
+                    "MBOOT.C32",
+                    configfile.blob_c_var(
+                        open(os.path.join(syslinux_dir, "bios", "com32", "mboot", "mboot.c32"), "rb").read(),
+                        source="filesystem"
+                    )
+                )
             ]
         )
-        pxe_paths = [os.path.join(global_config["SHARE_DIR"], "syslinux/pxelinux.0")]
-        nb_ok = False
-        for pxe_path in pxe_paths:
-            if os.path.isfile(pxe_path):
-                try:
-                    pxelinux_0 = open(pxe_path, "rb").read()
-                except:
-                    self.log("Cannot read pxelinux.0 from {}".format(pxe_path), logging_tools.LOG_LEVEL_WARN)
-                else:
-                    pxe_dir = os.path.dirname(pxe_path)
-                    global_config.add_config_entries(
-                        [
-                            ("PXEBOOT", configfile.bool_c_var(True, source="filesystem")),
-                            ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem")),
-                            ("MEMDISK", configfile.blob_c_var(file(os.path.join(pxe_dir, "memdisk"), "rb").read(), source="filesystem")),
-                            ("LDLINUX", configfile.blob_c_var(file(os.path.join(pxe_dir, "ldlinux.c32"), "rb").read(), source="filesystem")),
-                        ]
-                    )
-                    self.log("Found pxelinux.0 and ldlinux.c32 in {}".format(pxe_dir))
-                    nb_ok = True
-                    break
-            else:
-                self.log("Found no pxelinux.0 in {}".format(pxe_path), logging_tools.LOG_LEVEL_WARN)
-        if not nb_ok:
-            self.log("cannot provide netboot functionality", logging_tools.LOG_LEVEL_CRITICAL)
-        mb32_paths = [os.path.join(global_config["SHARE_DIR"], "syslinux/mboot.c32")]
-        for mb32_path in mb32_paths:
-            if os.path.isfile(mb32_path):
-                try:
-                    mb32_0 = open(mb32_path, "rb").read()
-                except:
-                    self.log("Cannot read mboot.c32 from {}".format(mb32_path), logging_tools.LOG_LEVEL_WARN)
-                else:
-                    global_config.add_config_entries(
-                        [
-                            ("XENBOOT", configfile.bool_c_var(True, source="filesystem")),
-                            ("MBOOT.C32", configfile.blob_c_var(mb32_0, source="filesystem"))
-                        ]
-                    )
-                    self.log("Found mboot.c32 in {}".format(mb32_path))
-                    break
-            else:
-                self.log("Found no mboot.c32 in {}".format(mb32_path), logging_tools.LOG_LEVEL_WARN)
-        return nb_ok

@@ -71,10 +71,15 @@ class simple_command(object):
         self.start_time, self.popen = (None, None)
         self.info = kwargs.get("info", None)
         self.max_run_time = kwargs.get("max_run_time", 30)
-        self.log("init command %s%s, delay is %s" % (
-            "with %s" % (logging_tools.get_plural("line", len(self.com_str.split("\n")))) if kwargs.get("short_info", True) else "'%s'" % (self.com_str),
-            " (%s)" % (kwargs.get("add_info", "")) if "add_info" in kwargs else "",
-            logging_tools.get_plural("second", self.delay_time)))
+        self.log(
+            "init command {}{}, delay is {}".format(
+                "with {}".format(
+                    logging_tools.get_plural("line", len(self.com_str.split("\n")))
+                ) if kwargs.get("short_info", True) else "'{}'".format(self.com_str),
+                " ({})".format(kwargs.get("add_info", "")) if "add_info" in kwargs else "",
+                logging_tools.get_plural("second", self.delay_time),
+            )
+        )
         if self.delay_time:
             simple_command.process.register_timer(self.call, self.delay_time, oneshot=True)
         else:
@@ -119,9 +124,9 @@ class simple_command(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
-            self.__log_com("[sc %d] %s" % (self.idx, what), log_level)
+            self.__log_com("[sc {:d}] {}".format(self.idx, what), log_level)
         else:
-            simple_command.process.log("[sc %d] %s" % (self.idx, what), log_level)
+            simple_command.process.log("[sc {:d}] {}".format(self.idx, what), log_level)
 
     def terminate(self):
         if self.popen:

@@ -44,19 +44,20 @@ import crypt
 import collections
 import datetime
 from initat.cluster.backbone.models.license import LicenseUsage
-from initat.tools import ipvx_tools
 import json
 import logging
-from initat.tools import logging_tools
 import marshal
-from initat.tools import net_tools
-from initat.tools import process_tools
 import pytz
 import random
 import re
-from initat.tools import server_command
 import time
 import uuid
+
+from initat.tools import ipvx_tools
+from initat.tools import logging_tools
+from initat.tools import net_tools
+from initat.tools import process_tools
+from initat.tools import server_command
 
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.models.config import *  # @UnusedWildImport
@@ -1494,4 +1495,5 @@ def _register_models():
     )
     for model in models:
         model_history.icsw_register(model)
+
 _register_models()

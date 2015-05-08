@@ -90,9 +90,17 @@
     </accordion>
 </script>
 
+<script type="text/ng-template" id="icsw.service.enable.disable">
+    <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop() && enable_disable_allowed()">
+        <icsw-tools-button type="disable" size="xs" ng-click="action('disable')" ng-show="service_enabled()"></icsw-tools-button>
+        <icsw-tools-button type="enable" size="xs" ng-click="action('enable')" ng-show="service_disabled()"></icsw-tools-button>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.layout.server.info.state">
     <div ng-switch on="get_state()">
         <div class="text-warning" ng-switch-when="0">
+            <!-- no info found -->
             ---
         </div>
         <div class="row" style="width:520px;" ng-switch-when="1">
@@ -106,9 +114,7 @@
             <div class="col-xs-3" style="height:10px;">
                 <progressbar value="get_mem_value()" animate="false"></progressbar>
             </div>
-            <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop() && disable_allowed()">
-                <icsw-tools-button type="disable" size="xs" ng-click="action('disable')"></icsw-tools-button>
-            </div>
+            <icsw-service-enable-disable></icsw-service-enable-disable>
         </div>
         <div class="row" ng-switch-when="2">
             <div class="col-xs-3 text-right">
@@ -117,9 +123,16 @@
             <div class="col-xs-7 text-danger">
                 not running
             </div>
-            <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop()">
-                <icsw-tools-button type="enable" size="xs" ng-click="action('enable')"></icsw-tools-button>
+            <icsw-service-enable-disable></icsw-service-enable-disable>
+        </div>
+        <div class="row" ng-switch-when="4">
+            <div class="col-xs-3 text-right">
+                <span ng-class="get_version_class()" ng-bind-html="get_version()"></span>
             </div>
+            <div class="col-xs-7 text-danger">
+                not configured
+            </div>
+            <icsw-service-enable-disable></icsw-service-enable-disable>
         </div>
         <div class="row" ng-switch-when="3">
             <div class="col-xs-12 text-warning">

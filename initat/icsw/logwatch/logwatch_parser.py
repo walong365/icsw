@@ -49,6 +49,7 @@ class Parser(object):
         parser.add_argument("--with-nodes", default=False, action="store_true", help="add node logs [%(default)s]")
         parser.add_argument("--node-filter", type=str, default=".*", help="regexp filter for nodes [%(default)s]")
         parser.add_argument("--verbose", default=False, action="store_true", help="enable verbose mode [%(default)s]")
+        parser.add_argument("--show-unparseable", default=False, action="store_true", help="show unparseable lines [%(default)s]")
         return parser
 
     @staticmethod

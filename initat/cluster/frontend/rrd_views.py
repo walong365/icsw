@@ -106,6 +106,7 @@ class graph_rrds(View):
         )
         if int(self._parse_post_boolean(_post, "cds_already_merged", "0")):
             # FIXME
+            devs = device.all_real_enabled.filter(Q(pk__in=pk_list))
             cd_pks = list(
                 device.all_real_enabled.filter(
                     (
