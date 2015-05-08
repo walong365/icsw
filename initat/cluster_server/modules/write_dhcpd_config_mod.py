@@ -59,7 +59,14 @@ class write_dhcpd_config(cs_base_class.server_com):
                 "omapi-port 7911;",
                 "ddns-domainname \"{}\";".format(global_config["SERVER_SHORT_NAME"]),
                 "allow booting;\nallow bootp;",
-                ""
+                "",
+                "option space PXE;",
+                "option PXE.mtftp-ip    code 1 = ip-address;",
+                "option PXE.mtftp-cport code 2 = unsigned integer 16;",
+                "option PXE.mtftp-tmout code 4 = unsigned integer 8;",
+                "option PXE.mtftp-delay code 5 = unsigned integer 8;",
+                "option arch code 93 = unsigned integer 16;",
+                "",
             ]
             if cur_inst.srv_com["server_key:authoritative"].text.lower() in ["1", "true", "yes"]:
                 dhcpd_c.extend([
@@ -86,21 +93,26 @@ class write_dhcpd_config(cs_base_class.server_com):
                                 match_list = [cur_ip for cur_ip in cur_srv.ip_list if cur_ip.network.pk == act_net.pk]
                                 if match_list:
                                     found_dict.setdefault(act_net.pk, {}).setdefault(key, []).append((cur_srv.device, match_list))
-            dhcpd_c.extend([
-                "shared-network {} {{".format(global_config["SERVER_SHORT_NAME"]),
-                "    option routers {};".format(gateway)
-                ])
+            dhcpd_c.extend(
+                [
+                    "shared-network {} {{".format(global_config["SERVER_SHORT_NAME"]),
+                    # do not write routers (gateway may be invalid)
+                    # "    option routers {};".format(gateway)
+                ]
+            )
             for act_net in [boot_ip.network for boot_ip in boot_ips] + add_nets:
                 comment_sign = "" if act_net.network_type.identifier == "b" else "#"
-                dhcpd_c.extend([
-                    "",
-                    "    # network {} (identifier {})".format(unicode(act_net), act_net.network_type.identifier),
-                    "",
-                    "    {}subnet {} netmask {} {{".format(
-                        comment_sign,
-                        act_net.network,
-                        act_net.netmask)
-                ])
+                dhcpd_c.extend(
+                    [
+                        "",
+                        "    # network {} (identifier {})".format(unicode(act_net), act_net.network_type.identifier),
+                        "",
+                        "    {}subnet {} netmask {} {{".format(
+                            comment_sign,
+                            act_net.network,
+                            act_net.netmask)
+                    ]
+                )
                 if act_net.network_type.identifier == "b":
                     dhcpd_c.append("        {}authoritative;".format(comment_sign))
                 # check for ip in actual net

@@ -360,7 +360,8 @@ class Host(object):
 
     def add_ping_info(self, cur_dev):
         # print "add_ping_info", etree.tostring(cur_dev)
-        if int(cur_dev.attrib["ok"]):
+        # print cur_dev.attrib
+        if int(cur_dev.attrib.get("ok", "0")):
             cur_dev.attrib["network"] = self.ip_dict[cur_dev.attrib["ip"]].network.identifier
             # print self.ip_dict[cur_dev.attrib["ip"]]
         else:
@@ -1015,10 +1016,7 @@ class Host(object):
                 self.write_file(self.ip_mac_file_name, "\n".join(pxe_lines))
                 self.write_file(self.menu_file_name, "\n".join(menu_lines))
                 if new_kernel.xen_host_kernel:
-                    if global_config["XENBOOT"]:
-                        open(self.mboot_file_name, "w").write(global_config["MBOOT.C32"])
-                    else:
-                        self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
+                    open(self.mboot_file_name, "w").write(global_config["MBOOT.C32"])
             else:
                 self.log("Error: directory {} does not exist".format(kern_dst_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -1082,6 +1080,7 @@ class Host(object):
                 'set name = "{}"'.format(self.device.name),
             ]
             if om_shell_com == "write":
+                server_ip = self.server_ip_dict[self.maint_ip.ip]["ip"]
                 om_array.extend(
                     [
                         'set hardware-address = {}'.format(self.device.bootnetdevice.macaddr),
@@ -1094,8 +1093,15 @@ class Host(object):
                         'set statements = "' +
                         'supersede host-name = \\"{}\\" ;'.format(self.device.name) +
                         'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
+                        "next-server {} ; ".format(server_ip) +
+                        'if option arch = 00:06 { ' +
                         'filename = \\"etherboot/pxelinux.0\\" ; ' +
-                        '} "'
+                        "} else if option arch = 00:07 { " +
+                        'filename = \\"etherboot/bootx64.efi\\" ; ' +
+                        "} else { " +
+                        'filename = \\"etherboot/pxelinux.0\\" ; ' +
+                        '} ' +
+                        '}"'
                     ]
                 )
                 om_array.append('create')
@@ -1420,10 +1426,13 @@ class node_control_process(threading_tools.process_obj):
 
     def _setup_etherboot(self):
         map_list = [
-            ("pxelinux.0", "PXELINUX_0"),
+            ("pxelinux.0", "PXELINUX.0"),
             ("memdisk", "MEMDISK"),
-            ("ldlinux.c32", "LDLINUX"),
-            ("mboot.c32", "MBOOT.C32")
+            ("ldlinux.c32", "LDLINUX.C32"),
+            ("ldlinux.e64", "LDLINUX.E64"),
+            ("mboot.c32", "MBOOT.C32"),
+            ("bootx64.efi", "BOOTX64.EFI"),
+            ("bootia32.efi", "BOOTIA32.EFI"),
         ]
         file_names = set([f_name for f_name, _key in map_list])
         for _dir, _dir_list, _entry_list in os.walk(global_config["ETHERBOOT_DIR"], False):
@@ -1448,7 +1457,8 @@ class node_control_process(threading_tools.process_obj):
                 except:
                     self.log("cannot create {}: {}".format(t_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                 else:
-                    self.log("created {}".format(t_file))
+                    os.chmod(t_file, 0444)
+                    self.log("created {} (mode 0444)".format(t_file))
             else:
                 self.log("key {} not found in global_config".format(key_name), logging_tools.LOG_LEVEL_CRITICAL)
         # cleanup pxelinux.cfg

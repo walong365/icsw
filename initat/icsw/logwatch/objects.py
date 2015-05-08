@@ -64,7 +64,6 @@ class LogLine(object):
 class LogWatcher(object):
     def __init__(self, opt_ns, sysname, logcache, node=None):
         self.opt_ns = opt_ns
-        print self.opt_ns
         self.device = opt_ns.machine
         self.name = sysname
         self.node = node
@@ -130,13 +129,14 @@ class LogWatcher(object):
                         # some lines already present, append line to pure line content
                         _prev_line.append_msg(_line)
                     else:
-                        print(
-                            "Error parsing line '{}' for system {}: {}".format(
-                                _line,
-                                self.name,
-                                process_tools.get_except_info(),
+                        if self.opt_ns.show_unparseable:
+                            print(
+                                "Error parsing line '{}' for system {}: {}".format(
+                                    _line,
+                                    self.name,
+                                    process_tools.get_except_info(),
+                                )
                             )
-                        )
                 else:
                     self.__logcache.feed(_ll)
                     _prev_line = _ll
@@ -164,6 +164,11 @@ class LogCache(object):
 
     def show(self):
         if self.lines:
-            print("\n".join([unicode(_line) for _line in self.lines]))
+            print(
+                "\n".join(
+                    [
+                        unicode(_line) for _line in self.lines
+                    ]
+                )
+            )
             self.lines = []
-

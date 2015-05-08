@@ -87,7 +87,7 @@ endif
 ###############################################################################
 # Various settings
 ###############################################################################
-VERSION_SYSLINUX=6.02
+VERSION_SYSLINUX=6.03
 MEMTEST_VERSION=86+-5.01
 
 ###############################################################################
@@ -99,14 +99,20 @@ build:
 	${MAKE} -C c_progs
 	${MAKE} -C c_clients
 	${PYTHON} ./setup.py build
-	tar --transform s:^.*/:: -xjf syslinux-${VERSION_SYSLINUX}.tar.bz2 \
+	mkdir syslinux ; \
+	cd syslinux ; \
+	tar -xzf ../syslinux-${VERSION_SYSLINUX}.tar.gz \
 		syslinux-${VERSION_SYSLINUX}/bios/gpxe/gpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/lpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/pxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/memdisk/memdisk \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/lib/libcom32.c32 \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/elflink/ldlinux/ldlinux.c32 \
-		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32
+		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32 \
+		syslinux-${VERSION_SYSLINUX}/efi32/efi/syslinux.efi \
+		syslinux-${VERSION_SYSLINUX}/efi64/efi/syslinux.efi \
+		syslinux-${VERSION_SYSLINUX}/efi64/com32/elflink/ldlinux/ldlinux.e64 ; \
+	cd .. ; \
 	unzip memtest*zip
 
 install:
@@ -250,10 +256,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} mibs/eonstore-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
 	# /opt/cluster/share/mother
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${MOTHER_DIR}/syslinux
-	${INSTALL} ${INSTALL_OPTS} *pxelinux.0 ${DESTDIR}/${MOTHER_DIR}/syslinux
-	${INSTALL} ${INSTALL_OPTS} *.c32 ${DESTDIR}/${MOTHER_DIR}/syslinux
+	cp -a syslinux/syslinux-${VERSION_SYSLINUX}/* ${DESTDIR}/${MOTHER_DIR}/syslinux
 	${INSTALL} ${INSTALL_OPTS} memtest${MEMTEST_VERSION}.iso ${DESTDIR}/${MOTHER_DIR}
-	${INSTALL} ${INSTALL_OPTS} memdisk ${DESTDIR}/${MOTHER_DIR}/syslinux
 	# examples
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/examples/sge_licenses
 	cp -a examples/* ${DESTDIR}${ICSW_SHARE}/examples/sge_licenses

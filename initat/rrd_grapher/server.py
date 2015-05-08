@@ -108,7 +108,11 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         # set stale after two hours
         MAX_DT = 3600 * 2
         num_changed = 0
+        _total = MachineVector.objects.all().count()
+        self.log("checking {}".format(logging_tools.get_plural("MachineVector", _total)))
+        mv_idx = 0
         for mv in MachineVector.objects.all().prefetch_related("mvstructentry_set"):
+            mv_idx += 1
             enabled, disabled = (0, 0)
             num_active = 0
             for mvs in mv.mvstructentry_set.all():
@@ -132,7 +136,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                                 # important: cast to str
                                 rrd_info = rrdtool.info(str(f_name))
                             except:
-                                raise
                                 self.log(
                                     "cannot get info for {} via rrdtool: {}".format(
                                         f_name,
@@ -140,6 +143,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                                     ),
                                     logging_tools.LOG_LEVEL_ERROR
                                 )
+                                raise
                             else:
                                 c_time = int(rrd_info["last_update"])
                                 stale = abs(cur_time - c_time) > MAX_DT
@@ -150,22 +154,31 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                         mvs.save(update_fields=["is_active"])
                         disabled += 1
                     elif not is_active and not stale:
-                        mvs_active = True
+                        mvs.is_active = True
                         mvs.save(update_fields=["is_active"])
                         enabled += 1
                 else:
                     if is_active:
-                        self.log("file '{}' missing, disabling".format(mvs.file_name, logging_tools.LOG_LEVEL_ERROR))
+                        self.log(
+                            "file '{}' missing, disabling".format(
+                                mvs.file_name,
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                        )
                         mvs.is_active = False
                         mvs.save(update_fields=["is_active"])
                         disabled += 1
             if enabled or disabled:
                 num_changed += 1
-                self.log("updated active info for {}: {:d} enabled, {:d} disabled".format(
-                    unicode(mvs),
-                    enabled,
-                    disabled,
-                    ))
+                self.log(
+                    "({:d} of {:d}) updated active info for {}: {:d} enabled, {:d} disabled".format(
+                        mv_idx,
+                        _total,
+                        unicode(mv),
+                        enabled,
+                        disabled,
+                    )
+                )
             try:
                 cur_dev = mv.device
             except device.DoesNotExist:
@@ -175,7 +188,13 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                 if is_active != cur_dev.has_active_rrds:
                     cur_dev.has_active_rrds = is_active
                     cur_dev.save(update_fields=["has_active_rrds"])
-        self.log("checked for stale entries, modified {}".format(logging_tools.get_plural("device", num_changed)))
+        self.log(
+            "checked for stale entries, modified {}, took {} ({} per entry)".format(
+                logging_tools.get_plural("device", num_changed),
+                logging_tools.get_diff_time_str(time.time() - cur_time),
+                logging_tools.get_diff_time_str((time.time() - cur_time) / max(1, _total)),
+            )
+        )
 
     def _clear_old_graphs(self):
         cur_time = time.time()
