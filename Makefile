@@ -111,7 +111,7 @@ build:
 		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32 \
 		syslinux-${VERSION_SYSLINUX}/efi32/efi/syslinux.efi \
 		syslinux-${VERSION_SYSLINUX}/efi64/efi/syslinux.efi \
-		syslinux-${VERSION_SYSLINUX}/efi64/com32/elflink/ldlinux/ldlinux.e64
+		syslinux-${VERSION_SYSLINUX}/efi64/com32/elflink/ldlinux/ldlinux.e64 ; \
 	cd .. ; \
 	unzip memtest*zip
 
