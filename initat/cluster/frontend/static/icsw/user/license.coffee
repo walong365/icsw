@@ -170,7 +170,7 @@ angular.module(
 
 
     # NOTE: code below here is just utils, but we can't have it in a proper service since that would create a circular dependency
-    _get_license_state = (lic) ->
+    _get_license_state_internal = (lic) ->
         # NOTE: keep grace period in sync with py
         if moment(lic.valid_from) < moment() and moment() < (moment(lic.valid_to).add(2, 'weeks'))
             if moment() < moment(lic.valid_to)
@@ -210,7 +210,7 @@ angular.module(
         else
             return ""
     get_license_state = (lic) ->
-        state =  _get_license_state(lic)
+        state =  _get_license_state_internal(lic)
         return if state? then state[1] else undefined
 
     angular.extend(data, {
@@ -220,6 +220,7 @@ angular.module(
         get_license_state : get_license_state
         get_license_state_bootstrap_class : get_license_state_bootstrap_class
         get_license_state_icon_class: get_license_state_icon_class
+        _get_license_state_internal: _get_license_state_internal  # expose for licadmin
         calculate_license_state: (packages, license_id=undefined, cluster_id=undefined) ->
             # calculate the current state of either all licenses in a package or of a certain one for a given cluster_id or all cluster_ids
 
@@ -236,7 +237,7 @@ angular.module(
                             if !license_id? or pack_lic.id == license_id or pack_lic.license == license_id
                                 if !pack_lic?
                                     return  # TODO: investigate
-                                lic_state = _get_license_state(pack_lic)
+                                lic_state = _get_license_state_internal(pack_lic)
                                 lic_state[1].package = pack
                                 lic_state[1].lic = pack_lic
                                 states.push(lic_state)
