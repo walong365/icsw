@@ -49,6 +49,7 @@ from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from lxml.builder import E  # @UnresolvedImport
+from initat.cluster.frontend.license_views import login_required_rest
 from initat.tools import config_tools
 from initat.tools import server_command
 from initat.cluster.frontend.rest_views import rest_logging
@@ -356,21 +357,20 @@ class GetGlobalPermissions(RetrieveAPIView):
             in_dict.setdefault(_parts[0], {}).setdefault(_parts[1], {})[_parts[2]] = in_dict[_key]
         return in_dict
 
-    @method_decorator(login_required)
+    @method_decorator(login_required_rest(lambda: {}))
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(self._unfold(request.user.get_global_permissions()))
 
 
 class GetObjectPermissions(RetrieveAPIView):
-    @method_decorator(login_required)
+    @method_decorator(login_required_rest(lambda: {}))
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(GetGlobalPermissions._unfold(request.user.get_all_object_perms(None)))
 
 
 class GetInitProduct(RetrieveAPIView):
-    @method_decorator(login_required)
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response({

@@ -23,13 +23,14 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service",
-    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service", "initProduct",
+    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service, initProduct) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
         $scope.SERVICE_TYPES = $window.SERVICE_TYPES
         $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT
         $scope.ICSW_URLS = ICSW_URLS
+        $scope.initProduct = initProduct
         $scope.CURRENT_USER = $window.CURRENT_USER
         if $window.DOC_PAGE
             $scope.HANDBOOK_CHUNKS_PRESENT = $window.HANDBOOK_CHUNKS_PRESENT

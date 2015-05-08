@@ -62,7 +62,7 @@ def get_available_licenses():
     available_licenses.append(AvailableLicense(id=u'ext_license', enum_value=LicenseEnum.ext_license, name=u'License Optimization Management',description=u'Manage external licenses', product=None))
     available_licenses.append(AvailableLicense(id=u'package_install', enum_value=LicenseEnum.package_install, name=u'Package Install',description=u'', product=None))
     available_licenses.append(AvailableLicense(id=u'virtual_desktop', enum_value=LicenseEnum.virtual_desktop, name=u'Virtual Desktop',description=u'', product=InitProduct.NESTOR))
-    available_licenses.append(AvailableLicense(id=u'monitoring_dashboard', enum_value=LicenseEnum.monitoring_dashboard, name=u'Monitoring Dashboard',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'monitoring_dashboard', enum_value=LicenseEnum.monitoring_dashboard, name=u'Monitoring Dashboard',description=u'', product=InitProduct.NOCTUA))
     available_licenses.append(AvailableLicense(id=u'reporting', enum_value=LicenseEnum.reporting, name=u'Reporting',description=u'', product=InitProduct.NOCTUA))
     available_licenses.append(AvailableLicense(id=u'snapshot', enum_value=LicenseEnum.snapshot, name=u'Database snapshot',description=u'', product=None))
     available_licenses.append(AvailableLicense(id=u'notification', enum_value=LicenseEnum.notification, name=u'Notification',description=u'', product=None))

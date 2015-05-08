@@ -113,12 +113,8 @@ ics_app = angular.module(
     blockUIConfig.autoBlock = false
     blockUIConfig.autoInjectBodyBlock = false
 ]).constant("ICSW_URLS", {
-    {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
-    "MENU_GFX_URL": "{% static gfx_name %}"
-    {% endwith %}
-    {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
-    "MENU_GFX_BIG_URL": "{% static gfx_name %}"
-    {% endwith %}
+    {% load static %} # this is needed for get_static_prefix below
+    "STATIC_URL": "{% get_static_prefix %}"
     "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}"
     "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"

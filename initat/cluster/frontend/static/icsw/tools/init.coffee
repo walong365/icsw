@@ -441,11 +441,9 @@ angular.module(
 ]).service("initProduct", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     product = {}
     Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then((new_data) ->
-        console.log 'get p', new_data
         product.name = new_data.name
-        product.menu_gfx_url = "images/product/#{new_data.name.toLowerCase()}-flat-trans.png"
-        product.menu_gfx_big_url = "images/product/#{new_data.name.toLowerCase()}-trans.png"
-        console.log 'new p', product
+        product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-flat-trans.png"
+        product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-trans.png"
     )
     return product
 ]).config(['$httpProvider',
