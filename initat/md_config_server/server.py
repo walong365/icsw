@@ -512,8 +512,6 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self.send_to_process("dynconfig", cur_com, unicode(srv_com))
                     if cur_com == "passive_check_result":
                         send_return = True
-                elif cur_com == "check_license":
-                    self.send_to_process("license_checker", "check_license", src_id, unicode(srv_com))
                 else:
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:

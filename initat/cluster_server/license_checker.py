@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+import functools
 
 import logging_tools
 
@@ -42,10 +43,10 @@ class LicenseChecker(threading_tools.process_obj):
         connection.close()
 
         # can be triggered
-        self.register_func("check_license_violations", self._check_from_command)
+        # self.register_func("check_license_violations", self._check_from_command)
 
         # and is run periodically
-        self.register_timer(self.check, 30 * 60, instant=True)
+        self.register_timer(functools.partial(self.check, self.log), 30 * 60, instant=True)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -53,14 +54,16 @@ class LicenseChecker(threading_tools.process_obj):
     def loop_post(self):
         self.__log_template.close()
 
-    def _check_from_command(self, *args, **kwargs):
-        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        self.check()
-        srv_com.set_result("finished checking license violations")  # need some result, else there is a warning
-        self.send_pool_message("send_command", src_id, unicode(srv_com))
+    # this does not work from cluster-server (especially answering)
+    # def _check_from_command(self, *args, **kwargs):
+    #    src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+    #    self.check()
+    #    srv_com.set_result("finished checking license violations")  # need some result, else there is a warning
+    #    self.send_pool_message("send_command", src_id, unicode(srv_com))
 
-    def check(self):
-        self.log("starting license violation checking")
+    @staticmethod
+    def check(log):
+        log("starting license violation checking")
         for license in LicenseEnum:
             usage = LicenseUsage.get_license_usage(license)
             violated = False
@@ -70,16 +73,17 @@ class LicenseChecker(threading_tools.process_obj):
             try:
                 violation = LicenseViolation.objects.get(license=license.name)
                 if not violated:
-                    self.log("violation {} has ended".format(violation))
+                    log("violation {} has ended".format(violation))
                     violation.delete()
                 else:
                     # still violate, check if now grace period is violated too
                     if not violation.hard and django.utils.timezone.now() > violation.date + LicenseUsage.GRACE_PERIOD:
-                        self.log("violation {} is transformed into a hard violation".format(violation))
+                        log("violation {} is transformed into a hard violation".format(violation))
                         violation.hard = True
                         violation.save()
             except LicenseViolation.DoesNotExist:
                 if violated:
                     new_violation = LicenseViolation(license=license.name)
                     new_violation.save()
-                    self.log("violation {} detected".format(new_violation))
+                    log("violation {} detected".format(new_violation))
+        log("finished license violation checking")
