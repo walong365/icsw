@@ -99,8 +99,8 @@ build:
 	${MAKE} -C c_progs
 	${MAKE} -C c_clients
 	${PYTHON} ./setup.py build
-	mkdir pxelinux ; \
-	cd pxelinux ; \
+	mkdir syslinux ; \
+	cd syslinux ; \
 	tar --transform s:^.*/:: -xjf syslinux-${VERSION_SYSLINUX}.tar.bz2 \
 		syslinux-${VERSION_SYSLINUX}/bios/gpxe/gpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/lpxelinux.0 \
@@ -255,8 +255,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} mibs/eonstore-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
 	# /opt/cluster/share/mother
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${MOTHER_DIR}/syslinux
-	${INSTALL} ${INSTALL_OPTS} *pxelinux.0 ${DESTDIR}/${MOTHER_DIR}/syslinux
-	${INSTALL} ${INSTALL_OPTS} *.c32 ${DESTDIR}/${MOTHER_DIR}/syslinux
+	cp -a syslinux/* ${DESTDIR}/${MOTHER_DIR}/syslinux
 	${INSTALL} ${INSTALL_OPTS} memtest${MEMTEST_VERSION}.iso ${DESTDIR}/${MOTHER_DIR}
 	${INSTALL} ${INSTALL_OPTS} memdisk ${DESTDIR}/${MOTHER_DIR}/syslinux
 	# examples
