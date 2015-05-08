@@ -13,8 +13,9 @@
     <!-- Use the .htaccess and remove these lines to avoid edge case issues.
          More info: h5bp.com/i/378 -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    
-    <title>{{ settings.INIT_PRODUCT_NAME }}&reg; - {% block title%}{% trans 'Main Page' %}{% endblock %}</title>
+
+    <!-- TODO: set title in angular -->
+    <title>ICSW&reg; - {% block title%}{% trans 'Main Page' %}{% endblock %}</title>
     <meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
@@ -41,9 +42,6 @@ window.LOGIN_HINTS = {{ LOGIN_HINTS | safe }}
 # for login screen redirect
 window.NEXT_URL = "{{ NEXT_URL }}"
 window.LOGIN_SCREEN_TYPE = "{{ LOGIN_SCREEN_TYPE }}"
-window.INIT_PRODUCT_NAME = "{{ settings.INIT_PRODUCT_NAME }}"
-window.INIT_PRODUCT_FAMILY = "{{ settings.INIT_PRODUCT_FAMILY }}"
-window.INIT_PRODUCT_VERSION = "{{ settings.INIT_PRODUCT_VERSION }}"
 window.DJANGO_VERSION = "{{ DJANGO_VERSION }}"
 window.PASSWORD_CHARACTER_COUNT = "{{ PASSWORD_CHARACTER_COUNT }}"
 window.CLUSTER_NAME = "{{ CLUSTER_NAME }}"

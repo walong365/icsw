@@ -441,7 +441,8 @@ angular.module(
 ]).service("initProduct", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     product = {}
     Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then((new_data) ->
-        product.name = new_data.name
+        # update dict in place
+        angular.extend(product, new_data)
         product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-flat-trans.png"
         product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-trans.png"
     )

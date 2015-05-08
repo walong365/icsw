@@ -29,20 +29,6 @@ ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
 
-# determine product name
-if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
-    INIT_PRODUCT_NAME = "CORVUS"
-    # INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe, 2.0
-    INIT_PRODUCT_FAMILY = "Corvus frugilegus"  # Saatkrähe, 2.1
-    # INIT_PRODUCT_FAMILY = "Corvus woodfordi" # Buntschnabelkrähe, 2.2
-else:
-    INIT_PRODUCT_NAME = "NOCTUA"
-    # INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu, 2.0
-    INIT_PRODUCT_FAMILY = "Strigidae ascalaphus"  # Wüstenuhu, 2.1
-    # INIT_PRODUCT_FAMILY = "Strigidae pulsatrix perspicillata" # Brillenkauz, 2.2
-
-INIT_PRODUCT_VERSION = "2.1"
-
 ALLOWED_HOSTS = ["*"]
 
 INTERNAL_IPS = ("127.0.0.1", "192.168.1.173",)

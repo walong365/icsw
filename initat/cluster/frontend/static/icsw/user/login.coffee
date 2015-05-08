@@ -27,7 +27,6 @@ angular.module(
         $scope.login_hints = $window.LOGIN_HINTS
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
-        $scope.INIT_PRODUCT_VERSION = $window.INIT_PRODUCT_VERSION
         $scope.INIT_PRODUCT_FAMILY = $window.INIT_PRODUCT_FAMILY
         $scope.DJANGO_VERSION = $window.DJANGO_VERSION
         $scope.CLUSTER_NAME = $window.CLUSTER_NAME
