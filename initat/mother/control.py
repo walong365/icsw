@@ -1016,10 +1016,7 @@ class Host(object):
                 self.write_file(self.ip_mac_file_name, "\n".join(pxe_lines))
                 self.write_file(self.menu_file_name, "\n".join(menu_lines))
                 if new_kernel.xen_host_kernel:
-                    if global_config["XENBOOT"]:
-                        open(self.mboot_file_name, "w").write(global_config["MBOOT.C32"])
-                    else:
-                        self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
+                    open(self.mboot_file_name, "w").write(global_config["MBOOT.C32"])
             else:
                 self.log("Error: directory {} does not exist".format(kern_dst_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -1427,10 +1424,12 @@ class node_control_process(threading_tools.process_obj):
 
     def _setup_etherboot(self):
         map_list = [
-            ("pxelinux.0", "PXELINUX_0"),
+            ("pxelinux.0", "PXELINUX.0"),
             ("memdisk", "MEMDISK"),
-            ("ldlinux.c32", "LDLINUX"),
-            ("mboot.c32", "MBOOT.C32")
+            ("ldlinux.c32", "LDLINUX.C32"),
+            ("mboot.c32", "MBOOT.C32"),
+            ("bootx64.efi", "BOOTX64.EFI"),
+            ("bootia32.efi", "BOOTIA32.EFI"),
         ]
         file_names = set([f_name for f_name, _key in map_list])
         for _dir, _dir_list, _entry_list in os.walk(global_config["ETHERBOOT_DIR"], False):
