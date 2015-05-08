@@ -51,7 +51,9 @@ fi
 
 # deactivate all server services (now handled via meta-server)
 for server in ${SERVER_SERVICES} ; do
-    ${ICSW_PIS}/modify_service.sh deactivate ${server}
+    if [ -f /etc/init.d/${server} ] ; then
+        ${ICSW_PIS}/modify_service.sh deactivate ${server}
+    fi
 done
 
 # PostInstallScripts

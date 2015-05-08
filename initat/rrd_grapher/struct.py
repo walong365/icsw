@@ -357,7 +357,7 @@ class DataStore(object):
             except MachineVector.DoesNotExist:
                 pass
             else:
-                DataStore.__devices[dev_pk] = _mv
+                DataStore(_mv)
         return dev_pk in DataStore.__devices
 
     @staticmethod
