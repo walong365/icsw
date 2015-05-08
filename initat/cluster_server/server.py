@@ -139,7 +139,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=1)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
-            self.__msi_block.add_actual_pid(configfile.get_manager_pid(), mult=2, process_name="manager")
+            self.__msi_block.add_actual_pid(configfile.get_manager_pid(), mult=1, process_name="manager")
             self.__msi_block.save_block()
 
     def process_exit(self, src_process, src_pid):
