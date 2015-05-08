@@ -53,21 +53,22 @@ LicenseParameterTypeEnum.id_string_to_user_name = classmethod(id_string_to_user_
 
 
 def get_available_licenses():
-    AvailableLicense = namedtuple('AvailableLicense', ['id', 'enum_value', 'name', 'description'])
+    from initat.cluster.backbone.models.license import InitProduct
+    AvailableLicense = namedtuple('AvailableLicense', ['id', 'enum_value', 'name', 'description', 'product'])
 
     available_licenses = []
 
-    available_licenses.append(AvailableLicense(id=u'kpi', enum_value=LicenseEnum.kpi, name=u'KPI', description=u'Key Performance Indicators'))
-    available_licenses.append(AvailableLicense(id=u'ext_license', enum_value=LicenseEnum.ext_license, name=u'License Optimization Management', description=u'Manage external licenses'))
-    available_licenses.append(AvailableLicense(id=u'package_install', enum_value=LicenseEnum.package_install, name=u'Package Install', description=u''))
-    available_licenses.append(AvailableLicense(id=u'virtual_desktop', enum_value=LicenseEnum.virtual_desktop, name=u'Virtual Desktop', description=u''))
-    available_licenses.append(AvailableLicense(id=u'monitoring_dashboard', enum_value=LicenseEnum.monitoring_dashboard, name=u'Monitoring Dashboard', description=u''))
-    available_licenses.append(AvailableLicense(id=u'reporting', enum_value=LicenseEnum.reporting, name=u'Reporting', description=u''))
-    available_licenses.append(AvailableLicense(id=u'snapshot', enum_value=LicenseEnum.snapshot, name=u'Database snapshot', description=u''))
-    available_licenses.append(AvailableLicense(id=u'notification', enum_value=LicenseEnum.notification, name=u'Notification', description=u''))
-    available_licenses.append(AvailableLicense(id=u'rms', enum_value=LicenseEnum.rms, name=u'Resource Management System (RMS)', description=u''))
-    available_licenses.append(AvailableLicense(id=u'graphing', enum_value=LicenseEnum.graphing, name=u'Graphing', description=u''))
-    available_licenses.append(AvailableLicense(id=u'netboot', enum_value=LicenseEnum.netboot, name=u'Netboot', description=u''))
-    available_licenses.append(AvailableLicense(id=u'md_config_server', enum_value=LicenseEnum.md_config_server, name=u'MD-config-server', description=u''))
+    available_licenses.append(AvailableLicense(id=u'kpi', enum_value=LicenseEnum.kpi, name=u'KPI',description=u'Key Performance Indicators', product=None))
+    available_licenses.append(AvailableLicense(id=u'ext_license', enum_value=LicenseEnum.ext_license, name=u'License Optimization Management',description=u'Manage external licenses', product=None))
+    available_licenses.append(AvailableLicense(id=u'package_install', enum_value=LicenseEnum.package_install, name=u'Package Install',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'virtual_desktop', enum_value=LicenseEnum.virtual_desktop, name=u'Virtual Desktop',description=u'', product=InitProduct.NESTOR))
+    available_licenses.append(AvailableLicense(id=u'monitoring_dashboard', enum_value=LicenseEnum.monitoring_dashboard, name=u'Monitoring Dashboard',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'reporting', enum_value=LicenseEnum.reporting, name=u'Reporting',description=u'', product=InitProduct.NOCTUA))
+    available_licenses.append(AvailableLicense(id=u'snapshot', enum_value=LicenseEnum.snapshot, name=u'Database snapshot',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'notification', enum_value=LicenseEnum.notification, name=u'Notification',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'rms', enum_value=LicenseEnum.rms, name=u'Resource Management System (RMS)',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'graphing', enum_value=LicenseEnum.graphing, name=u'Graphing',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'netboot', enum_value=LicenseEnum.netboot, name=u'Netboot',description=u'', product=None))
+    available_licenses.append(AvailableLicense(id=u'md_config_server', enum_value=LicenseEnum.md_config_server, name=u'MD-config-server',description=u'', product=None))
 
     return available_licenses

@@ -28,7 +28,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
 from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsage
 from initat.cluster.frontend.rest_views import rest_logging
 
@@ -52,7 +52,7 @@ class get_all_licenses(ListAPIView):
                     'parameter_usage':
                         {k.to_user_name(): v
                          for k, v in LicenseUsage.get_license_usage(lic.enum_value).iteritems()},
-                } for lic in License.objects.get_all_licenses()
+                } for lic in get_available_licenses()
             ]
         )
 
@@ -84,6 +84,6 @@ class GetValidLicenses(RetrieveAPIView):
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response({
-            'valid_licenses': License.objects.get_valid_licenses(),
+            'valid_licenses': [l.name for l in License.objects.get_valid_licenses()],
             'all_licenses': [l.name for l in LicenseEnum],
         })

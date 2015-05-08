@@ -76,7 +76,7 @@ class _LicenseManager(models.Manager):
     NOTE: These functions currently return license ids as strings, not as enums.
     """
 
-    def get_license_state(self, license, parameters=None, ignore_violations=False):
+    def _get_license_state(self, license, parameters=None, ignore_violations=False):
         """Returns the license state for this license
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: int} of required parameters
@@ -88,21 +88,39 @@ class _LicenseManager(models.Manager):
             return LicenseState.none
         return max([r.get_license_state(license, parameters) for r in self._license_readers])
 
+    ########################################
+    # Accessors for actual program logic
+
     def has_valid_license(self, license, parameters=None, ignore_violations=False):
         """Returns whether we currently have this license in some valid state.
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: int} of required parameters
         :rtype: bool
         """
-        return self.get_license_state(license, parameters, ignore_violations=ignore_violations).is_valid()
+        return self._get_license_state(license, parameters, ignore_violations=ignore_violations).is_valid()
+
+    def get_local_product(self):
+        valid_lics = set(self.get_valid_licenses())
+        product_licenses = set()
+        for available_lic in get_available_licenses():
+            if available_lic.enum_value in valid_lics:
+                if available_lic.product is not None:
+                    product_licenses.add(available_lic.product)
+
+        product_licenses.remove(InitProduct.CORVUS)  # this currently means nothing
+        if InitProduct.NESTOR in product_licenses and InitProduct.NOCTUA in product_licenses:
+            return InitProduct.CORVUS
+        else:
+            # can only contain one
+            return next(iter(product_licenses))
+
+    ########################################
+    # Accessors for views for client
 
     def get_valid_licenses(self):
         """Returns all licenses which are active (and should be displayed to the user)"""
         return [lic for lic in set().union(*[r.get_valid_licenses() for r in self._license_readers])
                 if not LicenseViolation.objects.is_hard_violated(lic)]
-
-    def get_all_licenses(self):
-        return get_available_licenses()
 
     def get_license_packages(self):
         """Returns license packages in custom format for the client."""
@@ -250,12 +268,10 @@ class LicenseUsage(object):
 class _LicenseViolationManager(models.Manager):
     def is_hard_violated(self, license):
         """
-        :type license: LicenseEnum | str
+        :type license: LicenseEnum
         """
-        if isinstance(license, LicenseEnum):
-            license = license.name
         # only hard violations are actual violations, else it's a warning (grace)
-        return LicenseViolation.objects.filter(license=license, hard=True).exists()
+        return LicenseViolation.objects.filter(license=license.name, hard=True).exists()
 
 
 class LicenseViolation(_LicenseUsageBase):

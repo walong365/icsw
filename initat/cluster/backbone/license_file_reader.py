@@ -140,11 +140,15 @@ class LicenseFileReader(object):
 
     def get_valid_licenses(self):
         """Returns licenses which are currently valid as license id string list. Does not consider license violations!"""
-        return list(set(
-            lic_xml.find("icsw:id", namespaces=ICSW_XML_NS_MAP).text
-            for lic_xml in self.content_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)
-            if self._get_state_from_license_xml(lic_xml).is_valid()
-        ))
+        ret = []
+        for lic_id in set(lic_xml.find("icsw:id", namespaces=ICSW_XML_NS_MAP).text
+                          for lic_xml in self.content_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)
+                          if self._get_state_from_license_xml(lic_xml).is_valid()):
+            try:
+                ret.append(LicenseEnum[lic_id])
+            except KeyError:
+                logger.debug("Invalid license in license file: {}".format(lic_id))
+        return ret
 
     def get_license_packages_xml(self):
         return self.content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP)
