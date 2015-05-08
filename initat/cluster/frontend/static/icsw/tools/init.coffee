@@ -385,7 +385,7 @@ angular.module(
                     if mask
                         return if obj[ac_name] & mask then true else false
                     else
-                        return true    
+                        return true
                 else
                     return (obj[ac_name] & mask) == mask
             else
@@ -438,6 +438,16 @@ angular.module(
             angular.extend(scope, func_dict)
         reload: reload
    }, func_dict)
+]).service("initProduct", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+    product = {}
+    Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then((new_data) ->
+        console.log 'get p', new_data
+        product.name = new_data.name
+        product.menu_gfx_url = "images/product/#{new_data.name.toLowerCase()}-flat-trans.png"
+        product.menu_gfx_big_url = "images/product/#{new_data.name.toLowerCase()}-trans.png"
+        console.log 'new p', product
+    )
+    return product
 ]).config(['$httpProvider',
     ($httpProvider) ->
         $httpProvider.defaults.xsrfCookieName = 'csrftoken'

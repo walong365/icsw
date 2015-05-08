@@ -52,7 +52,7 @@
                     <li><a href="{{ ICSW_URLS.USER_OVERVIEW }}">Overview</a></li>
                 </ul>
             </li>
-            <li ng-show="has_valid_license('md_config_server')">
+            <li ng-show="has_any_valid_license(['md_config_server', 'monitoring_dashboard', 'reporting'])">
                 <a class="dropdown-toggle" data-toggle="dropdown">Monitoring <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}">Basic setup</a></li>

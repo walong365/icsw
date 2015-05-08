@@ -187,6 +187,7 @@ user_patterns = patterns(
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
     url("^GetGlobalPermissions$", user_views.GetGlobalPermissions.as_view(), name="GetGlobalPermissions"),
     url("^GetObjectPermissions$", user_views.GetObjectPermissions.as_view(), name="GetObjectPermissions"),
+    url("^GetInitProduct$", user_views.GetInitProduct.as_view(), name="GetInitProduct"),
 )
 
 pack_patterns = patterns(

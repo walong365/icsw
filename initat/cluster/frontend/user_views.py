@@ -367,3 +367,12 @@ class GetObjectPermissions(RetrieveAPIView):
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(GetGlobalPermissions._unfold(request.user.get_all_object_perms(None)))
+
+
+class GetInitProduct(RetrieveAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return Response({
+            'name': License.objects.get_init_product().name
+        })

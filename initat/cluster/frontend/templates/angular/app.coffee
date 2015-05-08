@@ -350,6 +350,7 @@ ics_app = angular.module(
     "USER_CLEAR_HOME_DIR_CREATED": "{% url 'user:clear_home_dir_created' %}"
     "USER_GET_DEVICE_IP": "{% url 'user:get_device_ip' %}"
     "USER_GET_GLOBAL_PERMISSIONS": "{% url 'user:GetGlobalPermissions' %}"
+    "USER_GET_INIT_PRODUCT": "{% url 'user:GetInitProduct' %}"
     "USER_GET_OBJECT_PERMISSIONS": "{% url 'user:GetObjectPermissions' %}"
     "USER_GLOBAL_LICENSE": "{% url 'user:global_license' %}"
     "USER_OVERVIEW": "{% url 'user:overview' %}"

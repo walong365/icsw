@@ -1,7 +1,8 @@
 <script type="text/ng-template" id="icsw.user.login.page">
     <div class="row">
+        HERE {{ initProduct.name }} THERE {{ initProduct }} FOO
         <div ng-class="gfx_class()" ng-style="gfx_style()">
-            <img width="100%;" ng-src="{{ ICSW_URLS.MENU_GFX_BIG_URL }}" alt="{{ INIT_PRODUCT_NAME }} logo"/>
+            <img width="100%;" ng-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
         </div>
         <div ng-class="login_class()">
             <div class="well"  style="margin-top:60px;">

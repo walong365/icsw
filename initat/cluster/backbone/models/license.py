@@ -73,7 +73,6 @@ class LicenseState(enum.IntEnum):
 class _LicenseManager(models.Manager):
     """
     Interface to licenses in db.
-    NOTE: These functions currently return license ids as strings, not as enums.
     """
 
     def _get_license_state(self, license, parameters=None, ignore_violations=False):
@@ -99,7 +98,10 @@ class _LicenseManager(models.Manager):
         """
         return self._get_license_state(license, parameters, ignore_violations=ignore_violations).is_valid()
 
-    def get_local_product(self):
+    ########################################
+    # Accessors for views for client
+
+    def get_init_product(self):
         valid_lics = set(self.get_valid_licenses())
         product_licenses = set()
         for available_lic in get_available_licenses():
@@ -107,15 +109,19 @@ class _LicenseManager(models.Manager):
                 if available_lic.product is not None:
                     product_licenses.add(available_lic.product)
 
-        product_licenses.remove(InitProduct.CORVUS)  # this currently means nothing
+        # this does currently not happen:
+        if InitProduct.CORVUS in product_licenses:
+            return InitProduct.CORVUS
+
+        # unlicensed version
+        if not product_licenses:
+            return InitProduct.NESTOR
+
         if InitProduct.NESTOR in product_licenses and InitProduct.NOCTUA in product_licenses:
             return InitProduct.CORVUS
         else:
             # can only contain one
             return next(iter(product_licenses))
-
-    ########################################
-    # Accessors for views for client
 
     def get_valid_licenses(self):
         """Returns all licenses which are active (and should be displayed to the user)"""
