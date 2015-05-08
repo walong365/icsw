@@ -532,6 +532,13 @@ class server_process(threading_tools.process_pool):
                     )
                 ),
                 (
+                    "LDLINUX.E64",
+                    configfile.blob_c_var(
+                        file(os.path.join(syslinux_dir, "efi64", "com32", "elflink", "ldlinux", "ldlinux.e64"), "rb").read(),
+                        source="filesystem"
+                    )
+                ),
+                (
                     "BOOTIA32.EFI",
                     configfile.blob_c_var(
                         open(os.path.join(syslinux_dir, "efi32", "efi", "syslinux.efi"), "rb").read(),

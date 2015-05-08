@@ -1427,6 +1427,7 @@ class node_control_process(threading_tools.process_obj):
             ("pxelinux.0", "PXELINUX.0"),
             ("memdisk", "MEMDISK"),
             ("ldlinux.c32", "LDLINUX.C32"),
+            ("ldlinux.e32", "LDLINUX.E64"),
             ("mboot.c32", "MBOOT.C32"),
             ("bootx64.efi", "BOOTX64.EFI"),
             ("bootia32.efi", "BOOTIA32.EFI"),
