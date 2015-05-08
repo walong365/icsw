@@ -360,7 +360,8 @@ class Host(object):
 
     def add_ping_info(self, cur_dev):
         # print "add_ping_info", etree.tostring(cur_dev)
-        if int(cur_dev.attrib["ok"]):
+        # print cur_dev.attrib
+        if int(cur_dev.attrib.get("ok", "0")):
             cur_dev.attrib["network"] = self.ip_dict[cur_dev.attrib["ip"]].network.identifier
             # print self.ip_dict[cur_dev.attrib["ip"]]
         else:
@@ -1094,8 +1095,14 @@ class Host(object):
                         'set statements = "' +
                         'supersede host-name = \\"{}\\" ;'.format(self.device.name) +
                         'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
+                        'if option arch = 00:06 { ' +
                         'filename = \\"etherboot/pxelinux.0\\" ; ' +
-                        '} "'
+                        "} else if option arch = 00:07 { " +
+                        'filename = \\"etherboot/bootx64.efi\\" ; ' +
+                        "} else { " +
+                        'filename = \\"etherboot/pxelinux.0\\" ; ' +
+                        '} ' +
+                        '}"'
                     ]
                 )
                 om_array.append('create')

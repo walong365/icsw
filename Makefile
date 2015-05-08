@@ -99,6 +99,8 @@ build:
 	${MAKE} -C c_progs
 	${MAKE} -C c_clients
 	${PYTHON} ./setup.py build
+	mkdir pxelinux ; \
+	cd pxelinux ; \
 	tar --transform s:^.*/:: -xjf syslinux-${VERSION_SYSLINUX}.tar.bz2 \
 		syslinux-${VERSION_SYSLINUX}/bios/gpxe/gpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/lpxelinux.0 \
@@ -106,7 +108,10 @@ build:
 		syslinux-${VERSION_SYSLINUX}/bios/memdisk/memdisk \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/lib/libcom32.c32 \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/elflink/ldlinux/ldlinux.c32 \
-		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32
+		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32 \
+		syslinux-${VERSION_SYSLINUX}/efi32/efi/syslinux.efi \
+		syslinux-${VERSION_SYSLINUX}/efi64/efi/syslinux.efi ; \
+	cd .. ; \
 	unzip memtest*zip
 
 install:

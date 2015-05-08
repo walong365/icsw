@@ -148,7 +148,7 @@ class hc_command(object):
                     )
             else:
                 self.log(
-                    "cannot handle mode '{}' for {}".format(
+                    "cannot handle mode '{}' for {}, no scheme or IPMI flag set ?".format(
                         _mode,
                         unicode(self.cd_obj.parent),
                     ),
