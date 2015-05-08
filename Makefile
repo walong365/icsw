@@ -101,7 +101,7 @@ build:
 	${PYTHON} ./setup.py build
 	mkdir syslinux ; \
 	cd syslinux ; \
-	tar --transform s:^.*/:: -xjf syslinux-${VERSION_SYSLINUX}.tar.bz2 \
+	tar -xjf ../syslinux-${VERSION_SYSLINUX}.tar.bz2 \
 		syslinux-${VERSION_SYSLINUX}/bios/gpxe/gpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/lpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/pxelinux.0 \
