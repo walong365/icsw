@@ -1080,6 +1080,7 @@ class Host(object):
                 'set name = "{}"'.format(self.device.name),
             ]
             if om_shell_com == "write":
+                server_ip = self.server_ip_dict[self.maint_ip.ip]["ip"]
                 om_array.extend(
                     [
                         'set hardware-address = {}'.format(self.device.bootnetdevice.macaddr),
@@ -1092,6 +1093,7 @@ class Host(object):
                         'set statements = "' +
                         'supersede host-name = \\"{}\\" ;'.format(self.device.name) +
                         'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
+                        "next-server {} ; ".format(server_ip) +
                         'if option arch = 00:06 { ' +
                         'filename = \\"etherboot/pxelinux.0\\" ; ' +
                         "} else if option arch = 00:07 { " +
@@ -1427,7 +1429,7 @@ class node_control_process(threading_tools.process_obj):
             ("pxelinux.0", "PXELINUX.0"),
             ("memdisk", "MEMDISK"),
             ("ldlinux.c32", "LDLINUX.C32"),
-            ("ldlinux.e32", "LDLINUX.E64"),
+            ("ldlinux.e64", "LDLINUX.E64"),
             ("mboot.c32", "MBOOT.C32"),
             ("bootx64.efi", "BOOTX64.EFI"),
             ("bootia32.efi", "BOOTIA32.EFI"),
@@ -1455,7 +1457,8 @@ class node_control_process(threading_tools.process_obj):
                 except:
                     self.log("cannot create {}: {}".format(t_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                 else:
-                    self.log("created {}".format(t_file))
+                    os.chmod(t_file, 0444)
+                    self.log("created {} (mode 0444)".format(t_file))
             else:
                 self.log("key {} not found in global_config".format(key_name), logging_tools.LOG_LEVEL_CRITICAL)
         # cleanup pxelinux.cfg
