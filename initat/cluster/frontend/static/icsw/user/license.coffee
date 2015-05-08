@@ -224,7 +224,6 @@ angular.module(
         calculate_license_state: (packages, license_id=undefined, cluster_id=undefined) ->
             # calculate the current state of either all licenses in a package or of a certain one for a given cluster_id or all cluster_ids
 
-            # TODO: split up for licadmin and user.license view
             state = undefined
             if packages.length
                 states = []
@@ -233,34 +232,22 @@ angular.module(
 
                     check_licenses = (lic_list) ->
                         for pack_lic in lic_list
-                            # HACK in licadmin mode, license_id is db index, and in django mode, it's id string, hence both comparisons
-                            if !license_id? or pack_lic.id == license_id or pack_lic.license == license_id
-                                if !pack_lic?
-                                    return  # TODO: investigate
+                            if !license_id? or pack_lic.id == license_id
                                 lic_state = _get_license_state_internal(pack_lic)
                                 lic_state[1].package = pack
                                 lic_state[1].lic = pack_lic
                                 states.push(lic_state)
 
-                    if pack.licenses?
-                        # has list of licenses (usually call from licadmin)
-                        if !cluster_id?
-                            check_licenses(pack.licenses)
-                        else
-                            # HACK: in licadmin mode, cluster_id is index in db
-                            check_licenses(pack.licenses.filter((elem) -> return elem.cluster_id == cluster_id))
-                    else
-                        # has dict of cluster_licenses (get_license_packages django view)
-                        for cluster_id_iter, cluster_lic_list of pack.cluster_licenses
-                            # HACK: in django mode, cluster_id is string (actual cluster id)
-                            if cluster_id_iter == cluster_id
-                                check_licenses(cluster_lic_list)
+                    # has dict of cluster_licenses (get_license_packages django view)
+                    for cluster_id_iter, cluster_lic_list of pack.cluster_licenses
+                        # HACK: in django mode, cluster_id is string (actual cluster id)
+                        if cluster_id_iter == cluster_id
+                            check_licenses(cluster_lic_list)
 
                 states.sort()
                 if states.length
                     state = states[0][1]
 
-            # this is user.license only:
             if data.license_violations[license_id]? and data.license_violations[license_id].type == 'hard'
                 if !state?
                     state = {}
