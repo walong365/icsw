@@ -96,6 +96,9 @@ def do_nets(conf):
             elif sys_dict["vendor"] == "debian":
                 new_co = conf.add_file_object("/etc/hostname")
                 new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+            elif sys_dict["vendor"] in ["centos", "redhat"]:
+                new_co = conf.add_file_object("/etc/hostname")
+                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             else:
                 new_co = conf.add_file_object("/etc/sysconfig/network", append=True)
                 new_co += "HOSTNAME=%s" % (conf_dict["host"])
