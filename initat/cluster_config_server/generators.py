@@ -37,7 +37,7 @@ import networkx
 
 def do_uuid(conf):
     conf_dict = conf.conf_dict
-    uuid_str = "urn:uuid:%s" % (conf_dict["device"].uuid)
+    uuid_str = "urn:uuid:{}".format(conf_dict["device"].uuid)
     cdf_file = conf.add_file_object("/etc/sysconfig/cluster/.cluster_device_uuid")
     cdf_file.append(uuid_str)
     hm_uuid = conf.add_file_object("/etc/sysconfig/host-monitoring.d/0mq_id")
@@ -212,7 +212,7 @@ def do_nets(conf):
                 "PEERDNS": "no",
                 "TYPE": "Ethernet",
                 "IPV6INIT": "no",
-                "NAME": cur_net.devname,
+                "NAME": cur_nd.devname,
             }
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
                 if cur_nd.macaddr.replace(":", "").replace("0", "").strip():

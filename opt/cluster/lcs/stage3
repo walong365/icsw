@@ -38,12 +38,12 @@ echo "umount /initrd"
 umount -l /initrd
 
 for fbd in /dev/ram0 /dev/ram1 ; do
-    echo "Flushing buffers for $[fbd}"
+    echo "Flushing buffers for ${fbd}"
     blockdev --flushbufs ${fbd}
 done
 
 echo "removing /initrd- and chroot related files"
-rmdir /initrd
+[ -d /initrd ] && rmdir /initrd
 rm -f /*chroot*
 
 echo "Remounting '/' readonly ..."

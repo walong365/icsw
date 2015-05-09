@@ -1171,7 +1171,9 @@ elif [ "$do_mount" = "1" ] ; then
         echo "IMAGE_NAME=${image}" > /${basedir}/.icswinfo/imageinfo
         echo "IMAGE_VERSION=${image_version}.${image_release}" >> /${basedir}/.icswinfo/imageinfo
 # fixing fstab
-        rm -f /$basedir/etc/fstab /$basedir/etc/mtab
+        rm -f /$basedir/etc/fstab
+# delete mtab if it is not a link
+        [ -L /$basedir/etc/mtab ] || rm -f /$basedir/etc/mtab
         cat /conf/pinfo/fstab > /$basedir/etc/fstab
         # /etc/mtab is now a link to /proc/self/mounts
         # /etc/mtab is now a link to /proc/self/mounts

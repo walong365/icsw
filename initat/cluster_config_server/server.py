@@ -237,13 +237,13 @@ class server_process(threading_tools.process_pool):
     def _handle_wfe_command(self, zmq_sock, c_uid, srv_com):
         cur_com = srv_com["command"].text
         self.__run_idx += 1
-        srv_com["command"].attrib["run_idx"] = "%d" % (self.__run_idx)
+        srv_com["command"].attrib["run_idx"] = "{:d}".format(self.__run_idx)
         srv_com["command"].attrib["uuid"] = c_uid
         self.__pending_commands[self.__run_idx] = srv_com
         # get device names
         device_list = device.objects.select_related("domain_tree_node").filter(Q(pk__in=[cur_dev.attrib["pk"] for cur_dev in srv_com["devices:devices"]]))
         self.log(
-            "got command {} for {}: {}" % (
+            "got command {} for {}: {}".format(
                 cur_com,
                 logging_tools.get_plural("device", len(device_list)),
                 ", ".join([unicode(cur_dev) for cur_dev in device_list])
@@ -265,24 +265,29 @@ class server_process(threading_tools.process_pool):
         cur_com = server_command.srv_command(command="build_config")
         cur_com["devices"] = cur_com.builder(
             "devices",
-            cur_com.builder("device", pk="%d" % (s_req.cc.device.pk))
+            cur_com.builder("device", pk="{:d}".format(s_req.cc.device.pk))
         )
         cur_com["command"].attrib["source"] = "config_control"
         self._handle_wfe_command(None, str(queue_id), cur_com)
 
     def _handle_command(self, run_idx):
         cur_com = self.__pending_commands[run_idx]
+        num_devs = 0
         for cur_dev in cur_com["devices:devices"]:
+            num_devs += 1
             if cur_dev.attrib["internal_state"] == "pre_init":
                 cur_dev.attrib["internal_state"] = "generate_config"
                 self.send_to_process(
                     "build",
                     cur_dev.attrib["internal_state"],
                     dict(cur_dev.attrib),
-                    )
+                )
         num_pending = len(cur_com.xpath(".//ns:device[not(@internal_state='done')]", smart_strings=False))
         if not num_pending:
             self.log("nothing pending, sending return")
+            cur_com.set_result(
+                "built config for {}".format(logging_tools.get_plural("device", num_devs)),
+            )
             self._send_return(cur_com)
             del self.__pending_commands[run_idx]
 
