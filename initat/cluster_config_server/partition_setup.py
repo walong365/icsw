@@ -21,6 +21,8 @@
 #
 """ cluster-config-server, partition setup"""
 
+import os
+
 from initat.tools import logging_tools
 from django.db.models import Q
 from initat.cluster.backbone.models import partition, sys_partition
@@ -33,7 +35,9 @@ class partition_setup(object):
         part_list = partition.objects.filter(
             Q(partition_disc__partition_table=conf.conf_dict["device"].partition_table)
         ).select_related(
-            "partition_disc", "partition_disc__partition_table", "partition_fs"
+            "partition_disc",
+            "partition_disc__partition_table",
+            "partition_fs",
         )
         if len(part_list):
             part_valid = True
@@ -159,4 +163,4 @@ class partition_setup(object):
                 ("sfdisk", "\n".join(self.sfdisk)),
                 ("parted", "\n".join(self.parted))
             ]:
-                file("%s/%s" % (pinfo_dir, file_name), "w").write("%s\n" % (content))
+                file(os.path.join(pinfo_dir, file_name), "w").write("{}\n".format(content))

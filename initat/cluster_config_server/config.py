@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,11 +19,11 @@
 #
 """ cluster-config-server, configuration and constants """
 
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
 from initat.tools import configfile
 from initat.tools import process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
+
+SERVER_PORT = 8005
+NCS_PORT = 8010
+GATEWAY_THRESHOLD = 1000

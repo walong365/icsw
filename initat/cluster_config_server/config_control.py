@@ -19,17 +19,18 @@
 #
 """ cluster-config-server, config control """
 
+import crypt
+import os
+import time
+
 from django.db.models import Q
-from initat.cluster.backbone.models import device, partition, kernel, image, DeviceBootHistory
+from initat.cluster.backbone.models import device, partition, DeviceBootHistory
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.simple_request import simple_request, var_cache
 from initat.tools import config_tools
-import crypt
 from initat.tools import logging_tools
 from initat.tools import module_dependency_tools
-import os
 from initat.tools import process_tools
-import time
 
 
 class config_control(object):

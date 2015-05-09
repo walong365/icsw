@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -178,8 +178,10 @@ class server_process(threading_tools.process_pool):
                         try:
                             new_dev = device.objects.get(Q(uuid=src_id) | Q(uuid__startswith=src_id[:-5]))
                         except device.DoesNotExist:
-                            self.log("no device with UUID %s found in database" % (src_id),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "no device with UUID {} found in database".format(src_id),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                             cur_c = None
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode("error unknown UUID")
@@ -217,16 +219,20 @@ class server_process(threading_tools.process_pool):
                         try:
                             cur_client = None  # client.get(c_uid)
                         except KeyError:
-                            self.log("unknown uid %s, not known" % (c_uid),
-                                     logging_tools.LOG_LEVEL_CRITICAL)
+                            self.log(
+                                "unknown uid {}, not known".format(c_uid),
+                                logging_tools.LOG_LEVEL_CRITICAL
+                            )
                         else:
                             if cur_client is None:
-                                self.log("cur_client is None (command: %s)" % (cur_com), logging_tools.LOG_LEVEL_WARN)
+                                self.log("cur_client is None (command: {})".format(cur_com), logging_tools.LOG_LEVEL_WARN)
                             else:
                                 cur_client.new_command(srv_com)
         else:
-            self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "wrong number of data chunks ({:d} != 2), data is '{}'".format(len(data), data[:20]),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _handle_wfe_command(self, zmq_sock, c_uid, srv_com):
         cur_com = srv_com["command"].text
@@ -236,10 +242,13 @@ class server_process(threading_tools.process_pool):
         self.__pending_commands[self.__run_idx] = srv_com
         # get device names
         device_list = device.objects.select_related("domain_tree_node").filter(Q(pk__in=[cur_dev.attrib["pk"] for cur_dev in srv_com["devices:devices"]]))
-        self.log("got command %s for %s: %s" % (
-            cur_com,
-            logging_tools.get_plural("device", len(device_list)),
-            ", ".join([unicode(cur_dev) for cur_dev in device_list])))
+        self.log(
+            "got command {} for {}: {}" % (
+                cur_com,
+                logging_tools.get_plural("device", len(device_list)),
+                ", ".join([unicode(cur_dev) for cur_dev in device_list])
+            )
+        )
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device_list])
         # set device state
         for cur_dev in srv_com["devices:devices"]:
@@ -293,7 +302,7 @@ class server_process(threading_tools.process_pool):
         run_idx = upd_dict.get("run_idx", -1)
         if run_idx in self.__pending_commands:
             cur_com = self.__pending_commands[run_idx]
-            cur_dev = cur_com.xpath(".//ns:device[@name='%s']" % (upd_dict["name"]), smart_strings=False)[0]
+            cur_dev = cur_com.xpath(".//ns:device[@name='{}']".format(upd_dict["name"]), smart_strings=False)[0]
             for key, value in upd_dict.iteritems():
                 if key.endswith("_dict"):
                     new_dict = E.info_dict()
@@ -324,8 +333,10 @@ class server_process(threading_tools.process_pool):
                         cur_dev.attrib[key] = value
             self._handle_command(run_idx)
         else:
-            self.log("got client_update with unknown run_idx %d" % (upd_dict["run_idx"]),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "got client_update with unknown run_idx {:d}".format(upd_dict["run_idx"]),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _complex_result(self, src_proc, src_id, queue_id, result, **kwargs):
         config_control.complex_result(queue_id, result)

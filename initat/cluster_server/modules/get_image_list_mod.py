@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -42,7 +42,7 @@ class get_image_list(cs_base_class.server_com):
                 dirs_found = os.listdir(t_dir)
                 if len([x for x in dirs_found if x in NEEDED_IMAGE_DIRS]) == len(NEEDED_IMAGE_DIRS):
                     try:
-                        _log_lines, sys_dict = process_tools.fetch_sysinfo(t_dir)
+                        _log_lines, sys_dict = process_tools.fetch_sysinfo(root_dir=t_dir)
                     except:
                         sys_dict = {}
                     else:
@@ -58,10 +58,13 @@ class get_image_list(cs_base_class.server_com):
                     valid_sys[os.path.basename(t_dir)] = sys_dict
                 else:
                     dirs_missing = [x for x in NEEDED_IMAGE_DIRS if x not in dirs_found]
-                    self.log("  ... skipping {} ({} [{}] missing)".format(
-                        t_dir,
-                        logging_tools.get_plural("subdirectory", len(dirs_missing)),
-                        ", ".join(dirs_missing)))
+                    self.log(
+                        "  ... skipping {} ({} [{}] missing)".format(
+                            t_dir,
+                            logging_tools.get_plural("subdirectory", len(dirs_missing)),
+                            ", ".join(dirs_missing)
+                        )
+                    )
             cur_inst.srv_com.set_result(
                 "found {}".format(logging_tools.get_plural("image", len(valid_sys.keys())))
             )

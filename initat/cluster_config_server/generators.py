@@ -19,20 +19,20 @@
 #
 """ cluster-config-server, config generators """
 
-from django.db.models import Q
-from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.config_static import GATEWAY_THRESHOLD
-from initat.cluster_config_server.partition_setup import partition_setup
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
 import base64
 import commands
-from initat.tools import logging_tools
-import networkx
 import os
 import re
 import tempfile
+
+from django.db.models import Q
+from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
+from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
+from initat.cluster_config_server.partition_setup import partition_setup
+from lxml.builder import E  # @UnresolvedImport
+from initat.tools import logging_tools
+import networkx
 
 
 def do_uuid(conf):
@@ -194,11 +194,11 @@ def do_nets(conf):
                     glob_nf += "    hwaddress ether %s" % (cur_nd.fake_macaddr)
         else:
             # redhat-mode
-            act_filename = "ifcfg-%s" % (cur_nd.devname)
+            act_filename = "ifcfg-{}".format(cur_nd.devname)
             if cur_nd.devname == "lo":
-                d_file = "/etc/sysconfig/network-scripts/%s" % (act_filename)
+                d_file = "/etc/sysconfig/network-scripts/{}".format(act_filename)
             else:
-                d_file = "/etc/sysconfig/network-scripts/%s" % (act_filename)
+                d_file = "/etc/sysconfig/network-scripts/{}".format(act_filename)
             new_co = conf.add_file_object(d_file)
             new_co += {
                 "BOOTPROTO": "static",
@@ -212,6 +212,7 @@ def do_nets(conf):
                 "PEERDNS": "no",
                 "TYPE": "Ethernet",
                 "IPV6INIT": "no",
+                "NAME": cur_net.devname,
             }
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
                 if cur_nd.macaddr.replace(":", "").replace("0", "").strip():
@@ -220,13 +221,13 @@ def do_nets(conf):
     # handle virtual interfaces for Systems above SUSE 9.0
     for orig, virtuals in append_dict.iteritems():
         for virt, stuff in virtuals.iteritems():
-            co = conf.add_file_object("/etc/sysconfig/network/ifcfg-eth-id-%s" % (dev_dict[orig]))
+            co = conf.add_file_object("/etc/sysconfig/network/ifcfg-eth-id-{}".format(dev_dict[orig]))
             co += {
-                "BROADCAST_%s" % (virt): stuff["BROADCAST"],
-                "IPADDR_%s" % (virt): stuff["IPADDR"],
-                "NETMASK_%s" % (virt): stuff["NETMASK"],
-                "NETWORK_%s" % (virt): stuff["NETWORK"],
-                "LABEL_%s" % (virt): virt
+                "BROADCAST_{}".format(virt): stuff["BROADCAST"],
+                "IPADDR_{}".format(virt): stuff["IPADDR"],
+                "NETMASK_{}".format(virt): stuff["NETMASK"],
+                "NETWORK_{}".format(virt): stuff["NETWORK"],
+                "LABEL_{}".format(virt): virt
             }
 
 
@@ -308,7 +309,7 @@ def do_routes(conf):
         gw_source, def_ip, boot_dev, boot_mac = get_default_gw(conf)
         if def_ip:
             if sys_dict["vendor"] == "suse":
-                new_co += "# from %s" % (gw_source)
+                new_co += "# from {}".format(gw_source)
                 if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10):
                     # openSUSE 10.3
                     new_co += "default %s - %s" % (def_ip, boot_dev)
@@ -317,8 +318,8 @@ def do_routes(conf):
             elif sys_dict["vendor"] == "redhat" or sys_dict["vendor"].lower().startswith("centos"):
                 # redhat-mode
                 act_co = conf.add_file_object("/etc/sysconfig/network", append=True)
-                act_co += "# from %s" % (gw_source)
-                act_co += "GATEWAY=%s" % (def_ip)
+                act_co += "# from {}".format(gw_source)
+                act_co += "GATEWAY={}".format(def_ip)
 
 
 def do_ssh(conf):
@@ -336,9 +337,12 @@ def do_ssh(conf):
             pass
         else:
             found_keys_dict[cur_var.name] = cur_val
-    print "found %s in database: %s" % (
-        logging_tools.get_plural("key", len(found_keys_dict.keys())),
-        ", ".join(sorted(found_keys_dict.keys())))
+    print(
+        "found {} in database: {}".format(
+            logging_tools.get_plural("key", len(found_keys_dict.keys())),
+            ", ".join(sorted(found_keys_dict.keys()))
+        )
+    )
     new_keys = []
     for ssh_type, key_size in ssh_types:
         privfn = "ssh_host_%s_key" % (ssh_type)
