@@ -257,7 +257,8 @@ rest_patterns = patterns(
 dyndoc_patterns = patterns(
     "initat.cluster.frontend",
     url(r"^hb/root$", doc_views.test_page.as_view(), name="doc_root"),
-    url(r"^hb/(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
+    # TODO: fix handbook prefix in accordance with actual handbook html
+    url(r"^(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
 )
 
 doc_patterns = patterns(

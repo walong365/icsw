@@ -523,14 +523,7 @@ HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
 
 HANDBOOK_PDF_PRESENT = bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf")))
 
-# TODO
-HANDBOOK_CHUNKS = {}
-if os.path.isdir(os.path.join(HANDBOOK_DIR, "chunks")):
-    for _path, _dirs, _files in os.walk(os.path.join(HANDBOOK_DIR, "chunks")):
-        for _add in [_entry for _entry in _files if _entry.endswith(".xhtml")]:
-            HANDBOOK_CHUNKS[_add.split(".")[0]] = os.path.join(_path, _add)
-
-HANDBOOK_CHUNKS_PRESENT = bool(HANDBOOK_CHUNKS)
+HANDBOOK_CHUNKS_PRESENT = bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk")))
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 

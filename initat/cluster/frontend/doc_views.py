@@ -34,15 +34,18 @@ logger = logging.getLogger("cluster.doc")
 
 class doc_page(View):
     def get(self, request, page):
-        if page.startswith("images/"):
+        if page.startswith("images/") or page.endswith(".png"):
             # dirty hack
             return HttpResponse(file(os.path.join(settings.HANDBOOK_DIR, page), "rb").read())
         elif page.endswith(".css"):
             return HttpResponse(file(os.path.join(settings.HANDBOOK_DIR, "chunks", page), "rb").read())
         else:
-            if not page.endswith(".xhtml"):
-                page = "{}.xhtml".format(page)
-            return render_me(request, "docu_root.html", {"chunk_name": page})
+            # TODO: proper system for displaying html documentation
+            # return render_me(request, "docu_root.html", {"chunk_name": page})
+            return HttpResponse(file(os.path.join(settings.HANDBOOK_DIR, "corvus_handbook.html"), "rb").read())
+            # if not page.endswith(".xhtml"):
+            #     page = "{}.xhtml".format(page)
+            # return render_me(request, "docu_root.html", {"chunk_name": page})
             # if page.endswith(".xhtml"):
             #    page = page.split(".")[0]
             # this won't work anymore // BM 11052015

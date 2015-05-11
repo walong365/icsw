@@ -87,7 +87,7 @@ menu_module = angular.module(
             window.open(
                 ICSW_URLS.DYNDOC_PAGE_X.slice(0, -1) + $scope.HANDBOOK_PAGE
                 "cluster documenation"
-                "height=400,width=400,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
+                "height=500,width=600,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
             )
             return false
         $scope.redirect_to_bgj_info = () ->
