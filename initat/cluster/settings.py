@@ -521,8 +521,9 @@ ALLOWED_INCLUDE_ROOTS = SSI_ROOTS
 
 HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
 
-HANDBOOK_PDF_PRESENT = os.path.exists(os.path.join(HANDBOOK_DIR, "corvus_handbook.pdf"))
+HANDBOOK_PDF_PRESENT = bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf")))
 
+# TODO
 HANDBOOK_CHUNKS = {}
 if os.path.isdir(os.path.join(HANDBOOK_DIR, "chunks")):
     for _path, _dirs, _files in os.walk(os.path.join(HANDBOOK_DIR, "chunks")):
