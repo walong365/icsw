@@ -45,17 +45,28 @@ def main():
         print("No device named '{}' found".format(opts.dev))
         sys.exit(1)
     for cur_dev in [cur_dev]:
-        print(u"Information about device '{}' (devicegroup {})".format(
+        print(u"Information about device '{}' (full name {}, devicegroup {})".format(
             unicode(cur_dev),
+            unicode(cur_dev.full_name),
             unicode(cur_dev.device_group))
         )
-        print("UUID is '{}'".format(cur_dev.uuid))
+        print("UUID is '{}', database-ID is {:d}".format(cur_dev.uuid, cur_dev.pk))
         net_devs = cur_dev.netdevice_set.all().order_by("devname")
-        for cur_nd in net_devs:
-            print("   {} ({})".format(
-                cur_nd.devname,
-                ", ".join([cur_ip.ip for cur_ip in cur_nd.net_ip_set.all().order_by("ip")]) or "no IPs")
-            )
+        if len(net_devs):
+            for cur_nd in net_devs:
+                print(
+                    "    {}".format(
+                        cur_nd.devname,
+                    )
+                )
+                for cur_ip in cur_nd.net_ip_set.all().order_by("ip"):
+                    print(
+                        "        IP {} in network {}".format(
+                            cur_ip.ip,
+                            unicode(cur_ip.network),
+                        )
+                    )
+        print("")
         if cur_dev.deviceboothistory_set.count():
             _brs = cur_dev.deviceboothistory_set.all()
             print("found {}".format(logging_tools.get_plural("boot record", len(_brs))))

@@ -25,9 +25,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.rms.config_static import COM_PORT
 from initat.rms.functions import call_command
-from initat.rms.config import global_config
+from initat.rms.config import global_config, COM_PORT
 from initat.rms.server import server_process
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream

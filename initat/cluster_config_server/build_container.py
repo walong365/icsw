@@ -410,9 +410,11 @@ class build_container(object):
                 except:
                     exc_info = process_tools.exception_info()
                     conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
-                    self.log("An Error occured during eval() after %s:" % (logging_tools.get_diff_time_str(time.time() - start_time)),
-                             logging_tools.LOG_LEVEL_ERROR,
-                             register=True)
+                    self.log(
+                        "An Error occured during eval() after {}:".format(logging_tools.get_diff_time_str(time.time() - start_time)),
+                        logging_tools.LOG_LEVEL_ERROR,
+                        register=True
+                    )
                     for line in exc_info.log_lines:
                         self.log(" *** {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                     # log stdout / stderr

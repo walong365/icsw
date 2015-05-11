@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -160,8 +160,10 @@ class build_client(object):
         try:
             loc_ps = partition_setup(dummy_cont)
         except:
-            self.log("cannot generate partition info: %s" % (process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot generate partition info: {}".format(process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             base_dir = os.path.join(global_config["CONFIG_DIR"], loc_dev.name)
             pinfo_dir = os.path.join(base_dir, "pinfo")

@@ -5,7 +5,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -50,13 +50,11 @@ MOUNT_STRING="mounting config"
 # see hoststatus_zmq.c, stage1, stage2
 HOSTSTAT_FILE=/conf/.hoststat
 
-if [ true ] ; then
-    BOLD="\033[1m"
-    RED="\033[31m"
-    GREEN="\033[32m"
-    YELLOW="\033[33m"
-    OFF="\033[m"
-fi
+BOLD="\033[1m"
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+OFF="\033[m"
 
 [ ! -f /bin/sh ] && ln -s /bin/bash /bin/sh
 
@@ -1108,10 +1106,10 @@ elif [ "$do_mount" = "1" ] ; then
             
             set_hoststat ${INS_MESG}
             mount_it "image" $image_server:$image_dir/$image /images "${RO_MOUNTOPTS}"
-            if [ -f /images/sbin.tar.gz ] ; then
+            if [ -f /images/etc.tar.gz ] ; then
                 imtype=gz
                 tar_flags="-xzf"
-            elif [ -f /images/sbin.tar.xz ] ; then
+            elif [ -f /images/etc.tar.xz ] ; then
                 imtype=xz
                 tar_flags="-xJf"
             else
@@ -1173,7 +1171,9 @@ elif [ "$do_mount" = "1" ] ; then
         echo "IMAGE_NAME=${image}" > /${basedir}/.icswinfo/imageinfo
         echo "IMAGE_VERSION=${image_version}.${image_release}" >> /${basedir}/.icswinfo/imageinfo
 # fixing fstab
-        rm -f /$basedir/etc/fstab /$basedir/etc/mtab
+        rm -f /$basedir/etc/fstab
+# delete mtab if it is not a link
+        [ -L /$basedir/etc/mtab ] || rm -f /$basedir/etc/mtab
         cat /conf/pinfo/fstab > /$basedir/etc/fstab
         # /etc/mtab is now a link to /proc/self/mounts
         # /etc/mtab is now a link to /proc/self/mounts

@@ -1557,7 +1557,6 @@ class node_control_process(threading_tools.process_obj):
         # a ping has finished
         new_pending = []
         cd_ping = id_str.startswith("mps_")
-        # print "pr", id_str
         for cur_com in self.pending_list:
             _processed = False
             if cd_ping:
