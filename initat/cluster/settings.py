@@ -521,7 +521,7 @@ ALLOWED_INCLUDE_ROOTS = SSI_ROOTS
 
 HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
 
-HANDBOOK_PDF_PRESENT = os.path.exists(os.path.join(HANDBOOK_DIR, "main.html"))
+HANDBOOK_PDF_PRESENT = os.path.exists(os.path.join(HANDBOOK_DIR, "corvus_handbook.pdf"))
 
 HANDBOOK_CHUNKS = {}
 if os.path.isdir(os.path.join(HANDBOOK_DIR, "chunks")):
@@ -529,7 +529,7 @@ if os.path.isdir(os.path.join(HANDBOOK_DIR, "chunks")):
         for _add in [_entry for _entry in _files if _entry.endswith(".xhtml")]:
             HANDBOOK_CHUNKS[_add.split(".")[0]] = os.path.join(_path, _add)
 
-HANDBOOK_CHUNKS_PRESENT = True if len(HANDBOOK_CHUNKS) else False
+HANDBOOK_CHUNKS_PRESENT = bool(HANDBOOK_CHUNKS)
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
