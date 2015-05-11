@@ -35,7 +35,7 @@ import reversion
 import initat
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.license import LicenseUsage
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from initat.cluster.frontend.rest_views import rest_logging
@@ -111,13 +111,16 @@ class get_historical_data(ListAPIView):
         deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict)
         version_queryset = reversion.models.Version.objects.filter(**filter_dict).select_related('revision')
 
-        sorted_data = sorted(
-            itertools.chain(
-                (format_version(ver) for ver in version_queryset),
-                (format_deletion(dele) for dele in deletion_queryset)
-            ),
-            key=lambda elem: elem['meta']['date'],
+        formatted = itertools.chain(
+            (format_version(ver) for ver in version_queryset),
+            (format_deletion(dele) for dele in deletion_queryset)
         )
+
+        allowed_by_lic = (elem for elem in formatted
+                          if not LicenseLockListDeviceService.objects.is_locked(license=LicenseEnum.snapshot,
+                                                                                device_id=elem['meta']['object_id']))
+
+        sorted_data = sorted(allowed_by_lic, key=lambda elem: elem['meta']['date'])
 
         foreign_keys = {foreign_key.name: foreign_key for foreign_key in model._meta.concrete_model._meta.local_fields
                         if isinstance(foreign_key, ForeignKey)}
@@ -150,7 +153,15 @@ class get_historical_data(ListAPIView):
         # calc change and type info
         last_entry_by_pk = {}
         for entry in sorted_data:
+
             pk = entry['meta']['object_id']
+
+            if model == device:
+                try:
+                    # we log each pk individually in order to catch errors for devices which do not exist any more
+                    LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, pk)
+                except IntegrityError:
+                    pass
 
             # set missing type info
             if not entry['meta']['type']:
@@ -190,13 +201,6 @@ class get_historical_data(ListAPIView):
 
             last_entry_by_pk[pk] = entry['data']
             del entry['data']
-
-            if model == device:
-                try:
-                    # we log each pk individually in order to catch errors for devices which do not exist any more
-                    LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, pk)
-                except IntegrityError:
-                    pass
 
         # NOTE: entries must be in chronological, earliest first
         return Response(sorted_data)

@@ -43,9 +43,47 @@ __all__ = [
     "License",
     "LicenseEnum",
     "LicenseParameterTypeEnum",
+    "LicenseUsage",
+    "LicenseUsageDeviceService",
+    "LicenseUsageUser",
+    "LicenseUsageExtLicense",
+    "LicenseLockListDeviceService",
+    "LicenseLockListUser",
+    "LicenseLockListExtLicense",
 ]
 
 logger = logging.getLogger("cluster.icsw_license")
+
+
+# This module requires decorator. Install with 'easy_install decorator'.
+from decorator import decorator
+from time import time
+
+
+def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
+    def _memoize_with_expiry(func, *args, **kw):
+        # Determine what cache to use - the supplied one, or one we create inside the
+        # wrapped function.
+        if _cache is None and not hasattr(func, '_cache'):
+            func._cache = {}
+        cache = _cache or func._cache
+
+        mem_args = args[:num_args]
+        # frozenset is used to ensure hashability
+        if kw:
+            key = mem_args, frozenset(kw.iteritems())
+        else:
+            key = mem_args
+        if key in cache:
+            result, timestamp = cache[key]
+            # Check the age.
+            age = time() - timestamp
+            if not expiry_time or age < expiry_time:
+                return result
+        result = func(*args, **kw)
+        cache[key] = (result, time())
+        return result
+    return decorator(_memoize_with_expiry)
 
 
 class InitProduct(enum.Enum):
@@ -215,6 +253,18 @@ class _LicenseUsageExtLicense(models.Model):
         abstract = True
 
 
+class LicenseUsageDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
+    pass
+
+
+class LicenseUsageUser(_LicenseUsageBase, _LicenseUsageUser):
+    pass
+
+
+class LicenseUsageExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
+    pass
+
+
 class LicenseUsage(object):
     # utility
 
@@ -291,28 +341,33 @@ class LicenseViolation(_LicenseUsageBase):
     __repr__ = __unicode__
 
 
-class LicenseUsageDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
-    pass
+class _LicenseLockListManager(models.Manager):
+    @memoize_with_expiry(20)
+    def is_locked(self, license, **kwargs):
+        has_device = 'device' in kwargs or 'device_id' in kwargs
+        has_service = ('service' in kwargs or 'service_id' in kwargs)
 
+        if has_device and not has_service:
+            # we want device locks specifically
+            kwargs['service__isnull'] = True
 
-class LicenseUsageUser(_LicenseUsageBase, _LicenseUsageUser):
-    pass
+        if not has_device and has_service:
+            # we want service locks specifically
+            kwargs['device__isnull'] = True
 
-
-class LicenseUsageExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
-    pass
+        return self.filter(license=license.name, **kwargs).exists()
 
 
 class LicenseLockListDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
-    pass
+    objects = _LicenseLockListManager()
 
 
 class LicenseLockListUser(_LicenseUsageBase, _LicenseUsageUser):
-    pass
+    objects = _LicenseLockListManager()
 
 
 class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
-    pass
+    objects = _LicenseLockListManager()
 
 
 ########################################
