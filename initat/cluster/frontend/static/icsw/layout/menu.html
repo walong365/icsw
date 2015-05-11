@@ -28,7 +28,7 @@
                 </ul>
             </li>
             <li ng-show="
-                has_any_valid_license(['netboot', 'package_install'])
+                has_any_valid_license(['netboot', 'package_install', 'snapshot'])
                 &&
                 (has_menu_permission('device.change_boot') || has_menu_permission('package.package_install') ||
                  has_menu_permission('partition_fs.modify_partitions') || has_menu_permission('kernel.modify_kernels') || has_menu_permission('image.modify_images'))
