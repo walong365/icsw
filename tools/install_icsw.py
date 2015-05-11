@@ -92,8 +92,9 @@ class OSHandler(object):
 
 class SuseHandler(OSHandler):
     # version must be like "13.1"
-    CLUSTER_DEVEL_URL = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/cluster-devel"
-    EXTRA_URL = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/extra"
+    # CLUSTER_DEVEL_URL = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/cluster-devel"
+    # EXTRA_URL = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/extra"
+    ICSW_2_5_URl = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/icsw-2.5"
 
     def add_repos(self):
         suse_version = platform.linux_distribution()[1]
@@ -103,8 +104,9 @@ class SuseHandler(OSHandler):
             'version': suse_version,
         }
         repos = (
-            ("initat_cluster_devel", self.__class__.CLUSTER_DEVEL_URL.format(**expansions)),
-            ("initat_extra", self.__class__.EXTRA_URL.format(**expansions)),
+            # ("initat_cluster_devel", self.__class__.CLUSTER_DEVEL_URL.format(**expansions)),
+            # ("initat_extra", self.__class__.EXTRA_URL.format(**expansions)),
+            ("initat_2_5", self.__class__.ICSW_2_5_URl.format(**expansions)),
         )
 
         for repo_name, repo_url in repos:
@@ -145,13 +147,17 @@ class CentosHandler(OSHandler):
             }
 
         repos = (
+            # (
+            #     "initat_cluster_devel",
+            #     "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/cluster-devel".format(**expansions)
+            # ),
+            # (
+            #     "initat_extra",
+            #     "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/extra".format(**expansions)
+            # )
             (
-                "initat_cluster_devel",
-                "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/cluster-devel".format(**expansions)
-            ),
-            (
-                "initat_extra",
-                "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/extra".format(**expansions)
+                "initat_2_5",
+                "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/icsw-2.5".format(**expansions)
             )
         )
 
@@ -184,14 +190,19 @@ class AptgetHandler(OSHandler):
         if distro == "ubuntu":
             # we only support 12.04 explicitly as of now
             repos = (
+                # (
+                #     "initat_cluster_devel.list",
+                #   "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/cluster-devel precise main\n"
+                #     .format(**expansions),
+                # ),
+                # (
+                #     "initat_extra.list",
+                #     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/extra precise main\n"
+                #     .format(**expansions)
+                # )
                 (
-                    "initat_cluster_devel.list",
-                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/cluster-devel precise main\n"
-                    .format(**expansions),
-                ),
-                (
-                    "initat_extra.list",
-                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/extra precise main\n"
+                    "initat_2_5.list",
+                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/icsw-2.5 precise main\n"
                     .format(**expansions)
                 )
             )
@@ -207,14 +218,19 @@ class AptgetHandler(OSHandler):
                                    "Currently squeeze and wheezy are supported.")
 
             repos = (
-                (
-                    "initat_cluster_devel.list",
-                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/cluster-devel {rel} main\n"
-                    .format(rel=debian_release, **expansions)
-                ),
+                # (
+                #     "initat_cluster_devel.list",
+                #     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/cluster-devel {rel} main\n"
+                #     .format(rel=debian_release, **expansions)
+                # ),
+                # (
+                #     "initat_extra.list",
+                #     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/extra {rel} main\n"
+                #     .format(rel=debian_release, **expansions)
+                # )
                 (
                     "initat_extra.list",
-                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/extra {rel} main\n"
+                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/icsw-2.5 {rel} main\n"
                     .format(rel=debian_release, **expansions)
                 )
             )
