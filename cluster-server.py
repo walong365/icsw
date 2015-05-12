@@ -22,7 +22,7 @@
 from initat.cluster_server import main
 import sys
 
-if not any([_check in sys.argv for _check in ["-c", "-h", "--help"]]):
+if not any([_check in sys.argv for _check in ["-c", "-h", "--help", "--show-commands"]]):
     print("need command (specified via -c)")
     sys.exit(-1)
 sys.exit(main.main())

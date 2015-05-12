@@ -25,7 +25,12 @@
 import argparse
 from .service.service_parser import Parser as ServiceParser
 from .logwatch.logwatch_parser import Parser as LogwatchParser
-from .license.license_parser import Parser as LicenseParser
+
+try:
+    from .license.license_parser import Parser as LicenseParser
+except ImportError:
+    LicenseParser = None
+
 try:
     from .setup.parser import Parser as SetupParser
 except ImportError:

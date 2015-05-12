@@ -155,9 +155,14 @@ _CLIENT_TYPE_UUID_MAPPING = {
 def call_command(act_command, log_com, close_fds=False):
     log_com("calling command '{}'".format(act_command))
     s_time = time.time()
-    _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=close_fds, cwd="/")
-    ret_code = _sub.wait()
-    _stdout, _stderr = _sub.communicate()
+    try:
+        _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=close_fds, cwd="/")
+    except:
+        ret_code = 1
+        _stdout, _stderr = ("", get_except_info())
+    else:
+        ret_code = _sub.wait()
+        _stdout, _stderr = _sub.communicate()
     e_time = time.time()
     log_com(
         "execution took {}, return code was {:d}".format(
