@@ -56,9 +56,6 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-            ("USER", configfile.str_c_var("idnagios", help_string="user to run as [%(default)s]")),
-            ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
-            ("GROUPS", configfile.array_c_var([])),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
             ("LOG_NAME", configfile.str_c_var(prog_name)),
             (

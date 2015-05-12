@@ -3,7 +3,7 @@
     </instance>
     <instance check_type="meta" name="logging-server" runs_on="client" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver">
         <start-argument>
-            <arg key="user">idpacks</arg>
+            <arg key="user">idlog</arg>
             <arg key="group">idg</arg>
         </start-argument>
         <nice-level>15</nice-level>
