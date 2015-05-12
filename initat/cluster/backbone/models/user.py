@@ -40,7 +40,7 @@ from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models import LicenseUsage
+from initat.cluster.backbone.models.license import LicenseUsage
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \

@@ -31,8 +31,6 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
-from initat.cluster.backbone.available_licenses import LicenseParameterTypeEnum
-from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -43,7 +41,6 @@ from lxml.builder import E  # @UnresolvedImport
 import crypt
 import collections
 import datetime
-from initat.cluster.backbone.models.license import LicenseUsage
 import json
 import logging
 import marshal

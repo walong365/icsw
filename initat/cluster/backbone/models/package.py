@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models import LicenseUsage, LicenseParameterTypeEnum, LicenseEnum
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseParameterTypeEnum, LicenseEnum
 from initat.cluster.backbone.models.functions import _check_empty_string
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport

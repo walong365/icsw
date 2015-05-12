@@ -56,6 +56,13 @@ class get_models_with_history(RetrieveAPIView):
         return Response({model.__name__: model._meta.verbose_name for model in icsw_register.REGISTERED_MODELS})
 
 
+class DeletedObjectsCache(dict):
+    def __missing__(self, target_model):
+        value = {entry.pk: entry for entry in reversion.get_deleted(target_model)}
+        self[target_model] = value
+        return value
+
+
 class get_historical_data(ListAPIView):
     # noinspection PyUnresolvedReferences
     @method_decorator(login_required)
@@ -116,9 +123,11 @@ class get_historical_data(ListAPIView):
             (format_deletion(dele) for dele in deletion_queryset)
         )
 
-        allowed_by_lic = (elem for elem in formatted
-                          if not LicenseLockListDeviceService.objects.is_locked(license=LicenseEnum.snapshot,
-                                                                                device_id=elem['meta']['object_id']))
+        allowed_by_lic = (
+            elem for elem in formatted
+            if not LicenseLockListDeviceService.objects.is_device_locked(license=LicenseEnum.snapshot,
+                                                                         device_id=elem['meta']['object_id'])
+        )
 
         sorted_data = sorted(allowed_by_lic, key=lambda elem: elem['meta']['date'])
 
@@ -129,15 +138,16 @@ class get_historical_data(ListAPIView):
                 if m2m.rel.through._meta.auto_created}
         # only serialized m2ms, which are by djangos logic the ones which are not autocreated
 
+        deleted_objects_cache = DeletedObjectsCache()
+
         def resolve_reference(target_model, foreign_key_val):
             try:
                 return unicode(target_model.objects.get(pk=foreign_key_val))
             except target_model.DoesNotExist:
                 try:
-                    deleted_queryset = reversion.get_deleted(target_model)
                     # unicode on Version object gives the saved object repr, which we use here
-                    return unicode(deleted_queryset.get(object_id=foreign_key_val))
-                except ObjectDoesNotExist:
+                    return unicode(deleted_objects_cache[target_model][foreign_key_val])
+                except KeyError:
                     return u"untracked object"
 
         def get_human_readable_value(key, value):
@@ -150,6 +160,8 @@ class get_historical_data(ListAPIView):
             else:
                 return value
 
+        used_device_ids = set()
+
         # calc change and type info
         last_entry_by_pk = {}
         for entry in sorted_data:
@@ -157,11 +169,7 @@ class get_historical_data(ListAPIView):
             pk = entry['meta']['object_id']
 
             if model == device:
-                try:
-                    # we log each pk individually in order to catch errors for devices which do not exist any more
-                    LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, pk)
-                except IntegrityError:
-                    pass
+                used_device_ids.add(pk)
 
             # set missing type info
             if not entry['meta']['type']:
@@ -201,6 +209,9 @@ class get_historical_data(ListAPIView):
 
             last_entry_by_pk[pk] = entry['data']
             del entry['data']
+
+        if used_device_ids:
+            LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, used_device_ids)
 
         # NOTE: entries must be in chronological, earliest first
         return Response(sorted_data)

@@ -31,11 +31,9 @@ from dateutil import relativedelta
 import django
 
 from django.db import models, transaction, IntegrityError
-from django.db.models import signals, BooleanField
-from django.dispatch import receiver
-from django.utils.functional import cached_property
 import enum
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models.rms import ext_license
 
 __all__ = [
@@ -53,37 +51,6 @@ __all__ = [
 ]
 
 logger = logging.getLogger("cluster.icsw_license")
-
-
-# This module requires decorator. Install with 'easy_install decorator'.
-from decorator import decorator
-from time import time
-
-
-def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
-    def _memoize_with_expiry(func, *args, **kw):
-        # Determine what cache to use - the supplied one, or one we create inside the
-        # wrapped function.
-        if _cache is None and not hasattr(func, '_cache'):
-            func._cache = {}
-        cache = _cache or func._cache
-
-        mem_args = args[:num_args]
-        # frozenset is used to ensure hashability
-        if kw:
-            key = mem_args, frozenset(kw.iteritems())
-        else:
-            key = mem_args
-        if key in cache:
-            result, timestamp = cache[key]
-            # Check the age.
-            age = time() - timestamp
-            if not expiry_time or age < expiry_time:
-                return result
-        result = func(*args, **kw)
-        cache[key] = (result, time())
-        return result
-    return decorator(_memoize_with_expiry)
 
 
 class InitProduct(enum.Enum):
@@ -274,6 +241,7 @@ class LicenseUsage(object):
     @staticmethod
     def log_usage(license, param_type, value):
         """
+        Can currently handle missing device ids, all other data must be valid
         :type license: LicenseEnum
         :type param_type: LicenseParameterTypeEnum
         """
@@ -289,10 +257,21 @@ class LicenseUsage(object):
             if param_type == LicenseParameterTypeEnum.device:
                 if not isinstance(value, collections.Iterable):
                     value = (value, )
-                for dev in value:
-                    LicenseUsageDeviceService.objects.get_or_create(device_id=to_pk(dev, device),
-                                                                    service=None,
-                                                                    **common_params)
+
+                # TODO: generalize this bulk create_if_nonexistent to all tables
+                dev_pks = frozenset(to_pk(dev, device) for dev in value)
+                present_keys = frozenset(
+                    LicenseUsageDeviceService.objects.filter(device_id__in=dev_pks,
+                                                             service=None,
+                                                             **common_params)
+                    .values_list("device_id", flat=True)
+                )
+                dev_pks_missing = dev_pks.difference(present_keys)
+                dev_pks_missing_dev_present = device.objects.filter(pk__in=dev_pks_missing).values_list("pk", flat=True)
+                entries_to_add = [LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
+                                  for dev_pk in dev_pks_missing_dev_present]
+                LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
+
             elif param_type == LicenseParameterTypeEnum.service:
                 for dev, serv_list in value.iteritems():
                     for serv in serv_list:
@@ -341,33 +320,41 @@ class LicenseViolation(_LicenseUsageBase):
     __repr__ = __unicode__
 
 
-class _LicenseLockListManager(models.Manager):
+class _LicenseLockListDeviceSetviceManager(models.Manager):
+    def is_device_locked(self, license, device_id):
+        return device_id in self._get_lock_list_device(license)
+
+    def is_service_locked(self, license, service_id):
+        return service_id in self._get_lock_list_service(license)
+
+    def is_device_service_locked(self, license, device_id, service_id):
+        return (device_id, service_id) in self._get_lock_list_device_service(license)
+
     @memoize_with_expiry(20)
-    def is_locked(self, license, **kwargs):
-        has_device = 'device' in kwargs or 'device_id' in kwargs
-        has_service = ('service' in kwargs or 'service_id' in kwargs)
+    def _get_lock_list_device(self, license):
+        return frozenset(self.filter(license=license.name, service=None).values_list("device_id", flat=True))
 
-        if has_device and not has_service:
-            # we want device locks specifically
-            kwargs['service__isnull'] = True
+    @memoize_with_expiry(20)
+    def _get_lock_list_service(self, license):
+        return frozenset(self.filter(license=license.name, device=None).values_list("service_id", flat=True))
 
-        if not has_device and has_service:
-            # we want service locks specifically
-            kwargs['device__isnull'] = True
-
-        return self.filter(license=license.name, **kwargs).exists()
+    @memoize_with_expiry(20)
+    def _get_lock_list_device_service(self, license):
+        return frozenset(self.filter(license=license.name).values_list("device_id", "service_id", flat=True))
 
 
 class LicenseLockListDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
-    objects = _LicenseLockListManager()
+    objects = _LicenseLockListDeviceSetviceManager()
 
 
 class LicenseLockListUser(_LicenseUsageBase, _LicenseUsageUser):
-    objects = _LicenseLockListManager()
+    pass
+    # objects = _LicenseLockListManager()
 
 
 class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
-    objects = _LicenseLockListManager()
+    pass
+    # objects = _LicenseLockListManager()
 
 
 ########################################
