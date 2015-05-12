@@ -30,7 +30,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.license import LicenseUsage
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImports
 import datetime
@@ -49,6 +49,10 @@ class device_rrds(View):
     def post(self, request):
         dev_pks = request.POST.getlist("pks[]")
         LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
+        dev_pks = [
+            dev_pk for dev_pk in dev_pks
+            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
+        ]
         return _get_node_rrd(request, dev_pks)
 
 

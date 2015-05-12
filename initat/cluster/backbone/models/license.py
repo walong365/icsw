@@ -235,6 +235,27 @@ class LicenseUsageExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
 class LicenseUsage(object):
     # utility
 
+    @staticmethod
+    def device_to_pk(dev):
+        from initat.cluster.backbone.models import device
+        # assume obj is pk if it isn't the obj
+        return dev.pk if isinstance(dev, device) else int(dev)
+
+    @staticmethod
+    def service_to_pk(serv):
+        from initat.cluster.backbone.models.monitoring import mon_check_command
+        return serv.pk if isinstance(serv, mon_check_command) else int(serv)
+
+    @staticmethod
+    def user_to_pk(u):
+        from initat.cluster.backbone.models.user import user
+        return u.pk if isinstance(u, user) else int(u)
+
+    @staticmethod
+    def _ext_license_to_pk(lic):
+        from initat.cluster.backbone.models import ext_license
+        return lic.pk if isinstance(lic, ext_license) else int(lic)
+
     # NOTE: keep in sync with js
     GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
 
@@ -245,10 +266,7 @@ class LicenseUsage(object):
         :type license: LicenseEnum
         :type param_type: LicenseParameterTypeEnum
         """
-        # assume obj is pk if it isn't the obj
-        to_pk = lambda obj, klass: obj.pk if isinstance(obj, klass) else obj
-
-        from initat.cluster.backbone.models import device, user, mon_check_command
+        from initat.cluster.backbone.models import device
 
         # this produces queries for all objects
         # if that's too slow, we need a manual bulk get_or_create (check with one query, then create missing entries)
@@ -259,7 +277,7 @@ class LicenseUsage(object):
                     value = (value, )
 
                 # TODO: generalize this bulk create_if_nonexistent to all tables
-                dev_pks = frozenset(to_pk(dev, device) for dev in value)
+                dev_pks = frozenset(LicenseUsage.device_to_pk(dev) for dev in value)
                 present_keys = frozenset(
                     LicenseUsageDeviceService.objects.filter(device_id__in=dev_pks,
                                                              service=None,
@@ -275,13 +293,14 @@ class LicenseUsage(object):
             elif param_type == LicenseParameterTypeEnum.service:
                 for dev, serv_list in value.iteritems():
                     for serv in serv_list:
-                        LicenseUsageDeviceService.objects.get_or_create(device_id=to_pk(dev, device),
-                                                                        service_id=to_pk(serv, mon_check_command),
+                        LicenseUsageDeviceService.objects.get_or_create(device_id=LicenseUsage.device_to_pk(dev),
+                                                                        service_id=LicenseUsage.service_to_pk(serv),
                                                                         **common_params)
             elif param_type == LicenseParameterTypeEnum.ext_license:
-                LicenseUsageExtLicense.objects.get_or_create(ext_license_id=to_pk(value, ext_license), **common_params)
+                LicenseUsageExtLicense.objects.get_or_create(ext_license_id=LicenseUsage._ext_license_to_pk(value),
+                                                             **common_params)
             elif param_type == LicenseParameterTypeEnum.user:
-                LicenseUsageUser.objects.get_or_create(user_id=to_pk(value, user), **common_params)
+                LicenseUsageUser.objects.get_or_create(user_id=LicenseUsage.user_to_pk(value), **common_params)
             else:
                 raise RuntimeError("Invalid license parameter type id: {}".format(param_type))
 
@@ -320,25 +339,16 @@ class LicenseViolation(_LicenseUsageBase):
     __repr__ = __unicode__
 
 
-class _LicenseLockListDeviceSetviceManager(models.Manager):
-    @staticmethod
-    def _device_to_pk(dev):
-        from initat.cluster.backbone.models import device
-        return dev.pk if isinstance(dev, device) else dev
-
-    @staticmethod
-    def _service_to_pk(serv):
-        from initat.cluster.backbone.models.monitoring import mon_check_command
-        return serv.pk if isinstance(serv, mon_check_command) else serv
+class _LicenseLockListDeviceServiceManager(models.Manager):
 
     def is_device_locked(self, license, dev):
-        return self._device_to_pk(dev) in self._get_lock_list_device(license)
+        return LicenseUsage.device_to_pk(dev) in self._get_lock_list_device(license)
 
     def is_service_locked(self, license, service):
-        return self._service_to_pk(service) in self._get_lock_list_service(license)
+        return LicenseUsage.service_to_pk(service) in self._get_lock_list_service(license)
 
     def is_device_service_locked(self, license, device_id, service_id):
-        return (self._device_to_pk(device_id), self._service_to_pk(service_id)) in \
+        return (LicenseUsage.device_to_pk(device_id), LicenseUsage.service_to_pk(service_id)) in \
             self._get_lock_list_device_service(license)
 
     @memoize_with_expiry(20)
@@ -355,13 +365,8 @@ class _LicenseLockListDeviceSetviceManager(models.Manager):
 
 
 class _LicenseLockListUserManager(models.Manager):
-    @staticmethod
-    def _user_to_pk(u):
-        from initat.cluster.backbone.models.user import user
-        return u.pk if isinstance(u, user) else u
-
     def is_user_locked(self, license, user_id):
-        return self._user_to_pk(user_id) in self._get_lock_list_user(license)
+        return LicenseUsage.user_to_pk(user_id) in self._get_lock_list_user(license)
 
     @memoize_with_expiry(20)
     def _get_lock_list_user(self, license):
@@ -369,7 +374,7 @@ class _LicenseLockListUserManager(models.Manager):
 
 
 class LicenseLockListDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
-    objects = _LicenseLockListDeviceSetviceManager()
+    objects = _LicenseLockListDeviceServiceManager()
 
 
 class LicenseLockListUser(_LicenseUsageBase, _LicenseUsageUser):
