@@ -384,7 +384,8 @@ class Service(object):
         if not int(self.entry.get("startstop", "1")):
             return
         _meta_pids = set([int(_val.text) for _val in self.entry.findall(".//pids/pid")])
-        _proc_pids = self._find_pids_by_name(act_proc_dict)
+        # protect myself from getting killed :-)
+        _proc_pids = self._find_pids_by_name(act_proc_dict) - set([os.getpid()])
         _all_pids = _meta_pids | _proc_pids
         if _all_pids:
             for _pid in _all_pids:
@@ -664,12 +665,20 @@ class MetaService(Service):
             _dir = _dir_el.get("value")
             if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
                 os.makedirs(_dir)
+            _recursive = True if int(_dir_el.get("recursive", "0")) else False
             if os.path.isdir(_dir):
-                os.chown(
-                    _dir,
+                _uid, _gid = (
                     process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
                     process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
+
                 )
+                os.chown(_dir, _uid, _gid)
+                if -_recursive:
+                    for _dir, _dirs, _files in os.walk(_dir):
+                        for _file in _files:
+                            _file = os.path.join(_dir, _file)
+                            if os.path.isfile(_file):
+                                os.chown(_file, _uid, _gid)
         for _file_el in self.entry.findall(".//access-rights/file[@value]"):
             if os.path.isfile(_file_el.get("value")):
                 os.chown(

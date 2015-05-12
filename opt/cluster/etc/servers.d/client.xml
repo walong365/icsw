@@ -8,7 +8,8 @@
         </start-argument>
         <nice-level>15</nice-level>
         <access-rights>
-            <dir value="/var/log/cluster/logging-server" user="idccs" group="idg" create="1"/>
+            <dir value="/var/log/cluster/logging-server" user="idlog" group="idg" create="1" recursive="1"/>
+            <dir value="/var/lib/logging-server" user="idlog" group="idg" create="1"/>
         </access-rights>
     </instance>
     <instance check_type="meta" name="meta-server" runs_on="client"  has_force_stop="1">
