@@ -14,6 +14,7 @@ setup(
         "initat.icsw.logwatch",
         "initat.icsw.setup",
         "initat.icsw.service",
+        "initat.icsw.license",
         "initat.tools",
         "initat.rms",
         "initat.cluster",

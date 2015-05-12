@@ -26,6 +26,8 @@
 
 modify Repositories of OpenSUSE-bases distributions
 
+deprecated script, no longer in use
+
 """
 
 import argparse
