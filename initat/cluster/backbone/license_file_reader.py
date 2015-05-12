@@ -37,11 +37,9 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.tools import process_tools
 
 
-logger = logging.getLogger("cluster.licadmin")
+logger = logging.getLogger("cluster.license_file_reader")
 
 CERT_DIR = "/opt/cluster/share/cert"
-
-LICENSE_LIST_FILE = "/opt/cluster/share/cert/license_list.xml"
 
 
 class LicenseFileReader(object):
