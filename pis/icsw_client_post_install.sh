@@ -59,7 +59,9 @@ done
 
 # deactivate most client services (now handled via meta-server)
 for client in host-monitoring package-client ; do
-    ${ICSW_PIS}/modify_service.sh deactivate ${client}
+    if [ -f /etc/init.d/${client} ] ; then
+        ${ICSW_PIS}/modify_service.sh deactivate ${client}
+    fi
 done
 
 # loadmodules

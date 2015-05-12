@@ -790,7 +790,8 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             "    log_on_failure  += USERID",
             "    server           = /usr/sbin/in.rshd",
             "}"],
-        3: []}[stage_num]
+        3: []
+    }[stage_num]
     if add_modules:
         sfile_dict["/etc/add_modules"] = ["{} {}".format(mod_name, mod_option) for mod_name, mod_option in add_modules]
     for sfile_name, sfile_content in sfile_dict.iteritems():
@@ -1143,6 +1144,7 @@ class arg_parser(argparse.ArgumentParser):
         self.add_argument("--grub", dest="add_grub_binaries", default=False, action="store_true", help="add grub binaries in stage1 [%(default)s]")
         self.add_argument("--lilo", dest="add_lilo_binaries", default=False, action="store_true", help="add lilo binaries in stage1 [%(default)s]")
         self.add_argument("-l", dest="show_content", default=False, action="store_true", help="list dirs and files [%(default)s]")
+        self.add_argument("--skip-increase", default=False, action="store_true", help="do not increase kernel release [%(default)s]")
         self.add_argument(
             "-L",
             dest="show_kernels",
@@ -1200,26 +1202,6 @@ def main_normal():
             1: []
         }
     }
-# #    for opt, arg in opts:
-# #        if opt in ["-h", "--help"]:
-# #            print " -M MODFILE           read list of kernel-modules from this file"
-# #            print "                       o if neither -m or -M is used the latest setting from the db is used"
-# #            print "                       o use -m \"\" to clear module list"
-# #            print " --modules ARGS  additional modules to load in stage1, comma-separated: mod1[:mod1_options][,mod2[:mod2_options]]"
-# #            sys.exit(0)
-# #        if opt == "--modules":
-# #            add_mods = []
-# #            for line in arg.split(","):
-# #                if line.count(":"):
-# #                    mod_name, mod_option = line.split(":", 1)
-# #                else:
-# #                    mod_name, mod_option = (line, "")
-# #                if mod_name.endswith(".o"):
-# #                    mod_name = mod_name[:-2]
-# #                elif mod_name.endswith(".ko"):
-# #                    mod_name = mod_name[:-3]
-# #                add_mods.append((mod_name, mod_option))
-# #            loc_config["ADD_MODULES"] = add_mods
     if my_args.show_kernels:
         do_show_kernels(my_args.show_kernels == 2)
         sys.exit(1)
@@ -1277,7 +1259,11 @@ def main_normal():
     if my_kernel:
         my_build = initrd_build(
             kernel=my_kernel
-            )
+        )
+        if not my_args.skip_increase:
+            my_kernel.release += 1
+            print("increasing kernel release to {:d}".format(my_kernel.release))
+            my_kernel.save(update_fields=["release"])
         my_build.save()
     else:
         my_build = None
@@ -1360,40 +1346,52 @@ def main_normal():
     # modules.tar.bz2 present ?
     mod_bz2_file = os.path.join(my_args.kernel_dir, "modules.tar.bz2")
     mod_bz2_present = os.path.exists(mod_bz2_file)
+    extra_kernel_modules = []
     # check for kernel version
     if os.path.isdir("{}/lib/modules".format(my_args.kernel_dir)):
         kverdirs = os.listdir("{}/lib/modules".format(my_args.kernel_dir))
         if len(kverdirs) > 1:
-            print "More than one KernelVersionDirectory found: {}".format(", ".join(kverdirs))
-            sys.exit(1)
+            if kernel_name not in kverdirs:
+                print("Cannot find kernel specifier {} in kernel dir".format(kernel_name))
+                sys.exit(1)
+            _extra = [_kvd for _kvd in kverdirs if _kvd != kernel_name]
+            print(
+                "    {} found: {}".format(
+                    logging_tools.get_plural("extra module dir", len(_extra)),
+                    ", ".join(sorted(_extra))
+                )
+            )
         elif len(kverdirs) == 0:
             print "No KernelVersionDirectory found below '{}/lib/modules'".format(my_args.kernel_dir)
             sys.exit(1)
-        kverdir = kverdirs[0]
+        kverdir = kernel_name
 
         if my_args.do_depmod_call:
             lib_dir = os.path.join(my_args.kernel_dir, "lib", "modules", kverdir)
-            # content of modules.dep
-            mdep_file = os.path.join(lib_dir, "modules.dep")
-            if os.path.isfile(mdep_file):
-                pre_content = file(mdep_file, "r").read()
+            if os.path.isdir(os.path.join(lib_dir, "weak-updates")):
+                print(" *** found weak-updates, skipping depmod call ***")
             else:
-                pre_content = ""
-            depmod_call = "depmod -aeb {} {}".format(my_args.kernel_dir, kverdir)
-            if not my_args.quiet:
-                print "Doing depmod_call '{}' ...".format(depmod_call)
-            c_stat, out = commands.getstatusoutput(depmod_call)
-            if c_stat:
-                print " - some error occured ({:d}): {}".format(c_stat, out)
-                sys.exit(1)
-            if os.path.isfile(mdep_file):
-                post_content = file(mdep_file, "r").read()
-                if pre_content != post_content:
-                    mod_bz2_present = False
-                    print "modules.dep file '{}' has changed, rebuilding {}".format(mdep_file, mod_bz2_file)
-            else:
-                print "no modules.dep file '{}' found, exiting".format(mdep_file)
-                sys.exit(1)
+                # content of modules.dep
+                mdep_file = os.path.join(lib_dir, "modules.dep")
+                if os.path.isfile(mdep_file):
+                    pre_content = file(mdep_file, "r").read()
+                else:
+                    pre_content = ""
+                depmod_call = "depmod -aeb {} {}".format(my_args.kernel_dir, kverdir)
+                if not my_args.quiet:
+                    print "Doing depmod_call '{}' ...".format(depmod_call)
+                c_stat, out = commands.getstatusoutput(depmod_call)
+                if c_stat:
+                    print " - some error occured ({:d}): {}".format(c_stat, out)
+                    sys.exit(1)
+                if os.path.isfile(mdep_file):
+                    post_content = file(mdep_file, "r").read()
+                    if pre_content != post_content:
+                        mod_bz2_present = False
+                        print "modules.dep file '{}' has changed, rebuilding {}".format(mdep_file, mod_bz2_file)
+                else:
+                    print "no modules.dep file '{}' found, exiting".format(mdep_file)
+                    sys.exit(1)
     else:
         kverdir = os.path.basename(os.path.normpath(my_args.kernel_dir))
         print "No lib/modules directory found under '{}', setting kernel_version to {}".format(my_args.kernel_dir, kverdir)
@@ -1724,33 +1722,6 @@ def main_normal():
         my_build.run_time = int(end_time - start_time)
         my_build.success = True if stage_dirs_ok else False
         my_build.save()
-# #         send_list = command_stack.send_list([command_stack.send_data(stage1_file),
-# #                                              command_stack.send_data(stage2_file),
-# #                                              command_stack.send_str("quit")], log_it, CS_BLOCK_SIZE)
-# #         for ms_name, (ms_ip, ms_alias) in ms_dict.iteritems():
-# #             # get uuid for all mother-server
-# #             errnum, data = msock.single_tcp_connection((ms_ip, 8004, server_command.server_command(command="get_uuid")), None, timeout=10)
-# #             if errnum:
-# #                 print "error receiving uuid from %s (IP %s) (%d): %s" % (ms_name, ms_ip, errnum, data)
-# #             else:
-# #                 try:
-# #                     s_reply = server_command.server_reply(data)
-# #                 except:
-# #                     print "error build server_reply from data from %s (IP %s) (%d): %s" % (ms_name, ms_ip, errnum, data[0:15])
-# #                 else:
-# #                     server_uuid = uuid_tools.UUID(s_reply.get_result().split()[1])
-# #                     if server_uuid in uuid_connected:
-# #                         print "uuid %s for %s (IP %s) already in connected list, skipping..." % (server_uuid, ms_name, ms_ip)
-# #                     else:
-# #                         uuid_connected.append(server_uuid)
-# #                         send_list.init_instance()
-# #                         if ms_ip == "127.0.0.1" or ms_name == short_host_name:
-# #                             print "Motherserver %s (IP %s, alias %s) seems to be local, skipping ..." % (ms_name, ms_ip, ms_alias or "<EMPTY>")
-# #                         else:
-# #                             print "Transfering stages to motherserver %s (IP %s, alias %s) ..." % (ms_name, ms_ip, ms_alias or "<EMPTY>")
-# #                             tcp_stat, tcp_out = msock.single_tcp_connection((ms_ip, 8001, (send_list, send_list)), None, 10)
-# #                             if tcp_stat:
-# #                                 print " - gave error (%d): %s" % (tcp_stat, tcp_out)
     return
 
 if __name__ == "__main__":

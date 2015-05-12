@@ -471,7 +471,6 @@ class server_process(threading_tools.process_pool):
         """ clean system after copy """
         self.log("cleaning image")
         for clean_dir in [
-            "/lib/modules",
             "/var/lib/meta-server",
             "/etc/zypp/repos.d",
         ]:
