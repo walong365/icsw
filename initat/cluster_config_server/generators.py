@@ -79,7 +79,7 @@ def do_nets(conf):
             cur_ip = lu_table[net_idx]
             cur_nd = cur_ip.netdevice
             auto_if.append(cur_nd.devname)
-        glob_nf += "auto %s" % (" ".join(auto_if))
+        glob_nf += "auto {}".format(" ".join(auto_if))
         # get default gw
         _gw_source, def_ip, boot_dev, _boot_mac = get_default_gw(conf)
     for net_idx in write_order_list:
@@ -92,18 +92,18 @@ def do_nets(conf):
         if cur_nd.pk == conf_dict["device"].bootnetdevice_id:
             if sys_dict["vendor"] == "suse":
                 new_co = conf.add_file_object("/etc/HOSTNAME")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+                new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             elif sys_dict["vendor"] == "debian":
                 new_co = conf.add_file_object("/etc/hostname")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+                new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             elif sys_dict["vendor"] in ["centos", "redhat"]:
                 new_co = conf.add_file_object("/etc/hostname")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+                new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             else:
                 new_co = conf.add_file_object("/etc/sysconfig/network", append=True)
-                new_co += "HOSTNAME=%s" % (conf_dict["host"])
+                new_co += "HOSTNAME={}".format(conf_dict["host"])
                 new_co += "NETWORKING=yes"
-        log_str = "netdevice %10s (mac %s)" % (cur_nd.devname, cur_nd.macaddr)
+        log_str = "netdevice {:<10s} (mac {})".format(cur_nd.devname, cur_nd.macaddr)
         if sys_dict["vendor"] == "suse":
             # suse-mode
             if ((sys_dict["version"] >= 9 and sys_dict["release"] > 0) or sys_dict["version"] > 9):
@@ -111,7 +111,7 @@ def do_nets(conf):
                 if any([cur_nd.devname.startswith(cur_pf) for cur_pf in ["eth", "myri", "ib"]]):
                     mn = re.match("^(?P<devname>.+):(?P<virtual>\d+)$", cur_nd.devname)
                     if mn:
-                        log_str += ", virtual of %s" % (mn.group("devname"))
+                        log_str += ", virtual of {}".format(mn.group("devname"))
                         append_dict.setdefault(mn.group("devname"), {})
                         append_dict[mn.group("devname")][mn.group("virtual")] = {
                             "BROADCAST": cur_net.broadcast,
@@ -129,17 +129,20 @@ def do_nets(conf):
                             ):
                                 # openSUSE 10.3, >= 11.0
                                 if cur_nd.vlan_id:
-                                    act_filename = "ifcfg-vlan%d" % (cur_nd.vlan_id)
+                                    act_filename = "ifcfg-vlan{:d}".format(cur_nd.vlan_id)
                                 else:
-                                    act_filename = "ifcfg-%s" % (cur_nd.devname)
+                                    act_filename = "ifcfg-{}".format(cur_nd.devname)
                             else:
-                                act_filename = "ifcfg-eth-id-%s" % (cur_nd.macaddr)
+                                act_filename = "ifcfg-eth-id-{}".format(cur_nd.macaddr)
                                 if global_config["ADD_NETDEVICE_LINKS"]:
-                                    conf.add_link_object("/etc/sysconfig/network/%s" % (act_filename), "/etc/sysconfig/network/ifcfg-%s" % (cur_nd.devname))
+                                    conf.add_link_object(
+                                        "/etc/sysconfig/network/%s" % (act_filename),
+                                        "/etc/sysconfig/network/ifcfg-%s" % (cur_nd.devname)
+                                    )
                         else:
                             log_str += ", ignoring (zero macaddress)"
                 else:
-                    act_filename = "ifcfg-%s" % (cur_nd.devname)
+                    act_filename = "ifcfg-{}".format(cur_nd.devname)
                 if act_filename:
                     act_file = {
                         "BOOTPROTO": "static",
@@ -152,16 +155,16 @@ def do_nets(conf):
                     if cur_nd.vlan_id:
                         if cur_nd.master_device:
                             act_file["ETHERDEVICE"] = cur_nd.master_device.devname
-                            act_file["VLAN_ID"] = "%d" % (cur_nd.vlan_id)
+                            act_file["VLAN_ID"] = "{:d}".format(cur_nd.vlan_id)
                         else:
-                            print "VLAN ID set but no master_device, skipping %s" % (cur_nd.devname)
+                            print "VLAN ID set but no master_device, skipping {}".format(cur_nd.devname)
                             act_filename = None
                     if not cur_nd.fake_macaddr:
                         pass
                     elif int(cur_nd.fake_macaddr.replace(":", ""), 16) != 0:
                         log_str += ", with fake_macaddr"
                         act_file["LLADDR"] = cur_nd.fake_macaddr
-                        conf.add_link_object("/etc/sysconfig/network/ifcfg-eth-id-%s" % (cur_nd.fake_macaddr), act_filename)
+                        conf.add_link_object("/etc/sysconfig/network/ifcfg-eth-id-{}".format(cur_nd.fake_macaddr), act_filename)
                     if act_filename:
                         new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
                         new_co += act_file
@@ -177,7 +180,7 @@ def do_nets(conf):
                     "STARTMODE": "onboot",
                     "WIRELESS": "no"
                 }
-                new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
+                new_co = conf.add_file_object("/etc/sysconfig/network/{}".format(act_filename))
                 new_co += act_file
         elif sys_dict["vendor"] == "debian":
             glob_nf += ""
@@ -213,7 +216,7 @@ def do_nets(conf):
                 "ONBOOT": "yes",
                 "USERCTL": "no",
                 "PEERDNS": "no",
-                "TYPE": "Ethernet",
+                "TYPE": "Infiniband" if cur_nd.devname.startswith("ib") else "Ethernet",
                 "IPV6INIT": "no",
                 "NAME": cur_nd.devname,
             }

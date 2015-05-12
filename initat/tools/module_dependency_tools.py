@@ -1,4 +1,4 @@
-# Copyright (C) 2012,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012,2015 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -22,9 +22,10 @@
 import commands
 import copy
 import fnmatch
-from initat.tools import logging_tools
 import os
 import re
+
+from initat.tools import logging_tools
 
 
 class dependency_handler(object):
@@ -51,7 +52,13 @@ class dependency_handler(object):
         else:
             dep_file_dir = os.path.join(self.kernel_dir, "lib", "modules")
             if os.path.isdir(dep_file_dir):
-                dep_file_dir = os.path.join(dep_file_dir, os.listdir(dep_file_dir)[0])
+                for _kd in os.listdir(dep_file_dir):
+                    _cur_dfd = os.path.join(dep_file_dir, _kd)
+                    if os.path.isdir(_cur_dfd):
+                        dep_file = os.path.join(_cur_dfd, "modules.{}".format(ftype))
+                        if os.path.isfile(dep_file):
+                            dep_file_dir = _cur_dfd
+                            break
         if os.path.isdir(dep_file_dir):
             dep_file = os.path.join(dep_file_dir, "modules.{}".format(ftype))
             if os.path.isfile(dep_file):
