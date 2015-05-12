@@ -47,11 +47,13 @@ logger = logging.getLogger("cluster.rrd")
 class device_rrds(View):
     @method_decorator(login_required)
     def post(self, request):
-        dev_pks = request.POST.getlist("pks[]")
+        orig_dev_pks = request.POST.getlist("pks[]")
         dev_pks = [
-            dev_pk for dev_pk in dev_pks
+            dev_pk for dev_pk in orig_dev_pks
             if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
         ]
+        if len(orig_dev_pks) != len(dev_pks):
+            logger.info("Access to device rrds denied to to locking: {}".format(set(orig_dev_pks).difference(dev_pks)))
         LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         return _get_node_rrd(request, dev_pks)
 
