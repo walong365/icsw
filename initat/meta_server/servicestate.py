@@ -74,6 +74,8 @@ SERVICE_OK_LIST = [
     (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_CONFIGURED, 0)),
     # running and running
     (TARGET_STATE_RUNNING, (constants.SERVICE_OK, 1)),
+    # should be started but not installed
+    (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_INSTALLED, 0)),
 ]
 
 
