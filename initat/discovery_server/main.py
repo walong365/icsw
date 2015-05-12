@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,8 +26,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.discovery_server.config_static import SERVER_PORT
-from initat.discovery_server.config import global_config
+from initat.discovery_server.config import global_config, SERVER_PORT
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import cluster_location

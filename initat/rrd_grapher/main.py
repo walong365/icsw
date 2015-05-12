@@ -28,8 +28,7 @@ django.setup()
 
 from django.conf import settings
 from initat.cluster.backbone.models import LogSource
-from initat.rrd_grapher.config_static import SERVER_COM_PORT
-from initat.rrd_grapher.config import global_config
+from initat.rrd_grapher.config import global_config, SERVER_COM_PORT
 from initat.server_version import VERSION_STRING
 from io_stream_helper import io_stream
 from initat.tools import config_tools

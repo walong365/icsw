@@ -1640,7 +1640,7 @@ def fetch_sysinfo(root_dir="/"):
     log_lines, sys_dict = ([], {})
     try:
         isl = []
-        for _fname in ["/etc/issue", "/etc/redhat-release", "/etc/fedora-release"]:
+        for _fname in ["etc/issue", "etc/redhat-release", "etc/fedora-release"]:
             _full = os.path.join(root_dir, _fname)
             if os.path.isfile(_full):
                 isl.extend([_line.strip().lower() for _line in file(_full, "r").read().split("\n")])
@@ -1710,7 +1710,7 @@ def fetch_sysinfo(root_dir="/"):
             elif re.search("enterprise server", arch_str):
                 arch_m = re.match("^.*enterprise server (\d+).*$", arch_str)
                 sys_dict["version"] = "sles{}".format(arch_m.group(1))
-                sr_dict = _read_issue_file("/etc/SuSE-release")
+                sr_dict = _read_issue_file(os.path.join(root_dir, "etc/SuSE-release"))
                 if "patchlevel" in sr_dict:
                     sys_dict["version"] = "{}.{}".format(
                         sys_dict["version"],
@@ -1726,7 +1726,7 @@ def fetch_sysinfo(root_dir="/"):
                 elif sys_dict["vendor"] == "suse":
                     sr_ems = False
                     try:
-                        isl = [y for y in [x.strip().lower() for x in open("/etc/SuSE-release", "r").read().split("\n")] if y]
+                        isl = [y for y in [x.strip().lower() for x in open(os.path.join(root_dir, "etc/SuSE-release"), "r").read().split("\n")] if y]
                     except:
                         pass
                     else:
@@ -1734,17 +1734,14 @@ def fetch_sysinfo(root_dir="/"):
                         for eml in isl:
                             if re.search("email server", eml):
                                 sr_ems = True
-                                ems_file = "/etc/IMAP-release"
-                                # m = re.match("^version\s*=\s*(.*)$", eml)
-                                # if m:
-                                #    sr_vers = m.group(1)
+                                ems_file = os.path.join(root_dir, "etc/IMAP-release")
                     try:
-                        isl = [x.strip().lower() for x in open("/etc/SLOX-release", "r").read().split("\n")]
+                        isl = [x.strip().lower() for x in open(os.path.join(root_dir, "etc/SLOX-release"), "r").read().split("\n")]
                     except:
                         pass
                     else:
                         sr_ems = True
-                        ems_file = "/etc/SLOX-release"
+                        ems_file = os.path.join(root_dir, "etc/SLOX-release")
                     if sr_ems:
                         try:
                             isl = [x.strip().lower() for x in open(ems_file, "r").read().split("\n")]
@@ -1764,12 +1761,14 @@ def fetch_sysinfo(root_dir="/"):
                                 arch_m.group("type"),
                                 arch_m.group("version")
                             )
-                elif sys_dict["vendor"] == "debian" and os.path.isdir("/etc/apt"):
+                elif sys_dict["vendor"] == "debian" and os.path.isdir(os.path.join(root_dir, "etc/apt")):
                     # try to get info from /etc/apt
                     try:
                         s_list = [
                             z[2].split("/")[0] for z in [
-                                y.split() for y in [x.strip() for x in open("/etc/apt/sources.list", "r").read().split("\n")] if y and not y.startswith("#")
+                                y.split() for y in [x.strip() for x in open(
+                                    os.path.join(root_dir, "etc/apt/sources.list"), "r"
+                                ).read().split("\n")] if y and not y.startswith("#")
                             ] if len(z) > 3
                         ]
                     except:
