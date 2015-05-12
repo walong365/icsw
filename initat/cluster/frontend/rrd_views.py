@@ -48,11 +48,11 @@ class device_rrds(View):
     @method_decorator(login_required)
     def post(self, request):
         dev_pks = request.POST.getlist("pks[]")
-        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         dev_pks = [
             dev_pk for dev_pk in dev_pks
             if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
         ]
+        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         return _get_node_rrd(request, dev_pks)
 
 
