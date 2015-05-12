@@ -120,7 +120,7 @@ class SuseHandler(OSHandler):
     def install_icsw(self):
         commands = [
             ("zypper", "refresh"),
-            ("zypper", "install", "icsw-server"),
+            ("zypper", "install", "--non-interactive" "icsw-server"),
         ]
 
         for cmd in commands:
