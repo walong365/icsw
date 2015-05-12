@@ -40,7 +40,7 @@ from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.license import LicenseUsage
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
@@ -1266,6 +1266,13 @@ class virtual_desktop_user_setting(models.Model):
         if self.state != state:
             self.state = state
             self.save_without_signals()
+
+
+@receiver(signals.pre_save, sender=virtual_desktop_user_setting)
+def virtual_desktop_user_setting_pre_save(sender, instance, raw, **kwargs):
+    if not raw:
+        if LicenseLockListUser.objects.is_user_locked(LicenseEnum.virtual_desktop, instance.user):
+            raise ValidationError(u"User {} is locked from accessing virtual desktops".format(unicode(instance.user)))
 
 
 @receiver(signals.post_save, sender=virtual_desktop_user_setting)

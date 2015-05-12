@@ -321,14 +321,25 @@ class LicenseViolation(_LicenseUsageBase):
 
 
 class _LicenseLockListDeviceSetviceManager(models.Manager):
-    def is_device_locked(self, license, device_id):
-        return device_id in self._get_lock_list_device(license)
+    @staticmethod
+    def _device_to_pk(dev):
+        from initat.cluster.backbone.models import device
+        return dev.pk if isinstance(dev, device) else dev
 
-    def is_service_locked(self, license, service_id):
-        return service_id in self._get_lock_list_service(license)
+    @staticmethod
+    def _service_to_pk(serv):
+        from initat.cluster.backbone.models.monitoring import mon_check_command
+        return serv.pk if isinstance(serv, mon_check_command) else serv
+
+    def is_device_locked(self, license, dev):
+        return self._device_to_pk(dev) in self._get_lock_list_device(license)
+
+    def is_service_locked(self, license, service):
+        return self._service_to_pk(service) in self._get_lock_list_service(license)
 
     def is_device_service_locked(self, license, device_id, service_id):
-        return (device_id, service_id) in self._get_lock_list_device_service(license)
+        return (self._device_to_pk(device_id), self._service_to_pk(service_id)) in \
+            self._get_lock_list_device_service(license)
 
     @memoize_with_expiry(20)
     def _get_lock_list_device(self, license):
@@ -343,13 +354,26 @@ class _LicenseLockListDeviceSetviceManager(models.Manager):
         return frozenset(self.filter(license=license.name).values_list("device_id", "service_id", flat=True))
 
 
+class _LicenseLockListUserManager(models.Manager):
+    @staticmethod
+    def _user_to_pk(u):
+        from initat.cluster.backbone.models.user import user
+        return u.pk if isinstance(u, user) else u
+
+    def is_user_locked(self, license, user_id):
+        return self._user_to_pk(user_id) in self._get_lock_list_user(license)
+
+    @memoize_with_expiry(20)
+    def _get_lock_list_user(self, license):
+        return frozenset(self.filter(license=license.name).values_list("user_id", flat=True))
+
+
 class LicenseLockListDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
     objects = _LicenseLockListDeviceSetviceManager()
 
 
 class LicenseLockListUser(_LicenseUsageBase, _LicenseUsageUser):
-    pass
-    # objects = _LicenseLockListManager()
+    objects = _LicenseLockListUserManager()
 
 
 class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):

@@ -75,7 +75,7 @@ def lock_entity(opts):
 
     def lock_user(user_name):
         try:
-            user_db = user.objects.get(name=user_name)
+            user_db = user.objects.get(login=user_name)
         except device.DoesNotExist:
             raise RuntimeError("No such user: {}".format(user_name))
         else:
@@ -143,7 +143,7 @@ def unlock_entity(opts):
 
     def unlock_user(user_name):
         try:
-            user_db = user.objects.get(name=user_name)
+            user_db = user.objects.get(login=user_name)
         except device.DoesNotExist:
             raise RuntimeError("No such user: {}".format(user_name))
         else:
