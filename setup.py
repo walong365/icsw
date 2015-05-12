@@ -93,7 +93,7 @@ setup(
                 "opt/cluster/bin/send_command.py",
                 "opt/cluster/bin/send_command_zmq.py",
                 # repo tools
-                "opt/cluster/bin/migrate_repos.py",
+                # "opt/cluster/bin/migrate_repos.py",
                 # icsw helper
                 "opt/cluster/bin/ics_tools.sh",
                 # license

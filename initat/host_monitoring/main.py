@@ -22,16 +22,14 @@
 
 """ host-monitoring, main part """
 
+import os
+import sys
+
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring.config import global_config
 from initat.client_version import VERSION_STRING
-from io_stream_helper import io_stream
 from initat.tools import configfile
-import daemon
 from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
-import sys
 
 
 def show_command_info():
@@ -49,15 +47,17 @@ def show_command_info():
             if isinstance(cur_com, hm_classes.hm_command):
                 local_valid_names.append(com_name)
         local_valid_names = sorted(local_valid_names)
-        print("\n{}\n{}\n{}\n{}".format(
-            "-" * 50,
-            unicode(mod),
-            "{} defined: {}".format(
-                logging_tools.get_plural("command", len(local_valid_names)),
-                ", ".join(local_valid_names),
-            ) if local_valid_names else "no commands defined",
-            "-" * 50,
-            ))
+        print(
+            "\n{}\n{}\n{}\n{}".format(
+                "-" * 50,
+                unicode(mod),
+                "{} defined: {}".format(
+                    logging_tools.get_plural("command", len(local_valid_names)),
+                    ", ".join(local_valid_names),
+                ) if local_valid_names else "no commands defined",
+                "-" * 50,
+            )
+        )
         for com_name in local_valid_names:
             cur_com = modules.command_dict[com_name]
             print("\ncommand {}:\n".format(com_name))

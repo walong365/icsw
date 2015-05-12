@@ -28,11 +28,9 @@ django.setup()
 
 from initat.discovery_server.config import global_config, SERVER_PORT
 from initat.server_version import VERSION_STRING
-from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
-import daemon
 from initat.tools import process_tools
 import sys
 
