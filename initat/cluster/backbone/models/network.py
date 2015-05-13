@@ -324,6 +324,7 @@ def net_ip_pre_save(sender, **kwargs):
                 cur_inst.network = match_list[0][1]
             else:
                 raise ValidationError("no maching network found for '{}'".format(cur_inst.ip))
+        return
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", "network_id")
         if (cur_inst.ip, cur_inst.network_id) in dev_ips:
             raise ValidationError("Address {} already used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
@@ -524,6 +525,7 @@ def netdevice_pre_delete(sender, **kwargs):
 
 @receiver(signals.pre_save, sender=netdevice)
 def netdevice_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.devname:
@@ -589,6 +591,7 @@ def netdevice_pre_save(sender, **kwargs):
 
 @receiver(signals.post_save, sender=netdevice)
 def netdevice_post_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.device.bootserver_id:

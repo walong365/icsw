@@ -165,6 +165,7 @@ class partition(models.Model):
 
 @receiver(signals.pre_save, sender=partition)
 def partition_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         p_num = cur_inst.pnum
@@ -251,6 +252,7 @@ class partition_disc(models.Model):
 
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+)|mapper/.*|ida/(.*)|cciss/(.*))$")
         cur_inst = kwargs["instance"]

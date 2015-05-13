@@ -60,4 +60,4 @@ if [ "${_nostatic}" == "0" ] ; then
     echo "done"
 fi
 
-./manage.py runserver ${RSOPTIONS} 0.0.0.0:8080
+./manage.py runserver ${RSOPTIONS} 0.0.0.0:8081

@@ -127,6 +127,32 @@ if mon_dict:
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
+
+"""
+DATABASES = {
+    "default": {
+        'ENGINE': 'django.db.backends.oracle',
+        'NAME': 'xe',
+        'USER': 'SYSTEM',
+        'PASSWORD': 'init4u',
+        'HOST': '',
+        'PORT': '',
+    }
+}
+
+DATABASES = {
+    "default": {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'baca',
+        'USER': 'baca',
+        'PASSWORD': 'baca',
+        'HOST': '',
+        'PORT': '',
+    }
+}
+"""
+
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.memcached.MemcachedCache",
