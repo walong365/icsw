@@ -53,9 +53,9 @@ STATE_DICT = {
     (constants.SERVICE_DEAD, 0): "not running",
     (constants.SERVICE_DEAD, 1): "incompletely running",
     (constants.SERVICE_NOT_INSTALLED, 0): "not installed",
-    (constants.SERVICE_NOT_INSTALLED, 1): "strange",
-    (constants.SERVICE_NOT_LICENSED, 0): "not license",
-    (constants.SERVICE_NOT_LICENSED, 1): "strange",
+    (constants.SERVICE_NOT_INSTALLED, 1): "strange (running but not installed)",
+    (constants.SERVICE_NOT_LICENSED, 0): "not licensed",
+    (constants.SERVICE_NOT_LICENSED, 1): "strange (running but not licensed)",
     (constants.SERVICE_NOT_CONFIGURED, 0): "not configured",
     # ??? FIXME
     (constants.SERVICE_NOT_CONFIGURED, 1): "unlicensed",
@@ -74,6 +74,8 @@ SERVICE_OK_LIST = [
     (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_INSTALLED, 0)),
     # should be stopped and not licensed
     (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_LICENSED, 0)),
+    # should be running and not licensed
+    (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_LICENSED, 0)),
     # should be running and not configured
     (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_CONFIGURED, 0)),
     # running and running
@@ -307,12 +309,14 @@ class ServiceState(object):
             _res_node = service.entry.find(".//result")
             if _res_node is not None:
                 _state = int(_res_node.find("state_info").attrib["state"])
-                if _state == constants.SERVICE_NOT_CONFIGURED:
+                if _state in [constants.SERVICE_NOT_CONFIGURED, constants.SERVICE_NOT_LICENSED]:
                     _action = "stop"
             with self.get_cursor() as crs:
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
-                    (self.__service_lut[name], _action, int(time.time())),
+                    (
+                        self.__service_lut[name], _action, int(time.time())
+                    ),
                 )
                 trans_id = crs.lastrowid
                 self.__transition_lock_dict[name] = cur_time
@@ -330,7 +334,9 @@ class ServiceState(object):
         with self.get_cursor(cached=False) as crs:
             crs.execute(
                 "UPDATE action SET runtime=?, finished=1 WHERE idx=?",
-                (abs(time.time() - trans.init_time), id),
+                (
+                    abs(time.time() - trans.init_time), id
+                ),
             )
             # get service
             name = crs.execute(
