@@ -48,46 +48,36 @@ class DBCursor(object):
 
 
 STATE_DICT = {
-    constants.SERVICE_OK: "OK",
-    constants.SERVICE_DEAD: "not running",
-    constants.SERVICE_INCOMPLETE: "incomplete",
-    constants.SERVICE_NOT_INSTALLED: "not installed",
-    constants.SERVICE_NOT_LICENSED: "not licensed",
-    constants.SERVICE_NOT_CONFIGURED: "not configured",
+    getattr(constants, _key): _key.split("_", 1)[1].lower().replace("_", " ") for _key in dir(constants) if _key.startswith("SERVICE_")
 }
 
 LIC_STATE_DICT = {
-    120: "violated",
-    100: "valid",
-    80: "grace",
-    60: "new_install",
-    40: "expired",
-    20: "valid_in_future",
-    0: "none",
-    -1: "not_needed",
+    getattr(constants, _key): _key.split("_", 2)[2].lower().replace("_", " ") for _key in dir(constants) if _key.startswith("LIC_STATE_")
 }
 
-TARGET_STATE_STOPPED = 0
-TARGET_STATE_RUNNING = 1
-
-SERVICE_OK_LIST = [
-    # should be stopped and not running
-    (TARGET_STATE_STOPPED, (constants.SERVICE_DEAD, 0)),
-    # should be stopped and not configured
-    (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_CONFIGURED, 0)),
-    # should be stopped and not installed
-    (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_INSTALLED, 0)),
-    # should be stopped and not licensed
-    (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_LICENSED, 0)),
-    # should be running and not licensed
-    (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_LICENSED, 0)),
-    # should be running and not configured
-    (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_CONFIGURED, 0)),
-    # running and running
-    (TARGET_STATE_RUNNING, (constants.SERVICE_OK, 1)),
-    # should be started but not installed
-    (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_INSTALLED, 0)),
-]
+SERVICE_OK_DICT = {
+    constants.TARGET_STATE_RUNNING: {
+        constants.SERVICE_OK: (
+            constants.LIC_STATE_VALID,
+            constants.LIC_STATE_NOT_NEEDED,
+            constants.LIC_STATE_GRACE,
+        ),
+        constants.SERVICE_DEAD: (
+            constants.LIC_STATE_VIOLATED,
+            constants.LIC_STATE_EXPIRED,
+            constants.LIC_STATE_VALID_IN_FUTURE,
+            constants.LIC_STATE_NONE,
+        ),
+        constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_CONFIGURED: None,
+    },
+    constants.TARGET_STATE_STOPPED: {
+        constants.SERVICE_OK: (),
+        constants.SERVICE_DEAD: None,
+        constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_CONFIGURED: None,
+    }
+}
 
 
 class ServiceStateTranstaction(object):
@@ -121,7 +111,7 @@ class ServiceState(object):
         self.log("enable shutdown mode")
         self.__shutdown = True
         for _key in self.__target_dict.iterkeys():
-            self.__target_dict[_key] = TARGET_STATE_STOPPED
+            self.__target_dict[_key] = constants.TARGET_STATE_STOPPED
 
     def check_schema(self, conn):
         _table_dict = {
@@ -248,8 +238,14 @@ class ServiceState(object):
                 )
         # check if the current state is in sync with the targetstate
         _ct = (self.__target_dict[name], self.__state_dict[name][0], self.__state_dict[name][1])
-        is_ok = _ct in SERVICE_OK_LIST
-        return is_ok
+        return self._check_current_state(_ct)
+
+    def _check_current_state(self, ct):
+        _stuff = SERVICE_OK_DICT[ct[0]][ct[1]]
+        if _stuff is None or ct[2] in _stuff:
+            return True
+        else:
+            return False
 
     def _check_for_stable_state(self, service):
         name = service.name
@@ -261,7 +257,7 @@ class ServiceState(object):
         cur_time = int(time.time())
         with self.get_cursor() as crs:
             _records = crs.execute(
-                "SELECT license_state, state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
+                "SELECT state, license_state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
                 (cur_time, self.__service_lut[name]),
             ).fetchall()
             _stable = True
@@ -286,9 +282,9 @@ class ServiceState(object):
             )
         else:
             # compare record for SERVICE_OK_LIST
-            c_rec = (self.__target_dict[name], tuple(_first[0:2]))
+            c_rec = (self.__target_dict[name], _first[0], _first[1])
             # print _first, c_rec
-            if c_rec not in SERVICE_OK_LIST and _first[2] < MIN_STATE_TIME:
+            if not self._check_current_state(c_rec) and _first[2] < MIN_STATE_TIME:
                 service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
                 _stable = False
             elif _first[2] < MIN_STATE_TIME:
@@ -316,7 +312,10 @@ class ServiceState(object):
             _res_node = service.entry.find(".//result")
             if _res_node is not None:
                 _state = int(_res_node.find("state_info").attrib["state"])
-                if _state in [constants.SERVICE_NOT_CONFIGURED, constants.SERVICE_NOT_LICENSED]:
+                _lic_state = int(_res_node.find("license_info").attrib["state"])
+                if _state in [constants.SERVICE_NOT_CONFIGURED, constants.SERVICE_NOT_INSTALLED]:
+                    _action = "stop"
+                elif _lic_state in [constants.LIC_STATE_VIOLATED, constants.LIC_STATE_EXPIRED, constants.LIC_STATE_VALID_IN_FUTURE, constants.LIC_STATE_NONE]:
                     _action = "stop"
             with self.get_cursor() as crs:
                 crs.execute(
