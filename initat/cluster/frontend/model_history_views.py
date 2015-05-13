@@ -123,11 +123,14 @@ class get_historical_data(ListAPIView):
             (format_deletion(dele) for dele in deletion_queryset)
         )
 
-        allowed_by_lic = (
-            elem for elem in formatted
-            if not LicenseLockListDeviceService.objects.is_device_locked(license=LicenseEnum.snapshot,
-                                                                         device_id=elem['meta']['object_id'])
-        )
+        if model == device:
+            allowed_by_lic = (
+                elem for elem in formatted
+                if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.snapshot,
+                                                                             elem['meta']['object_id'])
+            )
+        else:
+            allowed_by_lic = formatted
 
         sorted_data = sorted(allowed_by_lic, key=lambda elem: elem['meta']['date'])
 
