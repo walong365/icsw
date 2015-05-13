@@ -3,7 +3,7 @@
     <accordion close-others="no">
         <accordion-group is-open="quick_open">
             <accordion-heading>
-                Quicklinks
+                Quick links
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quick_open, 'glyphicon-chevron-right': !quick_open}"></i>
             </accordion-heading>
             <ul class="list-group">
@@ -24,6 +24,16 @@
                         </div>
                         <div class="col-md-4">
                             <a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create device</a>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item"">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Add a new license
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}">Add license</a>
                         </div>
                     </div>
                 </li>
