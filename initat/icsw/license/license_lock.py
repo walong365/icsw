@@ -22,7 +22,7 @@
 #
 import sys
 
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, device_variable
 from initat.cluster.backbone.models.rms import ext_license
 from initat.cluster.backbone.models.monitoring import mon_check_command
 from initat.cluster.backbone.models.user import user
@@ -34,6 +34,7 @@ __all__ = [
     "lock_entity",
     "unlock_entity",
     "show_locked_entities",
+    "show_cluster_id",
 ]
 
 
@@ -192,3 +193,7 @@ def show_locked_entities(opts):
         print "Locked external licenses:"
         for ext_lic in LicenseLockListExtLicense.objects.all():
             print("    {} ({})".format(ext_lic.ext_license, ext_lic.license))
+
+
+def show_cluster_id(opts):
+    print device_variable.objects.get_cluster_id()
