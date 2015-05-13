@@ -188,23 +188,15 @@ class Service(object):
                     _state_info.text = "no processes"
                     _state_info.attrib["state"] = "{:d}".format(act_state)
             if valid_licenses is not None:
-                from initat.cluster.backbone.models import LicenseState
+                from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
                 if _req_lic is not None:
                     _req_lic = _req_lic.text.strip()
-                    _lic_ok = False
+                    lic_state = 0
                     for _vl in valid_licenses:
                         if _vl.name == _req_lic:
-                            lic_state = LicenseState.valid
-                            _lic_ok = True
+                            lic_state = License.objects._get_license_state(_vl)
                             break
-                    if not _lic_ok:
-                        lic_state = LicenseState.none
-                        act_state = SERVICE_NOT_LICENSED
-                        # update state info
-                        _state_info = _result.find("state_info")
-                        _state_info.text = "not licensed"
-                        _state_info.attrib["state"] = "{:d}".format(act_state)
                 else:
                     lic_state = -1
             else:
@@ -563,7 +555,7 @@ class MetaService(Service):
             act_pids = ms_block.pids_found
             num_started = len(act_pids)
             if diff_threads:
-                act_state = SERVICE_DEAD
+                act_state = SERVICE_INCOMPLETE
                 num_found = num_started
             else:
                 act_state = SERVICE_OK

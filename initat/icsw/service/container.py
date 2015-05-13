@@ -140,6 +140,7 @@ class ServiceContainer(object):
         rc_dict = {
             SERVICE_OK: ("running", "ok"),
             SERVICE_DEAD: ("error", "critical"),
+            SERVICE_INCOMPLETE: ("incomplete", "critical"),
             SERVICE_NOT_INSTALLED: ("not installed", "warning"),
             SERVICE_NOT_LICENSED: ("no license", "critical"),
             SERVICE_NOT_CONFIGURED: ("not configured", "warning"),

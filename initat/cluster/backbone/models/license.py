@@ -68,6 +68,7 @@ class LicenseState(enum.IntEnum):
     expired = 40          # license used to be valid but is not valid anymore
     valid_in_future = 20  # license will be valid in the future
     none = 0              # license not present
+    not_needed = -1       # license not needed
 
     def is_valid(self):
         # states where we consider the license to be valid, i.e. the user may access the feature

@@ -48,19 +48,24 @@ class DBCursor(object):
 
 
 STATE_DICT = {
-    (constants.SERVICE_OK, 0): "pids missing",
-    (constants.SERVICE_OK, 1): "OK",
-    (constants.SERVICE_DEAD, 0): "not running",
-    (constants.SERVICE_DEAD, 1): "incompletely running",
-    (constants.SERVICE_NOT_INSTALLED, 0): "not installed",
-    (constants.SERVICE_NOT_INSTALLED, 1): "strange (running but not installed)",
-    (constants.SERVICE_NOT_LICENSED, 0): "not licensed",
-    (constants.SERVICE_NOT_LICENSED, 1): "strange (running but not licensed)",
-    (constants.SERVICE_NOT_CONFIGURED, 0): "not configured",
-    # ??? FIXME
-    (constants.SERVICE_NOT_CONFIGURED, 1): "unlicensed",
+    constants.SERVICE_OK: "OK",
+    constants.SERVICE_DEAD: "not running",
+    constants.SERVICE_INCOMPLETE: "incomplete",
+    constants.SERVICE_NOT_INSTALLED: "not installed",
+    constants.SERVICE_NOT_LICENSED: "not licensed",
+    constants.SERVICE_NOT_CONFIGURED: "not configured",
 }
 
+LIC_STATE_DICT = {
+    120: "violated",
+    100: "valid",
+    80: "grace",
+    60: "new_install",
+    40: "expired",
+    20: "valid_in_future",
+    0: "none",
+    -1: "not_needed",
+}
 
 TARGET_STATE_STOPPED = 0
 TARGET_STATE_RUNNING = 1
@@ -131,10 +136,10 @@ class ServiceState(object):
             "state": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
                 "service INTEGER",
-                # running (any pids found)
-                "running INTEGER DEFAULT 0",
-                # state, defaults to 1 (==SERVICE_DEAD)
-                "state INTEGER DEFAULT 1",
+                # state, defaults to (==SERVICE_DEAD)
+                "state INTEGER DEFAULT {:d}".format(constants.SERVICE_DEAD),
+                # state, defaults to -1 (==NOT_NEEDED)
+                "license_state INTEGER DEFAULT -1",
                 # process info str
                 "proc_info_str TEXT DEFAULT ''",
                 # creation time
@@ -225,23 +230,25 @@ class ServiceState(object):
                         _changed = True
         return _changed
 
-    def _update_state(self, name, state, running, proc_info_str):
+    def _update_state(self, name, state, lic_state, proc_info_str):
         _save = False
-        if (state, running) != self.__state_dict.get(name, None):
+        if (state, lic_state) != self.__state_dict.get(name, None):
             self.log(
                 "state for {} is {}".format(
                     name,
-                    STATE_DICT[(state, running)],
+                    STATE_DICT[state],
+                    LIC_STATE_DICT[lic_state],
                 )
             )
-            self.__state_dict[name] = (state, running)
+            self.__state_dict[name] = (state, lic_state)
             with self.get_cursor() as crs:
                 crs.execute(
-                    "INSERT INTO state(service, running, state, proc_info_str, created) VALUES(?, ?, ?, ?, ?)",
-                    (self.__service_lut[name], running, state, proc_info_str, int(time.time())),
+                    "INSERT INTO state(service, license_state, state, proc_info_str, created) VALUES(?, ?, ?, ?, ?)",
+                    (self.__service_lut[name], lic_state, state, proc_info_str, int(time.time())),
                 )
         # check if the current state is in sync with the targetstate
-        is_ok = (self.__target_dict[name], self.__state_dict[name]) in SERVICE_OK_LIST
+        _ct = (self.__target_dict[name], self.__state_dict[name][0], self.__state_dict[name][1])
+        is_ok = _ct in SERVICE_OK_LIST
         return is_ok
 
     def _check_for_stable_state(self, service):
@@ -254,7 +261,7 @@ class ServiceState(object):
         cur_time = int(time.time())
         with self.get_cursor() as crs:
             _records = crs.execute(
-                "SELECT running, state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
+                "SELECT license_state, state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
                 (cur_time, self.__service_lut[name]),
             ).fetchall()
             _stable = True
@@ -360,10 +367,9 @@ class ServiceState(object):
                 if _res is not None:
                     # print etree.tostring(_el.entry, pretty_print=True)
                     _state = int(_res.find("state_info").attrib["state"])
-                    _pids = _res.findall(".//pid")
+                    _lic_state = int(_res.find("license_info").attrib["state"])
                     _proc_info_str = _res.find("state_info").get("proc_info_str", "")
-                    _running = 1 if len(_pids) else 0
-                    _is_ok = self._update_state(_el.name, _state, _running, _proc_info_str)
+                    _is_ok = self._update_state(_el.name, _state, _lic_state, _proc_info_str)
                     if not _is_ok:
                         if self.__shutdown:
                             if _el.name not in exclude:
@@ -371,11 +377,12 @@ class ServiceState(object):
                         else:
                             _stable = self._check_for_stable_state(_el)
                             _el.log(
-                                "not OK ({}, state {} [{}], {}, {})".format(
+                                "not OK ({}, state {} / {} [{}], {}, {})".format(
                                     "should run" if self.__target_dict[_el.name] else "should not run",
-                                    STATE_DICT[(_state, _running)],
+                                    STATE_DICT[_state],
+                                    LIC_STATE_DICT[_lic_state],
                                     "stable" if _stable else "not stable",
-                                    logging_tools.get_plural("pid", len(_pids)),
+                                    logging_tools.get_plural("pid", len(_res.findall(".//pid"))),
                                     _proc_info_str or '---',
                                 ),
                                 logging_tools.LOG_LEVEL_WARN
@@ -415,7 +422,7 @@ class ServiceState(object):
                     (_trans.name,),
                 ).fetchone()[0]
                 _states = crsr.execute(
-                    "SELECT state, running, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                    "SELECT state, license_state, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
                     (_srv_id, cur_time - REPORT_TIME)
                 ).fetchall()
                 _actions = crsr.execute(
@@ -432,7 +439,7 @@ class ServiceState(object):
                         ),
                         "",
                     ] + [
-                        "{} state={}, running={} [{}]".format(
+                        "{} state={}, license_state={} [{}]".format(
                             time.ctime(int(_state[2])),
                             _state[0],
                             _state[1],
@@ -481,11 +488,11 @@ class ServiceState(object):
                                     *[
                                         _bldr.state(
                                             state="{:d}".format(state),
-                                            running="{:d}".format(running),
+                                            license_state="{:d}".format(license_state),
                                             created="{:d}".format(int(created)),
                                             proc_info_str=proc_info_str,
-                                        ) for state, running, created, proc_info_str in state_crsr.execute(
-                                            "SELECT state, running, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                                        ) for state, license_state, created, proc_info_str in state_crsr.execute(
+                                            "SELECT state, license_state, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )
                                     ]
