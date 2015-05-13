@@ -202,13 +202,13 @@ angular.module(
             }])
     get_license_state_bootstrap_class = (state) ->
         if state?
-            return {'valid': 'success', 'expired': 'danger', 'in_grace_period': 'warning', 'valid_in_future': 'warning',
+            return {'valid': 'success', 'expired': 'danger', 'grace': 'warning', 'valid_in_future': 'warning',
             'parameter_violated': 'danger'}[state]
         else
             return ""
     get_license_state_icon_class = (state) ->
         if state?
-            return {'valid': 'fa fa-check', 'expired': 'fa fa-times', 'in_grace_period': 'fa fa-clock-o', 'valid_in_future': 'fa fa-clock-o',
+            return {'valid': 'fa fa-check', 'expired': 'fa fa-times', 'grace': 'fa fa-clock-o', 'valid_in_future': 'fa fa-clock-o',
             'parameter_violated': 'fa fa-times'}[state]
         else
             return ""
@@ -272,4 +272,3 @@ angular.module(
                     toaster.pop("warning", "License violated", msg, 10000)
     )
 ])
-
