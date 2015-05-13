@@ -47,14 +47,6 @@ class DBCursor(object):
             self.conn.commit()
 
 
-STATE_DICT = {
-    getattr(constants, _key): _key.split("_", 1)[1].lower().replace("_", " ") for _key in dir(constants) if _key.startswith("SERVICE_")
-}
-
-LIC_STATE_DICT = {
-    getattr(constants, _key): _key.split("_", 2)[2].lower().replace("_", " ") for _key in dir(constants) if _key.startswith("LIC_STATE_")
-}
-
 SERVICE_OK_DICT = {
     constants.TARGET_STATE_RUNNING: {
         constants.SERVICE_OK: (
@@ -226,8 +218,8 @@ class ServiceState(object):
             self.log(
                 "state for {} is {}".format(
                     name,
-                    STATE_DICT[state],
-                    LIC_STATE_DICT[lic_state],
+                    constants.STATE_DICT[state],
+                    constants.LIC_STATE_DICT[lic_state],
                 )
             )
             self.__state_dict[name] = (state, lic_state)
@@ -378,8 +370,8 @@ class ServiceState(object):
                             _el.log(
                                 "not OK ({}, state {} / {} [{}], {}, {})".format(
                                     "should run" if self.__target_dict[_el.name] else "should not run",
-                                    STATE_DICT[_state],
-                                    LIC_STATE_DICT[_lic_state],
+                                    constants.STATE_DICT[_state],
+                                    constants.LIC_STATE_DICT[_lic_state],
                                     "stable" if _stable else "not stable",
                                     logging_tools.get_plural("pid", len(_res.findall(".//pid"))),
                                     _proc_info_str or '---',

@@ -142,7 +142,6 @@ class ServiceContainer(object):
             SERVICE_DEAD: ("error", "critical"),
             SERVICE_INCOMPLETE: ("incomplete", "critical"),
             SERVICE_NOT_INSTALLED: ("not installed", "warning"),
-            SERVICE_NOT_LICENSED: ("no license", "critical"),
             SERVICE_NOT_CONFIGURED: ("not configured", "warning"),
         }
         if License is not None:

@@ -40,6 +40,8 @@ __all__ = [
     "LIC_STATE_VIOLATED",
     "TARGET_STATE_RUNNING",
     "TARGET_STATE_STOPPED",
+    "STATE_DICT",
+    "LIC_STATE_DICT",
 ]
 
 # service states
@@ -58,6 +60,16 @@ LIC_STATE_EXPIRED = 40
 LIC_STATE_VALID_IN_FUTURE = 20
 LIC_STATE_NONE = 0
 LIC_STATE_NOT_NEEDED = -1
+
+_locs = locals()
+
+STATE_DICT = {
+    _locs[_key]: _key.split("_", 1)[1].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("SERVICE_")
+}
+
+LIC_STATE_DICT = {
+    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("LIC_STATE_")
+}
 
 # for meta server
 TARGET_STATE_STOPPED = 0
