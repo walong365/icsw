@@ -173,32 +173,32 @@ angular.module(
 
 
     # NOTE: code below here is just utils, but we can't have it in a proper service since that would create a circular dependency
-    _get_license_state_internal = (lic) ->
+    _get_license_state_internal = (issued_lic) ->
         # NOTE: keep grace period in sync with py
-        if moment(lic.valid_from) < moment() and moment() < (moment(lic.valid_to).add(2, 'weeks'))
-            if moment() < moment(lic.valid_to)
+        if moment(issued_lic.valid_from) < moment() and moment() < (moment(issued_lic.valid_to).add(2, 'weeks'))
+            if moment() < moment(issued_lic.valid_to)
                 return ([[0], {
                     state_id: 'valid'
                     state_str: gettextCatalog.getString('Valid')
-                    date_info: gettextCatalog.getString('until') + ' ' + moment(lic.valid_to).format("YYYY-MM-DD")
+                    date_info: gettextCatalog.getString('until') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                 }])
             else
                 return ([[3], {
                     state_id: 'grace'
                     state_str: gettextCatalog.getString('In grace period')
-                    date_info: gettextCatalog.getString('since') + ' ' + moment(lic.valid_to).format("YYYY-MM-DD")
+                    date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                 }])
-        else if moment(lic.valid_from) < moment()
-            return ([[5, moment(lic.valid_to)], {
+        else if moment(issued_lic.valid_from) < moment()
+            return ([[5, moment(issued_lic.valid_to)], {
                 state_id: 'expired'
                 state_str: gettextCatalog.getString('Expired')
-                date_info: gettextCatalog.getString('since') + ' ' + moment(lic.valid_to).format("YYYY-MM-DD")
+                date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
             }])
         else
-            return ([[8, moment(lic.valid_from)], {
+            return ([[8, moment(issued_lic.valid_from)], {
                 state_id: 'valid_in_future'
                 state_str: gettextCatalog.getString('Will be valid')
-                date_info: gettextCatalog.getString('on') + ' ' + moment(lic.valid_from).format("YYYY-MM-DD")
+                date_info: gettextCatalog.getString('on') + ' ' + moment(issued_lic.valid_from).format("YYYY-MM-DD")
             }])
     get_license_state_bootstrap_class = (state) ->
         if state?
@@ -212,13 +212,13 @@ angular.module(
             'parameter_violated': 'fa fa-times'}[state]
         else
             return ""
-    get_license_state = (lic) ->
-        state =  _get_license_state_internal(lic)
+    get_license_state = (issued_lic) ->
+        state =  _get_license_state_internal(issued_lic)
         return if state? then state[1] else undefined
 
     angular.extend(data, {
-        get_license_bootstrap_class : (lic) ->
-            state = get_license_state(lic)
+        get_license_bootstrap_class : (issued_lic) ->
+            state = get_license_state(issued_lic)
             return if state? then get_license_state_bootstrap_class(state.state_id) else undefined
         get_license_state : get_license_state
         get_license_state_bootstrap_class : get_license_state_bootstrap_class
