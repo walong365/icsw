@@ -201,6 +201,7 @@ class _LicenseUsageDeviceService(models.Model):
 
     class Meta:
         abstract = True
+        unique_together = (("license", "device", "service"),)
 
 
 class _LicenseUsageUser(models.Model):
@@ -208,6 +209,7 @@ class _LicenseUsageUser(models.Model):
 
     class Meta:
         abstract = True
+        unique_together = (("license", "user"),)
 
 
 class _LicenseUsageExtLicense(models.Model):
@@ -215,6 +217,7 @@ class _LicenseUsageExtLicense(models.Model):
 
     class Meta:
         abstract = True
+        unique_together = (("license", "ext_license"),)
 
 
 class LicenseUsageDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
@@ -276,12 +279,11 @@ class LicenseUsage(object):
                 # TODO: generalize this bulk create_if_nonexistent to all tables
                 dev_pks = frozenset(LicenseUsage.device_to_pk(dev) for dev in value)
                 present_keys = frozenset(
-                    LicenseUsageDeviceService.objects.filter(device_id__in=dev_pks,
-                                                             service=None,
-                                                             **common_params)
+                    LicenseUsageDeviceService.objects.filter(device_id__in=dev_pks, service=None, **common_params)
                     .values_list("device_id", flat=True)
                 )
                 dev_pks_missing = dev_pks.difference(present_keys)
+                # check if devices are still present
                 dev_pks_missing_dev_present = device.objects.filter(pk__in=dev_pks_missing).values_list("pk", flat=True)
                 entries_to_add = [LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
                                   for dev_pk in dev_pks_missing_dev_present]
