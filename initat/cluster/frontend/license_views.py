@@ -86,6 +86,7 @@ class GetLicenseViolations(ListAPIView):
                 viol.license: {
                     'type': 'hard' if viol.hard else 'soft',
                     'name': LicenseEnum.id_string_to_user_name(viol.license),
+                    'revocation_date': viol.date + LicenseUsage.GRACE_PERIOD,
                     }
                 for viol in LicenseViolation.objects.all()
             }

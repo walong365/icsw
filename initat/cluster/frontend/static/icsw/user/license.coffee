@@ -266,7 +266,9 @@ angular.module(
         () ->
             if icswUserLicenseDataService.license_violations? and icswUserLicenseDataService.license_violations.plain?
                 for lic, data of icswUserLicenseDataService.license_violations.plain()
-                    msg = "Your license for #{data['name']} is violated.\nPlease check the license page for details."
+                    msg =  "Your license for #{data['name']} is violated and "
+                    msg += "will be revoked on #{moment(data['revocation_date']).format("YYYY-MM-DD HH:mm")}.\n"
+                    msg += "Please check the license page for details.\n"
                     toaster.pop("warning", "License violated", msg, 10000)
     )
 ])
