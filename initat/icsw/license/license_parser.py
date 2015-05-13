@@ -24,8 +24,8 @@ import os
 
 # noinspection PyUnresolvedReferences
 from lxml import etree
-from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.icsw.license.license_lock import lock_entity, unlock_entity, show_locked_entities, show_cluster_id
+from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.icsw.license.register_cluster import register_cluster
 
 

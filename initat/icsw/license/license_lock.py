@@ -22,14 +22,6 @@
 #
 import sys
 
-from initat.cluster.backbone.models import device, device_variable
-from initat.cluster.backbone.models.rms import ext_license
-from initat.cluster.backbone.models.monitoring import mon_check_command
-from initat.cluster.backbone.models.user import user
-from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsageDeviceService, \
-    LicenseLockListUser, LicenseUsageUser, LicenseLockListExtLicense, LicenseUsageExtLicense
-
-
 __all__ = [
     "lock_entity",
     "unlock_entity",
@@ -39,6 +31,13 @@ __all__ = [
 
 
 def lock_entity(opts):
+    from initat.cluster.backbone.models import device
+    from initat.cluster.backbone.models.rms import ext_license
+    from initat.cluster.backbone.models.monitoring import mon_check_command
+    from initat.cluster.backbone.models.user import user
+    from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsageDeviceService, \
+        LicenseLockListUser, LicenseUsageUser, LicenseLockListExtLicense, LicenseUsageExtLicense
+
     def lock_device(device_name):
         if opts.service is not None:
             return  # let service handle both together
@@ -56,7 +55,7 @@ def lock_entity(opts):
     def lock_service(service_name):
         try:
             service_db = mon_check_command.objects.get(name=service_name)
-        except device.DoesNotExist:
+        except mon_check_command.DoesNotExist:
             raise RuntimeError("No such service: {}".format(service_name))
         else:
             if opts.device:
@@ -77,7 +76,7 @@ def lock_entity(opts):
     def lock_user(user_name):
         try:
             user_db = user.objects.get(login=user_name)
-        except device.DoesNotExist:
+        except user.DoesNotExist:
             raise RuntimeError("No such user: {}".format(user_name))
         else:
             LicenseLockListUser.objects.get_or_create(license=opts.license, user=user_db)
@@ -87,7 +86,7 @@ def lock_entity(opts):
     def lock_ext_license(ext_license_name):
         try:
             ext_license_db = ext_license.objects.get(name=ext_license_name)
-        except device.DoesNotExist:
+        except ext_license.DoesNotExist:
             raise RuntimeError("No such external license: {}".format(ext_license_name))
         else:
             LicenseLockListExtLicense.objects.get_or_create(license=opts.license, ext_license=ext_license)
@@ -112,6 +111,13 @@ def lock_entity(opts):
 
 
 def unlock_entity(opts):
+    from initat.cluster.backbone.models import device
+    from initat.cluster.backbone.models.rms import ext_license
+    from initat.cluster.backbone.models.monitoring import mon_check_command
+    from initat.cluster.backbone.models.user import user
+    from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseLockListUser, \
+        LicenseLockListExtLicense
+
     def unlock_device(device_name):
         if opts.service is not None:
             return  # let service handle both together
@@ -126,7 +132,7 @@ def unlock_entity(opts):
     def unlock_service(service_name):
         try:
             service_db = mon_check_command.objects.get(name=service_name)
-        except device.DoesNotExist:
+        except mon_check_command.DoesNotExist:
             raise RuntimeError("No such service: {}".format(service_name))
         else:
             if opts.device:
@@ -145,7 +151,7 @@ def unlock_entity(opts):
     def unlock_user(user_name):
         try:
             user_db = user.objects.get(login=user_name)
-        except device.DoesNotExist:
+        except user.DoesNotExist:
             raise RuntimeError("No such user: {}".format(user_name))
         else:
             LicenseLockListUser.objects.filter(license=opts.license, user=user_db).delete()
@@ -154,7 +160,7 @@ def unlock_entity(opts):
     def unlock_ext_license(ext_license_name):
         try:
             ext_license_db = ext_license.objects.get(name=ext_license_name)
-        except device.DoesNotExist:
+        except ext_license.DoesNotExist:
             raise RuntimeError("No such external license: {}".format(ext_license_name))
         else:
             LicenseLockListExtLicense.objects.filter(license=opts.license, ext_license=ext_license).delete()
@@ -174,6 +180,9 @@ def unlock_entity(opts):
 
 
 def show_locked_entities(opts):
+    from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseLockListUser, \
+        LicenseLockListExtLicense
+
     if LicenseLockListDeviceService.objects.exists():
         print "Locked devices and services:"
         for dev_serv in LicenseLockListDeviceService.objects.all():
@@ -196,4 +205,6 @@ def show_locked_entities(opts):
 
 
 def show_cluster_id(opts):
+    from initat.cluster.backbone.models import device_variable
+
     print device_variable.objects.get_cluster_id()

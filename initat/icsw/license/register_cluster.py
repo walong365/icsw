@@ -25,7 +25,6 @@ import urllib
 import urllib2
 import sys
 from lxml import etree
-from initat.cluster.backbone.models import License, device_variable
 
 __all__ = [
     "register_cluster"
@@ -36,6 +35,8 @@ REGISTRATION_URL = "http://localhost:8080/cluster/GetLicenseFile"
 
 
 def register_cluster(opts):
+    from initat.cluster.backbone.models import License, device_variable
+
     cluster_id = opts.cluster_id or device_variable.objects.get_cluster_id()
     data = urllib.urlencode({
         'username': opts.user,
