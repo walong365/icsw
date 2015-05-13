@@ -105,6 +105,8 @@ angular.module(
 
                     return icswUserLicenseDataService.calculate_license_state(icswUserLicenseDataService.license_packages,
                         license_id, $window.CLUSTER_ID)
+                scope.undefined_to_zero = (x) ->
+                    return if x? then x else 0
         }
 ]).directive("icswUserLicensePackages", ["icswUserLicenseDataService", "$window", (icswUserLicenseDataService, $window) ->
     return {

@@ -71,17 +71,22 @@
                 <td>{{_state(lic.id).date_info}}</td>
                 <td>
                     <div ng-repeat="param_type in get_merged_key_list(_state(lic.id).lic.parameters, lic.parameter_usage)">
+
                         <div ng-show="_state(lic.id).lic.parameters[param_type]">
-                            <div ng-show="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
-                                <!-- parameter exceeded -->
-                                <alert type="danger" style="padding: 5px">
-                                    <i class="glyphicon glyphicon-exclamation-sign"></i>
-                                    <strong>{{param_type}}</strong>: {{_state(lic.id).lic.parameters[param_type]}} (used: {{lic.parameter_usage[param_type]}})
-                                </alert>
-                            </div>
-                            <div ng-show="_state(lic.id).lic.parameters[param_type] >= lic.parameter_usage[param_type]">
-                                <!-- everything ok -->
-                                <strong>{{param_type}}</strong>: {{_state(lic.id).lic.parameters[param_type]}} (used: {{lic.parameter_usage[param_type]}})
+                            <div ng-switch on="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
+                                <div ng-switch-when="true">
+                                    <!-- parameter exceeded -->
+                                    <alert type="danger" style="padding: 5px">
+                                        <i class="glyphicon glyphicon-exclamation-sign"></i>
+                                        <strong>{{param_type}}</strong>: {{_state(lic.id).lic.parameters[param_type]}}
+                                        (used: {{lic.parameter_usage[param_type]}})
+                                    </alert>
+                                </div>
+                                <div ng-switch-default>
+                                    <!-- everything ok, parameter usage within limits -->
+                                    <strong>{{param_type}}</strong>: {{ _state(lic.id).lic.parameters[param_type] }}
+                                    (used: {{ undefined_to_zero(lic.parameter_usage[param_type]) }})
+                                </div>
                             </div>
                         </div>
                         <alert type="danger" ng-show="!_state(lic.id).lic.parameters[param_type]" style="padding: 5px">
