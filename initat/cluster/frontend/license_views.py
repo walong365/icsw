@@ -93,7 +93,8 @@ class GetLicenseViolations(ListAPIView):
 
 
 class GetValidLicenses(RetrieveAPIView):
-    @method_decorator(login_required_rest(lambda: {}))
+    @method_decorator(login_required_rest(lambda: {'valid_licenses': [],
+                                                   'all_licenses': [l.name for l in LicenseEnum]}))
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response({
