@@ -257,6 +257,19 @@ angular.module(
                 state.state_id = "parameter_violated"
                 state.state_str = gettextCatalog.getString('License parameter violated')
             return state
+        get_license_violation_warning: (license_id, html) ->
+            if data.license_violations[license_id]?
+                linebr = if html then "<br/>" else "\n"
+                violation = data.license_violations[license_id]
+                date_str = moment(violation['revocation_date']).format("YYYY-MM-DD HH:mm")
+
+                msg = ""
+                if html
+                    msg += "<i class=\"glyphicon glyphicon-exclamation-sign\"></i> "
+                msg +=  "Your license for #{violation['name']} is violated and #{linebr}"
+                msg += "will be revoked on #{date_str}.#{linebr}"
+                msg += "Please check the license page for details."
+                return msg
     })
 
     return data
@@ -266,9 +279,7 @@ angular.module(
         () ->
             if icswUserLicenseDataService.license_violations? and icswUserLicenseDataService.license_violations.plain?
                 for lic, data of icswUserLicenseDataService.license_violations.plain()
-                    msg =  "Your license for #{data['name']} is violated and "
-                    msg += "will be revoked on #{moment(data['revocation_date']).format("YYYY-MM-DD HH:mm")}.\n"
-                    msg += "Please check the license page for details.\n"
+                    msg = icswUserLicenseDataService.get_license_violation_warning(lic)
                     toaster.pop("warning", "License violated", msg, 10000)
     )
 ])

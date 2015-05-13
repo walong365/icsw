@@ -44,7 +44,6 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.license.your_licenses">
-
     <table st-table="entries_displayed" st-safe-src="all_licenses" class="table table-condensed table-hover"
            style="width:auto;">
         <thead>
@@ -93,6 +92,11 @@
                             <!-- parameter used which is not present -->
                             <i class="glyphicon glyphicon-exclamation-sign"></i>
                             <strong>{{param_type}}</strong>: used: {{lic.parameter_usage[param_type]}}
+                        </alert>
+                    </div>
+
+                    <div ng-show="get_license_violation_warning(lic.id)">
+                        <alert type="danger" ng-bind-html="get_license_violation_warning(lic.id, true)" style="padding: 5px">
                         </alert>
                     </div>
                 </td>
