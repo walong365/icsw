@@ -54,6 +54,8 @@ STATE_DICT = {
     (constants.SERVICE_DEAD, 1): "incompletely running",
     (constants.SERVICE_NOT_INSTALLED, 0): "not installed",
     (constants.SERVICE_NOT_INSTALLED, 1): "strange",
+    (constants.SERVICE_NOT_LICENSED, 0): "not license",
+    (constants.SERVICE_NOT_LICENSED, 1): "strange",
     (constants.SERVICE_NOT_CONFIGURED, 0): "not configured",
     # ??? FIXME
     (constants.SERVICE_NOT_CONFIGURED, 1): "unlicensed",
@@ -70,6 +72,8 @@ SERVICE_OK_LIST = [
     (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_CONFIGURED, 0)),
     # should be stopped and not installed
     (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_INSTALLED, 0)),
+    # should be stopped and not licensed
+    (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_LICENSED, 0)),
     # should be running and not configured
     (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_CONFIGURED, 0)),
     # running and running

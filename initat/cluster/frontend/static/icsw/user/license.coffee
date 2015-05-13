@@ -57,12 +57,13 @@ angular.module(
         $scope.uploader.onCompleteAll = () ->
             blockUI.stop()
             $scope.uploader.clearQueue()
-]).directive("icswUserLicenseOverview", ["icswUserLicenseDataService", (icswUserLicenseDataService) ->
+]).directive("icswUserLicenseOverview", ["icswUserLicenseDataService", "$window", (icswUserLicenseDataService, $window) ->
     return {
         restrict : "EA"
         controller: 'icswUserLicenseCtrl'
         templateUrl : "icsw.user.license.overview"
         link: (scope, el, attrs) ->
+            scope.CLUSTER_ID = $window.CLUSTER_ID
             scope.your_licenses_open = false
             scope.lic_packs_open = false
             scope.lic_upload_open = true

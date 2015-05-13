@@ -139,7 +139,7 @@ class Service(object):
         else:
             return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None):
+    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -187,9 +187,32 @@ class Service(object):
                     _state_info = _result.find("state_info")
                     _state_info.text = "no processes"
                     _state_info.attrib["state"] = "{:d}".format(act_state)
+            if valid_licenses is not None:
+                from initat.cluster.backbone.models import LicenseState
+                _req_lic = self.entry.find(".//required-license")
+                if _req_lic is not None:
+                    _req_lic = _req_lic.text.strip()
+                    _lic_ok = False
+                    for _vl in valid_licenses:
+                        if _vl.name == _req_lic:
+                            lic_state = LicenseState.valid
+                            _lic_ok = True
+                            break
+                    if not _lic_ok:
+                        lic_state = LicenseState.none
+                        act_state = SERVICE_NOT_LICENSED
+                        # update state info
+                        _state_info = _result.find("state_info")
+                        _state_info.text = "not licensed"
+                        _state_info.attrib["state"] = "{:d}".format(act_state)
+                else:
+                    lic_state = -1
+            else:
+                lic_state = -1
         else:
             sql_info = self.attrib["runs_on"]
-        if type(sql_info) == str:
+            lic_state = -1
+        if isinstance(sql_info, basestring):
             _result.append(
                 E.sql_info(str(sql_info))
             )
@@ -200,6 +223,9 @@ class Service(object):
                     sql_info.config_name),
                 )
             )
+        _result.append(
+            E.license_info(state="{:d}".format(lic_state))
+        )
         if self.entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
             _result.attrib["version_ok"] = "0"
             try:

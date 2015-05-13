@@ -406,7 +406,8 @@ angular.module(
             return false
         else
             if license not in data.license_data.all_licenses
-                console.warn("Invalid license check for #{license}. Licenses are: #{data.license_data.all_licenses}")
+                if license not in ["netboot"]
+                    console.warn("Invalid license check for #{license}. Licenses are: #{data.license_data.all_licenses}")
             return license in data.license_data.valid_licenses
     func_dict = {
         # functions to check permissions for single objects

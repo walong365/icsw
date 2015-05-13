@@ -25,12 +25,9 @@ import logging
 
 # noinspection PyUnresolvedReferences
 from lxml import etree
-import datetime
-import django.utils.timezone
 from dateutil import relativedelta
-import django
 
-from django.db import models, transaction, IntegrityError
+from django.db import models, transaction
 import enum
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry

@@ -26,16 +26,19 @@ __all__ = [
     "SERVICE_OK",
     "SERVICE_DEAD",
     "SERVICE_NOT_INSTALLED",
+    "SERVICE_NOT_LICENSED",
     "SERVICE_NOT_CONFIGURED",
     "INIT_BASE",
     "SERVERS_DIR",
 ]
 
-# return values
+# service states
 SERVICE_OK = 0
 SERVICE_DEAD = 1
+SERVICE_NOT_LICENSED = 4
 SERVICE_NOT_INSTALLED = 5
-# also if config not set or insufficient licenses
 SERVICE_NOT_CONFIGURED = 6
+
+# path definitions
 INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
 SERVERS_DIR = "/opt/cluster/etc/servers.d"
