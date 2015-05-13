@@ -364,9 +364,12 @@ def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
     def _memoize_with_expiry(func, *args, **kw):
         # Determine what cache to use - the supplied one, or one we create inside the
         # wrapped function.
-        if _cache is None and not hasattr(func, '_cache'):
-            func._cache = {}
-        cache = _cache or func._cache
+        if _cache is None:
+            if not hasattr(func, '_cache'):
+                func._cache = {}
+            cache = func._cache
+        else:
+            cache = _cache
 
         mem_args = args[:num_args]
         # frozenset is used to ensure hashability

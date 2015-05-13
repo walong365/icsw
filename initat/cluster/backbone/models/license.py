@@ -27,7 +27,9 @@ import logging
 from lxml import etree
 from dateutil import relativedelta
 
+from django.db.models import signals
 from django.db import models, transaction
+from django.dispatch import receiver
 import enum
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry
@@ -135,8 +137,10 @@ class _LicenseManager(models.Manager):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         return LicenseFileReader.get_license_packages(self._license_readers)
 
-    # @cached_property
+    _license_readers_cache = {}
+
     @property
+    @memoize_with_expiry(10, _cache=_license_readers_cache)
     def _license_readers(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         readers = []
@@ -150,15 +154,10 @@ class _LicenseManager(models.Manager):
 
         return readers
 
-    # def _update_license_readers(self):
-    #     try:
-    #         del self._license_readers
-    #     except AttributeError:
-    #         pass
-
 
 ########################################
 # actual license documents:
+
 
 class License(models.Model):
     objects = _LicenseManager()
@@ -174,10 +173,11 @@ class License(models.Model):
         app_label = "backbone"
         verbose_name = "License"
 
-# @receiver(signals.post_save, sender=License)
-# @receiver(signals.post_delete, sender=License)
-# def license_save(sender, **kwargs):
-#     License.objects._update_license_readers()
+
+@receiver(signals.post_save, sender=License)
+@receiver(signals.post_delete, sender=License)
+def license_save(sender, **kwargs):
+    _LicenseManager._license_readers_cache.clear()
 
 
 ########################################
