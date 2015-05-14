@@ -182,7 +182,7 @@ class ServiceState(object):
                 self.log("adding new service {}".format(new_service))
                 cursor.execute(
                     "INSERT INTO service(name, target_state, active, created) VALUES(?, ?, ?, ?)",
-                    (new_service, self._get_default_state(name), 1, int(time.time())),
+                    (new_service, self._get_default_state(new_service), 1, int(time.time())),
                 )
             self.__service_lut = {
                 _entry[1]: _entry[0] for _entry in cursor.execute("SELECT idx, name FROM service")
