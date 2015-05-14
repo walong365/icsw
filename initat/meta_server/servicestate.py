@@ -110,7 +110,7 @@ class ServiceState(object):
             "service": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
                 "name TEXT NOT NULL UNIQUE",
-                "target_state INTEGER DEFAULT 1",
+                "target_state INTEGER DEFAULT {:d}".format(constants.TARGET_STATE_RUNNING),
                 # active for services now in use (in instance_xml)
                 "active INTEGER DEFAULT 1",
                 "created INTEGER NOT NULL",
@@ -195,11 +195,11 @@ class ServiceState(object):
     def _get_default_state(self, srv_name):
         if srv_name == "package-client":
             if os.path.exists("/etc/packageserver") or os.path.exists("/etc/packageserver_id"):
-                _ts = 1
+                _ts = constants.TARGET_STATE_RUNNING
             else:
-                _ts = 0
+                _ts = constants.TARGET_STATE_STOPPED
         else:
-            _ts = 1
+            _ts = constants.TARGET_STATE_RUNNING
         return _ts
 
     def _init_states(self):
@@ -523,11 +523,22 @@ class ServiceState(object):
             with self.get_cursor(cached=False) as crsr:
                 enable_list = [
                     (_entry[0], _entry[1]) for _entry in crsr.execute(
-                        "SELECT idx, name FROM service WHERE target_state=0"
+                        "SELECT idx, name FROM service WHERE target_state={:d}".format(
+                            constants.TARGET_STATE_STOPPED
+                        )
                     ).fetchall() if _entry[1] in services
                 ]
                 for _idx, _name in enable_list:
-                    crsr.execute("UPDATE service SET target_state=1 WHERE idx=?", (_idx,))
+                    crsr.execute(
+                        "UPDATE service SET target_state=1 WHERE idx=?",
+                        (_idx, constants.TARGET_STATE_RUNNING)
+                    )
+                    crsr.execute(
+                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?)",
+                        (
+                            _idx, "enable", int(time.time()), 1, 1,
+                        )
+                    )
             srv_com.set_result(
                 "enabled {}: {}".format(
                     logging_tools.get_plural("service", len(enable_list)),
@@ -540,11 +551,22 @@ class ServiceState(object):
             with self.get_cursor(cached=False) as crsr:
                 disable_list = [
                     (_entry[0], _entry[1]) for _entry in crsr.execute(
-                        "SELECT idx, name FROM service WHERE target_state=1"
+                        "SELECT idx, name FROM service WHERE target_state={:d}".format(
+                            constants.TARGET_STATE_RUNNING
+                        )
                     ).fetchall() if _entry[1] in services
                 ]
                 for _idx, _name in disable_list:
-                    crsr.execute("UPDATE service SET target_state=0 WHERE idx=?", (_idx,))
+                    crsr.execute(
+                        "UPDATE service SET target_state=? WHERE idx=?",
+                        (_idx, constants.TARGET_STATE_STOPPED,)
+                    )
+                    crsr.execute(
+                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?)",
+                        (
+                            _idx, "disable", int(time.time()), 1, 1,
+                        )
+                    )
             srv_com.set_result(
                 "disabled {}: {}".format(
                     logging_tools.get_plural("service", len(disable_list)),
