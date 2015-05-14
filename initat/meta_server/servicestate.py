@@ -530,7 +530,7 @@ class ServiceState(object):
                 ]
                 for _idx, _name in enable_list:
                     crsr.execute(
-                        "UPDATE service SET target_state=1 WHERE idx=?",
+                        "UPDATE service SET target_state=? WHERE idx=?",
                         (constants.TARGET_STATE_RUNNING, _idx)
                     )
                     crsr.execute(
