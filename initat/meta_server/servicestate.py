@@ -182,7 +182,7 @@ class ServiceState(object):
                 self.log("adding new service {}".format(new_service))
                 cursor.execute(
                     "INSERT INTO service(name, target_state, active, created) VALUES(?, ?, ?, ?)",
-                    (new_service, 1, 1, int(time.time())),
+                    (new_service, self._get_default_state(name), 1, int(time.time())),
                 )
             self.__service_lut = {
                 _entry[1]: _entry[0] for _entry in cursor.execute("SELECT idx, name FROM service")
@@ -191,6 +191,16 @@ class ServiceState(object):
             self.__target_dict = {
                 _entry[0]: _entry[1] for _entry in cursor.execute("SELECT name, target_state FROM service")
             }
+
+    def _get_default_state(self, srv_name):
+        if srv_name == "package-client":
+            if os.path.exists("/etc/packageserver") or os.path.exists("/etc/packageserver_id"):
+                _ts = 1
+            else:
+                _ts = 0
+        else:
+            _ts = 1
+        return _ts
 
     def _init_states(self):
         # init state cache
