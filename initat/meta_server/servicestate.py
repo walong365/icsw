@@ -534,7 +534,7 @@ class ServiceState(object):
                         (_idx, constants.TARGET_STATE_RUNNING)
                     )
                     crsr.execute(
-                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?)",
+                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
                         (
                             _idx, "enable", int(time.time()), 1, 1,
                         )
@@ -562,7 +562,7 @@ class ServiceState(object):
                         (_idx, constants.TARGET_STATE_STOPPED,)
                     )
                     crsr.execute(
-                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?)",
+                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
                         (
                             _idx, "disable", int(time.time()), 1, 1,
                         )
