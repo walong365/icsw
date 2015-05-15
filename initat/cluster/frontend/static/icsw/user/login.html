@@ -1,12 +1,12 @@
 <script type="text/ng-template" id="icsw.user.login.page">
     <div class="row">
         <div ng-class="gfx_class()" ng-style="gfx_style()">
-            <img width="100%;" ng-src="{{ ICSW_URLS.MENU_GFX_BIG_URL }}" alt="{{ INIT_PRODUCT_NAME }} logo"/>
+            <img width="100%;" ng-attr-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
         </div>
         <div ng-class="login_class()">
             <div class="well"  style="margin-top:60px;">
                 <icsw-login-form></icsw-login-form>
-                <p class="text-right">species : {{ INIT_PRODUCT_FAMILY }} ({{ INIT_PRODUCT_VERSION }}) on Django {{ DJANGO_VERSION }}</p>
+                <p class="text-right">Version {{ initProduct.version }} on Django {{ DJANGO_VERSION }}</p>
                 <p class="text-right" ng-show="CLUSTER_ID">ClusterID is {{ CLUSTER_ID }}</p>
             </div>
         </div>

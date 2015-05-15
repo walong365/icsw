@@ -75,7 +75,7 @@ class Host(object):
         if not self.device.uuid:
             self.device.uuid = str(uuid.uuid4())
             self.log("setting uuid to {}".format(self.device.uuid))
-            self.device.save(update_fields=["uuid"])
+            self.device.save(fields=["uuid"])
         Host.add_lut_key(self, self.device.uuid)
         Host.add_lut_key(self, self.device.get_boot_uuid())
 
@@ -709,7 +709,7 @@ class Host(object):
                     )
             self.remove_files()
         else:
-            self.log("not node", logging_tools.LOG_LEVEL_WARN)
+            self.log("device is not node", logging_tools.LOG_LEVEL_WARN)
 
     def remove_files(self):
         for _f_name in self._files_to_rm:

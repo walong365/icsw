@@ -27,6 +27,7 @@ from django.db import models
 from django.db.models import Q
 import pytz
 import time
+import decorator
 import datetime
 from initat.tools import logging_tools
 
@@ -357,6 +358,35 @@ class duration(object):
         else:
             raise ValueError("Invalid duration type: {}".format(duration_type))
         return shorter_duration
+
+
+def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
+    def _memoize_with_expiry(func, *args, **kw):
+        # Determine what cache to use - the supplied one, or one we create inside the
+        # wrapped function.
+        if _cache is None:
+            if not hasattr(func, '_cache'):
+                func._cache = {}
+            cache = func._cache
+        else:
+            cache = _cache
+
+        mem_args = args[:num_args]
+        # frozenset is used to ensure hashability
+        if kw:
+            key = mem_args, frozenset(kw.iteritems())
+        else:
+            key = mem_args
+        if key in cache:
+            result, timestamp = cache[key]
+            # Check the age.
+            age = time.time() - timestamp
+            if not expiry_time or age < expiry_time:
+                return result
+        result = func(*args, **kw)
+        cache[key] = (result, time.time())
+        return result
+    return decorator.decorator(_memoize_with_expiry)
 
 
 # Modified DES required by vnc

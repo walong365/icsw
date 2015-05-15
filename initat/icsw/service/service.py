@@ -139,7 +139,7 @@ class Service(object):
         else:
             return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None):
+    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -187,9 +187,24 @@ class Service(object):
                     _state_info = _result.find("state_info")
                     _state_info.text = "no processes"
                     _state_info.attrib["state"] = "{:d}".format(act_state)
+            if valid_licenses is not None:
+                from initat.cluster.backbone.models import License
+                _req_lic = self.entry.find(".//required-license")
+                if _req_lic is not None:
+                    _req_lic = _req_lic.text.strip()
+                    lic_state = 0
+                    for _vl in valid_licenses:
+                        if _vl.name == _req_lic:
+                            lic_state = License.objects._get_license_state(_vl)
+                            break
+                else:
+                    lic_state = -1
+            else:
+                lic_state = -1
         else:
             sql_info = self.attrib["runs_on"]
-        if type(sql_info) == str:
+            lic_state = -1
+        if isinstance(sql_info, basestring):
             _result.append(
                 E.sql_info(str(sql_info))
             )
@@ -200,6 +215,9 @@ class Service(object):
                     sql_info.config_name),
                 )
             )
+        _result.append(
+            E.license_info(state="{:d}".format(lic_state))
+        )
         if self.entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
             _result.attrib["version_ok"] = "0"
             try:
@@ -384,7 +402,8 @@ class Service(object):
         if not int(self.entry.get("startstop", "1")):
             return
         _meta_pids = set([int(_val.text) for _val in self.entry.findall(".//pids/pid")])
-        _proc_pids = self._find_pids_by_name(act_proc_dict)
+        # protect myself from getting killed :-)
+        _proc_pids = self._find_pids_by_name(act_proc_dict) - set([os.getpid()])
         _all_pids = _meta_pids | _proc_pids
         if _all_pids:
             for _pid in _all_pids:
@@ -536,7 +555,7 @@ class MetaService(Service):
             act_pids = ms_block.pids_found
             num_started = len(act_pids)
             if diff_threads:
-                act_state = SERVICE_DEAD
+                act_state = SERVICE_INCOMPLETE
                 num_found = num_started
             else:
                 act_state = SERVICE_OK
@@ -664,12 +683,20 @@ class MetaService(Service):
             _dir = _dir_el.get("value")
             if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
                 os.makedirs(_dir)
+            _recursive = True if int(_dir_el.get("recursive", "0")) else False
             if os.path.isdir(_dir):
-                os.chown(
-                    _dir,
+                _uid, _gid = (
                     process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
                     process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
+
                 )
+                os.chown(_dir, _uid, _gid)
+                if -_recursive:
+                    for _dir, _dirs, _files in os.walk(_dir):
+                        for _file in _files:
+                            _file = os.path.join(_dir, _file)
+                            if os.path.isfile(_file):
+                                os.chown(_file, _uid, _gid)
         for _file_el in self.entry.findall(".//access-rights/file[@value]"):
             if os.path.isfile(_file_el.get("value")):
                 os.chown(

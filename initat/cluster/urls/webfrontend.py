@@ -5,7 +5,7 @@ from django.conf import settings
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views, doc_views, model_history_views
+    base_views, setup_views, doc_views, license_views, model_history_views
 from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
@@ -120,6 +120,15 @@ device_patterns = patterns(
     url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
 )
 
+
+icsw_lic_patterns = patterns(
+    "initat.cluster.license",
+    url("^get_all_licenses$", license_views.get_all_licenses.as_view(), name="get_all_licenses"),
+    url("^get_license_packages$", license_views.get_license_packages.as_view(), name="get_license_packages"),
+    url("^GetLicenseViolations$", license_views.GetLicenseViolations.as_view(), name="GetLicenseViolations"),
+    url("^GetValidLicenses$", license_views.GetValidLicenses.as_view(), name="GetValidLicenses"),
+)
+
 network_patterns = patterns(
     "initat.cluster.frontend",
     url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
@@ -171,10 +180,14 @@ user_patterns = patterns(
     url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^account_info$", user_views.account_info.as_view(), name="account_info"),
-    url("^global_settings$", user_views.global_settings.as_view(), name="global_settings"),
+    url("^global_license$", user_views.global_license.as_view(), name="global_license"),
+    url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
     url("^background_info$", user_views.background_job_info.as_view(), name="background_job_info"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
+    url("^GetGlobalPermissions$", user_views.GetGlobalPermissions.as_view(), name="GetGlobalPermissions"),
+    url("^GetObjectPermissions$", user_views.GetObjectPermissions.as_view(), name="GetObjectPermissions"),
+    url("^GetInitProduct$", user_views.GetInitProduct.as_view(), name="GetInitProduct"),
 )
 
 pack_patterns = patterns(
@@ -244,7 +257,8 @@ rest_patterns = patterns(
 dyndoc_patterns = patterns(
     "initat.cluster.frontend",
     url(r"^hb/root$", doc_views.test_page.as_view(), name="doc_root"),
-    url(r"^hb/(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
+    # TODO: fix handbook prefix in accordance with actual handbook html
+    url(r"^(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
 )
 
 doc_patterns = patterns(
@@ -273,6 +287,7 @@ my_url_patterns = patterns(
     url(r"^config/", include(config_patterns, namespace="config")),
     url(r"^rms/", include(rms_patterns, namespace="rms")),
     url(r"^lic/", include(lic_patterns, namespace="lic")),
+    url(r"^icsw_lic/", include(icsw_lic_patterns, namespace="icsw_lic")),
     url(r"^main/", include(main_patterns, namespace="main")),
     url(r"^device/", include(device_patterns, namespace="device")),
     url(r"^network/", include(network_patterns, namespace="network")),

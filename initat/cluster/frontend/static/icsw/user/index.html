@@ -3,7 +3,7 @@
     <accordion close-others="no">
         <accordion-group is-open="quick_open">
             <accordion-heading>
-                Quicklinks
+                Quick links
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quick_open, 'glyphicon-chevron-right': !quick_open}"></i>
             </accordion-heading>
             <ul class="list-group">
@@ -17,13 +17,23 @@
                         </div>
                     </div>
                 </li>
-                <li class="list-group-item" ng-show="check_perm('backbone.user.modify_tree')">
+                <li class="list-group-item" ng-show="has_menu_permission('backbone.user.modify_tree')">
                     <div class="row">
                         <div class="col-md-4">
                             Add a new device
                         </div>
                         <div class="col-md-4">
                             <a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create device</a>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item"">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Add a new license
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}">Add license</a>
                         </div>
                     </div>
                 </li>
@@ -77,7 +87,7 @@
                 <icsw-user-disk-usage object="edit_obj" type="user"/>
             </div>
         </accordion-group>
-        <accordion-group is-open="vdesktop_open">
+        <accordion-group is-open="vdesktop_open" ng-show="has_valid_license('virtual_desktop')">
             <accordion-heading>
                 Virtual desktops
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': vdesktop_open, 'glyphicon-chevron-right': !vdesktop_open}"></i>
@@ -88,7 +98,7 @@
             </div>
 
         </accordion-group>
-        <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled">
+        <accordion-group is-open="jobinfo_open" ng-show="has_valid_license('rms')">
             <accordion-heading>
                 Job info
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>

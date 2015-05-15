@@ -7,7 +7,10 @@ from .utils import generate_password
 
 
 class Parser(object):
-    def __init__(self, parser):
+    def __init__(self):
+        pass
+
+    def link(self, parser):
         self.parser = parser.add_parser(
             "setup", help="Create database and perform initial setup"
         )

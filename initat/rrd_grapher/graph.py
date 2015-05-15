@@ -22,6 +22,7 @@
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
+from initat.cluster.backbone.models.license import License
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
     MVStructEntry, MVValueEntry
 from initat.rrd_grapher.config import global_config
@@ -985,7 +986,7 @@ class RRDGraph(object):
                         "-h {:d}".format(graph_height),
                         "-aPNG",  # image format
                         # "--daemon", "unix:{}".format(global_config["RRD_CACHED_SOCKET"]),  # rrd caching daemon address
-                        "-W {} by init.at".format(settings.INIT_PRODUCT_NAME),  # title
+                        "-W {} by init.at".format(License.objects.get_init_product().name),  # title
                         "--slope-mode",  # slope mode
                         "-cBACK#ffffff",
                         "--end", "{:d}".format(self.abs_end_time),  # end

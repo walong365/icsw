@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,4 +26,7 @@
 from initat.tools import configfile
 from initat.tools import process_tools
 
-global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
+global_config = configfile.get_global_config(
+    process_tools.get_programm_name(),
+    single_process=True
+)

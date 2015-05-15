@@ -34,7 +34,7 @@ from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TI
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
 from initat.server_version import VERSION_STRING
-from io_stream_helper import io_stream
+from initat.tools.io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
@@ -52,34 +52,33 @@ def run_code():
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("USER", configfile.str_c_var("idnagios", help_string="user to run as [%(default)s]")),
-        ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
-        ("GROUPS", configfile.array_c_var([])),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME", configfile.str_c_var(prog_name)),
-        (
-            "PID_NAME", configfile.str_c_var(
-                os.path.join(
-                    prog_name,
-                    prog_name
+    global_config.add_config_entries(
+        [
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            (
+                "PID_NAME", configfile.str_c_var(
+                    os.path.join(
+                        prog_name,
+                        prog_name
+                    )
                 )
-            )
-        ),
-        ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
-        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("INITIAL_CONFIG_RUN", configfile.bool_c_var(False, help_string="make an config build run on startup [%(default)s]", only_commandline=True)),
-        (
-            "INITIAL_CONFIG_CACHE_MODE", configfile.str_c_var(
-                "DYNAMIC",
-                help_string="cache mode for initial config run [%(default)s]",
-                only_commandline=True,
-                choices=CACHE_MODES
-            )
-        ),
-    ])
+            ),
+            ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            ("INITIAL_CONFIG_RUN", configfile.bool_c_var(False, help_string="make an config build run on startup [%(default)s]", only_commandline=True)),
+            (
+                "INITIAL_CONFIG_CACHE_MODE", configfile.str_c_var(
+                    "DYNAMIC",
+                    help_string="cache mode for initial config run [%(default)s]",
+                    only_commandline=True,
+                    choices=CACHE_MODES
+                )
+            ),
+        ]
+    )
     global_config.parse_file()
     _options = global_config.handle_commandline(
         description="%s, version is %s" % (

@@ -21,12 +21,12 @@ angular.module(
     "icsw.tools.button",
     [
     ]
-).service('icswToolsButtonConfigService', () ->
+).service('icswToolsButtonConfigService', ['gettextCatalog', (gettextCatalog) ->
     get_config_for_button_type = (type) ->
         ret_obj = {}
         if type == "modify"
             ret_obj.css_class = "btn-primary"
-            ret_obj.button_value = "modify"
+            ret_obj.button_value = gettextCatalog.getString("modify")
             ret_obj.icon_class = "fa fa-wrench"
         else if type == "change"
             ret_obj.css_class = "btn-warning"
@@ -34,19 +34,19 @@ angular.module(
             ret_obj.icon_class = "fa fa-wrench"
         else if type == "create"
             ret_obj.css_class = "btn-success"
-            ret_obj.button_value = "create"
+            ret_obj.button_value = gettextCatalog.getString("create")
             ret_obj.icon_class = "fa fa-plus-circle"
         else if type == "delete"
             ret_obj.css_class = "btn-danger"
-            ret_obj.button_value = "delete"
+            ret_obj.button_value = gettextCatalog.getString("delete")
             ret_obj.icon_class = "fa fa-trash"
         else if type == "reload"
             ret_obj.css_class = "btn-warning"
-            ret_obj.button_value = "reload"
+            ret_obj.button_value = gettextCatalog.getString("reload")
             ret_obj.icon_class = "fa fa-refresh"
         else if type == "clear_selection"
             ret_obj.css_class = "btn-warning"
-            ret_obj.button_value = "clear selection"
+            ret_obj.button_value = gettextCatalog.getString("clear selection")
             ret_obj.icon_class = "fa fa-remove"
         else if type == "show"
             ret_obj.css_class = "btn-success"
@@ -67,12 +67,16 @@ angular.module(
             ret_obj.icon_class = "fa fa-search"
         else if type == "download"
             ret_obj.css_class = "btn-success"
-            ret_obj.button_value = "download"
+            ret_obj.button_value = gettextCatalog.getString("download")
             ret_obj.icon_class = "fa fa-download"
         else if type == "revert"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = "revert"
             ret_obj.icon_class = "fa fa-undo"
+        else if type == "submit"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.button_value = gettextCatalog.getString("submit")
+            ret_obj.icon_class = "fa fa-arrow-circle-right"
         else
             console.error "Invalid button type: #{type}"
         return ret_obj
@@ -87,7 +91,7 @@ angular.module(
             conf = get_config_for_button_type(type)
             return conf.css_class + " " + conf.icon_class
     }
-).directive('icswToolsButton', ["icswToolsButtonConfigService", (icswToolsButtonsConfigService) ->
+]).directive('icswToolsButton', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
     return {
         restrict: "EA",
         template: """
@@ -146,18 +150,18 @@ visible-md visible-lg
                 scope.$watch(scope.isShow
                     (new_val) ->
                         if new_val
-                            scope.button_value = attrs.showValue or "show"
+                            scope.button_value = attrs.showValue or gettextCatalog.getString("show")
                         else
-                            scope.button_value = attrs.hideValue or "hide"
+                            scope.button_value = attrs.hideValue or gettextCatalog.getString("hide")
                 )
             else if attrs.type == "enable"
                 scope.$watch(scope.isEnable
                     (new_val) ->
                         if new_val
-                            scope.button_value = "disable"
+                            scope.button_value = gettextCatalog.getString("disable")
                             scope.css_class = "btn-warning"
                         else
-                            scope.button_value = "enable"
+                            scope.button_value = gettextCatalog.getString("enable")
                             scope.css_class = "btn-success"
                 )
     }

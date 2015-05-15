@@ -52,7 +52,7 @@ def main():
             ("STATE_DIR", configfile.str_c_var("/var/lib/meta-server/.srvstate", autoconf_exclude=True)),
             ("FROM_NAME", configfile.str_c_var("meta-server", help_string="from address for info mails [%(default)s]")),
             ("FROM_ADDR", configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),
-            ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
+            ("TO_ADDR", configfile.str_c_var("cluster@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
             ("FAILED_CHECK_TIME", configfile.int_c_var(120, help_string="time in seconds to wait befor we do something [%(default)d]")),
             ("TRACK_CSW_MEMORY", configfile.bool_c_var(False, help_string="enable tracking of the memory usage of the CSW [%(default)s]", action="store_true")),
             ("MIN_CHECK_TIME", configfile.int_c_var(20, info="minimum time between two checks [%(default)s]", autoconf_exclude=True)),

@@ -159,6 +159,9 @@ angular.module(
     toasterConfig["tap-to-dismiss"] = true
 ]).service("icswParseXMLResponseService", ["toaster", (toaster) ->
     return (xml, min_level, show_error=true) ->
+        # use in combination with icswCallAjaxService, or otherwise make sure to wrap
+        # the <response> from the server in some outer tag (similar to usage in license.coffee)
+
         success = false
         if $(xml).find("response header").length
             ret_state = $(xml).find("response header").attr("code")
@@ -346,7 +349,16 @@ angular.module(
         #    console.log "s", in_dict["success"]
         cur_xhr = $.ajax(in_dict)
         return cur_xhr
-]).factory("access_level_service", () ->
+]).service("access_level_service", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+    data = {}
+    reload = () ->
+        data.global_permissions = Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET().$object
+        # these are not permissions for single objects, but the merged permission set of all objects
+        data.object_permissions = Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET().$object
+
+        data.license_data = Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET().$object
+    reload()
+
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
         if ac_name.split(".").length != 3
@@ -367,18 +379,38 @@ angular.module(
                 return false
         else
             # check global permissions
-            obj = GLOBAL_PERMISSIONS
+            obj = data.global_permissions
             if ac_name of obj
                 if any
                     if mask
                         return if obj[ac_name] & mask then true else false
                     else
-                        return true    
+                        return true
                 else
                     return (obj[ac_name] & mask) == mask
             else
                 return false
+    has_menu_permission = (p_name) ->
+        if angular.isArray(p_name)
+            for p in p_name
+                if has_menu_permission(p)
+                    return true
+            return false
+        else
+            if p_name.split(".").length == 2
+                p_name = "backbone.#{p_name}"
+            return p_name of data.global_permissions or p_name of data.object_permissions
+    has_valid_license = (license) ->
+        if Object.keys(data.license_data).length == 0
+            # not loaded yet
+            return false
+        else
+            if license not in data.license_data.all_licenses
+                if license not in ["netboot"]
+                    console.warn("Invalid license check for #{license}. Licenses are: #{data.license_data.all_licenses}")
+            return license in data.license_data.valid_licenses
     func_dict = {
+        # functions to check permissions for single objects
         "acl_delete" : (obj, ac_name) ->
             return check_level(obj, ac_name, 4, true)
         "acl_create" : (obj, ac_name) ->
@@ -392,17 +424,31 @@ angular.module(
         "acl_all" : (obj, ac_name, mask) ->
             return check_level(obj, ac_name, mask, false)
 
+        # check if permission exists for any object (used for show/hide of entries of menu)
+        has_menu_permission: has_menu_permission
+
+        has_valid_license: has_valid_license
+        has_any_valid_license: (licenses) ->
+            for l in licenses
+                if has_valid_license(l)
+                    return true
+            return false
     }
-    return {
-        "install" : (scope) ->
-            scope.acl_create = func_dict["acl_create"]
-            scope.acl_modify = func_dict["acl_modify"]
-            scope.acl_delete = func_dict["acl_delete"]
-            scope.acl_read = func_dict["acl_read"]
-            scope.acl_any = func_dict["acl_any"]
-            scope.acl_all = func_dict["acl_all"]
-   }
-).config(['$httpProvider', 
+    return angular.extend({
+        install: (scope) ->
+            angular.extend(scope, func_dict)
+        reload: reload
+   }, func_dict)
+]).service("initProduct", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+    product = {}
+    Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then((new_data) ->
+        # update dict in place
+        angular.extend(product, new_data)
+        product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-flat-trans.png"
+        product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-trans.png"
+    )
+    return product
+]).config(['$httpProvider',
     ($httpProvider) ->
         $httpProvider.defaults.xsrfCookieName = 'csrftoken'
         $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'

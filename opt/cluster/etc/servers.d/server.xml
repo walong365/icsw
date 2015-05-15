@@ -14,6 +14,7 @@
             <arg key="user">idpacks</arg>
             <arg key="group">idg</arg>
         </start-argument>
+        <required-license>package_install</required-license>
         <module-name>initat.package_install.server.main</module-name>
         <old-binary>package-server</old-binary>
         <access-rights>
@@ -34,6 +35,7 @@
             <arg key="user">idrrd</arg>
             <arg key="group">idg</arg>
         </start-argument>
+        <required-license>graphing</required-license>
         <module-name>initat.collectd.main</module-name>
         <programm-name>collectd</programm-name>
         <programm-title>icsw.collectd</programm-title>
@@ -78,6 +80,7 @@
             <arg key="user">idrrd</arg>
             <arg key="group">idg</arg>
         </start-argument>
+        <required-license>graphing</required-license>
         <programm-name>rrd-grapher</programm-name>
         <programm-title>icsw.rrd-grapher</programm-title>
         <old-binary>rrd-grapher</old-binary>
@@ -99,6 +102,7 @@
             <arg key="groups">idg</arg>
         </start-argument>
         <nice-level>15</nice-level>
+        <required-license>rms</required-license>
         <module-name>initat.rms.main</module-name>
         <access-rights>
             <file value="/etc/sysconfig/licenses/.license_policy" user="sge" group="sge"/>
@@ -117,6 +121,7 @@
             <arg key="user">iddis</arg>
             <arg key="group">idg</arg>
         </start-argument>
+        <required-license>discovery_server</required-license>
         <old-binary>discovery-server</old-binary>
         <nice-level>15</nice-level>
         <access-rights>
@@ -166,6 +171,7 @@
             <arg key="user">idnagios</arg>
             <arg key="group">idg</arg>
         </start-argument>
+        <required-license>md_config_server</required-license>
         <old-binary>md-config-server</old-binary>
         <access-rights>
             <dir value="/var/run/md-config-server" user="idnagios" group="idg" create="1"/>

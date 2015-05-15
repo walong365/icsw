@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2014 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2009-2015 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -38,6 +38,7 @@ def main():
         [
             ("MAILSERVER", configfile.str_c_var("localhost", help_string="mailserver for sending [%(default)s]", short_options="M")),
             ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable ebugging [%(default)s]", only_commandline=True, short_options="d")),
             ("FROM_NAME", configfile.str_c_var("pyerror")),
             ("FROM_ADDR", configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),
             ("LOG_FORMAT", configfile.str_c_var("%(asctime)s : %(levelname)-5s (%(threadName)s.%(process)d) %(message)s")),
@@ -54,9 +55,7 @@ def main():
             ("FORWARDER", configfile.str_c_var("", help_string="Address to forwared all logs to")),
             ("ONLY_FORWARD", configfile.bool_c_var(False, help_string="only forward (no local logging)")),
             ("MAX_AGE_FILES", configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
-            ("USER", configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u", autoconf_exclude=True)),
-            ("GROUP", configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g", autoconf_exclude=True)),
-            ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-mails [%(default)s]")),
+            ("TO_ADDR", configfile.str_c_var("cluster@init.at", help_string="mail address to send error-mails [%(default)s]")),
             ("LONG_HOST_NAME", configfile.str_c_var(long_host_name)),
             ("MAX_LINE_LENGTH", configfile.int_c_var(0, help_string="max line number size, 0 for unlimited [%(default)i]")),
             ("MAX_FILE_SIZE", configfile.int_c_var(1000000, help_string="file size limit of log files in bytes (larger files are rotated)"))

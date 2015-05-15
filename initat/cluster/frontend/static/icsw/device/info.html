@@ -59,7 +59,7 @@
             <icsw-device-variable-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['variables']">
             </icsw-device-variable-overview>
         </tab>
-        <tab ng-if="acl_read(null, 'backbone.device.show_status_history')" select="activate('status_history')" active="status_history_active">
+        <tab ng-if="acl_read(null, 'backbone.device.show_status_history') && has_valid_license('reporting')" select="activate('status_history')" active="status_history_active">
             <tab-heading>
                 Status History{{ addon_text_nmd }}
             </tab-heading>
@@ -69,7 +69,8 @@
             </div>
         </tab>
         <!-- also check for md-config-server in service list -->
-        <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('livestatus')" active="livestatus_active">
+        <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length && has_valid_license('monitoring_dashboard')"
+             select="activate('livestatus')" active="livestatus_active">
             <tab-heading>
                 Livestatus{{ addon_text_nmd }}
             </tab-heading>
@@ -84,7 +85,7 @@
             </icsw-device-mon-config>
         </tab>
         <!-- also check for grapher in service list -->
-        <tab ng-if="acl_read(null, 'backbone.device.show_graphs')" select="activate('graphing')" active="graphing_active">
+        <tab ng-if="acl_read(null, 'backbone.device.show_graphs') && has_valid_license('graphing')" select="activate('graphing')" active="graphing_active">
             <tab-heading>
                 Graph{{ addon_text }}
             </tab-heading>

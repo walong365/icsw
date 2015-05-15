@@ -28,11 +28,9 @@ django.setup()
 
 from initat.discovery_server.config import global_config, SERVER_PORT
 from initat.server_version import VERSION_STRING
-from io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
-import daemon
 from initat.tools import process_tools
 import sys
 
@@ -52,9 +50,6 @@ def main():
             ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
             ("LOG_NAME", configfile.str_c_var(prog_name)),
-            ("USER", configfile.str_c_var("iddis", help_string="user to run as [%(default)s]")),
-            ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
-            ("GROUPS", configfile.array_c_var(["idg"])),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
             ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),

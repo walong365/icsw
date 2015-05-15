@@ -30,10 +30,8 @@ from django.conf import settings
 from initat.cluster.backbone.models import LogSource
 from initat.rrd_grapher.config import global_config, SERVER_COM_PORT
 from initat.server_version import VERSION_STRING
-from io_stream_helper import io_stream
 from initat.tools import config_tools
 from initat.tools import configfile
-import daemon
 from initat.tools import process_tools
 import sys
 
@@ -93,7 +91,7 @@ def main():
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(
-                LogSource.new(
+                    LogSource.new(
                         "rrd-grapher", device=sql_info.effective_device
                     ).pk
                 )

@@ -467,7 +467,7 @@ class user_detail_form(ModelForm):
             HTML("<div class='col-sm-12'><div icsw-user-permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div>"),
         ),
         HTML("""
-<div class='form-group'>
+<div class='form-group' ng-show=\"has_valid_license('virtual_desktop')\">
     <div class='col-sm-12'>
         <icsw-user-virtual-desktop-settings object='_edit_obj'/>
     </div>

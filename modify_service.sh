@@ -1,13 +1,22 @@
 #!/bin/bash
 
+if [ $# -lt 2 ] ; then
+    echo "need action and service name"
+    exit -1
+fi
+
 ACTION=$1
 SRV_NAME=$2
 
-if [ -f /etc/corosync/corosync.conf ] ; then
-    echo "HA-setup detected, skipping automatic activation and deactivation"
-    export HA=1
-else
+if [ "${SRV_NAME}" == "logging-server" -o "${SRV_NAME}" == "meta-server" ] ; then
     export HA=0
+else
+    if [ -f /etc/corosync/corosync.conf ] ; then
+        echo "HA-setup detected, skipping automatic activation and deactivation for ${SRV_NAME}"
+        export HA=1
+    else
+        export HA=0
+    fi
 fi
 
 export INIT=/etc/init.d

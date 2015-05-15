@@ -22,12 +22,11 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap"
     ]
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI",
-    ($scope, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI) ->
+).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", "initProduct"
+    ($scope, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI, initProduct) ->
         $scope.login_hints = $window.LOGIN_HINTS
         $scope.ICSW_URLS = ICSW_URLS
-        $scope.INIT_PRODUCT_NAME = $window.INIT_PRODUCT_NAME
-        $scope.INIT_PRODUCT_VERSION = $window.INIT_PRODUCT_VERSION
+        $scope.initProduct = initProduct
         $scope.INIT_PRODUCT_FAMILY = $window.INIT_PRODUCT_FAMILY
         $scope.DJANGO_VERSION = $window.DJANGO_VERSION
         $scope.CLUSTER_NAME = $window.CLUSTER_NAME

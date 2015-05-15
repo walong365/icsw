@@ -31,7 +31,6 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
-import reversion
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -40,6 +39,7 @@ from initat.cluster.backbone.models.functions import _check_empty_string, \
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt
+import collections
 import datetime
 import json
 import logging
@@ -413,6 +413,18 @@ class device_config(models.Model):
     class Meta:
         db_table = u'device_config'
         verbose_name = "Device configuration"
+
+
+@receiver(signals.post_save, sender=device_config)
+def _device_config_post_save(sender, instance, raw, **kwargs):
+    if not raw:
+        log_usage_data = collections.defaultdict(lambda: [])
+
+        for mcc in instance.config.mon_check_command_set.all().select_related("mon_service_templ"):
+            if mcc.mon_service_templ is not None and mcc.mon_service_templ.any_notification_enabled():
+                log_usage_data[instance.device_id].append(mcc)
+
+        LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class DeviceSNMPInfo(models.Model):
@@ -937,16 +949,6 @@ def device_pre_save(sender, **kwargs):
         # check for device group
         if cur_inst.device_group.cluster_device_group and not cur_inst.is_meta_device:
             raise ValidationError("no devices allowed in cluster_device_group")
-        # Check if the device limit is reached, disabled as of 2013-10-14 (AL)
-        if False:
-            dev_count = settings.CLUSTER_LICENSE["device_count"]
-
-            # Exclude special meta devices
-            current_count = device.objects.exclude(is_meta_device=True).count()
-
-            if dev_count > 0 and current_count >= dev_count:
-                logger.warning("Device limit {:d} reached".format(dev_count))
-                raise ValidationError("Device limit reached!")
 
 
 class cd_connection(models.Model):
@@ -1079,53 +1081,6 @@ def device_group_post_save(sender, **kwargs):
             # always enable cluster device group
             cur_inst.enabled = True
             cur_inst.save()
-
-
-# license related
-class cluster_license(models.Model):
-    idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
-    name = models.CharField(max_length=64, default="", unique=True)
-    enabled = models.BooleanField(default=False)
-    description = models.CharField(max_length=256, default="")
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "clic {} (is {})".format(
-            self.name,
-            "enabled" if self.enabled else "disabled",
-        )
-
-    class Meta:
-        ordering = ("name",)
-
-
-@receiver(signals.post_save, sender=cluster_license)
-def cluster_license_post_save(sender, **kwargs):
-    cluster_license_cache(force=True)
-
-
-class cluster_license_cache(object):
-    def __init__(self, force=False):
-        self.__CLC_NAME = "__ICSW_CLCV2"
-        _cur_c = cache.get(self.__CLC_NAME)
-        _lic_dict = {
-            _name: {
-                "enabled": False,
-                "services": _srvs,
-                "description": _descr,
-            } for _name, _descr, _srvs in LICENSE_CAPS
-        }
-        if not _cur_c or force:
-            for cur_lic in cluster_license.objects.all():
-                _lic_dict[cur_lic.name]["enabled"] = cur_lic.enabled
-            cache.set(self.__CLC_NAME, marshal.dumps(_lic_dict), 300)
-        else:
-            _lic_dict.update(marshal.loads(_cur_c))
-        self._lic_dict = _lic_dict
-
-    @property
-    def licenses(self):
-        return self._lic_dict
 
 
 class device_rsync_config(models.Model):
@@ -1532,6 +1487,8 @@ def _register_models():
         category,
         # mon
         mon_check_command, mon_check_command_special,
+        # lic
+        License,
     )
     for model in models:
         model_history.icsw_register(model)

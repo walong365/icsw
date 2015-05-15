@@ -181,9 +181,9 @@ class server_process(threading_tools.process_pool):
             ("receiver", zmq.PULL, 2),  # @UndefinedVariable
             ("sender", zmq.PUB, 1024),  # @UndefinedVariable
         ]
-        [setattr(self, "%s_socket" % (short_sock_name), None) for short_sock_name, _a0, _b0 in sock_list]
+        [setattr(self, "{}_socket".format(short_sock_name), None) for short_sock_name, _a0, _b0 in sock_list]
         for short_sock_name, sock_type, hwm_size in sock_list:
-            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="snmp-relay")
             file_name = sock_name[5:]
             self.log(
                 "init %s ipc_socket '%s' (HWM: %d)" % (

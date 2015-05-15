@@ -38,6 +38,7 @@ try:
 except:
     settings = None
     config_tools = None
+    License = None
 else:
     from django.db import connection
     try:
@@ -46,14 +47,17 @@ else:
         _sm = False
     if _sm:
         config_tools = None
+        License = None
     else:
         import django
         try:
             django.setup()
         except:
             config_tools = None
+            License = None
         else:
             from initat.tools import config_tools
+            from initat.cluster.backbone.models import License, LicenseState
 
 
 class ServiceContainer(object):
@@ -61,6 +65,7 @@ class ServiceContainer(object):
         self.__log_com = log_com
         self.__config_tools = None
         self.__act_proc_dict = None
+        self.__valid_licenses = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SrvC] {}".format(what), log_level)
@@ -72,13 +77,24 @@ class ServiceContainer(object):
     def proc_dict(self):
         return self.__act_proc_dict
 
+    @property
+    def valid_licenses(self):
+        return self.__valid_licenses
+
     def update_proc_dict(self):
         self.__act_proc_dict = process_tools.get_proc_list()
+
+    def update_valid_licenses(self):
+        if License:
+            self.__valid_licenses = License.objects.get_valid_licenses()
+        else:
+            self.__valid_licenses = None
 
     def check_service(self, entry, use_cache=True, refresh=True):
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
-        entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools)
+            self.update_valid_licenses()
+        entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools, valid_licenses=self.valid_licenses)
 
     def apply_filter(self, service_list, instance_xml):
         check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
@@ -92,6 +108,7 @@ class ServiceContainer(object):
     def check_system(self, opt_ns, instance_xml):
         check_list = self.apply_filter(opt_ns.service, instance_xml)
         self.update_proc_dict()
+        self.update_valid_licenses()
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True)
         return check_list
@@ -123,9 +140,21 @@ class ServiceContainer(object):
         rc_dict = {
             SERVICE_OK: ("running", "ok"),
             SERVICE_DEAD: ("error", "critical"),
+            SERVICE_INCOMPLETE: ("incomplete", "critical"),
             SERVICE_NOT_INSTALLED: ("not installed", "warning"),
             SERVICE_NOT_CONFIGURED: ("not configured", "warning"),
         }
+        if License is not None:
+            lic_dict = {
+                -1: ("-", ""),
+                LicenseState.none: ("no license", "critical"),
+                LicenseState.violated: ("parameter violated", "critical"),
+                LicenseState.valid: ("valid", "ok"),
+                LicenseState.grace: ("in grace", "warning"),
+                LicenseState.expired: ("expired", "critical"),
+            }
+        else:
+            lic_dict = None
         out_bl = logging_tools.new_form_list()
         types = sorted(list(set(res_xml.xpath(".//instance/@runs_on", start_strings=False))))
         _list = sum(
@@ -211,6 +240,23 @@ class ServiceContainer(object):
                     else:
                         _version = ""
                     cur_line.append(logging_tools.form_entry_right(_version, header="Version"))
+                _lic_info = _res.find("license_info")
+                _lic_state = int(_lic_info.attrib["state"])
+                if lic_dict is None:
+                    cur_line.append(
+                        logging_tools.form_entry(
+                            "---",
+                            header="License",
+                        )
+                    )
+                else:
+                    cur_line.append(
+                        logging_tools.form_entry(
+                            lic_dict[_lic_state][0],
+                            header="License",
+                            display_attribute=lic_dict[_lic_state][1],
+                        )
+                    )
                 cur_line.append(
                     logging_tools.form_entry(
                         rc_dict[cur_state][0],

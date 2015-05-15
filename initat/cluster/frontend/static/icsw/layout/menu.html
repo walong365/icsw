@@ -1,71 +1,74 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
-    <nav icsw-element-size="navbar_size" class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated">
+    <nav icsw-element-size="navbar_size" class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated" ng-cloack>
         <ul class="nav navbar-nav">
             <li>
                 <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="glyphicon glyphicon-home" title="Home"></span></a>
             </li>
             <li ng-show="
-                check_perm('user.modify_tree') || check_perm('user.modify_domain_name_tree') ||
-                check_perm('user.modify_category_tree') || check_perm('config.modify_config') ||
-                check_perm('config.modify_network') || check_perm('device.change_network') ||
-                check_perm('device.change_connection') || check_perm('device.change_variables') || check_perm('device.change_config')
+                has_menu_permission('user.modify_tree') || has_menu_permission('user.modify_domain_name_tree') ||
+                has_menu_permission('user.modify_category_tree') || has_menu_permission('config.modify_config') ||
+                has_menu_permission('config.modify_network') || has_menu_permission('device.change_network') ||
+                has_menu_permission('device.change_connection') || has_menu_permission('device.change_variables') || has_menu_permission('device.change_config')
             ">
                 <a class="dropdown-toggle" data-toggle="dropdown">Base <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li ng-show="check_perm('user.modify_tree')"><a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create new device</a></li>
-                    <li ng-show="check_perm('user.modify_tree')" class="divider"></li>
-                    <li ng-show="check_perm('user.modify_tree')"><a href="{{ ICSW_URLS.DEVICE_TREE_SMART }}">Device tree</a></li>
-                    <li ng-show="check_perm('user.modify_domain_name_tree')"><a href="{{ ICSW_URLS.NETWORK_DOMAIN_NAME_TREE }}">Domain name tree</a></li>
-                    <li ng-show="check_perm('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}">Category tree</a></li>
-                    <li ng-show="check_perm('user.modify_category_tree') || check_perm('user.modify_domain_tree') || check_perm('user.modify_tree')" class="divider"></li>
-                    <li ng-show="check_perm('network.modify_network')"><a href="{{ ICSW_URLS.NETWORK_SHOW_NETWORKS }}">Networks</a></li>
-                    <li ng-show="check_perm('config.modify_config')"><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}">Configurations</a></li>
-                    <li ng-show="check_perm('network.modify_network') || check_perm('config.modify_config')" class="divider"></li>
-                    <li ng-show="check_perm('device.change_network')"><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}">Device network</a></li>
-                    <li ng-show="check_perm('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}">Device connections</a></li>
-                    <li ng-show="check_perm('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}">Device variables</a></li>
-                    <li ng-show="check_perm('device.change_config')"><a href="{{ ICSW_URLS.DEVICE_SHOW_CONFIGS }}">Device configurations</a></li>
+                    <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create new device</a></li>
+                    <li ng-show="has_menu_permission('user.modify_tree')" class="divider"></li>
+                    <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.DEVICE_TREE_SMART }}">Device tree</a></li>
+                    <li ng-show="has_menu_permission('user.modify_domain_name_tree')"><a href="{{ ICSW_URLS.NETWORK_DOMAIN_NAME_TREE }}">Domain name tree</a></li>
+                    <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}">Category tree</a></li>
+                    <li ng-show="has_menu_permission(['user.modify_category_tree', 'user.modify_domain_tree', 'user.modify_tree'])" class="divider"></li>
+                    <li ng-show="has_menu_permission('network.modify_network')"><a href="{{ ICSW_URLS.NETWORK_SHOW_NETWORKS }}">Networks</a></li>
+                    <li ng-show="has_menu_permission('config.modify_config')"><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}">Configurations</a></li>
+                    <li ng-show="has_menu_permission(['network.modify_network', 'config.modify_config'])" class="divider"></li>
+                    <li ng-show="has_menu_permission('device.change_network')"><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}">Device network</a></li>
+                    <li ng-show="has_menu_permission('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}">Device connections</a></li>
+                    <li ng-show="has_menu_permission('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}">Device variables</a></li>
+                    <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.DEVICE_SHOW_CONFIGS }}">Device configurations</a></li>
                 </ul>
             </li>
-            <li ng-show="(CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled) && (check_perm('device.change_boot') || check_perm('package.package_install') ||
-                check_perm('partition_fs.modify_partitions') || check_perm('kernel.modify_kernels') || check_perm('image.modify_images'))
+            <li ng-show="
+                has_any_valid_license(['netboot', 'package_install', 'snapshot'])
+                &&
+                (has_menu_permission('device.change_boot') || has_menu_permission('package.package_install') ||
+                 has_menu_permission('partition_fs.modify_partitions') || has_menu_permission('kernel.modify_kernels') || has_menu_permission('image.modify_images'))
                 ">
                 <a class="dropdown-toggle" data-toggle="dropdown">Cluster <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled && check_perm('device.change_boot')"><a href="{{ ICSW_URLS.BOOT_SHOW_BOOT }}">Nodeboot</a></li>
-                    <li ng-show="SERVICE_TYPES.package && CLUSTER_LICENSE.package.enabled && check_perm('package.package_install')"><a href="{{ ICSW_URLS.PACK_REPO_OVERVIEW }}">Package install</a></li>
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled && SERVICE_TYPES.mother && SERVICE_TYPES.package" class="divider"></li>
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('image.modify_images')"><a href="{{ ICSW_URLS.SETUP_IMAGE_OVERVIEW }}">Image overview</a></li>
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('kernel.modify_kernels')"><a href="{{ ICSW_URLS.SETUP_KERNEL_OVERVIEW }}">Kernel overview</a></li>
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('partition_fs.modify_partitions')"><a href="{{ ICSW_URLS.SETUP_PARTITION_OVERVIEW }}">Partition overview</a></li>
+                    <li ng-show="SERVICE_TYPES.mother && has_valid_license('netboot') && has_menu_permission('device.change_boot')"><a href="{{ ICSW_URLS.BOOT_SHOW_BOOT }}">Nodeboot</a></li>
+                    <li ng-show="SERVICE_TYPES.package && has_valid_license('package_install') && has_menu_permission('package.package_install') && has_valid_license('package_install')"><a href="{{ ICSW_URLS.PACK_REPO_OVERVIEW }}">Package install</a></li>
+                    <li ng-show="has_valid_license('netboot') && SERVICE_TYPES.mother && SERVICE_TYPES.package" class="divider"></li>
+                    <li ng-show="has_valid_license('netboot') && has_menu_permission('image.modify_images')"><a href="{{ ICSW_URLS.SETUP_IMAGE_OVERVIEW }}">Image overview</a></li>
+                    <li ng-show="has_valid_license('netboot') && has_menu_permission('kernel.modify_kernels')"><a href="{{ ICSW_URLS.SETUP_KERNEL_OVERVIEW }}">Kernel overview</a></li>
+                    <li ng-show="has_valid_license('netboot') && has_menu_permission('partition_fs.modify_partitions')"><a href="{{ ICSW_URLS.SETUP_PARTITION_OVERVIEW }}">Partition overview</a></li>
 
                     <!-- TODO: permisssion -->
-                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}">History</a></li>
+                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}" ng-show="has_valid_license('snapshot')">History</a></li>
                 </ul>
             </li>
-            <li ng-show="check_perm('group.group_admin')">
+            <li ng-show="has_menu_permission('group.group_admin')">
                 <a class="dropdown-toggle" data-toggle="dropdown">Users <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{{ ICSW_URLS.USER_OVERVIEW }}">Overview</a></li>
                 </ul>
             </li>
-            <li ng-show="CLUSTER_LICENSE.monitor.enabled">
+            <li ng-show="has_any_valid_license(['md_config_server', 'monitoring_dashboard', 'reporting'])">
                 <a class="dropdown-toggle" data-toggle="dropdown">Monitoring <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}">Basic setup</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring') && check_perm('device.change_monitoring')"><a href="{{ ICSW_URLS.MON_DEVICE_CONFIG }}">Device settings</a></li>
-                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_CLUSTER }}">Cluster / Dependency setup</a></li>
-                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}">Escalation setup</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}">Basic setup</a></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_menu_permission('device.change_monitoring')"><a href="{{ ICSW_URLS.MON_DEVICE_CONFIG }}">Device settings</a></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_CLUSTER }}">Cluster / Dependency setup</a></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}">Escalation setup</a></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank">Icinga</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_OVERVIEW }}">Monitoring Overview</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_BUILD_INFO }}">Build Info</a></li>
-                    <li ng-show="SERVICE_TYPES['md-config']">
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_OVERVIEW }}">Monitoring Overview</a></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_BUILD_INFO }}">Build Info</a></li>
+                    <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard')">
                         <a href="{{ ICSW_URLS.MON_LIVESTATUS }}">Livestatus</a>
                     </li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
                         <ul class="list-group">
                             <li class="list-group-item">
                                 <input type="button" class="btn btn-success btn-xs" value="rebuild config (cached, RC)" title="fully cached (with routing cache)" ng-click="rebuild_config('ALWAYS')"/>
@@ -80,12 +83,12 @@
                     </li>
                 </ul>
             </li>
-            <li ng-show="CLUSTER_LICENSE.rms.enabled">
+            <li ng-show="has_any_valid_license(['rms', 'ext_license'])">
                 <a class="dropdown-toggle" data-toggle="dropdown">RMS <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li><a href="{{ ICSW_URLS.RMS_OVERVIEW }}">RMS overview</a></li>
-                    <li><a href="{{ ICSW_URLS.LIC_OVERVIEW }}" ng-show="0">License overview</a></li>
-                    <li><a href="{{ ICSW_URLS.LIC_LICENSE_LIVEVIEW }}">License LiveView</a></li>
+                    <li><a href="{{ ICSW_URLS.RMS_OVERVIEW }}" ng-show="has_valid_license('rms')">RMS overview</a></li>
+                    <li><a href="{{ ICSW_URLS.LIC_OVERVIEW }}" ng-show="false && has_valid_license('ext_license')">License overview</a></li>
+                    <li><a href="{{ ICSW_URLS.LIC_LICENSE_LIVEVIEW }}" ng-show="has_valid_license('ext_license')">License LiveView</a></li>
                 </ul>
             </li>
             <icsw-layout-menubar-addons></icsw-layout-menubar-addons>
@@ -95,7 +98,7 @@
                 </div>
             </li>
             <li ng-if="num_gauges == 0" class="visible-lg">
-                <img height="42px" ng-attr-src="{{ ICSW_URLS.MENU_GFX_URL }}" ng-click="redirect_to_init()" title="{{ settings.INIT_PRODUCT_NAME }}" alt="{{ settings.INIT_PRODUCT_NAME }} logo"/>
+                <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
             </li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
@@ -138,9 +141,9 @@
                 <a class="dropdown-toggle" data-toggle="dropdown">Session <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;Account Info</a></li>
-                    <li ng-show="check_perm('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;Admin</a></li>
-                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_SETTINGS }}"><span class="glyphicon glyphicon-pencil"></span>&nbsp;Settings</a></li>
-                    <li ng-show="check_perm('background_job.show_background')">
+                    <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;Admin</a></li>
+                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}"><span class="glyphicon glyphicon-pencil"></span>&nbsp;License</a></li>
+                    <li ng-show="has_menu_permission('background_job.show_background')">
                         <a href="{{ ICSW_URLS.USER_BACKGROUND_JOB_INFO }}"><span class="glyphicon glyphicon-list"></span>&nbsp;Background Job Info</a>
                     </li>
                     <li><a href="{{ ICSW_URLS.SESSION_LOGOUT }}"><span class="glyphicon glyphicon-arrow-left"></span>&nbsp;Logout</a></li>

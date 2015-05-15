@@ -109,9 +109,9 @@ def csw_exception_handler(exc):
         detail_info = list(set([_entry for _entry in [_part.strip() for _part in detail_info if _part.strip()] if _entry not in ["()"]]))
         response = Response(
             {
-                "detail": "{}{}".format(
+                u"detail": u"{}{}".format(
                     detail_str,
-                    " ({})".format(", ".join(detail_info)) if detail_info else ""
+                    u" ({})".format(u", ".join(detail_info)) if detail_info else u""
                 ),
             },
             status=status.HTTP_406_NOT_ACCEPTABLE,
@@ -149,14 +149,14 @@ class rest_logging(object):
             result = self._func(*args, **kwargs)
         except:
             self.log(
-                "exception: {}".format(
+                u"exception: {}".format(
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
-                self.log("  {}".format(line))
+                self.log(u"  {}".format(line))
             raise
         e_time = time.time()
         self.log("call took {}".format(

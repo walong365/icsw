@@ -135,14 +135,14 @@ class exception_info(object):
         tb_object = self.except_info[2]
         exc_type = str(self.except_info[0]).split(".")[-1].split("'")[0]
         self.log_lines = [
-            "caught exception {} ({}), traceback follows:".format(
+            u"caught exception {} ({}), traceback follows:".format(
                 exc_type,
                 get_except_info(self.except_info)),
-            "exception in process/thread '{}'".format(self.thread_name)]
+            u"exception in process/thread '{}'".format(self.thread_name)]
         for file_name, line_no, name, line in traceback.extract_tb(tb_object):
-            self.log_lines.append("File '{}', line {:d}, in {}".format(file_name, line_no, name))
+            self.log_lines.append(u"File '{}', line {:d}, in {}".format(file_name, line_no, name))
             if line:
-                self.log_lines.append(" - {:d} : {}".format(line_no, line))
+                self.log_lines.append(u" - {:d} : {}".format(line_no, line))
         self.log_lines.append(get_except_info(self.except_info))
 
 # mapping: server type -> postfix for ZMQ_IDENTITY string
@@ -155,9 +155,14 @@ _CLIENT_TYPE_UUID_MAPPING = {
 def call_command(act_command, log_com, close_fds=False):
     log_com("calling command '{}'".format(act_command))
     s_time = time.time()
-    _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=close_fds, cwd="/")
-    ret_code = _sub.wait()
-    _stdout, _stderr = _sub.communicate()
+    try:
+        _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=close_fds, cwd="/")
+    except:
+        ret_code = 1
+        _stdout, _stderr = ("", get_except_info())
+    else:
+        ret_code = _sub.wait()
+        _stdout, _stderr = _sub.communicate()
     e_time = time.time()
     log_com(
         "execution took {}, return code was {:d}".format(

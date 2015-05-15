@@ -23,6 +23,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster_server.capabilities import capability_process
 from initat.cluster_server.backup_process import backup_process
+from initat.cluster_server.license_checker import LicenseChecker
 from initat.cluster_server.config import global_config
 from initat.cluster_server.notify import notify_mixin
 from initat.tools import cluster_location
@@ -75,6 +76,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             if not self["exit_requested"]:
                 self.init_notify_framework(global_config)
                 self.add_process(capability_process("capability_process"), start=True)
+                self.add_process(LicenseChecker("license_checker"), start=True)
                 connection.close()
                 self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
 

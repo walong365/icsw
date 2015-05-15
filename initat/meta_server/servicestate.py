@@ -47,34 +47,31 @@ class DBCursor(object):
             self.conn.commit()
 
 
-STATE_DICT = {
-    (constants.SERVICE_OK, 0): "pids missing",
-    (constants.SERVICE_OK, 1): "OK",
-    (constants.SERVICE_DEAD, 0): "not running",
-    (constants.SERVICE_DEAD, 1): "incompletely running",
-    (constants.SERVICE_NOT_INSTALLED, 0): "not installed",
-    (constants.SERVICE_NOT_INSTALLED, 1): "strange",
-    (constants.SERVICE_NOT_CONFIGURED, 0): "not configured",
-    # ??? FIXME
-    (constants.SERVICE_NOT_CONFIGURED, 1): "unlicensed",
+SERVICE_OK_DICT = {
+    constants.TARGET_STATE_RUNNING: {
+        constants.SERVICE_OK: (
+            constants.LIC_STATE_VALID,
+            constants.LIC_STATE_NOT_NEEDED,
+            constants.LIC_STATE_GRACE,
+        ),
+        constants.SERVICE_DEAD: (
+            constants.LIC_STATE_VIOLATED,
+            constants.LIC_STATE_EXPIRED,
+            constants.LIC_STATE_VALID_IN_FUTURE,
+            constants.LIC_STATE_NONE,
+        ),
+        constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_INSTALLED: (),
+        constants.SERVICE_NOT_CONFIGURED: None,
+    },
+    constants.TARGET_STATE_STOPPED: {
+        constants.SERVICE_OK: (),
+        constants.SERVICE_DEAD: None,
+        constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_INSTALLED: None,
+        constants.SERVICE_NOT_CONFIGURED: None,
+    }
 }
-
-
-TARGET_STATE_STOPPED = 0
-TARGET_STATE_RUNNING = 1
-
-SERVICE_OK_LIST = [
-    # should be stopped and not running
-    (TARGET_STATE_STOPPED, (constants.SERVICE_DEAD, 0)),
-    # should be stopped and not configured
-    (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_CONFIGURED, 0)),
-    # should be stopped and not installed
-    (TARGET_STATE_STOPPED, (constants.SERVICE_NOT_INSTALLED, 0)),
-    # should be running and not configured
-    (TARGET_STATE_RUNNING, (constants.SERVICE_NOT_CONFIGURED, 0)),
-    # running and running
-    (TARGET_STATE_RUNNING, (constants.SERVICE_OK, 1)),
-]
 
 
 class ServiceStateTranstaction(object):
@@ -108,14 +105,14 @@ class ServiceState(object):
         self.log("enable shutdown mode")
         self.__shutdown = True
         for _key in self.__target_dict.iterkeys():
-            self.__target_dict[_key] = TARGET_STATE_STOPPED
+            self.__target_dict[_key] = constants.TARGET_STATE_STOPPED
 
     def check_schema(self, conn):
         _table_dict = {
             "service": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
                 "name TEXT NOT NULL UNIQUE",
-                "target_state INTEGER DEFAULT 1",
+                "target_state INTEGER DEFAULT {:d}".format(constants.TARGET_STATE_RUNNING),
                 # active for services now in use (in instance_xml)
                 "active INTEGER DEFAULT 1",
                 "created INTEGER NOT NULL",
@@ -123,10 +120,10 @@ class ServiceState(object):
             "state": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
                 "service INTEGER",
-                # running (any pids found)
-                "running INTEGER DEFAULT 0",
-                # state, defaults to 1 (==SERVICE_DEAD)
-                "state INTEGER DEFAULT 1",
+                # state, defaults to (==SERVICE_DEAD)
+                "state INTEGER DEFAULT {:d}".format(constants.SERVICE_DEAD),
+                # state, defaults to -1 (==NOT_NEEDED)
+                "license_state INTEGER DEFAULT -1",
                 # process info str
                 "proc_info_str TEXT DEFAULT ''",
                 # creation time
@@ -187,7 +184,7 @@ class ServiceState(object):
                 self.log("adding new service {}".format(new_service))
                 cursor.execute(
                     "INSERT INTO service(name, target_state, active, created) VALUES(?, ?, ?, ?)",
-                    (new_service, 1, 1, int(time.time())),
+                    (new_service, self._get_default_state(new_service), 1, int(time.time())),
                 )
             self.__service_lut = {
                 _entry[1]: _entry[0] for _entry in cursor.execute("SELECT idx, name FROM service")
@@ -196,6 +193,16 @@ class ServiceState(object):
             self.__target_dict = {
                 _entry[0]: _entry[1] for _entry in cursor.execute("SELECT name, target_state FROM service")
             }
+
+    def _get_default_state(self, srv_name):
+        if srv_name == "package-client":
+            if os.path.exists("/etc/packageserver") or os.path.exists("/etc/packageserver_id"):
+                _ts = constants.TARGET_STATE_RUNNING
+            else:
+                _ts = constants.TARGET_STATE_STOPPED
+        else:
+            _ts = constants.TARGET_STATE_RUNNING
+        return _ts
 
     def _init_states(self):
         # init state cache
@@ -217,24 +224,32 @@ class ServiceState(object):
                         _changed = True
         return _changed
 
-    def _update_state(self, name, state, running, proc_info_str):
+    def _update_state(self, name, state, lic_state, proc_info_str):
         _save = False
-        if (state, running) != self.__state_dict.get(name, None):
+        if (state, lic_state) != self.__state_dict.get(name, None):
             self.log(
                 "state for {} is {}".format(
                     name,
-                    STATE_DICT[(state, running)],
+                    constants.STATE_DICT[state],
+                    constants.LIC_STATE_DICT[lic_state],
                 )
             )
-            self.__state_dict[name] = (state, running)
+            self.__state_dict[name] = (state, lic_state)
             with self.get_cursor() as crs:
                 crs.execute(
-                    "INSERT INTO state(service, running, state, proc_info_str, created) VALUES(?, ?, ?, ?, ?)",
-                    (self.__service_lut[name], running, state, proc_info_str, int(time.time())),
+                    "INSERT INTO state(service, license_state, state, proc_info_str, created) VALUES(?, ?, ?, ?, ?)",
+                    (self.__service_lut[name], lic_state, state, proc_info_str, int(time.time())),
                 )
         # check if the current state is in sync with the targetstate
-        is_ok = (self.__target_dict[name], self.__state_dict[name]) in SERVICE_OK_LIST
-        return is_ok
+        _ct = (self.__target_dict[name], self.__state_dict[name][0], self.__state_dict[name][1])
+        return self._check_current_state(_ct)
+
+    def _check_current_state(self, ct):
+        _stuff = SERVICE_OK_DICT[ct[0]][ct[1]]
+        if _stuff is None or ct[2] in _stuff:
+            return True
+        else:
+            return False
 
     def _check_for_stable_state(self, service):
         name = service.name
@@ -246,7 +261,7 @@ class ServiceState(object):
         cur_time = int(time.time())
         with self.get_cursor() as crs:
             _records = crs.execute(
-                "SELECT running, state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
+                "SELECT state, license_state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
                 (cur_time, self.__service_lut[name]),
             ).fetchall()
             _stable = True
@@ -271,9 +286,9 @@ class ServiceState(object):
             )
         else:
             # compare record for SERVICE_OK_LIST
-            c_rec = (self.__target_dict[name], tuple(_first[0:2]))
+            c_rec = (self.__target_dict[name], _first[0], _first[1])
             # print _first, c_rec
-            if c_rec not in SERVICE_OK_LIST and _first[2] < MIN_STATE_TIME:
+            if not self._check_current_state(c_rec) and _first[2] < MIN_STATE_TIME:
                 service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
                 _stable = False
             elif _first[2] < MIN_STATE_TIME:
@@ -301,12 +316,17 @@ class ServiceState(object):
             _res_node = service.entry.find(".//result")
             if _res_node is not None:
                 _state = int(_res_node.find("state_info").attrib["state"])
-                if _state == constants.SERVICE_NOT_CONFIGURED:
+                _lic_state = int(_res_node.find("license_info").attrib["state"])
+                if _state in [constants.SERVICE_NOT_CONFIGURED, constants.SERVICE_NOT_INSTALLED]:
+                    _action = "stop"
+                elif _lic_state in [constants.LIC_STATE_VIOLATED, constants.LIC_STATE_EXPIRED, constants.LIC_STATE_VALID_IN_FUTURE, constants.LIC_STATE_NONE]:
                     _action = "stop"
             with self.get_cursor() as crs:
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
-                    (self.__service_lut[name], _action, int(time.time())),
+                    (
+                        self.__service_lut[name], _action, int(time.time())
+                    ),
                 )
                 trans_id = crs.lastrowid
                 self.__transition_lock_dict[name] = cur_time
@@ -324,7 +344,9 @@ class ServiceState(object):
         with self.get_cursor(cached=False) as crs:
             crs.execute(
                 "UPDATE action SET runtime=?, finished=1 WHERE idx=?",
-                (abs(time.time() - trans.init_time), id),
+                (
+                    abs(time.time() - trans.init_time), id
+                ),
             )
             # get service
             name = crs.execute(
@@ -348,10 +370,9 @@ class ServiceState(object):
                 if _res is not None:
                     # print etree.tostring(_el.entry, pretty_print=True)
                     _state = int(_res.find("state_info").attrib["state"])
-                    _pids = _res.findall(".//pid")
+                    _lic_state = int(_res.find("license_info").attrib["state"])
                     _proc_info_str = _res.find("state_info").get("proc_info_str", "")
-                    _running = 1 if len(_pids) else 0
-                    _is_ok = self._update_state(_el.name, _state, _running, _proc_info_str)
+                    _is_ok = self._update_state(_el.name, _state, _lic_state, _proc_info_str)
                     if not _is_ok:
                         if self.__shutdown:
                             if _el.name not in exclude:
@@ -359,11 +380,12 @@ class ServiceState(object):
                         else:
                             _stable = self._check_for_stable_state(_el)
                             _el.log(
-                                "not OK ({}, state {} [{}], {}, {})".format(
+                                "not OK ({}, state {} / {} [{}], {}, {})".format(
                                     "should run" if self.__target_dict[_el.name] else "should not run",
-                                    STATE_DICT[(_state, _running)],
+                                    constants.STATE_DICT[_state],
+                                    constants.LIC_STATE_DICT[_lic_state],
                                     "stable" if _stable else "not stable",
-                                    logging_tools.get_plural("pid", len(_pids)),
+                                    logging_tools.get_plural("pid", len(_res.findall(".//pid"))),
                                     _proc_info_str or '---',
                                 ),
                                 logging_tools.LOG_LEVEL_WARN
@@ -403,7 +425,7 @@ class ServiceState(object):
                     (_trans.name,),
                 ).fetchone()[0]
                 _states = crsr.execute(
-                    "SELECT state, running, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                    "SELECT state, license_state, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
                     (_srv_id, cur_time - REPORT_TIME)
                 ).fetchall()
                 _actions = crsr.execute(
@@ -420,7 +442,7 @@ class ServiceState(object):
                         ),
                         "",
                     ] + [
-                        "{} state={}, running={} [{}]".format(
+                        "{} state={}, license_state={} [{}]".format(
                             time.ctime(int(_state[2])),
                             _state[0],
                             _state[1],
@@ -469,11 +491,11 @@ class ServiceState(object):
                                     *[
                                         _bldr.state(
                                             state="{:d}".format(state),
-                                            running="{:d}".format(running),
+                                            license_state="{:d}".format(license_state),
                                             created="{:d}".format(int(created)),
                                             proc_info_str=proc_info_str,
-                                        ) for state, running, created, proc_info_str in state_crsr.execute(
-                                            "SELECT state, running, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                                        ) for state, license_state, created, proc_info_str in state_crsr.execute(
+                                            "SELECT state, license_state, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )
                                     ]
@@ -503,11 +525,22 @@ class ServiceState(object):
             with self.get_cursor(cached=False) as crsr:
                 enable_list = [
                     (_entry[0], _entry[1]) for _entry in crsr.execute(
-                        "SELECT idx, name FROM service WHERE target_state=0"
+                        "SELECT idx, name FROM service WHERE target_state={:d}".format(
+                            constants.TARGET_STATE_STOPPED
+                        )
                     ).fetchall() if _entry[1] in services
                 ]
                 for _idx, _name in enable_list:
-                    crsr.execute("UPDATE service SET target_state=1 WHERE idx=?", (_idx,))
+                    crsr.execute(
+                        "UPDATE service SET target_state=? WHERE idx=?",
+                        (constants.TARGET_STATE_RUNNING, _idx)
+                    )
+                    crsr.execute(
+                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
+                        (
+                            _idx, "enable", int(time.time()), 1, 1,
+                        )
+                    )
             srv_com.set_result(
                 "enabled {}: {}".format(
                     logging_tools.get_plural("service", len(enable_list)),
@@ -520,11 +553,22 @@ class ServiceState(object):
             with self.get_cursor(cached=False) as crsr:
                 disable_list = [
                     (_entry[0], _entry[1]) for _entry in crsr.execute(
-                        "SELECT idx, name FROM service WHERE target_state=1"
+                        "SELECT idx, name FROM service WHERE target_state={:d}".format(
+                            constants.TARGET_STATE_RUNNING
+                        )
                     ).fetchall() if _entry[1] in services
                 ]
                 for _idx, _name in disable_list:
-                    crsr.execute("UPDATE service SET target_state=0 WHERE idx=?", (_idx,))
+                    crsr.execute(
+                        "UPDATE service SET target_state=? WHERE idx=?",
+                        (constants.TARGET_STATE_STOPPED, _idx)
+                    )
+                    crsr.execute(
+                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
+                        (
+                            _idx, "disable", int(time.time()), 1, 1,
+                        )
+                    )
             srv_com.set_result(
                 "disabled {}: {}".format(
                     logging_tools.get_plural("service", len(disable_list)),

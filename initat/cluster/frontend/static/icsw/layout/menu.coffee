@@ -23,16 +23,14 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service", "initProduct",
+    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service, initProduct) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
-        $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
-        $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
-        $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
         $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
         $scope.SERVICE_TYPES = $window.SERVICE_TYPES
         $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT
         $scope.ICSW_URLS = ICSW_URLS
+        $scope.initProduct = initProduct
         $scope.CURRENT_USER = $window.CURRENT_USER
         if $window.DOC_PAGE
             $scope.HANDBOOK_CHUNKS_PRESENT = $window.HANDBOOK_CHUNKS_PRESENT
@@ -40,15 +38,7 @@ menu_module = angular.module(
         else
             $scope.HANDBOOK_CHUNKS_PRESENT = 0
             $scope.HANDBOOK_PAGE = "---"
-        $scope.check_perm = (p_name) ->
-            if p_name.split(".").length == 2
-                p_name = "backbone.#{p_name}"
-            if p_name of GLOBAL_PERMISSIONS
-                return true
-            else if p_name of OBJECT_PERMISSIONS
-                return true
-            else
-                return false
+        access_level_service.install($scope)
         $scope.progress_iters = 0
         $scope.cur_gauges = {}
         $scope.num_gauges = 0
@@ -76,7 +66,7 @@ menu_module = angular.module(
                     del_pbs = (cur_idx for cur_idx of $scope.cur_gauges when cur_idx not in cur_pb)
                     for del_pb in del_pbs
                         delete $scope.cur_gauges[del_pb]
-                    #for cur_idx, value of $scope.cur_gaugesö
+                    #for cur_idx, value of $scope.cur_gauges
                     $scope.$apply(
                         $scope.num_gauges = cur_pb.length
                         if cur_pb.length or $scope.progress_iters
@@ -91,17 +81,17 @@ menu_module = angular.module(
             window.location = ICSW_URLS.INFO_PAGE
             return false
         $scope.redirect_to_handbook = () ->
-            window.location = "/cluster/doc/corvus_handbook.pdf"
+            window.location = "/cluster/doc/#{initProduct.name.toLowerCase()}_handbook.pdf"
             return false
         $scope.show_handbook_page = () ->
             window.open(
                 ICSW_URLS.DYNDOC_PAGE_X.slice(0, -1) + $scope.HANDBOOK_PAGE
                 "cluster documenation"
-                "height=400,width=400,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
+                "height=500,width=600,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
             )
             return false
         $scope.redirect_to_bgj_info = () ->
-            if $scope.check_perm('background_job.show_background')
+            if $scope.has_menu_permission('background_job.show_background')
                 window.location = ICSW_URLS.USER_BACKGROUND_JOB_INFO
             return false
         $scope.get_background_job_class = () ->

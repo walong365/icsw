@@ -1618,7 +1618,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="btn btn btn-sm btn-primary"
  id="button-id-"
  ng-click="create_object_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission &amp;&amp; _edit_obj.object"
- /> <div class='col-sm-12'><div icsw-user-permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div></fieldset><div class='form-group'><div class='col-sm-12'><icsw-user-virtual-desktop-settings object='_edit_obj'/> </div></div><div class="form-actions"><input type="submit"
+ /> <div class='col-sm-12'><div icsw-user-permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div></fieldset><div class='form-group' ng-show="has_valid_license('virtual_desktop')"><div class='col-sm-12'><icsw-user-virtual-desktop-settings object='_edit_obj'/> </div></div><div class="form-actions"><input type="submit"
  name="modify"
  value="modify"
  class="btn btn-primary btn-success"

@@ -38,16 +38,18 @@ import itertools
 from initat.cluster.backbone.models.model_history import icsw_deletion_record
 from rest_framework.response import Response
 import reversion
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 import initat.cluster
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
-    user_object_permission, device
+    user_object_permission, device, License, device_variable
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
+from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from lxml.builder import E  # @UnresolvedImport
+from initat.cluster.frontend.license_views import login_required_rest
 from initat.tools import config_tools
 from initat.tools import server_command
 from initat.cluster.frontend.rest_views import rest_logging
@@ -251,11 +253,45 @@ class account_info(View):
         )()
 
 
-class global_settings(View):
+class global_license(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def get(self, request):
-        return render_me(request, "global_settings.html")()
+        return render_me(request, "global_license.html")()
+
+
+class upload_license_file(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        lic_file = request.FILES['license_file']
+        lic_file_content = lic_file.read()
+
+        try:
+            reader = LicenseFileReader(lic_file_content)
+        except LicenseFileReader.InvalidLicenseFile as e:
+            request.xml_response.error(unicode(e), logger=logger)
+        else:
+            try:
+                # check based on content, not filename
+                License.objects.get(license_file=lic_file_content)
+            except License.DoesNotExist:
+
+                local_cluster_id = device_variable.objects.get_cluster_id()
+                file_cluster_ids = reader.get_referenced_cluster_ids()
+                if local_cluster_id not in file_cluster_ids:
+                    msg = u"This license file contains licenses for the following clusters: {}.".\
+                        format(", ".join(file_cluster_ids))
+                    msg += "\nThis cluster has the id {}.".format(local_cluster_id)
+                    request.xml_response.error(msg)
+                else:
+                    License(file_name=lic_file.name, license_file=lic_file_content).save()
+                    request.xml_response.info("Successfully uploaded license file")
+
+                    srv_com = server_command.srv_command(command="check_license_violations")
+                    contact_server(request, "server", srv_com, timeout=60, log_error=True, log_result=False)
+            else:
+                request.xml_response.warn("This license file has already been uploaded")
 
 
 class background_job_info(View):
@@ -310,3 +346,34 @@ class get_device_ip(View):
         return HttpResponse(json.dumps({"ip": ip}), content_type="application/json")
 
 
+class GetGlobalPermissions(RetrieveAPIView):
+    @staticmethod
+    def _unfold(in_dict):
+        # provide perms as "backbone.user.modify_tree: 0" as well as as "backbone { user { modify_tree: 0 } }"
+        _keys = in_dict.keys()
+        # unfold dictionary
+        for _key in _keys:
+            _parts = _key.split(".")
+            in_dict.setdefault(_parts[0], {}).setdefault(_parts[1], {})[_parts[2]] = in_dict[_key]
+        return in_dict
+
+    @method_decorator(login_required_rest(lambda: {}))
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return Response(self._unfold(request.user.get_global_permissions()))
+
+
+class GetObjectPermissions(RetrieveAPIView):
+    @method_decorator(login_required_rest(lambda: {}))
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return Response(GetGlobalPermissions._unfold(request.user.get_all_object_perms(None)))
+
+
+class GetInitProduct(RetrieveAPIView):
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return Response({
+            'name': License.objects.get_init_product().name,
+            'version': '2.1',
+        })
