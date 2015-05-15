@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2015 Bernhard Mallinger
 #
-# Send feedback to: <mllinger@init.at>
+# Send feedback to: <mallinger@init.at>
 #
 # This file is part of icsw
 #
