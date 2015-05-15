@@ -159,7 +159,7 @@ class CentosHandler(OSHandler):
             (
                 "initat_2_5",
                 "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/icsw-2.5".format(**expansions)
-            )
+            ),
         )
 
         repo_template = """[{repo_name}]
