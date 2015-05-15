@@ -61,12 +61,14 @@ SERVICE_OK_DICT = {
             constants.LIC_STATE_NONE,
         ),
         constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_INSTALLED: (),
         constants.SERVICE_NOT_CONFIGURED: None,
     },
     constants.TARGET_STATE_STOPPED: {
         constants.SERVICE_OK: (),
         constants.SERVICE_DEAD: None,
         constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_INSTALLED: (),
         constants.SERVICE_NOT_CONFIGURED: None,
     }
 }
