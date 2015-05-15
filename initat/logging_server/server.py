@@ -62,7 +62,6 @@ class main_process(threading_tools.process_pool):
         self.register_func("startup_error", self._startup_error)
         self.change_resource()
         self._init_msi_block()
-        # self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
         self.register_timer(self._update, 60)
@@ -207,17 +206,11 @@ class main_process(threading_tools.process_pool):
         self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
         self.std_client = client
 
-    def process_start(self, src_process, src_pid):
-        process_tools.append_pids("logserver/logserver", src_pid, mult=3)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process)
-            self.__msi_block.save_block()
-
     def _init_msi_block(self):
         process_tools.save_pids("logserver/logserver", mult=3)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logserver")
-        msi_block.add_actual_pid(mult=3, process_name="main")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=2, process_name="main")
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
@@ -235,8 +228,7 @@ class main_process(threading_tools.process_pool):
     def loop_post(self):
         self._remove_handles()
         process_tools.delete_pid("logserver/logserver")
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        self.__msi_block.remove_meta_block()
         self.net_receiver.close()
         if self.net_forwarder:
             self.net_forwarder.close()
@@ -261,18 +253,23 @@ class main_process(threading_tools.process_pool):
                     try:
                         error_f.append(u"  {:<20s} : {}".format(key, unicode(in_dict[key])))
                     except:
-                        error_f.append(u"  error logging key '{}' : {}".format(
-                            key,
-                            process_tools.get_except_info(),
-                            ))
+                        error_f.append(
+                            u"  error logging key '{}' : {}".format(
+                                key,
+                                process_tools.get_except_info(),
+                            )
+                        )
                 error_str = "\n".join(error_f)
-            cur_dict = self.__eg_dict.setdefault(in_dict["pid"], {
-                "last_update": time.time(),
-                # error as unicode
-                "error_str": u"",
-                # how many lines we have already logged
-                "lines_logged": 0,
-                "proc_dict": in_dict})
+            cur_dict = self.__eg_dict.setdefault(
+                in_dict["pid"], {
+                    "last_update": time.time(),
+                    # error as unicode
+                    "error_str": u"",
+                    # how many lines we have already logged
+                    "lines_logged": 0,
+                    "proc_dict": in_dict
+                }
+            )
             # append line to errors
             cur_dict["error_str"] = "{}{}".format(cur_dict["error_str"], error_str)
             # log to err_py
