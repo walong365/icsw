@@ -655,7 +655,11 @@ class get_hist_service_data(ListAPIView):
             # can't do regular prefetch_related for queryset, this seems to work
 
             data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
+            used_device_services = {device_id: [] for device_id in device_ids}
+
             for entry in queryset.prefetch_related(Prefetch("service")):
+
+                used_device_services[entry.device_id].append(entry.service.pk)
 
                 relevant_data_from_entry = {
                     'state': trans[entry.state],
@@ -667,7 +671,7 @@ class get_hist_service_data(ListAPIView):
 
                 data_per_device[entry.device_id][client_service_name].append(relevant_data_from_entry)
 
-            return data_per_device
+            return data_per_device, used_device_services
 
         def merge_services(data_per_device):
             return_data = {}
@@ -697,7 +701,7 @@ class get_hist_service_data(ListAPIView):
                 }
             return return_data
 
-        data_per_device = get_data_per_device(device_ids, [timespan_db])
+        data_per_device, used_device_services = get_data_per_device(device_ids, [timespan_db])
 
         # this mode is for an overview of the services of a device without saying anything about a particular service
         if int(request.GET.get("merge_services", 0)):
@@ -708,7 +712,7 @@ class get_hist_service_data(ListAPIView):
         else:
             return_data = merge_state_types_per_device(data_per_device)
 
-            LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.service, return_data)
+            LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.service, used_device_services)
 
         return Response([return_data])  # fake a list, see coffeescript
 
