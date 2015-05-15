@@ -68,7 +68,7 @@ SERVICE_OK_DICT = {
         constants.SERVICE_OK: (),
         constants.SERVICE_DEAD: None,
         constants.SERVICE_INCOMPLETE: (),
-        constants.SERVICE_NOT_INSTALLED: (),
+        constants.SERVICE_NOT_INSTALLED: None,
         constants.SERVICE_NOT_CONFIGURED: None,
     }
 }
