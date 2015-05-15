@@ -554,7 +554,7 @@ class main_config(object):
             ("date_format", "euro"),
             ("illegal_object_name_chars", r"~!$%^&*|'\"<>?),()"),
             ("illegal_macro_output_chars", r"~$&|'\"<>"),
-            ("admin_email", "lang-nevyjel@init.at"),
+            ("admin_email", "cluster@init.at"),
             ("admin_pager", "????"),
             # ("debug_file"      , os.path.join(self.__r_dir_dict["var"], "icinga.dbg")),
             # ("debug_level"     , -1),
