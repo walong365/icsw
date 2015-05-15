@@ -559,7 +559,7 @@ class ServiceState(object):
                 for _idx, _name in disable_list:
                     crsr.execute(
                         "UPDATE service SET target_state=? WHERE idx=?",
-                        ( constants.TARGET_STATE_STOPPED, _idx)
+                        (constants.TARGET_STATE_STOPPED, _idx)
                     )
                     crsr.execute(
                         "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
