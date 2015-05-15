@@ -20,6 +20,13 @@
 #
 """ collectd, server part """
 
+from lxml import etree
+import os
+import pprint
+import re
+import socket
+import time
+
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
@@ -32,21 +39,15 @@ from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.collectd.dbsync import SyncProcess
 from initat.snmp.process import snmp_process_container
-from lxml import etree
 from lxml.builder import E  # @UnresolvedImports
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
 from initat.tools import logging_tools
-import os
-import pprint
 from initat.tools import process_tools
-import re
 from initat.tools import server_command
 from initat.tools import server_mixins
-import socket
 from initat.tools import threading_tools
-import time
 from initat.tools import uuid_tools
 import zmq
 
@@ -60,7 +61,15 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
+        print "*"
+        self.__log_template.log("x")
+        print "*"
         # close connection (daemonizing)
         connection.close()
         self.__msi_block = self._init_msi_block()
