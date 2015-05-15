@@ -205,7 +205,7 @@ class AptgetHandler(OSHandler):
                     "initat_2_5.list",
                     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/icsw-2.5 precise main\n"
                     .format(**expansions)
-                )
+                ),
             )
         elif distro == "debian":
             debian_version = platform.linux_distribution()[1]
@@ -233,7 +233,7 @@ class AptgetHandler(OSHandler):
                     "initat_extra.list",
                     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/icsw-2.5 {rel} main\n"
                     .format(rel=debian_release, **expansions)
-                )
+                ),
             )
         else:
             raise RuntimeError("Unsupported debian platform: {v}.\n".format(v=platform.linux_distribution()))
