@@ -112,7 +112,7 @@ class SuseHandler(OSHandler):
         for repo_name, repo_url in repos:
             repo_list = subprocess.check_output(("zypper", "repos", "--uri"))
             if repo_url not in str(repo_list):
-                command = ("zypper", "addrepo", repo_url, repo_name)
+                command = ("zypper", "addrepo", "--refresh", "--no-gpgcheck", repo_url, repo_name)
                 self.process_command(command)
             else:
                 log.debug("Repo {r} already installed".format(r=repo_name))
@@ -120,8 +120,7 @@ class SuseHandler(OSHandler):
     def install_icsw(self):
         commands = [
             ("zypper", "refresh"),
-            ("zypper", "modifyreo", "--enable", "initat_2_5"),
-            ("zypper", "install", "--non-interactive", "icsw-server"),
+            ("zypper", "--non-interactive", "install", "icsw-server"),
         ]
 
         for cmd in commands:
