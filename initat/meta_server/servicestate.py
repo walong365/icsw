@@ -61,12 +61,14 @@ SERVICE_OK_DICT = {
             constants.LIC_STATE_NONE,
         ),
         constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_INSTALLED: (),
         constants.SERVICE_NOT_CONFIGURED: None,
     },
     constants.TARGET_STATE_STOPPED: {
         constants.SERVICE_OK: (),
         constants.SERVICE_DEAD: None,
         constants.SERVICE_INCOMPLETE: (),
+        constants.SERVICE_NOT_INSTALLED: None,
         constants.SERVICE_NOT_CONFIGURED: None,
     }
 }
@@ -559,7 +561,7 @@ class ServiceState(object):
                 for _idx, _name in disable_list:
                     crsr.execute(
                         "UPDATE service SET target_state=? WHERE idx=?",
-                        ( constants.TARGET_STATE_STOPPED, _idx)
+                        (constants.TARGET_STATE_STOPPED, _idx)
                     )
                     crsr.execute(
                         "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
