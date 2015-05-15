@@ -31,7 +31,7 @@ __all__ = [
 ]
 
 
-REGISTRATION_URL = "http://localhost:8080/cluster/GetLicenseFile"
+REGISTRATION_URL = "http://www.initat.org/cluster/registration"
 
 
 def register_cluster(opts):
