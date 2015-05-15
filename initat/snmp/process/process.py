@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -104,8 +104,10 @@ class snmp_process(threading_tools.process_obj):
             _term_cause = "ValueConstraintError"
         except:
             exc_info = process_tools.exception_info()
-            self.log("exception in dispatcher, terminating process",
-                     logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "exception in dispatcher, terminating process",
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
             for log_line in exc_info.log_lines:
                 self.log(" - {}".format(log_line), logging_tools.LOG_LEVEL_CRITICAL)
             _term_cause = "internal error"
