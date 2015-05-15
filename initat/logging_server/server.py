@@ -22,22 +22,25 @@
 
 """ logging server, central logging facility, server-part"""
 
-from initat.logging_server.config import global_config
 import grp
-from initat.tools import io_stream_helper
 import logging
-from initat.tools import logging_tools
-from initat.tools import mail_tools
 import os
 import pickle
-from initat.tools import process_tools
 import pwd
 import resource
 import stat
-from initat.tools import threading_tools
 import time
+
+from initat.logging_server.config import global_config
+from initat.icsw.service import clusterid
+from initat.tools import io_stream_helper
+from initat.tools import logging_tools
+from initat.tools import mail_tools
+from initat.tools import process_tools
+from initat.tools import threading_tools
 from initat.tools import uuid_tools
 import zmq
+
 
 SEP_STR = "-" * 50
 
@@ -327,11 +330,13 @@ class main_process(threading_tools.process_pool):
         for ep, es in self.__eg_dict.items():
             t_diff = s_time - es["last_update"]
             if force or (t_diff < 0 or t_diff > 60):
-                subject = "Python error for pid {:d} on {}@{} ({})".format(
+                subject = "Python error for pid {:d} on {}@{} ({}, {})".format(
                     ep,
                     global_config["LONG_HOST_NAME"],
                     c_name,
-                    process_tools.get_machine_name())
+                    process_tools.get_machine_name(),
+                    clusterid.get_cluster_id() or "N/A",
+                )
                 err_lines = "".join(es["error_str"]).split("\n")
                 msg_body = "\n".join(
                     [
