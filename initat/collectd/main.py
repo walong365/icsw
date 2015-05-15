@@ -29,11 +29,9 @@ django.setup()
 from initat.cluster.backbone.models import LogSource
 from initat.collectd.config import global_config, COMMAND_PORT
 from initat.server_version import VERSION_STRING
-from initat.tools.io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
-import daemon
 from initat.tools import process_tools
 import sys
 import time
@@ -48,7 +46,7 @@ def kill_previous():
                 os.kill(_key, 15)
             except:
                 pass
-        time.sleep(2)
+        time.sleep(0.5)
         for _key in proc_dict.iterkeys():
             try:
                 os.kill(_key, 9)
@@ -85,9 +83,11 @@ def main():
     _options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING)
+        ,
         add_writeback_option=True,
-        positional_arguments=False)
+        positional_arguments=False
+    )
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="rrd_collector")
     if not sql_info.effective_device:

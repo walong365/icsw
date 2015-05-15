@@ -82,9 +82,15 @@ fi
 ${ICSW_SBIN}/icsw restart logging-server
 ${INIT}/hoststatus restart
 
-if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
-    # start / stop to force restart of all services
-    echo -e "\n${GREEN}restarting all ICSW related services (client)${OFF}\n"
+# start / stop to force restart of all services
+if [ ! -d /var/lib/meta-server/.srvstate ] ; then
+    NUM_RS=2
+else
+    NUM_RS=1
+fi
+
+for idx in $(seq ${NUM_RS} ) ; do
+    echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (server)${OFF}\n"
     ${ICSW_SBIN}/icsw stop meta-server
     ${ICSW_SBIN}/icsw start meta-server
-fi
+done
