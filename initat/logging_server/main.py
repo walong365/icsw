@@ -55,7 +55,7 @@ def main():
             ("FORWARDER", configfile.str_c_var("", help_string="Address to forwared all logs to")),
             ("ONLY_FORWARD", configfile.bool_c_var(False, help_string="only forward (no local logging)")),
             ("MAX_AGE_FILES", configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
-            ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-mails [%(default)s]")),
+            ("TO_ADDR", configfile.str_c_var("cluster@init.at", help_string="mail address to send error-mails [%(default)s]")),
             ("LONG_HOST_NAME", configfile.str_c_var(long_host_name)),
             ("MAX_LINE_LENGTH", configfile.int_c_var(0, help_string="max line number size, 0 for unlimited [%(default)i]")),
             ("MAX_FILE_SIZE", configfile.int_c_var(1000000, help_string="file size limit of log files in bytes (larger files are rotated)"))

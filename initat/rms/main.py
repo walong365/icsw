@@ -29,11 +29,9 @@ from initat.rms.functions import call_command
 from initat.rms.config import global_config, COM_PORT
 from initat.rms.server import server_process
 from initat.server_version import VERSION_STRING
-from initat.tools.io_stream_helper import io_stream
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
-import daemon
 from initat.tools import process_tools
 from initat.tools import sge_license_tools
 import sys
@@ -100,8 +98,8 @@ def main():
             ("CHECK_ITERATIONS", configfile.int_c_var(3)),
             ("COM_PORT", configfile.int_c_var(COM_PORT)),
             ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
-            ("FROM_ADDR", configfile.str_c_var("sge_server")),
-            ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at")),
+            ("FROM_ADDR", configfile.str_c_var("rms_server")),
+            ("TO_ADDR", configfile.str_c_var("cluster@init.at")),
             ("SGE_ARCH", configfile.str_c_var(sge_dict["SGE_ARCH"])),  # , fixed=True)),
             ("SGE_ROOT", configfile.str_c_var(sge_dict["SGE_ROOT"])),  # , fixed=True)),
             ("SGE_CELL", configfile.str_c_var(sge_dict["SGE_CELL"])),  # , fixed=True)),
