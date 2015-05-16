@@ -383,6 +383,7 @@ class main_process(threading_tools.process_pool):
         act_time = time.time()
         self.__num_write += 1
         if not self.__last_stat_time or abs(act_time - self.__last_stat_time) > self.__stat_timer or self.__num_write % 10000 == 0:
+            last_stat_time = self.__last_stat_time
             self.__last_stat_time = act_time
             if self.__num_forward_ok or self.__num_forward_error:
                 fwd_str = ", {:d} fwd ({:d} error)".format(
@@ -392,10 +393,11 @@ class main_process(threading_tools.process_pool):
             else:
                 fwd_str = ""
             self.log(
-                "logstat (open/close/written): {:d} / {:d} / {:d}, mem_used is {}{}".format(
+                "logstat (open/close/written): {:d} / {:d} / {:d} ({:.2f}/s), mem_used is {}{}".format(
                     self.__num_open,
                     self.__num_close,
                     self.__num_write,
+                    (self.__num_write / max(1, (act_time - last_stat_time))),
                     process_tools.beautify_mem_info(),
                     fwd_str,
                 )
