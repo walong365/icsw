@@ -397,7 +397,9 @@ class main_process(threading_tools.process_pool):
                     self.__num_open,
                     self.__num_close,
                     self.__num_write,
-                    (self.__num_write / max(1, (act_time - last_stat_time))),
+                    (
+                        self.__num_write / max(1, (act_time - last_stat_time))
+                    ),
                     process_tools.beautify_mem_info(),
                     fwd_str,
                 )
@@ -453,7 +455,8 @@ class main_process(threading_tools.process_pool):
             record_name, record_process, record_parent_process = (
                 "init.at.{}".format(record),
                 os.getpid(),
-                os.getppid())
+                os.getppid()
+            )
         else:
             if not hasattr(record, "host"):
                 # no host set: use local machine name
@@ -463,7 +466,8 @@ class main_process(threading_tools.process_pool):
             record_name, record_process, record_parent_process = (
                 record.name,
                 record.process,
-                getattr(record, "ppid", 0))
+                getattr(record, "ppid", 0)
+            )
         init_logger = record_name.startswith("init.at.")
         if init_logger:
             # init.at logger, create subdirectories
@@ -488,6 +492,12 @@ class main_process(threading_tools.process_pool):
             if not (set([record_process, record_parent_process]) &
                     set([self.__handles[h_name].process_id,
                          self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
+                self.log(
+                    "access mismatch detected for {}".format(
+                        h_name,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 self.remove_handle(h_name)
         if h_name not in self.__handles:
             self.log(
@@ -528,12 +538,15 @@ class main_process(threading_tools.process_pool):
             logger = logging.getLogger(logger_name)
             # print "*", logger_name, h_name
             logger.propagate = 0
+            # enable logger
+            logger.disabled = False
             # print logging.root.manager.loggerDict.keys()
             # print dir(base_logger)
             # print "***", logger_name, base_logger, logger
             form = logging_tools.my_formatter(
                 global_config["LOG_FORMAT"],
-                global_config["DATE_FORMAT"])
+                global_config["DATE_FORMAT"]
+            )
             logger.setLevel(logging.DEBUG)
             full_name = full_name.encode("ascii", errors="replace")
             new_h = logging_tools.logfile(full_name, max_bytes=global_config["MAX_FILE_SIZE"], max_age_days=global_config["MAX_AGE_FILES"])
@@ -552,11 +565,14 @@ class main_process(threading_tools.process_pool):
             self.__handle_usecount[h_name] = 0
             logger.info(SEP_STR)
             logger.info("opened {} (file {} in {}) by pid {}".format(full_name, base_name, base_dir, self.pid))
-            self.log("added handle {} (file {} in dir {}), total open: {}".format(
-                h_name,
-                base_name,
-                base_dir,
-                logging_tools.get_plural("handle", len(self.__handles.keys()))))
+            self.log(
+                "added handle {} (file {} in dir {}), total open: {}".format(
+                    h_name,
+                    base_name,
+                    base_dir,
+                    logging_tools.get_plural("handle", len(self.__handles.keys()))
+                )
+            )
         return self.__handles[h_name]
 
     def _recv_data(self, zmq_socket):
@@ -595,7 +611,8 @@ class main_process(threading_tools.process_pool):
                 self.log(
                     "error reconstructing log-command (len of in_str: {:d}): {}".format(
                         len(in_str),
-                        process_tools.get_except_info()),
+                        process_tools.get_except_info()
+                    ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
 

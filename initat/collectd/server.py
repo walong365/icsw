@@ -67,9 +67,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             zmq=True,
             context=self.zmq_context
         )
-        print "*"
-        self.__log_template.log("x")
-        print "*"
         # close connection (daemonizing)
         connection.close()
         self.__msi_block = self._init_msi_block()

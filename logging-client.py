@@ -57,10 +57,13 @@ class log_process(threading_tools.process_obj):
         self.log("start logging")
         emitted = 0
         for rep_num in xrange(self.__options.repeat):
-            self.log("%d/%d: %s" % (rep_num + 1, self.__options.repeat, self.__log_str))
+            self.log("{:d}/{:d}: {}".format(rep_num + 1, self.__options.repeat, self.__log_str))
             emitted += len(self.__log_str)
-        self.log("bytes emitted: %s" % (logging_tools.get_size_str(emitted)))
+        self.log("bytes emitted: {}".format(logging_tools.get_size_str(emitted)))
         self.send_pool_message("stop_logging", emitted)
+
+    def loop_post(self):
+        self.__log_template.close()
 
 
 class my_thread_pool(threading_tools.process_pool):
@@ -74,7 +77,7 @@ class my_thread_pool(threading_tools.process_pool):
         self.__process_names = []
         # init processes
         for t_num in xrange(self.__options.processes):
-            cur_name = "process_%d" % (t_num + 1)
+            cur_name = "process_{:d}".format(t_num + 1)
             self.add_process(log_process(cur_name, self.__options, self.__log_template), start=True)
             self.__process_names.append(cur_name)
         self.__processes_running = len(self.__process_names)
@@ -101,7 +104,7 @@ class my_thread_pool(threading_tools.process_pool):
             self["exit_requested"] = True
 
     def loop_post(self):
-        self.__log_template.log_command("close")
+        self.__log_template.close()
 
 
 def main():

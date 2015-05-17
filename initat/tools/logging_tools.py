@@ -406,11 +406,13 @@ class initat_formatter(object):
                 # print get / post variables
                 v_dict = getattr(request, request.method, None)
                 if v_dict:
-                    var_list.extend([
-                        "",
-                        "{}:".format(get_plural("variable", len(v_dict))),
-                        "",
-                    ])
+                    var_list.extend(
+                        [
+                            "",
+                            "{}:".format(get_plural("variable", len(v_dict))),
+                            "",
+                        ]
+                    )
                     for s_num, s_key in enumerate(sorted(v_dict.keys())):
                         var_list.append(
                             "  {:3d} {}: {}".format(
