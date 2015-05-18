@@ -135,7 +135,6 @@ install:
 	${MAKE} -C c_progs DESTDIR=${DESTDIR} install
 	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
 
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
@@ -144,9 +143,6 @@ install:
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for file in force_redhat_init_script.sh ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
-	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done

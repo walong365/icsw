@@ -135,6 +135,7 @@ setup(
                 "opt/cluster/sbin/lse",
                 "opt/cluster/sbin/check_rpm_lists.py",
                 "opt/cluster/sbin/make_package.py",
+                "opt/cluster/sbin/force_redhat_init_script.sh",
             ]
         )
     ],
