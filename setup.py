@@ -137,7 +137,26 @@ setup(
                 "opt/cluster/sbin/make_package.py",
                 "opt/cluster/sbin/force_redhat_init_script.sh",
             ]
-        )
+        ),
+        (
+            "/opt/cluster/sge",
+            [
+                "opt/cluster/sge/sge_editor_conf.py",
+                "opt/cluster/sge/modify_sge_config.sh",
+                "opt/cluster/sge/add_logtail.sh",
+                "opt/cluster/sge/sge_request",
+                "opt/cluster/sge/sge_qstat",
+                "opt/cluster/sge/build_sge6x.sh",
+                "opt/cluster/sge/create_sge_links.py",
+            ]
+        ),
+        (
+            "/opt/cluster/sge/init.d",
+            [
+                "opt/cluster/sge/init.d/sgemaster",
+                "opt/cluster/sge/init.d/sgeexecd",
+            ]
+        ),
     ],
     scripts=[
     ],

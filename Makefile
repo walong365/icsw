@@ -38,8 +38,6 @@ VARDIR=/var/lib/cluster/package-client
 # list of target systems
 TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install/server package_install/client meta_server md_config_server
 
-SGE_FILES=sge_editor_conf.py modify_sge_config.sh add_logtail.sh sge_request sge_qstat create_sge_links.py build_sge6x.sh
-
 ###############################################################################
 # Programs
 ###############################################################################
@@ -179,14 +177,10 @@ install:
 	for name in sgemaster sgeexecd ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $$name ${DESTDIR}${ICSW_SGE}/init.d; \
 	done
-	for file in ${SGE_FILES} ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SGE}; \
-	done
 	for file in proepilogue.py qlogin_wrapper.sh sge_starter.sh; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}${ICSW_SGE}; \
 	done
 	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${ICSW_SGE}
-	echo ${SGE_FILES} > ${DESTDIR}/${ICSW_SGE}/.sge_files
 	echo "proepilogue.py qlogin_wrapper.sh sge_starter.sh" > ${DESTDIR}/${ICSW_SGE}/.party_files
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
