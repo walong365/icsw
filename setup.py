@@ -148,6 +148,10 @@ setup(
                 "opt/cluster/sge/sge_qstat",
                 "opt/cluster/sge/build_sge6x.sh",
                 "opt/cluster/sge/create_sge_links.py",
+                "opt/cluster/sge/proepilogue.py",
+                "opt/cluster/sge/qlogin_wrapper.sh",
+                "opt/cluster/sge/sge_starter.sh",
+                "opt/cluster/sge/batchsys.sh_client",
             ]
         ),
         (

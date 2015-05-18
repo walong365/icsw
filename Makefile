@@ -16,7 +16,6 @@ ICSW_ETC=${ICSW_BASE}/etc
 ICSW_SHARE=${ICSW_BASE}/share
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SBIN=${ICSW_BASE}/sbin
-ICSW_SGE=${ICSW_BASE}/sge
 ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_TFTP=/opt/cluster/system/tftpboot
 
@@ -172,12 +171,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
 	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
-	# SGE stuff ICSW_SGE
-	for file in proepilogue.py qlogin_wrapper.sh sge_starter.sh; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}${ICSW_SGE}; \
-	done
-	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${ICSW_SGE}
-	echo "proepilogue.py qlogin_wrapper.sh sge_starter.sh" > ${DESTDIR}/${ICSW_SGE}/.party_files
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
 	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
