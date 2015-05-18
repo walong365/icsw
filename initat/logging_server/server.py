@@ -364,8 +364,10 @@ class main_process(threading_tools.process_pool):
             "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]),
             global_config["TO_ADDR"],
             msg_body)
-        new_mail.set_server(global_config["MAILSERVER"],
-                            global_config["MAILSERVER"])
+        new_mail.set_server(
+            global_config["MAILSERVER"],
+            global_config["MAILSERVER"]
+        )
         try:
             send_stat, log_lines = new_mail.send_mail()
             for log_line in log_lines:

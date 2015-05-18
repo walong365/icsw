@@ -1190,7 +1190,6 @@ def list_to_struct(in_list, **kwargs):
                 # all values are the same, return compressed list
                 return [("[{}]".format(compress_num_list(_pfs)), list_to_struct(_dict.values()[0], **kwargs))]
             else:
-                print _pfs, _dict
                 _pfs = ["{:d}".format(_val) for _val in _pfs]
                 return [(_pf, list_to_struct(_dict[_pf], **kwargs)) for _pf in _pfs]
         else:
