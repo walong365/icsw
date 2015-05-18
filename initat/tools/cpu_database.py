@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,14 +21,15 @@
 
 import base64
 import bz2
-from initat.tools import logging_tools
 import marshal
 import os
 import re
-from initat.tools import server_command
 import subprocess
 import sys
 import tempfile
+
+from initat.tools import logging_tools
+from initat.tools import server_command
 
 
 # copy from process_tools

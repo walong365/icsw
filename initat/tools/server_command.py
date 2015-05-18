@@ -20,15 +20,16 @@
 """ server command structure definitions """
 
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import ElementMaker  # @UnresolvedImport
 import base64
 import bz2
 import datetime
-from initat.tools import logging_tools
 import marshal
 import os
 import pickle
 import re
+
+from lxml.builder import ElementMaker  # @UnresolvedImport
+from initat.tools import logging_tools
 
 XML_NS = "http://www.initat.org/lxml/ns"
 
@@ -256,7 +257,7 @@ class srv_command(object):
 
     def _to_unicode(self, value):
         if type(value) == bool:
-            return ("True" if value else "False", "bool")
+            return "True" if value else "False", "bool"
         elif type(value) in [int, long]:
             return ("{:d}".format(value), "int")
         else:

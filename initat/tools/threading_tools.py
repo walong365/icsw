@@ -29,8 +29,8 @@ import sys
 import threading
 import time
 import traceback
-
 import setproctitle
+
 from initat.tools import io_stream_helper
 from initat.tools import logging_tools
 import psutil

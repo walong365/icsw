@@ -20,13 +20,14 @@
 """ set the result of a passive checkcommand """
 
 import argparse
+import sys
+import os
+
+import zmq
+
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
-import sys
-import time
-import zmq
-import os
 
 
 def _get_parser():

@@ -5,10 +5,12 @@ Simple operations like performing checksums and swapping byte orders.
 
 # Copyright 1997, Corporation for National Research Initiatives
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
-#from _ip import *
+# from _ip import *
+
 import array
 import struct
 from socket import htons, ntohs
+
 
 def cksum(s):
     if len(s) & 1:
@@ -29,11 +31,14 @@ def cksum(s):
 # it doesn't cost much to take a raw buffer and treat a section of it
 # as a u_short.
 
+
 def gets(s):
     return struct.unpack('H', s)[0] & 0xffff
 
+
 def mks(h):
     return struct.pack('H', h)
+
 
 def iph2net(s):
     len = htons(gets(s[2:4]))
@@ -41,17 +46,20 @@ def iph2net(s):
     off = htons(gets(s[6:8]))
     return s[:2] + mks(len) + mks(id) + mks(off) + s[8:]
 
+
 def net2iph(s):
     len = ntohs(gets(s[2:4]))
     id = ntohs(gets(s[4:6]))
     off = ntohs(gets(s[6:8]))
     return s[:2] + mks(len) + mks(id) + mks(off) + s[8:]
 
+
 def udph2net(s):
     sp = htons(gets(s[0:2]))
     dp = htons(gets(s[2:4]))
     len = htons(gets(s[4:6]))
     return mks(sp) + mks(dp) + mks(len) + s[6:]
+
 
 def net2updh(s):
     sp = ntohs(gets(s[0:2]))
