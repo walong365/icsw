@@ -365,12 +365,21 @@ class _LicenseLockListDeviceServiceManager(models.Manager):
 
 
 class _LicenseLockListUserManager(models.Manager):
-    def is_user_locked(self, license, user_id):
-        return LicenseUsage.user_to_pk(user_id) in self._get_lock_list_user(license)
+    def is_user_locked(self, license, user):
+        return LicenseUsage.user_to_pk(user) in self._get_lock_list_user(license)
 
     @memoize_with_expiry(20)
     def _get_lock_list_user(self, license):
         return frozenset(self.filter(license=license.name).values_list("user_id", flat=True))
+
+
+class _LicenseLockListExtLicenseManager(models.Manager):
+    def is_ext_license_locked(self, license, ext_lic):
+        return LicenseUsage._ext_license_to_pk(ext_lic) in self._get_lock_list_ext_license(license)
+
+    @memoize_with_expiry(20)
+    def _get_lock_list_ext_license(self, license):
+        return frozenset(self.filter(license=license.name).values_list("ext_license_id", flat=True))
 
 
 class LicenseLockListDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
@@ -382,8 +391,7 @@ class LicenseLockListUser(_LicenseUsageBase, _LicenseUsageUser):
 
 
 class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
-    pass
-    # objects = _LicenseLockListManager()
+    objects = _LicenseLockListExtLicenseManager()
 
 
 ########################################
