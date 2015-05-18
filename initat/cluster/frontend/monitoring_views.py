@@ -656,12 +656,16 @@ class get_hist_device_data(ListAPIView):
 
         data_merged_state_types = {}
         for device_id, device_data in data_per_device.iteritems():
-            data_merged_state_types[device_id] = _device_status_history_util.merge_state_types(
-                device_data,
-                trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]
-            )
 
-        LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.device, data_merged_state_types.iterkeys())
+            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.reporting, device_id):
+                data_merged_state_types[device_id] = _device_status_history_util.merge_state_types(
+                    device_data,
+                    trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+                )
+
+        LicenseUsage.log_usage(LicenseEnum.reporting,
+                               LicenseParameterTypeEnum.device,
+                               data_merged_state_types.iterkeys())
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
 
@@ -670,10 +674,6 @@ class get_hist_service_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
-
-        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
-
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
         def get_data_per_device(device_ids, timespans_db):
@@ -683,21 +683,26 @@ class get_hist_service_data(ListAPIView):
             # can't do regular prefetch_related for queryset, this seems to work
 
             data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
-            used_device_services = {device_id: [] for device_id in device_ids}
+            used_device_services = {device_id: set() for device_id in device_ids}
 
             for entry in queryset.prefetch_related(Prefetch("service")):
 
-                used_device_services[entry.device_id].append(entry.service.pk)
+                if not LicenseLockListDeviceService.objects.is_device_service_locked(
+                    LicenseEnum.reporting, entry.device_id, entry.service.pk
+                ):
 
-                relevant_data_from_entry = {
-                    'state': trans[entry.state],
-                    'state_type': entry.state_type,
-                    'value': entry.value
-                }
+                    used_device_services[entry.device_id].append(entry.service.pk)
 
-                client_service_name = mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
+                    relevant_data_from_entry = {
+                        'state': trans[entry.state],
+                        'state_type': entry.state_type,
+                        'value': entry.value
+                    }
 
-                data_per_device[entry.device_id][client_service_name].append(relevant_data_from_entry)
+                    client_service_name =\
+                        mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
+
+                    data_per_device[entry.device_id][client_service_name].append(relevant_data_from_entry)
 
             return data_per_device, used_device_services
 
@@ -728,6 +733,12 @@ class get_hist_service_data(ListAPIView):
                     ) for service_key, service_data in device_service_data.iteritems()
                 }
             return return_data
+
+        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+        device_ids = [dev_id for dev_id in device_ids
+                      if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.reporting, dev_id)]
+
+        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
         data_per_device, used_device_services = get_data_per_device(device_ids, [timespan_db])
 
