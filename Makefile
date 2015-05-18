@@ -144,9 +144,6 @@ install:
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for name in fetch_ssh_keys.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
-	done
 	for file in force_redhat_init_script.sh ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
 	done
