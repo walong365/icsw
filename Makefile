@@ -173,10 +173,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
 	# SGE stuff ICSW_SGE
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SGE}/init.d
-	for name in sgemaster sgeexecd ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $$name ${DESTDIR}${ICSW_SGE}/init.d; \
-	done
 	for file in proepilogue.py qlogin_wrapper.sh sge_starter.sh; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}${ICSW_SGE}; \
 	done
