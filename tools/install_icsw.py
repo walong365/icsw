@@ -115,7 +115,7 @@ class SuseHandler(OSHandler):
                 command = ("zypper", "addrepo", "--refresh", "--no-gpgcheck", repo_url, repo_name)
                 self.process_command(command)
             else:
-                log.debug("Repo {r} already installed".format(r=repo_name))
+                log.info("Repo {r} already installed".format(r=repo_name))
 
     def install_icsw(self):
         commands = [
@@ -172,6 +172,8 @@ type=rpm-md
             full_path = os.path.join("/etc/yum.repos.d", "{0}.repo".format(repo_name))
             if not os.path.exists(full_path):
                 self.create_file(full_path, repo_template.format(repo_name=repo_name, repo_url=repo_url))
+            else:
+                log.info("Repo {r} already installed".format(r=repo_name))
 
     def install_icsw(self):
         self.process_command(("yum", "--assumeyes", "--nogpgcheck", "install", "icsw-server"))
@@ -242,7 +244,7 @@ class AptgetHandler(OSHandler):
             if not os.path.exists(full_repo_file_path):
                 self.create_file(full_repo_file_path, file_content)
             else:
-                log.debug("File {f} already exists.".format(f=full_repo_file_path))
+                log.info("File {f} already exists.".format(f=full_repo_file_path))
 
     def install_icsw(self):
         self.process_command(("apt-get", "update"))
