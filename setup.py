@@ -99,20 +99,39 @@ setup(
                 "opt/cluster/bin/ics_tools.sh",
                 # license
                 "opt/cluster/bin/license_server_tool.py",
+                # set passive checkresult
+                "opt/cluster/bin/set_passive_checkresult.py",
+                # cdfetch for collectd
+                "opt/cluster/bin/cdfetch.py",
+                "opt/cluster/bin/sgestat.py",
             ]
         ),
         (
             "/opt/cluster/sbin/pis",
             [
-                "pis/cluster_post_install.sh",
-                "pis/sge_post_install.sh",
-                "pis/webfrontend_pre_start.sh",
-                "pis/webfrontend_post_install.sh",
-                "pis/hpc_library_post_install.py",
-                "pis/icsw_client_post_install.sh",
-                "pis/icsw_server_post_install.sh",
+                "opt/cluster/sbin/pis/cluster_post_install.sh",
+                "opt/cluster/sbin/pis/sge_post_install.sh",
+                "opt/cluster/sbin/pis/webfrontend_pre_start.sh",
+                "opt/cluster/sbin/pis/webfrontend_post_install.sh",
+                "opt/cluster/sbin/pis/hpc_library_post_install.py",
+                "opt/cluster/sbin/pis/icsw_client_post_install.sh",
+                "opt/cluster/sbin/pis/icsw_server_post_install.sh",
             ]
         ),
+        (
+            "/opt/cluster/sbin",
+            [
+                "opt/cluster/sbin/tls_verify.py",
+                "opt/cluster/sbin/openvpn_scan.py",
+                "opt/cluster/sbin/collclient.py",
+                "opt/cluster/sbin/log_error.py",
+                "opt/cluster/sbin/logging-client.py",
+                "opt/cluster/sbin/cluster-server.py",
+                "opt/cluster/sbin/tls_verify.py",
+                "opt/cluster/sbin/lse",
+                "opt/cluster/sbin/check_rpm_lists.py",
+            ]
+        )
     ],
     scripts=[
     ],

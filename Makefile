@@ -137,12 +137,6 @@ install:
 	# INSTALL to ICSW_SBIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
-	for file in log_error.py logging-client.py collclient.py ; do \
-		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for file in cluster-server.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
-	done
 
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
 	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
@@ -153,10 +147,7 @@ install:
 	for name in fetch_ssh_keys.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for script in tls_verify.py logscan/openvpn_scan.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
+	for file in force_redhat_init_script.sh ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
 	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
@@ -167,14 +158,11 @@ install:
 	done
 	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}
 	# Create to ICSW_SBIN
-	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
-	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BIN}
-	cp -a cdfetch.py  ${DESTDIR}${ICSW_BIN}
 	for file in license_progs loadsensor ; do \
 	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BIN}; \
 	done
@@ -186,7 +174,6 @@ install:
 	    tar xzf lmutil-i86_lsb-11.12.1.0v6.tar.gz ; \
 	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
 	fi
-	${INSTALL} ${INSTALL_OPTS} sgestat.py ${DESTDIR}/${ICSW_BIN}
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/populate_ramdisk_local.py
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/copy_local_kernel.sh
 	${LN} -s ${ICSW_BIN}/ics_tools.sh ${DESTDIR}/${INIT}/
