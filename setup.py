@@ -152,6 +152,9 @@ setup(
                 "opt/cluster/sge/qlogin_wrapper.sh",
                 "opt/cluster/sge/sge_starter.sh",
                 "opt/cluster/sge/batchsys.sh_client",
+                # info files
+                "opt/cluster/sge/.sge_files",
+                "opt/cluster/sge/.party_files",
             ]
         ),
         (
