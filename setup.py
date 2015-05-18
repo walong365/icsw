@@ -161,6 +161,12 @@ setup(
                 "opt/cluster/sge/init.d/sgeexecd",
             ]
         ),
+        (
+            "/etc/profile.d",
+            [
+                "opt/cluster/sge/batchsys.sh_client"
+            ]
+        )
     ],
     scripts=[
     ],

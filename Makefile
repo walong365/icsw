@@ -15,6 +15,7 @@ ICSW_BASE=/opt/cluster/
 ICSW_ETC=${ICSW_BASE}/etc
 ICSW_SHARE=${ICSW_BASE}/share
 ICSW_BIN=${ICSW_BASE}/bin
+ICSW_SGE=${ICSW_BASE}/sge
 ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_TFTP=/opt/cluster/system/tftpboot
@@ -233,7 +234,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
 	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
-	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
+	${INSTALL} ${INSTALL_OPTS} ${DESTDIR}/${ICSW_SGE}/batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} src/kcompile ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/hosts
