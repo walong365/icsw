@@ -104,6 +104,7 @@ setup(
                 # cdfetch for collectd
                 "opt/cluster/bin/cdfetch.py",
                 "opt/cluster/bin/sgestat.py",
+                "opt/cluster/bin/cluster-server.py",
             ]
         ),
         (
@@ -126,7 +127,6 @@ setup(
                 "opt/cluster/sbin/collclient.py",
                 "opt/cluster/sbin/log_error.py",
                 "opt/cluster/sbin/logging-client.py",
-                "opt/cluster/sbin/cluster-server.py",
                 "opt/cluster/sbin/tls_verify.py",
                 "opt/cluster/sbin/lse",
                 "opt/cluster/sbin/check_rpm_lists.py",
