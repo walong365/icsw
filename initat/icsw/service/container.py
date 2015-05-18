@@ -63,7 +63,6 @@ else:
 class ServiceContainer(object):
     def __init__(self, log_com):
         self.__log_com = log_com
-        self.__config_tools = None
         self.__act_proc_dict = None
         self.__valid_licenses = None
 

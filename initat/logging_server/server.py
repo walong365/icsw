@@ -538,8 +538,6 @@ class main_process(threading_tools.process_pool):
             logger = logging.getLogger(logger_name)
             # print "*", logger_name, h_name
             logger.propagate = 0
-            # enable logger
-            logger.disabled = False
             # print logging.root.manager.loggerDict.keys()
             # print dir(base_logger)
             # print "***", logger_name, base_logger, logger
@@ -636,6 +634,12 @@ class main_process(threading_tools.process_pool):
             self.__handle_usage[handle.handle_name].add(src_key)
             try:
                 self.__handle_usecount[handle.handle_name] += 1
+                if handle.disabled:
+                    self.log(
+                        "disabled was true for handler {}, re-renabled".format(handle.name),
+                        logging_tools.LOG_LEVEL_ERROR,
+                    )
+                    handle.disabled = False
                 handle.handle(log_com)
             except:
                 self.log(

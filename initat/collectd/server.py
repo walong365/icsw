@@ -710,7 +710,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
 
     def get_time(self, h_tuple, cur_time):
         cur_time = int(cur_time)
-        pprint.pprint(self.__last_sent)
+        # pprint.pprint(self.__last_sent)
         if h_tuple in self.__last_sent:
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time

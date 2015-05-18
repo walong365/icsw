@@ -300,7 +300,7 @@ class tcp_con(object):
         )
 
     def _error(self, sock):
-        print "***", sock, "_error"
+        self.log("POLLERR in hm_direct for socket {}".format(str(sock)), logging_tools.LOG_LEVEL_ERROR)
 
     def _send(self, sock):
         try:

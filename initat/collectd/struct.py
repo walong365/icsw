@@ -376,6 +376,7 @@ class ext_com(object):
         self.idx = ext_com.run_idx
         self.command = command
         self.popen = None
+        self.debug = debug
         self.__log_com = log_com
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):

@@ -585,7 +585,7 @@ REST_FRAMEWORK = {
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'formatters': {
         "initat": {
             "()": "initat.tools.logging_tools.initat_formatter",
