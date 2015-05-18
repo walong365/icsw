@@ -165,27 +165,29 @@ angular.module(
 
     # NOTE: code below here is just utils, but we can't have it in a proper service since that would create a circular dependency
     _get_license_state_internal = (issued_lic) ->
+        # add this such that licenses with higher parameters have priority if state is equal
+        parameters_sortable = _.sum(_.values(issued_lic.parameters))
         if moment(issued_lic.valid_from) < moment() and moment() < add_grace_period(moment(issued_lic.valid_to))
             if moment() < moment(issued_lic.valid_to)
-                return ([[0], {
+                return ([0, parameters_sortable, {
                     state_id: 'valid'
                     state_str: gettextCatalog.getString('Valid')
                     date_info: gettextCatalog.getString('until') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                 }])
             else
-                return ([[3], {
+                return ([3, parameters_sortable, {
                     state_id: 'grace'
                     state_str: gettextCatalog.getString('In grace period')
                     date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                 }])
         else if moment(issued_lic.valid_from) < moment()
-            return ([[5, moment(issued_lic.valid_to)], {
+            return ([5, parameters_sortable, moment(issued_lic.valid_to), {
                 state_id: 'expired'
                 state_str: gettextCatalog.getString('Expired')
                 date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
             }])
         else
-            return ([[8, moment(issued_lic.valid_from)], {
+            return ([8, parameters_sortable, moment(issued_lic.valid_from), {
                 state_id: 'valid_in_future'
                 state_str: gettextCatalog.getString('Will be valid')
                 date_info: gettextCatalog.getString('on') + ' ' + moment(issued_lic.valid_from).format("YYYY-MM-DD")
@@ -204,7 +206,7 @@ angular.module(
             return ""
     get_license_state = (issued_lic) ->
         state =  _get_license_state_internal(issued_lic)
-        return if state? then state[1] else undefined
+        return if state? then state[2] else undefined
 
     calculate_license_state = (packages, license_id=undefined, cluster_id=undefined) ->
         # calculate the current state of either all licenses in a package or of a certain one for a given cluster_id or all cluster_ids
@@ -213,13 +215,12 @@ angular.module(
             states = []
             # build list [priority, data] in states
             for pack in packages
-
                 check_licenses = (lic_list) ->
                     for pack_lic in lic_list
                         if !license_id? or pack_lic.id == license_id
                             lic_state = _get_license_state_internal(pack_lic)
-                            lic_state[1].package = pack
-                            lic_state[1].lic = pack_lic
+                            lic_state[2].package = pack
+                            lic_state[2].lic = pack_lic
                             states.push(lic_state)
 
                 # has dict of cluster_licenses (get_license_packages django view)
@@ -228,9 +229,17 @@ angular.module(
                     if cluster_id_iter == cluster_id
                         check_licenses(cluster_lic_list)
 
-            states.sort()
             if states.length
-                state = states[0][1]
+                # NOTE: duplicated in license admin
+                states.sort((a, b) ->
+                    if a[0] != b[0]
+                        # lower state id is better
+                        return if a[0] > b[0] then 1 else -1
+                    else
+                        # for parameters, we want higher values
+                        return if a[1] < b[1] then 1 else -1
+                )
+                state = states[0][2]
 
         if data.license_violations[license_id]? and data.license_violations[license_id].type == 'hard'
             if !state?
