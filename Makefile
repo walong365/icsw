@@ -139,7 +139,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
 
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
-	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
+	for file in install_package.py package_status.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
@@ -153,7 +153,6 @@ install:
 	for pyf in db_magic check_local_settings create_django_users restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
-	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}
 	# Create to ICSW_SBIN
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
@@ -161,10 +160,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
-	for file in license_progs loadsensor ; do \
-	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BIN}; \
-	done
-	cp -a tools/modify_object.py ${DESTDIR}/${ICSW_BIN}
 	if [ "${LIB_DIR}" = "lib64" ] ; then \
 	    tar xzf lmutil-x64_lsb-11.12.1.0v6.tar.gz ; \
 	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \

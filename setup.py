@@ -105,6 +105,9 @@ setup(
                 "opt/cluster/bin/cdfetch.py",
                 "opt/cluster/bin/sgestat.py",
                 "opt/cluster/bin/cluster-server.py",
+                "opt/cluster/bin/license_progs.py",
+                "opt/cluster/bin/loadsensor.py",
+                "opt/cluster/bin/modify_object.py",
             ]
         ),
         (
@@ -112,6 +115,7 @@ setup(
             [
                 "opt/cluster/sbin/pis/cluster_post_install.sh",
                 "opt/cluster/sbin/pis/sge_post_install.sh",
+                "opt/cluster/sbin/pis/modify_service.sh",
                 "opt/cluster/sbin/pis/webfrontend_pre_start.sh",
                 "opt/cluster/sbin/pis/webfrontend_post_install.sh",
                 "opt/cluster/sbin/pis/hpc_library_post_install.py",
@@ -130,6 +134,7 @@ setup(
                 "opt/cluster/sbin/tls_verify.py",
                 "opt/cluster/sbin/lse",
                 "opt/cluster/sbin/check_rpm_lists.py",
+                "opt/cluster/sbin/make_package.py",
             ]
         )
     ],
