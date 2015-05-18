@@ -25,6 +25,7 @@ from lxml import etree  # @UnresolvedImports
 import time
 
 from initat.collectd.struct import ext_com
+from initat.collectd.config import global_config
 from initat.snmp.sink import SNMPSink
 from initat.snmp.struct import value_cache
 from lxml.builder import E  # @UnresolvedImports
