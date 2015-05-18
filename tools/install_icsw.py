@@ -111,7 +111,7 @@ class SuseHandler(OSHandler):
 
         for repo_name, repo_url in repos:
             repo_list = subprocess.check_output(("zypper", "repos", "--uri"))
-            if repo_url not in str(repo_list):
+            if repo_name not in str(repo_list):
                 command = ("zypper", "addrepo", "--refresh", "--no-gpgcheck", repo_url, repo_name)
                 self.process_command(command)
             else:
@@ -305,6 +305,14 @@ def main():
 
     log.debug("Installing packages")
     local_os.install_icsw()
+
+    log.debug("Setting up database")
+    local_os.process_command(
+        (
+            "/opt/cluster/sbin/icsw",
+            "setup",
+        )
+    )
 
     log.debug("Installing license file")
     local_os.process_command(
