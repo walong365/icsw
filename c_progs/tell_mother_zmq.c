@@ -56,6 +56,8 @@
 
 #include "parse_uuid.c"
 
+char *host_b;
+
 int err_message(char *str)
 {
     char *errstr;
@@ -63,10 +65,10 @@ int err_message(char *str)
     if (!errstr)
         return -ENOMEM;
     if (errno) {
-        sprintf(errstr, "An error occured : %s (%d) %s\n", str, errno,
-                strerror(errno));
+        sprintf(errstr, "An error occured : %s (%d) %s (%s)\n", str, errno,
+                strerror(errno), host_b);
     } else {
-        sprintf(errstr, "An error occured : %s\n", str);
+        sprintf(errstr, "An error occured : %s (%s)\n", str, host_b);
     }
     syslog(LOG_DAEMON | LOG_ERR, errstr);
     fprintf(stderr, errstr);
@@ -93,7 +95,7 @@ int main(int argc, char **argv)
         retcode, write_file, timeout;
     struct in_addr sia;
     struct hostent *h;
-    char *iobuff, *sendbuff, *filebuff, *host_b, *act_pos, *act_source, *act_bp,
+    char *iobuff, *sendbuff, *filebuff, *act_pos, *act_source, *act_bp,
         *dest_host, *src_ip, *uuid_buffer;
     struct itimerval mytimer;
     struct sigaction *alrmsigact;

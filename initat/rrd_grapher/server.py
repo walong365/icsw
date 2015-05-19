@@ -343,8 +343,14 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     )
                 if send_return:
                     srv_com.set_result(srv_reply, srv_state)
-                    self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                    self.com_socket.send_unicode(unicode(srv_com))
+                    try:
+                        self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+                        self.com_socket.send_unicode(unicode(srv_com))
+                    except:
+                        self.log(
+                            "error sending return to {}".format(src_id),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 else:
                     del cur_com
         else:

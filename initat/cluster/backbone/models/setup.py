@@ -63,7 +63,7 @@ class HistoryObject(models.Model):
     version = models.IntegerField(null=True, blank=True, default=1)
     release = models.IntegerField(null=True, blank=True, default=1)
     success = models.BooleanField(default=False)
-    start = models.DateTimeField(auto_now_add=True, default=None, null=True)
+    start = models.DateTimeField(auto_now_add=True, null=True)
     end = models.DateTimeField(default=None, null=True)
     date = models.DateTimeField(auto_now_add=True)
 

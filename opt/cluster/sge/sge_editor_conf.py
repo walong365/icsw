@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2007,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2007,2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,6 +23,7 @@
 
 import os
 import sys
+
 from initat.tools import logging_tools
 
 

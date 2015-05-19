@@ -298,6 +298,7 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
                 self.service_state.transition_finished(_trans)
         self.__transitions = new_list
         if not self.__transitions:
+            self.log("all transitions finished")
             self._disable_transition_timer()
             if self.__exit_process:
                 self["exit_requested"] = True

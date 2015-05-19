@@ -20,16 +20,17 @@
 """ tools for openssl """
 
 from collections import OrderedDict
-from OpenSSL import crypto
 import commands
 import datetime
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import shutil
 import stat
 import tarfile
 import tempfile
+
+from OpenSSL import crypto
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 _KEYS = ["CN", "C", "ST", "O", "emailAddress"]
 

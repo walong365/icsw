@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2010,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2010,2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,15 +20,15 @@
 """ midleware layer for rrdtools """
 
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E
 import subprocess
-from initat.tools import logging_tools
 import os
 import re
 import rrdtool  # @UnresolvedImport
 import tempfile
 import time
 
+from lxml.builder import E
+from initat.tools import logging_tools
 
 WS_RE = re.compile("^(?P<slot_num>\d+)\s*(?P<slot_type>\S+?)s*\s+for\s+(?P<total_num>\d+)\s*(?P<total_type>\S+?)s*$")
 
@@ -508,10 +508,12 @@ class RRD(dict):
                         take_name, take_rows = (rra_name, stuff.rows)
                     else:
                         take_new = stuff.rows > take_rows
-                        print "**** %s another match for pdps, target_rows is %d, previous match has %d rows, actual has %d rows" % ("using" if take_new else "found",
-                                                                                                                                     s_rows,
-                                                                                                                                     take_rows,
-                                                                                                                                     stuff.rows)
+                        print "**** %s another match for pdps, target_rows is %d, previous match has %d rows, actual has %d rows" % (
+                            "using" if take_new else "found",
+                            s_rows,
+                            take_rows,
+                            stuff.rows
+                        )
                         if take_new:
                             take_name, take_rows = (rra_name, stuff.rows)
         if not take_name:

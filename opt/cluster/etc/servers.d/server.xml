@@ -27,7 +27,7 @@
         </config_names>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid">
+    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>

@@ -19,22 +19,23 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import json
+import shutil
+import os
+import rrdtool  # @UnresolvedImport
+import subprocess
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import device_variable, device
 from initat.collectd.collectd_types.base import value, PerfdataObject
 from initat.collectd.config import global_config
 from lxml.builder import E  # @UnresolvedImports
-from lxml import etree
-import json
 from initat.tools import logging_tools
 import memcache
-import shutil
-import os
 from initat.tools import process_tools
 from initat.tools import rrd_tools
-import rrdtool  # @UnresolvedImport
-import subprocess
-import time
+
 
 mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])
 
@@ -368,13 +369,14 @@ class var_cache(dict):
 class ext_com(object):
     run_idx = 0
 
-    def __init__(self, log_com, command, name=None, detach=False):
+    def __init__(self, log_com, command, debug=False, name=None, detach=False):
         ext_com.run_idx += 1
         self.__name = name
         self.__detach = detach
         self.idx = ext_com.run_idx
         self.command = command
         self.popen = None
+        self.debug = debug
         self.__log_com = log_com
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -406,7 +408,8 @@ class ext_com(object):
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE
             )
-            self.log("start with pid {}".format(self.popen.pid))
+            if self.debug:
+                self.log("start with pid {}".format(self.popen.pid))
 
     def communicate(self):
         if self.popen:

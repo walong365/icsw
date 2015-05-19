@@ -23,13 +23,15 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
-from initat.tools import logging_tools
 import os
-from initat.tools import sge_license_tools
 import stat
 import sys
 import time
+
 import zmq
+
+from initat.tools import logging_tools
+from initat.tools import sge_license_tools
 
 
 class error(Exception):

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -24,9 +24,10 @@
 
 from lxml import etree  # @UnresolvedImport
 import argparse
+import sys
+
 from initat.tools import logging_tools
 from initat.tools import sge_license_tools
-import sys
 
 
 def main():

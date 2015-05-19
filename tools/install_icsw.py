@@ -111,17 +111,16 @@ class SuseHandler(OSHandler):
 
         for repo_name, repo_url in repos:
             repo_list = subprocess.check_output(("zypper", "repos", "--uri"))
-            if repo_url not in str(repo_list):
-                command = ("zypper", "addrepo", repo_url, repo_name)
+            if repo_name not in str(repo_list):
+                command = ("zypper", "addrepo", "--refresh", "--no-gpgcheck", repo_url, repo_name)
                 self.process_command(command)
             else:
-                log.debug("Repo {r} already installed".format(r=repo_name))
+                log.info("Repo {r} already installed".format(r=repo_name))
 
     def install_icsw(self):
         commands = [
             ("zypper", "refresh"),
-            ("zypper", "modifyreo", "--enable", "initat_2_5"),
-            ("zypper", "install", "--non-interactive", "icsw-server"),
+            ("zypper", "--non-interactive", "install", "icsw-server"),
         ]
 
         for cmd in commands:
@@ -173,6 +172,8 @@ type=rpm-md
             full_path = os.path.join("/etc/yum.repos.d", "{0}.repo".format(repo_name))
             if not os.path.exists(full_path):
                 self.create_file(full_path, repo_template.format(repo_name=repo_name, repo_url=repo_url))
+            else:
+                log.info("Repo {r} already installed".format(r=repo_name))
 
     def install_icsw(self):
         self.process_command(("yum", "--assumeyes", "--nogpgcheck", "install", "icsw-server"))
@@ -243,7 +244,7 @@ class AptgetHandler(OSHandler):
             if not os.path.exists(full_repo_file_path):
                 self.create_file(full_repo_file_path, file_content)
             else:
-                log.debug("File {f} already exists.".format(f=full_repo_file_path))
+                log.info("File {f} already exists.".format(f=full_repo_file_path))
 
     def install_icsw(self):
         self.process_command(("apt-get", "update"))
@@ -307,6 +308,14 @@ def main():
     log.debug("Installing packages")
     local_os.install_icsw()
 
+    log.debug("Setting up database")
+    local_os.process_command(
+        (
+            "/opt/cluster/sbin/icsw",
+            "setup",
+        )
+    )
+
     log.debug("Installing license file")
     local_os.process_command(
         (
@@ -321,4 +330,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(u"Exiting due to error: {}".format(e))
+        sys.exit(1)

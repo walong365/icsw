@@ -20,11 +20,13 @@
 """ small script to verify TLS of openvpn """
 
 import datetime
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import sys
+
 import zmq
+
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
 class allowed_struct(object):

@@ -15,8 +15,8 @@ ICSW_BASE=/opt/cluster/
 ICSW_ETC=${ICSW_BASE}/etc
 ICSW_SHARE=${ICSW_BASE}/share
 ICSW_BIN=${ICSW_BASE}/bin
-ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_SGE=${ICSW_BASE}/sge
+ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_TFTP=/opt/cluster/system/tftpboot
 
@@ -37,8 +37,6 @@ VARDIR=/var/lib/cluster/package-client
 
 # list of target systems
 TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install/server package_install/client meta_server md_config_server
-
-SGE_FILES=sge_editor_conf.py modify_sge_config.sh add_logtail.sh sge_request sge_qstat create_sge_links.py build_sge6x.sh
 
 ###############################################################################
 # Programs
@@ -135,37 +133,20 @@ install:
 	${MAKE} -C c_progs DESTDIR=${DESTDIR} install
 	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
-	for file in log_error.py logging-client.py collclient.py ; do \
-		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for file in cluster-server.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_BIN}; \
-	done
 
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
-	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
+	for file in install_package.py package_status.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for name in fetch_ssh_keys.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for script in tls_verify.py logscan/openvpn_scan.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
-	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	for pyf in db_magic check_local_settings create_django_users restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
-	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}
 	# Create to ICSW_SBIN
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
@@ -173,12 +154,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
-	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BIN}
-	cp -a cdfetch.py  ${DESTDIR}${ICSW_BIN}
-	for file in license_progs loadsensor ; do \
-	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BIN}; \
-	done
-	cp -a tools/modify_object.py ${DESTDIR}/${ICSW_BIN}
 	if [ "${LIB_DIR}" = "lib64" ] ; then \
 	    tar xzf lmutil-x64_lsb-11.12.1.0v6.tar.gz ; \
 	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
@@ -186,7 +161,6 @@ install:
 	    tar xzf lmutil-i86_lsb-11.12.1.0v6.tar.gz ; \
 	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
 	fi
-	${INSTALL} ${INSTALL_OPTS} sgestat.py ${DESTDIR}/${ICSW_BIN}
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/populate_ramdisk_local.py
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/copy_local_kernel.sh
 	${LN} -s ${ICSW_BIN}/ics_tools.sh ${DESTDIR}/${INIT}/
@@ -198,20 +172,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
 	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
-	# SGE stuff ICSW_SGE
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SGE}/init.d
-	for name in sgemaster sgeexecd ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $$name ${DESTDIR}${ICSW_SGE}/init.d; \
-	done
-	for file in ${SGE_FILES} ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SGE}; \
-	done
-	for file in proepilogue.py qlogin_wrapper.sh sge_starter.sh; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}${ICSW_SGE}; \
-	done
-	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${ICSW_SGE}
-	echo ${SGE_FILES} > ${DESTDIR}/${ICSW_SGE}/.sge_files
-	echo "proepilogue.py qlogin_wrapper.sh sge_starter.sh" > ${DESTDIR}/${ICSW_SGE}/.party_files
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
 	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
@@ -274,7 +234,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
 	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
-	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
+	cp -a ${DESTDIR}/${ICSW_SGE}/batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} src/kcompile ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/hosts

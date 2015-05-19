@@ -598,11 +598,11 @@ angular.module(
                         if act_vers == new_vers
                             # everything ok, same version
                             if act_vers
-                                return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + "(#{act_vers})"
+                                return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + " (#{act_vers})"
                             else
                                 return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + scope.get_lut_val(s_type, lut, act_val)
                         else
-                            return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-up'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + "(#{act_vers} != #{new_vers})"
+                            return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-up'></span></span> " + scope.get_lut_val(s_type, lut, act_val) + " (#{act_vers} != #{new_vers})"
                     else
                         # both values are empty
                         return "<span class='label label-danger'><span class='glyphicon glyphicon-ban-circle'></span></span>"

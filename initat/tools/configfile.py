@@ -21,19 +21,20 @@
 
 from collections import OrderedDict
 from lxml import etree  # @UnresolvedImport @UnusedImport
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from multiprocessing import current_process, util, forking, managers
 from multiprocessing.managers import BaseManager, BaseProxy, Server
 import argparse
 import datetime
 import grp
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import pwd
 import re
 import sys
 import threading
+
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
 class config_proxy(BaseProxy):

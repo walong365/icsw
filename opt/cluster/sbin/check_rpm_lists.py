@@ -1,10 +1,10 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang
+# Copyright (C) 2001-2007,2015 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
-# Send feedback to: <lang@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -22,19 +22,19 @@
 
 import commands
 import sys
-import cPickle
-import marshal
-import sys
 import getopt
-from initat.tools import logging_tools
-from initat.tools import process_tools
 import os
 import os.path
+
+from initat.tools import logging_tools
+from initat.tools import process_tools
+
 
 def parse_list(in_list):
     second_d = in_list.index(":", in_list.index(":") + 1) + 5
     return process_tools.net_to_sys(in_list[second_d:])
-    
+
+
 def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hd", ["version", "help"])
@@ -42,7 +42,7 @@ def main():
         print "Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]),
                                                     process_tools.get_except_info())
         sys.exit(1)
-    opt_dict = {"detailed_list" : False}
+    opt_dict = {"detailed_list": False}
     for opt, arg in opts:
         if opt in ["-h", "--help"]:
             print "Usage : %s [OPTIONS] host1[:dir1] host2[:dir2]" % (os.path.basename(sys.argv[0]))
@@ -90,6 +90,7 @@ def main():
                 print "\n".join(missing_in)
             else:
                 print " ".join(missing_in)
+
 
 if __name__ == "__main__":
     main()

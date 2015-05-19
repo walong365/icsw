@@ -779,9 +779,20 @@ class meta_server_info(object):
                 act_dict = get_proc_list()
             # search pids
             # print act_dict.keys()
-            pids_found = [
-                key for key, value in act_dict.iteritems() if value.name() == self.__exe_name
-            ]
+            try:
+                pids_found = [
+                    key for key, value in act_dict.iteritems() if value.name() == self.__exe_name
+                ]
+            except psutil.NoSuchProcess:
+                # catch vanished process(es)
+                pids_found = []
+                for key, value in act_dict.iteritems():
+                    try:
+                        if value.name() == self.__exe_name:
+                            pids_found.append(key)
+                    except psutil.NoSuchProcess:
+                        # ignore mssing
+                        pass
             self.__pids = sum([[key] * act_dict[key].num_threads() for key in pids_found], [])
             self.__pid_names.update({key: self.__exe_name for key in pids_found})
             self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})

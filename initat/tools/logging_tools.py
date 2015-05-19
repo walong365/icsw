@@ -406,11 +406,13 @@ class initat_formatter(object):
                 # print get / post variables
                 v_dict = getattr(request, request.method, None)
                 if v_dict:
-                    var_list.extend([
-                        "",
-                        "{}:".format(get_plural("variable", len(v_dict))),
-                        "",
-                    ])
+                    var_list.extend(
+                        [
+                            "",
+                            "{}:".format(get_plural("variable", len(v_dict))),
+                            "",
+                        ]
+                    )
                     for s_num, s_key in enumerate(sorted(v_dict.keys())):
                         var_list.append(
                             "  {:3d} {}: {}".format(
@@ -1170,7 +1172,7 @@ def list_to_struct(in_list, **kwargs):
     else:
         _pfs = sorted(list(_pfs))
         # check for integer pfs
-        if all([_pf.isdigit() for _pf in _pfs]):
+        if all([_pf.isdigit() and _pf[0] != "0" for _pf in _pfs]):
             _dict = {}
             _pfs = set()
             for _value in in_list:

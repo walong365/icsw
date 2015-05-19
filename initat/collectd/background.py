@@ -21,15 +21,18 @@
 
 """ background job definitions for collectd-init """
 
+from lxml import etree  # @UnresolvedImports
+import time
+
 from initat.collectd.struct import ext_com
+from initat.collectd.config import global_config
 from initat.snmp.sink import SNMPSink
 from initat.snmp.struct import value_cache
-from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
 from initat.tools import logging_tools
 from initat.tools import server_command
-import time
 from initat.tools import process_tools
+
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
 
@@ -400,6 +403,7 @@ class bg_job(object):
         self.__ec = ext_com(
             self.log,
             self.comline,
+            debug=bg_job.debug,
         )
         self.result = None
         self.__ec.run()
@@ -429,14 +433,15 @@ class bg_job(object):
             else:
                 self.running = False
                 stdout, stderr = self.__ec.communicate()
-                self.log(
-                    "done (RC={:d}) in {} (stdout: {}{})".format(
-                        self.result,
-                        logging_tools.get_diff_time_str(self.__ec.end_time - self.__ec.start_time),
-                        logging_tools.get_plural("byte", len(stdout)),
-                        ", stderr: {}".format(logging_tools.get_plural("byte", len(stderr))) if stderr else "",
+                if bg_job.debug or self.result:
+                    self.log(
+                        "done (RC={:d}) in {} (stdout: {}{})".format(
+                            self.result,
+                            logging_tools.get_diff_time_str(self.__ec.end_time - self.__ec.start_time),
+                            logging_tools.get_plural("byte", len(stdout)),
+                            ", stderr: {}".format(logging_tools.get_plural("byte", len(stderr))) if stderr else "",
+                        )
                     )
-                )
                 if stdout and self.result == 0:
                     if self.builder is not None:
                         _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
@@ -459,6 +464,7 @@ class bg_job(object):
     def setup(bg_proc):
         bg_job.run_idx = 0
         bg_job.bg_proc = bg_proc
+        bg_job.debug = global_config["DEBUG"]
         bg_job.ref_dict = {}
 
     @staticmethod
