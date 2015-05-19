@@ -265,6 +265,7 @@ class LicenseUsage(object):
     def log_usage(license, param_type, value):
         """
         Can currently handle missing device ids, all other data must be valid
+        Sometimes we expect iterables and sometimes single objects
         :type license: LicenseEnum
         :type param_type: LicenseParameterTypeEnum
         """
@@ -295,36 +296,30 @@ class LicenseUsage(object):
                 LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
 
             elif param_type == LicenseParameterTypeEnum.service:
-                dev_serv_filter = reduce(
-                    operator.ior,
-                    (
-                        Q(
-                            device_id=LicenseUsage.device_to_pk(dev),
-                            service_id=LicenseUsage.service_to_pk(serv)
-                        ) for dev, serv_list in value.iteritems() for serv in serv_list
-                    )
-                ) & Q(**common_params)
+                if value:  # not empty
+                    dev_serv_filter = reduce(
+                        operator.ior,
+                        (Q(device_id=LicenseUsage.device_to_pk(dev), service_id=LicenseUsage.service_to_pk(serv))
+                         for dev, serv_list in value.iteritems()
+                         for serv in serv_list
+                         )
+                    ) & Q(**common_params)
 
-                present_entries = frozenset(
-                    LicenseUsageDeviceService.objects.filter(
-                        dev_serv_filter
-                    ).values_list(
-                        "device_id",
-                        "service_id",
-                    )
-                )
-                entries_to_add = []
-                for dev, serv_list in value.iteritems():
-                    for serv in serv_list:
-                        dev_id = LicenseUsage.device_to_pk(dev)
-                        serv_id = LicenseUsage.service_to_pk(serv)
+                    present_entries =\
+                        frozenset(LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list("device_id",
+                                                                                                        "service_id"))
+                    entries_to_add = []
+                    for dev, serv_list in value.iteritems():
+                        for serv in serv_list:
+                            dev_id = LicenseUsage.device_to_pk(dev)
+                            serv_id = LicenseUsage.service_to_pk(serv)
 
-                        if (dev_id, serv_id) not in present_entries:
-                            entries_to_add.append(
-                                LicenseUsageDeviceService(device_id=dev_id, service_id=serv_id, **common_params)
-                            )
+                            if (dev_id, serv_id) not in present_entries:
+                                entries_to_add.append(
+                                    LicenseUsageDeviceService(device_id=dev_id, service_id=serv_id, **common_params)
+                                )
 
-                LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
+                    LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
             elif param_type == LicenseParameterTypeEnum.ext_license:
                 LicenseUsageExtLicense.objects.get_or_create(ext_license_id=LicenseUsage._ext_license_to_pk(value),
                                                              **common_params)
