@@ -121,7 +121,8 @@ class _LicenseManager(models.Manager):
 
         # unlicensed version
         if not product_licenses:
-            return InitProduct.NESTOR
+            # decision by AL, BM, SR (20150519): if the product is not decided, it can become anything, so it's a CORVUS
+            return InitProduct.CORVUS
 
         if InitProduct.NESTOR in product_licenses and InitProduct.NOCTUA in product_licenses:
             return InitProduct.CORVUS
