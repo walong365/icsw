@@ -57,8 +57,6 @@ class Parser(object):
         reg_cluster_parser.add_argument("-p", "--password", dest='password', required=True, help="your icsw password")
         reg_cluster_parser.add_argument("-n", "--cluster-name", dest='cluster_name', required=True,
                                         help="cluster name as provided by init.at")
-        reg_cluster_parser.add_argument("-i", "--cluster-id", dest='cluster_id',
-                                        help="will use local one if not specified)")
 
         def add_lock_arguments(p):
             p.add_argument("-l", "--license", dest="license", help="the license to lock usage of", required=True,
