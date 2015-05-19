@@ -19,28 +19,22 @@
 #
 """ server-part of rrd-grapher """
 
+import json
+
 from django.db import connection
-from django.db.models import Q
-from initat.cluster.backbone.models import device, MVStructEntry, MachineVector
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config
-from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.struct import DataStore
-from lxml.builder import E  # @UnresolvedImport
+from initat.rrd_grapher.graph import graph_process
+from initat.rrd_grapher.stale import stale_process
 from initat.tools import cluster_location
 from initat.tools import configfile
-import json
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import server_mixins
-import pprint
-import stat
 from initat.tools import threading_tools
-import time
 import zmq
-import rrdtool  # @UnresolvedImport
 
 
 class server_process(threading_tools.process_pool, server_mixins.operational_error_mixin):
@@ -60,11 +54,10 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.register_exception("hup_error", self._hup_error)
         self._log_config()
         self.add_process(graph_process("graph"), start=True)
+        self.add_process(stale_process("stale"), start=True)
         connection.close()
         self._init_network_sockets()
         self.register_func("send_command", self._send_command)
-        self.register_timer(self._clear_old_graphs, 60, instant=True)
-        self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
         DataStore.setup(self)
 
     def _log_config(self):
@@ -103,130 +96,13 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
 
-    def _check_for_stale_rrds(self):
-        cur_time = time.time()
-        # set stale after two hours
-        MAX_DT = 3600 * 2
-        num_changed = 0
-        _total = MachineVector.objects.all().count()
-        self.log("checking {}".format(logging_tools.get_plural("MachineVector", _total)))
-        mv_idx = 0
-        for mv in MachineVector.objects.all().prefetch_related("mvstructentry_set"):
-            mv_idx += 1
-            enabled, disabled = (0, 0)
-            num_active = 0
-            for mvs in mv.mvstructentry_set.all():
-                f_name = mvs.file_name
-                is_active = True if mvs.is_active else False
-                if os.path.isfile(f_name):
-                    _stat = os.stat(f_name)
-                    if _stat[stat.ST_SIZE] < 1024:
-                        self.log("file {} is too small, deleting and disabling...".format(f_name), logging_tools.LOG_LEVEL_ERROR)
-                        try:
-                            os.unlink(f_name)
-                        except:
-                            self.log("error deleting {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                        is_active, stale = (False, True)
-                    else:
-                        c_time = os.stat(f_name)[stat.ST_MTIME]
-                        stale = abs(cur_time - c_time) > MAX_DT
-                        if stale:
-                            # check via rrdtool
-                            try:
-                                # important: cast to str
-                                rrd_info = rrdtool.info(str(f_name))
-                            except:
-                                self.log(
-                                    "cannot get info for {} via rrdtool: {}".format(
-                                        f_name,
-                                        process_tools.get_except_info()
-                                    ),
-                                    logging_tools.LOG_LEVEL_ERROR
-                                )
-                                raise
-                            else:
-                                c_time = int(rrd_info["last_update"])
-                                stale = abs(cur_time - c_time) > MAX_DT
-                    if is_active:
-                        num_active += 1
-                    if is_active and stale:
-                        mvs.is_active = False
-                        mvs.save(update_fields=["is_active"])
-                        disabled += 1
-                    elif not is_active and not stale:
-                        mvs.is_active = True
-                        mvs.save(update_fields=["is_active"])
-                        enabled += 1
-                else:
-                    if is_active:
-                        self.log(
-                            "file '{}' missing, disabling".format(
-                                mvs.file_name,
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                        )
-                        mvs.is_active = False
-                        mvs.save(update_fields=["is_active"])
-                        disabled += 1
-            if enabled or disabled:
-                num_changed += 1
-                self.log(
-                    "({:d} of {:d}) updated active info for {}: {:d} enabled, {:d} disabled".format(
-                        mv_idx,
-                        _total,
-                        unicode(mv),
-                        enabled,
-                        disabled,
-                    )
-                )
-            try:
-                cur_dev = mv.device
-            except device.DoesNotExist:
-                self.log("device with pk no longer present", logging_tools.LOG_LEVEL_WARN)
-            else:
-                is_active = num_active > 0
-                if is_active != cur_dev.has_active_rrds:
-                    cur_dev.has_active_rrds = is_active
-                    cur_dev.save(update_fields=["has_active_rrds"])
-        self.log(
-            "checked for stale entries, modified {}, took {} ({} per entry)".format(
-                logging_tools.get_plural("device", num_changed),
-                logging_tools.get_diff_time_str(time.time() - cur_time),
-                logging_tools.get_diff_time_str((time.time() - cur_time) / max(1, _total)),
-            )
-        )
-
-    def _clear_old_graphs(self):
-        cur_time = time.time()
-        graph_root = global_config["GRAPH_ROOT"]
-        del_list = []
-        if os.path.isdir(graph_root):
-            for entry in os.listdir(graph_root):
-                if entry.endswith(".png"):
-                    full_name = os.path.join(graph_root, entry)
-                    c_time = os.stat(full_name)[stat.ST_CTIME]
-                    diff_time = abs(c_time - cur_time)
-                    if diff_time > 5 * 60:
-                        del_list.append(full_name)
-        else:
-            self.log("graph_root '{}' not found, strange".format(graph_root), logging_tools.LOG_LEVEL_ERROR)
-        if del_list:
-            self.log("clearing {} in {}".format(
-                logging_tools.get_plural("old graph", len(del_list)),
-                graph_root))
-            for del_entry in del_list:
-                try:
-                    os.unlink(del_entry)
-                except:
-                    pass
-
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("rrd-grapher")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block
@@ -313,18 +189,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     "ok processed command {}".format(cur_com),
                     server_command.SRV_REPLY_STATE_OK
                 )
-                # if cur_com in ["mv_info"]:
-                #    self.log("got mv_info")
-                #    self._interpret_mv_info(srv_com["vector"])
-                #    send_return = False
-                # elif cur_com in ["perfdata_info"]:
-                #    self._interpret_perfdata_info(
-                #        srv_com["hostname"].text,
-                #        srv_com["pd_type"].text,
-                #        srv_com["info"][0],
-                #        srv_com["file_name"].text
-                #    )
-                #    send_return = False
                 if cur_com == "get_node_rrd":
                     self._get_node_rrd(srv_com)
                 elif cur_com == "graph_rrd":

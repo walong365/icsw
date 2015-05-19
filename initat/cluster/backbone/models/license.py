@@ -281,28 +281,38 @@ class LicenseUsage(object):
                 # TODO: generalize this bulk create_if_nonexistent to all tables
                 dev_pks = frozenset(LicenseUsage.device_to_pk(dev) for dev in value)
                 present_keys = frozenset(
-                    LicenseUsageDeviceService.objects.filter(device_id__in=dev_pks, service=None, **common_params)
-                    .values_list("device_id", flat=True)
+                    LicenseUsageDeviceService.objects.filter(
+                        device_id__in=dev_pks, service=None, **common_params
+                    ).values_list("device_id", flat=True)
                 )
                 dev_pks_missing = dev_pks.difference(present_keys)
                 # check if devices are still present
                 dev_pks_missing_dev_present = device.objects.filter(pk__in=dev_pks_missing).values_list("pk", flat=True)
-                entries_to_add = [LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
-                                  for dev_pk in dev_pks_missing_dev_present]
+                entries_to_add = [
+                    LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
+                    for dev_pk in dev_pks_missing_dev_present
+                ]
                 LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
 
             elif param_type == LicenseParameterTypeEnum.service:
                 dev_serv_filter = reduce(
                     operator.ior,
-                    (Q(device_id=LicenseUsage.device_to_pk(dev), service_id=LicenseUsage.service_to_pk(serv))
-                     for dev, serv_list in value.iteritems()
-                     for serv in serv_list
-                     )
+                    (
+                        Q(
+                            device_id=LicenseUsage.device_to_pk(dev),
+                            service_id=LicenseUsage.service_to_pk(serv)
+                        ) for dev, serv_list in value.iteritems() for serv in serv_list
+                    )
                 ) & Q(**common_params)
 
-                present_entries =\
-                    frozenset(LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list("device_id",
-                                                                                                    "service_id"))
+                present_entries = frozenset(
+                    LicenseUsageDeviceService.objects.filter(
+                        dev_serv_filter
+                    ).values_list(
+                        "device_id",
+                        "service_id",
+                    )
+                )
                 entries_to_add = []
                 for dev, serv_list in value.iteritems():
                     for serv in serv_list:
@@ -375,6 +385,7 @@ class _LicenseLockListDeviceServiceManager(models.Manager):
 
     @memoize_with_expiry(20)
     def _get_lock_list_device(self, license):
+        print self.filter(license=license.name, service=None).values_list("device_id", flat=True)
         return frozenset(self.filter(license=license.name, service=None).values_list("device_id", flat=True))
 
     @memoize_with_expiry(20)
