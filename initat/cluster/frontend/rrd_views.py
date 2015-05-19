@@ -22,22 +22,21 @@
 
 """ RRD views """
 
+import datetime
+import json
+import logging
+
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImports
-import datetime
 import dateutil.parser
 import dateutil.tz
-import json
-import logging
 from initat.tools import logging_tools
 from initat.tools import server_command
 
@@ -47,14 +46,7 @@ logger = logging.getLogger("cluster.rrd")
 class device_rrds(View):
     @method_decorator(login_required)
     def post(self, request):
-        orig_dev_pks = request.POST.getlist("pks[]")
-        dev_pks = [
-            dev_pk for dev_pk in orig_dev_pks
-            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
-        ]
-        if len(orig_dev_pks) != len(dev_pks):
-            logger.info("Access to device rrds denied to to locking: {}".format(set(orig_dev_pks).difference(dev_pks)))
-        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
+        dev_pks = request.POST.getlist("pks[]")
         return _get_node_rrd(request, dev_pks)
 
 

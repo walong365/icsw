@@ -236,7 +236,8 @@ class Service(object):
             except:
                 _result.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
 
-    def _get_proc_info_str(self, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
+    def _get_proc_info_str(self, unique_pids, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
+        num_procs = len(unique_pids)
         if any_ok:
             ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
         else:
@@ -264,9 +265,9 @@ class Service(object):
                 )
                 da_name = "warning"
             else:
-                ret_str = "the thread is running" if num_started == 1 else "{}{} ({}) running".format(
-                    "all " if num_pids > 1 else "",
-                    logging_tools.get_plural("process", num_pids),
+                ret_str = "the process is running" if num_started == 1 else "{}{} ({}) running".format(
+                    "all " if num_procs > 1 else "",
+                    logging_tools.get_plural("process", num_procs),
                     logging_tools.get_plural("thread", num_started),
                 )
         return ret_str
@@ -524,6 +525,7 @@ class PIDService(Service):
                     start_time="{:d}".format(start_time),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
+                        set(act_pids),
                         num_started,
                         num_found,
                         num_diff,
@@ -553,6 +555,7 @@ class MetaService(Service):
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
             act_pids = ms_block.pids_found
+            unique_pids = set(act_pids)
             num_started = len(act_pids)
             if diff_threads:
                 act_state = SERVICE_INCOMPLETE
@@ -577,6 +580,7 @@ class MetaService(Service):
                     start_time="{:d}".format(int(start_time)),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
+                        unique_pids,
                         num_started,
                         num_found,
                         num_diff,

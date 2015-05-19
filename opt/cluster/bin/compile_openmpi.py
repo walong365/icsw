@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007-2009,2012,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2007-2009,2012,2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cbc-tools
 #
@@ -27,11 +27,7 @@ to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
 """
 import argparse
 import commands
-from initat.tools import compile_tools
-from initat.tools import cpu_database
-from initat.tools import logging_tools
 import os
-from initat.tools import rpm_build_tools
 import shutil
 import subprocess
 import sys
@@ -39,9 +35,14 @@ import tarfile
 import tempfile
 import time
 
+from initat.tools import compile_tools
+from initat.tools import cpu_database
+from initat.tools import logging_tools
+from initat.tools import rpm_build_tools
+
 MPI_VERSION_FD = {
-    "openmpi": "/opt/cluster/share/openmpi_versions",
-    "mpich": "/opt/cluster/share/mpich_versions",
+    "openmpi": "/opt/cluster/share/source-versions/openmpi_versions",
+    "mpich": "/opt/cluster/share/source-versions/mpich_versions",
 }
 
 
@@ -58,10 +59,14 @@ class my_opt_parser(argparse.ArgumentParser):
             is_64_bit = False
         self._read_mpi_versions()
         target_dir = "/opt/libs/"
-        fc_choices = sorted(["GNU",
-                             "INTEL",
-                             "PGI",
-                             "PATHSCALE"])
+        fc_choices = sorted(
+            [
+                "GNU",
+                "INTEL",
+                "PGI",
+                "PATHSCALE",
+            ]
+        )
         self.cpu_id = cpu_database.get_cpuid()
         self.add_argument(
             "-c",
@@ -209,10 +214,10 @@ class my_opt_parser(argparse.ArgumentParser):
                     ]
                 }
                 self.compiler_dict = {
-                    "CC": "%s/bin/gcc" % (self.options.fcompiler_path),
-                    "CXX": "%s/bin/g++" % (self.options.fcompiler_path),
-                    "F77": "%s/bin/gfortran" % (self.options.fcompiler_path),
-                    "FC": "%s/bin/gfortran" % (self.options.fcompiler_path)
+                    "CC": "{}/bin/gcc".format(self.options.fcompiler_path),
+                    "CXX": "{}/bin/g++".format(self.options.fcompiler_path),
+                    "F77": "{}/bin/gfortran".format(self.options.fcompiler_path),
+                    "FC": "{}/bin/gfortran".format(self.options.fcompiler_path)
                 }
             else:
                 self.compiler_dict = {
@@ -221,7 +226,7 @@ class my_opt_parser(argparse.ArgumentParser):
                     "F77": "gfortran",
                     "FC": "gfortran"
                 }
-            stat, out = commands.getstatusoutput("%s --version" % self.compiler_dict['CC'])
+            stat, out = commands.getstatusoutput("{} --version".format(self.compiler_dict['CC']))
             if stat:
                 raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
             self.small_version = out.split(")")[1].split()[0]

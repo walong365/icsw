@@ -19,14 +19,12 @@
 #
 import functools
 
-
 import django.utils.timezone
 from django.db import connection
-
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import LicenseUsage, License
 from initat.cluster.backbone.models.license import LicenseViolation
-from initat.tools import threading_tools, server_command, logging_tools
+from initat.tools import threading_tools, logging_tools
 from initat.md_config_server.config import global_config
 
 
