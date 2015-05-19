@@ -20,14 +20,11 @@
 # -*- coding: utf-8 -*-
 #
 import json
-import user
+import itertools
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import ForeignKey
-from django.db import IntegrityError
-import itertools
-from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.response import Response
