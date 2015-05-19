@@ -93,9 +93,7 @@ MEMTEST_VERSION=86+-5.01
 ###############################################################################
 
 build:
-	${MAKE} -C c_progs_collectd
-	${MAKE} -C c_progs
-	${MAKE} -C c_clients
+	${MAKE} -C c_programms
 	${PYTHON} ./setup.py build
 	mkdir syslinux ; \
 	cd syslinux ; \
@@ -130,8 +128,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
 	# Makefiles
-	${MAKE} -C c_progs DESTDIR=${DESTDIR} install
-	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
+	${MAKE} -C c_programms DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
 
@@ -139,7 +136,6 @@ install:
 	for file in install_package.py package_status.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
@@ -277,9 +273,7 @@ clean:
 	rm -f mboot.c32
 	rm -f memdisk
 	rm -f memtest86+-5.01.iso
-	make -C c_progs_collectd clean
-	make -C c_progs clean
-	make -C c_clients clean
+	make -C c_programms clean
 	${PYTHON} ./setup.py clean
 	rm -rf build
 
