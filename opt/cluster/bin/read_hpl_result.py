@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007-2008,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,9 +23,10 @@
 
 import sys
 import re
-from initat.tools import logging_tools
 import os
 import getopt
+
+from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import configfile
 
@@ -70,8 +71,10 @@ class hpl_result(object):
         self.__min_result, self.__max_result = (None, None)
 
     def _feed_line(self, line, **args):
-        f_m, p_m = (self.__flop_re.match(line),
-                    self.__pf_re.match(line))
+        f_m, p_m = (
+            self.__flop_re.match(line),
+            self.__pf_re.match(line)
+        )
         if f_m:
             self._add_result(f_m, **args)
         elif p_m:
@@ -186,8 +189,12 @@ class hpl_i_loader(object):
                     else:
                         self.__file_dict[f_name] = act_file
             if self.__loc_config["VERBOSE"]:
-                print "loaded %s from list with %s" % (logging_tools.get_plural("file", len(self.__file_dict.keys())),
-                                                       logging_tools.get_plural("file_name", len(self.__file_names)))
+                print(
+                    "loaded {} from list with {}".format(
+                        logging_tools.get_plural("file", len(self.__file_dict.keys())),
+                        logging_tools.get_plural("file_name", len(self.__file_names)),
+                    )
+                )
 
     def show_info(self):
         for hpl_f in self.__file_dict.itervalues():

@@ -25,7 +25,7 @@
 
 import sys
 
-# clean sys.path, remove all pathes not starting with /opt
+# clean sys.path, remove all paths not starting with /opt
 sys.path = [entry for entry in sys.path if entry.startswith("/opt")]
 
 import grp
@@ -42,6 +42,7 @@ try:
     from initat.tools import net_tools
     from initat.tools import process_tools
     from initat.tools import server_command
+    NEW_CODE = True
 except ImportError:
     # for running on nodes
     import threading_tools
@@ -49,6 +50,8 @@ except ImportError:
     import net_tools
     import process_tools
     import server_command
+    import logging_tools
+    NEW_CODE = False
 
 
 SEP_LEN = 70
@@ -1263,47 +1266,62 @@ class process_pool(threading_tools.process_pool):
         self.__log_template.close()
 
 
-global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
+if NEW_CODE:
+    global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
+else:
+    global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
 def zmq_main_code():
     # brand new 0MQ-based code
-    global_config.add_config_entries([
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME", configfile.str_c_var("proepilogue")),
-        ("MAX_RUN_TIME", configfile.int_c_var(60)),
-        ("SEP_LEN", configfile.int_c_var(80)),
-        ("HAS_MPI_INTERFACE", configfile.bool_c_var(True)),
-        ("MPI_POSTFIX", configfile.str_c_var("mp")),
-        ("BRUTAL_CLEAR_MACHINES", configfile.bool_c_var(False)),
-        ("SIMULTANEOUS_PINGS", configfile.int_c_var(128)),
-        ("PING_PACKETS", configfile.int_c_var(5)),
-        ("PING_TIMEOUT", configfile.float_c_var(5.0)),
-        ("MIN_KILL_UID", configfile.int_c_var(110)),
-        ("UMOUNT_CALL", configfile.bool_c_var(True))
-    ])
-    global_config.parse_file()
-    options = global_config.handle_commandline(
-        add_writeback_option=True,
-        positional_arguments=True,
-        positional_arguments_optional=True,
+    global_config.add_config_entries(
+        [
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var("proepilogue")),
+            ("MAX_RUN_TIME", configfile.int_c_var(60)),
+            ("SEP_LEN", configfile.int_c_var(80)),
+            ("HAS_MPI_INTERFACE", configfile.bool_c_var(True)),
+            ("MPI_POSTFIX", configfile.str_c_var("mp")),
+            ("BRUTAL_CLEAR_MACHINES", configfile.bool_c_var(False)),
+            ("SIMULTANEOUS_PINGS", configfile.int_c_var(128)),
+            ("PING_PACKETS", configfile.int_c_var(5)),
+            ("PING_TIMEOUT", configfile.float_c_var(5.0)),
+            ("MIN_KILL_UID", configfile.int_c_var(110)),
+            ("UMOUNT_CALL", configfile.bool_c_var(True)),
+        ]
     )
+    global_config.parse_file()
+    if NEW_CODE:
+        options = global_config.handle_commandline(
+            add_writeback_option=True,
+            positional_arguments=True,
+            positional_arguments_optional=True,
+        )
+    else:
+        options = global_config.handle_commandline(
+            add_writeback_option=True,
+            positional_arguments=True,
+        )
     _exit = False
     if len(options.arguments) in [5, 8]:
-        global_config.add_config_entries([
-            ("HOST_LONG", configfile.str_c_var(options.arguments[0], source="cmdline")),
-            ("JOB_OWNER", configfile.str_c_var(options.arguments[1], source="cmdline")),
-            ("JOB_ID", configfile.str_c_var(options.arguments[2], source="cmdline")),
-            ("JOB_NAME", configfile.str_c_var(options.arguments[3], source="cmdline")),
-            ("JOB_QUEUE", configfile.str_c_var(options.arguments[4], source="cmdline"))
-        ])
+        global_config.add_config_entries(
+            [
+                ("HOST_LONG", configfile.str_c_var(options.arguments[0], source="cmdline")),
+                ("JOB_OWNER", configfile.str_c_var(options.arguments[1], source="cmdline")),
+                ("JOB_ID", configfile.str_c_var(options.arguments[2], source="cmdline")),
+                ("JOB_NAME", configfile.str_c_var(options.arguments[3], source="cmdline")),
+                ("JOB_QUEUE", configfile.str_c_var(options.arguments[4], source="cmdline")),
+            ]
+        )
         if len(options.arguments) == 8:
-            global_config.add_config_entries([
-                ("PE_HOSTFILE", configfile.str_c_var(options.arguments[5], source="cmdline")),
-                ("PE", configfile.str_c_var(options.arguments[6], source="cmdline")),
-                ("PE_SLOTS", configfile.str_c_var(options.arguments[7], source="cmdline"))
-            ])
+            global_config.add_config_entries(
+                [
+                    ("PE_HOSTFILE", configfile.str_c_var(options.arguments[5], source="cmdline")),
+                    ("PE", configfile.str_c_var(options.arguments[6], source="cmdline")),
+                    ("PE_SLOTS", configfile.str_c_var(options.arguments[7], source="cmdline"))
+                ]
+            )
     elif len(options.arguments) == 0:
         process_pool(dummy_call=True)
         _exit = True
@@ -1319,11 +1337,13 @@ def zmq_main_code():
             return 0
         else:
             # add more entries
-            global_config.add_config_entries([
-                ("HOST_SHORT", configfile.str_c_var(global_config["HOST_LONG"].split(".")[0], source="cmdline")),
-                ("CALLER_NAME", configfile.str_c_var(global_config.name(), source="cmdline")),
-                ("HOST_IP", configfile.str_c_var("unknown", source="cmdline")),
-            ])
+            global_config.add_config_entries(
+                [
+                    ("HOST_SHORT", configfile.str_c_var(global_config["HOST_LONG"].split(".")[0], source="cmdline")),
+                    ("CALLER_NAME", configfile.str_c_var(global_config.name(), source="cmdline")),
+                    ("HOST_IP", configfile.str_c_var("unknown", source="cmdline")),
+                ]
+            )
             return process_pool().loop()
     else:
         return -1
