@@ -29,8 +29,8 @@ from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
 from initat.md_config_server.kpi.kpi_utils import print_tree
-import logging_tools
-import process_tools
+from initat.tools import logging_tools
+from initat.tools import process_tools
 import threading_tools
 
 

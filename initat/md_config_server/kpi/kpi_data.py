@@ -26,7 +26,7 @@ import memcache
 import operator
 import initat.collectd
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
-import logging_tools
+from initat.tools import logging_tools
 # noinspection PyUnresolvedReferences
 import pprint
 import initat.collectd.aggregate
