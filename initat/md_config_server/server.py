@@ -131,7 +131,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 mvect_entry("mon.devices.down", info="Devices down", default=0),
                 mvect_entry("mon.devices.total", info="Devices total", default=0),
                 mvect_entry("mon.devices.unknown", info="Devices unknown", default=0),
-                ]
+            ]
             cur_time = time.time()
             for mv_entry, key in zip(mv_list, ["up", "down", "tot", "unknown"]):
                 mv_entry.update(res_dict[key])
@@ -541,7 +541,3 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.com_socket.close()
         self.vector_socket.close()
         self.__log_template.close()
-
-    def thread_loop_post(self):
-        process_tools.delete_pid(self.__pid_name)
-        self.__msi_block.remove_meta_block()

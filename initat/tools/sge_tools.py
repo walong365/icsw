@@ -551,6 +551,7 @@ class sge_info(object):
         # s_time = time.time()
         # hm, fixes the memory issue but not very beautifull ...
         self.__tree = etree.fromstring(etree.tostring(self.__tree))  # @UndefinedVariable
+        # print etree.tostring(self.__tree, pretty_print=True)
         # e_time = time.time()
         # print e_time - s_time
 

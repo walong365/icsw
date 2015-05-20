@@ -33,7 +33,7 @@ from initat.tools import server_mixins
 from initat.tools import threading_tools
 
 
-class stale_process(threading_tools.process_obj, server_mixins.operational_error_mixin):
+class stale_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

@@ -9,7 +9,7 @@
         <tbody>
             <tr icsw-rms-job-run-line ng-repeat-start="data in run_list | paginator2:pagRun" ></tr>
             <tr ng-repeat-end ng-show="data.files.value != '0' && running_struct.toggle['files']">
-                <td colspan="99"><fileinfo job="data" files="files" fis="fis"></fileinfo></td>
+                <td colspan="99"><icsw-rms-file-info job="data" files="files" fis="fis"></icsw-rms-file-info></td>
             </tr>
         </tbody>
         <tfoot>
@@ -52,16 +52,16 @@
     </table>
 </script>
 
-<script type="text/ng-template" id="icsw.rms.node.table">
+<script type="text/ng-template" id="icsw.rms.queue.table">
     <table class="table table-condensed table-hover" style="width:auto;">
         <thead>
             <tr>
-                <td colspan="20" paginator entries="node_list" pag_settings="pagNode" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+                <td colspan="20" paginator entries="queue_list" pag_settings="pagNode" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
             </tr>
             <tr icsw-rms-table-headers struct="node_struct" class="info"></tr>
         </thead>
         <tbody>
-            <tr icsw-rms-node-line ng-repeat="data in node_list | paginator2:pagNode" ng-class="get_class(data)"></tr>
+            <tr icsw-rms-queue-line ng-repeat="data in queue_list | paginator2:pagNode" ng-class="get_class(data)"></tr>
         </tbody>
         <tfoot>
             <tr icsw-rms-table-header-toggle ng-show="header_filter_set" struct="node_struct"></tr>
@@ -72,8 +72,8 @@
 <script type="text/ng-template" id="icsw.rms.iostruct">
     <h4>
         {{ io_struct.get_file_info() }}, 
-        <input type="button" class="btn btn-sm btn-warning" value="close" ng-click="close_io(io_struct)"></input>
-        <input type="button" ng-class="io_struct.update && 'btn btn-sm btn-success' || 'btn btn-sm'" value="update" ng_click="io_struct.update = !io_struct.update"></input>
+        <input type="button" class="btn btn-sm btn-warning" value="close" ng-click="close_io(io_struct)"/>
+        <input type="button" ng-class="io_struct.update && 'btn btn-sm btn-success' || 'btn btn-sm'" value="update" ng_click="io_struct.update = !io_struct.update"/>
     </h4>
     <div>
         <tt>
@@ -97,7 +97,7 @@
                 value="{{ struct.get_header(entry) }}"
                 ng-click="struct.change_entry(entry)"
                 ng-show="struct.header_not_hidden(entry)"
-            ></input>
+            />
         </form>
     </th>
 </script>
@@ -108,8 +108,8 @@
             <input
                 type="button"
                 ng-class="fis[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs'"
-                ng-click="fis[file[0]].show = !fis[file[0]].show"
-                ng-value="fis[file[0]].show && 'hide' || 'show'"></input>
+                ng-click="change_display(file[0])"
+                ng-value="fis[file[0]].show && 'hide' || 'show'"/>
             {{ file[0] }}, {{ file[2] }} Bytes
         </div>
         <div ng-show="fis[file[0]].show">
@@ -118,14 +118,14 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.rms.node.line">
+<script type="text/ng-template" id="icsw.rms.queue.line">
     <td ng-show="node_struct.toggle['host']">
-        {{ data.host.value }}&nbsp;<button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
+        {{ data.host.host.value }}&nbsp;<button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
             <span class="glyphicon glyphicon-pencil"></span>
         </button>
     </td>
     <td ng-show="node_struct.toggle['queues']">
-        <queuestate operator="rms_operator" host="data"></queuestate>
+        <icsw-rms-queue-state operator="rms_operator" queue="data"></icsw-rms-queue-state>
     </td>
     <td ng-show="node_struct.toggle['type']">
         {{ data.type.value }}
@@ -173,20 +173,20 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.state.oper">
-    <div ng-repeat="(queue, state) in get_states()" ng-show="queues_defined()" class="row">
+    <div class="row">
         <div class="col-sm-12 btn-group">
-            <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(state, 'btn')" data-toggle="dropdown">
-                {{ queue }} : {{ state }} <span class="caret"></span>
+            <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(queue.state.value, 'btn')" data-toggle="dropdown">
+                {{ queue.name }} : {{ queue.state.value }} <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-show="enable_ok(state)" ng-click="queue_control('enable', queue)">
-                    <a href="#">Enable {{ queue }}@{{ host.host.value }}</a>
+                <li ng-show="enable_ok(queue.state.value)" ng-click="queue_control('enable', queue)">
+                    <a href="#">Enable {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
-                <li ng-show="disable_ok(state)" ng-click="queue_control('disable', queue)">
-                    <a href="#">Disable {{ queue }}@{{ host.host.value }}</a>
+                <li ng-show="disable_ok(queue.state.value)" ng-click="queue_control('disable', queue)">
+                    <a href="#">Disable {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
-                <li ng-show="clear_error_ok(state)" ng-click="queue_control('clear_error', queue)">
-                    <a href="#">Clear error on {{ queue }}@{{ host.host.value }}</a>
+                <li ng-show="clear_error_ok(queue.state.value)" ng-click="queue_control('clear_error', queue)">
+                    <a href="#">Clear error on {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
             </ul>
         </div>
@@ -198,8 +198,8 @@
 
 <script type="text/ng-template" id="icsw.rms.queue.state">
     <div>
-        <span class="label" ng-class="get_queue_class(state, 'label')" ng-repeat="(queue, state) in get_states()">
-            {{ queue }} : {{ state }}
+        <span class="label" ng-class="get_queue_class(queue.state.value, 'label')">
+            {{ queue.name }} : {{ queue.state.value }}
         </span>
     </div>
 </script>
@@ -379,12 +379,12 @@
     </td>
     <td ng-show="running_struct.toggle['stdout']">
         <span ng-switch on="valid_file(data.stdout.value)">
-            <input type="button" ng-class="get_io_link_class(data, 'stdout')" ng-value="data.stdout.value" ng-click="activate_io(data, 'stdout')"></input>
+            <input type="button" ng-class="get_io_link_class(data, 'stdout')" ng-value="data.stdout.value" ng-click="activate_io(data, 'stdout')"/>
         </span>
     </td>
     <td ng-show="running_struct.toggle['stderr']">
         <span ng-switch on="valid_file(data.stderr.value)">
-            <input type="button" ng-class="get_io_link_class(data, 'stderr')" ng-value="data.stderr.value" ng-click="activate_io(data, 'stderr')"></input>
+            <input type="button" ng-class="get_io_link_class(data, 'stderr')" ng-value="data.stderr.value" ng-click="activate_io(data, 'stderr')"/>
         </span>
     </td>
     <td ng-show="running_struct.toggle['files']">
@@ -412,7 +412,7 @@
                 <label class="control-label pull-right">Priority (actual: {{ job.priority.value }}):</label>
             </div>
             <div class="controls col-md-8">
-                <input class="form-control input-sm" type="number" ng-model="cur_priority" min="-1023" max="{{ get_max_priority() }}" required></input>
+                <input class="form-control input-sm" type="number" ng-model="cur_priority" min="-1023" max="{{ get_max_priority() }}" required/>
             </div>
         </div>
         </form>

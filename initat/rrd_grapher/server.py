@@ -22,7 +22,6 @@
 import json
 
 from django.db import connection
-from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.struct import DataStore
 from initat.rrd_grapher.graph import graph_process
@@ -31,13 +30,17 @@ from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import logging_tools
 from initat.tools import process_tools
-from initat.tools import server_command
 from initat.tools import server_mixins
 from initat.tools import threading_tools
-import zmq
 
 
-class server_process(threading_tools.process_pool, server_mixins.operational_error_mixin):
+@server_mixins.RemoteCallProcess
+class server_process(
+    threading_tools.process_pool,
+    server_mixins.OperationalErrorMixin,
+    server_mixins.NetworkBindMixin,
+    server_mixins.RemoteCallMixin,
+):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -57,8 +60,8 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.add_process(stale_process("stale"), start=True)
         connection.close()
         self._init_network_sockets()
-        self.register_func("send_command", self._send_command)
         DataStore.setup(self)
+        # self.test("x")
 
     def _log_config(self):
         self.log("Config info:")
@@ -107,37 +110,18 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         msi_block.save_block()
         return msi_block
 
-    def _send_command(self, *args, **kwargs):
-        _src_proc, _src_id, full_uuid, srv_com = args
-        self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
-        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-        self.com_socket.send_unicode(srv_com)
-
     def _init_network_sockets(self):
-        self.bind_id = get_server_uuid("grapher")
-        client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id, immediate=True)
-        bind_str = "tcp://*:{:d}".format(global_config["COM_PORT"])
-        try:
-            client.bind(bind_str)
-        except zmq.ZMQError:
-            self.log(
-                "error binding to {:d}: {}".format(
-                    global_config["COM_PORT"],
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
-            raise
-        else:
-            self.log("bound to {} (id {})".format(bind_str, self.bind_id))
-            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
-            self.com_socket = client
-        # connection to collectd clients
-        # self._collectd_sockets = {}
-        # collectd_hosts = ["127.0.0.1"]
-        # [self._open_collectd_socket(_host) for _host in collectd_hosts]
+        self.network_bind(
+            need_all_binds=False,
+            bind_port=global_config["COM_PORT"],
+            bind_to_localhost=True,
+            server_type="grapher",
+            simple_server_bind=True,
+            pollin=self.remote_call,
+        )
 
-    def _get_node_rrd(self, srv_com):
+    @server_mixins.RemoteCall()
+    def get_node_rrd(self, srv_com, **kwargs):
         node_results = []
         dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
         pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk", smart_strings=False)]
@@ -154,75 +138,24 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         # _json = self._to_json(node_results, set(["info", "active", "key", "name", "part", "pk"]))
         # pprint.pprint(node_results, depth=5)
         srv_com["result"] = json.dumps(node_results)
+        srv_com.set_result("set results for {}".format(logging_tools.get_plural("node", len(node_results))))
+        return srv_com
 
-    # def _iter_level(self, start_el, _dict):
-    #    for node in
-    def _recv_command(self, zmq_sock):
-        in_data = []
-        while True:
-            in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-                break
-        # self.log("{:d}".format(len(in_data)))
-        if len(in_data) == 2:
-            src_id, data = in_data
-            try:
-                srv_com = server_command.srv_command(source=data)
-            except:
-                self.log(
-                    "error interpreting command: {}".format(process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                # send something back
-                self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                self.com_socket.send_unicode("internal error")
-            else:
-                cur_com = srv_com["command"].text
-                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event" "vector", "perfdata_info"]:
-                    self.log("got command '{}' from '{}'".format(
-                        cur_com,
-                        srv_com["source"].attrib["host"])
-                    )
-                srv_com.update_source()
-                send_return = True
-                srv_reply, srv_state = (
-                    "ok processed command {}".format(cur_com),
-                    server_command.SRV_REPLY_STATE_OK
-                )
-                if cur_com == "get_node_rrd":
-                    self._get_node_rrd(srv_com)
-                elif cur_com == "graph_rrd":
-                    send_return = False
-                    self.send_to_process("graph", "graph_rrd", src_id, unicode(srv_com))
-                elif cur_com == "get_0mq_id":
-                    srv_com["zmq_id"] = self.bind_id
-                    srv_reply = "0MQ_ID is {}".format(self.bind_id)
-                elif cur_com == "status":
-                    srv_reply = "up and running"
-                else:
-                    self.log("got unknown command '{}'".format(cur_com), logging_tools.LOG_LEVEL_ERROR)
-                    srv_reply, srv_state = (
-                        "unknown command '{}'".format(cur_com),
-                        server_command.SRV_REPLY_STATE_ERROR,
-                    )
-                if send_return:
-                    srv_com.set_result(srv_reply, srv_state)
-                    try:
-                        self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                        self.com_socket.send_unicode(unicode(srv_com))
-                    except:
-                        self.log(
-                            "error sending return to {}".format(src_id),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                else:
-                    del cur_com
-        else:
-            self.log(
-                "wrong count of input data frames: {:d}, first one is {}".format(
-                    len(in_data),
-                    in_data[0]),
-                logging_tools.LOG_LEVEL_ERROR)
+    @server_mixins.RemoteCall()
+    def get_0mq_id(self, srv_com, **kwargs):
+        srv_com["zmq_id"] = self.bind_id
+        srv_com.set_result("0MQ_ID is {}".format(self.bind_id))
+        return srv_com
+
+    @server_mixins.RemoteCall()
+    def status(self, srv_com, **kwargs):
+        srv_com.set_result("status is up and running")
+        return srv_com
+
+    @server_mixins.RemoteCall(sync=False, target_process="graph")
+    def graph_rrd(self, srv_com, **kwargs):
+        # here we have to possibility to modify srv_com before we send it to the remote process
+        return srv_com
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
@@ -230,12 +163,5 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.com_socket.close()
-        # for _key, _sock in self._collectd_sockets.iteritems():
-        #    _sock.close()
+        self.network_unbind()
         self.__log_template.close()
-
-    def thread_loop_post(self):
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()

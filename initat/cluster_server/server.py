@@ -41,7 +41,7 @@ from initat.tools import uuid_tools
 import zmq
 
 
-class server_process(threading_tools.process_pool, notify_mixin, server_mixins.network_bind_mixin):
+class server_process(threading_tools.process_pool, notify_mixin, server_mixins.NetworkBindMixin):
     def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])

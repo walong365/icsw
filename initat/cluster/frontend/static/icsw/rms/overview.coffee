@@ -197,6 +197,9 @@ class license_usage
         @absolute_co = @checkout_time.format("dd, Do MM YYYY, hh:mm:ss")
         @relative_co = @checkout_time.fromNow()
 
+class Queue
+    constructor: (@name) ->
+
 DT_FORM = "D. MMM YYYY, HH:mm:ss"
 
 rms_module = angular.module(
@@ -231,6 +234,7 @@ rms_module = angular.module(
         $scope.run_list = []
         $scope.wait_list = []
         $scope.node_list = []
+        $scope.queue_list = []
         $scope.done_list = []
         $scope.device_dict = {}
         $scope.device_dict_set = false
@@ -344,6 +348,43 @@ rms_module = angular.module(
                             if $scope.max_load == 0
                                 $scope.max_load = 4
                             $scope.slot_info.reset()
+                            # build queue list
+                            $scope.queue_list = []
+                            for entry in $scope.node_list
+                                i_split = (in_str) ->
+                                    parts = in_str.split("/")
+                                    if parts.length != _nq
+                                        parts = (parts[0] for _x in [1.._nq])
+                                    return parts
+                                queues = entry.queues.value.split("/")
+                                _nq = queues.length
+                                states = i_split(entry.state.value)
+                                loads = i_split(entry.load.value)
+                                types = i_split(entry.type.value)
+                                complexes = i_split(entry.complex.value)
+                                pe_lists = i_split(entry.pe_list.value)
+                                _idx = 0
+                                for _vals in _.zip(
+                                    queues, states, loads, types, complexes, pe_lists,
+                                    i_split(entry.slots_used.value),
+                                    i_split(entry.slots_reserved.value),
+                                    i_split(entry.slots_total.value),
+                                    i_split(entry.jobs.value),
+                                )
+                                    queue = new Queue(_vals[0])
+                                    queue.host = entry
+                                    queue.state = {"value": _vals[1], "raw": entry.state.raw[_idx]}
+                                    queue.load = {"value": _vals[2]}
+                                    queue.type = {"value": _vals[3]}
+                                    queue.complex = {"value": _vals[4]}
+                                    queue.pe_list = {"value": _vals[5]}
+                                    queue.slots_used = {"value": _vals[6]}
+                                    queue.slots_reserved = {"value": _vals[7]}
+                                    queue.slots_total = {"value": _vals[8]}
+                                    # job display still buggy, FIXME
+                                    queue.jobs = {"value": _vals[9]}
+                                    $scope.queue_list.push(queue)
+                                    _idx++
                             for entry in $scope.node_list
                                 # for filter function
                                 entry.sv0 = entry.host.value
@@ -430,12 +471,12 @@ rms_module = angular.module(
         $scope.close_io = (io_struct) ->
             $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
             delete $scope.io_dict[io_struct.get_id()]
-        $scope.$on("queue_control", (event, host, command, queue) ->
+        $scope.$on("queue_control", (event, queue, command) ->
             icswCallAjaxService
                 url      : ICSW_URLS.RMS_CONTROL_QUEUE
                 data     : {
-                    "queue"   : queue
-                    "host"    : host.host.value
+                    "queue"   : queue.name
+                    "host"    : queue.host.host.value
                     "command" : command 
                 }
                 success  : (xml) =>
@@ -458,8 +499,8 @@ rms_module = angular.module(
             return "waiting (#{$scope.wait_list.length} jobs, #{$scope.waiting_slots} slots)"
         $scope.get_done_info = () ->
             return "done (#{$scope.done_list.length} jobs)"
-        $scope.get_node_info = () ->
-            return "node (#{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
+        $scope.get_queue_info = () ->
+            return "queue (#{$scope.queue_list.length} queues on #{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
         $scope.show_rrd = (event, name_list, start_time, end_time, title, job_mode, selected_job) ->
             dev_pks = ($scope.device_dict[name].pk for name in name_list).join(",")
             start_time = if start_time then start_time else 0
@@ -552,13 +593,13 @@ rms_module = angular.module(
             if "filter" of attrs
                 scope.pagDone.conf.filter = attrs["filter"]
     }
-]).directive("icswRmsNodeTable", ["$templateCache",($templateCache) ->
+]).directive("icswRmsQueueTable", ["$templateCache",($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.rms.node.table")
+        template : $templateCache.get("icsw.rms.queue.table")
         link : (scope, el, attrs) ->
             scope.get_class = (data) ->
-                parts = data.state.raw.join("").split("")
+                parts = data.state.raw  # .join("").split("")
                 if _.indexOf(parts, "a") >= 0 or _.indexOf(parts, "u") >= 0
                     return "danger"
                 else if _.indexOf(parts, "d") >= 0
@@ -748,14 +789,17 @@ rms_module = angular.module(
                     rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
                 scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
     }
-]).directive("icswRmsNodeLine", ["$templateCache", "$sce", "$compile", ($templateCache, $sce, $compile) ->
+]).directive("icswRmsQueueLine", ["$templateCache", "$sce", "$compile", ($templateCache, $sce, $compile) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.rms.node.line")
+        template : $templateCache.get("icsw.rms.queue.line")
         link : (scope, el, attrs) ->
             scope.valid_load = (load) ->
                 # return 1 or 0, not true or false
-                return if load.value.match(LOAD_RE) then 1 else 0
+                if load.value
+                    return if load.value.match(LOAD_RE) then 1 else 0
+                else
+                    return false
             scope.get_load = (load) ->
                 cur_m = load.value.match(LOAD_RE)
                 if cur_m
@@ -848,18 +892,13 @@ rms_module = angular.module(
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
         scope:
-            host : "="
+            queue : "="
             operator : "="
         replace : true
         compile : (tElement, tAttr) ->
             return (scope, el, attrs) ->
-                scope.get_states = () ->
-                    states = scope.host.state.value.split("/")
-                    queues = scope.host.queues.value.split("/")
-                    if queues.length != states.length
-                        states = (states[0] for queue in queues)
-                    return _.zipObject(queues, states)
                 scope.queues_defined = () ->
+                    return true
                     return if scope.host.state.value.length then true else false
                 scope.enable_ok = (state) ->
                     return if state.match(/d/g) then true else false
@@ -875,7 +914,7 @@ rms_module = angular.module(
                     else
                         return "#{prefix}-success"
                 scope.queue_control = (command, queue) ->
-                    scope.$emit("queue_control", scope.host, command, queue)
+                    scope.$emit("queue_control", queue, command)
                 el.append($compile($templateCache.get(if scope.operator then "icsw.rms.queue.state.oper" else "icsw.rms.queue.state"))(scope))
       
     }
@@ -899,6 +938,8 @@ rms_module = angular.module(
                         }
             else
                 scope.jfiles = []
+            scope.change_display = (file_name) ->
+                scope.fis[file_name].show = !scope.fis[file_name].show
     }
 ]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->

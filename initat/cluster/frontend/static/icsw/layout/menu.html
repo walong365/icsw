@@ -26,10 +26,12 @@
                     <li ng-show="has_menu_permission('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}">Device connections</a></li>
                     <li ng-show="has_menu_permission('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}">Device variables</a></li>
                     <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.DEVICE_SHOW_CONFIGS }}">Device configurations</a></li>
+                    <li ng-show="has_valid_license('snapshot')" class="divider"></li>
+                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}" ng-show="has_valid_license('snapshot')">History</a></li>
                 </ul>
             </li>
             <li ng-show="
-                has_any_valid_license(['netboot', 'package_install', 'snapshot'])
+                has_any_valid_license(['netboot', 'package_install'])
                 &&
                 (has_menu_permission('device.change_boot') || has_menu_permission('package.package_install') ||
                  has_menu_permission('partition_fs.modify_partitions') || has_menu_permission('kernel.modify_kernels') || has_menu_permission('image.modify_images'))
@@ -43,8 +45,6 @@
                     <li ng-show="has_valid_license('netboot') && has_menu_permission('kernel.modify_kernels')"><a href="{{ ICSW_URLS.SETUP_KERNEL_OVERVIEW }}">Kernel overview</a></li>
                     <li ng-show="has_valid_license('netboot') && has_menu_permission('partition_fs.modify_partitions')"><a href="{{ ICSW_URLS.SETUP_PARTITION_OVERVIEW }}">Partition overview</a></li>
 
-                    <!-- TODO: permisssion -->
-                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}" ng-show="has_valid_license('snapshot')">History</a></li>
                 </ul>
             </li>
             <li ng-show="has_menu_permission('group.group_admin')">
