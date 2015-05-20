@@ -129,7 +129,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 mvect_entry("mon.devices.down", info="Devices down", default=0),
                 mvect_entry("mon.devices.total", info="Devices total", default=0),
                 mvect_entry("mon.devices.unknown", info="Devices unknown", default=0),
-                ]
+            ]
             cur_time = time.time()
             for mv_entry, key in zip(mv_list, ["up", "down", "tot", "unknown"]):
                 mv_entry.update(res_dict[key])
@@ -363,7 +363,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("md-config-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=7, process_name="manager")  # MARKER to cause conflict when the branches kpi and license are merged
+        #  MARKER to cause conflict when the branches kpi and license are merged
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=7, process_name="manager")
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
@@ -537,7 +538,3 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.com_socket.close()
         self.vector_socket.close()
         self.__log_template.close()
-
-    def thread_loop_post(self):
-        process_tools.delete_pid(self.__pid_name)
-        self.__msi_block.remove_meta_block()

@@ -231,6 +231,11 @@ class srv_command(object):
             xpath_str = "/ns:ics_batch"
         return self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
 
+    def __delitem__(self, key):
+        xpath_res = self.get_element(key)
+        for _res in xpath_res:
+            _res.getparent().remove(_res)
+
     def __getitem__(self, key):
         if key.startswith("*"):
             interpret = True

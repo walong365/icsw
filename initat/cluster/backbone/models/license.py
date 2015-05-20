@@ -381,7 +381,6 @@ class _LicenseLockListDeviceServiceManager(models.Manager):
 
     @memoize_with_expiry(20)
     def _get_lock_list_device(self, license):
-        print self.filter(license=license.name, service=None).values_list("device_id", flat=True)
         return frozenset(self.filter(license=license.name, service=None).values_list("device_id", flat=True))
 
     @memoize_with_expiry(20)
