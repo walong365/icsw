@@ -1,0 +1,92 @@
+#! /bin/bash
+#
+# Copyright (c) 2003-2008,2011-2015 Andreas Lang-Nevyjel init.at
+#
+#
+# RedHat stuff
+# chkconfig: 2345 13 87
+# description: logging-server
+#
+### BEGIN INIT INFO
+# Provides:      logging-server
+# Required-Start: $network $syslog
+# Required-Stop: $network $syslog
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
+# Description:   starts logging-server
+### END INIT INFO
+
+export SYSTEMD_NO_WRAP="1"
+
+if [ -f /etc/rc.status ] ; then
+    . /etc/rc.status
+else
+    . /etc/rc.status_suse
+fi
+. /etc/init.d/ics_tools.sh
+
+setup() {
+    [ ! -d /var/run/logserver ] && mkdir /var/run/logserver 
+    [ ! -d /var/lock/logserver ] && mkdir /var/lock/logserver 
+    if [ ! -d /var/log/cluster/logging-server ] ; then
+        mkdir -p /var/log/cluster/logging-server
+        chown idlog.idg /var/log/cluster/
+        chown -R idlog.idg /var/log/cluster/logging-server
+    fi
+    chmod 0750 /var/run/logserver
+    chown idlog.idg /var/run/logserver /var/lock/logserver 
+}
+
+META_FILE=/var/lib/meta-server/logging-server
+SERVER_PID=/var/run/logserver/logserver.pid
+SERVER_ARGS=""
+SERVER_USER="idlog"
+SERVER_GROUP="idg"
+
+rc_reset
+
+setup
+
+export HOSTNAME=`/bin/hostname`
+export ICSW=/opt/cluster/sbin/icsw
+
+case "$1" in
+    start)
+        echo -n "Starting logging-server"
+        if [ -f ${SERVER_PID} ] ; then
+            echo -n " ... already running"
+        else
+	    ${ICSW} start logging-server
+        fi
+        rc_status -v
+    ;;
+    stop)
+        echo -n "Stopping logging-server"
+        if [ -f ${SERVER_PID} ] ; then
+	    ${ICSW} stop logging-server
+            for i in $(seq 10) ; do
+                echo -n "."
+                if [ -x /bin/usleep ] ; then
+                    usleep 250000
+                else
+                    sleep 1
+                fi
+                [ ! -f ${SERVER_PID} ] && break 
+            done
+            [ $i -gt 8 ] && rc_failed || rc_reset
+        else
+            rc_failed
+        fi
+        rc_status -v
+    ;;
+    status)
+        ${ICSW} status logging-server
+        rc_status -v
+    ;;
+    *)
+        echo "Usage: $0 {start|stop|status}"
+        exit 1
+    ;;
+esac
+
+rc_exit

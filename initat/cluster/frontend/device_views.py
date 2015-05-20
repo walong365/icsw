@@ -183,7 +183,7 @@ class manual_connection(View):
                 Q(snmp_schemes__power_control=True)
             )
         )
-        print cd_devices
+        # print cd_devices
         non_cd_devices = device.all_real_enabled()
         logger.info("cd / non-cd devices: {:d} / {:d}".format(cd_devices.count(), non_cd_devices.count()))
         # iterate over non-cd-device
@@ -266,7 +266,7 @@ class scan_device_network(View):
                 {
                     "pk": "{:d}".format(_dev.pk),
                     "scan_address": _json_dev["scan_address"],
-                    "snmp_version": "{:d}".format(_json_dev["snmp_version"]),
+                    "snmp_version": "{}".format(_json_dev["snmp_version"]),
                     "snmp_community": _json_dev["snmp_community"],
                     "strict": "1" if _json_dev["remove_not_found"] else "0"
                 }

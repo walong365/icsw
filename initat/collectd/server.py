@@ -1,5 +1,5 @@
 #
-# this file is part of collectd-init
+# this file is part of collectd
 #
 # Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
 #
@@ -18,7 +18,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" collectd-init, server part """
+""" collectd, server part """
+
+from lxml import etree
+import os
+import pprint
+import re
+import socket
+import time
 
 from django.conf import settings
 from django.db import connection
@@ -32,21 +39,15 @@ from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.collectd.dbsync import SyncProcess
 from initat.snmp.process import snmp_process_container
-from lxml import etree
 from lxml.builder import E  # @UnresolvedImports
 from initat.tools import cluster_location
 from initat.tools import config_tools
 from initat.tools import configfile
 from initat.tools import logging_tools
-import os
-import pprint
 from initat.tools import process_tools
-import re
 from initat.tools import server_command
 from initat.tools import server_mixins
-import socket
 from initat.tools import threading_tools
-import time
 from initat.tools import uuid_tools
 import zmq
 
@@ -60,7 +61,12 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         # close connection (daemonizing)
         connection.close()
         self.__msi_block = self._init_msi_block()
@@ -156,20 +162,18 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             self.__msi_block.save_block()
 
     def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.save_pid(self.__pid_name, mult=5)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("collectd-init")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block = process_tools.meta_server_info("collectd")
+        msi_block.add_actual_pid(mult=5, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, fuzzy_ceiling=3, process_name="manager")
-        msi_block.start_command = "/etc/init.d/collectd-init start"
-        msi_block.stop_command = "/etc/init.d/collectd-init force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block
 
     def _init_network_sockets(self):
-        self.bind_id = get_server_uuid("collectd-init")
+        self.bind_id = get_server_uuid("collectd")
         client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id, immediate=True)
         bind_str = "tcp://*:{:d}".format(global_config["COMMAND_PORT"])
         try:
@@ -177,7 +181,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         except zmq.ZMQError:
             self.log(
                 "error binding to {:d}: {}".format(
-                    global_config["COM_PORT"],
+                    global_config["COMMAND_PORT"],
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL
@@ -706,7 +710,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
 
     def get_time(self, h_tuple, cur_time):
         cur_time = int(cur_time)
-        pprint.pprint(self.__last_sent)
+        # pprint.pprint(self.__last_sent)
         if h_tuple in self.__last_sent:
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time

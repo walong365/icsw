@@ -20,15 +20,16 @@
 """ server command structure definitions """
 
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import ElementMaker  # @UnresolvedImport
 import base64
 import bz2
 import datetime
-from initat.tools import logging_tools
 import marshal
 import os
 import pickle
 import re
+
+from lxml.builder import ElementMaker  # @UnresolvedImport
+from initat.tools import logging_tools
 
 XML_NS = "http://www.initat.org/lxml/ns"
 
@@ -256,7 +257,7 @@ class srv_command(object):
 
     def _to_unicode(self, value):
         if type(value) == bool:
-            return ("True" if value else "False", "bool")
+            return "True" if value else "False", "bool"
         elif type(value) in [int, long]:
             return ("{:d}".format(value), "int")
         else:
@@ -419,10 +420,10 @@ class srv_command(object):
         if len(res_node):
             res_node = res_node[0]
             ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])
-            if map_to_log_level:
-                ret_state = srv_reply_to_log_level(ret_state)
         else:
-            ret_str, ret_state = ("no result element found", logging_tools.LOG_LEVEL_CRITICAL)
+            ret_str, ret_state = ("no result element found", SRV_REPLY_STATE_CRITICAL)
+        if map_to_log_level:
+            ret_state = srv_reply_to_log_level(ret_state)
         if swap:
             return ret_state, ret_str
         else:
@@ -436,19 +437,3 @@ class srv_command(object):
 
     def __len__(self):
         return len(etree.tostring(self.tree))  # @UndefinedVariable
-
-    def check_msi_block(self, msi_block):
-        if msi_block:
-            msi_block.check_block()
-            self.set_result(
-                "{}, {}".format(
-                    msi_block.get_info(),
-                    msi_block.pid_check_string,
-                ),
-                SRV_REPLY_STATE_OK if msi_block.pid_checks_failed == 0 else SRV_REPLY_STATE_ERROR,
-            )
-        else:
-            self.set_result(
-                "no MSI-block defined",
-                SRV_REPLY_STATE_WARN,
-            )

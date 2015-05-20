@@ -29,14 +29,15 @@ if __name__ == "__main__":
     import django
     django.setup()
 
+import array
+import netifaces
+import sys
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
     netdevice, peer_information, config_int, config_blob, config_str, config_bool
-import array
-import netifaces
 import networkx
-import sys
-import time
 from initat.tools import configfile
 from initat.tools import logging_tools
 from initat.tools import process_tools
@@ -812,6 +813,11 @@ class device_with_config(dict):
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)
+
+
+def close_db_connection():
+    from django.db import connection
+    connection.close()
 
 
 def _log_com(what, log_level=logging_tools.LOG_LEVEL_OK):

@@ -87,7 +87,7 @@ angular.module(
             @server_state = parseInt(@result.attr("state"))
             @server_reply = @result.attr("reply")
             @valid = if @server_state == 0 then true else false
-            _mem_vector = (parseInt($(mem_info).text()) for mem_info in @xml.find("instance memory_info") when $(mem_info).text())
+            _mem_vector = (parseInt($(mem_info).contents().first().text()) for mem_info in @xml.find("instance > result > memory_info") when $(mem_info).text())
             if _mem_vector.length
                 @max_mem = _.max(_mem_vector)
                 @sum_mem = _.reduce(_mem_vector, (sum, _val) -> return sum + _val)
@@ -105,29 +105,45 @@ angular.module(
             return parseInt(@xml.find("command").attr("server_id"))
         instance_names: () ->
             return ($(entry).attr("name") for entry in @xml.find("instance"))
+        service_enabled: (instance) ->
+            _meta_xml = @xml.find("metastatus > instances > instance[name='#{instance}']")
+            if _meta_xml.length
+                return if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
+            else
+                return false
+        service_disabled: (instance) ->
+            _meta_xml = @xml.find("metastatus > instances > instance[name='#{instance}']")
+            if _meta_xml.length
+                return if parseInt(_meta_xml.attr("target_state")) == 0 then true else false
+            else
+                return false
         get_state: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            #if _xml.attr("name") == "hoststatus"
-            #    console.log _xml[0]
+            _xml = @xml.find("status > instances > instance[name='#{instance}']")
             if _xml.length
                 _state_info = _xml.find("state_info")
-                if _xml.attr("check_type") == "simple"
-                    if parseInt(_state_info.attr("state")) == 5
-                        return 3
-                    else
+                if parseInt(_state_info.attr("state")) == 5
+                    # not installed
+                    return 3
+                else if parseInt(_state_info.attr("state")) == 6
+                    # not configured
+                    return 4
+                else
+                    if _xml.attr("check_type") == "simple"
                         if parseInt(_state_info.attr("state")) == 0
+                            # running
                             return 1
                         else
+                            # not running
                             return 2
-                else
-                    if parseInt(_state_info.attr("state")) == 5
-                        return 3
                     else
                         if _state_info.attr("num_started")
+                            # running
                             return 1
                         else
+                            # not running
                             return 2
             else
+                # nothing found
                 return 0
         get_run_class: (instance) ->
             _state_info = @xml.find("instance[name='#{instance}'] state_info")
@@ -138,8 +154,8 @@ angular.module(
                 return "text-success"
         get_version_class: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.attr("version_ok")?
-                _vers_ok = parseInt(_xml.attr("version_ok"))
+            if _xml.find("result").attr("version_ok")?
+                _vers_ok = parseInt(_xml.find("result").attr("version_ok"))
                 if _vers_ok
                     return "text-success"
                 else
@@ -148,8 +164,8 @@ angular.module(
                 return "text-warn"
         get_version: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.attr("version_ok")?
-                return _xml.attr("version").replace("-", "&ndash;")
+            if _xml.find("result").attr("version_ok")?
+                return _xml.find("result").attr("version").replace("-", "&ndash;")
             else
                 return ""
         has_startstop: (instance) ->
@@ -174,22 +190,19 @@ angular.module(
                         return "#{_found} (#{-_diff} too much)"
                     else
                         return "#{_found} (#{-_diff} missing)"
-        has_force_option: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            return parseInt(_xml.attr("has_force_stop"))
-        stop_allowed: (instance) ->
-            if instance in ["memcached", "uwsg-init"]
+        enable_disable_allowed: (instance) ->
+            if instance in ["meta-server", "logging-server"]
                 return false
             else
                 return true
         get_mem_info: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}'] memory_info")
+            _xml = @xml.find("instance[name='#{instance}'] memory_info").contents().first()
             return _xml.text()
         get_mem_value: (instance) ->
-            _mem = @xml.find("instance[name='#{instance}'] memory_info").text()
+            _mem = @xml.find("instance[name='#{instance}'] memory_info").contents().first().text()
             return parseInt((parseInt(_mem) * 100) / @max_mem)
         get_check_source: (instance) ->
-            return @xml.find("instance[name='#{instance}']").attr("check_source")
+            return @xml.find("instance[name='#{instance}']").attr("check_type")
 
 ).directive("icswLayoutServerInfoInstance", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
@@ -211,14 +224,22 @@ angular.module(
                 return scope.srv_info.get_mem_info(scope.instance)
             scope.get_mem_value = () ->
                 return scope.srv_info.get_mem_value(scope.instance)
-            scope.has_force_option = () ->
-                return scope.srv_info.has_force_option(scope.instance)
-            scope.stop_allowed = () ->
-                return scope.srv_info.stop_allowed(scope.instance)
+            scope.enable_disable_allowed = () ->
+                return scope.srv_info.enable_disable_allowed(scope.instance)
             scope.action = (type) ->
                 scope.do_action(scope.srv_info, scope.instance, type)
             new_el = $compile($templateCache.get("icsw.layout.server.info.state"))
             element.append(new_el(scope))
+    }
+]).directive("icswServiceEnableDisable", ["$templateCache", "$compile", ($templateCache, $compile) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.service.enable.disable")
+        link : (scope, element, attrs) ->
+            scope.service_enabled = () ->
+                return scope.srv_info.service_enabled(scope.instance)
+            scope.service_disabled = () ->
+                return scope.srv_info.service_disabled(scope.instance)
     }
 ]).directive("icswLayoutServerInfoOverview", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {

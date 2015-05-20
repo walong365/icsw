@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2012,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012,2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,6 +22,7 @@
 """ simple command snippet for rsyslog """
 
 import sys
+
 from initat.tools import logging_tools
 import zmq
 from initat.tools import process_tools
@@ -41,7 +42,8 @@ def main():
         "syslog_scan",
         "uds:/var/lib/logging-server/py_log_zmq",
         zmq=True,
-        context=zmq_context)
+        context=zmq_context
+    )
     send_sock = None
     log_template.log(logging_tools.LOG_LEVEL_OK, "starting")
     while True:
@@ -51,10 +53,12 @@ def main():
         try:
             _timestamp, host, msg = line.split(None, 2)
         except:
-            log_template.log(logging_tools.LOG_LEVEL_ERROR,
-                             "error parsing line %s: %s" % (line, process_tools.get_except_info()))
+            log_template.log(
+                logging_tools.LOG_LEVEL_ERROR,
+                "error parsing line {}: {}".format(line, process_tools.get_except_info())
+            )
         else:
-            log_template.log("got line from %s: %s" % (host, msg))
+            log_template.log("got line from {}: {}".format(host, msg))
             if not send_sock:
                 send_sock = open_socket(zmq_context)
             send_sock.send_unicode(msg)

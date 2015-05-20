@@ -17,21 +17,21 @@
 #
 """ SNMP relayer, server part """
 
+import difflib
+import os
+import socket
+import time
+
 from initat.host_monitoring import limits
 from initat.snmp.process import snmp_process_container
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay import snmp_relay_schemes
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 from initat.tools import configfile
-import difflib
 from initat.tools import logging_tools
-import os
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import server_command
-import socket
 from initat.tools import threading_tools
-import time
 import zmq
 
 
@@ -45,7 +45,6 @@ class server_process(threading_tools.process_pool):
             zmq=True,
             zmq_debug=global_config["ZMQ_DEBUG"]
         )
-        self.renice()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._init_msi_block()
         self._init_ipc_sockets()
@@ -160,8 +159,6 @@ class server_process(threading_tools.process_pool):
         msi_block = process_tools.meta_server_info("snmp-relay")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=cf_pids, process_name="manager")
-        msi_block.start_command = "/etc/init.d/snmp-relay start"
-        msi_block.stop_command = "/etc/init.d/snmp-relay force-stop"
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 120
         msi_block.save_block()
@@ -184,9 +181,9 @@ class server_process(threading_tools.process_pool):
             ("receiver", zmq.PULL, 2),  # @UndefinedVariable
             ("sender", zmq.PUB, 1024),  # @UndefinedVariable
         ]
-        [setattr(self, "%s_socket" % (short_sock_name), None) for short_sock_name, _a0, _b0 in sock_list]
+        [setattr(self, "{}_socket".format(short_sock_name), None) for short_sock_name, _a0, _b0 in sock_list]
         for short_sock_name, sock_type, hwm_size in sock_list:
-            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="snmp-relay")
             file_name = sock_name[5:]
             self.log(
                 "init %s ipc_socket '%s' (HWM: %d)" % (

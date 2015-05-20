@@ -324,8 +324,8 @@ def net_ip_pre_save(sender, **kwargs):
                 cur_inst.network = match_list[0][1]
             else:
                 raise ValidationError("no maching network found for '{}'".format(cur_inst.ip))
-        dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
-        if cur_inst.ip in dev_ips:
+        dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", "network_id")
+        if (cur_inst.ip, cur_inst.network_id) in dev_ips:
             raise ValidationError("Address {} already used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
         if cur_inst.network.enforce_unique_ips:
             try:
@@ -368,7 +368,13 @@ def net_ip_post_save(sender, **kwargs):
             cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
             cur_inst.netdevice.device.save()
             if num_boot_ips > 1:
-                raise ValidationError("too many IP-adresses in a boot network defined")
+                _dev_configs = cur_inst.netdevice.device.device_config_set.all().select_related("config")
+                _names = [_dev_config.config.name for _dev_config in _dev_configs]
+                if "server" in _names:
+                    # server, ignore multiple IP-adresses
+                    pass
+                else:
+                    raise ValidationError("too many IP-adresses in a boot network defined")
             if cur_inst.netdevice.device.bootserver_id:
                 bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
 

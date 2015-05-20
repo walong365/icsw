@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007-2008,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,9 +23,10 @@
 
 import sys
 import re
-from initat.tools import logging_tools
 import os
-import getopt
+import argparse
+
+from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import configfile
 
@@ -49,6 +50,12 @@ class result_line(object):
         for float_key in ["flops", "runtime"]:
             self[float_key] = float(self[float_key])
         self["passed"] = True
+        self["info"] = "{}/{:<4d}[{:3d} x {:3d}]".format(
+            self["test"],
+            self["nb"],
+            self["p"],
+            self["q"],
+        )
 
     def __getitem__(self, key):
         return self.__v_dict[key]
@@ -70,8 +77,10 @@ class hpl_result(object):
         self.__min_result, self.__max_result = (None, None)
 
     def _feed_line(self, line, **args):
-        f_m, p_m = (self.__flop_re.match(line),
-                    self.__pf_re.match(line))
+        f_m, p_m = (
+            self.__flop_re.match(line),
+            self.__pf_re.match(line)
+        )
         if f_m:
             self._add_result(f_m, **args)
         elif p_m:
@@ -113,9 +122,9 @@ class hpl_result(object):
 
 
 class hpl_file(hpl_result):
-    def __init__(self, file_name, loc_config):
+    def __init__(self, file_name, opts):
         hpl_result.__init__(self)
-        self.__loc_config = loc_config
+        self.__opts = opts
         self.__file_names = []
         self.add_file(file_name)
 
@@ -140,30 +149,32 @@ class hpl_file(hpl_result):
             sum([1 for res in self.iterate_results() if not res["passed"]])
         )
         files_failed = set([res["file_name"] for res in self.iterate_results() if not res["passed"]])
-        min_res, max_res = (self.get_min_result(),
-                            self.get_max_result())
+        min_res, max_res = (
+            self.get_min_result(),
+            self.get_max_result()
+        )
         if min_res:
-            return "Node %s (%s%s): %3d tests, %s (%s), %6.2f GFlop min (%8s), %6.2f GFlop max (%8s)%s" % (
+            return "Node {:<14s} ({:>14s}{}): {:<8s}, {} ({}), {:>8.2f} GFlop min ({:s}), {:>8.2f} GFlop max ({:s}){}".format(
                 self.node_name,
-                "%2d files" % (len(self.__file_names)),
-                ", %s" % (", ".join(sorted(self.__file_names))) if self.__loc_config["VERBOSE"] else "",
-                len(self),
-                "%s passed" % ("all" if not num_failed else "%3d" % (num_passed)),
-                " %3d failed" % (num_failed) if num_failed else "none failed",
+                logging_tools.get_plural("file", len(self.__file_names)),
+                ", {}".format(", ".join(sorted(self.__file_names))) if self.__opts.verbose else "",
+                logging_tools.get_plural("test", len(self)),
+                "{} passed".format("all" if not num_failed else "{:3d}".format(num_passed)),
+                " {:3d} failed".format(num_failed) if num_failed else "none failed",
                 min_res["flops"],
-                min_res["test"],
+                min_res["info"],
                 max_res["flops"],
-                max_res["test"],
-                ", failed in %s" % (", ".join(sorted(files_failed))) if files_failed else ""
+                max_res["info"],
+                ", failed in {}".formta(", ".join(sorted(files_failed))) if files_failed else ""
             )
         else:
-            return "Node %s: no results" % (self.node_name)
+            return "Node {}: no results".format(self.node_name)
 
 
 class hpl_i_loader(object):
-    def __init__(self, loc_config, file_names):
-        self.__loc_config = loc_config
-        self.__file_names, self.__file_dict = (file_names, {})
+    def __init__(self, opts):
+        self.__opts = opts
+        self.__file_names, self.__file_dict = (opts.files, {})
         self._load_files()
 
     def _load_files(self):
@@ -172,12 +183,16 @@ class hpl_i_loader(object):
         else:
             for f_name in self.__file_names:
                 try:
-                    act_file = hpl_file(f_name, self.__loc_config)
+                    act_file = hpl_file(f_name, self.__opts)
                 except:
-                    print "error reading file %s: %s" % (f_name,
-                                                         process_tools.get_except_info())
+                    print(
+                        "error reading file {}: {}".format(
+                            f_name,
+                            process_tools.get_except_info()
+                        )
+                    )
                 else:
-                    if self.__loc_config["MERGE_SAME_HOSTS"]:
+                    if self.__opts.merge_same_hosts:
                         nn_dict = dict([(value.node_name, value) for value in self.__file_dict.itervalues()])
                         if act_file.node_name in nn_dict.keys():
                             nn_dict[act_file.node_name].add_file(f_name)
@@ -185,45 +200,27 @@ class hpl_i_loader(object):
                             self.__file_dict[f_name] = act_file
                     else:
                         self.__file_dict[f_name] = act_file
-            if self.__loc_config["VERBOSE"]:
-                print "loaded %s from list with %s" % (logging_tools.get_plural("file", len(self.__file_dict.keys())),
-                                                       logging_tools.get_plural("file_name", len(self.__file_names)))
+            if self.__opts.verbose:
+                print(
+                    "loaded {} from list with {}".format(
+                        logging_tools.get_plural("file", len(self.__file_dict.keys())),
+                        logging_tools.get_plural("file_name", len(self.__file_names)),
+                    )
+                )
 
     def show_info(self):
         for hpl_f in self.__file_dict.itervalues():
-            print hpl_f.get_info()
+            if hpl_f.get_min_result() or self.__opts.verbose:
+                print hpl_f.get_info()
 
 
 def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "vhm", ["help"])
-    except getopt.GetoptError, _bla:
-        print "Error parsing commandline %s: %s (%s)" % (
-            " ".join(sys.argv[1:]),
-            process_tools.get_except_info()
-        )
-        sys.exit(1)
-    loc_config = configfile.configuration(
-        "hpl_parser",
-        {
-            "VERBOSE": configfile.int_c_var(0),
-            "MERGE_SAME_HOSTS": configfile.bool_c_var(False)
-        }
-    )
-    pname = os.path.basename(sys.argv[0])
-    for opt, _arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage: %s [OPTIONS]" % (pname)
-            print " where options is one or more of"
-            print "  -h, --help          this help"
-            print "  -v                  be verbose"
-            print "  -m                  merge results for same hosts"
-            sys.exit(1)
-        if opt == "-v":
-            loc_config["VERBOSE"] += 1
-        if opt == "-m":
-            loc_config["MERGE_SAME_HOSTS"] = True
-    my_loader = hpl_i_loader(loc_config, args)
+    my_p = argparse.ArgumentParser()
+    my_p.add_argument("-v", dest="verbose", default=False, action="store_true", help="be verbose [%(default)s]")
+    my_p.add_argument("-m", dest="merge_same_hosts", default=False, action="store_true", help="merge results from the same host [%(default)s]")
+    my_p.add_argument("files", nargs="+", type=str, help="files to read")
+    opts = my_p.parse_args()
+    my_loader = hpl_i_loader(opts)
     my_loader.show_info()
     sys.exit(0)
 

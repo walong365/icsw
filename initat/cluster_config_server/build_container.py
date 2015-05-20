@@ -19,6 +19,11 @@
 #
 """ cluster-config-server, tree creation """
 
+import base64
+import os
+import sys
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import wc_files, tree_node
 from initat.cluster_config_server.base_objects import new_config_object, dir_object, copy_object, \
@@ -26,12 +31,8 @@ from initat.cluster_config_server.base_objects import new_config_object, dir_obj
 from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
     do_etc_hosts, do_hosts_equiv
 from initat.cluster_config_server.partition_setup import partition_setup
-import base64
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
-import sys
-import time
 
 
 class tree_node_g(object):
@@ -68,11 +69,11 @@ class tree_node_g(object):
 
     def get_path(self):
         if self.parent:
-            return "%s/%s" % (self.parent.get_path(), self.path)
+            return os.path.join(self.parent.get_path(), self.path)
         else:
-            return "%s" % (self.path)
+            return self.path
 
-    def get_node(self, path, c_node, dir_node=False, use_existing=False):
+    def get_node(self, path, c_node, dir_node=False, use_existing=False, overwrite_existing=False):
         if self.root_node:
             # normalize path at top level
             path = os.path.normpath(path)
@@ -81,8 +82,16 @@ class tree_node_g(object):
             if self.is_dir == dir_node:
                 if self.content_node_valid:
                     if self.content_node != c_node:
-                        if not use_existing:
-                            raise ValueError("content node '%s' already set, missing append=True ?" % (path))
+                        if not use_existing and not overwrite_existing:
+                            raise ValueError(
+                                "content node '{}' already set, missing append=True or overwrite=True (a={} / o={}) ?".format(
+                                    path,
+                                    str(use_existing),
+                                    str(overwrite_existing),
+                                )
+                            )
+                        if overwrite_existing:
+                            self.content_node.content = []
                 else:
                     self.content_node = c_node
                 # match, return myself
@@ -109,7 +118,13 @@ class tree_node_g(object):
                 else:
                     # add (intermediate) dir node
                     self.childs[path_list[1]] = tree_node_g(path_list[1], None, parent=self, intermediate=True)
-            return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), c_node, dir_node=dir_node, use_existing=use_existing)
+            return self.childs[path_list[1]].get_node(
+                os.path.join(*path_list[1:]),
+                c_node,
+                dir_node=dir_node,
+                use_existing=use_existing,
+                overwrite_existing=overwrite_existing,
+            )
 
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
@@ -122,7 +137,10 @@ class tree_node_g(object):
                 "[E]" if self.error_flag else "   ",
                 sep_str,
                 self.get_type_str(),
-                "%s -> %s" % (self.path, self.content_node.source) if self.is_link else self.path,
+                "{} -> {}".format(
+                    self.path,
+                    self.content_node.source
+                ) if self.is_link else self.path,
                 "/" if self.is_dir else "",
                 self.content_node.uid,
                 self.content_node.gid,
@@ -182,9 +200,9 @@ class generated_tree(tree_node_g):
         cur_c.log("writing config files for {} to {}".format(
             active_identifier,
             cur_c.node_dir))
-        config_dir = os.path.join(cur_c.node_dir, "content_%s" % (active_identifier))
+        config_dir = os.path.join(cur_c.node_dir, "content_{}".format(active_identifier))
         if not os.path.isdir(config_dir):
-            cur_c.log("creating directory %s" % (config_dir))
+            cur_c.log("creating directory {}".format(config_dir))
             os.mkdir(config_dir)
         config_dict = {
             "f": os.path.join(cur_c.node_dir, "config_files_{}".format(active_identifier)),
@@ -203,9 +221,13 @@ class generated_tree(tree_node_g):
                 try:
                     add_line = cur_tn.node.content_node.write_object(out_name)
                 except:
-                    cur_c.log("error creating node %s: %s" % (
-                        cur_tn.node.content_node.dest,
-                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                    cur_c.log(
+                        "error creating node {}: {}".format(
+                            cur_tn.node.content_node.dest,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
                 else:
                     _lines.append("{:d} {}".format(num_dict[eff_type], add_line))
         for _key, _lines in _line_dict.iteritems():
@@ -235,10 +257,10 @@ class build_container(object):
         self.uid, self.gid = (0, 0)
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, **kwargs):
-        self.b_client.log("[bc] %s" % (what), level, **kwargs)
+        self.b_client.log("[bc] {}".format(what), level, **kwargs)
 
     def close(self):
-        self.log("done in %s" % (logging_tools.get_diff_time_str(time.time() - self.__s_time)))
+        self.log("done in {}".format(logging_tools.get_diff_time_str(time.time() - self.__s_time)))
         del self.b_client
         del self.config_dict
         del self.g_tree
@@ -265,13 +287,18 @@ class build_container(object):
     link_mode = property(_get_link_mode, _set_link_mode)
 
     def _add_object(self, new_obj):
-        return getattr(self, "_add_%s_object" % ({
-            "l": "link",
-            "e": "delete",
-            "f": "file",
-            "c": "copy",
-            "d": "dir"
-        }[new_obj.c_type]))(new_obj)
+        return getattr(
+            self,
+            "_add_{}_object".format(
+                {
+                    "l": "link",
+                    "e": "delete",
+                    "f": "file",
+                    "c": "copy",
+                    "d": "dir"
+                }[new_obj.c_type]
+            )
+        )(new_obj)
 
     def add_copy_object(self, fon, source, **kwargs):
         return self._add_copy_object(copy_object(fon, config=self, source=source, **kwargs))
@@ -284,10 +311,14 @@ class build_container(object):
         return cur_node.content_node
 
     def add_file_object(self, fon, **kwargs):
-        return self._add_file_object(file_object(fon, config=self, **kwargs), append=kwargs.get("append", False))
+        return self._add_file_object(
+            file_object(fon, config=self, **kwargs),
+            append=kwargs.get("append", False),
+            overwrite=kwargs.get("overwrite", False),
+        )
 
-    def _add_file_object(self, f_obj, append=False):
-        cur_node = self.g_tree.get_node(f_obj.dest, f_obj, use_existing=append)
+    def _add_file_object(self, f_obj, append=False, overwrite=False):
+        cur_node = self.g_tree.get_node(f_obj.dest, f_obj, use_existing=append, overwrite_existing=overwrite)
         if cur_node not in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
@@ -346,24 +377,31 @@ class build_container(object):
         conf_dict = self.conf_dict
         for key, value in local_vars.iteritems():
             conf_dict[key] = value
-        self.log("config %s: %s defined, %s enabled, %s" % (
-            cur_conf.name,
-            logging_tools.get_plural("script", len(cur_conf.config_script_set.all())),
-            logging_tools.get_plural("script", len([cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled])),
-            logging_tools.get_plural("local variable", len(local_vars.keys()))))
+        self.log(
+            "config {}: {} defined, {} enabled, {}".format(
+                cur_conf.name,
+                logging_tools.get_plural("script", len(cur_conf.config_script_set.all())),
+                logging_tools.get_plural("script", len([cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled])),
+                logging_tools.get_plural("local variable", len(local_vars.keys()))
+            )
+        )
         for cur_script in [cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled]:
             self.init_uid_gid()
             lines = cur_script.value.split("\n")
-            self.log(" - scriptname '%s' (pri %d) has %s" % (
-                cur_script.name,
-                cur_script.priority,
-                logging_tools.get_plural("line", len(lines))))
+            self.log(
+                " - scriptname '{}' (pri {:d}) has {}".format(
+                    cur_script.name,
+                    cur_script.priority,
+                    logging_tools.get_plural("line", len(lines))
+                )
+            )
             start_c_time = time.time()
             try:
                 code_obj = compile(
                     cur_script.value.replace("\r\n", "\n") + "\n",
-                    "<script %s>" % (cur_script.name),
-                    "exec")
+                    "<script {}>".format(cur_script.name),
+                    "exec"
+                )
             except:
                 exc_info = process_tools.exception_info()
                 self.log(
@@ -410,9 +448,11 @@ class build_container(object):
                 except:
                     exc_info = process_tools.exception_info()
                     conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
-                    self.log("An Error occured during eval() after %s:" % (logging_tools.get_diff_time_str(time.time() - start_time)),
-                             logging_tools.LOG_LEVEL_ERROR,
-                             register=True)
+                    self.log(
+                        "An Error occured during eval() after {}:".format(logging_tools.get_diff_time_str(time.time() - start_time)),
+                        logging_tools.LOG_LEVEL_ERROR,
+                        register=True
+                    )
                     for line in exc_info.log_lines:
                         self.log(" *** {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                     # log stdout / stderr
@@ -421,25 +461,34 @@ class build_container(object):
                     # FIXME
                     # remove objects
                     if self.__touched_objects:
-                        self.log("%s touched : %s" % (
-                            logging_tools.get_plural("object", len(self.__touched_objects)),
-                            ", ".join([cur_obj.get_path() for cur_obj in self.__touched_objects])))
+                        self.log(
+                            "{} touched : {}".format(
+                                logging_tools.get_plural("object", len(self.__touched_objects)),
+                                ", ".join([cur_obj.get_path() for cur_obj in self.__touched_objects])
+                            )
+                        )
                         for to in self.__touched_objects:
                             to.error_flag = True
                     else:
                         self.log("no objects touched")
                     if self.__touched_links:
-                        self.log("%s touched : %s" % (
-                            logging_tools.get_plural("link", len(self.__touched_links)),
-                            ", ".join([cur_link.get_path() for cur_link in self.__touched_links])))
+                        self.log(
+                            "{} touched: {}".format(
+                                logging_tools.get_plural("link", len(self.__touched_links)),
+                                ", ".join([cur_link.get_path() for cur_link in self.__touched_links])
+                            )
+                        )
                         for tl in self.__touched_links:
                             tl.error_flag = True
                     else:
                         self.log("no links touched")
                     if self.__deleted_files:
-                        self.log("%s deleted : %s" % (
-                            logging_tools.get_plural("delete", len(self.__deleted_files)),
-                            ", ".join([cur_dl.get_path() for cur_dl in self.__deleted_files])))
+                        self.log(
+                            "{} deleted: {}".format(
+                                logging_tools.get_plural("delete", len(self.__deleted_files)),
+                                ", ".join([cur_dl.get_path() for cur_dl in self.__deleted_files])
+                            )
+                        )
                         for d_file in self.__deleted_files:
                             d_file.error_flag = True
                     else:
@@ -448,11 +497,14 @@ class build_container(object):
                     conf_dict["called"].setdefault(True, []).append(cur_conf.pk)
                     if ret_code is None:
                         ret_code = 0
-                    self.log("  exited after %s (%s compile time) with return code %d" % (
-                        logging_tools.get_diff_time_str(time.time() - start_time),
-                        logging_tools.get_diff_time_str(compile_time),
-                        ret_code))
-                    self._show_logs(stdout_c, stderr_c, register_error=True, pre_str="%s wrote something to stderr" % (cur_conf.name))
+                    self.log(
+                        "  exited after {} ({} compile time) with return code {:d}".format(
+                            logging_tools.get_diff_time_str(time.time() - start_time),
+                            logging_tools.get_diff_time_str(compile_time),
+                            ret_code
+                        )
+                    )
+                    self._show_logs(stdout_c, stderr_c, register_error=True, pre_str="{} wrote something to stderr".format(cur_conf.name))
                 finally:
                     sys.stdout, sys.stderr = (old_stdout, old_stderr)
                     code_obj = None
@@ -464,8 +516,8 @@ class build_container(object):
 
     def _show_logs(self, stdout_c, stderr_c, **kwargs):
         for log_line in [line.rstrip() for line in stdout_c.get_content().split("\n") if line.strip()]:
-            self.log("out: %s" % (log_line))
+            self.log("out: {}".format(log_line))
         for log_line in [line.rstrip() for line in stderr_c.get_content().split("\n") if line.strip()]:
-            self.log("*** err: %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
+            self.log("*** err: {}".format(log_line), logging_tools.LOG_LEVEL_ERROR)
             if kwargs.get("register_error", False):
                 self.log(kwargs.get("pre_str", "stderr"), logging_tools.LOG_LEVEL_ERROR, register=True)

@@ -347,17 +347,17 @@ class DataStore(object):
 
     @staticmethod
     def has_machine_vector(dev_pk):
-        if pk not in DataStore.__devices:
+        if dev_pk not in DataStore.__devices:
             try:
                 _mv = MachineVector.objects.get(
-                    Q(device__pk=pk) &
+                    Q(device__pk=dev_pk) &
                     Q(device__enabled=True) &
                     Q(device__device_group__enabled=True)
                 )
             except MachineVector.DoesNotExist:
                 pass
             else:
-                DataStore.__devices[pk] = _mv
+                DataStore(_mv)
         return dev_pk in DataStore.__devices
 
     @staticmethod

@@ -44,7 +44,6 @@ class server_process(threading_tools.process_pool):
             zmq_debug=global_config["ZMQ_DEBUG"]
         )
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        # self.renice(global_config["NICE_LEVEL"])
         self.install_signal_handlers()
         # init environment
         self._init_environment()
@@ -93,8 +92,6 @@ class server_process(threading_tools.process_pool):
             msi_block = process_tools.meta_server_info("package-client")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
-            msi_block.start_command = "/etc/init.d/package-client start"
-            msi_block.stop_command = "/etc/init.d/package-client force-stop"
             msi_block.kill_pids = True
             msi_block.save_block()
         else:

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007-2008,2012,2014 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2007-2008,2012,2014-2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,17 +21,18 @@
 
 import argparse
 import commands
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import pwd
 import stat
 import sys
 
+from initat.tools import logging_tools
+from initat.tools import process_tools
+
 SCRIPT_TYPES = ["post", "pre", "postun", "preun"]
 
 default_ns = argparse.Namespace(
-    packager="%s@%s" % (pwd.getpwuid(os.getuid())[0], process_tools.get_machine_name()),
+    packager="{}@{}".format(pwd.getpwuid(os.getuid())[0], process_tools.get_machine_name()),
     user="root",
     group="root",
     provides="",

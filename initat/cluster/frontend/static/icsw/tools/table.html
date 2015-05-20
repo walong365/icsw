@@ -29,27 +29,27 @@
             </span>
             <span ng-show="numPages > 1">, </span>
             <span ng-show="numPages < 6">
-                showing entries
+                {{'showing entries' | translate}}
                 <span ng-show="table_controller.getFilteredCollection().length == 0">0</span>
                 <span ng-show="table_controller.getFilteredCollection().length > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>
-                to
+                {{'to'|translate}}
                 {{ Math.min(currentPage  * stItemsByPage, table_controller.getFilteredCollection().length) }},
             </span>
         </span>
         <span ng-show="pages.length == 0">
-            no entries to show,
+            {{'no entries to show' | translate}},
         </span>
         <span ng-show="true"> <!-- pagSettings.conf.modify_epp -->
-            show
+            {{'show' | translate}}
             <div class="form-group">
                 <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in possibleItemsByPage"></select>
-            </div> per page,
+            </div> {{'per page' | translate}},
         </span>
         <span ng-show="table_controller.getNumberOfSelectedEntries()">
-            {{ table_controller.getNumberOfSelectedEntries() }} selected entries
+            {{ table_controller.getNumberOfSelectedEntries() }} {{'selected entries'|translate}}
         </span>
         <span ng-show="selected_elements">
-            {{ selected_elements }} elements selected
+            {{ selected_elements }} {{'elements selected'|translate}}
         </span>
     </form>
 </script>

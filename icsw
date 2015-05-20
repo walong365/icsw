@@ -1,0 +1,6 @@
+#!/bin/bash
+
+PYTHON=python-init
+MODULE=initat.icsw
+
+$PYTHON -m $MODULE $@

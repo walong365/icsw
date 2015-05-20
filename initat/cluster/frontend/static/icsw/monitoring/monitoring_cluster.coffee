@@ -19,7 +19,8 @@
 #
 
 monitoring_cluster_module = angular.module("icsw.monitoring.cluster",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button"])
+        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+         "icsw.tools.table", "icsw.tools.button", "icsw.monitoring.monitoring_basic"])
 
 
 monitoring_cluster_module.directive('icswMonitoringCluster', () ->
@@ -42,15 +43,8 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
         mon_host_dependency_templ     : get_rest(ICSW_URLS.REST_MON_HOST_DEPENDENCY_TEMPL_LIST.slice(1))
         mon_service_dependency_templ  : get_rest(ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_TEMPL_LIST.slice(1))
     }
-    _rest_data_present = (tables) ->
-        ok = true
-        for table in tables
-            if not data[table].length
-                ok = false
-        return ok
-    data['_rest_data_present'] = _rest_data_present
     return data
-]).service('icswMonitoringHostClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
+]).service('icswMonitoringHostClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
     ret = {
         rest_handle        : icswMonitoringClusterRestService.mon_host_cluster
         edit_template      : "mon.host.cluster.form"
@@ -65,13 +59,15 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
             "error_value": 2
             }
         object_created     : (new_obj) -> new_obj.name = ""
-        rest_data_present  : () ->
-            return icswMonitoringClusterRestService._rest_data_present(["device", "mon_service_templ"])
+
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
+                [["device", "device"], ["mon_service_templ", "service template"]])
     }
     for k, v of icswMonitoringClusterRestService
         ret[k] = v
     return ret
-]).service('icswMonitoringServiceClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
+]).service('icswMonitoringServiceClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
     ret =  {
         rest_handle         : icswMonitoringClusterRestService.mon_service_cluster
         edit_template       : "mon.service.cluster.form"
@@ -87,13 +83,14 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
                 "error_value" : 2
             }
         object_created  : (new_obj) -> new_obj.name = ""
-        rest_data_present : () ->
-            return icswMonitoringClusterRestService._rest_data_present(["device", "mon_service_templ", "mon_check_command"])
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
+                [["device", "device"], ["mon_service_templ", "service template"], ["mon_check_command", "check command"]])
     }
     for k, v of icswMonitoringClusterRestService
         ret[k] = v
     return ret
-]).service('icswMonitoringHostDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
+]).service('icswMonitoringHostDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
     ret = {
         rest_handle         : icswMonitoringClusterRestService.mon_host_dependency_templ
         edit_template       : "mon.host.dependency.templ.form"
@@ -110,14 +107,15 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
                 "nfc_down" : true
             }
         object_created  : (new_obj) -> new_obj.name = ""
-        rest_data_present : () ->
-            return icswMonitoringClusterRestService._rest_data_present(["mon_period"])
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
+                [["mon_period", "period"]])
     }
 
     for k, v of icswMonitoringClusterRestService
         ret[k] = v
     return ret
-]).service('icswMonitoringServiceDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
+]).service('icswMonitoringServiceDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
     ret =  {
         rest_handle         : icswMonitoringClusterRestService.mon_service_dependency_templ
         edit_template       : "mon.service.dependency.templ.form"
@@ -134,36 +132,40 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
                 "nfc_warn" : true
             }
         object_created  : (new_obj) -> new_obj.name = ""
-        rest_data_present : () ->
-            return icswMonitoringClusterRestService._rest_data_present(["mon_period"])
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
+                [["mon_period", "period"]])
     }
     for k, v of icswMonitoringClusterRestService
         ret[k] = v
     return ret
-]).service('icswMonitoringHostDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
+]).service('icswMonitoringHostDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
     ret =  {
         rest_handle         : icswMonitoringClusterRestService.mon_host_dependency
         edit_template       : "mon.host.dependency.form"
         delete_confirm_str  : (obj) ->
-            return "Really delete Host-dependency ?"
+            return "Really delete host dependency ?"
         new_object          : {}
         object_created  : (new_obj) ->
-        rest_data_present : ($scope) ->
-            return icswMonitoringClusterRestService._rest_data_present(["device", "mon_host_dependency_templ"])
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
+                [["device", "device"], ["mon_host_dependency_templ", "host dependency template"]])
     }
     for k, v of icswMonitoringClusterRestService
         ret[k] = v
     return ret
-]).service('icswMonitoringServiceDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
+]).service('icswMonitoringServiceDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
     ret =  {
         rest_handle         : icswMonitoringClusterRestService.mon_service_dependency
         edit_template       : "mon.service.dependency.form"
         delete_confirm_str  : (obj) ->
-            return "Really delete Service-dependency ?"
+            return "Really delete service dependency ?"
         new_object          : {}
         object_created  : (new_obj) ->
-        rest_data_present : ($scope) ->
-            return icswMonitoringClusterRestService._rest_data_present(["device", "mon_service_dependency_templ", "mon_check_command"])
+
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
+                [["device", "device"], ["mon_service_dependency_templ", "service dependency template"], ["mon_check_command", "check command"]])
     }
     for k, v of icswMonitoringClusterRestService
         ret[k] = v

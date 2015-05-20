@@ -15,8 +15,8 @@ ICSW_BASE=/opt/cluster/
 ICSW_ETC=${ICSW_BASE}/etc
 ICSW_SHARE=${ICSW_BASE}/share
 ICSW_BIN=${ICSW_BASE}/bin
-ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_SGE=${ICSW_BASE}/sge
+ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_TFTP=/opt/cluster/system/tftpboot
 
@@ -37,8 +37,6 @@ VARDIR=/var/lib/cluster/package-client
 
 # list of target systems
 TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install/server package_install/client meta_server md_config_server
-
-SGE_FILES=sge_editor_conf.py modify_sge_config.sh add_logtail.sh sge_request sge_qstat create_sge_links.py build_sge6x.sh
 
 ###############################################################################
 # Programs
@@ -87,7 +85,7 @@ endif
 ###############################################################################
 # Various settings
 ###############################################################################
-VERSION_SYSLINUX=6.02
+VERSION_SYSLINUX=6.03
 MEMTEST_VERSION=86+-5.01
 
 ###############################################################################
@@ -95,18 +93,22 @@ MEMTEST_VERSION=86+-5.01
 ###############################################################################
 
 build:
-	${MAKE} -C c_progs_collectd
-	${MAKE} -C c_progs
-	${MAKE} -C c_clients
+	${MAKE} -C c_programms
 	${PYTHON} ./setup.py build
-	tar --transform s:^.*/:: -xjf syslinux-${VERSION_SYSLINUX}.tar.bz2 \
+	mkdir syslinux ; \
+	cd syslinux ; \
+	tar -xzf ../syslinux-${VERSION_SYSLINUX}.tar.gz \
 		syslinux-${VERSION_SYSLINUX}/bios/gpxe/gpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/lpxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/core/pxelinux.0 \
 		syslinux-${VERSION_SYSLINUX}/bios/memdisk/memdisk \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/lib/libcom32.c32 \
 		syslinux-${VERSION_SYSLINUX}/bios/com32/elflink/ldlinux/ldlinux.c32 \
-		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32
+		syslinux-${VERSION_SYSLINUX}/bios/com32/mboot/mboot.c32 \
+		syslinux-${VERSION_SYSLINUX}/efi32/efi/syslinux.efi \
+		syslinux-${VERSION_SYSLINUX}/efi64/efi/syslinux.efi \
+		syslinux-${VERSION_SYSLINUX}/efi64/com32/elflink/ldlinux/ldlinux.e64 ; \
+	cd .. ; \
 	unzip memtest*zip
 
 install:
@@ -126,60 +128,28 @@ install:
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
 	# Makefiles
-	${MAKE} -C c_progs DESTDIR=${DESTDIR} install
-	${MAKE} -C c_clients DESTDIR=${DESTDIR} install
+	${MAKE} -C c_programms DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_PIS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${LOCALSBIN}
-	for file in logging-server.py log_error.py logging-client.py ; do \
-		${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	${INSTALL} ${INSTALL_OPTS} logwatch.py ${DESTDIR}/${ICSW_SBIN}
+
 	${INSTALL} ${INSTALL_OPTS} packagestatus.sh ${DESTDIR}/${ICSW_SBIN}
-	for file in install_package.py package_status.py make_package.py insert_package_info.py ; do \
+	for file in install_package.py package_status.py insert_package_info.py ; do \
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	cp -a c_progs_collectd/send_collectd_zmq ${DESTDIR}/${ICSW_SBIN}
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for script in start_node.sh stop_node.sh check_node.sh ; do \
-	    ${INSTALL} ${INSTALL_OPTS} scripts/$$script ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for name in fetch_ssh_keys.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${name} ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for script in tls_verify.py logscan/openvpn_scan.py ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $$script ${DESTDIR}/${ICSW_SBIN}; \
-	done
-	for file in force_redhat_init_script.sh lse check_rpm_lists.py; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}/$${file}; \
-	done
-	for sbin_file in start_cluster.sh stop_cluster.sh start_server.sh stop_server.sh check_cluster.sh check_server.sh; do \
-	    ${INSTALL} ${INSTALL_OPTS} opt/cluster/bin/$$sbin_file ${DESTDIR}/${ICSW_SBIN}; \
-	done
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for pyf in db_magic check_local_settings create_django_users setup_cluster restore_user_group fix_models ; do \
+	for pyf in db_magic check_local_settings create_django_users restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
-	${INSTALL} ${INSTALL_OPTS} modify_service.sh ${DESTDIR}/${ICSW_PIS}
-	${INSTALL} ${INSTALL_OPTS} get_pids_from_meta.py ${DESTDIR}/${ICSW_SBIN}/
 	# Create to ICSW_SBIN
-	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collclient.py
-	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collrelay.py
-	${LN} -s host-monitoring-zmq.py ${DESTDIR}/${ICSW_SBIN}/collserver.py
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} icinga_scripts/check_icinga_cluster.py ${DESTDIR}/${ICSW_BIN}
-	install ${INSTALL_OPTS} set_passive_checkresult.py ${DESTDIR}/${ICSW_BIN}
-	cp -a cdfetch.py  ${DESTDIR}${ICSW_BIN}
-	for file in license_progs loadsensor ; do \
-	    install ${INSTALL_OPTS} $$file.py ${DESTDIR}${ICSW_BIN}; \
-	done
-	cp -a tools/modify_object.py ${DESTDIR}/${ICSW_BIN}
 	if [ "${LIB_DIR}" = "lib64" ] ; then \
 	    tar xzf lmutil-x64_lsb-11.12.1.0v6.tar.gz ; \
 	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
@@ -187,67 +157,24 @@ install:
 	    tar xzf lmutil-i86_lsb-11.12.1.0v6.tar.gz ; \
 	    ${INSTALL} ${INSTALL_OPTS} lmutil ${DESTDIR}${ICSW_BIN}/lmutil; \
 	fi
-	${INSTALL} ${INSTALL_OPTS} sgestat.py ${DESTDIR}/${ICSW_BIN}
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/populate_ramdisk_local.py
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/copy_local_kernel.sh
 	${LN} -s ${ICSW_BIN}/ics_tools.sh ${DESTDIR}/${INIT}/
-	${LN} -s ${PYTHON_SITE}/send_mail.py ${DESTDIR}/${ICSW_BIN}/
+	${LN} -s ${PYTHON_SITE}/initat/tools/send_mail.py ${DESTDIR}/${ICSW_BIN}/
 	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
-	${INSTALL} ${INSTALL_OPTS} cluster-config-server ${DESTDIR}/${INIT}/cluster-config-server
-	cp -a collectd-init ${DESTDIR}/${INIT}
-	${INSTALL} ${INSTALL_OPTS} discovery-server ${DESTDIR}/${INIT}/discovery-server
-	${INSTALL} ${INSTALL_OPTS} logging-server.rc ${DESTDIR}/${INIT}/logging-server
 	${INSTALL} ${INSTALL_OPTS} loadmodules ${DESTDIR}/${INIT}/loadmodules
-	${INSTALL} ${INSTALL_OPTS} logcheck-server ${DESTDIR}/${INIT}/
-	${INSTALL} ${INSTALL_OPTS} cluster-server ${DESTDIR}/${INIT}
-	${INSTALL} ${INSTALL_OPTS} scripts/host-relay.rc ${DESTDIR}/${INIT}/host-relay
-	${INSTALL} ${INSTALL_OPTS} scripts/host-monitoring.rc ${DESTDIR}/${INIT}/host-monitoring
-	${INSTALL} ${INSTALL_OPTS} scripts/snmp-relay.rc ${DESTDIR}/${INIT}/snmp-relay
 	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
-	${INSTALL} ${INSTALL_OPTS} meta-server ${DESTDIR}/${INIT}
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
-	${INSTALL} ${INSTALL_OPTS} init_scripts/mother ${DESTDIR}${INIT}/
-	${INSTALL} ${INSTALL_OPTS} init_scripts/package-server.rc ${DESTDIR}${INIT}/package-server
-	${INSTALL} ${INSTALL_OPTS} init_scripts/package-client.rc ${DESTDIR}${INIT}/package-client
-	cp -a rrd-grapher ${DESTDIR}/${INIT}
-	install ${INSTALL_OPTS} md-config-server ${DESTDIR}/${INIT}/md-config-server
-	${INSTALL} ${INSTALL_OPTS} rms-server.rc ${DESTDIR}${INIT}/rms-server
-	# SGE stuff ICSW_SGE
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SGE}/init.d
-	for name in sgemaster sgeexecd ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $$name ${DESTDIR}${ICSW_SGE}/init.d; \
-	done
-	for file in ${SGE_FILES} ; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SGE}; \
-	done
-	for file in proepilogue.py qlogin_wrapper.sh sge_starter.sh; do \
-	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}${ICSW_SGE}; \
-	done
-	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${ICSW_SGE}
-	echo ${SGE_FILES} > ${DESTDIR}/${ICSW_SGE}/.sge_files
-	echo "proepilogue.py qlogin_wrapper.sh sge_starter.sh" > ${DESTDIR}/${ICSW_SGE}/.party_files
+	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
+	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
+	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
+	${LN} -s ${INIT}/logging-server ${DESTDIR}${USRSBIN}/rclogging-server
 	${LN} -s ${INIT}/hoststatus ${DESTDIR}${USRSBIN}/rchoststatus
 	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules
-	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
-	${LN} -s ${INIT}/logging-server ${DESTDIR}/${USRSBIN}/rclogging-server
-	${LN} -s ${INIT}/package-server ${DESTDIR}${USRSBIN}/rcpackage-server
-	${LN} -s ${INIT}/package-client ${DESTDIR}${USRSBIN}/rcpackage-client
-	${LN} -s ${INIT}/rms-server ${DESTDIR}${USRSBIN}/rcrms-server
-	${LN} -s ${INIT}/rrd-grapher ${DESTDIR}${USRSBIN}/rcrrd-grapher
-	${LN} -s ${INIT}/mother ${DESTDIR}${USRSBIN}/rcmother
-	${LN} -s ${INIT}/logcheck-server ${DESTDIR}${USRSBIN}/rclogcheck-server
-	${LN} -s ${INIT}/md-config-server ${DESTDIR}${USRSBIN}/rcmd-config-server
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server
-	${LN} -s ${INIT}/discovery-server ${DESTDIR}${USRSBIN}/rcdiscovery-server
-	${LN} -s ${INIT}/cluster-server ${DESTDIR}${USRSBIN}/rccluster-server
-	${LN} -s ${INIT}/collectd-init ${DESTDIR}${USRSBIN}/rccollectd-init
-	${LN} -s ${INIT}/cluster-config-server ${DESTDIR}${USRSBIN}/rccluster-config-server
-	${LN} -s ${INIT}/host-monitoring ${DESTDIR}/${USRSBIN}/rchost-monitoring
-	${LN} -s ${INIT}/host-relay ${DESTDIR}/${USRSBIN}/rchost-relay
-	${LN} -s ${INIT}/snmp-relay ${DESTDIR}/${USRSBIN}/rcsnmp-relay
 	# SYSCONF
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/cluster
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/init-license-server.d
@@ -285,10 +212,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} mibs/eonstore-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
 	# /opt/cluster/share/mother
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${MOTHER_DIR}/syslinux
-	${INSTALL} ${INSTALL_OPTS} *pxelinux.0 ${DESTDIR}/${MOTHER_DIR}/syslinux
-	${INSTALL} ${INSTALL_OPTS} *.c32 ${DESTDIR}/${MOTHER_DIR}/syslinux
+	cp -a syslinux/syslinux-${VERSION_SYSLINUX}/* ${DESTDIR}/${MOTHER_DIR}/syslinux
 	${INSTALL} ${INSTALL_OPTS} memtest${MEMTEST_VERSION}.iso ${DESTDIR}/${MOTHER_DIR}
-	${INSTALL} ${INSTALL_OPTS} memdisk ${DESTDIR}/${MOTHER_DIR}/syslinux
 	# examples
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/examples/sge_licenses
 	cp -a examples/* ${DESTDIR}${ICSW_SHARE}/examples/sge_licenses
@@ -305,7 +230,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
 	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
-	${INSTALL} ${INSTALL_OPTS} batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
+	cp -a ${DESTDIR}/${ICSW_SGE}/batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} src/kcompile ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/hosts
@@ -317,7 +242,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${CONFDIR_HM}
 	${INSTALL} ${INSTALL_OPTS} configs/remote_ping.test ${DESTDIR}/${CONFDIR_HM}
 	${INSTALL} ${INSTALL_OPTS} configs/host-monitoring ${DESTDIR}/${SYSCONF}/host-monitoring
-	${INSTALL} ${INSTALL_OPTS} configs/host-relay ${DESTDIR}/${SYSCONF}/host-relay
 	# uwsgi 
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/
@@ -330,8 +254,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} scripts/register_file_watch ${DESTDIR}/${SCRIPTDIR}
 	${INSTALL} ${INSTALL_OPTS} scripts/unregister_file_watch ${DESTDIR}/${SCRIPTDIR}
 	./init_proprietary.py ${DESTDIR}
-	# check scripts
-	${LN} -s ${PYTHON_SITE}/initat/tools/check_scripts.py ${DESTDIR}/${ICSW_SBIN}/
+	# icsw
+	${LN} -s ${PYTHON_SITE}/initat/icsw/main.py ${DESTDIR}/${ICSW_SBIN}/icsw
 	# remove deprecated
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc
@@ -349,9 +273,7 @@ clean:
 	rm -f mboot.c32
 	rm -f memdisk
 	rm -f memtest86+-5.01.iso
-	make -C c_progs_collectd clean
-	make -C c_progs clean
-	make -C c_clients clean
+	make -C c_programms clean
 	${PYTHON} ./setup.py clean
 	rm -rf build
 

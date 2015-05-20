@@ -19,14 +19,13 @@
 #
 """ daemon to automatically install packages (.rpm, .deb) """
 
-from initat.package_install.client.constants import P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
-from initat.client_version import VERSION_STRING
-from io_stream_helper import io_stream
-from initat.tools import configfile
-import daemon
 import os
+
+from initat.package_install.client.constants import P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
+from initat.package_install.client.config import global_config
+from initat.client_version import VERSION_STRING
+from initat.tools import configfile
 from initat.tools import process_tools
-import sys
 
 
 def run_code():
@@ -35,41 +34,43 @@ def run_code():
 
 
 def main():
-    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("KILL_RUNNING", configfile.bool_c_var(True, autoconf_exclude=True)),
-        ("COM_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port to bind to [%(default)d]", autoconf_exclude=True)),
-        ("SERVER_COM_PORT", configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]", autoconf_exclude=True)),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
-        ("LOG_NAME", configfile.str_c_var(prog_name, autoconf_exclude=True)),
-        ("NICE_LEVEL", configfile.int_c_var(15, help_string="nice level [%(default)d]")),
-        ("MODIFY_REPOS", configfile.bool_c_var(False, help_string="modify repository files")),
-        (
-            "PACKAGE_SERVER_FILE",
-            configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]", autoconf_exclude=True)
-        ),
-        (
-            "PACKAGE_SERVER_ID_FILE",
-            configfile.str_c_var(
-                "/etc/packageserver_id", help_string="filename where packageserver ID for 0MQ communication is stored [%(default)s]", autoconf_exclude=True
-            )
-        ),
-    ])
+    global_config.add_config_entries(
+        [
+            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            ("COM_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port to bind to [%(default)d]", autoconf_exclude=True)),
+            ("SERVER_COM_PORT", configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]", autoconf_exclude=True)),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
+            ("LOG_NAME", configfile.str_c_var(prog_name, autoconf_exclude=True)),
+            ("NICE_LEVEL", configfile.int_c_var(15, help_string="nice level [%(default)d]")),
+            ("MODIFY_REPOS", configfile.bool_c_var(False, help_string="modify repository files")),
+            (
+                "PACKAGE_SERVER_FILE",
+                configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]", autoconf_exclude=True)
+            ),
+            (
+                "PACKAGE_SERVER_ID_FILE",
+                configfile.str_c_var(
+                    "/etc/packageserver_id", help_string="filename where packageserver ID for 0MQ communication is stored [%(default)s]", autoconf_exclude=True
+                )
+            ),
+        ]
+    )
     global_config.parse_file()
     _options = global_config.handle_commandline(
-        description="%s, version is %s" % (
+        description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING
+        ),
         add_writeback_option=True,
         add_exit_after_writeback_option=True,
         positional_arguments=False,
         add_auto_config_option=True,
-        partial=False)
+        partial=False
+    )
     ret_code = 0
     if _options.exit_after_writeback and _options.writeback:
         pass
@@ -98,20 +99,9 @@ def main():
             ret_code = 5
         if not ret_code:
             global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
-            if global_config["KILL_RUNNING"]:
-                process_tools.kill_running_processes()
             process_tools.renice(global_config["NICE_LEVEL"])
-            if not global_config["DEBUG"]:
-                with daemon.DaemonContext():
-                    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-                    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-                    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                    run_code()
-                    configfile.terminate_manager()
-                # exit
-                os._exit(0)
-            else:
-                global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                print "Debugging {} on {}".format(prog_name, process_tools.get_machine_name())
-                run_code()
+            run_code()
+            configfile.terminate_manager()
+            # exit
+            os._exit(0)
     return 0

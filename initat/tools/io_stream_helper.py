@@ -23,7 +23,6 @@ import atexit
 import os
 import pickle
 import zmq
-# import syslog
 
 
 def zmq_socket_name(sock_name, **kwargs):
@@ -39,15 +38,20 @@ class io_stream(object):
     def __init__(self, sock_name="/var/lib/logging_server/py_err_zmq", **kwargs):
         self.__sock_name = zmq_socket_name(sock_name, check_ipc_prefix=True)
         self.__buffered = kwargs.get("buffered", False)
-        zmq_context = kwargs.get("zmq_context", None)
-        if zmq_context is None:
-            zmq_context = zmq.Context()
-        self.__zmq_sock = zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-        self.__zmq_sock.connect(self.__sock_name)
-        self.__zmq_sock.setsockopt(zmq.LINGER, 60)  # @UndefinedVariable
+        # late init of context and socket to reduce threads
+        self.__zmq_context = kwargs.get("zmq_context", None)
+        self.__zmq_sock = None
         self.__buffer = u""
         if kwargs.get("register_atexit", True):
             atexit.register(self.close)
+
+    def open(self):
+        if self.__zmq_sock is None:
+            if self.__zmq_context is None:
+                self.__zmq_context = zmq.Context()
+            self.__zmq_sock = self.__zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+            self.__zmq_sock.connect(self.__sock_name)
+            self.__zmq_sock.setsockopt(zmq.LINGER, 60)  # @UndefinedVariable
 
     @property
     def stream_target(self):
@@ -85,11 +89,13 @@ class io_stream(object):
                         t_dict[r_what] = int(rest)
                     else:
                         t_dict[r_what] = rest
+        self.open()
         self.__zmq_sock.send(pickle.dumps(t_dict))
         self.__buffer = u""
 
     def fileno(self):
         # dangerous, do not use
+        self.open()
         return self.__zmq_sock.getsockopt(zmq.FD)  # @UndefinedVariable
 
     def close(self):

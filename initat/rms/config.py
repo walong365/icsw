@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,5 +22,7 @@
 from initat.tools import configfile
 from initat.tools import process_tools
 
-# communication port
+# global config
 global_config = configfile.get_global_config(process_tools.get_programm_name())
+# communication port
+COM_PORT = 8009

@@ -5,7 +5,11 @@
         <tab heading="Host Clusters">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostClusterService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Host Cluster ({{entries_filtered.length}} entries),  <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <h2>Host Cluster ({{entries_filtered.length}} entries),
+                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       ng-click="create($event)"></icsw-tools-button>
+                </h2>
                 <table class="table table-condensed table-hover" style="width:auto;">
                     <thead>
                         <tr>
@@ -52,7 +56,11 @@
         <tab heading="Service Clusters">
              <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceClusterService"
                  st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                 <h2>Service Cluster ({{entries_filtered.length}} entries),  <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                 <h2>Service Cluster ({{entries_filtered.length}} entries),
+                     <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                        style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                        ng-click="create($event)"></icsw-tools-button>
+                 </h2>
                  <table class="table table-condensed table-hover" style="width:auto;">
                      <thead>
                          <tr>
@@ -101,7 +109,11 @@
         <tab heading="Host dependency templates">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyTemplateService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                 <h2>Host dependency templates ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <h2>Host dependency templates ({{entries_filtered.length}} entries),
+                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       ng-click="create($event)"></icsw-tools-button>
+                </h2>
                  <table class="table table-condensed table-hover" style="width:auto;">
                      <thead>
                          <tr>
@@ -156,7 +168,11 @@
         <tab heading="Service dependency templates">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyTemplateService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                    <h2>Service dependency templates ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <h2>Service dependency templates ({{entries_filtered.length}} entries),
+                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       ng-click="create($event)"></icsw-tools-button>
+                </h2>
                  <table class="table table-condensed table-hover" style="width:auto;">
                      <thead>
                          <tr>
@@ -215,7 +231,11 @@
         <tab heading="Host dependencies">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Host dependencies ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <h2>Host dependencies ({{entries_filtered.length}} entries),
+                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       ng-click="create($event)"></icsw-tools-button>
+                </h2>
                 <table class="table table-condensed table-hover" style="width:auto;">
                     <thead>
                         <tr>
@@ -256,7 +276,11 @@
         <tab heading="Service dependencies">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Service dependencies ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <h2>Service dependencies ({{entries_filtered.length}} entries),
+                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       ng-click="create($event)"></icsw-tools-button>
+                </h2>
                 <table class="table table-condensed table-hover" style="width:auto;">
                     <thead>
                         <tr>

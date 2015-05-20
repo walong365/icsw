@@ -283,28 +283,6 @@ lic_module.controller("icswLicenseOverviewCtrl",
             scope.update_lic_data(scope.viewmode)
         scope.$watch('viewmode', (unused) -> scope.set_lic_data())
  }])
-#.directive("licd3graph", ["$templateCache", "$resource", ($templateCache, $resource) ->
-#    return {
-#    restrict : "EA"
-#    template : """
-#{% verbatim %}
-#<div ng-if="dimpleloaded">
-#
-#</div>
-#{% endverbatim %}
-#"""
-#    scope : {
-#        timerange: '='
-#        dimpleloaded: '='
-#        licdaterangestart: '='
-#        viewmode: '='
-#    }
-#    link : (scope, el, attrs) ->
-#        # can't reuse other attributes as they are shared with parent scope
-#        scope.fixed_range = attrs.fixedtimerange? && attrs.fixedlicdaterangestart?
-#        scope.lic_id = attrs.lic
-#        scope.lic_name = attrs.licname
-#    }]).
 
 # TODO: make service out of this
 lic_utils = {

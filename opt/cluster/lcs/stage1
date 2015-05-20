@@ -5,7 +5,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -32,12 +32,10 @@ PING_TIMEOUT="60"
 # see hoststatus_zmq.c, stage1, stage2
 HOSTSTAT_FILE=/conf/.hoststat
 
-if [ true ] ; then
-    RED="\033[31m"
-    GREEN="\033[32m"
-    YELLOW="\033[33m"
-    OFF="\033[m"
-fi
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+OFF="\033[m"
 
 basedir="new"
 

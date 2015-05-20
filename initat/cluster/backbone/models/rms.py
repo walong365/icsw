@@ -21,12 +21,14 @@
 #
 """ database definitions for RMS """
 
-# from django.db.models import Q, signals, get_model
-# from django.dispatch import receiver
-from django.db import models
-from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
 import datetime
 import time
+
+from django.db import models
+from django.db.models import signals
+from django.dispatch import receiver
+from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
+
 
 __all__ = [
     "rms_job",
@@ -244,6 +246,15 @@ class rms_job_run(models.Model):
         app_label = "backbone"
 
 
+@receiver(signals.post_save, sender=rms_job_run)
+def _rms_job_run_post_save(sender, instance, raw, **kwargs):
+    from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+    from initat.cluster.backbone.models import LicenseUsage
+    if not raw:
+        if instance.device is not None:
+            LicenseUsage.log_usage(LicenseEnum.rms, LicenseParameterTypeEnum.device, instance.device)
+
+
 class rms_pe_info(models.Model):
     idx = models.AutoField(primary_key=True)
     rms_job_run = models.ForeignKey(rms_job_run)
@@ -274,6 +285,11 @@ class ext_license_site(ext_license_base):
 class ext_license(ext_license_base):
     name = models.CharField(max_length=128, unique=True)
     ext_license_site = models.ForeignKey("backbone.ext_license_site")
+
+    def __unicode__(self):
+        return "ExternalLicense(name={})".format(self.name)
+
+    __repr__ = __unicode__
 
 
 class ext_license_version(ext_license_base):

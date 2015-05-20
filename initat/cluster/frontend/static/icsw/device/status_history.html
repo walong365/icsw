@@ -15,6 +15,20 @@
             <div class="form-inline">
                 Timerange:
                 <div class="form-group">
+                    &nbsp;
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-time"></span>
+                            {{duration_type}} <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-click="set_duration_type('day')"><a href="#">day</a></li>
+                            <li ng-click="set_duration_type('week')"><a href="#">week</a></li>
+                            <li ng-click="set_duration_type('month')"><a href="#">month</a></li>
+                            <li ng-click="set_duration_type('year')"><a href="#">year</a></li>
+                            <!-- values parsed by rest_views.py -->
+                        </ul>
+                    </div>
                     <div class="input-group" ng-show="duration_type == 'day' || duration_type == 'week'">
                         <input type="text" class="form-control" ng-model="startdate"/>
                     <span class="dropdown-toggle input-group-addon">
@@ -59,20 +73,6 @@
                                 </ul>
                             </div>
                         </span>
-                    </div>
-                    &nbsp;
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-time"></span>
-                            {{duration_type}} <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-click="set_duration_type('day')"><a href="#">day</a></li>
-                            <li ng-click="set_duration_type('week')"><a href="#">week</a></li>
-                            <li ng-click="set_duration_type('month')"><a href="#">month</a></li>
-                            <li ng-click="set_duration_type('year')"><a href="#">year</a></li>
-                            <!-- values parsed by rest_views.py -->
-                        </ul>
                     </div>
                 </div>
             </div>

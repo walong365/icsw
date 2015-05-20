@@ -4,7 +4,7 @@
 #
 # Send feedback to: <mallinger@init.at>
 #
-# This file is part of licadmin
+# This file is part of cluster-backbone-sql
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -22,26 +22,24 @@
 
 import base64
 import bz2
-import codecs
 import glob
 from lxml import etree
 import datetime
 import logging
 import M2Crypto
 from dateutil import relativedelta
-from initat.tools import process_tools
 import pytz
 
-from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, Feature
+from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
+    LicenseUsage, LicenseViolation
 from initat.cluster.settings import TIME_ZONE
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.tools import process_tools
 
 
-logger = logging.getLogger("cluster.licadmin")
+logger = logging.getLogger("cluster.license_file_reader")
 
 CERT_DIR = "/opt/cluster/share/cert"
-
-
-LICENSE_FEATURE_MAP_FILE = "/opt/cluster/share/cert/license_feature_map.xml"
 
 
 class LicenseFileReader(object):
@@ -66,6 +64,7 @@ class LicenseFileReader(object):
 
         signed_content_xml = etree.fromstring(signed_content_str)
 
+        # noinspection PyUnresolvedReferences
         ng = etree.RelaxNG(etree.fromstring(LIC_FILE_RELAX_NG_DEFINITION))
         if not ng.validate(signed_content_xml):
             raise LicenseFileReader.InvalidLicenseFile("Invalid license file structure")
@@ -80,54 +79,74 @@ class LicenseFileReader(object):
 
         return content_xml
 
-        # print etree.tostring(content_xml, pretty_print=True)
+    @staticmethod
+    def _get_state_from_license_xml(lic_xml):
+        parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
+
+        valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
+        valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)
+        valid_to_plus_grace = valid_to + LicenseUsage.GRACE_PERIOD
+        today = datetime.date.today()
+
+        # semantics: valid_from is from 00:00:00 of that day, valid to is till 23:59:59 of that day
+
+        if today < valid_from:
+            return LicenseState.valid_in_future
+        elif today > valid_to_plus_grace:
+            return LicenseState.expired
+        elif today > valid_to:
+            return LicenseState.grace
+        else:
+            return LicenseState.valid
 
     def get_referenced_cluster_ids(self):
         q = "//icsw:package-list/icsw:package/icsw:cluster-id"
         return set(elem.get('id') for elem in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP))
 
-    def get_license_state(self, license):
+    def get_license_state(self, license, parameters=None):
         """Returns a LicenseState for the local cluster_id and the given license combination
-        for the current point in time, or None if no license exists"""
+        for the current point in time, or LicenseState.none if no license exists.
 
-        parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
+        NOTE: Does not consider license violations. This is handled by the db (i.e. License).
 
-        def get_state_from_license_xml(lic_xml):
-
-            # NOTE: keep in sync with js
-            grace_period = relativedelta.relativedelta(weeks=2)
-
-            valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
-            valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)
-            valid_to_plus_grace = valid_to + grace_period
-            today = datetime.date.today()
-
-            # semantics: valid_from is from 00:00 of that day, valid to is till 23:59 of that day
-
-            if today < valid_from:
-                return LicenseState.valid_in_future
-            elif today > valid_to_plus_grace:
-                return LicenseState.expired
-            elif today > valid_to:
-                return LicenseState.grace
-            else:
-                return LicenseState.valid
-
-        state = None
+        :type license: LicenseEnum
+        :param parameters: {LicenseParameterTypeEnum: quantity} of required parameters
+        """
+        # check parameters via xpath
+        license_parameter_check = ""
+        if parameters is not None:
+            for lic_param_type, value in parameters.iteritems():
+                license_parameter_check +=\
+                    "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(lic_param_type.name, value)
 
         from initat.cluster.backbone.models import device_variable
 
         q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
             device_variable.objects.get_cluster_id()
         )
-        q += "/icsw:license[icsw:id/text()='{}']".format(license)
+        q += "/icsw:license[icsw:id/text()='{}' {}]".format(license.name, license_parameter_check)
 
+        state = LicenseState.none
         for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
-            s = get_state_from_license_xml(lic_xml)
-            if state is None or s > state:
+            # these licenses match id and parameter, check if they are also valid right now
+
+            s = self._get_state_from_license_xml(lic_xml)
+            if s > state:
                 state = s
 
         return state
+
+    def get_valid_licenses(self):
+        """Returns licenses which are currently valid as license id string list. Does not consider license violations!"""
+        ret = []
+        for lic_id in set(lic_xml.find("icsw:id", namespaces=ICSW_XML_NS_MAP).text
+                          for lic_xml in self.content_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)
+                          if self._get_state_from_license_xml(lic_xml).is_valid()):
+            try:
+                ret.append(LicenseEnum[lic_id])
+            except KeyError:
+                logger.debug("Invalid license in license file: {}".format(lic_id))
+        return ret
 
     def get_license_packages_xml(self):
         return self.content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP)
@@ -169,10 +188,21 @@ class LicenseFileReader(object):
             }
 
         def extract_cluster_data(cluster_xml):
+            def int_or_none(x):
+                try:
+                    return int(x)
+                except ValueError:
+                    return None
+
+            def parse_parameters(parameters_xml):
+                return {LicenseParameterTypeEnum.id_string_to_user_name(param_xml.get('id')): int_or_none(param_xml.text)
+                        for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)}
+
             return [{
                 'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
                 'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
                 'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
             } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)]
 
         return [extract_package_data(pack_xml) for pack_xml in package_uuid_map.itervalues()]
@@ -234,33 +264,3 @@ class LicenseFileReader(object):
 
     def __repr__(self):
         return "LicenseFileReader(file_name={})".format(self.file_name)
-
-
-class LicenseFeatureMapReader(object):
-    def __init__(self):
-        signed_map_file_xml = etree.fromstring(codecs.open(LICENSE_FEATURE_MAP_FILE, "r", "utf-8").read())
-        map_xml = signed_map_file_xml.find("icsw:license-feature-map", ICSW_XML_NS_MAP)
-        signature_xml = signed_map_file_xml.find("icsw:signature", ICSW_XML_NS_MAP)
-
-        if not LicenseFileReader.verify_signature(map_xml, signature_xml):
-            raise Exception("Invalid license feature map signature")
-
-        self.map_xml = map_xml
-
-    def get_licenses_providing_feature(self, feature):
-        licenses_xml = self.map_xml.xpath("//icsw:license[icsw:feature/text()='{}']".format(feature.name),
-                                          namespaces=ICSW_XML_NS_MAP)
-        return [lic.get('id') for lic in licenses_xml]
-
-    def get_all_features(self):
-        features_xml = self.map_xml.xpath("//icsw:license/icsw:feature/text()", namespaces=ICSW_XML_NS_MAP)
-        return set(Feature[unicode(i)] for i in features_xml)
-
-    def get_all_licenses(self):
-        licenses_xml = self.map_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)
-        return [{
-            'id': lic_xml.get("id"),
-            'name': lic_xml.findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
-            'description': lic_xml.findtext("icsw:description", namespaces=ICSW_XML_NS_MAP),
-        } for lic_xml in licenses_xml]
-

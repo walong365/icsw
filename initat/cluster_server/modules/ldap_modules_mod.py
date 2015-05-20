@@ -17,22 +17,23 @@
 #
 """ tools for modifying LDAP servers """
 
+import commands
+import os
+import re
+import sys
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, device_config, \
     config_str, home_export_list, config
 from initat.cluster_server.config import global_config
-import commands
-import cs_base_class
 import ldap  # @UnresolvedImport @UnusedImport
 import ldap.modlist  # important, do not remove  @UnresolvedImport
 from initat.tools import logging_tools
-import os
-import pprint  # @UnusedImport
 from initat.tools import process_tools
-import re
 from initat.tools import server_command
-import sys
-import time
+
+import cs_base_class
 
 """ possible smb.conf:
 
@@ -601,7 +602,11 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
             if ld_read and ld_write:
                 # fetch user / group info
                 all_groups = {cur_g.pk: cur_g for cur_g in group.objects.all()}
-                all_users = {cur_u.pk: cur_u for cur_u in user.objects.filter(Q(only_webfrontend=False)).prefetch_related("secondary_groups")}  # @UndefinedVariable
+                all_users = {
+                    cur_u.pk: cur_u for cur_u in user.objects.filter(
+                        Q(only_webfrontend=False)
+                    ).prefetch_related("secondary_groups")
+                }
                 # not used right now
                 devlog_dict = {}
                 # luts
@@ -915,7 +920,8 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 # normal exports
                 exp_entries = device_config.objects.filter(
                     Q(config__name__icontains="export") &
-                    Q(device__is_meta_device=False)).prefetch_related("config__config_str_set").select_related("device")
+                    Q(device__is_meta_device=False)
+                ).prefetch_related("config__config_str_set").select_related("device")
                 export_dict = {}
                 ei_dict = {}
                 for entry in exp_entries:
@@ -955,12 +961,13 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home.strip())
                             )
                         else:
-                            self.log("ignoring export for user {} because of empty or invalid homestart in group {}".format(
-                                unicode(user_stuff),
-                                unicode(group_stuff),
+                            self.log(
+                                "ignoring export for user {} because of empty or invalid homestart in group {}".format(
+                                    unicode(user_stuff),
+                                    unicode(group_stuff),
                                 ),
                                 logging_tools.LOG_LEVEL_WARN
-                                )
+                            )
                 # build mountmaps
                 master_object_class = ["top", "nisMap", "clusterAutomount"]
                 master_map_pfix = "nisMapName"
@@ -1070,7 +1077,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                             maps_ok.append(dn)
                     else:
                         # remove map (not found in db)
-                        self.log("removing map %s (not found in db)" % (dn))
+                        self.log("removing map {} (not found in db)".format(dn))
                         maps_to_remove.append(dn)
                 # add maps
                 maps_to_add = [x for x in map_keys if x not in maps_ok and x not in maps_to_change and x not in maps_to_remove]

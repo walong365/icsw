@@ -39,6 +39,8 @@ from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
@@ -275,7 +277,7 @@ class csw_object_permission(models.Model):
             obj = model_class.objects.get(pk=self.object_pk)
         except model_class.DoesNotExist:
             obj = "deleted object (pk: {})".format(self.object_pk)
-        return "{} on {}".format(unicode(self.csw_permission), obj)
+        return u"{} on {}".format(unicode(self.csw_permission), obj)
 
     class Meta:
         app_label = "backbone"
@@ -345,7 +347,7 @@ class user_permission(models.Model):
         verbose_name = "Global permissions of users"
 
     def __unicode__(self):
-        return "Permission {} for user {}".format(self.csw_permission, self.user)
+        return u"Permission {} for user {}".format(self.csw_permission, self.user)
 
 
 @receiver(signals.post_save, sender=user_permission)
@@ -387,7 +389,7 @@ class user_object_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "Permission {} for user {}".format(self.csw_object_permission, self.user)
+        return u"Permission {} for user {}".format(self.csw_object_permission, self.user)
 
     class Meta:
         app_label = "backbone"
@@ -1239,7 +1241,8 @@ class virtual_desktop_user_setting(models.Model):
 
     last_start_attempt = models.DateTimeField(default=datetime.datetime.fromtimestamp(0), blank=True)
 
-    # set when this is about to be deleted (this is necessary as only cluster-server may do it as soon as session is shut down)
+    # set when this is about to be deleted
+    # (this is necessary as only cluster-server may do it as soon as session is shut down)
     to_delete = models.BooleanField(default=False, blank=True)
 
     state = models.IntegerField(default=State.DISABLED)
@@ -1265,12 +1268,22 @@ class virtual_desktop_user_setting(models.Model):
             self.save_without_signals()
 
 
+@receiver(signals.pre_save, sender=virtual_desktop_user_setting)
+def virtual_desktop_user_setting_pre_save(sender, instance, raw, **kwargs):
+    if not raw:
+        if LicenseLockListUser.objects.is_user_locked(LicenseEnum.virtual_desktop, instance.user):
+            raise ValidationError(u"User {} is locked from accessing virtual desktops".format(unicode(instance.user)))
+
+
 @receiver(signals.post_save, sender=virtual_desktop_user_setting)
-def virtual_desktop_user_setting_save(sender, **kwargs):
+def virtual_desktop_user_setting_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst._send_signals:
             virtual_desktop_user_setting_changed.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
+
+        if _cur_inst.is_running and not _cur_inst.to_delete:
+            LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)
 
 
 class virtual_desktop_protocol(models.Model):

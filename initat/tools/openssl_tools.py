@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,16 +20,17 @@
 """ tools for openssl """
 
 from collections import OrderedDict
-from OpenSSL import crypto
 import commands
 import datetime
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import shutil
 import stat
 import tarfile
 import tempfile
+
+from OpenSSL import crypto
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 _KEYS = ["CN", "C", "ST", "O", "emailAddress"]
 
@@ -325,7 +326,7 @@ class ca(object):
                     ("countryName_default", "AT"),
                     ("stateOrProvinceName_default", "Vienna"),
                     ("0.organizationName_default", "init.at"),
-                    ("emailAddress_default", "lang-nevyjel@init.at"),
+                    ("emailAddress_default", "cluster@init.at"),
                 ])
                 _cnf.set("req", "default_bits", 4096)
 

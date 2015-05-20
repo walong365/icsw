@@ -19,32 +19,34 @@
 #
 """ grapher part of rrd-grapher service """
 
-from django.conf import settings
-from django.db import connection
-from django.db.models import Q
-from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVStructEntry, MVValueEntry
-from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
-import copy
 import datetime
-import dateutil.parser
-from initat.tools import logging_tools
 import os
-import pprint  # @UnusedImport
-from initat.tools import process_tools
 import re
 import rrdtool  # @UnresolvedImport
 import select
-from initat.tools import server_command
 import json
-from initat.tools import server_mixins
 import socket
 import stat
-from initat.tools import threading_tools
 import time
 import uuid
+
+from django.conf import settings
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
+    LicenseParameterTypeEnum
+from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
+    MVValueEntry
+from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.rrd_grapher.config import global_config
+from lxml.builder import E  # @UnresolvedImport
+import dateutil.parser
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import server_mixins
+from initat.tools import threading_tools
 
 FLOAT_FMT = "{:.6f}"
 
@@ -985,7 +987,7 @@ class RRDGraph(object):
                         "-h {:d}".format(graph_height),
                         "-aPNG",  # image format
                         # "--daemon", "unix:{}".format(global_config["RRD_CACHED_SOCKET"]),  # rrd caching daemon address
-                        "-W {} by init.at".format(settings.INIT_PRODUCT_NAME),  # title
+                        "-W {} by init.at".format(License.objects.get_init_product().name),  # title
                         "--slope-mode",  # slope mode
                         "-cBACK#ffffff",
                         "--end", "{:d}".format(self.abs_end_time),  # end
@@ -1231,10 +1233,20 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
 
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        dev_pks = device.objects.filter(
-            Q(pk__in=srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) &
-            Q(machinevector__pk__gt=0)
+        orig_dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
+        orig_dev_pks = device.objects.filter(
+            Q(pk__in=orig_dev_pks) & Q(machinevector__pk__gt=0)
         ).values_list("pk", flat=True)
+        dev_pks = [
+            dev_pk for dev_pk in orig_dev_pks
+            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
+        ]
+        if len(orig_dev_pks) != len(dev_pks):
+            self.log(
+                "Access to device rrds denied to to locking: {}".format(set(orig_dev_pks).difference(dev_pks)),
+                logging_tools.LOG_LEVEL_ERROR,
+            )
+        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         graph_keys = json.loads(srv_com["*graph_key_list"])
         #    [
         #        (_el.get("struct_key"), _el.get("value_key")) for _el in srv_com.xpath(".//graph_key_list/graph_key[@struct_key]", smart_strings=False)

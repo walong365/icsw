@@ -19,13 +19,17 @@
 #
 """ SNMP handler for MAC bridge info (basic routing info) """
 
+from initat.tools import logging_tools
+
 from ...functions import reorder_dict
 from ...struct import ResultNode
 from ..base import SNMPHandler
-from django.db.models import Q
-from initat.cluster.backbone.models import netdevice, peer_information
-import pprint  # @UnusedImport
-from initat.tools import logging_tools
+
+try:
+    from django.db.models import Q
+    from initat.cluster.backbone.models import netdevice, peer_information
+except:
+    pass
 
 # bi base
 BI_BASE = "1.3.6.1.2.1.17.4.3.1"

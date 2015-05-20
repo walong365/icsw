@@ -109,9 +109,9 @@ def csw_exception_handler(exc):
         detail_info = list(set([_entry for _entry in [_part.strip() for _part in detail_info if _part.strip()] if _entry not in ["()"]]))
         response = Response(
             {
-                "detail": "{}{}".format(
+                u"detail": u"{}{}".format(
                     detail_str,
-                    " ({})".format(", ".join(detail_info)) if detail_info else ""
+                    u" ({})".format(u", ".join(detail_info)) if detail_info else u""
                 ),
             },
             status=status.HTTP_406_NOT_ACCEPTABLE,
@@ -149,14 +149,14 @@ class rest_logging(object):
             result = self._func(*args, **kwargs)
         except:
             self.log(
-                "exception: {}".format(
+                u"exception: {}".format(
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
-                self.log("  {}".format(line))
+                self.log(u"  {}".format(line))
             raise
         e_time = time.time()
         self.log("call took {}".format(
@@ -521,7 +521,7 @@ class csw_object_list(viewsets.ViewSet):
         group_list = []
         for perm_ct in perm_cts:
             cur_group = csw_object_group(
-                "{}.{}".format(perm_ct.app_label, perm_ct.name),
+                "{}.{}".format(perm_ct.app_label, perm_ct.model_class().__name__),
                 perm_ct.pk,
                 self._get_objects(perm_ct, [ct_perm for ct_perm in all_db_perms if ct_perm.content_type_id == perm_ct.pk])
             )
@@ -530,9 +530,9 @@ class csw_object_list(viewsets.ViewSet):
         return Response(_ser.data)
 
     def _get_objects(self, cur_ct, perm_list):
-        cur_model = apps.get_model(cur_ct.app_label, cur_ct.name)
+        cur_model = apps.get_model(cur_ct.app_label, cur_ct.model_class().__name__)
         _q = cur_model.objects
-        _key = "{}.{}".format(cur_ct.app_label, cur_ct.name)
+        _key = "{}.{}".format(cur_ct.app_label, cur_ct.model_class().__name__)
         if _key == "backbone.device":
             _q = _q.select_related("device_group"). \
                 filter(Q(enabled=True, device_group__enabled=True)). \

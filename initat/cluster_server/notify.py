@@ -272,18 +272,20 @@ class notify_mixin(object):
                     # set result
                     _send_xml.set_result(
                         "empty connection string",
-                        server_command.SRV_REPLY_STATE_CRITICAL
-                        )
+                        server_command.SRV_REPLY_STATE_CRITICAL,
+                    )
                     self.notify_handle_result(_send_xml)
                 else:
                     _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
-                    self.log(u"command to {} {} ({}, command {}, {})".format(
-                        _srv_type,
-                        _conn_str,
-                        _srv_uuid,
-                        _send_xml["*command"],
-                        "local" if _is_local else "remote",
-                        ))
+                    self.log(
+                        u"command to {} {} ({}, command {}, {})".format(
+                            _srv_type,
+                            _conn_str,
+                            _srv_uuid,
+                            _send_xml["*command"],
+                            "local" if _is_local else "remote",
+                        )
+                    )
                     _ok = self.send_to_server(
                         _conn_str,
                         _srv_uuid,

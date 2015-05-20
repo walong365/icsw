@@ -21,6 +21,7 @@
 #
 
 """ monitoring views """
+import collections
 import datetime
 
 from django.contrib.auth.decorators import login_required
@@ -33,9 +34,11 @@ import pytz
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from django.core.cache import cache
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseUsageDeviceService, LicenseLockListDeviceService
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
@@ -56,6 +59,7 @@ import base64
 import itertools
 import json
 import logging
+from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
@@ -223,6 +227,7 @@ class get_node_status(View):
         _post = request.POST
         pk_list = json.loads(_post["pk_list"])
         srv_com = server_command.srv_command(command="get_node_status")
+        # noinspection PyUnresolvedReferences
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="{:d}".format(int(cur_pk))) for cur_pk in pk_list if cur_pk]
         )
@@ -231,11 +236,63 @@ class get_node_status(View):
             host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
             service_results = result.xpath(".//ns:service_result/text()", smart_strings=False)
             if len(host_results) + len(service_results):
-                # import pprint
-                # pprint.pprint(json.loads(node_results[0]))
+
+                # log and lock access
+                any_locked = False
+                host_results_filtered = []
+                devices_used = set()
+                for dev_res in json.loads(host_results[0]):
+                    locked = False
+                    for entry in dev_res['custom_variables'].split(","):
+                        split = entry.split("|")
+                        if len(split) == 2 and split[0].lower() == "device_pk":
+                            try:
+                                dev_pk = int(split[1])
+                                locked = LicenseLockListDeviceService.objects.is_device_locked(
+                                    LicenseEnum.monitoring_dashboard, dev_pk)
+                                if not locked:
+                                    devices_used.add(dev_pk)
+                            except ValueError:
+                                logger.warn("Invalid device pk in get_node_result access logging: {}".format(entry))
+
+                    if not locked:
+                        host_results_filtered.append(dev_res)
+
+                    any_locked |= locked
+
+                LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.device, devices_used)
+
+                service_results_filtered = []
+                services_used = collections.defaultdict(lambda: [])
+                for serv_res in json.loads(service_results[0]):
+                    parsed = host_service_id_util.parse_host_service_description(serv_res['description'],
+                                                                                 log=logger.error)
+                    locked = False
+                    if parsed:
+                        host_pk, service_pk, _ = parsed
+
+                        locked = LicenseLockListDeviceService.objects.is_device_service_locked(
+                            LicenseEnum.monitoring_dashboard, host_pk, service_pk
+                        )
+
+                        if not locked:
+                            services_used[host_pk].append(service_pk)
+
+                    if not locked:
+                        service_results_filtered.append(serv_res)
+
+                    any_locked |= locked
+
+                LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.service,
+                                       services_used)
+
+                if any_locked:
+                    request.xml_response.info("Some entries are on the license lock list and therefore not displayed.")
+
                 # simply copy json dump
-                request.xml_response["host_result"] = host_results[0]
-                request.xml_response["service_result"] = service_results[0]
+                request.xml_response["host_result"] = json.dumps(host_results_filtered)
+                request.xml_response["service_result"] = json.dumps(service_results_filtered)
+
             else:
                 request.xml_response.error("no service or node_results", logger=logger)
 
@@ -581,10 +638,15 @@ class get_hist_device_data(ListAPIView):
 
         data_merged_state_types = {}
         for device_id, device_data in data_per_device.iteritems():
-            data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
-                device_data,
-                mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
-            )
+            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.reporting, device_id):
+                data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
+                    device_data,
+                    mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+                )
+
+        LicenseUsage.log_usage(LicenseEnum.reporting,
+                               LicenseParameterTypeEnum.device,
+                               data_merged_state_types.iterkeys())
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
 
@@ -600,6 +662,7 @@ class get_hist_service_data(ListAPIView):
         merge_services = bool(int(request.GET.get("merge_services", 0)))
         return_data = mon_icinga_log_aggregated_service_data.objects.get_data(devices=device_ids,
                                                                               timespans=[timespan_db],
+                                                                              license=LicenseEnum.reporting,
                                                                               merge_services=merge_services)
 
         return Response([return_data])  # fake a list, see coffeescript

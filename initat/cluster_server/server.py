@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,6 +23,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster_server.capabilities import capability_process
 from initat.cluster_server.backup_process import backup_process
+from initat.cluster_server.license_checker import LicenseChecker
 from initat.cluster_server.config import global_config
 from initat.cluster_server.notify import notify_mixin
 from initat.tools import cluster_location
@@ -75,6 +76,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             if not self["exit_requested"]:
                 self.init_notify_framework(global_config)
                 self.add_process(capability_process("capability_process"), start=True)
+                self.add_process(LicenseChecker("license_checker"), start=True)
                 connection.close()
                 self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
 
@@ -159,8 +161,6 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             msi_block = process_tools.meta_server_info(self.__pid_name)
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
-            msi_block.start_command = "/etc/init.d/cluster-server start"
-            msi_block.stop_command = "/etc/init.d/cluster-server force-stop"
             msi_block.kill_pids = True
             msi_block.save_block()
         else:
@@ -294,7 +294,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             )
             com_obj = initat.cluster_server.modules.command_dict[com_name]
             # check config status
-            do_it, srv_origin, err_str = com_obj.check_config(global_config, global_config["FORCE"])
+            do_it, srv_origin, err_str = com_obj.check_config(global_config)
             self.log(
                 "checking the config gave: {} ({}) {}".format(
                     str(do_it),
@@ -342,7 +342,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             time.sleep(1)
             srv_com.set_result(
                 "command {} not known".format(com_name),
-                server_command.SRV_REPLY_STATE_CRITICAL
+                server_command.SRV_REPLY_STATE_CRITICAL,
             )
 
     def _process_command(self, srv_com):

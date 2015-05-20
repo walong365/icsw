@@ -19,17 +19,22 @@
 #
 """ SNMP handler for basic network stuff (netdevices) """
 
+import time
+
+from initat.host_monitoring import limits
+from lxml.builder import E
+from initat.tools import logging_tools
+
 from ...functions import simplify_dict
 from ...struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs, MonCheckDefinition, snmp_oid
 from ..base import SNMPHandler
-from django.db.models import Q
-from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
-    peer_information
-from initat.host_monitoring import limits
-from lxml.builder import E
-import pprint  # @UnusedImport
-import time
-from initat.tools import logging_tools
+
+try:
+    from django.db.models import Q
+    from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
+        peer_information
+except:
+    pass
 
 # if base
 IF_BASE = "1.3.6.1.2.1.2"

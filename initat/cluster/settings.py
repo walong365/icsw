@@ -29,20 +29,6 @@ ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
 
-# determine product name
-if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
-    INIT_PRODUCT_NAME = "CORVUS"
-    # INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe, 2.0
-    INIT_PRODUCT_FAMILY = "Corvus frugilegus"  # Saatkrähe, 2.1
-    # INIT_PRODUCT_FAMILY = "Corvus woodfordi" # Buntschnabelkrähe, 2.2
-else:
-    INIT_PRODUCT_NAME = "NOCTUA"
-    # INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu, 2.0
-    INIT_PRODUCT_FAMILY = "Strigidae ascalaphus"  # Wüstenuhu, 2.1
-    # INIT_PRODUCT_FAMILY = "Strigidae pulsatrix perspicillata" # Brillenkauz, 2.2
-
-INIT_PRODUCT_VERSION = "2.1"
-
 ALLOWED_HOSTS = ["*"]
 
 INTERNAL_IPS = ("127.0.0.1", "192.168.1.173",)
@@ -386,8 +372,11 @@ for sub_dir in os.listdir(dir_name):
                             ]
                         )
                         js_full_paths = glob.glob(os.path.join(full_path, "static", "js", "*.js"))
-                        ADDITIONAL_JS.extend([os.path.join("js", os.path.basename(js_file))
-                                              for js_file in js_full_paths])
+                        ADDITIONAL_JS.extend(
+                            [
+                                os.path.join("js", os.path.basename(js_file)) for js_file in js_full_paths
+                            ]
+                        )
                 INSTALLED_APPS.append(add_app)
 
 ADDITIONAL_JS = tuple(ADDITIONAL_JS)
@@ -448,7 +437,7 @@ PIPELINE_JS = {
     "js_base": {
         "source_filenames": (
             "js/jquery-ui-1.10.2.custom.js",
-            "js/angular-1.3.14.js",
+            "js/angular-1.3.15.js",
             "js/lodash.js",
             "js/bluebird.js",
             "js/codemirror/codemirror.js",
@@ -514,29 +503,27 @@ PIPELINE_JS = {
 
 SSI_ROOTS = []
 SSI_FILES = []
+SSI_ROOT_DICT = {}
 for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
     _SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", _local_ssi_root, "static", "icsw"))
+    SSI_ROOT_DICT[_local_ssi_root] = _SSI_ROOT
+    # print _SSI_ROOT
     if os.path.exists(_SSI_ROOT):
         for _dir, _dirlist, _filelist in os.walk(_SSI_ROOT):
             if _dir == _SSI_ROOT:
                 continue
             for _file in _filelist:
                 if _file.endswith(".html"):
+                    # print "*", _dir, _file
                     SSI_FILES.append(os.path.join(_dir, _file))
         SSI_ROOTS.append(_SSI_ROOT)
 ALLOWED_INCLUDE_ROOTS = SSI_ROOTS
 
 HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
 
-HANDBOOK_PDF_PRESENT = os.path.exists(os.path.join(HANDBOOK_DIR, "main.html"))
+HANDBOOK_PDF_PRESENT = bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf")))
 
-HANDBOOK_CHUNKS = {}
-if os.path.isdir(os.path.join(HANDBOOK_DIR, "chunks")):
-    for _path, _dirs, _files in os.walk(os.path.join(HANDBOOK_DIR, "chunks")):
-        for _add in [_entry for _entry in _files if _entry.endswith(".xhtml")]:
-            HANDBOOK_CHUNKS[_add.split(".")[0]] = os.path.join(_path, _add)
-
-HANDBOOK_CHUNKS_PRESENT = True if len(HANDBOOK_CHUNKS) else False
+HANDBOOK_CHUNKS_PRESENT = bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk")))
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
@@ -598,7 +585,7 @@ REST_FRAMEWORK = {
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'formatters': {
         "initat": {
             "()": "initat.tools.logging_tools.initat_formatter",

@@ -22,22 +22,25 @@
 
 """ logging server, central logging facility, server-part"""
 
-from initat.logging_server.config import global_config
 import grp
-from initat.tools import io_stream_helper
 import logging
-from initat.tools import logging_tools
-from initat.tools import mail_tools
 import os
 import pickle
-from initat.tools import process_tools
 import pwd
 import resource
 import stat
-from initat.tools import threading_tools
 import time
+
+from initat.logging_server.config import global_config
+from initat.icsw.service import clusterid
+from initat.tools import io_stream_helper
+from initat.tools import logging_tools
+from initat.tools import mail_tools
+from initat.tools import process_tools
+from initat.tools import threading_tools
 from initat.tools import uuid_tools
 import zmq
+
 
 SEP_STR = "-" * 50
 
@@ -58,12 +61,10 @@ class main_process(threading_tools.process_pool):
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
         self.change_resource()
-        self.renice()
         self._init_msi_block()
-        # self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        self.register_timer(self._update, 10 if global_config["DEBUG"] else 60)
+        self.register_timer(self._update, 60)
         os.umask(2)
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
         self.__num_forward_ok, self.__num_forward_error = (0, 0)
@@ -205,19 +206,11 @@ class main_process(threading_tools.process_pool):
         self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
         self.std_client = client
 
-    def process_start(self, src_process, src_pid):
-        process_tools.append_pids("logserver/logserver", src_pid, mult=3)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process)
-            self.__msi_block.save_block()
-
     def _init_msi_block(self):
         process_tools.save_pids("logserver/logserver", mult=3)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logserver")
-        msi_block.add_actual_pid(mult=3, process_name="main")
-        msi_block.start_command = "/etc/init.d/logging-server start"
-        msi_block.stop_command = "/etc/init.d/logging-server force-stop"
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=2, process_name="main")
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
@@ -235,8 +228,7 @@ class main_process(threading_tools.process_pool):
     def loop_post(self):
         self._remove_handles()
         process_tools.delete_pid("logserver/logserver")
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        self.__msi_block.remove_meta_block()
         self.net_receiver.close()
         if self.net_forwarder:
             self.net_forwarder.close()
@@ -261,18 +253,23 @@ class main_process(threading_tools.process_pool):
                     try:
                         error_f.append(u"  {:<20s} : {}".format(key, unicode(in_dict[key])))
                     except:
-                        error_f.append(u"  error logging key '{}' : {}".format(
-                            key,
-                            process_tools.get_except_info(),
-                            ))
+                        error_f.append(
+                            u"  error logging key '{}' : {}".format(
+                                key,
+                                process_tools.get_except_info(),
+                            )
+                        )
                 error_str = "\n".join(error_f)
-            cur_dict = self.__eg_dict.setdefault(in_dict["pid"], {
-                "last_update": time.time(),
-                # error as unicode
-                "error_str": u"",
-                # how many lines we have already logged
-                "lines_logged": 0,
-                "proc_dict": in_dict})
+            cur_dict = self.__eg_dict.setdefault(
+                in_dict["pid"], {
+                    "last_update": time.time(),
+                    # error as unicode
+                    "error_str": u"",
+                    # how many lines we have already logged
+                    "lines_logged": 0,
+                    "proc_dict": in_dict
+                }
+            )
             # append line to errors
             cur_dict["error_str"] = "{}{}".format(cur_dict["error_str"], error_str)
             # log to err_py
@@ -330,11 +327,13 @@ class main_process(threading_tools.process_pool):
         for ep, es in self.__eg_dict.items():
             t_diff = s_time - es["last_update"]
             if force or (t_diff < 0 or t_diff > 60):
-                subject = "Python error for pid {:d} on {}@{} ({})".format(
+                subject = "Python error for pid {:d} on {}@{} ({}, {})".format(
                     ep,
                     global_config["LONG_HOST_NAME"],
                     c_name,
-                    process_tools.get_machine_name())
+                    process_tools.get_machine_name(),
+                    clusterid.get_cluster_id() or "N/A",
+                )
                 err_lines = "".join(es["error_str"]).split("\n")
                 msg_body = "\n".join(
                     [
@@ -365,8 +364,10 @@ class main_process(threading_tools.process_pool):
             "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]),
             global_config["TO_ADDR"],
             msg_body)
-        new_mail.set_server(global_config["MAILSERVER"],
-                            global_config["MAILSERVER"])
+        new_mail.set_server(
+            global_config["MAILSERVER"],
+            global_config["MAILSERVER"]
+        )
         try:
             send_stat, log_lines = new_mail.send_mail()
             for log_line in log_lines:
@@ -384,6 +385,7 @@ class main_process(threading_tools.process_pool):
         act_time = time.time()
         self.__num_write += 1
         if not self.__last_stat_time or abs(act_time - self.__last_stat_time) > self.__stat_timer or self.__num_write % 10000 == 0:
+            last_stat_time = self.__last_stat_time
             self.__last_stat_time = act_time
             if self.__num_forward_ok or self.__num_forward_error:
                 fwd_str = ", {:d} fwd ({:d} error)".format(
@@ -393,10 +395,13 @@ class main_process(threading_tools.process_pool):
             else:
                 fwd_str = ""
             self.log(
-                "logstat (open/close/written): {:d} / {:d} / {:d}, mem_used is {}{}".format(
+                "logstat (open/close/written): {:d} / {:d} / {:d} ({:.2f}/s), mem_used is {}{}".format(
                     self.__num_open,
                     self.__num_close,
                     self.__num_write,
+                    (
+                        self.__num_write / max(1, (act_time - last_stat_time))
+                    ),
                     process_tools.beautify_mem_info(),
                     fwd_str,
                 )
@@ -452,7 +457,8 @@ class main_process(threading_tools.process_pool):
             record_name, record_process, record_parent_process = (
                 "init.at.{}".format(record),
                 os.getpid(),
-                os.getppid())
+                os.getppid()
+            )
         else:
             if not hasattr(record, "host"):
                 # no host set: use local machine name
@@ -462,7 +468,8 @@ class main_process(threading_tools.process_pool):
             record_name, record_process, record_parent_process = (
                 record.name,
                 record.process,
-                getattr(record, "ppid", 0))
+                getattr(record, "ppid", 0)
+            )
         init_logger = record_name.startswith("init.at.")
         if init_logger:
             # init.at logger, create subdirectories
@@ -487,6 +494,12 @@ class main_process(threading_tools.process_pool):
             if not (set([record_process, record_parent_process]) &
                     set([self.__handles[h_name].process_id,
                          self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
+                self.log(
+                    "access mismatch detected for {}".format(
+                        h_name,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 self.remove_handle(h_name)
         if h_name not in self.__handles:
             self.log(
@@ -532,7 +545,8 @@ class main_process(threading_tools.process_pool):
             # print "***", logger_name, base_logger, logger
             form = logging_tools.my_formatter(
                 global_config["LOG_FORMAT"],
-                global_config["DATE_FORMAT"])
+                global_config["DATE_FORMAT"]
+            )
             logger.setLevel(logging.DEBUG)
             full_name = full_name.encode("ascii", errors="replace")
             new_h = logging_tools.logfile(full_name, max_bytes=global_config["MAX_FILE_SIZE"], max_age_days=global_config["MAX_AGE_FILES"])
@@ -551,11 +565,14 @@ class main_process(threading_tools.process_pool):
             self.__handle_usecount[h_name] = 0
             logger.info(SEP_STR)
             logger.info("opened {} (file {} in {}) by pid {}".format(full_name, base_name, base_dir, self.pid))
-            self.log("added handle {} (file {} in dir {}), total open: {}".format(
-                h_name,
-                base_name,
-                base_dir,
-                logging_tools.get_plural("handle", len(self.__handles.keys()))))
+            self.log(
+                "added handle {} (file {} in dir {}), total open: {}".format(
+                    h_name,
+                    base_name,
+                    base_dir,
+                    logging_tools.get_plural("handle", len(self.__handles.keys()))
+                )
+            )
         return self.__handles[h_name]
 
     def _recv_data(self, zmq_socket):
@@ -594,7 +611,8 @@ class main_process(threading_tools.process_pool):
                 self.log(
                     "error reconstructing log-command (len of in_str: {:d}): {}".format(
                         len(in_str),
-                        process_tools.get_except_info()),
+                        process_tools.get_except_info()
+                    ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
 
@@ -618,6 +636,12 @@ class main_process(threading_tools.process_pool):
             self.__handle_usage[handle.handle_name].add(src_key)
             try:
                 self.__handle_usecount[handle.handle_name] += 1
+                if handle.disabled:
+                    self.log(
+                        "disabled was true for handler {}, re-renabled".format(handle.name),
+                        logging_tools.LOG_LEVEL_ERROR,
+                    )
+                    handle.disabled = False
                 handle.handle(log_com)
             except:
                 self.log(

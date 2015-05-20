@@ -308,8 +308,6 @@ class server_code(threading_tools.process_pool):
         msi_block = process_tools.meta_server_info("collserver")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4 if global_config["NO_INOTIFY"] else 5, process_name="manager")
-        msi_block.start_command = "/etc/init.d/host-monitoring start"
-        msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 60
         msi_block.save_block()
@@ -416,16 +414,21 @@ class server_code(threading_tools.process_pool):
             ("ipc", "result", zmq.ROUTER, 512, None, process_tools.zmq_identity_str("host_monitor"))  # @UndefinedVariable
         ]
         for _sock_proto, short_sock_name, sock_type, hwm_size, dst_func, zmq_id in sock_list:
-            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="collserver")
             file_name = sock_name[5:]
-            self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
-                                                            hwm_size))
+            self.log(
+                "init {} ipc_socket '{}' (HWM: {:d})".format(
+                    short_sock_name,
+                    sock_name,
+                    hwm_size
+                )
+            )
             if os.path.exists(file_name):
                 self.log("removing previous file")
                 try:
                     os.unlink(file_name)
                 except:
-                    self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("... {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             wait_iter = 0
             while os.path.exists(file_name) and wait_iter < 100:
                 self.log("socket {} still exists, waiting".format(sock_name))

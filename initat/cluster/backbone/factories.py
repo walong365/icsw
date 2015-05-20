@@ -5,7 +5,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     partition_fs, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
-    network, netdevice, net_ip, device_config, cluster_license, LogSource, \
+    network, netdevice, net_ip, device_config, LogSource, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid
 
@@ -182,12 +182,6 @@ class DeviceConfig(factory.django.DjangoModelFactory):
     class Meta:
         model = device_config
         django_get_or_create = ("device", "config",)
-
-
-class ClusterLicense(factory.django.DjangoModelFactory):
-    class Meta:
-        model = cluster_license
-        django_get_or_create = ("name",)
 
 
 class ConfigHint(factory.django.DjangoModelFactory):

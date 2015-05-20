@@ -1,0 +1,113 @@
+# #-#-#-#-#  template_coffee.pot (PACKAGE VERSION)  #-#-#-#-#
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2015-03-18 15:17+0100\n"
+"Last-Translator: Bernhard Mallinger <mallinger@gmx.at>\n"
+"Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 1.5.4\n"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:29
+msgid "modify"
+msgstr "ändern"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:33
+msgid "create"
+msgstr "erstellen"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:37
+msgid "delete"
+msgstr "löschen"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:41
+msgid "reload"
+msgstr "neu laden"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:45
+msgid "clear selection"
+msgstr "Selektion löschen"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:57
+msgid "download"
+msgstr "herunterladen"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:119
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:43
+msgid "show"
+msgstr "anzeigen"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:121
+msgid "hide"
+msgstr "verstecken"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:127
+msgid "disable"
+msgstr "deaktivieren"
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:130
+msgid "enable"
+msgstr "aktivieren"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:179
+msgid "Valid"
+msgstr "Gültig"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:180
+msgid "until"
+msgstr "bis"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:185
+msgid "In grace period"
+msgstr "In Toleranzfrist"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:186
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:192
+msgid "since"
+msgstr "seit"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:191
+msgid "Expired"
+msgstr "Abgelaufen"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:197
+msgid "Will be valid"
+msgstr "Gültig in Zukunft"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:198
+msgid "on"
+msgstr "am"
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:52
+msgid "elements selected"
+msgstr "Elemente selektiert"
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:40
+msgid "no entries to show"
+msgstr "keine Einträge"
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:46
+msgid "per page"
+msgstr "pro Seite"
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:49
+msgid "selected entries"
+msgstr "ausgewählte Einträge"
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:32
+msgid "showing entries"
+msgstr "zeige Einträge"
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:35
+msgid "to"
+msgstr "bis"

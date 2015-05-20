@@ -21,6 +21,8 @@
 
 from django.db import connection
 from django.db.models import Q
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
 from initat.discovery_server.config import global_config
 from initat.discovery_server.hm_functions import hm_mixin
@@ -296,9 +298,13 @@ class discovery_process(threading_tools.process_obj, hm_mixin):
         for _dev_xml in srv_com["devices"]:
             try:
                 _dev = device.objects.get(Q(pk=int(_dev_xml.get("pk"))))
+                if LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.discovery_server, _dev):
+                    raise RuntimeError(u"Device {} is locked by license lock list for discovery server".format(_dev))
             except:
                 res_node = ResultNode(error="device not available: {}".format(process_tools.get_except_info()))
             else:
+                LicenseUsage.log_usage(LicenseEnum.discovery_server, LicenseParameterTypeEnum.device, _dev)
+
                 if self.device_is_idle(_dev, scan_type):
                     s_time = time.time()
                     try:

@@ -24,10 +24,11 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
-import datetime
 from collections import defaultdict
 import json
+from initat.cluster.backbone.models.license import LicenseUsage
 from initat.tools import logging_tools
 import re
 import operator
@@ -474,6 +475,10 @@ class mon_check_command(models.Model):
     # which tcp port(s) cover this check
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
 
+    def get_configured_device_pks(self):
+        from initat.cluster.backbone.models import device_config
+        return [dev_conf.device_id for dev_conf in device_config.objects.filter(config_id=self.config_id)]
+
     def get_object_type(self):
         return "mon"
 
@@ -496,6 +501,8 @@ class mon_check_command(models.Model):
 
     def __unicode__(self):
         return "mcc_{}".format(self.name)
+
+    __repr__ = __unicode__
 
 
 @receiver(signals.pre_save, sender=mon_check_command)
@@ -521,6 +528,16 @@ def mon_check_command_pre_save(sender, **kwargs):
             cur_inst.event_handler = None
             cur_inst.save()
             raise ValidationError("cannot be an event handler and reference to another event handler")
+
+
+@receiver(signals.post_save, sender=mon_check_command)
+def _mon_check_command_post(sender, instance, raw, **kwargs):
+    if not raw:
+        if instance.mon_service_templ is not None and instance.mon_service_templ.any_notification_enabled():
+            log_usage_data = {}
+            for dev_pk in instance.get_configured_device_pks():
+                log_usage_data[dev_pk] = [instance]
+            LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class mon_check_command_type(models.Model):
@@ -1055,6 +1072,24 @@ class mon_service_templ(models.Model):
     class Meta:
         db_table = u'ng_service_templ'
         app_label = "backbone"
+
+    def any_notification_enabled(self):
+        return self.nrecovery or self.ncritical or self.nwarning or self.nunknown or self.nflapping or \
+            self.nplanned_downtime
+
+
+@receiver(signals.post_save, sender=mon_service_templ)
+def _service_templ_post_save(sender, instance, raw, **kwargs):
+    if not raw:
+        # log here because services which have a template might get a notification by enabling it here
+        if instance.any_notification_enabled():
+            log_usage_data = defaultdict(lambda: [])
+
+            for mcc in instance.mon_check_command_set.all():
+                for dev_pk in mcc.get_configured_device_pks():
+                    log_usage_data[dev_pk].append(mcc)
+
+            LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 @receiver(signals.pre_save, sender=mon_service_templ)

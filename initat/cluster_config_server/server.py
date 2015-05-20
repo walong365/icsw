@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -93,7 +93,7 @@ class server_process(threading_tools.process_pool):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
 
     def _init_msi_block(self):
@@ -102,10 +102,8 @@ class server_process(threading_tools.process_pool):
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("cluster-config-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
-            msi_block.start_command = "/etc/init.d/cluster-config-server start"
-            msi_block.stop_command = "/etc/init.d/cluster-config-server force-stop"
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
             msi_block.kill_pids = True
             msi_block.save_block()
         else:
@@ -180,8 +178,10 @@ class server_process(threading_tools.process_pool):
                         try:
                             new_dev = device.objects.get(Q(uuid=src_id) | Q(uuid__startswith=src_id[:-5]))
                         except device.DoesNotExist:
-                            self.log("no device with UUID %s found in database" % (src_id),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "no device with UUID {} found in database".format(src_id),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                             cur_c = None
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode("error unknown UUID")
@@ -219,29 +219,36 @@ class server_process(threading_tools.process_pool):
                         try:
                             cur_client = None  # client.get(c_uid)
                         except KeyError:
-                            self.log("unknown uid %s, not known" % (c_uid),
-                                     logging_tools.LOG_LEVEL_CRITICAL)
+                            self.log(
+                                "unknown uid {}, not known".format(c_uid),
+                                logging_tools.LOG_LEVEL_CRITICAL
+                            )
                         else:
                             if cur_client is None:
-                                self.log("cur_client is None (command: %s)" % (cur_com), logging_tools.LOG_LEVEL_WARN)
+                                self.log("cur_client is None (command: {})".format(cur_com), logging_tools.LOG_LEVEL_WARN)
                             else:
                                 cur_client.new_command(srv_com)
         else:
-            self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "wrong number of data chunks ({:d} != 2), data is '{}'".format(len(data), data[:20]),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _handle_wfe_command(self, zmq_sock, c_uid, srv_com):
         cur_com = srv_com["command"].text
         self.__run_idx += 1
-        srv_com["command"].attrib["run_idx"] = "%d" % (self.__run_idx)
+        srv_com["command"].attrib["run_idx"] = "{:d}".format(self.__run_idx)
         srv_com["command"].attrib["uuid"] = c_uid
         self.__pending_commands[self.__run_idx] = srv_com
         # get device names
         device_list = device.objects.select_related("domain_tree_node").filter(Q(pk__in=[cur_dev.attrib["pk"] for cur_dev in srv_com["devices:devices"]]))
-        self.log("got command %s for %s: %s" % (
-            cur_com,
-            logging_tools.get_plural("device", len(device_list)),
-            ", ".join([unicode(cur_dev) for cur_dev in device_list])))
+        self.log(
+            "got command {} for {}: {}".format(
+                cur_com,
+                logging_tools.get_plural("device", len(device_list)),
+                ", ".join([unicode(cur_dev) for cur_dev in device_list])
+            )
+        )
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device_list])
         # set device state
         for cur_dev in srv_com["devices:devices"]:
@@ -258,24 +265,29 @@ class server_process(threading_tools.process_pool):
         cur_com = server_command.srv_command(command="build_config")
         cur_com["devices"] = cur_com.builder(
             "devices",
-            cur_com.builder("device", pk="%d" % (s_req.cc.device.pk))
+            cur_com.builder("device", pk="{:d}".format(s_req.cc.device.pk))
         )
         cur_com["command"].attrib["source"] = "config_control"
         self._handle_wfe_command(None, str(queue_id), cur_com)
 
     def _handle_command(self, run_idx):
         cur_com = self.__pending_commands[run_idx]
+        num_devs = 0
         for cur_dev in cur_com["devices:devices"]:
+            num_devs += 1
             if cur_dev.attrib["internal_state"] == "pre_init":
                 cur_dev.attrib["internal_state"] = "generate_config"
                 self.send_to_process(
                     "build",
                     cur_dev.attrib["internal_state"],
                     dict(cur_dev.attrib),
-                    )
+                )
         num_pending = len(cur_com.xpath(".//ns:device[not(@internal_state='done')]", smart_strings=False))
         if not num_pending:
             self.log("nothing pending, sending return")
+            cur_com.set_result(
+                "built config for {}".format(logging_tools.get_plural("device", num_devs)),
+            )
             self._send_return(cur_com)
             del self.__pending_commands[run_idx]
 
@@ -295,7 +307,7 @@ class server_process(threading_tools.process_pool):
         run_idx = upd_dict.get("run_idx", -1)
         if run_idx in self.__pending_commands:
             cur_com = self.__pending_commands[run_idx]
-            cur_dev = cur_com.xpath(".//ns:device[@name='%s']" % (upd_dict["name"]), smart_strings=False)[0]
+            cur_dev = cur_com.xpath(".//ns:device[@name='{}']".format(upd_dict["name"]), smart_strings=False)[0]
             for key, value in upd_dict.iteritems():
                 if key.endswith("_dict"):
                     new_dict = E.info_dict()
@@ -326,8 +338,10 @@ class server_process(threading_tools.process_pool):
                         cur_dev.attrib[key] = value
             self._handle_command(run_idx)
         else:
-            self.log("got client_update with unknown run_idx %d" % (upd_dict["run_idx"]),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "got client_update with unknown run_idx {:d}".format(upd_dict["run_idx"]),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _complex_result(self, src_proc, src_id, queue_id, result, **kwargs):
         config_control.complex_result(queue_id, result)

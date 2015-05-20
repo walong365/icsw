@@ -1,0 +1,33 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Project-Id-Version: \n"
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:52
+msgid "elements selected"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:40
+msgid "no entries to show"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:46
+msgid "per page"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:49
+msgid "selected entries"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:43
+msgid "show"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:32
+msgid "showing entries"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/table.html:35
+msgid "to"
+msgstr ""

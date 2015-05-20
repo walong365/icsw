@@ -66,7 +66,7 @@ ics_app = angular.module(
         "icsw.user",
         "icsw.user.password",
         "icsw.user.dashboard",
-        "icsw.user.settings",
+        "icsw.user.license",
         "icsw.rrd.graph",
         "icsw.info.background",
         "icsw.server.info",
@@ -114,12 +114,8 @@ ics_app = angular.module(
     blockUIConfig.autoBlock = false
     blockUIConfig.autoInjectBodyBlock = false
 ]).constant("ICSW_URLS", {
-    {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
-    "MENU_GFX_URL": "{% static gfx_name %}"
-    {% endwith %}
-    {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
-    "MENU_GFX_BIG_URL": "{% static gfx_name %}"
-    {% endwith %}
+    {% load static %} # this is needed for get_static_prefix below
+    "STATIC_URL": "{% get_static_prefix %}"
     "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}"
     "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"
@@ -160,6 +156,10 @@ ics_app = angular.module(
     "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
     "DEVICE_VARIABLES": "{% url 'device:variables' %}"
     "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
+    "ICSW_LIC_GET_ALL_LICENSES": "{% url 'icsw_lic:get_all_licenses' %}"
+    "ICSW_LIC_GET_LICENSE_PACKAGES": "{% url 'icsw_lic:get_license_packages' %}"
+    "ICSW_LIC_GET_LICENSE_VIOLATIONS": "{% url 'icsw_lic:GetLicenseViolations' %}"
+    "ICSW_LIC_GET_VALID_LICENSES": "{% url 'icsw_lic:GetValidLicenses' %}"
     "INFO_PAGE": "{% url 'main:info_page' %}"
     "LIC_GET_LICENSE_OVERVIEW_STEPS": "{% url 'lic:get_license_overview_steps' %}"
     "LIC_LICENSE_DEVICE_COARSE_LIST": "{% url 'lic:license_device_coarse_list' %}"
@@ -216,8 +216,6 @@ ics_app = angular.module(
     "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
     "REST_CD_CONNECTION_DETAIL": "{% url 'rest:cd_connection_detail' 1 %}"
     "REST_CD_CONNECTION_LIST": "{% url 'rest:cd_connection_list' %}"
-    "REST_CLUSTER_LICENSE_DETAIL": "{% url 'rest:cluster_license_detail' 1 %}"
-    "REST_CLUSTER_LICENSE_LIST": "{% url 'rest:cluster_license_list' %}"
     "REST_CONFIG_BLOB_DETAIL": "{% url 'rest:config_blob_detail' 1 %}"
     "REST_CONFIG_BOOL_DETAIL": "{% url 'rest:config_bool_detail' 1 %}"
     "REST_CONFIG_BOOL_LIST": "{% url 'rest:config_bool_list'%}"
@@ -352,10 +350,14 @@ ics_app = angular.module(
     "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"
     "USER_CLEAR_HOME_DIR_CREATED": "{% url 'user:clear_home_dir_created' %}"
     "USER_GET_DEVICE_IP": "{% url 'user:get_device_ip' %}"
-    "USER_GLOBAL_SETTINGS": "{% url 'user:global_settings' %}"
+    "USER_GET_GLOBAL_PERMISSIONS": "{% url 'user:GetGlobalPermissions' %}"
+    "USER_GET_INIT_PRODUCT": "{% url 'user:GetInitProduct' %}"
+    "USER_GET_OBJECT_PERMISSIONS": "{% url 'user:GetObjectPermissions' %}"
+    "USER_GLOBAL_LICENSE": "{% url 'user:global_license' %}"
     "USER_OVERVIEW": "{% url 'user:overview' %}"
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
     "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
+    "USER_UPLOAD_LICENSE_FILE": "{% url 'user:upload_license_file' %}"
     {% for name, url in ADDITIONAL_URLS %}
     "{{ name }}": "{{ url }}"
     {% endfor %}

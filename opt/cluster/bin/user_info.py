@@ -260,7 +260,7 @@ def main():
     if not os.path.isfile(ds_file_name):
         print("No directory server specified in '%s', please contact your admin" % (ds_file_name))
         sys.exit(1)
-    print("functionality not ready, please contact lang-nevyjel@init.at")
+    print("functionality not ready, please send a short note to cluster@init.at")
     sys.exit(0)
 #         else:
 #             print "Change password"

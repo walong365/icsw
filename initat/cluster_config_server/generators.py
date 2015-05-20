@@ -19,25 +19,25 @@
 #
 """ cluster-config-server, config generators """
 
-from django.db.models import Q
-from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.config_static import GATEWAY_THRESHOLD
-from initat.cluster_config_server.partition_setup import partition_setup
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
 import base64
 import commands
-from initat.tools import logging_tools
-import networkx
 import os
 import re
 import tempfile
 
+from django.db.models import Q
+from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
+from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
+from initat.cluster_config_server.partition_setup import partition_setup
+from lxml.builder import E  # @UnresolvedImport
+from initat.tools import logging_tools
+import networkx
+
 
 def do_uuid(conf):
     conf_dict = conf.conf_dict
-    uuid_str = "urn:uuid:%s" % (conf_dict["device"].uuid)
+    uuid_str = "urn:uuid:{}".format(conf_dict["device"].uuid)
     cdf_file = conf.add_file_object("/etc/sysconfig/cluster/.cluster_device_uuid")
     cdf_file.append(uuid_str)
     hm_uuid = conf.add_file_object("/etc/sysconfig/host-monitoring.d/0mq_id")
@@ -79,7 +79,7 @@ def do_nets(conf):
             cur_ip = lu_table[net_idx]
             cur_nd = cur_ip.netdevice
             auto_if.append(cur_nd.devname)
-        glob_nf += "auto %s" % (" ".join(auto_if))
+        glob_nf += "auto {}".format(" ".join(auto_if))
         # get default gw
         _gw_source, def_ip, boot_dev, _boot_mac = get_default_gw(conf)
     for net_idx in write_order_list:
@@ -92,15 +92,18 @@ def do_nets(conf):
         if cur_nd.pk == conf_dict["device"].bootnetdevice_id:
             if sys_dict["vendor"] == "suse":
                 new_co = conf.add_file_object("/etc/HOSTNAME")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+                new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             elif sys_dict["vendor"] == "debian":
                 new_co = conf.add_file_object("/etc/hostname")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+                new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+            elif sys_dict["vendor"] in ["centos", "redhat"]:
+                new_co = conf.add_file_object("/etc/hostname")
+                new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             else:
                 new_co = conf.add_file_object("/etc/sysconfig/network", append=True)
-                new_co += "HOSTNAME=%s" % (conf_dict["host"])
+                new_co += "HOSTNAME={}".format(conf_dict["host"])
                 new_co += "NETWORKING=yes"
-        log_str = "netdevice %10s (mac %s)" % (cur_nd.devname, cur_nd.macaddr)
+        log_str = "netdevice {:<10s} (mac {})".format(cur_nd.devname, cur_nd.macaddr)
         if sys_dict["vendor"] == "suse":
             # suse-mode
             if ((sys_dict["version"] >= 9 and sys_dict["release"] > 0) or sys_dict["version"] > 9):
@@ -108,7 +111,7 @@ def do_nets(conf):
                 if any([cur_nd.devname.startswith(cur_pf) for cur_pf in ["eth", "myri", "ib"]]):
                     mn = re.match("^(?P<devname>.+):(?P<virtual>\d+)$", cur_nd.devname)
                     if mn:
-                        log_str += ", virtual of %s" % (mn.group("devname"))
+                        log_str += ", virtual of {}".format(mn.group("devname"))
                         append_dict.setdefault(mn.group("devname"), {})
                         append_dict[mn.group("devname")][mn.group("virtual")] = {
                             "BROADCAST": cur_net.broadcast,
@@ -126,17 +129,20 @@ def do_nets(conf):
                             ):
                                 # openSUSE 10.3, >= 11.0
                                 if cur_nd.vlan_id:
-                                    act_filename = "ifcfg-vlan%d" % (cur_nd.vlan_id)
+                                    act_filename = "ifcfg-vlan{:d}".format(cur_nd.vlan_id)
                                 else:
-                                    act_filename = "ifcfg-%s" % (cur_nd.devname)
+                                    act_filename = "ifcfg-{}".format(cur_nd.devname)
                             else:
-                                act_filename = "ifcfg-eth-id-%s" % (cur_nd.macaddr)
+                                act_filename = "ifcfg-eth-id-{}".format(cur_nd.macaddr)
                                 if global_config["ADD_NETDEVICE_LINKS"]:
-                                    conf.add_link_object("/etc/sysconfig/network/%s" % (act_filename), "/etc/sysconfig/network/ifcfg-%s" % (cur_nd.devname))
+                                    conf.add_link_object(
+                                        "/etc/sysconfig/network/%s" % (act_filename),
+                                        "/etc/sysconfig/network/ifcfg-%s" % (cur_nd.devname)
+                                    )
                         else:
                             log_str += ", ignoring (zero macaddress)"
                 else:
-                    act_filename = "ifcfg-%s" % (cur_nd.devname)
+                    act_filename = "ifcfg-{}".format(cur_nd.devname)
                 if act_filename:
                     act_file = {
                         "BOOTPROTO": "static",
@@ -149,16 +155,16 @@ def do_nets(conf):
                     if cur_nd.vlan_id:
                         if cur_nd.master_device:
                             act_file["ETHERDEVICE"] = cur_nd.master_device.devname
-                            act_file["VLAN_ID"] = "%d" % (cur_nd.vlan_id)
+                            act_file["VLAN_ID"] = "{:d}".format(cur_nd.vlan_id)
                         else:
-                            print "VLAN ID set but no master_device, skipping %s" % (cur_nd.devname)
+                            print "VLAN ID set but no master_device, skipping {}".format(cur_nd.devname)
                             act_filename = None
                     if not cur_nd.fake_macaddr:
                         pass
                     elif int(cur_nd.fake_macaddr.replace(":", ""), 16) != 0:
                         log_str += ", with fake_macaddr"
                         act_file["LLADDR"] = cur_nd.fake_macaddr
-                        conf.add_link_object("/etc/sysconfig/network/ifcfg-eth-id-%s" % (cur_nd.fake_macaddr), act_filename)
+                        conf.add_link_object("/etc/sysconfig/network/ifcfg-eth-id-{}".format(cur_nd.fake_macaddr), act_filename)
                     if act_filename:
                         new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
                         new_co += act_file
@@ -174,7 +180,7 @@ def do_nets(conf):
                     "STARTMODE": "onboot",
                     "WIRELESS": "no"
                 }
-                new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
+                new_co = conf.add_file_object("/etc/sysconfig/network/{}".format(act_filename))
                 new_co += act_file
         elif sys_dict["vendor"] == "debian":
             glob_nf += ""
@@ -194,11 +200,11 @@ def do_nets(conf):
                     glob_nf += "    hwaddress ether %s" % (cur_nd.fake_macaddr)
         else:
             # redhat-mode
-            act_filename = "ifcfg-%s" % (cur_nd.devname)
+            act_filename = "ifcfg-{}".format(cur_nd.devname)
             if cur_nd.devname == "lo":
-                d_file = "/etc/sysconfig/network-scripts/%s" % (act_filename)
+                d_file = "/etc/sysconfig/network-scripts/{}".format(act_filename)
             else:
-                d_file = "/etc/sysconfig/network-scripts/%s" % (act_filename)
+                d_file = "/etc/sysconfig/network-scripts/{}".format(act_filename)
             new_co = conf.add_file_object(d_file)
             new_co += {
                 "BOOTPROTO": "static",
@@ -210,8 +216,9 @@ def do_nets(conf):
                 "ONBOOT": "yes",
                 "USERCTL": "no",
                 "PEERDNS": "no",
-                "TYPE": "Ethernet",
+                "TYPE": "Infiniband" if cur_nd.devname.startswith("ib") else "Ethernet",
                 "IPV6INIT": "no",
+                "NAME": cur_nd.devname,
             }
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
                 if cur_nd.macaddr.replace(":", "").replace("0", "").strip():
@@ -220,13 +227,13 @@ def do_nets(conf):
     # handle virtual interfaces for Systems above SUSE 9.0
     for orig, virtuals in append_dict.iteritems():
         for virt, stuff in virtuals.iteritems():
-            co = conf.add_file_object("/etc/sysconfig/network/ifcfg-eth-id-%s" % (dev_dict[orig]))
+            co = conf.add_file_object("/etc/sysconfig/network/ifcfg-eth-id-{}".format(dev_dict[orig]))
             co += {
-                "BROADCAST_%s" % (virt): stuff["BROADCAST"],
-                "IPADDR_%s" % (virt): stuff["IPADDR"],
-                "NETMASK_%s" % (virt): stuff["NETMASK"],
-                "NETWORK_%s" % (virt): stuff["NETWORK"],
-                "LABEL_%s" % (virt): virt
+                "BROADCAST_{}".format(virt): stuff["BROADCAST"],
+                "IPADDR_{}".format(virt): stuff["IPADDR"],
+                "NETMASK_{}".format(virt): stuff["NETMASK"],
+                "NETWORK_{}".format(virt): stuff["NETWORK"],
+                "LABEL_{}".format(virt): virt
             }
 
 
@@ -308,7 +315,7 @@ def do_routes(conf):
         gw_source, def_ip, boot_dev, boot_mac = get_default_gw(conf)
         if def_ip:
             if sys_dict["vendor"] == "suse":
-                new_co += "# from %s" % (gw_source)
+                new_co += "# from {}".format(gw_source)
                 if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10):
                     # openSUSE 10.3
                     new_co += "default %s - %s" % (def_ip, boot_dev)
@@ -317,8 +324,8 @@ def do_routes(conf):
             elif sys_dict["vendor"] == "redhat" or sys_dict["vendor"].lower().startswith("centos"):
                 # redhat-mode
                 act_co = conf.add_file_object("/etc/sysconfig/network", append=True)
-                act_co += "# from %s" % (gw_source)
-                act_co += "GATEWAY=%s" % (def_ip)
+                act_co += "# from {}".format(gw_source)
+                act_co += "GATEWAY={}".format(def_ip)
 
 
 def do_ssh(conf):
@@ -336,9 +343,12 @@ def do_ssh(conf):
             pass
         else:
             found_keys_dict[cur_var.name] = cur_val
-    print "found %s in database: %s" % (
-        logging_tools.get_plural("key", len(found_keys_dict.keys())),
-        ", ".join(sorted(found_keys_dict.keys())))
+    print(
+        "found {} in database: {}".format(
+            logging_tools.get_plural("key", len(found_keys_dict.keys())),
+            ", ".join(sorted(found_keys_dict.keys()))
+        )
+    )
     new_keys = []
     for ssh_type, key_size in ssh_types:
         privfn = "ssh_host_%s_key" % (ssh_type)

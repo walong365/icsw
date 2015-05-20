@@ -27,6 +27,8 @@ import itertools
 
 from django.db import models
 from django.db.models import Max, Min, Prefetch, Q
+from initat.cluster.backbone.available_licenses import LicenseParameterTypeEnum
+from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage
 from initat.cluster.backbone.models import mon_check_command
 
 
@@ -387,9 +389,10 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             data_merged_state_types.append({'state': undetermined_state, 'value': 1})
         return data_merged_state_types
 
-    def get_data(self, devices, timespans, merge_services=False, use_client_name=True):
+    def get_data(self, devices, timespans, license, merge_services=False, use_client_name=True):
         """
         :param devices: either [device_pk] (meaning all services of these) or {device_pk: (service_pk, service_info)}
+        :param license: which license to use for this query
         :param use_client_name: whether to refer to services the way the cs code does or as (serv_pk, serv_info)
         """
         if use_client_name:
@@ -419,26 +422,34 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             queryset = mon_icinga_log_aggregated_service_data.objects.filter(query_filter & Q(timespan__in=timespans))
 
             data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
+            used_device_services = {device_id: set() for device_id in device_ids}
             # can't do regular prefetch_related for queryset, this seems to work
             device_service_timespans = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
             for entry in queryset.prefetch_related(Prefetch("service")):
 
-                relevant_data_from_entry = {
-                    'state': trans[entry.state],
-                    'state_type': entry.state_type,
-                    'value': entry.value
-                }
+                if not LicenseLockListDeviceService.objects.is_device_service_locked(
+                    license, entry.device_id, entry.service.pk
+                ):
 
-                if use_client_name:
-                    service_key = mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
-                else:
-                    service_key = (entry.service_id, entry.service_info)
+                    used_device_services[entry.device_id].append(entry.service.pk)
 
-                device_service_timespans[entry.device_id][service_key].add(entry.timespan)
+                    relevant_data_from_entry = {
+                        'state': trans[entry.state],
+                        'state_type': entry.state_type,
+                        'value': entry.value
+                    }
 
-                # there can be more than one entry for each state and state type per service
-                # if there are multiple timespans
-                data_per_device[entry.device_id][service_key].append(relevant_data_from_entry)
+                    if use_client_name:
+                        service_key =\
+                            mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
+                    else:
+                        service_key = (entry.service_id, entry.service_info)
+
+                    device_service_timespans[entry.device_id][service_key].add(entry.timespan)
+
+                    # there can be more than one entry for each state and state type per service
+                    # if there are multiple timespans
+                    data_per_device[entry.device_id][service_key].append(relevant_data_from_entry)
 
             if len(timespans) > 1:
                 # now for each service, we should have len(timespans) entries.
@@ -453,7 +464,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                                 'value': 1 * num_missing,  # this works since we normalize afterwards
                             })
 
-            return data_per_device
+            return data_per_device, used_device_services
 
         def merge_all_services_of_devices(data_per_device):
             return_data = {}
@@ -481,12 +492,14 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
 
             return return_data
 
-        data_per_device = get_data_per_device(devices, timespans)
+        data_per_device, used_device_services = get_data_per_device(devices, timespans)
 
         # this mode is for an overview of the services of a device without saying anything about a particular service
         if merge_services:
+            LicenseUsage.log_usage(license, LicenseParameterTypeEnum.device, data_per_device.iterkeys())
             return merge_all_services_of_devices(data_per_device)
         else:
+            LicenseUsage.log_usage(license, LicenseParameterTypeEnum.service, used_device_services)
             return merge_service_state_types_per_device(data_per_device)
 
 

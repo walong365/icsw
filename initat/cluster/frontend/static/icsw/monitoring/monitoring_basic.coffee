@@ -19,12 +19,28 @@
 #
 
 monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button"])
+        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+         "icsw.tools.table", "icsw.tools.button"])
 
 monitoring_basic_module.directive("icswMonitoringBasic", () ->
     return {
         restrict:"EA"
         templateUrl: "icsw.monitoring.basic"
+    }
+).service('icswMonitoringUtilService', () ->
+    return {
+        get_data_incomplete_error: (data, tables) ->
+            missing = []
+            for table_data in tables
+                [model_name, human_name] = table_data
+                if not data[model_name].length
+                    missing.push(human_name)
+
+            ret = ""
+            if missing.length
+                missing_str = ("a #{n}" for n in missing).join(" and ")
+                ret = "Please add #{missing_str}"
+            return ret
     }
 ).service('icswMonitoringBasicRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     get_rest = (url) -> return Restangular.all(url).getList().$object
@@ -39,13 +55,6 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         mon_device_templ   : get_rest(ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST.slice(1))
         mon_contactgroup   : get_rest(ICSW_URLS.REST_MON_CONTACTGROUP_LIST.slice(1))
     }
-    _rest_data_present = (tables) ->
-        ok = true
-        for table in tables
-            if not data[table].length
-                ok = false
-        return ok
-    data['_rest_data_present'] = _rest_data_present
     return data
 ]).service('icswMonitoringBasicService', ["ICSW_URLS", "icswMonitoringBasicRestService", (ICSW_URLS, icswMonitoringBasicRestService) ->
     get_use_count =  (obj) ->
@@ -73,30 +82,31 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         new_object          : {"name" : "", "channel" : "mail", "not_type" : "service"}
         object_created      : (new_obj) -> new_obj.name = ""
     }
-]).service('icswMonitoringContactService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringContactService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", "icswMonitoringUtilService", (ICSW_URLS, Restangular, icswMonitoringRestService, icswMonitoringUtilService) ->
     ret = {
-           rest_handle: icswMonitoringRestService.mon_contact
-           edit_template: "mon.contact.form"
-           delete_confirm_str: (obj) ->
-               return "Really delete monitoring contact '#{obj.user}' ?"
-           new_object: () ->
-               return {
-               "user": (entry.idx for entry in icswMonitoringRestService.user)[0]
-               "snperiod": (entry.idx for entry in icswMonitoringRestService.mon_period)[0]
-               "hnperiod": (entry.idx for entry in icswMonitoringRestService.mon_period)[0]
-               "snrecovery": true
-               "sncritical": true
-               "hnrecovery": true
-               "hndown": true
-               }
-           object_created: (new_obj) -> new_obj.user = null
-           rest_data_present: () ->
-               return icswMonitoringRestService._rest_data_present(["mon_period", "user"])
+        rest_handle: icswMonitoringRestService.mon_contact
+        edit_template: "mon.contact.form"
+        delete_confirm_str: (obj) ->
+            return "Really delete monitoring contact '#{obj.user}' ?"
+        new_object: () ->
+            return {
+            "user": (entry.idx for entry in icswMonitoringRestService.user)[0]
+            "snperiod": (entry.idx for entry in icswMonitoringRestService.mon_period)[0]
+            "hnperiod": (entry.idx for entry in icswMonitoringRestService.mon_period)[0]
+            "snrecovery": true
+            "sncritical": true
+            "hnrecovery": true
+            "hndown": true
+            }
+        object_created: (new_obj) -> new_obj.user = null
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringRestService,
+                [["mon_period", "period"], ["user", "user"]])
     }
     for k, v of icswMonitoringRestService  # shallow copy!
         ret[k] = v
     return ret
-]).service('icswMonitoringServiceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringServiceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", "icswMonitoringUtilService", (ICSW_URLS, Restangular, icswMonitoringRestService, icswMonitoringUtilService) ->
     return {
         rest_handle         : icswMonitoringRestService.mon_service_templ
         edit_template       : "mon.service.templ.form"
@@ -118,10 +128,11 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
             }
         object_created    : (new_obj) -> new_obj.name = null
         mon_period        : icswMonitoringRestService.mon_period
-        rest_data_present : () ->
-            return icswMonitoringRestService._rest_data_present(["mon_period"])
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringRestService,
+                [["mon_period", "period"]])
     }
-]).service('icswMonitoringDeviceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringDeviceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", "icswMonitoringUtilService", (ICSW_URLS, Restangular, icswMonitoringRestService, icswMonitoringUtilService) ->
     ret = {
         rest_handle         : icswMonitoringRestService.mon_device_templ
         edit_template       : "mon.device.templ.form"
@@ -145,8 +156,9 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
                 "freshness_threshold" : 60
             }
         object_created  : (new_obj) -> new_obj.name = null
-        rest_data_present : () ->
-            return icswMonitoringRestService._rest_data_present(["mon_period", "mon_service_templ", "host_check_command"])
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringRestService,
+                [["mon_period", "period"], ["mon_service_templ", "service template"], ["host_check_command", "host check command"]])
     }
     for k, v of icswMonitoringRestService  # shallow copy!
         ret[k] = v

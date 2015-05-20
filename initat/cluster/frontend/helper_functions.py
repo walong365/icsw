@@ -22,16 +22,13 @@
 
 """ helper functions for the init.at clustersoftware """
 
-from django.conf import settings
+from lxml import etree  # @UnresolvedImports
+
 from django.http import HttpResponse
 from initat.cluster.backbone import routing
-from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
-import email.mime
 from initat.tools import logging_tools
 from initat.tools import net_tools
-from initat.tools import process_tools
-import smtplib
 
 
 class xml_response(object):
@@ -216,34 +213,6 @@ class xml_wrapper(object):
             return ret_value
 
 
-def send_emergency_mail(**kwargs):
-    """
-    sends an emergency email to init-company
-
-    :param kwargs: arbitrary optional arguments
-    :type kwargs: dict
-    """
-    # mainly used for windows
-    exc_info = process_tools.exception_info()
-    msg_lines = kwargs.get("log_lines", exc_info.log_lines)
-    request = kwargs.get("request", None)
-    if request:
-        msg_lines.extend([
-            "",
-            "djangouser : {}".format(unicode(request.user)),
-            "PATH_INFO  : {}".format(request.META.get("PATH_INFO", "nor found")),
-            "USER_AGENT : {}".format(request.META.get("HTTP_USER_AGENT", "not found"))])
-    header_cs = "utf-8"
-    mesg = email.mime.text.MIMEText("\n".join(msg_lines), _charset=header_cs)  # @UndefinedVariable
-    mesg["Subject"] = "Python error"
-    mesg["From"] = "python-error@init.at"
-    mesg["To"] = "oekotex@init.at"
-    srv = smtplib.SMTP()
-    srv.connect(settings.MAIL_SERVER, 25)
-    srv.sendmail(mesg["From"], mesg["To"].split(","), mesg.as_string())
-    srv.close()
-
-
 def update_session_object(request):
     # update request.session_object with user_vars
     if request.session and request.user is not None:
@@ -304,6 +273,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
             log_result = kwargs.get("log_result", True)
             log_error = kwargs.get("log_error", True)
             cur_router.start_result_feed()
+            # merge results
             [
                 cur_router.feed_result(
                     send_com,

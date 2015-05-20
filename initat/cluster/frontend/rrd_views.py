@@ -22,6 +22,10 @@
 
 """ RRD views """
 
+import datetime
+import json
+import logging
+
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
@@ -31,11 +35,8 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImports
-import datetime
 import dateutil.parser
 import dateutil.tz
-import json
-import logging
 from initat.tools import logging_tools
 from initat.tools import server_command
 
@@ -103,6 +104,7 @@ class graph_rrds(View):
         )
         if int(self._parse_post_boolean(_post, "cds_already_merged", "0")):
             # FIXME
+            devs = device.all_real_enabled.filter(Q(pk__in=pk_list))
             cd_pks = list(
                 device.all_real_enabled.filter(
                     (

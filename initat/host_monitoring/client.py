@@ -22,12 +22,14 @@
 
 """ host-monitoring, with 0MQ and twisted support """
 
-from initat.host_monitoring import limits
-from initat.host_monitoring.struct import ExtReturn
 import difflib
-from initat.tools import net_tools
 import os
+
+from initat.host_monitoring.struct import ExtReturn
+from initat.tools import net_tools
 from initat.tools import server_command
+
+from initat.host_monitoring import limits
 
 
 def client_code(global_config):

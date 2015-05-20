@@ -35,25 +35,18 @@ class write_dhcpd_config(cs_base_class.server_com):
     def _call(self, cur_inst):
         my_c = config_tools.server_check(server_type="mother_server")
         boot_ips = my_c.identifier_ip_lut.get("b", [])
-        if len(boot_ips) > 1:
-            cur_inst.srv_com.set_result(
-                "error more than one boot-net found for '{}".format(global_config["SERVER_SHORT_NAME"]),
-                server_command.SRV_REPLY_STATE_ERROR
-            )
-        elif not boot_ips:
+        if not boot_ips:
             cur_inst.srv_com.set_result(
                 "error no boot-net found for '{}'".forat(global_config["SERVER_SHORT_NAME"]),
                 server_command.SRV_REPLY_STATE_ERROR
             )
         else:
-            boot_ip = boot_ips[0]
-            boot_net = boot_ip.network
             add_nets = list(
                 [
                     (
                         cur_net.network_type.identifier, cur_net
                     ) for cur_net in network.objects.exclude(
-                        pk=boot_net.pk
+                        pk__in=[boot_ip.network.pk for boot_ip in boot_ips]
                     ).filter(
                         Q(net_ip__netdevice__device=my_c.effective_device) &
                         Q(network_type__identifier__in=["s", "p", "o"])
@@ -66,7 +59,14 @@ class write_dhcpd_config(cs_base_class.server_com):
                 "omapi-port 7911;",
                 "ddns-domainname \"{}\";".format(global_config["SERVER_SHORT_NAME"]),
                 "allow booting;\nallow bootp;",
-                ""
+                "",
+                "option space PXE;",
+                "option PXE.mtftp-ip    code 1 = ip-address;",
+                "option PXE.mtftp-cport code 2 = unsigned integer 16;",
+                "option PXE.mtftp-tmout code 4 = unsigned integer 8;",
+                "option PXE.mtftp-delay code 5 = unsigned integer 8;",
+                "option arch code 93 = unsigned integer 16;",
+                "",
             ]
             if cur_inst.srv_com["server_key:authoritative"].text.lower() in ["1", "true", "yes"]:
                 dhcpd_c.extend([
@@ -77,7 +77,7 @@ class write_dhcpd_config(cs_base_class.server_com):
             gw_pri, gateway = (-10000, "0.0.0.0")
             cur_dc = config_tools.device_with_config("%server%")
             found_dict = {}
-            for act_net in [boot_net] + add_nets:
+            for act_net in [boot_ip.network for boot_ip in boot_ips] + add_nets:
                 if act_net.gw_pri > gw_pri:
                     gw_pri, gateway = (act_net.gw_pri, act_net.gateway)
                 for key, configs, _add_dict in [
@@ -93,26 +93,36 @@ class write_dhcpd_config(cs_base_class.server_com):
                                 match_list = [cur_ip for cur_ip in cur_srv.ip_list if cur_ip.network.pk == act_net.pk]
                                 if match_list:
                                     found_dict.setdefault(act_net.pk, {}).setdefault(key, []).append((cur_srv.device, match_list))
-            dhcpd_c.extend([
-                "shared-network {} {".format(global_config["SERVER_SHORT_NAME"]),
-                "    option routers {};".format(gateway)
-                ])
-            for act_net in [boot_net] + add_nets:
+            dhcpd_c.extend(
+                [
+                    "shared-network {} {{".format(global_config["SERVER_SHORT_NAME"]),
+                    # do not write routers (gateway may be invalid)
+                    # "    option routers {};".format(gateway)
+                ]
+            )
+            for act_net in [boot_ip.network for boot_ip in boot_ips] + add_nets:
                 comment_sign = "" if act_net.network_type.identifier == "b" else "#"
-                dhcpd_c.extend([
-                    "",
-                    "    # network {} (identifier {})".format(unicode(act_net), act_net.network_type.identifier),
-                    "",
-                    "    {}subnet {} netmask {} {{".format(
-                        comment_sign,
-                        act_net.network,
-                        act_net.netmask)
-                ])
+                dhcpd_c.extend(
+                    [
+                        "",
+                        "    # network {} (identifier {})".format(unicode(act_net), act_net.network_type.identifier),
+                        "",
+                        "    {}subnet {} netmask {} {{".format(
+                            comment_sign,
+                            act_net.network,
+                            act_net.netmask)
+                    ]
+                )
                 if act_net.network_type.identifier == "b":
                     dhcpd_c.append("        {}authoritative;".format(comment_sign))
-                dhcpd_c.append("    {}    next-server {};".format(
-                    comment_sign,
-                    my_c.identifier_ip_lut[act_net.network_type.identifier][0].ip))
+                # check for ip in actual net
+                _srv_ip = [_entry for _entry in my_c.identifier_ip_lut[act_net.network_type.identifier] if _entry.network_id == act_net.pk][0]
+                dhcpd_c.append(
+                    "    {}    next-server {};".format(
+                        comment_sign,
+                        _srv_ip.ip
+                    )
+                )
                 local_found_dict = found_dict.get(act_net.pk, {})
                 for key in ["domain-name-servers", "ntp-servers", "nis-servers"]:
                     if key in local_found_dict:
@@ -123,17 +133,21 @@ class write_dhcpd_config(cs_base_class.server_com):
                                 ", ".join(["{}".format(cur_dev.name) for cur_dev, _ip_list in local_found_dict[key]])
                             )
                         )
-                dhcpd_c.extend([
-                    "    {}    server-identifier {};".format(
-                        comment_sign,
-                        my_c.identifier_ip_lut[act_net.network_type.identifier][0].ip),
-                    "    {}    option domain-name \"{}\";".format(
-                        comment_sign,
-                        act_net.name),
-                    "    {}}}".format(
-                        comment_sign
+                dhcpd_c.extend(
+                    [
+                        "    {}    server-identifier {};".format(
+                            comment_sign,
+                            _srv_ip.ip
+                        ),
+                        "    {}    option domain-name \"{}\";".format(
+                            comment_sign,
+                            act_net.name
+                        ),
+                        "    {}}}".format(
+                            comment_sign
                         )
-                    ])
+                    ]
+                )
             dhcpd_c.extend([
                 "}",
                 "",

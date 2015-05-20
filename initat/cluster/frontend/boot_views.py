@@ -116,7 +116,13 @@ class get_boot_info_json(View):
             "request": request,
             "fields": ["partition_table", "act_partition_table"]
         }
-        request.xml_response["response"] = JSONRenderer().render(device_serializer_boot(dev_result, many=True, context=ctx).data)
+        request.xml_response["response"] = JSONRenderer().render(
+            device_serializer_boot(
+                dev_result,
+                many=True,
+                context=ctx
+            ).data
+        )
 
 
 class update_device(APIView):
