@@ -404,6 +404,7 @@ tree_module = angular.module(
                 treeconfig : "="
                 # true: only one nesting level (device group tree)
                 single     : "="
+                maxWidth     : "&"
             }
             replace : true
             compile: (tElement, tAttr) ->

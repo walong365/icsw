@@ -106,6 +106,7 @@ and every even row contains a collapsible row which is hidden by default */
     background-color: #f9f9f9;
 }
 
+/* always stripe 2 at a time */
 .icsw-table-striped-2-by-2 > tbody > tr:nth-child(4n+0) {
     background-color: #f9f9f9;
 }

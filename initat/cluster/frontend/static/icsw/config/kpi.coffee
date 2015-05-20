@@ -337,6 +337,9 @@ angular.module(
             sel_cat = JSON.parse(kpi.gui_selected_categories)
             kpi.available_device_categories = sel_cat.dev_cat
             kpi.available_monitoring_categories = sel_cat.mon_cat
+        else
+            kpi.available_device_categories = []
+            kpi.available_monitoring_categories = []
 
         kpi.selected_device_monitoring_category_tuple = []
         for entry in _.filter(icswConfigKpiDataService.kpi_data_source_tuple, (elem) -> return elem.kpi == kpi.idx)
