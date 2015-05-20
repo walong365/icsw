@@ -71,7 +71,7 @@ class get_all_licenses(ListAPIView):
 
 
 class get_license_packages(ListAPIView):
-    @method_decorator(login_required_rest(lambda: []))
+    # no login required for this since we want to show it in the login page
     @rest_logging
     def list(self, request, *args, **kwargs):
         return Response(License.objects.get_license_packages())
