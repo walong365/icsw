@@ -47,7 +47,6 @@ class KpiProcess(threading_tools.process_obj):
         connection.close()
 
         self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
-        # self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -119,46 +118,3 @@ class KpiProcess(threading_tools.process_obj):
 
                 kpi_db.set_result(result_str, django.utils.timezone.now())
 
-                """
-
-                class MyNV(ast.NodeVisitor):
-                    def visit_BinOp(self, node):
-                        self.generic_visit(node)
-                        self.show_node(node)
-
-                    def visit_Name(self, node):
-                        self.generic_visit(node)
-                        self.show_node(node)
-
-                    def visit_Call(self, node):
-                        self.generic_visit(node)
-                        self.show_node(node)
-
-                    def show_node(self, node):
-                        import codegen
-                        # print '\ncall node', node, node.func, node.args, node.kwargs, node.starargs
-                        print '\n node', node, codegen.to_source(node)
-                        res = eval(compile(ast.Expression(node), '<string>', mode='eval'), eval_globals)
-                        print 'eval:', res
-
-                print 'gonna eval: '
-                print "\"" * 3
-                print kpi_db.formula
-                print "\"" * 3
-            if True:
-                d = {}
-                exec(kpi_db.formula, eval_globals, d)
-                print 'kpi', d
-                print_tree(d['kpi'])
-            else:
-                kpi_ast = ast.parse(kpi_db.formula, mode='exec')
-                print 'before visit'
-                MyNV().visit(kpi_ast)
-                print '\nast dump:', astdump(kpi_ast)
-
-            """
-            """
-            print 'chil'
-            for i in ast.iter_fields(kpi_ast):
-                print i
-            """
