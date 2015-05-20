@@ -24,7 +24,7 @@ dashboard_module = angular.module(
     "icsw.user.dashboard",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
-        "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user",
+        "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user", "icsw.user.license",
     ]
 ).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)->
@@ -159,13 +159,13 @@ dashboard_module = angular.module(
         $scope.show_devices = false
         $scope.NUM_QUOTA_SERVERS = $window.NUM_QUOTA_SERVERS
         $scope.has_menu_permission = access_level_service.has_menu_permission
-]).directive("indexView", ["$templateCache", "access_level_service", ($templateCache, access_level_service) ->
+]).directive("indexView", ["$templateCache", "access_level_service", "icswUserLicenseDataService", ($templateCache, access_level_service, icswUserLicenseDataService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.index")
         link : (scope, element, attrs) ->
             access_level_service.install(scope)
-
+            scope.license_packages = icswUserLicenseDataService.license_packages
     }
 ])
 

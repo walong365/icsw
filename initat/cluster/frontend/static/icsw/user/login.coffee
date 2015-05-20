@@ -20,13 +20,14 @@
 angular.module(
     "icsw.login",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.user.license",
     ]
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", "initProduct"
-    ($scope, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI, initProduct) ->
+).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService"
+    ($scope, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService) ->
         $scope.login_hints = $window.LOGIN_HINTS
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
+        $scope.license_packages = icswUserLicenseDataService.license_packages
         $scope.INIT_PRODUCT_FAMILY = $window.INIT_PRODUCT_FAMILY
         $scope.DJANGO_VERSION = $window.DJANGO_VERSION
         $scope.CLUSTER_NAME = $window.CLUSTER_NAME
