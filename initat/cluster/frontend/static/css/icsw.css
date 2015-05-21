@@ -75,6 +75,10 @@ th.rotate > div > span {
     background: #ffff00 !important;
 }
 
+.CodeMirror pre {
+    padding-left: 35px !important;
+}
+
 circle.fixed {
     fill : #ffaaaa ;
     stroke : #5555ff ;
@@ -125,3 +129,4 @@ ins {
 del {
     color: #a00;
 }
+
