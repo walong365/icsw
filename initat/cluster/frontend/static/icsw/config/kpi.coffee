@@ -288,6 +288,17 @@ angular.module(
             #                child_scope.kpi_set = kpi_set
             #            )
 
+        child_scope.calculate_kpi = () ->
+            icswCallAjaxService
+                url: ICSW_URLS.BASE_CALCULATE_KPI
+                data:
+                    kpi_pk: cur_edit_kpi.idx
+                    formula: cur_edit_kpi.formula
+                dataType: "json"
+                success: (res) ->
+                    console.log 'res', res
+
+
         # parameters as understood by KpiData.parse_kpi_time_range
         child_scope.kpi_time_ranges = [
             {id_str: 'none', display_str: 'Only current data'},

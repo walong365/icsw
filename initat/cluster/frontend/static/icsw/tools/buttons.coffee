@@ -114,7 +114,6 @@ visible-md visible-lg
 
             # attrs:
             # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"
-            # - click: gets executed on click
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
             # - value: Custom text to display in button

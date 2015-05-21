@@ -120,6 +120,7 @@ ics_app = angular.module(
     "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_ADD_DELETE_REQUEST": "{% url 'base:add_delete_request' %}"
+    "BASE_CALCULATE_KPI": "{% url 'base:CalculateKpi' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
     "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"

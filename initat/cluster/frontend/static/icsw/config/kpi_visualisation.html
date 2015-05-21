@@ -1,8 +1,8 @@
 <script type="text/ng-template" id="icsw.config.kpi.evaluation_graph">
-    <div ng-mouseleave="on_mouse_leave_widget()" ng-style="get_div_style()">
+    <div ng-mouseleave="on_mouse_leave_widget()" ng-style="get_div_height_style()">
         <svg ng-attr-width="{{svg_width}}" ng-attr-height="{{svg_height}}" class="kpi-visualisation-svg" style="float: left"></svg>
         <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show"
-                                      ng-attr-style="float:left; width: 480px; height: {{div_height}}px; overflow-y: auto; padding-left: 20px"></icsw-config-kpi-show-kpi-set>
+                                      ng-attr-style="float:left; width: {{div_width}}; height: {{div_height}}px; overflow-y: auto; padding-left: 20px"></icsw-config-kpi-show-kpi-set>
     </div>
 </script>
 
@@ -54,10 +54,10 @@
         </span>
 
         <div class="row">
-            <div class="col-md-2">
+            <div class="col-md-4">
                 <icsw-tools-piechart ng-show="pie_data" diameter="50" data="pie_data"></icsw-tools-piechart>
             </div>
-            <div class="col-md-10">
+            <div class="col-md-8">
                 <table class="table table-condensed table-hover table-striped" ng-show="pie_data_list">
                     <tbody>
                         <tr ng-repeat="state in pie_data_list">

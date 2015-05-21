@@ -31,12 +31,24 @@ angular.module(
             templateUrl: "icsw.config.kpi.evaluation_graph"
             scope:
                 kpiIdx: '&kpiIdx'
+                width: '&width'
             link: (scope, el, attrs) ->
-                scope.svg_width = 700
+
+                update_width = () ->
+                    # 'regular' layout has a width of 1280, scale according to that:
+                    effective_width = scope.width() or 1280
+                    scope.svg_width = effective_width * (700 / 1280)
+                    scope.div_width = effective_width * (480 / 1280)
+
+                update_width()
+
+                scope.$watch(
+                    () -> scope.width()
+                    () -> update_width()
+                )
 
                 node_height = 80
 
-                # scope.height = 600  # set later
 
                 scope.kpi_set_to_show = undefined
 
@@ -237,7 +249,7 @@ angular.module(
                     # when mouse leaves full widget
                     scope.kpi_set_to_show = undefined
 
-                scope.get_div_style = () ->
+                scope.get_div_height_style = () ->
                     return {'height': scope.div_height}
 
                 scope.$watch(

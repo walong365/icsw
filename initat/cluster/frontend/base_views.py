@@ -248,6 +248,19 @@ class GetKpiSet(ListAPIView):
         return HttpResponse(json.dumps(repr_list), content_type="application/json")
 
 
+class CalculateKpi(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def post(self, request):
+        srv_com = server_command.srv_command(command="calculate_kpi")
+        srv_com["kpi_pk"] = request.POST['kpi_pk']
+        srv_com["formula"] = request.POST['formula']
+        print 'contacting server'
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=True)
+        print 'contact serv result', result
+        return HttpResponse(json.dumps(""))
+
+
 class CheckDeleteObject(View):
     """
     This is an advanced delete which handles further actions which might

@@ -22,64 +22,76 @@
 
 <script type="text/ng-template" id="icsw.config.kpi.edit_dialog">
 
-    <tabset>
-        <tab heading="Basic">
-            <accordion close-others="false">
-                <accordion-group heading="Basic properties" is-open="true">
-                    <form class="form-horizontal">
-                        <div class="form-group">
-                            <label class="control-label col-sm-2">Name:</label>
+    <div style="font-size: 12px"> <!-- fix large font size from bootstrap dlg -->
 
-                            <div class="controls col-sm-6">
-                                <input class="form-control" ng-model="cur_edit_kpi.name" type="text"
-                                       placeholder="name"/>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="control-label col-sm-2">Time range:</label>
+        <tabset>
+            <tab heading="Basic">
+                <accordion close-others="false">
+                    <accordion-group heading="Basic properties" is-open="true">
+                        <form class="form-horizontal">
+                            <div class="form-group">
+                                <label class="control-label col-sm-2">Name:</label>
 
-                            <div class="controls col-sm-6">
-                                <ui-select ng-model="cur_edit_kpi.time_range">
-                                    <ui-select-match placeholder="select a time range">{{$select.selected.display_str}}</ui-select-match>
-                                    <ui-select-choices repeat="value.id_str as value in kpi_time_ranges | props_filter:{display_str:$select.search}">
-                                        <div ng-bind-html="value.display_str | highlight: $select.search"></div>
-                                    </ui-select-choices>
-                                </ui-select>
-
-                                <div ng-show="cur_edit_kpi.time_range == 'last_n_days'" class="controls form-inline">
-                                    <div style="margin-top: 10px">
-                                    Last
-                                    <input class="form-control " type="number" ng-model="cur_edit_kpi.time_range_parameter"/>
-                                    days
-                                    </div>
+                                <div class="controls col-sm-6">
+                                    <input class="form-control" ng-model="cur_edit_kpi.name" type="text"
+                                           placeholder="name"/>
                                 </div>
                             </div>
+                            <div class="form-group">
+                                <label class="control-label col-sm-2">Time range:</label>
+
+                                <div class="controls col-sm-6">
+                                    <ui-select ng-model="cur_edit_kpi.time_range">
+                                        <ui-select-match placeholder="select a time range">{{$select.selected.display_str}}</ui-select-match>
+                                        <ui-select-choices repeat="value.id_str as value in kpi_time_ranges | props_filter:{display_str:$select.search}">
+                                            <div ng-bind-html="value.display_str | highlight: $select.search"></div>
+                                        </ui-select-choices>
+                                    </ui-select>
+
+                                    <div ng-show="cur_edit_kpi.time_range == 'last_n_days'" class="controls form-inline">
+                                        <div style="margin-top: 10px">
+                                        Last
+                                        <input class="form-control " type="number" ng-model="cur_edit_kpi.time_range_parameter"/>
+                                        days
+                                        </div>
+                                    </div>
+                                </div>
 
 
-                        </div>
-                        <div class="checkbox">
-                            <label>
-                                <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
-                                Enabled
-                            </label>
-                        </div>
-                    </form>
-                </accordion-group>
-            </accordion>
-        </tab>
-        <tab heading="Data source">
-            <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
+                                    Enabled
+                                </label>
+                            </div>
+                        </form>
+                    </accordion-group>
+                </accordion>
+            </tab>
+            <tab heading="Data source">
+                <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
 
-            <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
-        </tab>
+                <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
+            </tab>
 
-        <tab heading="KPI calculation" select="on_kpi_calculation_selected()">
-            <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
-        </tab>
-    </tabset>
+            <tab heading="KPI calculation" select="on_kpi_calculation_selected()">
 
-    <icsw-tools-button type="create" ng-show="mode == 'create'" ng-click="submit_kpi()"></icsw-tools-button>
-    <icsw-tools-button type="modify" ng-show="mode != 'create'" ng-click="submit_kpi()"></icsw-tools-button>
+                <accordion close-others="false">
+                    <accordion-group heading="Formula" is-open="true">
+                        <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
+                    </accordion-group>
+                    <accordion-group heading="Evaluation" is-open="true">
+                        <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()"></icsw-tools-button>
+                        <icsw-config-kpi-evaluation-graph kpi-idx="cur_edit_kpi.idx" width="870"></icsw-config-kpi-evaluation-graph>
+                    </accordion-group>
+            </tab>
+        </tabset>
+
+        <icsw-tools-button type="create" ng-show="mode == 'create'" ng-click="submit_kpi()"></icsw-tools-button>
+        <icsw-tools-button type="modify" ng-show="mode != 'create'" ng-click="submit_kpi()"></icsw-tools-button>
+
+    </div>
 </script>
 
 
