@@ -21,6 +21,8 @@ import collections
 import json
 import time
 from django.db.models import Q
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.models.license import LicenseUsageDeviceService, LicenseUsage
 
 import memcache
 import operator
@@ -99,8 +101,10 @@ class KpiData(object):
             )
             timespan_hosts.discard(dev.pk)
 
+        dev_services_used = {dev: [] for dev in dev_list}
         # noinspection PyTypeChecker
         for dev, mcc in dev_mon_tuples:
+            dev_services_used[dev].append(mcc)
             service_kpi_objects = self.host_data[dev.pk].service_check_results[mcc.pk]
             kpi_objects.extend(service_kpi_objects)
 
@@ -109,7 +113,10 @@ class KpiData(object):
                                            service_kpi_obj.service_id,
                                            service_kpi_obj.service_info))
 
-        # now  timespan_hosts and timespan_services_qs contain historical data, which is currently not present anymore
+        LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.device, dev_services_used.iterkeys())
+        LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.service, dev_services_used)
+
+        # now timespan_hosts and timespan_services_qs contain historical data, which is currently not present anymore
         for missing_dev_pk in timespan_hosts:
             try:
                 dev_obj = device.objects.get(pk=missing_dev_pk)
