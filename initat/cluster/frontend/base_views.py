@@ -235,17 +235,17 @@ class KpiView(View):
         )()
 
 
-class GetKpiSet(ListAPIView):
+class GetKpiSourceData(View):
     @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
     @rest_logging
     def post(self, request):
-        raise NotImplementedError("Does not work yet")
-        # we would need to contact the md-config-server and let it do the work because only it can
-        # talk to icinga and memcached. Since it's not sure if we actually need this code, implement it later if required then.
-        dev_mon_tuples = json.loads(request.POST['tuples'])
-        kpi_objects = KpiData(logger).get_data_for_dev_mon_tuples(dev_mon_tuples)
-        repr_list = [repr(obj) for obj in kpi_objects]
-        return HttpResponse(json.dumps(repr_list), content_type="application/json")
+        srv_com = server_command.srv_command(command="get_kpi_source_data")
+        srv_com['tuples'] = request.POST['tuples']
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=True)
+        print 'got result', result
+        print dir(result)
+        request.xml_response['response'] = json.dumps("")
 
 
 class CalculateKpi(ListAPIView):

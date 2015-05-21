@@ -126,7 +126,7 @@ ics_app = angular.module(
     "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"
     "BASE_CHECK_DELETION_STATUS": "{% url 'base:check_deletion_status' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
-    "BASE_GET_KPI_SET": "{% url 'base:get_kpi_set' %}"
+    "BASE_GET_KPI_SOURCE_DATA": "{% url 'base:GetKpiSourceData' %}"
     "BASE_KPI": "{% url 'base:kpi' %}"
     "BASE_MODIFY_LOCATION_GFX": "{% url 'base:modify_location_gfx' %}"
     "BASE_PRUNE_CATEGORIES": "{% url 'base:prune_categories' %}"

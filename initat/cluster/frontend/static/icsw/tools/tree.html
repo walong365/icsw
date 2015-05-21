@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="tree_root_node">
-    <ul class="fancytree-container" ng-attr-style="max-height: {{maxWidth()}}px">
+    <ul class="fancytree-container" ng-attr-style="max-height: {{maxHeight()}}px">
         <span ng-show="!treeconfig.root_nodes.length">No entries</span>
         <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'fancytree-lastsib' || ''">
             <subnode entry="entry" treeconfig="treeconfig"></subnode>

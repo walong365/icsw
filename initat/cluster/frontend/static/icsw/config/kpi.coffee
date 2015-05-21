@@ -184,181 +184,182 @@ angular.module(
                         return "unknown"
         }
 
-]).service("icswConfigKpiDialogService", ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS) ->
+]).service("icswConfigKpiDialogService",
+    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService",
+    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService) ->
 
-    KPI_DLG_MODE_CREATE = 'create'
-    KPI_DLG_MODE_MODIFY = 'modify'
+        KPI_DLG_MODE_CREATE = 'create'
+        KPI_DLG_MODE_MODIFY = 'modify'
 
-    show_kpi_dlg = (scope, orig_kpi, mode) ->
-        if mode == KPI_DLG_MODE_CREATE
-            cur_edit_kpi = orig_kpi
-        else if mode == KPI_DLG_MODE_MODIFY
-            cur_edit_kpi = angular.copy(orig_kpi)
-        else
-            console.error 'invalid mode', mode
-
-        child_scope = scope.$new()
-        child_scope.mode = mode
-        child_scope.cur_edit_kpi = cur_edit_kpi
-
-        child_scope.editorOptions = {
-            lineWrapping : false
-            lineNumbers: true
-            mode:
-                name : "python"
-                version : 2
-            matchBrackets: true
-            styleActiveLine: true
-            indentUnit : 4
-        }
-
-        child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
-            return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> return elem[0] == dev_cat_id and elem[1] == mon_cat_id)
-        child_scope.toggle_dev_mon_cat = (dev_cat_id, mon_cat_id) ->
-            elem = [dev_cat_id, mon_cat_id]
-            if child_scope.is_checked(dev_cat_id, mon_cat_id)
-                _.remove(cur_edit_kpi.selected_device_monitoring_category_tuple, elem)
-            else
-                cur_edit_kpi.selected_device_monitoring_category_tuple.push(elem)
-
-        child_scope.submit_kpi = () ->
-            create_data_source_tuple = (obj, tup) ->
-                return {
-                    kpi: obj.idx
-                    device_category: tup[0]
-                    monitoring_category: tup[1]
-                }
-
-            cur_edit_kpi.gui_selected_categories = JSON.stringify({
-                dev_cat: cur_edit_kpi.available_device_categories
-                mon_cat: cur_edit_kpi.available_monitoring_categories
-            })
-
+        show_kpi_dlg = (scope, orig_kpi, mode) ->
             if mode == KPI_DLG_MODE_CREATE
-                icswConfigKpiDataService.kpi.post(cur_edit_kpi).then((obj) ->
-                    icswConfigKpiDataService.kpi.push(obj)
-
-                    for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
-                        entry = create_data_source_tuple(obj, tup)
-                        icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
-                            (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
-                        )
-                )
+                cur_edit_kpi = orig_kpi
             else if mode == KPI_DLG_MODE_MODIFY
-                for new_tup in cur_edit_kpi.selected_device_monitoring_category_tuple
-                    if _.find(orig_kpi.selected_device_monitoring_category_tuple, new_tup) == undefined
-                        entry = create_data_source_tuple(cur_edit_kpi, new_tup)
-                        icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
-                            (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
-                        )
-
-                for old_tup in orig_kpi.selected_device_monitoring_category_tuple
-                    if _.find(cur_edit_kpi.selected_device_monitoring_category_tuple, old_tup) == undefined
-                        rest_elem = _.find(icswConfigKpiDataService.kpi_data_source_tuple,
-                                          (elem) -> return elem.device_category == old_tup[0] && elem.monitoring_category == old_tup[1])
-                        if rest_elem?
-                            rest_elem.remove()
-                            _.remove(icswConfigKpiDataService.kpi_data_source_tuple, rest_elem)
-
-                # put seems to only work on original obj, but we want to update data here anyway
-                for k, v of cur_edit_kpi
-                    orig_kpi[k] = v
-
-                delete orig_kpi.result  # don't want to put this, possibly remove it from here
-                orig_kpi.put()
-
+                cur_edit_kpi = angular.copy(orig_kpi)
             else
-                console.error "invalid mode: ", mode
+                console.error 'invalid mode', mode
 
-            child_scope.modal.close()
+            child_scope = scope.$new()
+            child_scope.mode = mode
+            child_scope.cur_edit_kpi = cur_edit_kpi
 
-        child_scope.kpi_set = undefined
-        child_scope.on_kpi_calculation_selected = () ->
-            # does not work yet, see server side
-            #if !child_scope.kpi_set?
-            #    child_scope.kpi_set = null # set to sth other than undefined to not trigger this path again
-            #    icswCallAjaxService
-            #        url: ICSW_URLS.BASE_GET_KPI_SET
-            #        data:
-            #            tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
-            #        dataType: "json"
-            #        success: (kpi_set) ->
-            #            console.log 'ret', kpi_set
-            #            scope.$apply(
-            #                child_scope.kpi_set = kpi_set
-            #            )
+            child_scope.editorOptions = {
+                lineWrapping : false
+                lineNumbers: true
+                mode:
+                    name : "python"
+                    version : 2
+                matchBrackets: true
+                styleActiveLine: true
+                indentUnit : 4
+            }
 
-        child_scope.calculate_kpi = () ->
-            icswCallAjaxService
-                url: ICSW_URLS.BASE_CALCULATE_KPI
-                data:
-                    kpi_pk: cur_edit_kpi.idx
-                    formula: cur_edit_kpi.formula
-                dataType: "json"
-                success: (res) ->
-                    console.log 'res', res
+            update_kpi_data_source = () ->
+                icswCallAjaxService
+                    url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
+                    data:
+                        tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
+                    success: (xml) ->
+                        if icswParseXMLResponseService(xml)
+                            res = angular.fromJson($(xml).find("value[name='response']").text())
+                            console.log 'res', res
+                            scope.kpi_data_source = res
+
+            child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
+                return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> return elem[0] == dev_cat_id and elem[1] == mon_cat_id)
+            child_scope.toggle_dev_mon_cat = (dev_cat_id, mon_cat_id) ->
+                elem = [dev_cat_id, mon_cat_id]
+                if child_scope.is_checked(dev_cat_id, mon_cat_id)
+                    _.remove(cur_edit_kpi.selected_device_monitoring_category_tuple, elem)
+                else
+                    cur_edit_kpi.selected_device_monitoring_category_tuple.push(elem)
+
+                update_kpi_data_source()
+
+            child_scope.submit_kpi = () ->
+                create_data_source_tuple = (obj, tup) ->
+                    return {
+                        kpi: obj.idx
+                        device_category: tup[0]
+                        monitoring_category: tup[1]
+                    }
+
+                cur_edit_kpi.gui_selected_categories = JSON.stringify({
+                    dev_cat: cur_edit_kpi.available_device_categories
+                    mon_cat: cur_edit_kpi.available_monitoring_categories
+                })
+
+                if mode == KPI_DLG_MODE_CREATE
+                    icswConfigKpiDataService.kpi.post(cur_edit_kpi).then((obj) ->
+                        icswConfigKpiDataService.kpi.push(obj)
+
+                        for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
+                            entry = create_data_source_tuple(obj, tup)
+                            icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
+                                (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
+                            )
+                    )
+                else if mode == KPI_DLG_MODE_MODIFY
+                    for new_tup in cur_edit_kpi.selected_device_monitoring_category_tuple
+                        if _.find(orig_kpi.selected_device_monitoring_category_tuple, new_tup) == undefined
+                            entry = create_data_source_tuple(cur_edit_kpi, new_tup)
+                            icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
+                                (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
+                            )
+
+                    for old_tup in orig_kpi.selected_device_monitoring_category_tuple
+                        if _.find(cur_edit_kpi.selected_device_monitoring_category_tuple, old_tup) == undefined
+                            rest_elem = _.find(icswConfigKpiDataService.kpi_data_source_tuple,
+                                              (elem) -> return elem.device_category == old_tup[0] && elem.monitoring_category == old_tup[1])
+                            if rest_elem?
+                                rest_elem.remove()
+                                _.remove(icswConfigKpiDataService.kpi_data_source_tuple, rest_elem)
+
+                    # put seems to only work on original obj, but we want to update data here anyway
+                    for k, v of cur_edit_kpi
+                        orig_kpi[k] = v
+
+                    delete orig_kpi.result  # don't want to put this, possibly remove it from here
+                    orig_kpi.put()
+
+                else
+                    console.error "invalid mode: ", mode
+
+                child_scope.modal.close()
+
+            child_scope.kpi_set = undefined
+
+            child_scope.calculate_kpi = () ->
+                icswCallAjaxService
+                    url: ICSW_URLS.BASE_CALCULATE_KPI
+                    data:
+                        kpi_pk: cur_edit_kpi.idx
+                        formula: cur_edit_kpi.formula
+                    dataType: "json"
+                    success: (res) ->
+                        console.log 'res', res
 
 
-        # parameters as understood by KpiData.parse_kpi_time_range
-        child_scope.kpi_time_ranges = [
-            {id_str: 'none', display_str: 'Only current data'},
-            {id_str: 'yesterday', display_str: 'Yesterday'},
-            {id_str: 'last week', display_str: 'Last week'},
-            {id_str: 'last month', display_str: 'Last month'},
-            {id_str: 'last year', display_str: 'Last year'},
-            {id_str: 'last n days', display_str: 'Last days ...'},
-        ]
+            # parameters as understood by KpiData.parse_kpi_time_range
+            child_scope.kpi_time_ranges = [
+                {id_str: 'none', display_str: 'Only current data'},
+                {id_str: 'yesterday', display_str: 'Yesterday'},
+                {id_str: 'last week', display_str: 'Last week'},
+                {id_str: 'last month', display_str: 'Last month'},
+                {id_str: 'last year', display_str: 'Last year'},
+                {id_str: 'last n days', display_str: 'Last days ...'},
+            ]
 
-        edit_div = $compile($templateCache.get("icsw.config.kpi.edit_dialog"))(child_scope)
+            edit_div = $compile($templateCache.get("icsw.config.kpi.edit_dialog"))(child_scope)
 
-        modal = BootstrapDialog.show
-            title: if mode == 'create' then "Create KPI" else "Edit KPI"
-            message: edit_div
-            draggable: true
-            closable: true
-            closeByBackdrop: false
-            closeByKeyboard: false,
-            size: BootstrapDialog.SIZE_WIDE
-            type: BootstrapDialog.TYPE_DANGER
-            onshow: (modal) =>
-                height = $(window).height() - 100
-                modal.getModal().find(".modal-body").css("max-height", height)
-        child_scope.modal = modal
-    ret = {}
-    ret.show_create_kpi_dlg = (scope) ->
-        base_name = "kpi-"
-        is_unique = false
-        num = 0
-        while ! is_unique
-            num++
-            unique_name = base_name + num
-            is_unique = _.find(icswConfigKpiDataService.kpi, (elem) -> return elem.name == unique_name) == undefined
+            modal = BootstrapDialog.show
+                title: if mode == 'create' then "Create KPI" else "Edit KPI"
+                message: edit_div
+                draggable: true
+                closable: true
+                closeByBackdrop: false
+                closeByKeyboard: false,
+                size: BootstrapDialog.SIZE_WIDE
+                type: BootstrapDialog.TYPE_DANGER
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+            child_scope.modal = modal
+        ret = {}
+        ret.show_create_kpi_dlg = (scope) ->
+            base_name = "kpi-"
+            is_unique = false
+            num = 0
+            while ! is_unique
+                num++
+                unique_name = base_name + num
+                is_unique = _.find(icswConfigKpiDataService.kpi, (elem) -> return elem.name == unique_name) == undefined
 
-        new_edit_kpi = {
-            name: unique_name
-            available_device_categories: []
-            available_monitoring_categories: []
-            selected_device_monitoring_category_tuple: []
-            time_range: 'none'
-            enabled: true
-        }
-        show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
-    ret.show_modify_kpi_dlg = (scope, kpi) ->
-        if kpi.gui_selected_categories != ""
-            sel_cat = JSON.parse(kpi.gui_selected_categories)
-            kpi.available_device_categories = sel_cat.dev_cat
-            kpi.available_monitoring_categories = sel_cat.mon_cat
-        else
-            kpi.available_device_categories = []
-            kpi.available_monitoring_categories = []
+            new_edit_kpi = {
+                name: unique_name
+                available_device_categories: []
+                available_monitoring_categories: []
+                selected_device_monitoring_category_tuple: []
+                time_range: 'none'
+                enabled: true
+            }
+            show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
+        ret.show_modify_kpi_dlg = (scope, kpi) ->
+            if kpi.gui_selected_categories != ""
+                sel_cat = JSON.parse(kpi.gui_selected_categories)
+                kpi.available_device_categories = sel_cat.dev_cat
+                kpi.available_monitoring_categories = sel_cat.mon_cat
+            else
+                kpi.available_device_categories = []
+                kpi.available_monitoring_categories = []
 
-        kpi.selected_device_monitoring_category_tuple = []
-        for entry in _.filter(icswConfigKpiDataService.kpi_data_source_tuple, (elem) -> return elem.kpi == kpi.idx)
-            kpi.selected_device_monitoring_category_tuple.push(
-                [entry.device_category, entry.monitoring_category]
-            )
-        show_kpi_dlg(scope, kpi, KPI_DLG_MODE_MODIFY)
-    return ret
+            kpi.selected_device_monitoring_category_tuple = []
+            for entry in _.filter(icswConfigKpiDataService.kpi_data_source_tuple, (elem) -> return elem.kpi == kpi.idx)
+                kpi.selected_device_monitoring_category_tuple.push(
+                    [entry.device_category, entry.monitoring_category]
+                )
+            show_kpi_dlg(scope, kpi, KPI_DLG_MODE_MODIFY)
+        return ret
 
 ]).directive("icswConfigKpiEvaluationTable",
     ["icswConfigKpiDataService", "icswConfigKpiDialogService",  "d3_service",

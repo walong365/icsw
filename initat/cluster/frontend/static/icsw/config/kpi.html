@@ -75,7 +75,7 @@
                 <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
             </tab>
 
-            <tab heading="KPI calculation" select="on_kpi_calculation_selected()">
+            <tab heading="KPI calculation">
 
                 <accordion close-others="false">
                     <accordion-group heading="Formula" is-open="true">
@@ -100,12 +100,12 @@
         <accordion-group heading="Select device and monitoring categories" is-open="true">
             <div class="row">
                 <div class="col-md-6">
-                    <h3 style="margin-top: 8px"> <!-- else too much margin at top --> Device categories</h3>
-                    <tree treeconfig="device_category_tree" max-width="400"></tree>
+                    <h3 style="margin-top: 0px"> <!-- else too much margin at top --> Device categories</h3>
+                    <tree treeconfig="device_category_tree" max-height="350"></tree>
                 </div>
                 <div class="col-md-6">
-                    <h3 style="margin-top: 8px">Monitoring categories</h3>
-                    <tree treeconfig="monitoring_category_tree" max-width="400"></tree>
+                    <h3 style="margin-top: 0px">Monitoring categories</h3>
+                    <tree treeconfig="monitoring_category_tree" max-height="350"></tree>
                 </div>
             </div>
             <button class="btn btn-default btn-xs" ng-click="show_all_selected_categories()">Show all categories selected below</button>
@@ -152,6 +152,9 @@
                     </td>
                 </tr>
             </table>
+
+
+            Selected: {{kpi_data_source}}
 
         </accordion-group>
     </accordion>

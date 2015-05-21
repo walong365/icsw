@@ -68,7 +68,6 @@ class KpiData(object):
         Retrieves current results for (dev, mon)
         :rtype: list of KpiObject
         """
-        # NOTE: only used through get_data_for_kpi as of now
         dev_mon_tuples, dev_list = self._get_dev_mon_tuples_from_category_tuples(tuples)
 
         if start is not None:
