@@ -153,16 +153,31 @@ class host_list_com(base_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
             h_list = h_list[0]
+            num_hosts, num_keys = (0, 0)
+            form_str = "{:<30s} ({:<40s}) : {:6d} keys, last update {}, store_to_disk is {}"
             print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
             for host in h_list:
-                print "{:<30s} ({:<40s}) : {:4d} keys, last update {}, store_to_disk is {}".format(
-                    host.attrib["name"],
-                    host.attrib["uuid"],
-                    int(host.attrib["keys"]),
-                    time.ctime(int(host.attrib["last_update"])),
-                    "enabled" if int(host.get("store_to_disk", "1")) else "disabled",
+                print(
+                    form_str.format(
+                        host.attrib["name"],
+                        host.attrib["uuid"],
+                        int(host.attrib["keys"]),
+                        time.ctime(int(host.attrib["last_update"])),
+                        "enabled" if int(host.get("store_to_disk", "1")) else "disabled",
                     )
-            pass
+                )
+                num_hosts += 1
+                num_keys += int(host.attrib["keys"])
+            if num_hosts:
+                print(
+                    form_str.format(
+                        "total",
+                        logging_tools.get_plural("host", num_hosts),
+                        num_keys,
+                        "never",
+                        "ignored",
+                    )
+                )
         else:
             print "No host_list found in result"
             self.ret_state = 1

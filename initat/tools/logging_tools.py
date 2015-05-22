@@ -1172,7 +1172,7 @@ def list_to_struct(in_list, **kwargs):
     else:
         _pfs = sorted(list(_pfs))
         # check for integer pfs
-        if all([_pf.isdigit() and _pf[0] != "0" for _pf in _pfs]):
+        if all([_pf.isdigit() and (_pf[0] != "0" or _pf == "0") for _pf in _pfs]):
             _dict = {}
             _pfs = set()
             for _value in in_list:

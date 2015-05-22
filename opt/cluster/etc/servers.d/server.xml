@@ -30,6 +30,7 @@
     <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45">
         <config_names>
             <config_name>rrd_server</config_name>
+            <config_name>rrd_collector</config_name>
         </config_names>
         <start-argument>
             <arg key="user">idrrd</arg>
@@ -44,6 +45,7 @@
             <dir value="/var/run/collectd" user="idrrd" group="idg" create="1"/>
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
             <dir value="/var/run/rrdcached" user="idrrd" group="idg" create="1"/>
+            <dir value="/opt/cluster/system/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
     <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
@@ -70,6 +72,7 @@
     <instance name="rrdcached" check_type="pid_file" any_threads_ok="1" runs_on="system" pid_file_name="rrdcached/rrdcached.pid" startstop="0">
         <config_names>
             <config_name>rrd_server</config_name>
+            <config_name>rrd_grapher</config_name>
         </config_names>
     </instance>
     <instance check_type="meta" name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1">

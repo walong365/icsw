@@ -18,22 +18,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import calendar
 from collections import namedtuple, defaultdict
 import collections
 import datetime
 import glob
 import os
-import pprint  # @UnusedImport
 import bz2
 import tempfile
-import pytz
 import time
+import codecs
+
+import pytz
 from initat.tools import logging_tools
 import psutil
 from initat.tools import threading_tools
-import codecs
-
 from django.db import connection
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.monitoring import mon_check_command, \
@@ -44,6 +42,10 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
     mon_icinga_log_raw_base, mon_icinga_log_full_system_dump
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
+
+# separated to enable flawless import from webfrontend
+
+from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 
 __all__ = [
     "icinga_log_reader",
@@ -844,66 +846,3 @@ class icinga_log_reader(threading_tools.process_obj):
     def _parse_timestamp(self, timestamp):
         return datetime.datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
 
-
-class host_service_id_util(object):
-
-    """
-    NOTE: we could also encode hosts like this, but then we need to always use this host identification
-          throughout all of the icinga config, which does not seem worth it as it then becomes hard to read.
-    @classmethod
-    def create_host_description(cls, host_pk):
-        return "host:{}".format(host_pk)
-
-    @classmethod
-    def parse_host_description(cls, host_spec):
-        data = host_spec.split(":")
-        if len(data) == 2:
-            if data[0] == 'host':
-                return int(data[1])
-        return None
-    """
-
-    @classmethod
-    def create_host_service_description(cls, host_pk, s_check, info):
-        '''
-        Create a string by which we can identify the service. Used to write to icinga log file.
-        '''
-        retval = None
-        if s_check.mccs_id is not None:
-            # special service check
-            # form is similar to regular service check, other prefix and we also set the pk of the special_command
-            retval = "s_host_check:{}:{}:{}:{}".format(host_pk, s_check.check_command_pk, s_check.mccs_id, info)
-        elif s_check.check_command_pk is not None:
-            # regular service check
-            # format is: service_check:${mon_check_command_pk}:$info
-            # since a mon_check_command_pk can have multiple actual service checks,
-            # we add the info string to identify it as the services are created dynamically, we don't have a nice db pk
-            retval = "host_check:{}:{}:{}".format(host_pk, s_check.check_command_pk, info)
-        else:
-            retval = "unstructured:" + info
-        return retval
-
-    @classmethod
-    def parse_host_service_description(cls, service_spec, log=None):
-        '''
-        "Inverse" of create_host_service_description
-        '''
-        data = service_spec.split(':', 1)
-        retval = (None, None, None)
-        if len(data) == 2:
-            if data[0] == 'host_check':
-                if data[1].count(":") >= 2:
-                    service_data = data[1].split(":", 2)
-                    host_pk, service_pk, info = service_data
-                    retval = (int(host_pk), int(service_pk), info)
-            elif data[0] == "s_host_check":
-                if data[1].count(":") >= 3:
-                    service_data = data[1].split(":", 3)
-                    host_pk, service_pk, s_check_pk, info = service_data
-                    retval = (int(host_pk), int(service_pk), info)
-            elif data[0] == 'unstructured':
-                pass
-            else:
-                if log:
-                    log(u"invalid service description: {}".format(service_spec))
-        return retval

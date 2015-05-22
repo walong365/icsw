@@ -16,22 +16,24 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import commands
+import codecs
+import grp
+import os
+import pwd
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, device, \
     domain_tree_node, config, network
 from initat.cluster_server.config import global_config
-import commands
-import codecs
 from initat.tools import config_tools
-import cs_base_class
-import grp
 from initat.tools import ipvx_tools
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
-import pwd
 from initat.tools import server_command
-import time
+
+import cs_base_class
 
 
 class write_nameserver_config(cs_base_class.server_com):
@@ -41,7 +43,9 @@ class write_nameserver_config(cs_base_class.server_com):
     def _call(self, cur_inst):
         _log_lines, sys_dict = process_tools.fetch_sysinfo("/")
         sys_version = sys_dict["version"]
-        if sys_version.startswith("8") or sys_version == "sles8":
+        if (sys_dict["vendor"], sys_dict["version"].split(".")[0]) in [
+            ("centos", "6"),
+        ]:
             named_dir = "/var/named"
         else:
             named_dir = "/var/lib/named"
@@ -86,17 +90,19 @@ class write_nameserver_config(cs_base_class.server_com):
             "key key1 {",
             "  algorithm hmac-md5;"
         ]
-        if act_conf_dict.has_key("SECRET"):
-            cf_lines.append("  secret \"%s\" ;" % (act_conf_dict["SECRET"].value))
+        if "SECRET" in act_conf_dict:
+            cf_lines.append("  secret \"{}\" ;".format(act_conf_dict["SECRET"].value))
         cf_lines.append("};")
-        ncf_lines = ["options {",
-                     "  directory \"%s\";\n" % (named_dir),
-                     "  datasize default;",
-                     "  stacksize default;",
-                     "  coresize default;",
-                     "  empty-zones-enable no;",
-                     # "  files unlimited;",
-                     "  auth-nxdomain no;"]
+        ncf_lines = [
+            "options {",
+            "  directory \"{}\";\n".format(named_dir),
+            "  datasize default;",
+            "  stacksize default;",
+            "  coresize default;",
+            "  empty-zones-enable no;",
+            # "  files unlimited;",
+            "  auth-nxdomain no;",
+        ]
         forwarders = [act_conf_dict[key].value for key in act_conf_dict.iterkeys() if key.startswith("FORWARDER")]
         if len(forwarders):
             ncf_lines.append("  forwarders {\n%s\n  };" % ("\n".join(["    %s;" % (x) for x in forwarders if x])))
@@ -123,7 +129,7 @@ class write_nameserver_config(cs_base_class.server_com):
                 "  algorithm hmac-md5;",
             ]
         )
-        if act_conf_dict.has_key("SECRET"):
+        if "SECRET" in act_conf_dict:
             ncf_lines.append("  secret \"%s\" ;" % (act_conf_dict["SECRET"].value))
         ncf_lines.extend(["};"])
         # ncf_lines.extend(["logging{",
@@ -138,19 +144,24 @@ class write_nameserver_config(cs_base_class.server_com):
         # "    simple_log;",
         # "  };",
         # "};"])
-        ncf_lines.extend(["\nzone \".\" IN {",
-                          "  type hint;",
-                          "  file \"root.hint\";",
-                          "};"])
-        ncf_lines.extend(["\ninclude \"/etc/named.conf.include\";"])
+        if os.path.exists(os.path.join(named_dir, "root.hint")):
+            ncf_lines.extend(
+                [
+                    "\nzone \".\" IN {",
+                    "  type hint;",
+                    "  file \"root.hint\";",
+                    "};"
+                ]
+            )
+        if os.path.exists("/etc/named.conf.include"):
+            ncf_lines.extend(
+                [
+                    "",
+                    "include \"/etc/named.conf.include\";",
+                ]
+            )
         # print ncf_lines
-        real_config_name = "name_server" # self.act_config_name.replace("%", "")
-        # other_conf = {"name_server" : "name_slave",
-        #              "name_slave"  : "name_server"}[real_config_name]
-        # get peers
-        # sql_str = "SELECT i.ip, d.name FROM netip i INNER JOIN netdevice n INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN network nw INNER JOIN network_type nt INNER JOIN hopcount h INNER JOIN device d INNER JOIN device_group dg " + \
-        #          "LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND n.device=d.device_idx AND i.network=nw.network_idx AND nw.network_type=nt.network_type_idx AND nt.identifier='p' AND " + \
-        #          "n.netdevice_idx=h.s_netdevice AND (%s) AND (d.device_idx=dc.device OR d2.device_idx=dc.device) AND dc.new_config=c.new_config_idx AND c.name='%s' AND i.netdevice=n.netdevice_idx ORDER BY h.value" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in my_netdev_idxs]), other_conf)
+        real_config_name = "name_server"  # self.act_config_name.replace("%", "")
         # call_params.dc.execute(sql_str)
         master_ips, slave_ips = ([], [])
         if False:
@@ -194,39 +205,67 @@ class write_nameserver_config(cs_base_class.server_com):
             zonefile_name = "%s.zone" % (name2)
             if nwname == "localdomain":
                 # special handling
-                ncf_lines.extend(["  type master;",
-                                  "  notify no;",
-                                  "  allow-transfer { none; };"])
+                ncf_lines.extend(
+                    [
+                        "  type master;",
+                        "  notify no;",
+                        "  allow-transfer { none; };"
+                    ]
+                )
             else:
                 if real_config_name == "name_server":
                     ncf_lines.append("  type master;")
                     if len(slave_ips):
-                        ncf_lines.extend(["  notify yes;",
-                                          "  allow-transfer { %s; };" % ("; ".join(slave_ips)),
-                                          "  also-notify { %s; };\n" % ("; ".join(slave_ips))])
+                        ncf_lines.extend(
+                            [
+                                "  notify yes;",
+                                "  allow-transfer { %s; };" % ("; ".join(slave_ips)),
+                                "  also-notify { %s; };\n" % ("; ".join(slave_ips))
+                            ]
+                        )
                     else:
-                        ncf_lines.extend(["  notify no;",
-                                          "  allow-transfer { none; };",
-                                          "  allow-update { none; };"])
+                        ncf_lines.extend(
+                            [
+                                "  notify no;",
+                                "  allow-transfer { none; };",
+                                "  allow-update { none; };"
+                            ]
+                        )
                 elif real_config_name == "name_slave":
                     zonefile_name = "slave/%s.zone" % (name2)
                     write_zone_file = False
-                    ncf_lines.extend(["  type slave;",
-                                      "  allow-transfer { none; };",
-                                      "  notify no;",
-                                      "  masters { %s; };" % ("; ".join(master_ips))])
-            ncf_lines.extend(["  file \"%s/%s\";" % (sub_dir, zonefile_name),
-                              "};"])
+                    ncf_lines.extend(
+                        [
+                            "  type slave;",
+                            "  allow-transfer { none; };",
+                            "  notify no;",
+                            "  masters { %s; };" % ("; ".join(master_ips))
+                        ]
+                    )
+            ncf_lines.extend(
+                [
+                    "  file \"%s/%s\";" % (sub_dir, zonefile_name),
+                    "};"
+                ]
+            )
             if write_zone_file:
                 _lines = []
                 zname = "%s." % (nwname)
-                _lines.extend(["$ORIGIN %s" % (zname),
-                              "$TTL 30M",
-                              "%s  IN SOA %s lang-nevyjel.%s. (" % (zname, nwname, nwname)])
+                _lines.extend(
+                    [
+                        "$ORIGIN %s" % (zname),
+                        "$TTL 30M",
+                        "%s  IN SOA %s lang-nevyjel.%s. (" % (zname, nwname, nwname)
+                    ]
+                )
                 for what in [str(cur_serial), "1H", "15M", "1W", "30M"]:
                     _lines.append("%s%s" % (" " * 10, what))
-                _lines.extend(["%s)" % (" " * 5),
-                              "; NS and MX-records"])
+                _lines.extend(
+                    [
+                        "%s)" % (" " * 5),
+                        "; NS and MX-records"
+                    ]
+                )
                 _form = logging_tools.form_list()
                 _form.set_format_string(3, "s", "-", "; ")
                 _form.add_line([" ", "IN NS", "%s." % (global_config["SERVER_SHORT_NAME"]), ""])
@@ -264,23 +303,28 @@ class write_nameserver_config(cs_base_class.server_com):
                                 else:
                                     _form.add_line([s_name, "CNAME", f_name, ret.netdevice.device.comment])
                 _lines.extend(unicode(_form).split(u"\n"))
-                _file_name = "%s/%s/%s.zone" % (named_dir, sub_dir, nwname)
+                _dir_name = os.path.join(named_dir, sub_dir)
+                if not os.path.isdir(_dir_name):
+                    os.mkdir(_dir_name)
+                os.chmod(_dir_name, 0770)
+                os.chown(_dir_name, named_uid, named_gid)
+                _file_name = os.path.join(_dir_name, "{}.zone".format(nwname))
                 codecs.open(_file_name, "w", "utf-8").write("\n".join(_lines + [""]))
-                os.chmod(_file_name, 0600)
+                os.chmod(_file_name, 0660)
                 os.chown(_file_name, named_uid, named_gid)
-
 
         # loop 2: reverse maps
 
-        nets = network.objects.all() # filter(Q(write_bind_config=True))
-        # call_params.dc.execute("SELECT n.network_idx, n.netmask, n.name, n.postfix, n.network, nt.identifier FROM network n, network_type nt WHERE n.network_type=nt.network_type_idx AND n.write_bind_config")
+        nets = network.objects.all()
         # nets = call_params.dc.fetchall()
         for net in nets:
+            print "**", net
             nw_ip = ipvx_tools.ipv4(net.network)
             nw_mask = ipvx_tools.ipv4(net.netmask)
             nw_ip_parts, nw_mask_parts = (
                 nw_ip.parts,
-                nw_mask.parts)
+                nw_mask.parts
+            )
             network_parts = 4
             while True:
                 if not nw_mask_parts or nw_mask_parts[-1]:
@@ -299,40 +343,68 @@ class write_nameserver_config(cs_base_class.server_com):
                 ncf_lines.append("\nzone \"%s\" IN {" % (name))
                 zonefile_name = "%s.zone" % (name2)
                 if net.identifier == "l":
-                    ncf_lines.extend(["  type master;",
-                                      "  notify no;",
-                                      "  allow-transfer { none; };"])
+                    ncf_lines.extend(
+                        [
+                            "  type master;",
+                            "  notify no;",
+                            "  allow-transfer { none; };"
+                        ]
+                    )
                 else:
                     if real_config_name == "name_server":
                         ncf_lines.append("  type master;")
                         if len(slave_ips):
-                            ncf_lines.extend(["  notify yes;",
-                                              "  allow-transfer { %s; };" % ("; ".join(slave_ips)),
-                                              "  also-notify { %s; };\n" % ("; ".join(slave_ips))])
+                            ncf_lines.extend(
+                                [
+                                    "  notify yes;",
+                                    "  allow-transfer { %s; };" % ("; ".join(slave_ips)),
+                                    "  also-notify { %s; };\n" % ("; ".join(slave_ips))
+                                ]
+                            )
                         else:
-                            ncf_lines.extend(["  notify no;",
-                                              "  allow-transfer { none; };",
-                                              "  allow-update { none; };"])
+                            ncf_lines.extend(
+                                [
+                                    "  notify no;",
+                                    "  allow-transfer { none; };",
+                                    "  allow-update { none; };"
+                                ]
+                            )
                     elif real_config_name == "name_slave":
                         zonefile_name = "slave/%s.zone" % (name2)
                         write_zone_file = False
-                        ncf_lines.extend(["  type slave;",
-                                          "  allow-transfer { none; };",
-                                          "  notify no;",
-                                          "  masters { %s; };" % ("; ".join(master_ips))])
-                ncf_lines.extend(["  file \"%s/%s\";" % (sub_dir, zonefile_name),
-                                  "};"])
+                        ncf_lines.extend(
+                            [
+                                "  type slave;",
+                                "  allow-transfer { none; };",
+                                "  notify no;",
+                                "  masters { %s; };" % ("; ".join(master_ips))
+                            ]
+                        )
+                ncf_lines.extend(
+                    [
+                        "  file \"%s/%s\";" % (sub_dir, zonefile_name),
+                        "};"
+                    ]
+                )
 
             if write_zone_file:
                 _lines = []
                 zname = "%s.in-addr.arpa." % (nw_flipped_ip)
-                _lines.extend(["$ORIGIN %s" % (zname),
-                              "$TTL 30M",
-                              "%s  IN SOA %s lang-nevyjel. (" % (zname, top_level_name)])
+                _lines.extend(
+                    [
+                        "$ORIGIN %s" % (zname),
+                        "$TTL 30M",
+                        "%s  IN SOA %s lang-nevyjel. (" % (zname, top_level_name)
+                    ]
+                )
                 for what in [str(cur_serial), "1H", "15M", "1W", "30M"]:
                     _lines.append("%s%s" % (" " * 10, what))
-                _lines.extend(["%s)" % (" " * 5),
-                              "; NS and MX-records"])
+                _lines.extend(
+                    [
+                        "%s)" % (" " * 5),
+                        "; NS and MX-records"
+                    ]
+                )
                 _form = logging_tools.form_list()
                 _form.set_format_string(3, "s", "-", "; ")
                 _form.add_line([" ", "IN NS", "%s%s.%s." % (global_config["SERVER_SHORT_NAME"], "init", "at"), ""])
@@ -372,9 +444,9 @@ class write_nameserver_config(cs_base_class.server_com):
                             for s_name in out_names:
                                 _form.add_line([fiand, "IN PTR", "%s.%s." % (s_name, cur_dtn.full_name), ret.netdevice.device.comment])
                 _lines.extend(unicode(_form).split("\n"))
-                file_name = "%s/%s/%s.zone" % (named_dir, sub_dir, nw_ip)
+                file_name = os.path.join(named_dir, sub_dir, "{}.zone".format(nw_ip))
                 codecs.open(file_name, "w", "utf-8").write("\n".join(_lines + [""]))
-                os.chmod(file_name, 0600)
+                os.chmod(file_name, 0660)
                 os.chown(file_name, named_uid, named_gid)
         cfile = "/etc/rndc.conf"
         ncname = "/etc/named.conf"
