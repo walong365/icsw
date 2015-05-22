@@ -18,8 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ server process for md-config-server """
+import json
 
 import os
+from initat.tools.server_mixins import RemoteCallMessageType, RemoteCall
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -37,7 +39,7 @@ from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
-from initat.md_config_server.kpi import KpiProcess
+from initat.md_config_server.kpi import KpiProcess, KpiData
 from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
 from initat.tools import cluster_location
 import codecs
@@ -47,11 +49,14 @@ from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import threading_tools
+from initat.tools import server_mixins
 import time
 import zmq
 
 
-class server_process(threading_tools.process_pool, version_check_mixin):
+@server_mixins.RemoteCallProcess
+class server_process(threading_tools.process_pool, version_check_mixin, server_mixins.RemoteCallMixin,
+                     server_mixins.OperationalErrorMixin, server_mixins.NetworkBindMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -75,11 +80,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self._init_network_sockets()
 
         if "MD_TYPE" in global_config:
-            self.register_func("register_slave", self._register_slave)
-            self.register_func("send_command", self._send_command)
-            self.register_func("ocsp_results", self._ocsp_results)
             self.__external_cmd_file = None
-            self.register_func("external_cmd_file", self._set_external_cmd_file)
             self.add_process(status_process("status"), start=True)
             self.add_process(syncer_process("syncer"), start=True)
             self.add_process(dynconfig_process("dynconfig"), start=True)
@@ -365,24 +366,34 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("md-config-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=9, process_name="manager")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=8, process_name="manager")
         msi_block.start_command = "/etc/init.d/md-config-server start"
         msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
 
-    def _register_slave(self, *args, **kwargs):
+    @server_mixins.RemoteCall(target_process="KpiProcess")
+    def calculate_kpi(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="KpiProcess")
+    def get_kpi_source_data(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(msg_type=RemoteCallMessageType.flat)
+    def register_slave(self, *args, **kwargs):
         _src_proc, _src_id, slave_ip, slave_uuid = args
         conn_str = "tcp://{}:{:d}".format(
             slave_ip,
             2004)
         if conn_str not in self.__slaves:
             self.log("connecting to slave on {} ({})".format(conn_str, slave_uuid))
-            self.com_socket.connect(conn_str)
+            self.main_socket.connect(conn_str)
             self.__slaves[conn_str] = slave_uuid
 
-    def _ocsp_results(self, *args, **kwargs):
+    @server_mixins.RemoteCall(msg_type=RemoteCallMessageType.flat)
+    def ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
         self._write_external_cmd_file(lines)
 
@@ -390,8 +401,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         com_type = in_com["command"].text
         targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments", smart_strings=False)[0]]
         target_com = {
-            "ocsp-event": "PROCESS_SERVICE_CHECK_RESULT",
-            "ochp-event": "PROCESS_HOST_CHECK_RESULT",
+            "ocsp_event": "PROCESS_SERVICE_CHECK_RESULT",
+            "ochp_event": "PROCESS_HOST_CHECK_RESULT",
         }[com_type]
         # rewrite state information
         state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
@@ -404,7 +415,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             "critical": 2,
             "unknown": 3,
         }.get(targ_list[state_idx].lower(), error_state))
-        if com_type == "ocsp-event":
+        if com_type == "ocsp_event":
             pass
         else:
             pass
@@ -432,40 +443,117 @@ class server_process(threading_tools.process_pool, version_check_mixin):
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
-        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-        self.com_socket.send_unicode(srv_com)
-
-    def _set_external_cmd_file(self, *args, **kwargs):
-        _src_proc, _src_id, ext_name = args
-        self.log("setting external cmd_file to '{}'".format(ext_name))
-        self.__external_cmd_file = ext_name
+        self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
+        self.main_socket.send_unicode(srv_com)
 
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))  # @UndefinedVariable
-        client.setsockopt(zmq.SNDHWM, 1024)  # @UndefinedVariable
-        client.setsockopt(zmq.RCVHWM, 1024)  # @UndefinedVariable
-        client.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-        client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
-        try:
-            client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
-        except zmq.ZMQError:
-            self.log(
-                "error binding to {:d}: {}".format(
-                    global_config["COM_PORT"],
-                    process_tools.get_except_info()),
-                logging_tools.LOG_LEVEL_CRITICAL)
-            raise
-        else:
-            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
-            self.com_socket = client
-            self.__slaves = {}
+        self.network_bind(
+            need_all_binds=False,
+            bind_port=global_config["COM_PORT"],
+            bind_to_localhost=True,
+            server_type="md-config",
+            simple_server_bind=True,
+            pollin=self.remote_call,
+        )
+
+        #client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        #client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))  # @UndefinedVariable
+        #client.setsockopt(zmq.SNDHWM, 1024)  # @UndefinedVariable
+        #client.setsockopt(zmq.RCVHWM, 1024)  # @UndefinedVariable
+        #client.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        #client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+        #client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+        #try:
+        #    client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
+        #except zmq.ZMQError:
+        #    self.log(
+        #        "error binding to {:d}: {}".format(
+        #            global_config["COM_PORT"],
+        #            process_tools.get_except_info()),
+        #        logging_tools.LOG_LEVEL_CRITICAL)
+        #    raise
+        #else:
+        #    self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+        #    self.com_socket = client
+
+        self.__slaves = {}
+
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
         vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
+
+    @server_mixins.RemoteCall(msg_type=RemoteCallMessageType.flat)
+    def set_external_cmd_file(self, *args, **kwargs):
+        _src_proc, _src_id, ext_name = args
+        self.log("setting external cmd_file to '{}'".format(ext_name))
+        self.__external_cmd_file = ext_name
+
+    @RemoteCall(target_process="status")
+    def get_node_status(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="build", target_process_func="build_host_config")
+    def get_host_config(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall()
+    def rebuild_host_config(self, srv_com, **kwargs):
+        # TODO: make parameters work with remote call forwarding
+        # TODO: make async execution work with remote call forwarding
+        self.send_to_process("build", "rebuild_config", cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
+        srv_com.set_result("ok processed command rebuild_host_config")
+        return srv_com
+
+    @RemoteCall()
+    def sync_http_users(self, srv_com, **kwargs):
+        # TODO: make async execution work with remote call forwarding
+        self.send_to_process("build", "sync_http_users")
+        srv_com.set_result("ok processed command sync_http_users")
+        return srv_com
+
+    @RemoteCall()
+    def ocsp_event(self, srv_com, **kwargs):
+        self._handle_ocp_event(srv_com)
+
+    @RemoteCall()
+    def ochp_event(self, srv_com, **kwargs):
+        self._handle_ocp_event(srv_com)
+
+    @RemoteCall(target_process="dynconfig")
+    def monitoring_info(self, srv_com, **kwargs):
+        # TODO: test
+        return srv_com
+
+    def _handle_sync_command(self, srv_com):
+        self.send_to_process("syncer", srv_com, unicode(srv_com))
+        if "sync_id" in srv_com:
+            self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
+            return srv_com
+
+    @RemoteCall(target_process="syncer")
+    def file_content_result(self, srv_com, **kwargs):
+        # TODO: test
+        return srv_com
+
+    @RemoteCall(target_process="syncer")
+    def file_content_bulk_result(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="syncer")
+    def relayer_info(self, srv_com, **kwargs):
+        self.send_to_process("syncer", "relayer_info", unicode(srv_com))
+        self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
+        srv_com.set_result("ok processed command sync_http_users")
+        return srv_com
+
+
+    TODO:
+    transform rest from _recv_command to new structure
+    check if other methods are deprecated now
+    test startup/teardown of md-config-server
+
 
     def _recv_command(self, zmq_sock):
         in_data = []
@@ -483,8 +571,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     logging_tools.LOG_LEVEL_ERROR
                 )
                 # send something back
-                self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                self.com_socket.send_unicode("internal error")
+                self.main_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+                self.main_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
                 if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result", "monitoring_info"]:
@@ -493,25 +581,9 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                         srv_com["source"].attrib["host"]))
                 srv_com.update_source()
                 send_return = False
-                if cur_com == "rebuild_host_config":
-                    send_return = True
-                    self.send_to_process("build", "rebuild_config", cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
-                elif cur_com == "get_node_status":
-                    self.send_to_process("status", "get_node_status", src_id, unicode(srv_com))
-                elif cur_com == "get_host_config":
-                    self.send_to_process("build", "build_host_config", src_id, unicode(srv_com))
-                elif cur_com == "sync_http_users":
-                    send_return = True
-                    self.send_to_process("build", "sync_http_users")
-                elif cur_com in ["ocsp-event", "ochp-event"]:
-                    self._handle_ocp_event(srv_com)
-                elif cur_com in ["monitoring_info"]:
-                    self.send_to_process("dynconfig", "monitoring_info", unicode(srv_com))
-                elif cur_com in ["file_content_result", "relayer_info", "file_content_bulk_result"]:
-                    self.send_to_process("syncer", cur_com, unicode(srv_com))
-                    if "sync_id" in srv_com:
-                        self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
-                        send_return = True
+                if False:
+                    pass
+
                 elif cur_com in ["passive_check_results", "passive_check_results_as_chunk", "passive_check_result"]:
                     self.send_to_process("dynconfig", cur_com, unicode(srv_com))
                     if cur_com == "passive_check_result":
@@ -520,8 +592,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
                     srv_com.set_result("ok processed command {}".format(cur_com))
-                    self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                    self.com_socket.send_unicode(unicode(srv_com))
+                    self.main_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+                    self.main_socket.send_unicode(unicode(srv_com))
                 else:
                     del cur_com
         else:
@@ -538,6 +610,6 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.com_socket.close()
+        self.network_unbind()
         self.vector_socket.close()
         self.__log_template.close()

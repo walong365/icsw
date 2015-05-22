@@ -302,8 +302,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.log("syncing http-users")
         self.__gen_config._create_access_entries()
 
-    def _build_host_config(self, *args, **kwargs):
-        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+    def _build_host_config(self, srv_com_str, *args, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com_str)
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         dev_cache_modes = list(set(srv_com.xpath(".//device_list/device/@mode", smart_strings=False)))
         if dev_cache_modes:
@@ -317,7 +317,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         else:
             srv_com.set_result("no devices gaven", server_command.SRV_REPLY_STATE_ERROR)
-        self.send_pool_message("send_command", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _cleanup_db(self):
         # cleanup tasks for the database

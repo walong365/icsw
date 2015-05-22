@@ -68,8 +68,8 @@ class status_process(threading_tools.process_obj):
                 self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
 
-    def _get_node_status(self, *args, **kwargs):
-        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+    def _get_node_status(self, srv_com_str, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com_str)
         # overview mode if overview is a top-level element
         _host_overview = True if "host_overview" in srv_com else False
         _service_overview = True if "service_overview" in srv_com else False
@@ -169,4 +169,4 @@ class status_process(threading_tools.process_obj):
                 logging_tools.get_plural("device", len(dev_names)),
                 logging_tools.get_diff_time_str(time.time() - s_time),
                 u", ".join(sorted(dev_names))))
-        self.send_pool_message("send_command", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))

@@ -29,12 +29,13 @@ from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
 from initat.md_config_server.kpi.kpi_utils import print_tree
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools, server_mixins
 import threading_tools
 
 
-class KpiProcess(threading_tools.process_obj):
+@server_mixins.RemoteCallProcess
+class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
+                 server_mixins.OperationalErrorMixin, server_mixins.NetworkBindMixin):
 
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -57,6 +58,17 @@ class KpiProcess(threading_tools.process_obj):
 
     def loop_post(self):
         self.__log_template.close()
+
+    @server_mixins.RemoteCall
+    def get_kpi_data_source(self, srv_com):
+        # TODO: move to kpi proc
+        print 'got source data req'
+        print 'tup', (srv_com['tuples'].text)
+        dev_mon_tuples = json.loads(srv_com['tuples'].text)
+        kpi_objects = KpiData(self.log).get_data_for_dev_mon_tuples(dev_mon_tuples)
+        result = json.dumps([obj.serialize() for obj in kpi_objects])
+        print 'result', result
+        srv_com.set_result("foo")
 
     def update(self):
         """Recalculate all kpis and save result to database"""
