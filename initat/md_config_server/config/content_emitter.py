@@ -42,7 +42,6 @@ class content_emitter(object):
         ] + [
             u"}", ""
         ]
-        print 'cont', _content
         return _content
 
     def _build_value_string(self, _key, in_list):
