@@ -19,12 +19,14 @@
 #
 """ usefull server mixins """
 
+import time
+
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import threading_tools
 from initat.tools import server_command
 import zmq
-import time
+
 
 # exception mixin
 class OperationalErrorMixin(threading_tools.exception_handling_base):

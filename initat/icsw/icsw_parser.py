@@ -23,6 +23,7 @@
 """ parser for icsw command """
 
 import argparse
+
 from .service.service_parser import Parser as ServiceParser
 from .logwatch.logwatch_parser import Parser as LogwatchParser
 
@@ -42,8 +43,8 @@ class ICSWParser(object):
         self._parser = argparse.ArgumentParser(prog="icsw")
         self._parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
         sub_parser = self._parser.add_subparsers(help="sub-command help")
-        ServiceParser().link(sub_parser)
-        LogwatchParser().link(sub_parser)
+        # ServiceParser().link(sub_parser)
+        # LogwatchParser().link(sub_parser)
         for _sp in [
             ServiceParser,
             LogwatchParser,

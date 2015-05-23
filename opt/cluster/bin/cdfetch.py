@@ -144,8 +144,17 @@ class host_list_com(base_com):
         hlist = json.loads(_mc.get("cc_hc_list"))
         h_re = self.compile_re(self.options.host_filter)
         v_dict = {key: value for key, value in hlist.iteritems() if h_re.match(value[1])}
-        print("{} found : {}").format(logging_tools.get_plural("host", len(v_dict)), ", ".join(sorted([value[1] for value in v_dict.itervalues()])))
-        for key, value in v_dict.iteritems():
+        _h_uuid_dict = {_value[1]: _key for _key, _value in v_dict.iteritems()}
+        _h_names = sorted(_h_uuid_dict.keys())
+        print(
+            "{} found : {}".format(
+                logging_tools.get_plural("host", len(_h_names)),
+                logging_tools.reduce_list(_h_names),
+            )
+        )
+        for _h_name in _h_names:
+            key = _h_uuid_dict[_h_name]
+            value = v_dict[key]
             print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
         # print v_list
 
@@ -155,7 +164,11 @@ class host_list_com(base_com):
             h_list = h_list[0]
             num_hosts, num_keys = (0, 0)
             form_str = "{:<30s} ({:<40s}) : {:6d} keys, last update {}, store_to_disk is {}"
-            print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
+            print(
+                "got result for {}:".format(
+                    logging_tools.get_plural("host", int(h_list.attrib["entries"]))
+                )
+            )
             for host in h_list:
                 print(
                     form_str.format(
