@@ -780,7 +780,6 @@ class get_hist_service_line_graph_data(ListAPIView):
         for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
             return_data[dev_id][service_identifier] = values
 
-        return Response([return_data])  # fake a list, see coffeescript
         """
         def f():
             prelim_return_data = _device_status_history_util.get_line_graph_data(request, for_host=False)
@@ -802,6 +801,7 @@ class get_hist_service_line_graph_data(ListAPIView):
 
         return Response([return_data])  # fake a list, see coffeescript
         """
+        return Response([return_data])  # fake a list, see coffeescript
 
 
 class svg_to_png(View):
@@ -811,8 +811,8 @@ class svg_to_png(View):
         _post = request.POST
         _bytes = _post["svg"]
         _out = StringIO.StringIO()
-        #_xml = etree.fromstring(_post["svg"], parser)
-        #for _el in _xml.iter():
+        # _xml = etree.fromstring(_post["svg"], parser)
+        # for _el in _xml.iter():
         #    for _key, _value in _el.attrib.iteritems():
         #        if _key.startswith("ng-"):
         #            del _el.attrib[_key]

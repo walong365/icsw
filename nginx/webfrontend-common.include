@@ -23,13 +23,12 @@ harakiri-verbose=1
 processes=1
 zerg-server=/var/run/%(django_app)/broodlord.sock
 post-buffering=0
+; be lazy (workers load application, not the master)
 lazy-apps=1
 workers=8
 show-config=1
 ; reduce mercy period to speed up reload
 worker-reload-mercy=10
-; be lazy (workers load application, not the master)
-lazy=1
 enable-threads=1
 
 # buffer size

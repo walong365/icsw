@@ -130,6 +130,7 @@ angular.module(
     }
 ]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "gettextCatalog", "$window", "$q", (Restangular, ICSW_URLS, gettextCatalog, $window, $q) ->
     data = {
+        state_valid: false
         all_licenses: []
         license_packages: []
         # no reload:
@@ -142,6 +143,7 @@ angular.module(
             Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES.slice(1)).getList(),
         ]
         $q.all(promises).then((new_lists) ->
+            data.state_valid = true
             data.all_licenses.length = 0
             for entry in new_lists[0]
                 data.all_licenses.push(entry)
