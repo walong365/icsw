@@ -78,7 +78,7 @@ class server_process(threading_tools.process_pool):
         self.log("cluster_device_uuid is '{}'".format(my_uuid.get_urn()))
         if self._init_network_sockets():
             self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
-            self.add_process(initat.mother.command.external_command_process("command"), start=True)
+            self.add_process(initat.mother.command.ExternalCommandProcess("command"), start=True)
             self.add_process(initat.mother.control.node_control_process("control"), start=True)
             self.add_process(initat.mother.control.direct_process("direct"), start=True)
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}

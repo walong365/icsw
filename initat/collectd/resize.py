@@ -278,7 +278,9 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
             _changed = False
         return _changed
 
-    def loop_post(self):
+    def loop_end(self):
         if self.do_sync:
             self.sync_ram_to_disk()
+
+    def loop_post(self):
         self.__log_template.close()

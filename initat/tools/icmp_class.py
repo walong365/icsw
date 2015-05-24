@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,11 +23,12 @@
 """ A raw ICMP baseclass (icmp protocol), based on seafelt lib/icmp.py """
 
 import array
-from initat.tools import logging_tools
 import os
 import socket
 import struct
 import time
+
+from initat.tools import logging_tools
 
 
 def _octets_to_hex(octets):
@@ -310,6 +311,9 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
                         raise NotImplementedError(err_str)
                     self.__last_key_error = act_time
                     self.__key_error_num = 0
+            except struct.error:
+                dgram = None
+                self.log("error decoding raw data (len was {:d})".format(len(data)), logging_tools.LOG_LEVEL_ERROR)
         return dgram
 
     def send_echo(self, addr, data="init.at NOCTUA/CORVUS ping data", ident=None):
