@@ -34,7 +34,7 @@ class handler(SNMPHandler):
         description = "rackable power distribution unit (IBM)"
         vendor_name = "ibm"
         name = "pdu"
-        tl_oids = ["1.3.6.1.4.1.2.6.223.8.2.2.1.9", "1.3.6.1.4.1.2.6.223.8.2.2.1.15"]
+        tl_oids = [AMP_OID, WATT_OID]
 
     def collect_fetch(self):
         return [
