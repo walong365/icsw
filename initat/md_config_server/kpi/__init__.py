@@ -26,7 +26,6 @@ from django.db import connection
 import django.utils.timezone
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import Kpi, License
-from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
 from initat.md_config_server.kpi.kpi_utils import print_tree
@@ -39,6 +38,7 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
                  server_mixins.OperationalErrorMixin, server_mixins.NetworkBindMixin):
 
     def process_init(self):
+        from initat.md_config_server.config.objects import global_config
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
