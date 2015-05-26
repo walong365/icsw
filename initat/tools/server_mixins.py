@@ -26,6 +26,8 @@ from initat.tools import process_tools
 from initat.tools import threading_tools
 from initat.tools import server_command
 import zmq
+import time
+from enum import IntEnum
 
 
 # exception mixin
@@ -242,24 +244,26 @@ class RemoteCallMixin(object):
             else:
                 src_id, data = (None, in_data[0])
             msg_lut = self.remote_call_lut[com_type]
-            if "xml" in msg_lut:
+            if RemoteCallMessageType.xml in msg_lut:
                 # try to interpret as server_command
                 try:
                     srv_com = server_command.srv_command(source=data)
                 except:
                     srv_com = None
-                    msg_type = "flat"
+                    msg_type = RemoteCallMessageType.flat
                 else:
-                    msg_type = "xml"
+                    msg_type = RemoteCallMessageType.xml
             else:
-                msg_type = "flat"
-            if msg_type == "flat":
+                msg_type = RemoteCallMessageType.flat
+            if msg_type == RemoteCallMessageType.flat:
                 com_name = data.strip().split()[0]
             else:
                 com_name = srv_com["*command"]
+
+            com_name = com_name.replace("-", "_")  # can't have '-' in python method names
             # if msg_type in msg_lut:
             if com_name in msg_lut.get(msg_type, {}):
-                if msg_type == "xml":
+                if msg_type == RemoteCallMessageType.xml:
                     # set source
                     srv_com.update_source()
                 rcs = msg_lut[msg_type][com_name]
@@ -283,7 +287,7 @@ class RemoteCallMixin(object):
                     logging_tools.LOG_LEVEL_ERROR,
                 )
                 if com_type == "router":
-                    if msg_type == "flat":
+                    if msg_type == RemoteCallMessageType.flat:
                         _reply = u"unknown command '{}'".format(com_name)
                     else:
                         srv_com.set_result(
@@ -339,27 +343,43 @@ class RemoteCallMixin(object):
             self._send_remote_call_reply(_sock, _src_id, _reply)
 
 
+class RemoteCallMessageType(IntEnum):
+    xml = 1
+    flat = 2
+
+
 class RemoteCallSignature(object):
     def __init__(self, *args, **kwargs):
         self.com_type = kwargs.get("com_type", "router")
-        self.sync = kwargs.get("sync", True)
-        self.msg_type = kwargs.get("msg_type", "xml")
         self.target_process = kwargs.get("target_process", None)
+        self.target_process_func = kwargs.get("target_process_func", None)
+        self.msg_type = kwargs.get("msg_type", RemoteCallMessageType.xml)
         self.debug = kwargs.get("debug", None)
-        if not self.sync and (self.com_type, self.msg_type) not in [("router", "xml")]:
-            raise ValueError("asnyc calls only possible for XML router calls")
+
+        # sync should default to False when using a target process, else be True
+        sync_default = not self.target_process
+
+        self.sync = kwargs.get("sync", sync_default)
+
+        if not self.sync and (self.com_type, self.msg_type) not in [("router", RemoteCallMessageType.xml)]:
+            raise ValueError("async calls only possible for XML router calls")
         if not self.sync and not self.target_process:
             raise ValueError("need target process for async calls")
+        if "sync" in kwargs and kwargs["sync"] and self.target_process:  # only check this if sync is set explicitly
+            raise ValueError("call must by asynchronous when forwarding to target process")
 
     def link(self, lut):
         lut.setdefault(self.com_type, {}).setdefault(self.msg_type, {})[self.func.__name__] = self
 
     def handle(self, instance, src_id, srv_com):
+        # print 'RemoteCall handle', self, instance, src_id, srv_com, 'target', self.target_process, self.func.__name__
         _result = self.func(instance, srv_com, src_id=src_id)
         if self.sync:
             return _result
         else:
-            instance.send_to_process(self.target_process, self.func.__name__, unicode(_result))
+            effective_target_func_name = self.target_process_func or self.func.__name__
+            # print 'effective target name', effective_target_func_name
+            instance.send_to_process(self.target_process, effective_target_func_name,  unicode(_result))
 
 
 class RemoteCall(object):

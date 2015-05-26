@@ -20,6 +20,7 @@
                     <li ng-show="has_menu_permission(['user.modify_category_tree', 'user.modify_domain_tree', 'user.modify_tree'])" class="divider"></li>
                     <li ng-show="has_menu_permission('network.modify_network')"><a href="{{ ICSW_URLS.NETWORK_SHOW_NETWORKS }}">Networks</a></li>
                     <li ng-show="has_menu_permission('config.modify_config')"><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}">Configurations</a></li>
+                    <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')"><a href="{{ ICSW_URLS.BASE_KPI }}">Key performance indicators</a></li>
                     <li ng-show="has_menu_permission(['network.modify_network', 'config.modify_config'])" class="divider"></li>
                     <li ng-show="has_menu_permission('device.change_network')"><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}">Device network</a></li>
                     <li ng-show="has_menu_permission('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}">Device connections</a></li>

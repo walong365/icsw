@@ -20,24 +20,47 @@
 # -*- coding: utf-8 -*-
 #
 """ model serializers """
+import json
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import kpi, kpi_selected_device_monitoring_category_tuple
+from initat.cluster.backbone.models import Kpi, KpiDataSourceTuple, KpiStoredResult
+from initat.md_config_server.kpi import KpiSet, KpiResult
 
 
 __all__ = [
-    "kpi_serializer",
-    "kpi_selected_device_monitoring_category_tuple_serializer",
+    "KpiSerializer",
+    "KpiDataSourceTupleSerializer",
 ]
 
 
-class kpi_serializer(serializers.ModelSerializer):
+class KpiDataSourceTupleSerializer(serializers.ModelSerializer):
     class Meta:
-        model = kpi
+        model = KpiDataSourceTuple
 
 
-class kpi_selected_device_monitoring_category_tuple_serializer(serializers.ModelSerializer):
+class KpiSerializer(serializers.ModelSerializer):
+    result = serializers.SerializerMethodField("_get_result")
+
+    def _get_result(self, obj):
+        try:
+            stored_result = obj.kpistoredresult
+        except KpiStoredResult.DoesNotExist:
+            return None
+        else:
+            if stored_result.result is None:
+                # result is here, but calculation resulted in None
+                return None
+            else:
+                parsed = json.loads(stored_result.result)
+                # kpi_set = KpiSet.deserialize(parsed)
+
+                # 'values':
+                # [obj.result.get_numeric_icinga_service_state() for obj in kpi_set.objects if obj.result is not None],
+                return {
+                    'date': stored_result.date,
+                    'json': parsed,
+                }
+
     class Meta:
-        model = kpi_selected_device_monitoring_category_tuple
-
+        model = Kpi

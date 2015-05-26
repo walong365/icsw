@@ -23,33 +23,92 @@
 
 
 from django.db import models
+import django.utils.timezone
 from django.db.models import Q, signals
 from initat.tools import logging_tools
 
 
 __all__ = [
-    "kpi",
-    "kpi_selected_device_monitoring_category_tuple",
+    "Kpi",
+    "KpiDataSourceTuple",
+    "KpiStoredResult",
 ]
 
 
-class kpi(models.Model):
+class Kpi(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
-    available_device_categories = models.ManyToManyField('category', related_name="available_device_category")
-    available_monitoring_categories = models.ManyToManyField('category', related_name="available_monitoring_category")
+
+    date = models.DateTimeField(auto_now_add=True,
+                                default=django.utils.timezone.now)  # some default for migration
+
+    formula = models.TextField(blank=True)
+
+    enabled = models.BooleanField(default=True)
+
+    # pretend as if all device/monitoring tuples were checked
+    # TODO: implement in gui
+    # uses_all_data = models.BooleanField(default=False)
+
+    # 'last_week', 'yesterday', etc.
+    time_range = models.TextField(blank=True, default='none')
+    # parameter for 'last_n_days'
+    time_range_parameter = models.IntegerField(default=0)
+
+    gui_selected_categories = models.TextField(blank=True)  # json
+
+    def set_result(self, result_str, date):
+        try:
+            self.kpistoredresult.result = result_str
+            self.kpistoredresult.date = date
+            self.kpistoredresult.save()
+        except KpiStoredResult.DoesNotExist:
+            KpiStoredResult(kpi=self, result=result_str, date=date).save()
+
+    def has_historic_data(self):
+        return self.time_range != 'none'
+
+    def __unicode__(self):
+        return u"KPI {}".format(self.name)
 
     class Meta:
         app_label = "backbone"
+        ordering = ('idx', )  # rest view in order of creation
+        verbose_name = "KPI"
+
+    class CSW_Meta:
+        fk_ignore_list = ["KpiDataSourceTuple", "KpiStoredResult"]
+        permissions = (
+            ("kpi", "define and access key performance indicators (kpis)", False),
+        )
 
 
-class kpi_selected_device_monitoring_category_tuple(models.Model):
+class KpiDataSourceTuple(models.Model):
     # Relevant (dev_cat x mon_cat) for a kpi.
     # Specifies the data actually relevant for kpi calculation.
     idx = models.AutoField(primary_key=True)
-    kpi = models.ForeignKey(kpi)
-    device_category = models.ForeignKey('category', related_name="device_cateogory")
+    kpi = models.ForeignKey(Kpi)
+    device_category = models.ForeignKey('category', related_name="device_category")
     monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
+
+    def __repr__(self):
+        return u"KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(self.kpi,
+                                                                            self.device_category,
+                                                                            self.monitoring_category)
+
+    __unicode__ = __repr__  # useful for force_text
+
+    class Meta:
+        app_label = "backbone"
+        verbose_name = "KPI data sources"
+
+
+class KpiStoredResult(models.Model):
+    idx = models.AutoField(primary_key=True)
+    kpi = models.OneToOneField(Kpi)
+    date = models.DateTimeField()
+
+    result = models.TextField(null=True)  # json
 
     class Meta:
         app_label = "backbone"

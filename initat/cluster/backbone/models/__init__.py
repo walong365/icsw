@@ -70,6 +70,7 @@ from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.models.graph import *  # @UnusedWildImport
 from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
+from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
 import initat.cluster.backbone.models.model_history
@@ -819,6 +820,7 @@ class device(models.Model):
             "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
             "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
             "mon_icinga_log_raw_service_notification_data", "mon_icinga_log_raw_host_notification_data",
+            "mon_icinga_log_raw_service_downtime_data", "mon_icinga_log_raw_host_downtime_data",
         ]
 
     class Meta:
@@ -1487,6 +1489,8 @@ def _register_models():
         category,
         # mon
         mon_check_command, mon_check_command_special,
+        # kpi
+        Kpi, KpiDataSourceTuple,
         # lic
         License,
     )
