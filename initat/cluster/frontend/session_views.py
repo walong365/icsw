@@ -40,7 +40,6 @@ from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object, xml_wrapper
 import django
 
-
 logger = logging.getLogger("cluster.setup")
 
 

@@ -10,6 +10,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from initat.tools import logging_tools
 
+
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
@@ -293,6 +294,7 @@ PIPELINE_YUGLIFY_BINARY = "/opt/cluster/lib/node_modules/yuglify/bin/yuglify"
 if not SLAVE_MODE:
     if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
         raise ImproperlyConfigured("no {} found".format(PIPELINE_YUGLIFY_BINARY))
+
 PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
 PIPELINE_YUGLIFY_JS_ARGUMENTS = "--terminal"
 if DEBUG:

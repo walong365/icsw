@@ -373,7 +373,9 @@ class GetObjectPermissions(RetrieveAPIView):
 class GetInitProduct(RetrieveAPIView):
     @rest_logging
     def get(self, request, *args, **kwargs):
-        return Response({
-            'name': License.objects.get_init_product().name,
-            'version': '2.1',
-        })
+        return Response(
+            {
+                'name': License.objects.get_init_product().name,
+                'version': '2.1',
+            }
+        )

@@ -23,6 +23,15 @@
 """ monitoring views """
 import collections
 import datetime
+from lxml import etree
+import base64
+import itertools
+import json
+import logging
+import socket
+import StringIO
+import uuid
+from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
 from django.db.models.query import Prefetch
@@ -30,7 +39,6 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-import pytz
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from django.core.cache import cache
@@ -38,7 +46,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseUsageDeviceService, LicenseLockListDeviceService
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
@@ -46,28 +54,14 @@ from initat.cluster.backbone.models.status_history import mon_icinga_log_aggrega
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
-    mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
-    mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
-    mon_service_esc_templ_form, mon_device_esc_templ_form, mon_service_dependency_templ_form, \
-    mon_host_dependency_form, mon_service_dependency_form, device_monitoring_form, \
-    device_group
+from initat.cluster.frontend.forms import device_group
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImports
-from lxml import etree
-import base64
-import itertools
-import json
-import logging
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
-import socket
 import cairosvg
-import StringIO
-import uuid
-from collections import defaultdict
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -267,8 +261,10 @@ class get_node_status(View):
                 service_results_filtered = []
                 services_used = collections.defaultdict(lambda: [])
                 for serv_res in json.loads(service_results[0]):
-                    parsed = host_service_id_util.parse_host_service_description(serv_res['description'],
-                                                                                 log=logger.error)
+                    parsed = host_service_id_util.parse_host_service_description(
+                        serv_res['description'],
+                        log=logger.error
+                    )
                     locked = False
                     if parsed:
                         host_pk, service_pk, _ = parsed
@@ -696,7 +692,6 @@ class get_hist_service_line_graph_data(ListAPIView):
         for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
             return_data[dev_id][service_identifier] = values
 
-        return Response([return_data])  # fake a list, see coffeescript
         """
         def f():
             prelim_return_data = _device_status_history_util.get_line_graph_data(request, for_host=False)
@@ -718,6 +713,7 @@ class get_hist_service_line_graph_data(ListAPIView):
 
         return Response([return_data])  # fake a list, see coffeescript
         """
+        return Response([return_data])  # fake a list, see coffeescript
 
 
 class svg_to_png(View):
@@ -727,8 +723,8 @@ class svg_to_png(View):
         _post = request.POST
         _bytes = _post["svg"]
         _out = StringIO.StringIO()
-        #_xml = etree.fromstring(_post["svg"], parser)
-        #for _el in _xml.iter():
+        # _xml = etree.fromstring(_post["svg"], parser)
+        # for _el in _xml.iter():
         #    for _key, _value in _el.attrib.iteritems():
         #        if _key.startswith("ng-"):
         #            del _el.attrib[_key]

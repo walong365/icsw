@@ -22,6 +22,8 @@
 import os
 import stat
 import time
+import subprocess
+import psutil
 
 from django.db import connection
 from initat.collectd.config import global_config
@@ -57,6 +59,43 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
         self.register_timer(self.check_size, 6 * 3600, first_timeout=1)
         self.__verbose = global_config["VERBOSE"]
+        self.is_ram = False
+        for _fs in psutil.disk_partitions(all=True):
+            if _fs.mountpoint == global_config["RRD_DIR"] and _fs.fstype in ["tmpfs", "ramdisk"]:
+                self.is_ram = True
+                break
+        self.rsync_bin = process_tools.find_file("rsync")
+        self.log(
+            "{} is{} a RAM-disk, _rsync binary is at {} ...".format(
+                global_config["RRD_DIR"],
+                "" if self.is_ram else " not",
+                self.rsync_bin,
+            )
+        )
+        self.do_sync = self.is_ram and self.rsync_bin and global_config["RRD_DISK_CACHE"] != global_config["RRD_DIR"]
+        if self.do_sync:
+            self.log(
+                "enabling periodic RAM-to-disk sync from {} to {} every {}".format(
+                    global_config["RRD_DIR"],
+                    global_config["RRD_DISK_CACHE"],
+                    logging_tools.get_diff_time_str(global_config["RRD_DISK_CACHE_SYNC"]),
+                )
+            )
+            self.register_timer(self.sync_ram_to_disk, global_config["RRD_DISK_CACHE_SYNC"])
+
+    def sync_ram_to_disk(self):
+        s_time = time.time()
+        _cmd = "{} -a {}/* {}".format(
+            self.rsync_bin,
+            global_config["RRD_DIR"],
+            global_config["RRD_DISK_CACHE"],
+        )
+        subprocess.call(
+            _cmd,
+            shell=True
+        )
+        e_time = time.time()
+        self.log("command {} took {}".format(_cmd, logging_tools.get_diff_time_str(e_time - s_time)))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -238,6 +277,10 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
         else:
             _changed = False
         return _changed
+
+    def loop_end(self):
+        if self.do_sync:
+            self.sync_ram_to_disk()
 
     def loop_post(self):
         self.__log_template.close()

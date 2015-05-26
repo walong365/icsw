@@ -57,34 +57,36 @@ def kill_previous():
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
-        ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
-        ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
-        ("GROUPS", configfile.array_c_var([])),
-        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME", configfile.str_c_var(prog_name)),
-        ("PID_NAME", configfile.str_c_var(
-            os.path.join(
-                prog_name,
-                prog_name
-            )
-        )),
-        # ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT, database=True)),
-        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
-        ("RRD_CACHED_DIR", configfile.str_c_var("/var/run/rrdcached", database=True)),
-        ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached/rrdcached.sock", database=True)),
-        ("RRD_STEP", configfile.int_c_var(60, help_string="RRD step value", database=True)),
-    ])
+    global_config.add_config_entries(
+        [
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
+            ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
+            ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
+            ("GROUPS", configfile.array_c_var([])),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            ("PID_NAME", configfile.str_c_var(
+                os.path.join(
+                    prog_name,
+                    prog_name
+                )
+            )),
+            # ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT, database=True)),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
+            ("RRD_CACHED_DIR", configfile.str_c_var("/var/run/rrdcached", database=True)),
+            ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached/rrdcached.sock", database=True)),
+            ("RRD_STEP", configfile.int_c_var(60, help_string="RRD step value", database=True)),
+        ]
+    )
     global_config.parse_file()
     _options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING)
-        ,
+            VERSION_STRING
+        ),
         add_writeback_option=True,
         positional_arguments=False
     )
@@ -107,28 +109,40 @@ def main():
             ),
         ]
     )
-    cluster_location.read_config_from_db(global_config, "rrd_collector", [
-        ("RRD_COVERAGE_1", configfile.str_c_var("1min for 2days", database=True)),
-        ("RRD_COVERAGE_2", configfile.str_c_var("5min for 2 week", database=True)),
-        ("RRD_COVERAGE_3", configfile.str_c_var("15mins for 1month", database=True)),
-        ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
-        ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
-        ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
-        # NOTE: one of (host, port) and address is probably superfluous // BM 20150401
-        ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
-        ("MEMCACHE_PORT", configfile.int_c_var(11211, help_string="port on which memcache is reachable [%(default)s]")),
-        ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
-        ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
-        ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
-        ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
-        ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
-        ("COMMAND_PORT", configfile.int_c_var(COMMAND_PORT, help_string="command port, do not change [%(default)s]")),
-        ("GRAPHER_PORT", configfile.int_c_var(8003, help_string="grapher port, do not change [%(default)s]")),
-        ("MD_SERVER_HOST", configfile.str_c_var("127.0.0.1", help_string="md-config-server host [%(default)s]")),
-        ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
-        ("RRD_CACHED_WRITETHREADS", configfile.int_c_var(4, help_string="number of write threads for RRD-cached")),
-        ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
-    ])
+    cluster_location.read_config_from_db(
+        global_config,
+        "rrd_collector",
+        [
+            (
+                "RRD_DISK_CACHE",
+                configfile.str_c_var(
+                    "/opt/cluster/system/rrd",
+                    help_string="persistent directory to use when /var/cache/rrd is a RAM-disk",
+                    database=True
+                )
+            ),
+            ("RRD_DISK_CACHE_SYNC", configfile.int_c_var(3600, help_string="seconds between syncs from RAM to disk", database=True)),
+            ("RRD_COVERAGE_1", configfile.str_c_var("1min for 2days", database=True)),
+            ("RRD_COVERAGE_2", configfile.str_c_var("5min for 2 week", database=True)),
+            ("RRD_COVERAGE_3", configfile.str_c_var("15mins for 1month", database=True)),
+            ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
+            ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
+            ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
+            ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
+            ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
+            ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
+            ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
+            ("COMMAND_PORT", configfile.int_c_var(COMMAND_PORT, help_string="command port, do not change [%(default)s]")),
+            ("GRAPHER_PORT", configfile.int_c_var(8003, help_string="grapher port, do not change [%(default)s]")),
+            ("MD_SERVER_HOST", configfile.str_c_var("127.0.0.1", help_string="md-config-server host [%(default)s]")),
+            ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
+            ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
+            ("MEMCACHE_PORT", configfile.int_c_var(11211, help_string="port on which memcache is reachable [%(default)s]")),
+            ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
+            ("RRD_CACHED_WRITETHREADS", configfile.int_c_var(4, help_string="number of write threads for RRD-cached")),
+            ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
+        ]
+    )
     if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
         global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
     kill_previous()

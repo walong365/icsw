@@ -14,4 +14,3 @@ gid=www
 
 env=USER=%(uid)
 env=GROUP=%(gid)
-

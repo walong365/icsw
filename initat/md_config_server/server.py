@@ -433,9 +433,13 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
             try:
                 codecs.open(self.__external_cmd_file, "w", "utf-8").write("\n".join(lines + [""]))
             except:
-                self.log("error writing to {}: {}".format(
-                    self.__external_cmd_file,
-                    process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error writing to {}: {}".format(
+                        self.__external_cmd_file,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 raise
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)

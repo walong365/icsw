@@ -21,7 +21,6 @@
 #
 """ node control related parts of mother """
 
-import copy
 import datetime
 import os
 import re
@@ -29,7 +28,6 @@ import select
 import shutil
 import stat
 import time
-import uuid
 
 from django.db import connection
 from django.db.models import Q
@@ -72,10 +70,8 @@ class Host(object):
         self.set_maint_ip()
         # check network settings
         self.check_network_settings()
-        if not self.device.uuid:
-            self.device.uuid = str(uuid.uuid4())
-            self.log("setting uuid to {}".format(self.device.uuid))
-            self.device.save(fields=["uuid"])
+        assert not self.device.uuid, "device {} has no uuid".format(unicode(self.device))
+        Host.add_lut_key(self, self.device.pk)
         Host.add_lut_key(self, self.device.uuid)
         Host.add_lut_key(self, self.device.get_boot_uuid())
 
@@ -83,9 +79,9 @@ class Host(object):
         pass
 
     def close(self):
-        del_keys = copy.deepcopy(self.additional_lut_keys)
-        for add_key in del_keys:
+        for add_key in self.additional_lut_keys:
             Host.del_lut_key(self, add_key)
+        self.additional_lut_keys = set()
         self.__log_template.close()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, device_log=False):
@@ -101,14 +97,12 @@ class Host(object):
         Host.__lut = {}
         # pks
         Host.__unique_keys = set()
-        # names
-        Host.__unique_names = set()
         Host.ping_id = 0
 
     @staticmethod
     def shutdown():
-        while Host.__lut:
-            Host.delete_device(Host.__lut.keys()[0])
+        [Host.delete_device(_key, remove_from_unique_keys=False) for _key in Host.__unique_keys]
+        Host.__unique_keys = set()
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -178,31 +172,19 @@ class Host(object):
     @staticmethod
     def del_lut_key(obj, key):
         del Host.__lut[key]
-        obj.additional_lut_keys.remove(key)
 
     @staticmethod
     def set_device(new_dev):
         new_mach = Host(new_dev)
         Host.__unique_keys.add(new_dev.pk)
-        Host.__unique_names.add(new_dev.full_name)
-        Host.__lut[new_dev.full_name] = new_mach
-        # short name, will not always work
-        Host.__lut[new_dev.name] = new_mach
-        Host.__lut[new_dev.pk] = new_mach
 
     @staticmethod
-    def delete_device(dev_spec):
+    def delete_device(dev_spec, remove_from_unique_keys=True):
         mach = Host.get_device(dev_spec)
         if mach:
             mach.close()
-            del Host.__lut[mach.full_name]
-            del Host.__lut[mach.pk]
-            try:
-                del Host.__lut[mach.name]
-            except:
-                pass
-            Host.__unique_keys.remove(mach.pk)
-            Host.__unique_names.remove(mach.full_name)
+            if remove_from_unique_keys:
+                Host.__unique_keys.remove(mach.pk)
 
     @staticmethod
     def get_device(dev_spec):
@@ -373,14 +355,15 @@ class Host(object):
     def set_ip_dict(self, in_dict):
         old_dict = self.ip_dict
         self.ip_dict = in_dict
-        old_keys = set(old_dict.keys())
-        new_keys = set(self.ip_dict.keys())
-        for del_key in old_keys - new_keys:
-            self.log("removing ip {} from lut".format(del_key))
-            Host.del_lut_key(self, del_key)
-        for new_key in new_keys - old_keys:
-            self.log("adding ip {} to lut".format(new_key))
-            Host.add_lut_key(self, new_key)
+        # we no longer store IP-information in the lut (no longer needed)
+        # old_keys = set(old_dict.keys())
+        # new_keys = set(self.ip_dict.keys())
+        # for del_key in old_keys - new_keys:
+        #     self.log("removing ip {} from lut".format(del_key))
+        #     Host.del_lut_key(self, del_key)
+        # for new_key in new_keys - old_keys:
+        #     self.log("adding ip {} to lut".format(new_key))
+        #     Host.add_lut_key(self, new_key)
 
     def set_maint_ip(self, ip=None):
         if ip:
@@ -1029,7 +1012,7 @@ class Host(object):
         if self.maint_ip:
             ip_to_write, ip_to_write_src = (self.maint_ip.ip, "maint_ip")
         elif self.bootnetdevice and self.bootnetdevice.dhcp_device:
-            # FIXME
+            # FIXME, why do we take the first IP address ?
             if self.ip_dict:
                 ip_to_write, ip_to_write_src = (self.ip_dict.keys()[0], "first ip of ip_dict.keys()")
             else:
@@ -1652,7 +1635,7 @@ class node_control_process(threading_tools.process_obj):
             else:
                 if ip_dev.bootserver:
                     if ip_dev.bootserver.pk == self.sc.effective_device.pk:
-                        boot_dev = Host.get_device(ip_dev.name)
+                        boot_dev = Host.get_device(ip_dev.pk)
                         boot_dev.log(
                             "parsed: {}".format(
                                 ", ".join(
@@ -1694,7 +1677,7 @@ class node_control_process(threading_tools.process_obj):
                                 macaddr=in_dict["macaddr"].lower()).save()
                         else:
                             # no feed to device
-                            cur_mach = Host.get_device(greedy_devs[0].name)
+                            cur_mach = Host.get_device(greedy_devs[0].pk)
                             if cur_mach:
                                 cur_mach.feed_dhcp(in_dict, in_line)
                             else:
