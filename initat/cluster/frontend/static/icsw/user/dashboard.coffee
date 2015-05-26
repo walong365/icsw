@@ -165,7 +165,7 @@ dashboard_module = angular.module(
         template : $templateCache.get("icsw.user.index")
         link : (scope, element, attrs) ->
             access_level_service.install(scope)
-            scope.license_packages = icswUserLicenseDataService.license_packages
+            scope.lds = icswUserLicenseDataService
     }
 ])
 
