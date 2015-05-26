@@ -400,8 +400,8 @@ class server_process(threading_tools.process_pool,
         com_type = in_com["command"].text
         targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments", smart_strings=False)[0]]
         target_com = {
-            "ocsp_event": "PROCESS_SERVICE_CHECK_RESULT",
-            "ochp_event": "PROCESS_HOST_CHECK_RESULT",
+            "ocsp-event": "PROCESS_SERVICE_CHECK_RESULT",
+            "ochp-event": "PROCESS_HOST_CHECK_RESULT",
         }[com_type]
         # rewrite state information
         state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
@@ -414,7 +414,7 @@ class server_process(threading_tools.process_pool,
             "critical": 2,
             "unknown": 3,
         }.get(targ_list[state_idx].lower(), error_state))
-        if com_type == "ocsp_event":
+        if com_type == "ocsp-event":
             pass
         else:
             pass
