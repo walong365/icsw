@@ -269,7 +269,7 @@ class RemoteCallMixin(object):
                 rcs = msg_lut[msg_type][com_name]
                 if rcs.sync:
                     result = rcs.handle(self, src_id, srv_com)
-                    if com_type == "router":
+                    if com_type == "router" and result is not None:
                         # send reply
                         self._send_remote_call_reply(zmq_sock, src_id, result)
                 else:

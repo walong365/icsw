@@ -316,7 +316,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             srv_com["result"] = self._rebuild_config(*dev_names, cache_mode=dev_cache_mode)
             srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         else:
-            srv_com.set_result("no devices gaven", server_command.SRV_REPLY_STATE_ERROR)
+            srv_com.set_result("no devices given", server_command.SRV_REPLY_STATE_ERROR)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _cleanup_db(self):
