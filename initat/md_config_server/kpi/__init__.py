@@ -31,7 +31,7 @@ from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
 from initat.md_config_server.kpi.kpi_utils import print_tree
 from initat.tools import logging_tools, process_tools, server_mixins
-import threading_tools
+from initat.tools import threading_tools
 
 
 @server_mixins.RemoteCallProcess
