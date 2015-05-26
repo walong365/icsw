@@ -55,8 +55,11 @@ import zmq
 
 
 @server_mixins.RemoteCallProcess
-class server_process(threading_tools.process_pool, version_check_mixin, server_mixins.RemoteCallMixin,
-                     server_mixins.OperationalErrorMixin, server_mixins.NetworkBindMixin):
+class server_process(threading_tools.process_pool,
+                     version_check_mixin,
+                     server_mixins.RemoteCallMixin,
+                     server_mixins.OperationalErrorMixin,
+                     server_mixins.NetworkBindMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -80,7 +83,12 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
         self._init_network_sockets()
 
         if "MD_TYPE" in global_config:
+            self.register_func("register_slave", self._register_slave)
+            self.register_func("send_command", self._send_command)
+            self.register_func("ocsp_results", self._ocsp_results)
             self.__external_cmd_file = None
+            self.register_func("external_cmd_file", self._set_external_cmd_file)
+
             self.add_process(status_process("status"), start=True)
             self.add_process(syncer_process("syncer"), start=True)
             self.add_process(dynconfig_process("dynconfig"), start=True)
@@ -373,16 +381,7 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
         msi_block.save_block()
         self.__msi_block = msi_block
 
-    @server_mixins.RemoteCall(target_process="KpiProcess")
-    def calculate_kpi(self, srv_com, **kwargs):
-        return srv_com
-
-    @server_mixins.RemoteCall(target_process="KpiProcess")
-    def get_kpi_source_data(self, srv_com, **kwargs):
-        return srv_com
-
-    @server_mixins.RemoteCall(msg_type=RemoteCallMessageType.flat)
-    def register_slave(self, *args, **kwargs):
+    def _register_slave(self, *args, **kwargs):
         _src_proc, _src_id, slave_ip, slave_uuid = args
         conn_str = "tcp://{}:{:d}".format(
             slave_ip,
@@ -392,8 +391,7 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
             self.main_socket.connect(conn_str)
             self.__slaves[conn_str] = slave_uuid
 
-    @server_mixins.RemoteCall(msg_type=RemoteCallMessageType.flat)
-    def ocsp_results(self, *args, **kwargs):
+    def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
         self._write_external_cmd_file(lines)
 
@@ -450,6 +448,11 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
         self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
         self.main_socket.send_unicode(srv_com)
 
+    def _set_external_cmd_file(self, *args, **kwargs):
+        _src_proc, _src_id, ext_name = args
+        self.log("setting external cmd_file to '{}'".format(ext_name))
+        self.__external_cmd_file = ext_name
+
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
@@ -460,26 +463,6 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
             pollin=self.remote_call,
         )
 
-        #client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        #client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))  # @UndefinedVariable
-        #client.setsockopt(zmq.SNDHWM, 1024)  # @UndefinedVariable
-        #client.setsockopt(zmq.RCVHWM, 1024)  # @UndefinedVariable
-        #client.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-        #client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-        #client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
-        #try:
-        #    client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
-        #except zmq.ZMQError:
-        #    self.log(
-        #        "error binding to {:d}: {}".format(
-        #            global_config["COM_PORT"],
-        #            process_tools.get_except_info()),
-        #        logging_tools.LOG_LEVEL_CRITICAL)
-        #    raise
-        #else:
-        #    self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
-        #    self.com_socket = client
-
         self.__slaves = {}
 
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
@@ -488,11 +471,13 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
 
-    @server_mixins.RemoteCall(msg_type=RemoteCallMessageType.flat)
-    def set_external_cmd_file(self, *args, **kwargs):
-        _src_proc, _src_id, ext_name = args
-        self.log("setting external cmd_file to '{}'".format(ext_name))
-        self.__external_cmd_file = ext_name
+    @server_mixins.RemoteCall(target_process="KpiProcess")
+    def calculate_kpi(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="KpiProcess")
+    def get_kpi_source_data(self, srv_com, **kwargs):
+        return srv_com
 
     @RemoteCall(target_process="status")
     def get_node_status(self, srv_com, **kwargs):
@@ -504,15 +489,13 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
 
     @RemoteCall()
     def rebuild_host_config(self, srv_com, **kwargs):
-        # TODO: make parameters work with remote call forwarding
-        # TODO: make async execution work with remote call forwarding
+        # pretend to be synchronous call such that reply is sent right away
         self.send_to_process("build", "rebuild_config", cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
         srv_com.set_result("ok processed command rebuild_host_config")
         return srv_com
 
     @RemoteCall()
     def sync_http_users(self, srv_com, **kwargs):
-        # TODO: make async execution work with remote call forwarding
         self.send_to_process("build", "sync_http_users")
         srv_com.set_result("ok processed command sync_http_users")
         return srv_com
@@ -527,87 +510,37 @@ class server_process(threading_tools.process_pool, version_check_mixin, server_m
 
     @RemoteCall(target_process="dynconfig")
     def monitoring_info(self, srv_com, **kwargs):
-        # TODO: test
         return srv_com
-
-    def _handle_sync_command(self, srv_com):
-        self.send_to_process("syncer", srv_com, unicode(srv_com))
-        if "sync_id" in srv_com:
-            self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
-            return srv_com
 
     @RemoteCall(target_process="syncer")
     def file_content_result(self, srv_com, **kwargs):
-        # TODO: test
         return srv_com
 
     @RemoteCall(target_process="syncer")
     def file_content_bulk_result(self, srv_com, **kwargs):
         return srv_com
 
-    @RemoteCall(target_process="syncer")
+    @RemoteCall()
     def relayer_info(self, srv_com, **kwargs):
+        # pretend to be synchronous call such that reply is sent right away
         self.send_to_process("syncer", "relayer_info", unicode(srv_com))
-        self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
         srv_com.set_result("ok processed command sync_http_users")
         return srv_com
 
+    @RemoteCall()
+    def passive_check_result(self, srv_com, **kwargs):
+        # pretend to be synchronous call such that reply is sent right away
+        self.send_to_process("dynconfig", "passive_check_result", unicode(srv_com))
+        srv_com.set_result("ok processed command passive_check_result")
+        return srv_com
 
-    TODO:
-    transform rest from _recv_command to new structure
-    check if other methods are deprecated now
-    test startup/teardown of md-config-server
+    @RemoteCall(target_process="dynconfig")
+    def passive_check_results(self, srv_com, **kwargs):
+        return srv_com
 
-
-    def _recv_command(self, zmq_sock):
-        in_data = []
-        while True:
-            in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-                break
-        if len(in_data) == 2:
-            src_id, data = in_data
-            try:
-                srv_com = server_command.srv_command(source=data)
-            except:
-                self.log(
-                    "error interpreting command: {}".format(process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                # send something back
-                self.main_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                self.main_socket.send_unicode("internal error")
-            else:
-                cur_com = srv_com["command"].text
-                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result", "monitoring_info"]:
-                    self.log("got command '{}' from '{}'".format(
-                        cur_com,
-                        srv_com["source"].attrib["host"]))
-                srv_com.update_source()
-                send_return = False
-                if False:
-                    pass
-
-                elif cur_com in ["passive_check_results", "passive_check_results_as_chunk", "passive_check_result"]:
-                    self.send_to_process("dynconfig", cur_com, unicode(srv_com))
-                    if cur_com == "passive_check_result":
-                        send_return = True
-                else:
-                    self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
-                if send_return:
-                    srv_com.set_result("ok processed command {}".format(cur_com))
-                    self.main_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                    self.main_socket.send_unicode(unicode(srv_com))
-                else:
-                    del cur_com
-        else:
-            self.log(
-                "wrong count of input data frames: {:d}, first one is {}".format(
-                    len(in_data),
-                    in_data[0]
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
+    @RemoteCall(target_process="dynconfig")
+    def passive_check_results_as_chunk(self, srv_com, **kwargs):
+        return srv_com
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)

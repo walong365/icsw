@@ -47,7 +47,7 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
         )
         connection.close()
 
-        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+        self.register_timer(self.update, 60 if global_config["DEBUG"] else 300, instant=True)
 
         #def a(*args, **kwargs):
         #    print 'called with', args, kwargs

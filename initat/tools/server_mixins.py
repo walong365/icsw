@@ -362,7 +362,7 @@ class RemoteCallSignature(object):
         self.sync = kwargs.get("sync", sync_default)
 
         if not self.sync and (self.com_type, self.msg_type) not in [("router", RemoteCallMessageType.xml)]:
-            raise ValueError("asnyc calls only possible for XML router calls")
+            raise ValueError("async calls only possible for XML router calls")
         if not self.sync and not self.target_process:
             raise ValueError("need target process for async calls")
         if "sync" in kwargs and kwargs["sync"] and self.target_process:  # only check this if sync is set explicitly
@@ -372,13 +372,13 @@ class RemoteCallSignature(object):
         lut.setdefault(self.com_type, {}).setdefault(self.msg_type, {})[self.func.__name__] = self
 
     def handle(self, instance, src_id, srv_com):
-        print 'handle', self, instance, src_id, srv_com, 'target', self.target_process
+        # print 'RemoteCall handle', self, instance, src_id, srv_com, 'target', self.target_process, self.func.__name__
         _result = self.func(instance, srv_com, src_id=src_id)
         if self.sync:
             return _result
         else:
             effective_target_func_name = self.target_process_func or self.func.__name__
-            print 'effective targ', effective_target_func_name
+            # print 'effective target name', effective_target_func_name
             instance.send_to_process(self.target_process, effective_target_func_name,  unicode(_result))
 
 
