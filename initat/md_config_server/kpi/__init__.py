@@ -24,7 +24,8 @@ import pprint
 import traceback
 from django.db import connection
 import django.utils.timezone
-from initat.cluster.backbone.models import Kpi
+from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.cluster.backbone.models import Kpi, License
 from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
@@ -49,10 +50,6 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
 
         self.register_timer(self.update, 60 if global_config["DEBUG"] else 300, instant=True)
 
-        #def a(*args, **kwargs):
-        #    print 'called with', args, kwargs
-        #self.register_func("calculate_kpi", a)
-
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
@@ -72,16 +69,17 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
 
     def update(self):
         """Recalculate all kpis and save result to database"""
-        KpiGlobals.set_context()
-        try:
-            data = KpiData(self.log)
-        except Exception as e:
-            self.log("Exception when gathering kpi data: {}".format(process_tools.get_except_info()))
-        else:
-            # recalculate kpis
-            for kpi_db in Kpi.objects.filter(enabled=True):
-                result_str = self._evaluate_kpi(data, kpi_db)
-                kpi_db.set_result(result_str, django.utils.timezone.now())
+        if License.objects.has_valid_license(LicenseEnum.kpi):
+            KpiGlobals.set_context()
+            try:
+                data = KpiData(self.log)
+            except Exception as e:
+                self.log("Exception when gathering kpi data: {}".format(process_tools.get_except_info()))
+            else:
+                # recalculate kpis
+                for kpi_db in Kpi.objects.filter(enabled=True):
+                    result_str = self._evaluate_kpi(data, kpi_db)
+                    kpi_db.set_result(result_str, django.utils.timezone.now())
 
     def calculate_kpi(self, kpi_db):
         """Calculate single kpi"""
@@ -91,7 +89,9 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
 
     def _evaluate_kpi(self, data, kpi_db):
         """Evaluates given kpi on data returning the result as string.
-        Does not write to the database."""
+        Does not write to the database.
+        Kpi context must be set before call.
+        """
         self.log("Evaluating kpi {}".format(kpi_db))
         # print '\nevaluating kpi', kpi_db
         kpi_set = KpiSet(data.get_data_for_kpi(kpi_db),
