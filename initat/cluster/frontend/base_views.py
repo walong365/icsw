@@ -14,14 +14,12 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.generics import ListAPIView
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.tools import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
     category_tree, location_gfx, DeleteRequest
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import category_form, location_gfx_form
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImport
 import initat.cluster.backbone.models

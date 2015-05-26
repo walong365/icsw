@@ -35,7 +35,6 @@ import initat.collectd.aggregate
 
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
 from initat.md_config_server.common import live_socket
-from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
@@ -222,6 +221,8 @@ class KpiData(object):
         device_full_names = \
             {entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')}
 
+
+        from initat.md_config_server.config.objects import global_config
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
         host_rrd_data = {}
         try:
