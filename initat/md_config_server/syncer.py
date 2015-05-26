@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -89,7 +89,9 @@ class syncer_process(threading_tools.process_obj):
             self.log(
                 "found {}: {}".format(
                     logging_tools.get_plural("slave_server", len(slave_servers)),
-                    ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
+                    ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))
+                )
+            )
             for cur_dev in slave_servers:
                 _slave_c = sync_config(
                     self,

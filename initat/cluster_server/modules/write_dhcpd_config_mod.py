@@ -193,7 +193,7 @@ class write_dhcpd_config(cs_base_class.server_com):
             if ret_state is None:
                 ret_state, ret_str = (
                     server_command.SRV_REPLY_STATE_ERROR,
-                    "error no valid dhcp-server found (packages like dhcp-server missing ?)"
+                    "error no method found to restart the dhcp-server (systemd ?)",
                 )
             cur_inst.srv_com.set_result(
                 ret_str,

@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
 from initat.snmp.sink import SNMPSink
-from initat.mother.config import global_config
+from .config import global_config
 from initat.tools import config_tools
 from initat.tools import logging_tools
 from initat.tools import process_tools

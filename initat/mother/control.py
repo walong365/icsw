@@ -33,8 +33,6 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
     cluster_timezone, log_source_lookup, LogSource, DeviceLogEntry, user
-from initat.mother.command_tools import simple_command
-from initat.mother.config import global_config
 from initat.tools import config_tools
 from initat.tools import configfile
 from initat.tools import icmp_class
@@ -43,6 +41,10 @@ from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import threading_tools
+
+from .command_tools import simple_command
+from .config import global_config
+from .dhcp import DHCPCommand, DHCPSyncer
 
 
 class Host(object):
@@ -88,8 +90,9 @@ class Host(object):
         self.__log_template.log(log_level, what)
 
     @staticmethod
-    def setup(c_process):
+    def setup(c_process, dhcp_syncer):
         Host.process = c_process
+        Host.dhcp_syncer = dhcp_syncer
         Host.debug = global_config["DEBUG"]
         Host.eb_dir = global_config["ETHERBOOT_DIR"]
         Host.iso_dir = global_config["ISO_DIR"]
@@ -214,6 +217,7 @@ class Host(object):
                     "call '{}' not defined".format(com_name),
                     logging_tools.LOG_LEVEL_WARN
                 )
+        Host.dhcp_syncer.sync()
 
     @staticmethod
     def iterate_xml(srv_com, com_name, *args, **kwargs):
@@ -1019,154 +1023,28 @@ class Host(object):
                 ip_to_write, ip_to_write_src = (None, "")
         else:
             ip_to_write, ip_to_write_src = (None, "")
-        om_shell_coms = []
-        if com_name == "alter":
-            if self.device.dhcp_written:
-                if self.device.dhcp_write and ip_to_write:
-                    if self.dhcp_mac_written == self.device.bootnetdevice.macaddr and self.dhcp_ip_written == ip_to_write:
-                        self.log("MAC/IP in DHCP database up to date, not writing")
-                        om_shell_coms = []
-                    else:
-                        om_shell_coms = ["delete", "write"]
-                else:
-                    om_shell_coms = ["delete"]
-            else:
-                if self.device.dhcp_write and ip_to_write:
-                    om_shell_coms = ["write"]
-                else:
-                    om_shell_coms = ["delete"]
-        elif com_name == "write":
+        # om_shell_coms = []
+        if ip_to_write:
+            mac_to_write = self.device.bootnetdevice.macaddr
+            server_ip = self.server_ip_dict[self.maint_ip.ip]["ip"]
+        else:
+            mac_to_write = None
+            server_ip = None
+        if com_name in ["alter", "write"]:
             if self.device.dhcp_write and ip_to_write:
-                om_shell_coms = ["write"]
+                om_shell_com = DHCPCommand(self.device.name, self.device.uuid, ip_to_write, mac_to_write, server_ip)
             else:
-                om_shell_coms = []
-        elif com_name == "delete":
-            if self.device.dhcp_write:
-                om_shell_coms = ["delete"]
-            else:
-                om_shell_coms = []
+                om_shell_com = DHCPCommand(self.device.name, self.device.uuid)
+        else:
+            om_shell_com = DHCPCommand(self.device.name)
         self.log(
-            "transformed dhcp_command {} to {}: {} ({})".format(
+            "transformed dhcp_command {} to {} ({})".format(
                 com_name,
-                logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
-                ", ".join(om_shell_coms),
+                unicode(om_shell_com),
                 ip_to_write and "ip {} from {}".format(ip_to_write, ip_to_write_src) or "no ip",
             )
         )
-        simple_command.process.set_check_freq(200)  # @UndefinedVariable
-        for om_shell_com in om_shell_coms:
-            om_array = [
-                'server 127.0.0.1',
-                'port 7911',
-                'connect',
-                'new host',
-                'set name = "{}"'.format(self.device.name),
-            ]
-            if om_shell_com == "write":
-                server_ip = self.server_ip_dict[self.maint_ip.ip]["ip"]
-                om_array.extend(
-                    [
-                        'set hardware-address = {}'.format(self.device.bootnetdevice.macaddr),
-                        'set hardware-type = 1',
-                        'set ip-address={}'.format(ip_to_write),
-                    ]
-                )
-                om_array.extend(
-                    [
-                        'set statements = "' +
-                        'supersede host-name = \\"{}\\" ;'.format(self.device.name) +
-                        'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
-                        "next-server {} ; ".format(server_ip) +
-                        'if option arch = 00:06 { ' +
-                        'filename = \\"etherboot/pxelinux.0\\" ; ' +
-                        "} else if option arch = 00:07 { " +
-                        'filename = \\"etherboot/bootx64.efi\\" ; ' +
-                        "} else { " +
-                        'filename = \\"etherboot/pxelinux.0\\" ; ' +
-                        '} ' +
-                        '}"'
-                    ]
-                )
-                om_array.append('create')
-            elif om_shell_com == "delete":
-                om_array.extend(
-                    [
-                        'open',
-                        'remove',
-                    ]
-                )
-            om_array.append("")
-            simple_command(
-                "echo -e '{}' | /usr/bin/omshell".format(
-                    "\n".join(om_array)
-                ),
-                done_func=self.omshell_done,
-                stream_id="mac",
-                short_info=True,
-                add_info="omshell {}".format(com_name),
-                log_com=self.log,
-                info=om_shell_com
-            )
-
-    def omshell_done(self, om_sc):
-        cur_out = om_sc.read()
-        self.log(
-            "omshell finished with state {:d} ({:d} bytes)".format(
-                om_sc.result,
-                len(cur_out)
-            )
-        )
-        error_re = re.compile("^.*can't (?P<what>.*) object: (?P<why>.*)$")
-        lines = cur_out.split("\n")
-        error_str = ""
-        for line in lines:
-            if line.lower().count("connection refused") or line.lower().count("dhcpctl_connect: no more"):
-                self.log(line, logging_tools.LOG_LEVEL_ERROR)
-                error_str = "connection refused"
-            if line.startswith(">"):
-                err_m = error_re.match(line)
-                if err_m:
-                    error_str = err_m.group("why")
-                    self.log(
-                        "an error occured: {} ({}, {})".format(
-                            line,
-                            err_m.group("what"),
-                            err_m.group("why")
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-        if error_str:
-            if error_str in ["key conflict", "not found"]:
-                new_dhcp_written = False
-            elif error_str in ["already exists"]:
-                new_dhcp_written = True
-            else:
-                # unknown
-                new_dhcp_written = None
-            self.device.add_log_entry(
-                source=global_config["LOG_SOURCE_IDX"],
-                level=logging_tools.LOG_LEVEL_ERROR,
-                text="DHCP: {}".format(error_str),
-            )
-        else:
-            if om_sc.info == "write":
-                new_dhcp_written = True
-                self.dhcp_mac_written = self.device.bootnetdevice.macaddr
-                self.dhcp_ip_written = self.maint_ip.ip
-            elif om_sc.info == "delete":
-                self.dhcp_mac_writte, self.dhcp_ip_written = (None, None)
-                new_dhcp_written = False
-            self.device.add_log_entry(
-                source=global_config["LOG_SOURCE_IDX"],
-                text="DHCP {} is ok".format(om_sc.info),
-            )
-        if new_dhcp_written is None:
-            new_dhcp_written = self.device.dhcp_written
-        # selective update
-        self.log("storing state to db: dhcp_written={}, dhcp_error='{}'".format(new_dhcp_written, error_str))
-        self.device.dhcp_written = new_dhcp_written
-        self.device.dhcp_error = error_str
-        self.device.save(update_fields=["dhcp_written", "dhcp_error"])
+        Host.dhcp_syncer.feed_command(om_shell_com)
 
     def feed_dhcp(self, in_dict, in_line):
         self.refresh_device()
@@ -1189,7 +1067,7 @@ class Host(object):
                 ip_action="SET"
             ).save()
             # no change to dhcp-server
-            self.handle_mac_command("alter")
+            Host.iterate("handle_mac_command", "alter", device_keys=[self.device.pk])
         else:
             change_fields = set()
             if self.device.dhcp_mac:
@@ -1383,7 +1261,8 @@ class node_control_process(threading_tools.process_obj):
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         self.router_obj = config_tools.router_object(self.log)
         self._setup_etherboot()
-        Host.setup(self)
+        self.dhcp_syncer = DHCPSyncer(self.log)
+        Host.setup(self, self.dhcp_syncer)
         Host.sync()
         self.register_func("refresh", self._refresh)
         # self.register_func("alter_macaddr", self.alter_macaddr)
@@ -1657,7 +1536,15 @@ class node_control_process(threading_tools.process_obj):
                 else:
                     self.log("no bootserver set for device {}, strange...".format(ip_dev.name), logging_tools.LOG_LEVEL_ERROR)
         if in_dict["key"] == "discover":
-            self.log("parsed: {}".format(", ".join(["{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())])))
+            self.log(
+                "parsed: {}".format(
+                    ", ".join(
+                        [
+                            "{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())
+                        ]
+                    )
+                )
+            )
             if in_line.lower().count("no free leases"):
                 # nothing found
                 try:
@@ -1674,7 +1561,8 @@ class node_control_process(threading_tools.process_obj):
                             macbootlog(
                                 entry_type=in_dict["key"],
                                 ip_action="IGNORE",
-                                macaddr=in_dict["macaddr"].lower()).save()
+                                macaddr=in_dict["macaddr"].lower()
+                            ).save()
                         else:
                             # no feed to device
                             cur_mach = Host.get_device(greedy_devs[0].pk)
@@ -1695,6 +1583,7 @@ class node_control_process(threading_tools.process_obj):
                         else:
                             self.log("no greedy devices found for MAC-address %s or not responsible" % (in_dict["macaddr"]))
                 else:
+                    print "Re"
                     # reject entry because we are unable to answer the DHCP-Request
                     macbootlog.objects.create(
                         entry_type=in_dict["key"],

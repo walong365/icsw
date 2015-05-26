@@ -373,7 +373,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         _src_proc, _src_id, slave_ip, slave_uuid = args
         conn_str = "tcp://{}:{:d}".format(
             slave_ip,
-            2004)
+            2004
+        )
         if conn_str not in self.__slaves:
             self.log("connecting to slave on {} ({})".format(conn_str, slave_uuid))
             self.com_socket.connect(conn_str)
