@@ -48,6 +48,7 @@ setup(
         "initat.md_config_server.icinga_log_reader",
         "initat.md_config_server.special_commands",
         "initat.md_config_server.special_commands.instances",
+        "initat.md_config_server.kpi",
         "initat.package_install",
         "initat.package_install.server",
         "initat.package_install.client",
