@@ -1154,7 +1154,7 @@ class RRDGraph(object):
         return graph_list
 
 
-class graph_process(threading_tools.process_obj, server_mixins.operational_error_mixin):
+class graph_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -1232,7 +1232,7 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
             self.log("no file names given, skipping flush()", logging_tools.LOG_LEVEL_WARN)
 
     def _graph_rrd(self, *args, **kwargs):
-        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+        srv_com = server_command.srv_command(source=args[0])
         orig_dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         orig_dev_pks = device.objects.filter(
             Q(pk__in=orig_dev_pks) & Q(machinevector__pk__gt=0)
@@ -1248,10 +1248,6 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
             )
         LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         graph_keys = json.loads(srv_com["*graph_key_list"])
-        #    [
-        #        (_el.get("struct_key"), _el.get("value_key")) for _el in srv_com.xpath(".//graph_key_list/graph_key[@struct_key]", smart_strings=False)
-        #    ]
-        # )
         para_dict = {}
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text
@@ -1295,4 +1291,4 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
                 server_command.SRV_REPLY_STATE_OK
             )
         self._close_rrdcached_socket()
-        self.send_pool_message("send_command", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))

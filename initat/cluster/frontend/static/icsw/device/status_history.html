@@ -131,6 +131,7 @@
                                 <th style="width: 50px;" class="text-center">Critical</th>
                                 <th style="width: 50px;" class="text-center">Unknown</th>
                                 <th style="width: 50px;" class="text-center">Undeterm.</th>
+                                <th style="width: 50px;" class="text-center">Planned down</th>
                                 <th style="width: 50px;" class="text-center">Flapping</th>
                                 <th class="text-center">Timeline</th>
                             </tr>
@@ -149,6 +150,7 @@
                                 <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Critical") }} </td>
                                 <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Unknown") }} </td>
                                 <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
+                                <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Planned down") }} </td>
                                 <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
                                 <td>
                                     <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="TODO"></icsw-tools-hist-line-graph>

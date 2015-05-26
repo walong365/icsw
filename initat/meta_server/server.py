@@ -42,7 +42,7 @@ from initat.host_monitoring import hm_classes
 from initat.client_version import VERSION_STRING
 
 
-class main_process(threading_tools.process_pool, server_mixins.network_bind_mixin):
+class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin):
     def __init__(self):
         self.__debug = global_config["DEBUG"]
         self.__log_cache, self.__log_template = ([], None)
@@ -307,7 +307,8 @@ class main_process(threading_tools.process_pool, server_mixins.network_bind_mixi
         self._log_transaction(trans_list)
         for _trans in trans_list:
             _new_t = transition.ServiceTransition(
-                argparse.Namespace(subcom=_trans.action, service=[_trans.name]),
+                _trans.action,
+                [_trans.name],
                 self.container,
                 self.server_instance.tree,
                 self.log,

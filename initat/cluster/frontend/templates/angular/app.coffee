@@ -97,6 +97,7 @@ ics_app = angular.module(
         "icsw.device.boot",
         "icsw.device.create",
         "icsw.config.kernel",
+        "icsw.config.kpi",
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
@@ -119,11 +120,14 @@ ics_app = angular.module(
     "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_ADD_DELETE_REQUEST": "{% url 'base:add_delete_request' %}"
+    "BASE_CALCULATE_KPI": "{% url 'base:CalculateKpi' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
     "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"
     "BASE_CHECK_DELETION_STATUS": "{% url 'base:check_deletion_status' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
+    "BASE_GET_KPI_SOURCE_DATA": "{% url 'base:GetKpiSourceData' %}"
+    "BASE_KPI": "{% url 'base:kpi' %}"
     "BASE_MODIFY_LOCATION_GFX": "{% url 'base:modify_location_gfx' %}"
     "BASE_PRUNE_CATEGORIES": "{% url 'base:prune_categories' %}"
     "BASE_UPLOAD_LOCATION_GFX": "{% url 'base:upload_location_gfx' %}"
@@ -252,6 +256,8 @@ ics_app = angular.module(
     "REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST": "{% url 'rest:quota_capable_blockdevice_list' %}"
     "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
     "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
+    "REST_KPI_LIST": "{% url 'rest:KpiList' %}"
+    "REST_KPI_DATA_SOURCE_TUPLE_LIST": "{% url 'rest:KpiDataSourceTupleList' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
     "REST_LOG_SOURCE_LIST": "{% url 'rest:LogSourceList' %}"

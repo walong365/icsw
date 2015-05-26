@@ -1,12 +1,12 @@
 """ middleware for django """
 
 # from backend.models import site_call_log, session_call_log
-from django.conf import settings
-
-from reversion.revisions import revision_context_manager
 import fcntl
 import struct
 import termios
+
+from django.conf import settings
+from reversion.revisions import revision_context_manager
 
 DB_DEBUG = False
 

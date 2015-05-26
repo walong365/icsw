@@ -30,7 +30,7 @@ import grp
 import os
 
 import daemon
-from initat.tools import logging_tools
+#  do NOT but initat imports here (otherwise path manipulations below will not work)
 
 
 def get_gid_from_name(group):
@@ -41,6 +41,7 @@ def get_gid_from_name(group):
             gid_stuff = grp.getgrnam(group)
         new_gid, new_gid_name = (gid_stuff[2], gid_stuff[0])
     except KeyError:
+        from initat.tools import logging_tools
         new_gid, new_gid_name = (0, "root")
         logging_tools.my_syslog("Cannot find group '{}', using {} ({:d})".format(group, new_gid_name, new_gid))
     return new_gid, new_gid_name
@@ -54,6 +55,7 @@ def get_uid_from_name(user):
             uid_stuff = pwd.getpwnam(user)
         new_uid, new_uid_name = (uid_stuff[2], uid_stuff[0])
     except KeyError:
+        from initat.tools import logging_tools
         new_uid, new_uid_name = (0, "root")
         logging_tools.my_syslog("Cannot find user '{}', using {} ({:d})".format(user, new_uid_name, new_uid))
     return new_uid, new_uid_name

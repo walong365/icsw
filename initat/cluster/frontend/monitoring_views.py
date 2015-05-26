@@ -23,6 +23,15 @@
 """ monitoring views """
 import collections
 import datetime
+from lxml import etree
+import base64
+import itertools
+import json
+import logging
+import socket
+import StringIO
+import uuid
+from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
 from django.db.models.query import Prefetch
@@ -30,7 +39,6 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-import pytz
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from django.core.cache import cache
@@ -38,36 +46,22 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseUsageDeviceService, LicenseLockListDeviceService
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data, \
+from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
-    mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
-    mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
-    mon_service_esc_templ_form, mon_device_esc_templ_form, mon_service_dependency_templ_form, \
-    mon_host_dependency_form, mon_service_dependency_form, device_monitoring_form, \
-    device_group
+from initat.cluster.frontend.forms import device_group
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImports
-from lxml import etree
-import base64
-import itertools
-import json
-import logging
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
-import socket
 import cairosvg
-import StringIO
-import uuid
-from collections import defaultdict
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -267,8 +261,10 @@ class get_node_status(View):
                 service_results_filtered = []
                 services_used = collections.defaultdict(lambda: [])
                 for serv_res in json.loads(service_results[0]):
-                    parsed = host_service_id_util.parse_host_service_description(serv_res['description'],
-                                                                                 log=logger.error)
+                    parsed = host_service_id_util.parse_host_service_description(
+                        serv_res['description'],
+                        log=logger.error
+                    )
                     locked = False
                     if parsed:
                         host_pk, service_pk, _ = parsed
@@ -541,18 +537,6 @@ class _device_status_history_util(object):
             return None
 
     @staticmethod
-    def merge_state_types(data, undetermined_state):
-        # data is list of dicts {'state': state, 'value': value, 'state_type': state_type}
-        data_merged_state_types = []
-        # merge state_types (soft/hard)
-        for state in set(d['state'] for d in data):
-            data_merged_state_types.append({'state': state, 'value': sum(d['value'] for d in data if d['state'] == state)})
-
-        if not data_merged_state_types:
-            data_merged_state_types.append({'state': undetermined_state, 'value': 1})
-        return data_merged_state_types
-
-    @staticmethod
     def get_line_graph_data(request, for_host):
         """
         Get line graph data for hosts and services
@@ -571,28 +555,23 @@ class _device_status_history_util(object):
 
         # calculate detailed view based on all events
         start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
-        entries = obj_man.calc_alerts(start, end, device_ids=device_ids)
+        alert_filter = Q(device__in=device_ids)
 
-        last_before_entries = obj_man.calc_limit_alerts(start,
-                                                        mode='last before',
-                                                        device_ids=device_ids)
-
-        first_after_entries = obj_man.calc_limit_alerts(end,
-                                                        mode='first after',
-                                                        device_ids=device_ids)
+        alert_list = AlertList(is_host=for_host, alert_filter=alert_filter, start_time=start, end_time=end,
+                               calc_first_after=True)
 
         return_data = {}
 
-        for key, amended_list in entries.iteritems():
+        for key, amended_list in alert_list.alerts.iteritems():
             # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
             # they might be active before and after, but not during the time frame, in which case
             # they are not relevant to us
 
             # add first and last in case they are not contained in range already
-            entry_before = last_before_entries.get(key, None)
+            entry_before = alert_list.last_before.get(key, None)
             if entry_before is not None and amended_list[0].date != entry_before['date']:
                 amended_list = [entry_before] + amended_list
-            entry_after = first_after_entries.get(key, None)
+            entry_after = alert_list.first_after.get(key, None)
             if entry_after is not None and amended_list[-1].date != entry_after['date']:
                 amended_list = amended_list + [entry_after]
 
@@ -650,19 +629,17 @@ class get_hist_device_data(ListAPIView):
                 timespan=timespan_db
             ).values('device_id', 'state', 'state_type', 'value')
 
-        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
         data_per_device = {device_id: [] for device_id in device_ids}
         for d in data:
-            d['state'] = trans[d['state']].capitalize()
+            d['state'] = mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[d['state']].capitalize()
             data_per_device[d['device_id']].append(d)
 
         data_merged_state_types = {}
         for device_id, device_data in data_per_device.iteritems():
-
             if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.reporting, device_id):
-                data_merged_state_types[device_id] = _device_status_history_util.merge_state_types(
+                data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
                     device_data,
-                    trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+                    mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
                 )
 
         LicenseUsage.log_usage(LicenseEnum.reporting,
@@ -676,84 +653,15 @@ class get_hist_service_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
-
-        def get_data_per_device(device_ids, timespans_db):
-
-            queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids,
-                                                                             timespan__in=timespans_db)
-            # can't do regular prefetch_related for queryset, this seems to work
-
-            data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
-            used_device_services = {device_id: set() for device_id in device_ids}
-
-            for entry in queryset.prefetch_related(Prefetch("service")):
-
-                if not LicenseLockListDeviceService.objects.is_device_service_locked(
-                    LicenseEnum.reporting, entry.device_id, entry.service.pk
-                ):
-
-                    used_device_services[entry.device_id].append(entry.service.pk)
-
-                    relevant_data_from_entry = {
-                        'state': trans[entry.state],
-                        'state_type': entry.state_type,
-                        'value': entry.value
-                    }
-
-                    client_service_name =\
-                        mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
-
-                    data_per_device[entry.device_id][client_service_name].append(relevant_data_from_entry)
-
-            return data_per_device, used_device_services
-
-        def merge_services(data_per_device):
-            return_data = {}
-            for device_id, device_data in data_per_device.iteritems():
-                # it's not obvious how to aggregate service states
-                # we now just add the values, but we could e.g. also use the most common state of a service as it's state
-                # then we could say "4 services were ok, 3 were critical".
-                data_concat = list(itertools.chain.from_iterable(service_data for service_data in device_data.itervalues()))
-                device_data = _device_status_history_util.merge_state_types(data_concat, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
-
-                # normalize to 1.0, else the values are meaningless
-                total = sum(entry['value'] for entry in device_data)
-                for entry in device_data:
-                    entry['value'] /= total
-                return_data[device_id] = device_data
-            return return_data
-
-        def merge_state_types_per_device(data_per_device):
-            return_data = {}
-            # merge state types for each service in each device
-            for device_id, device_service_data in data_per_device.iteritems():
-                return_data[device_id] = {
-                    service_key: _device_status_history_util.merge_state_types(
-                        service_data,
-                        trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]
-                    ) for service_key, service_data in device_service_data.iteritems()
-                }
-            return return_data
-
         device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
-        device_ids = [dev_id for dev_id in device_ids
-                      if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.reporting, dev_id)]
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
-        data_per_device, used_device_services = get_data_per_device(device_ids, [timespan_db])
-
-        # this mode is for an overview of the services of a device without saying anything about a particular service
-        if int(request.GET.get("merge_services", 0)):
-            return_data = merge_services(data_per_device)
-
-            LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.device, return_data.iterkeys())
-
-        else:
-            return_data = merge_state_types_per_device(data_per_device)
-
-            LicenseUsage.log_usage(LicenseEnum.reporting, LicenseParameterTypeEnum.service, used_device_services)
+        merge_services = bool(int(request.GET.get("merge_services", 0)))
+        return_data = mon_icinga_log_aggregated_service_data.objects.get_data(devices=device_ids,
+                                                                              timespans=[timespan_db],
+                                                                              license=LicenseEnum.reporting,
+                                                                              merge_services=merge_services)
 
         return Response([return_data])  # fake a list, see coffeescript
 
@@ -784,7 +692,6 @@ class get_hist_service_line_graph_data(ListAPIView):
         for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
             return_data[dev_id][service_identifier] = values
 
-        return Response([return_data])  # fake a list, see coffeescript
         """
         def f():
             prelim_return_data = _device_status_history_util.get_line_graph_data(request, for_host=False)
@@ -806,6 +713,7 @@ class get_hist_service_line_graph_data(ListAPIView):
 
         return Response([return_data])  # fake a list, see coffeescript
         """
+        return Response([return_data])  # fake a list, see coffeescript
 
 
 class svg_to_png(View):
@@ -815,8 +723,8 @@ class svg_to_png(View):
         _post = request.POST
         _bytes = _post["svg"]
         _out = StringIO.StringIO()
-        #_xml = etree.fromstring(_post["svg"], parser)
-        #for _el in _xml.iter():
+        # _xml = etree.fromstring(_post["svg"], parser)
+        # for _el in _xml.iter():
         #    for _key, _value in _el.attrib.iteritems():
         #        if _key.startswith("ng-"):
         #            del _el.attrib[_key]

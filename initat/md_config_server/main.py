@@ -68,7 +68,7 @@ def main():
             ),
             ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-            ("INITIAL_CONFIG_RUN", configfile.bool_c_var(False, help_string="make an config build run on startup [%(default)s]", only_commandline=True)),
+            ("INITIAL_CONFIG_RUN", configfile.bool_c_var(False, help_string="make a config build run on startup [%(default)s]", only_commandline=True)),
             (
                 "INITIAL_CONFIG_CACHE_MODE", configfile.str_c_var(
                     "DYNAMIC",
@@ -77,6 +77,7 @@ def main():
                     choices=CACHE_MODES
                 )
             ),
+            ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
         ]
     )
     global_config.parse_file()

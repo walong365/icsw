@@ -68,6 +68,9 @@ base_patterns = patterns(
     url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
     url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
     url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
+    url("^kpi$", base_views.KpiView.as_view(), name="kpi"),
+    url("^GetKpiSourceData$", base_views.GetKpiSourceData.as_view(), name="GetKpiSourceData"),
+    url("^CalculateKpi$", base_views.CalculateKpi.as_view(), name="CalculateKpi"),
 )
 
 setup_patterns = patterns(

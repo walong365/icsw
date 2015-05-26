@@ -22,9 +22,9 @@
 """ simple command snippet for rsyslog """
 
 import sys
+import zmq
 
 from initat.tools import logging_tools
-import zmq
 from initat.tools import process_tools
 
 
@@ -45,7 +45,7 @@ def main():
         context=zmq_context
     )
     send_sock = None
-    log_template.log(logging_tools.LOG_LEVEL_OK, "starting")
+    log_template.log(logging_tools.LOG_LEVEL_OK, "starting syslog_scan")
     while True:
         line = sys.stdin.readline().strip()
         if not line:

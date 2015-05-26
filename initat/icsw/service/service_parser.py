@@ -25,16 +25,24 @@ import argparse
 
 class Parser(object):
     def link(self, sub_parser):
-        self._add_status_parser(sub_parser)
-        self._add_start_parser(sub_parser)
-        self._add_stop_parser(sub_parser)
-        self._add_restart_parser(sub_parser)
-        self._add_debug_parser(sub_parser)
+        self._add_service_parser(sub_parser)
         self._add_state_parser(sub_parser)
+
+    def _add_service_parser(self, sub_parser):
+        parser = sub_parser.add_parser("service", help="control icsw services")
+        parser.set_defaults(subcom="service", execute=self._service_execute)
+        child_parser = parser.add_subparsers(help="service subcommands")
+        self._add_status_parser(child_parser)
+        self._add_start_parser(child_parser)
+        self._add_stop_parser(child_parser)
+        self._add_restart_parser(child_parser)
+        self._add_debug_parser(child_parser)
+        self._add_state_parser(child_parser)
+        return parser
 
     def _add_status_parser(self, sub_parser):
         _srvc = sub_parser.add_parser("status", help="service status")
-        _srvc.set_defaults(subcom="status", execute=self._execute)
+        _srvc.set_defaults(childcom="status")
         _srvc.add_argument("-i", dest="interactive", action="store_true", default=False, help="enable interactive mode [%(default)s]")
         _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview [%(default)s]")
         _srvc.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
@@ -51,31 +59,31 @@ class Parser(object):
 
     def _add_start_parser(self, sub_parser):
         _act = sub_parser.add_parser("start", help="start service")
-        _act.set_defaults(subcom="start", execute=self._execute)
+        _act.set_defaults(childcom="start")
         _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
         self._add_iccs_sel(_act)
 
     def _add_debug_parser(self, sub_parser):
         _act = sub_parser.add_parser("debug", help="debug service")
-        _act.set_defaults(subcom="debug", execute=self._execute)
+        _act.set_defaults(childcom="debug")
         _act.add_argument("service", nargs=1, type=str, help="service to debug")
         _act.add_argument("debug_args", nargs="*", type=str, help="extra debug arguments")
 
     def _add_stop_parser(self, sub_parser):
         _act = sub_parser.add_parser("stop", help="stop service")
-        _act.set_defaults(subcom="stop", execute=self._execute)
+        _act.set_defaults(childcom="stop")
         _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
         self._add_iccs_sel(_act)
 
     def _add_restart_parser(self, sub_parser):
         _act = sub_parser.add_parser("restart", help="restart service")
-        _act.set_defaults(subcom="restart", execute=self._execute)
+        _act.set_defaults(childcom="restart")
         _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
         self._add_iccs_sel(_act)
 
     def _add_state_parser(self, sub_parser):
         _act = sub_parser.add_parser("state", help="state service")
-        _act.set_defaults(subcom="state", execute=self._execute)
+        _act.set_defaults(subcom="state", execute=self._state_execute)
         ss_parser = _act.add_subparsers(help="state subcommand help")
         self._add_state_overview_parser(ss_parser)
         self._add_state_enable_parser(ss_parser)
@@ -104,10 +112,10 @@ class Parser(object):
     def _add_iccs_any_sel(self, _parser):
         _parser.add_argument("service", nargs="+", type=str, help="list of services")
 
-    def _execute(self, opt_ns):
+    def _service_execute(self, opt_ns):
         from .main import main
         # cleanup parsed args
-        if opt_ns.subcom == "status":
+        if opt_ns.childcom == "status":
             if opt_ns.all or opt_ns.almost_all:
                 opt_ns.thread = True
                 opt_ns.memory = True
@@ -115,6 +123,11 @@ class Parser(object):
             if opt_ns.all:
                 opt_ns.pid = True
                 opt_ns.started = True
+        main(opt_ns)
+
+    def _state_execute(self, opt_ns):
+        from .main import main
+        # cleanup parsed args
         main(opt_ns)
 
     @staticmethod

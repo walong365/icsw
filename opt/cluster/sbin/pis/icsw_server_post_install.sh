@@ -72,6 +72,6 @@ fi
 
 for idx in $(seq ${NUM_RS} ) ; do
     echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (server)${OFF}\n"
-    ${ICSW_SBIN}/icsw stop meta-server
-    ${ICSW_SBIN}/icsw start meta-server
+    ${ICSW_SBIN}/icsw service stop meta-server
+    ${ICSW_SBIN}/icsw service start meta-server
 done

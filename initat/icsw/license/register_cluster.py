@@ -37,7 +37,7 @@ REGISTRATION_URL = "http://www.initat.org/cluster/registration"
 def register_cluster(opts):
     from initat.cluster.backbone.models import License, device_variable
 
-    cluster_id = opts.cluster_id or device_variable.objects.get_cluster_id()
+    cluster_id = device_variable.objects.get_cluster_id()
     data = urllib.urlencode({
         'username': opts.user,
         'password': opts.password,

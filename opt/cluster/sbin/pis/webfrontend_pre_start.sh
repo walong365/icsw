@@ -4,7 +4,6 @@ APP_DIR=/var/run/${DJANGO_APP}
 mkdir -p ${APP_DIR}
 chown -R ${USER}.${GROUP} ${APP_DIR}
 
-# create static files
-/opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput
+# create static files is now handled in webfrontend_post_install
 
 logger "init ${APP_DIR} with ${USER}.${GROUP}"

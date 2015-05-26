@@ -446,7 +446,7 @@ class ag_obj(object):
         return ag_sink(action=self.action)
 
 
-class aggregate_process(threading_tools.process_obj, server_mixins.operational_error_mixin):
+class aggregate_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

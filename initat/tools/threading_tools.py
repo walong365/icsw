@@ -1374,7 +1374,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                             self.__processes_stopped.add(p_name)
                         else:
                             self.log(
-                                "process {} seams to be dead".format(p_name),
+                                "process {} seems to be dead".format(p_name),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
                             self._process_exit(p_name, 0)

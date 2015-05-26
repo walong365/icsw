@@ -26,6 +26,9 @@ import pprint
 import re
 import socket
 import time
+import psutil
+import shutil
+import subprocess
 
 from django.conf import settings
 from django.db import connection
@@ -55,7 +58,7 @@ import zmq
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(threading_tools.process_pool, server_mixins.operational_error_mixin):
+class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -79,6 +82,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self._init_network_sockets()
         self.register_func("disable_rrd_cached", self.disable_rrd_cached)
         self.register_func("enable_rrd_cached", self.enable_rrd_cached)
+        self.sync_from_disk_to_ram()
         self.hm = host_matcher(self.log)
         self.fc = file_creator(self.log)
         self.__last_sent = {}
@@ -99,6 +103,34 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.add_process(aggregate_process("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
         connection.close()
+
+    def sync_from_disk_to_ram(self):
+        _is_ram = False
+        for _fs in psutil.disk_partitions(all=True):
+            if _fs.mountpoint == global_config["RRD_DIR"] and _fs.fstype in ["tmpfs", "ramdisk"]:
+                _is_ram = True
+                break
+        _rsync_bin = process_tools.find_file("rsync")
+        self.log(
+            "{} is{} a RAM-disk, _rsync binary is at {} ...".format(
+                global_config["RRD_DIR"],
+                "" if _is_ram else " not",
+                _rsync_bin,
+            )
+        )
+        if _is_ram and _rsync_bin and global_config["RRD_DISK_CACHE"] != global_config["RRD_DIR"]:
+            s_time = time.time()
+            _cmd = "{} -a --delete {}/* {}".format(
+                _rsync_bin,
+                global_config["RRD_DISK_CACHE"],
+                global_config["RRD_DIR"],
+            )
+            subprocess.call(
+                _cmd,
+                shell=True
+            )
+            e_time = time.time()
+            self.log("command {} took {}".format(_cmd, logging_tools.get_diff_time_str(e_time - s_time)))
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
@@ -356,11 +388,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.spc.close()
         self.__log_template.close()
 
-    def thread_loop_post(self):
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
-
     def _check_database(self):
         self._handle_disabled_hosts()
         _router = config_tools.router_object(self.log)
@@ -495,7 +522,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     in_com.set_result(
                         "unknown command {}".format(com_text),
                         server_command.SRV_REPLY_STATE_ERROR
-                        )
+                    )
                 zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
                 zmq_sock.send_unicode(unicode(in_com))
 

@@ -17,14 +17,16 @@
 #
 """ writes the dhcpd.conf in /etc """
 
+import os
+
 from django.db.models import Q
 from initat.cluster.backbone.models import network
 from initat.cluster_server.config import global_config
 from initat.tools import config_tools
-import cs_base_class
-import os
 from initat.tools import process_tools
 from initat.tools import server_command
+
+import cs_base_class
 
 
 class write_dhcpd_config(cs_base_class.server_com):
@@ -53,7 +55,14 @@ class write_dhcpd_config(cs_base_class.server_com):
                     ).distinct()
                 ]
             )
-            add_nets = sum([[_sub_net for _value, _sub_net in add_nets if _value == _t_val] for _t_val in ["p", "s", "o"]], [])
+            add_nets = sum(
+                [
+                    [
+                        _sub_net for _value, _sub_net in add_nets if _value == _t_val
+                    ] for _t_val in ["p", "s", "o"]
+                ],
+                []
+            )
             dhcpd_c = [
                 "ddns-update-style none;",
                 "omapi-port 7911;",
@@ -69,10 +78,12 @@ class write_dhcpd_config(cs_base_class.server_com):
                 "",
             ]
             if cur_inst.srv_com["server_key:authoritative"].text.lower() in ["1", "true", "yes"]:
-                dhcpd_c.extend([
-                    "authoritative;",
-                    "",
-                ])
+                dhcpd_c.extend(
+                    [
+                        "authoritative;",
+                        "",
+                    ]
+                )
             # get gateway and domain-servers for the various nets
             gw_pri, gateway = (-10000, "0.0.0.0")
             cur_dc = config_tools.device_with_config("%server%")
@@ -110,7 +121,8 @@ class write_dhcpd_config(cs_base_class.server_com):
                         "    {}subnet {} netmask {} {{".format(
                             comment_sign,
                             act_net.network,
-                            act_net.netmask)
+                            act_net.netmask,
+                        )
                     ]
                 )
                 if act_net.network_type.identifier == "b":
@@ -120,7 +132,7 @@ class write_dhcpd_config(cs_base_class.server_com):
                 dhcpd_c.append(
                     "    {}    next-server {};".format(
                         comment_sign,
-                        _srv_ip.ip
+                        _srv_ip.ip,
                     )
                 )
                 local_found_dict = found_dict.get(act_net.pk, {})
@@ -130,7 +142,11 @@ class write_dhcpd_config(cs_base_class.server_com):
                             "    {}    option {} {};".format(
                                 comment_sign,
                                 key,
-                                ", ".join(["{}".format(cur_dev.name) for cur_dev, _ip_list in local_found_dict[key]])
+                                ", ".join(
+                                    [
+                                        "{}".format(cur_dev.name) for cur_dev, _ip_list in local_found_dict[key]
+                                    ]
+                                )
                             )
                         )
                 dhcpd_c.extend(
@@ -148,10 +164,12 @@ class write_dhcpd_config(cs_base_class.server_com):
                         )
                     ]
                 )
-            dhcpd_c.extend([
-                "}",
-                "",
-            ])
+            dhcpd_c.extend(
+                [
+                    "}",
+                    "",
+                ]
+            )
             if os.path.isdir("/etc/dhcp3"):
                 file("/etc/dhcp3/dhcpd.conf", "w").write("\n".join(dhcpd_c))
             else:
@@ -175,7 +193,7 @@ class write_dhcpd_config(cs_base_class.server_com):
             if ret_state is None:
                 ret_state, ret_str = (
                     server_command.SRV_REPLY_STATE_ERROR,
-                    "error no valid dhcp-server found (packages like dhcp-server missing ?)"
+                    "error no method found to restart the dhcp-server (systemd ?)",
                 )
             cur_inst.srv_com.set_result(
                 ret_str,

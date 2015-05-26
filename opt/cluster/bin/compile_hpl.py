@@ -1,6 +1,6 @@
-# arch!/usr/bin/python-init -Otu
+#!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007-2008,2014 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2007-2008,2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of cbc-tools
 #
@@ -20,12 +20,8 @@
 
 import argparse
 import commands
-from initat.tools import compile_tools
-from initat.tools import cpu_database
-from initat.tools import logging_tools
 import optparse
 import os
-from initat.tools import rpm_build_tools
 import shutil
 import subprocess
 import sys
@@ -33,7 +29,12 @@ import tarfile
 import tempfile
 import time
 
-HPL_VERSION_FILE = "/opt/cluster/share/hpl_versions"
+from initat.tools import compile_tools
+from initat.tools import cpu_database
+from initat.tools import logging_tools
+from initat.tools import rpm_build_tools
+
+HPL_VERSION_FILE = "/opt/cluster/share/source-versions/hpl_versions"
 
 
 class my_opt_parser(optparse.OptionParser):
@@ -63,9 +64,13 @@ class my_opt_parser(optparse.OptionParser):
             verbose=False,
             arch=self.mach_arch
         )
-        fc_choices = sorted(["GNU",
-                             "INTEL",
-                             "PATHSCALE"])
+        fc_choices = sorted(
+            [
+                "GNU",
+                "INTEL",
+                "PATHSCALE",
+            ]
+        )
         self.cpu_id = cpu_database.get_cpuid()
         self.add_option(
             "-c",

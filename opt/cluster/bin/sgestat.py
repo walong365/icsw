@@ -27,7 +27,6 @@ import sys
 import time
 
 import urwid
-
 from initat.tools import logging_tools
 from initat.tools import sge_tools
 

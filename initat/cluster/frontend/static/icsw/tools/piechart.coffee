@@ -24,7 +24,7 @@ angular.module(
     return {
         restrict: "E"
         scope:
-            data: "=data"
+            data: "=data"  # [{value: 0.34, title: "foo", color: "#ff0000"}]
             diameter: "=diameter"
         template: """
 <div class="icsw-chart" ng-attr-style="width: {{diameter}}px; height: {{diameter}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
@@ -77,42 +77,42 @@ angular.module(
                 return entry.color
                 
             scope.$watchGroup(["data", "diameter"], (new_data) ->
-                scope.centerX = scope.diameter/2
-                scope.centerY = scope.diameter/2
-                scope.radius = scope.diameter/2
+                if scope.data?
+                    scope.centerX = scope.diameter/2
+                    scope.centerY = scope.diameter/2
+                    scope.radius = scope.diameter/2
 
+                    new_data = []
+                    i = 0
+                    scope.value_total = 0
 
-                new_data = []
-                i = 0
-                scope.value_total = 0
+                    for entry in scope.data
+                        new_entry = Object.create(entry)
+                        new_entry.num = i
+                        scope.value_total += new_entry.value
 
-                for entry in scope.data
-                    new_entry = Object.create(entry)
-                    new_entry.num = i
-                    scope.value_total += new_entry.value
+                        new_data.push(new_entry)
+                        i += 1
 
-                    new_data.push(new_entry)
-                    i += 1
+                    # calculations based on value_total (cant do these in loop above)
+                    start_angle = -Math.PI/2
+                    for new_entry in new_data
+                        # calc general properties (currently only used in calc_path)
+                        part = new_entry.value / scope.value_total
+                        part_angle = part * (Math.PI*2)
 
-                # calculations based on value_total (cant do these in loop above)
-                start_angle = -Math.PI/2
-                for new_entry in new_data
-                    # calc general properties (currently only used in calc_path)
-                    part = new_entry.value / scope.value_total
-                    part_angle = part * (Math.PI*2)
+                        new_entry.part = part
+                        new_entry.start_angle = start_angle
+                        new_entry.end_angle = start_angle + part_angle
 
-                    new_entry.part = part
-                    new_entry.start_angle = start_angle
-                    new_entry.end_angle = start_angle + part_angle
+                        new_entry.path = scope.calc_path(new_entry)
 
-                    new_entry.path = scope.calc_path(new_entry)
+                        new_entry.tooltip_visible = false
 
-                    new_entry.tooltip_visible = false
+                        start_angle = new_entry.end_angle
 
-                    start_angle = new_entry.end_angle
-
-                scope.data_active = new_data
-            )
+                    scope.data_active = new_data
+                )
     }
 )
 

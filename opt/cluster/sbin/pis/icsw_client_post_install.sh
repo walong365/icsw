@@ -79,7 +79,7 @@ fi
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
 # logging-server
-${ICSW_SBIN}/icsw restart logging-server
+${ICSW_SBIN}/icsw service restart logging-server
 ${INIT}/hoststatus restart
 
 if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
@@ -92,7 +92,7 @@ if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
 
     for idx in $(seq ${NUM_RS} ) ; do
         echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (client)${OFF}\n"
-        ${ICSW_SBIN}/icsw stop meta-server
-        ${ICSW_SBIN}/icsw start meta-server
+        ${ICSW_SBIN}/icsw service stop meta-server
+        ${ICSW_SBIN}/icsw service start meta-server
     done
 fi

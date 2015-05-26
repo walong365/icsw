@@ -144,8 +144,17 @@ class host_list_com(base_com):
         hlist = json.loads(_mc.get("cc_hc_list"))
         h_re = self.compile_re(self.options.host_filter)
         v_dict = {key: value for key, value in hlist.iteritems() if h_re.match(value[1])}
-        print("{} found : {}").format(logging_tools.get_plural("host", len(v_dict)), ", ".join(sorted([value[1] for value in v_dict.itervalues()])))
-        for key, value in v_dict.iteritems():
+        _h_uuid_dict = {_value[1]: _key for _key, _value in v_dict.iteritems()}
+        _h_names = sorted(_h_uuid_dict.keys())
+        print(
+            "{} found : {}".format(
+                logging_tools.get_plural("host", len(_h_names)),
+                logging_tools.reduce_list(_h_names),
+            )
+        )
+        for _h_name in _h_names:
+            key = _h_uuid_dict[_h_name]
+            value = v_dict[key]
             print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
         # print v_list
 
@@ -153,16 +162,35 @@ class host_list_com(base_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
             h_list = h_list[0]
-            print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
+            num_hosts, num_keys = (0, 0)
+            form_str = "{:<30s} ({:<40s}) : {:6d} keys, last update {}, store_to_disk is {}"
+            print(
+                "got result for {}:".format(
+                    logging_tools.get_plural("host", int(h_list.attrib["entries"]))
+                )
+            )
             for host in h_list:
-                print "{:<30s} ({:<40s}) : {:4d} keys, last update {}, store_to_disk is {}".format(
-                    host.attrib["name"],
-                    host.attrib["uuid"],
-                    int(host.attrib["keys"]),
-                    time.ctime(int(host.attrib["last_update"])),
-                    "enabled" if int(host.get("store_to_disk", "1")) else "disabled",
+                print(
+                    form_str.format(
+                        host.attrib["name"],
+                        host.attrib["uuid"],
+                        int(host.attrib["keys"]),
+                        time.ctime(int(host.attrib["last_update"])),
+                        "enabled" if int(host.get("store_to_disk", "1")) else "disabled",
                     )
-            pass
+                )
+                num_hosts += 1
+                num_keys += int(host.attrib["keys"])
+            if num_hosts:
+                print(
+                    form_str.format(
+                        "total",
+                        logging_tools.get_plural("host", num_hosts),
+                        num_keys,
+                        "never",
+                        "ignored",
+                    )
+                )
         else:
             print "No host_list found in result"
             self.ret_state = 1
