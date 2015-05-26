@@ -27,11 +27,10 @@ from lxml import etree
 import datetime
 import logging
 import M2Crypto
-from dateutil import relativedelta
 import pytz
 
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
-    LicenseUsage, LicenseViolation
+    LicenseUsage
 from initat.cluster.settings import TIME_ZONE
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.tools import process_tools

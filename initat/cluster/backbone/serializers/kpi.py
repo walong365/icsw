@@ -25,7 +25,6 @@ import json
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import Kpi, KpiDataSourceTuple, KpiStoredResult
-from initat.md_config_server.kpi import KpiSet, KpiResult
 
 
 __all__ = [
