@@ -291,6 +291,11 @@ class ext_license(ext_license_base):
 
     __repr__ = __unicode__
 
+    class CSW_Meta:
+        fk_ignore_list = [
+            "LicenseUsageExtLicense", "LicenseLockListExtLicense",
+        ]
+
 
 class ext_license_version(ext_license_base):
     '''
