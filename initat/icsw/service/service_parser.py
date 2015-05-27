@@ -83,7 +83,7 @@ class Parser(object):
 
     def _add_state_parser(self, sub_parser):
         _act = sub_parser.add_parser("state", help="state service")
-        _act.set_defaults(subcom="state", execute=self._state_execute)
+        _act.set_defaults(childcom="state", execute=self._state_execute)
         ss_parser = _act.add_subparsers(help="state subcommand help")
         self._add_state_overview_parser(ss_parser)
         self._add_state_enable_parser(ss_parser)
