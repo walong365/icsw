@@ -50,9 +50,10 @@ class result_line(object):
         for float_key in ["flops", "runtime"]:
             self[float_key] = float(self[float_key])
         self["passed"] = True
-        self["info"] = "{}/{:<4d}[{:3d} x {:3d}]".format(
+        self["info"] = "{}/{:<4d}[{:6d}@{:3d} x {:3d}]".format(
             self["test"],
             self["nb"],
+            self["n"],
             self["p"],
             self["q"],
         )

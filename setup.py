@@ -165,6 +165,17 @@ setup(
                 "opt/cluster/sge/init.d/sgeexecd",
             ]
         ),
+        (
+            "/opt/cluster/share/collectd",
+            [
+                "opt/cluster/share/collectd/aggregates.xml",
+            ]
+        ),
+        (
+            "/opt/cluster/share/collectd/aggregates.d",
+            [
+            ]
+        ),
     ],
     scripts=[
     ],

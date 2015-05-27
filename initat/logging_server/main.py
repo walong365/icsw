@@ -58,7 +58,7 @@ def main():
             ("TO_ADDR", configfile.str_c_var("cluster@init.at", help_string="mail address to send error-mails [%(default)s]")),
             ("LONG_HOST_NAME", configfile.str_c_var(long_host_name)),
             ("MAX_LINE_LENGTH", configfile.int_c_var(0, help_string="max line number size, 0 for unlimited [%(default)i]")),
-            ("MAX_FILE_SIZE", configfile.int_c_var(1000000, help_string="file size limit of log files in bytes (larger files are rotated)"))
+            ("MAX_FILE_SIZE", configfile.int_c_var(1000000, help_string="file size limit of log files in bytes (larger files are rotated)")),
         ]
     )
     global_config.parse_file()

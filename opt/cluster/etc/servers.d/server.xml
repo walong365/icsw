@@ -45,6 +45,7 @@
             <dir value="/var/run/collectd" user="idrrd" group="idg" create="1"/>
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
             <dir value="/var/run/rrdcached" user="idrrd" group="idg" create="1"/>
+            <dir value="/opt/cluster/share/collectd" user="idrrd" group="idg" create="1"/>
             <dir value="/opt/cluster/system/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
