@@ -353,6 +353,7 @@ class Service(object):
             "cleanup": self.cleanup,
             "wait": self.wait,
             "debug": self.debug,
+            "reload": self.reload,
             # special command when active service is restart: signal a simple restart command
             "signal_restart": self.signal_restart,
         }[action]
@@ -363,6 +364,15 @@ class Service(object):
 
     def wait(self, act_proc_dict):
         return
+
+    def reload(self, act_proc_dict):
+        if not int(self.entry.get("reload", "1")) and False:
+            return
+        self._reload()
+
+    def _reload(self):
+        # for subclasses
+        pass
 
     def start(self, act_proc_dict):
         if not int(self.entry.get("startstop", "1")):
@@ -603,15 +613,31 @@ class MetaService(Service):
         if len(_meta_pids):
             try:
                 if _main_pids:
-                    os.kill(_main_pids[0], 15)
-                    self.log("sent signal 15 to {:d}".format(_main_pids[0]))
+                    os.kill(_main_pids[0], signal.SIGTERM)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _main_pids[0]))
                 else:
-                    os.kill(_meta_pids[0], 15)
-                    self.log("sent signal 15 to {:d}".format(_meta_pids[0]))
+                    os.kill(_meta_pids[0], signal.SIGTERM)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _meta_pids[0]))
             except OSError:
                 self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("no pids to kill")
+
+    def _reload(self):
+        _main_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid[@main='1']")]
+        _meta_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid")]
+        if len(_meta_pids):
+            try:
+                if _main_pids:
+                    os.kill(_main_pids[0], signal.SIGHUP)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGHUP, _main_pids[0]))
+                else:
+                    os.kill(_meta_pids[0], signal.SIGHUP)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGHUP, _meta_pids[0]))
+            except OSError:
+                self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no pids to signal")
 
     def _start(self):
         arg_list = self._generate_py_arg_list()
@@ -709,3 +735,4 @@ class MetaService(Service):
                     process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
                 )
         return _arg_list
+

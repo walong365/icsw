@@ -99,6 +99,16 @@ class ServiceContainer(object):
         check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
         if service_list:
             check_list = [Service(_entry, self.__log_com) for _entry in check_list if _entry.get("name") in service_list]
+            found_names = set([_srv.name for _srv in check_list])
+            mis_names = set(service_list) - found_names
+            if mis_names:
+                self.log(
+                    "{} not found: {}".format(
+                        logging_tools.get_plural("service", len(mis_names)),
+                        ", ".join(sorted(list(mis_names))),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             check_list = [Service(_entry, self.__log_com) for _entry in check_list]
         return check_list
@@ -120,18 +130,21 @@ class ServiceContainer(object):
                 "stop": ["cleanup"],
                 "restart": ["cleanup", "start"],
                 "debug": ["cleanup", "debug"],
+                "reload": [],
             },
             "warn": {
                 "start": ["stop", "wait", "cleanup", "start"],
                 "stop": ["stop", "wait", "cleanup"],
                 "restart": ["stop", "wait", "cleanup", "start"],
                 "debug": ["stop", "wait", "cleanup", "debug"],
+                "reload": ["reload"],
             },
             "ok": {
                 "start": [],
                 "stop": ["stop", "wait", "cleanup"],
                 "restart": ["signal_restart", "stop", "wait", "cleanup", "start"],
                 "debug": ["signal_restart", "stop", "wait", "cleanup", "debug"],
+                "reload": ["reload"],
             }
         }[service.run_state][subcom]
 

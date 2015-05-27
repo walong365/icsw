@@ -117,7 +117,7 @@ def main(opt_ns):
             cur_c.check_system(opt_ns, inst_xml)
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
             show_form_list(form_list)
-    elif opt_ns.childcom in ["start", "stop", "restart", "debug"]:
+    elif opt_ns.childcom in ["start", "stop", "restart", "debug", "reload"]:
         if opt_ns.childcom == "debug":
             debug_args = opt_ns.debug_args
         else:
@@ -156,3 +156,10 @@ def main(opt_ns):
             _state_overview(opt_ns, _result)
         elif opt_ns.statecom in ["disable", "enable"]:
             log_com(*_result.get_log_tuple())
+    else:
+        log_com(
+            "unknown childcom '{}'".format(
+                opt_ns.childcom
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )
