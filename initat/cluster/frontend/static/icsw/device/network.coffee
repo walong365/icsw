@@ -655,12 +655,15 @@ angular.module(
                         $scope.reload()
         $scope.get_bootdevice_info_class = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
-            if num_bootips == 0
-                return ""
-            else if num_bootips == 1
-                return "btn-success"
-            else
+            if obj.dhcp_error
                 return "btn-danger"
+            else
+                if num_bootips == 0
+                    return "btn-warning"
+                else if num_bootips == 1
+                    return "btn-success"
+                else
+                    return "btn-danger"
         $scope.get_num_bootips = (obj) ->
             num_bootips = 0
             for net_dev in obj.netdevice_set
@@ -670,7 +673,12 @@ angular.module(
             return num_bootips
         $scope.get_boot_value = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
-            return "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
+            r_val = "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
+            if obj.dhcp_error
+                r_val = "#{r_val}, #{obj.dhcp_error}"
+            if obj.dhcp_write != obj.dhcp_written
+                r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
+            return r_val
 ]).directive("icswDeviceNetworkNetdeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
