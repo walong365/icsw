@@ -43,6 +43,11 @@ class ServiceTransition(object):
         self.debug_args = debug_args
         self.id = id
         self.list = cur_c.apply_filter(service_list, inst_xml)
+        if not self.list:
+            self.log(
+                "nothing to do",
+                logging_tools.LOG_LEVEL_ERROR,
+            )
         self.finished = False
         self.__step_num = 0
         self.log(

@@ -37,6 +37,7 @@ class Parser(object):
         self._add_stop_parser(child_parser)
         self._add_restart_parser(child_parser)
         self._add_debug_parser(child_parser)
+        self._add_reload_parser(child_parser)
         self._add_state_parser(child_parser)
         return parser
 
@@ -68,6 +69,11 @@ class Parser(object):
         _act.set_defaults(childcom="debug")
         _act.add_argument("service", nargs=1, type=str, help="service to debug")
         _act.add_argument("debug_args", nargs="*", type=str, help="extra debug arguments")
+
+    def _add_reload_parser(self, sub_parser):
+        _act = sub_parser.add_parser("reload", help="reload service")
+        _act.set_defaults(childcom="reload")
+        _act.add_argument("service", nargs=1, type=str, help="service to reload")
 
     def _add_stop_parser(self, sub_parser):
         _act = sub_parser.add_parser("stop", help="stop service")

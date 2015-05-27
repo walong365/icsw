@@ -6,7 +6,7 @@
         <old-binary>logcheck-server</old-binary>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
+    <instance check_type="meta" name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1" reload="1">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
@@ -27,7 +27,7 @@
         </config_names>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45">
+    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45" reload="1">
         <config_names>
             <config_name>rrd_server</config_name>
             <config_name>rrd_collector</config_name>
@@ -95,7 +95,7 @@
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server">
+    <instance check_type="meta" name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server" reload="1">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
@@ -146,7 +146,7 @@
             <dir value="/var/run/cluster-config-server" user="idccs" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
+    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay" reload="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
@@ -166,7 +166,7 @@
         <old-binary>snmp-relay</old-binary>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1">
+    <instance check_type="meta" name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" reload="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
