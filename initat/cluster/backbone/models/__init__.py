@@ -73,6 +73,7 @@ from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
+from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
 import initat.cluster.backbone.models.model_history
 
 
