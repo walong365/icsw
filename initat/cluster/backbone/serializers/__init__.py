@@ -232,6 +232,8 @@ class device_serializer(serializers.ModelSerializer):
             "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "mon_resolve_name", "access_level", "access_levels", "store_rrd_data", "ipmi_capable",
             "access_level", "access_levels", "store_rrd_data",
+            # dhcp error
+            "dhcp_error",
             # disk info
             "partition_table", "act_partition_table",
             # for network view

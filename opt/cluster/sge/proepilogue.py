@@ -973,17 +973,19 @@ class job_object(object):
             logging_tools.get_plural("IP", len(all_ips))))
         ping_packets = global_config["PING_PACKETS"]
         ping_timeout = global_config["PING_TIMEOUT"]
-        arg_str = "%s %d %.2f" % (",".join(all_ips), ping_packets, float(ping_timeout))
+        arg_str = "{} {:d} {:.2f}".format(",".join(all_ips), ping_packets, float(ping_timeout))
         self.log(
-            "starting flight_check %s, ping_arg is '%s'" % (
+            "starting flight_check {}, ping_arg is '{}'".format(
                 flight_type,
-                arg_str))
+                arg_str
+            )
+        )
         zmq_con = net_tools.zmq_connection("job_{}".format(global_config["FULL_JOB_ID"]))
         for targ_ip in all_nfs_ips:
-            srv_com = server_command.srv_command(command="ping", init_ip="%s" % (targ_ip))
+            srv_com = server_command.srv_command(command="ping", init_ip="{}".format(targ_ip))
             srv_com["arguments:rest"] = arg_str
             for idx, cur_str in enumerate(arg_str.strip().split()):
-                srv_com["arguments:arg%d" % (idx)] = cur_str
+                srv_com["arguments:arg{:d}".format(idx)] = cur_str
             zmq_con.add_connection("tcp://{}:2001".format(targ_ip), srv_com, multi=True)
         result = zmq_con.loop()
         failure_list = []
@@ -999,13 +1001,17 @@ class job_object(object):
                             reach_dict[dest_ip]["error_from"].append(targ_ip)
                 except:
                     # fallback to old code
-                    for p_res in cur_res.xpath(None, ".//ns:ping_result"):
-                        was_ok = int(p_res.attrib["num_received"]) > 0
-                        dest_ip = p_res.attrib["target"]
-                        if was_ok:
-                            reach_dict[dest_ip]["ok_from"].append(targ_ip)
-                        else:
-                            reach_dict[dest_ip]["error_from"].append(targ_ip)
+                    try:
+                        for p_res in cur_res.xpath(None, ".//ns:ping_result"):
+                            was_ok = int(p_res.attrib["num_received"]) > 0
+                            dest_ip = p_res.attrib["target"]
+                            if was_ok:
+                                reach_dict[dest_ip]["ok_from"].append(targ_ip)
+                            else:
+                                reach_dict[dest_ip]["error_from"].append(targ_ip)
+                    except:
+                        # old host-monitor, set all results to ok
+                        self.log("error getting ping-results, continuing...", logging_tools.LOG_LEVEL_WARN)
             else:
                 # node not reachable
                 failure_list.append(targ_ip)
@@ -1016,10 +1022,12 @@ class job_object(object):
                 failure_list.append(key)
         failure_list = sorted(list(set(failure_list)))
         if failure_list:
-            self.log("failure list has %s: %s" % (
-                logging_tools.get_plural("entry", len(failure_list)),
-                ", ".join(failure_list),
-            ))
+            self.log(
+                "failure list has {}: {}".format(
+                    logging_tools.get_plural("entry", len(failure_list)),
+                    ", ".join(failure_list),
+                )
+            )
 #             if failure_list and False:
 #                 error_hosts = set([key for key, value in self.__node_dict.iteritems() if error_ips.intersection(set(value["ip_list"]))])
 #                 self.log("%s: %s (%s: %s)" % (logging_tools.get_plural("error host", len(error_hosts)),

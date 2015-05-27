@@ -175,7 +175,7 @@ class DHCPSyncer(object):
     def _enqueue(self, in_list):
         _coms = self._omshell_base()
         # process commands in in_list
-        _actions = 0
+        _actions, _create, _delete = (0, 0, 0)
         for _com in in_list:
             _state = self.__state[_com.name]
             if _state.present:
@@ -191,23 +191,35 @@ class DHCPSyncer(object):
                         _coms.extend(
                             self._create_record(_com)
                         )
+                        _delete += 1
+                        _create += 1
                         _actions += 1
                 else:
                     # delete
                     _coms.extend(
                         self._delete_record(_com)
                     )
+                    _delete += 1
                     _actions += 1
             else:
                 if _com.ip:
                     _coms.extend(
                         self._create_record(_com)
                     )
+                    _create += 1
                     _actions += 1
                 else:
                     # not present and not to write ignore
                     pass
         if _actions:
+            self.log(
+                "{} resulted in {} ({}, {})".format(
+                    logging_tools.get_plural("input command", len(in_list)),
+                    logging_tools.get_plural("action", _actions),
+                    logging_tools.get_plural("create record", _create),
+                    logging_tools.get_plural("delete record", _delete),
+                )
+            )
             self._do_omshell("write", _coms)
 
     def _create_record(self, dhcp_com):
@@ -341,6 +353,7 @@ class DHCPSyncer(object):
         for _key, _dict in _result_dict.iteritems():
             if _key in _error_dict:
                 _dict["error"] = _error_dict[_key]
+                self.log("device {}: {}".format(_key, _dict["error"]), logging_tools.LOG_LEVEL_ERROR)
             if _key not in self.__state:
                 self.__state[_key] = DHCPState(_key)
             _dict["uuid"] = self.__uuid_lut[_key]
