@@ -1,19 +1,20 @@
 <script type="text/ng-template" id="icsw.config.kpi.evaluation_graph">
     <div ng-mouseleave="on_mouse_leave_widget()" ng-style="get_div_height_style()">
         <svg ng-attr-width="{{svg_width}}" ng-attr-height="{{svg_height}}" class="kpi-visualisation-svg" style="float: left"></svg>
+        <!-- NOTE: height and width not properly applied below -->
         <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show"
-                                      ng-attr-style="float:left; width: {{div_width}}; height: {{div_height}}px; overflow-y: auto; padding-left: 20px"></icsw-config-kpi-show-kpi-set>
+                                      ng-attr-style="float:left; width: {{div_width}}px; height: {{div_height}}px; overflow-y: auto; padding-left: 20px"></icsw-config-kpi-show-kpi-set>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_set">
     <div class="panel panel-default" ng-show="kpi_set">
         <div class="panel-heading">
-            Kpi Set
+            {{title}}
         </div>
-        <div class="panel-body" >
+        <div class="panel-body" ng-attr-style="height: {{body_height}}px; overflow-y: auto;">
 
-            <button class="btn btn-default btn-primary" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
+            <button class="btn btn-default btn-primary" ng-show="show_close" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
 
             <ul class="list-group" ng-show="kpi_set.objects.length > 0">
                 <icsw-config-kpi-show-kpi-object

@@ -50,7 +50,7 @@ class Kpi(models.Model):
 
     # 'last_week', 'yesterday', etc.
     time_range = models.TextField(blank=True, default='none')
-    # parameter for 'last_n_days'
+    # parameter for 'last n days'
     time_range_parameter = models.IntegerField(default=0)
 
     gui_selected_categories = models.TextField(blank=True)  # json
@@ -81,18 +81,31 @@ class Kpi(models.Model):
         )
 
 
-class KpiDataSourceTuple(models.Model):
-    # Relevant (dev_cat x mon_cat) for a kpi.
-    # Specifies the data actually relevant for kpi calculation.
+class DataSourceTuple(models.Model):
     idx = models.AutoField(primary_key=True)
-    kpi = models.ForeignKey(Kpi)
     device_category = models.ForeignKey('category', related_name="device_category")
     monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
 
     def __repr__(self):
-        return u"KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(self.kpi,
-                                                                            self.device_category,
-                                                                            self.monitoring_category)
+        return u"DataSourceTuple(dev_cat={}, mon_cat={})".format(
+            self.device_category, self.monitoring_category
+        )
+
+    __unicode__ = __repr__  # useful for force_text
+
+    class Meta:
+        abstract = True
+
+
+class KpiDataSourceTuple(DataSourceTuple):
+    # Relevant (dev_cat x mon_cat) for a kpi.
+    # Specifies the data actually relevant for kpi calculation.
+    kpi = models.ForeignKey(Kpi, null=True)
+
+    def __repr__(self):
+        return u"KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(
+            self.kpi, self.device_category, self.monitoring_category
+        )
 
     __unicode__ = __repr__  # useful for force_text
 

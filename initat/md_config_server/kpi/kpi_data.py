@@ -22,6 +22,7 @@ import json
 import time
 from django.db.models import Q
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.models.kpi import DataSourceTuple
 from initat.cluster.backbone.models.license import LicenseUsageDeviceService, LicenseUsage
 
 import memcache
@@ -35,8 +36,9 @@ import initat.collectd.aggregate
 
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
 from initat.md_config_server.common import live_socket
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject
+from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject, KpiSet, \
+    KpiOperation
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 
 
@@ -44,15 +46,26 @@ class KpiData(object):
     """Data retrieval methods (mostly functions actually)
 
     Retrieves all data on construction.
-    Data can be retrieved via get_data_for_kpi and get_data_for_dev_mon_tuples later.
+    Data can be retrieved via get_kpi_set_for_kpi and get_kpi_set_for_dev_mon_cat_tuples
     """
 
-    def __init__(self, log):
+    def __init__(self, log, dev_mon_cat_tuples=None):
+        """
+        :param dev_mon_cat_tuples: if specified, only load data for these dev_mon_cat tuples
+        """
         self.log = log
         self._mccs = {mcc.pk: mcc for mcc in mon_check_command.objects.all()}
+
+        self.data_source_tuples = None if dev_mon_cat_tuples is None else [
+            DataSourceTuple(
+                device_category_id=tup[0],
+                monitoring_category_id=tup[1],
+            ) for tup in dev_mon_cat_tuples
+        ]
+
         self._load_data()
 
-    def get_data_for_kpi(self, kpi_db):
+    def get_kpi_set_for_kpi(self, kpi_db):
         dev_mon_tuples = kpi_db.kpidatasourcetuple_set.all()
 
         if kpi_db.has_historic_data():
@@ -60,9 +73,18 @@ class KpiData(object):
         else:
             start, end = None, None
 
-        return self.get_data_for_dev_mon_tuples(dev_mon_tuples, start, end)
+        return self._get_kpi_set_for_source_tuples(dev_mon_tuples, start, end)
 
-    def get_data_for_dev_mon_tuples(self, tuples, start=None, end=None):
+    def get_kpi_set_for_dev_mon_cat_tuples(self, start=None, end=None):
+        if self.data_source_tuples is None:
+            raise ValueError()
+        return self._get_kpi_set_for_source_tuples(
+            self.data_source_tuples,
+            start=start,
+            end=end,
+        )
+
+    def _get_kpi_set_for_source_tuples(self, tuples, start=None, end=None):
         """
         Retrieves current results for (dev, mon)
         :rtype: list of KpiObject
@@ -144,7 +166,7 @@ class KpiData(object):
                     )
                 )
 
-        return kpi_objects
+        return KpiSet(kpi_objects, origin=None)
 
     ##########################
     # private methods
@@ -161,28 +183,23 @@ class KpiData(object):
 
         self.log("got rrd_data for {} hosts".format(len(host_rrd_data)))
 
-        if False and Kpi.objects.filter(uses_all_data=True).exists():  # DISABLED
+        if self.data_source_tuples:
+            dev_mon_tuples, dev_list = self._get_dev_mon_tuples_from_category_tuples(self.data_source_tuples)
+
+        elif False and Kpi.objects.filter(uses_all_data=True).exists():  # DISABLED
             # self.kpi_device_categories = set(device.categories_set.all())
             # self.kpi_devices = list(device.objects.all())
             # self.kpi_mon_categories = list(mon_check_command.categories_set.all())
 
             dev_mon_tuples, dev_list = self._get_dev_mon_tuples_from_category_tuples(
                 [
-                    KpiDataSourceTuple(kpi=None, device_category=dev_cat, monitoring_category=mon_cat)
+                    DataSourceTuple(kpi=None, device_category=dev_cat, monitoring_category=mon_cat)
                     for dev_cat in category.objects.get_device_categories()
                     for mon_cat in category.objects.get_monitoring_categories()
                 ]
             )
 
         else:
-            # self.kpi_device_categories = set(tup.device_category_id for tup in KpiDataSourceTuple.objects.all())
-
-            # self.kpi_devices = set(device.objects.filter(categories__in=self.kpi_device_categories))
-
-            # self.kpi_mon_categories = set(tup.monitoring_category_id for tup in KpiDataSourceTuple.objects.all())
-
-            # self.kpi_mon_check_commands =set(mon_check_command.objects.filter(categories__in=self.kpi_mon_categories))
-
             dev_mon_tuples, dev_list = self._get_dev_mon_tuples_from_category_tuples(
                 KpiDataSourceTuple.objects.all().prefetch_related("device_category")
             )
@@ -203,8 +220,9 @@ class KpiData(object):
 
     def _get_dev_mon_tuples_from_category_tuples(self, queryset):
         ":rtype: (set[device, mon_check_command], set[device]) "
-        queryset = queryset.prefetch_related('device_category', 'device_category__device_set')
-        queryset = queryset.prefetch_related('monitoring_category', 'monitoring_category__mon_check_command_set')
+        if hasattr(queryset, "prefetch_related"):
+            queryset = queryset.prefetch_related('device_category', 'device_category__device_set')
+            queryset = queryset.prefetch_related('monitoring_category', 'monitoring_category__mon_check_command_set')
         dev_mon_tuples = set()
         dev_list = set()
         for tup in queryset:
@@ -220,7 +238,6 @@ class KpiData(object):
 
         device_full_names = \
             {entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')}
-
 
         from initat.md_config_server.config.objects import global_config
         mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])

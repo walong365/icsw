@@ -264,9 +264,15 @@ angular.module(
             templateUrl: "icsw.config.kpi.show_kpi_set"
             scope: {
                 kpi_set: "=kpiSet"
+                show_close_attr: "&showClose"
+                body_height_attr: "&bodyHeight"
+                title: "@title"
             }
             link: (scope, el, attrs) ->
                 icswConfigKpiVisUtils.add_to_scope(scope)
+                scope.title = scope.title or "Kpi Set"
+                scope.show_close = scope.show_close_attr()
+                scope.body_height = scope.body_height_attr()
                 #scope.$watch(
                 #    () -> return scope._get_kpi_set()
                 #    (new_set) -> scope.kpi_set = new_set

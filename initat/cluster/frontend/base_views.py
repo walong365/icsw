@@ -240,21 +240,23 @@ class GetKpiSourceData(View):
     def post(self, request):
         srv_com = server_command.srv_command(command="get_kpi_source_data")
         srv_com['tuples'] = request.POST['tuples']
-        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=True)
-        print 'got result', result
-        print dir(result)
-        request.xml_response['response'] = json.dumps("")
+        srv_com['time_range'] = request.POST['time_range']
+        srv_com['time_range_parameter'] = request.POST['time_range_parameter']
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
+        if result:
+            request.xml_response['response'] = json.dumps(result['kpi_set'])
 
 
 class CalculateKpi(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def post(self, request):
+        # TODO: not fully implemented yet
         srv_com = server_command.srv_command(command="calculate_kpi")
         srv_com["kpi_pk"] = request.POST['kpi_pk']
         srv_com["formula"] = request.POST['formula']
         print 'contacting server'
-        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=True)
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
         print 'contact serv result', result
         return HttpResponse(json.dumps(""))
 

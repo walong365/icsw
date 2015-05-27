@@ -28,14 +28,11 @@ from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import Kpi, License
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
-from initat.md_config_server.kpi.kpi_utils import print_tree
-from initat.tools import logging_tools, process_tools, server_mixins
-from initat.tools import threading_tools
+from initat.md_config_server.kpi.kpi_utils import print_tree, KpiUtils
+from initat.tools import logging_tools, process_tools, server_command, threading_tools
 
 
-@server_mixins.RemoteCallProcess
-class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
-                 server_mixins.OperationalErrorMixin, server_mixins.NetworkBindMixin):
+class KpiProcess(threading_tools.process_obj):
 
     def process_init(self):
         from initat.md_config_server.config.objects import global_config
@@ -50,22 +47,31 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
 
         self.register_timer(self.update, 60 if global_config["DEBUG"] else 300, instant=True)
 
+        self.register_func('get_kpi_source_data', self._get_kpi_source_data)
+        self.register_func('calculate_kpi', self._calculate_kpi)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
     def loop_post(self):
         self.__log_template.close()
 
-    @server_mixins.RemoteCall
-    def get_kpi_data_source(self, srv_com):
-        # TODO: move to kpi proc
-        print 'got source data req'
-        print 'tup', (srv_com['tuples'].text)
-        dev_mon_tuples = json.loads(srv_com['tuples'].text)
-        kpi_objects = KpiData(self.log).get_data_for_dev_mon_tuples(dev_mon_tuples)
-        result = json.dumps([obj.serialize() for obj in kpi_objects])
-        print 'result', result
-        srv_com.set_result("foo")
+    def _get_kpi_source_data(self, srv_com_src, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com_src)
+        dev_mon_cat_tuples = json.loads(srv_com['tuples'].text)
+        start, end = KpiUtils.parse_kpi_time_range(
+            json.loads(srv_com['time_range'].text),
+            json.loads(srv_com['time_range_parameter'].text),
+        )
+        kpi_set = KpiData(self.log, dev_mon_cat_tuples=dev_mon_cat_tuples).get_kpi_set_for_dev_mon_cat_tuples(
+            start,
+            end,
+        )
+        result = kpi_set.serialize()
+        srv_com.set_result("ok")
+        srv_com['kpi_set'] = result
+
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def update(self):
         """Recalculate all kpis and save result to database"""
@@ -81,8 +87,9 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
                     result_str = self._evaluate_kpi(data, kpi_db)
                     kpi_db.set_result(result_str, django.utils.timezone.now())
 
-    def calculate_kpi(self, kpi_db):
+    def _calculate_kpi(self, kpi_db):
         """Calculate single kpi"""
+        # TODO: not fully implemented yet
         KpiGlobals.set_context()
         data = KpiData(self.log)
         return self._evaluate_kpi(data, kpi_db)
@@ -94,10 +101,13 @@ class KpiProcess(threading_tools.process_obj, server_mixins.RemoteCallMixin,
         """
         self.log("Evaluating kpi {}".format(kpi_db))
         # print '\nevaluating kpi', kpi_db
-        kpi_set = KpiSet(data.get_data_for_kpi(kpi_db),
-                         origin=KpiOperation(type=KpiOperation.Type.initial))
         # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
-        eval_globals = {'data': kpi_set, 'KpiSet': KpiSet, 'KpiObject': KpiObject, 'KpiResult': KpiResult}
+        eval_globals = {
+            'data': data.get_kpi_set_for_kpi(kpi_db),
+            'KpiSet': KpiSet,
+            'KpiObject': KpiObject,
+            'KpiResult': KpiResult,
+        }
         eval_locals = {}
         result_str = None
         try:

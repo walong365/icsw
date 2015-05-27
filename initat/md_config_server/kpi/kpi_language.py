@@ -455,10 +455,10 @@ class KpiSet(object):
     def __init__(self, objects, origin):
         """
         :type objects: list of KpiObject
-        :type origin: KpiOperation
+        :type origin: KpiOperation | None
         """
         self.objects = objects
-        self.origin = origin
+        self.origin = origin if origin else KpiOperation(type=KpiOperation.Type.initial)
 
     """
     @classmethod
