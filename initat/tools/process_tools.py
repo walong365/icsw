@@ -20,7 +20,6 @@
 """ various tools to handle processes and stuff """
 
 import atexit
-import codecs
 import base64
 import inspect
 import locale
@@ -48,8 +47,6 @@ import psutil
 from initat.tools import uuid_tools
 import zmq
 from lxml.builder import E  # @UnresolvedImports
-from initat.tools import affinity_tools
-
 
 RUN_DIR = "/var/run"
 
