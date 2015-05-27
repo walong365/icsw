@@ -79,6 +79,7 @@ def main():
             ("RRD_CACHED_DIR", configfile.str_c_var("/var/run/rrdcached", database=True)),
             ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached/rrdcached.sock", database=True)),
             ("RRD_STEP", configfile.int_c_var(60, help_string="RRD step value", database=True)),
+            ("AGGREGATE_DIR", configfile.str_c_var("/opt/cluster/share/collectd", help_string="base dir for collectd aggregates")),
         ]
     )
     global_config.parse_file()

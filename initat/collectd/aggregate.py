@@ -19,20 +19,21 @@
 #
 """ aggregation part of rrd-grapher service via memcache structure """
 
+from lxml import etree
+import json
+import os
+import re
+import time
+
 from django.db import connection
 from initat.cluster.backbone.models import device_group
 from initat.collectd.config import global_config
-from lxml import etree
 from lxml.builder import E
-import json
 from initat.tools import logging_tools
 import memcache
-import pprint  # @UnusedImport
 from initat.tools import process_tools
-import re
 from initat.tools import server_mixins
 from initat.tools import threading_tools
-import time
 import zmq
 
 
@@ -199,39 +200,6 @@ AGGREGATE_NG = """
         </oneOrMore>
     </element>
 </element>
-"""
-
-AGGREGATE_XML = """
-<aggregates>
-    <aggregate action="sum" name="load">
-        <key_list>
-            <key top-level="load" match="\d+$"></key>
-        </key_list>
-    </aggregate>
-    <aggregate action="sum" name="io">
-        <key_list>
-            <key top-level="net.all" match="(rx|tx)$"></key>
-            <key top-level="io.total.bytes" match="(read|written)$"></key>
-        </key_list>
-    </aggregate>
-    <aggregate action="sum" name="vms">
-        <key_list>
-            <key top-level="vms" match="[^\.]+$"></key>
-        </key_list>
-    </aggregate>
-    <aggregate action="sum" name="memory">
-        <key_list>
-            <key top-level="mem" match="used.*"></key>
-            <key top-level="mem" match="free.*"></key>
-            <key top-level="mem" match="avail.*"></key>
-        </key_list>
-    </aggregate>
-    <aggregate name="processes" action="sum">
-        <key_list>
-            <key top-level="proc" match="[^\.]+$"></key>
-        </key_list>
-    </aggregate>
-</aggregates>
 """
 
 
@@ -486,15 +454,42 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         self.drop_socket = t_sock
 
     def init_ag_xml(self):
+        # validator
         _ng = etree.RelaxNG(etree.fromstring(AGGREGATE_NG))  # @UndefinedVariable
-        ag_xml = etree.fromstring(AGGREGATE_XML)  # @UndefinedVariable
+        _ag_dir = global_config["AGGREGATE_DIR"]
         tls = ag_tls(self.log)
-        for _entry in ag_xml.findall("aggregate"):
-            _valid = _ng.validate(_entry)
-            if _valid:
-                tls.add_aggregate(ag_obj(_entry))
-            else:
-                print("aggregate is invalid: {}".format(str(_ng.error_log)))
+        ag_xml = E.aggregates()
+        for _dir, _dirs, _files in os.walk(_ag_dir):
+            for _file in [_entry for _entry in _files if _entry.startswith("agg") and _entry.endswith(".xml")]:
+                _file = os.path.join(_dir, _file)
+                try:
+                    cur_xml = etree.fromstring(file(_file, "rb").read())
+                except:
+                    self.log(
+                        "error interpreting aggregate file {}: {}".format(
+                            _file,
+                            process_tools.get_except_info(),
+                        )
+                    )
+                else:
+                    for _xml_num, _xml in enumerate(cur_xml, 1):
+                        _valid = _ng.validate(_xml)
+                        if _valid:
+                            self.log(
+                                "added aggregate #{:d} from {}".format(
+                                    _xml_num,
+                                    _file,
+                                )
+                            )
+                            tls.add_aggregate(ag_obj(_xml))
+                        else:
+                            self.log(
+                                "aggregate #{:d} from {} is invalid: {}".format(
+                                    _xml_num,
+                                    _file,
+                                    str(_ng.error_log),
+                                )
+                            )
         self.ag_tls = tls
 
     def _update_struct(self):

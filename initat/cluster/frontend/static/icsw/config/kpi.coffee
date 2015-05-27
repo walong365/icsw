@@ -217,13 +217,16 @@ angular.module(
             update_kpi_data_source = () ->
                 icswCallAjaxService
                     url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
+
                     data:
                         tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
+                        time_range: JSON.stringify(cur_edit_kpi.time_range)
+                        time_range_parameter: JSON.stringify(cur_edit_kpi.time_range_parameter)
                     success: (xml) ->
                         if icswParseXMLResponseService(xml)
                             res = angular.fromJson($(xml).find("value[name='response']").text())
-                            console.log 'res', res
-                            scope.kpi_data_source = res
+                            scope.selected_cats_kpi_set = res
+            update_kpi_data_source()
 
             child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
                 return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> return elem[0] == dev_cat_id and elem[1] == mon_cat_id)
@@ -341,6 +344,7 @@ angular.module(
                 available_monitoring_categories: []
                 selected_device_monitoring_category_tuple: []
                 time_range: 'none'
+                time_range_parameter: 1
                 enabled: true
             }
             show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)

@@ -48,7 +48,7 @@
                                         </ui-select-choices>
                                     </ui-select>
 
-                                    <div ng-show="cur_edit_kpi.time_range == 'last_n_days'" class="controls form-inline">
+                                    <div ng-show="cur_edit_kpi.time_range == 'last n days'" class="controls form-inline">
                                         <div style="margin-top: 10px">
                                         Last
                                         <input class="form-control " type="number" ng-model="cur_edit_kpi.time_range_parameter"/>
@@ -81,7 +81,7 @@
                     <accordion-group heading="Formula" is-open="true">
                         <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
                     </accordion-group>
-                    <accordion-group heading="Evaluation" is-open="true">
+                    <accordion-group heading="Evaluation" is-open="true" ng-show="false">
                         <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()"></icsw-tools-button>
                         <icsw-config-kpi-evaluation-graph kpi-idx="cur_edit_kpi.idx" width="870"></icsw-config-kpi-evaluation-graph>
                     </accordion-group>
@@ -100,11 +100,11 @@
         <accordion-group heading="Select device and monitoring categories" is-open="true">
             <div class="row">
                 <div class="col-md-6">
-                    <h3 style="margin-top: 0px"> <!-- else too much margin at top --> Device categories</h3>
+                    Device categories
                     <tree treeconfig="device_category_tree" max-height="350"></tree>
                 </div>
                 <div class="col-md-6">
-                    <h3 style="margin-top: 0px">Monitoring categories</h3>
+                    Monitoring categories
                     <tree treeconfig="monitoring_category_tree" max-height="350"></tree>
                 </div>
             </div>
@@ -153,8 +153,11 @@
                 </tr>
             </table>
 
-
-            Selected: {{kpi_data_source}}
+            <icsw-config-kpi-show-kpi-set
+                    kpi-set="selected_cats_kpi_set" title="Hosts and services of selected categories"
+                    show-close="0"
+                    body-height="300"
+                    ></icsw-config-kpi-show-kpi-set>
 
         </accordion-group>
     </accordion>

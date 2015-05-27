@@ -431,7 +431,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                     license, entry.device_id, entry.service.pk
                 ):
 
-                    used_device_services[entry.device_id].append(entry.service.pk)
+                    used_device_services[entry.device_id].add(entry.service.pk)
 
                     relevant_data_from_entry = {
                         'state': trans[entry.state],
