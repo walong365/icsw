@@ -41,6 +41,7 @@ from initat.collectd.aggregate import aggregate_process
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.collectd.dbsync import SyncProcess
+from .rsync import RSyncMixin
 from initat.snmp.process import snmp_process_container
 from lxml.builder import E  # @UnresolvedImports
 from initat.tools import cluster_location
@@ -58,7 +59,7 @@ import zmq
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin):
+class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin, RSyncMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -103,34 +104,6 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.add_process(aggregate_process("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
         connection.close()
-
-    def sync_from_disk_to_ram(self):
-        _is_ram = False
-        for _fs in psutil.disk_partitions(all=True):
-            if _fs.mountpoint == global_config["RRD_DIR"] and _fs.fstype in ["tmpfs", "ramdisk"]:
-                _is_ram = True
-                break
-        _rsync_bin = process_tools.find_file("rsync")
-        self.log(
-            "{} is{} a RAM-disk, _rsync binary is at {} ...".format(
-                global_config["RRD_DIR"],
-                "" if _is_ram else " not",
-                _rsync_bin,
-            )
-        )
-        if _is_ram and _rsync_bin and global_config["RRD_DISK_CACHE"] != global_config["RRD_DIR"]:
-            s_time = time.time()
-            _cmd = "{} -a --delete {}/* {}".format(
-                _rsync_bin,
-                global_config["RRD_DISK_CACHE"],
-                global_config["RRD_DIR"],
-            )
-            subprocess.call(
-                _cmd,
-                shell=True
-            )
-            e_time = time.time()
-            self.log("command {} took {}".format(_cmd, logging_tools.get_diff_time_str(e_time - s_time)))
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
@@ -304,7 +277,12 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             try:
                 _pid = int(open(RRD_CACHED_PID, "r").read().strip())
             except:
-                self.log("error reading pid of rrdcached: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error reading pid of rrdcached: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 try:
                     os.kill(_pid, 15)
@@ -316,11 +294,13 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             _result = self.__rrd_com.finished()
             if _result is not None:
                 _stdout, _stderr = self.__rrd_com.communicate()
-                self.log("stopped with result {:d}".format(_result))
+                self.log("stopped rrd_cached process with result {:d}".format(_result))
                 for _name, _stream in [("stdout", _stdout), ("stderr", _stderr)]:
                     if _stream:
                         for _line in _stream.split("\n"):
                             self.log("{}: {}".format(_name, _line))
+            else:
+                self.log("stopped rrd_cached process")
         elif not self.__rrdcached_running and _target_state:
             _log()
             self.log("starting rrd_cached process")
@@ -382,6 +362,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
 
     def loop_post(self):
         self.stop_rrd_cached()
+        self.sync_from_disk_to_ram()
         self._log_stats()
         self.com_socket.close()
         self.receiver.close()
@@ -506,25 +487,28 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             in_data.append(zmq_sock.recv())
             if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 break
-        if len(in_data) == 2:
-            in_uuid, in_xml = in_data
-            try:
-                in_com = server_command.srv_command(source=in_xml)
-            except:
-                self.log("error decoding command {}: {}".format(in_xml, process_tools.get_except_info), logging_tools.LOG_LEVEL_ERROR)
-            else:
-                com_text = in_com["command"].text
-                self.log("got command {} from {}".format(com_text, in_uuid))
-                if com_text in ["host_list", "key_list"]:
-                    self._handle_hk_command(in_com, com_text)
+        if self.__snmp_running:
+            if len(in_data) == 2:
+                in_uuid, in_xml = in_data
+                try:
+                    in_com = server_command.srv_command(source=in_xml)
+                except:
+                    self.log("error decoding command {}: {}".format(in_xml, process_tools.get_except_info), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
-                    in_com.set_result(
-                        "unknown command {}".format(com_text),
-                        server_command.SRV_REPLY_STATE_ERROR
-                    )
-                zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                zmq_sock.send_unicode(unicode(in_com))
+                    com_text = in_com["command"].text
+                    self.log("got command {} from {}".format(com_text, in_uuid))
+                    if com_text in ["host_list", "key_list"]:
+                        self._handle_hk_command(in_com, com_text)
+                    else:
+                        self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
+                        in_com.set_result(
+                            "unknown command {}".format(com_text),
+                            server_command.SRV_REPLY_STATE_ERROR
+                        )
+                    zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
+                    zmq_sock.send_unicode(unicode(in_com))
+        else:
+            self.log("shutting down, ignoring input", logging_tools.LOG_LEVEL_WARN)
 
     def _init_snmp(self):
         self.spc = snmp_process_container(
@@ -612,18 +596,21 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
 
     def _recv_data(self, in_sock):
         in_data = in_sock.recv()
-        # adopt tree format for faster handling in collectd loop
-        try:
-            _xml = etree.fromstring(in_data)  # @UndefinedVariable
-        except:
-            self.log(
-                "cannot parse tree: {}".format(
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
+        if self.__snmp_running:
+            # adopt tree format for faster handling in collectd loop
+            try:
+                _xml = etree.fromstring(in_data)  # @UndefinedVariable
+            except:
+                self.log(
+                    "cannot parse tree: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            else:
+                self.process_data_xml(_xml, len(in_data))
         else:
-            self.process_data_xml(_xml, len(in_data))
+            self.log("shutting down, ignoring input", logging_tools.LOG_LEVEL_WARN)
         if abs(time.time() - self.__start_time) > 300:
             # periodic log stats
             self._log_stats()
@@ -986,8 +973,8 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
 
     def _check_background(self):
-        bg_job.check_jobs()
-        snmp_job.check_jobs()
+        bg_job.check_jobs(start=self.__snmp_running)
+        snmp_job.check_jobs(start=self.__snmp_running)
 
     def _handle_hk_command(self, in_com, com_text):
         h_filter, k_filter = (

@@ -1583,7 +1583,6 @@ class node_control_process(threading_tools.process_obj):
                         else:
                             self.log("no greedy devices found for MAC-address %s or not responsible" % (in_dict["macaddr"]))
                 else:
-                    print "Re"
                     # reject entry because we are unable to answer the DHCP-Request
                     macbootlog.objects.create(
                         entry_type=in_dict["key"],
