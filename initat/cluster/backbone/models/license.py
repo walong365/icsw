@@ -297,7 +297,7 @@ class LicenseUsage(object):
                 LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
 
             elif param_type == LicenseParameterTypeEnum.service:
-                if value:  # not empty
+                if value and any(value.itervalues()):  # not empty
                     dev_serv_filter = reduce(
                         operator.ior,
                         (Q(device_id=LicenseUsage.device_to_pk(dev), service_id=LicenseUsage.service_to_pk(serv))
