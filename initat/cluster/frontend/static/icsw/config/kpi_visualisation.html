@@ -14,15 +14,15 @@
         </div>
         <div class="panel-body" ng-attr-style="height: {{body_height}}px; overflow-y: auto;">
 
-            <button class="btn btn-default btn-primary" ng-show="show_close" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
+            <button class="btn btn-default btn-primary" ng-if="show_close" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
 
-            <ul class="list-group" ng-show="kpi_set.objects.length > 0">
+            <ul class="list-group" ng-if="kpi_set.objects.length > 0">
                 <icsw-config-kpi-show-kpi-object
                         ng-repeat="kpi_obj in kpi_set.objects | orderBy:['host_name', 'service_info', 'check_command', 'rrd_key']"
                         kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
             </ul>
 
-            <div ng-show="kpi_set.objects.length == 0">
+            <div ng-if="kpi_set.objects.length == 0">
                 <alert type="info">No objects</alert>
             </div>
 
@@ -34,32 +34,32 @@
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_object">
     <li ng-attr-class="list-group-item {{list_group_class}}">
 
-        <span ng-show="kpi_obj.host_name">
+        <span ng-if="kpi_obj.host_name">
             Host: {{kpi_obj.host_name.split(".")[0]}},
          </span>
 
-        <span ng-show="kpi_obj.service_info"> <!-- show as in status history, i.e. prefer service_info -->
+        <span ng-if="kpi_obj.service_info"> <!-- show as in status history, i.e. prefer service_info -->
             Service: {{kpi_obj.service_info}},
         </span>
 
-        <span ng-show="!kpi_obj.service_info && kpi_obj.check_command">
+        <span ng-if="!kpi_obj.service_info && kpi_obj.check_command">
             Service: {{kpi_obj.check_command}},
         </span>
 
-        <span ng-show="kpi_obj.rrd_key">
+        <span ng-if="kpi_obj.rrd_key">
             {{kpi_obj.rrd_key}}: {{kpi_obj.rrd_value}}
         </span>
 
-        <span ng-show="kpi_obj.result">
+        <span ng-if="kpi_obj.result">
             Result: {{kpi_obj.result}},
         </span>
 
         <div class="row">
             <div class="col-md-4">
-                <icsw-tools-piechart ng-show="pie_data" diameter="50" data="pie_data"></icsw-tools-piechart>
+                <icsw-tools-piechart ng-if="pie_data" diameter="50" data="pie_data"></icsw-tools-piechart>
             </div>
             <div class="col-md-8">
-                <table class="table table-condensed table-hover table-striped" ng-show="pie_data_list">
+                <table class="table table-condensed table-hover table-striped" ng-if="pie_data_list">
                     <tbody>
                         <tr ng-repeat="state in pie_data_list">
                             <td> {{ state.state }}</td>

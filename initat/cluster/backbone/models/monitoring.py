@@ -497,6 +497,8 @@ class mon_check_command(models.Model):
             "mon_icinga_log_raw_service_flapping_data",
             "mon_icinga_log_raw_service_notification_data",
             "mon_icinga_log_aggregated_service_data",
+            "LicenseUsageDeviceService",
+            "LicenseLockListDeviceService",
         ]
 
     def __unicode__(self):
