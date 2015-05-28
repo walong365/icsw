@@ -439,7 +439,7 @@ PIPELINE_JS = {
     "js_base": {
         "source_filenames": (
             "js/jquery-ui-1.10.2.custom.js",
-            "js/angular-1.3.15.js",
+            "js/angular-1.4.0.js",
             "js/lodash.js",
             "js/bluebird.js",
             "js/codemirror/codemirror.js",

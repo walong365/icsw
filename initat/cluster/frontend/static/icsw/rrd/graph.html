@@ -77,6 +77,19 @@
                 </div>&nbsp;
                 <div class="form-group">
                     <div class="input-group-btn">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="y-Scale mode">
+                                <span class="glyphicon glyphicon-sort"></span>
+                                {{ scale_mode }}<span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="_sm in scale_modes" ng-click="set_scale_mode(_sm)"><a href="#">{{ _sm }}</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
                         <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
                             <span class="glyphicon glyphicon-step-forward"></span>
                         </button>
@@ -126,13 +139,15 @@
                 </div>&nbsp;
                 <div class="form-group" ng-show="devsel_list.length > 1">
                     <div class="input-group-btn">
-                        <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y" title="scale ordinate to be able to compare graphs">
-                            <span class="glyphicon glyphicon-sort"></span>
-                        </button>
-                    </div>
-                    <div class="input-group-btn">
                         <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
                             <span class="glyphicon glyphicon-th"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="merge_graphs && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_graphs=!merge_graphs" title="merge graphs into one">
+                            <span class="glyphicon glyphicon-edit"></span>
                         </button>
                     </div>
                 </div>
