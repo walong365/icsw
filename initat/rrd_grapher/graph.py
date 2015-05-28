@@ -336,8 +336,6 @@ class GraphVar(object):
             if draw_type != "AREA":
                 if _stacked:
                     draw_name = self._transform(c_lines, draw_name, "z", "CDEF:{}={},0,*")
-                if self.y_scaled:
-                    draw_name = self._transform(c_lines, draw_name, "scl", "CDEF:{{}}={{}},{},*".format(self.scale_y_factor))
                 c_lines.append(
                     "{}:{}{}:{}".format(
                         draw_type.replace("AREA", "LINE"),
