@@ -139,11 +139,12 @@ class graph_rrds(View):
             E.include_zero(self._parse_post_boolean(_post, "include_zero", "0")),
             E.show_values(self._parse_post_boolean(_post, "show_values", "0")),
             E.show_forecast(self._parse_post_boolean(_post, "show_forecast", "0")),
-            E.scale_y(self._parse_post_boolean(_post, "scale_y", "0")),
+            E.scale_mode(_post.get("scale_mode", "level")),
             E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
             E.merge_devices(self._parse_post_boolean(_post, "merge_devices", "1")),
+            E.merge_graphs(self._parse_post_boolean(_post, "merge_graphs", "0")),
             E.timeshift(_post.get("timeshift", "0")),
         )
         result = contact_server(request, "grapher", srv_com, timeout=30)

@@ -158,8 +158,10 @@ angular.module(
         $scope.show_values = true
         $scope.cds_already_merged = false
         $scope.merge_cd = false
-        $scope.scale_y = true
+        $scope.scale_modes = ["level", "none", "to100"]
+        $scope.scale_mode  = $scope.scale_modes[0]
         $scope.merge_devices = false
+        $scope.merge_graphs = false
         $scope.show_tree = true
         $scope.g_tree = new icswRRDGraphTreeService($scope)
         $scope.$watch("from_date_mom", (new_val) ->
@@ -168,8 +170,10 @@ angular.module(
         $scope.$watch("to_date_mom", (new_val) ->
             $scope.update_dt() 
         )
-        $scope.set_job_mode = (new_jm) -> 
+        $scope.set_job_mode = (new_jm) ->
             $scope.job_mode = new_jm
+        $scope.set_scale_mode = (new_sm) ->
+            $scope.scale_mode = new_sm
         $scope.get_job_mode = (_jm) ->
             if _jm == "selected"
                 return "#{_jm} (#{$scope.selected_job})"
@@ -459,8 +463,9 @@ angular.module(
                         "merge_cd"      : $scope.merge_cd
                         # flag if the controlling devices are shown in the rrd tree
                         "cds_already_merged" : $scope.cds_already_merged
-                        "scale_y"       : $scope.scale_y
+                        "scale_mode"    : $scope.scale_mode
                         "merge_devices" : $scope.merge_devices
+                        "merge_graphs"  : $scope.merge_graphs
                         "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
                     }
                     success : (xml) =>
