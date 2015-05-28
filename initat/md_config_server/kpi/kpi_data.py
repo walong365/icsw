@@ -265,7 +265,7 @@ class KpiData(object):
                     if host_mc is not None:
                         values_list = json.loads(host_mc)
 
-                        vector_entries = (initat.collectd.aggregate.ve(*val) for val in values_list)
+                        vector_entries = (initat.collectd.aggregate.VE(*val) for val in values_list)
 
                         host_rrd_data[host_db.pk] = list(
                             KpiRRDObject(
