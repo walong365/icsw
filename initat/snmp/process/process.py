@@ -17,18 +17,19 @@
 #
 """ SNMP process definition """
 
-from .batch import snmp_batch
-from .config import DEFAULT_RETURN_NAME
+import signal
+
 from pyasn1.codec.ber import decoder  # @UnresolvedImport
 from pyasn1.type.error import ValueConstraintError  # @UnresolvedImport
 from pysnmp.carrier.asynsock.dgram import udp  # @UnresolvedImport
 from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher  # @UnresolvedImport
 from pysnmp.proto import api  # @UnresolvedImport
 from initat.tools import logging_tools
-import pprint  # @UnusedImport
 from initat.tools import process_tools
-import signal
 from initat.tools import threading_tools
+
+from .batch import snmp_batch
+from .config import DEFAULT_RETURN_NAME
 
 
 class snmp_process(threading_tools.process_obj):
