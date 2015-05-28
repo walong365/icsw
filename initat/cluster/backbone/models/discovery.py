@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from collections import defaultdict
 
 from django.db import models
 from django.db.models import Avg
@@ -72,17 +73,20 @@ class DispatchSetting(models.Model):
 
 
 class _ScanHistoryManager(models.Manager):
+    def get_average_run_duration(self, source, device):
+        default = 60  # TODO: source-dependent default?
+        return self.__get_run_duration_cache().get(source, {}).get(device, default)
+
     @memoize_with_expiry(10)
-    def get_average_run_duration(self, source):
-        queryset = self.filter(source=source)
-        if not queryset.exists():
-            return 60
-        else:
-            return queryset.aggregate(Avg("duration"))
+    def __get_run_duration_cache(self):
+        cache = defaultdict(lambda: {})
+        for entry in self.values("source", "device_id").annotate(avg_duration=Avg("duration")):
+            cache[entry['source']][entry['device_id']] = entry['avg_duration']
+        return cache
 
 
 class ScanHistory(models.Model):
-    objects = _ScanHistoryManager
+    objects = _ScanHistoryManager()
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(auto_now_add=True)
 

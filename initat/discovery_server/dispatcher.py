@@ -21,18 +21,25 @@
 #
 from dateutil.relativedelta import relativedelta
 from collections import defaultdict
+import operator
 
 from initat.cluster.backbone.models.discovery import DispatchSetting, ScanHistory
 
 
 class ScheduleItem(object):
     def __init__(self, device, source, planned_date, dispatch_setting):
+        # date always means datetime
         self.device = device
         self.source = source
         self.planned_date = planned_date  # date according to interval
         self.dispatch_setting = dispatch_setting
-        self.expected_date = None  # date considering other jobs
-        self.dependent_on_items = []
+
+        self.expected_run_date = None  # date considering other jobs
+        self.expected_finish_date = None
+
+    def set_expected_dates(self, expected_run_date, expected_finish_date):
+        self.expected_run_date = expected_run_date
+        self.expected_finish_date = expected_finish_date
 
 
 class DiscoveryDispatcher(object):
@@ -48,28 +55,31 @@ class DiscoveryDispatcher(object):
 
         # - run_now
 
-        run_list = self.get_next_planned_run_times(start, end)
+        naive_run_list = self.get_next_planned_run_times(start, end)
         # sort prio: run_now, date, device_pk (to make sort somewhat stable)
-        run_list.sort(key=lambda item: (not item.dispatch_setting.run_now, item.planned_date, item.device.pk))
+        naive_run_list.sort(key=lambda entry: (not entry.dispatch_setting.run_now, entry.planned_date, entry.device.pk))
 
-        items_by_device = defaultdict(lambda: [])
-        items_by_source = defaultdict(lambda: [])
+        sched_info = _ScheduleInfo()
 
-        for item in run_list:
+        for item in naive_run_list:
+            expected_run_date = item.planned_date
 
-            dependent_on = set(
-                self.get_up_to_nth_last(items_by_source[item.source], item.source.get_maximal_concurrent_runs())
-            )
-            last_item_on_device = items_by_device.get(item.device)
-            if last_item_on_device:
-                dependent_on.add(items_by_device)
+            # we can run as soon as source limit is fulfilled
+            n_th_last_by_src = sched_info.items_by_source[item.source][- item.source.get_maximal_concurrent_runs()]
+            expected_run_date = max(expected_run_date, n_th_last_by_src.expected_finish_date)
 
-            item.dependent_on_items = list(dependent_on)
+            # device constraint (only one by device
+            last_by_device = sched_info.items_by_device[item.device][-1]
+            expected_run_date = max(expected_run_date, last_by_device.expected_finish_date)
 
-            items_by_device[item.device].append(item)
-            items_by_source[item.source].append(item)
+            item.expected_run_date = expected_run_date
+            item.expected_finish_date =\
+                expected_run_date + ScanHistory.objects.get_average_run_duration(item.source, item.device)
+
+            sched_info.add_item(item)
 
     def get_next_planned_run_times(self, start, end):
+        """Returns planned run times without considering any constraints"""
         if end < start:
             raise ValueError()
         run_list = []
@@ -99,6 +109,19 @@ class DiscoveryDispatcher(object):
 
         return run_list
 
-    @staticmethod
-    def get_up_to_nth_last(l, n):
-        return l[:len(l) - n - 1]
+
+class _ScheduleInfo(object):
+    """
+    keeps items lists sorted by expected finish date
+    """
+    def __init__(self):
+        self.items_by_device = defaultdict(lambda: [])
+        self.items_by_source = defaultdict(lambda: [])
+
+    def add_item(self, item):
+        # TODO: insertion sort?
+        self.items_by_device[item.device].append(item)
+        self.items_by_device[item.device].sort(key=operator.attrgetter("expected_finish_date"))
+
+        self.items_by_source[item.source].append(item)
+        self.items_by_source[item.source].sort(key=operator.attrgetter("expected_finish_date"))
