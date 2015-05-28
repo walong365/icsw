@@ -127,7 +127,7 @@ class file_creator(object):
                             "{:d}".format(_step),
                         ] + _ds_list + _rra_list
                         rrdtool.create(*_args)
-                    except:
+                    except rrdtool.error:
                         self.log(
                             "error creating file {}: {}".format(
                                 _path,
@@ -313,7 +313,7 @@ class host_matcher(object):
                 if _dir.endswith("df."):
                     try:
                         shutil.rmtree(_dir)
-                    except:
+                    except IOError:
                         self.log("error removing {}: {}".format(_dir, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         self.log("removed tree below {}".format(_dir))
@@ -415,7 +415,7 @@ class ext_com(object):
         if self.popen:
             try:
                 return self.popen.communicate()
-            except:
+            except OSError:
                 self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return ("", "")
         else:
@@ -597,7 +597,7 @@ class host_info(object):
                     self.__dict[key].name,
                     self.__dict[key].transform(value, cur_time),
                 )
-            except:
+            except ValueError, KeyError:
                 self.log("error transforming {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return (None, None)
         else:

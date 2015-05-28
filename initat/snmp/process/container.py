@@ -17,13 +17,14 @@
 #
 """ SNMP process container """
 
+import os
+import time
+
+from initat.tools import logging_tools
+import zmq
+
 from .config import DEFAULT_RETURN_NAME
 from .process import snmp_process
-from initat.tools import logging_tools
-import os
-import pprint  # @UnusedImport
-import time
-import zmq
 
 
 class snmp_process_container(object):
@@ -116,9 +117,23 @@ class snmp_process_container(object):
     def stop(self):
         # stop all snmp process and stop spawning new ones
         self.__run_flag = False
+        _starting, _running, _stopped = (0, 0, 0)
         for _key, value in self.__snmp_dict.iteritems():
+            if value["running"] and value["stopped"]:
+                _stopped += 1
+            elif value["running"] and not value["stopped"]:
+                _running += 1
+            elif not value["running"] and not value["stopped"]:
+                _starting += 1
             if value["running"] and not value["stopped"]:
                 self.send(value["name"], "exit")
+        self.log(
+            "stop info: {:d} starting, {:d} running, {:d} stopped".format(
+                _starting,
+                _running,
+                _stopped,
+            )
+        )
         if not self.__snmp_dict:
             self._event("all_stopped")
 
@@ -163,12 +178,14 @@ class snmp_process_container(object):
             _iter += 1
             try:
                 self._socket.send_unicode(target, zmq.SNDMORE)  # @UndefinedVariable
-                self._socket.send_pyobj({
-                    "pid": self.pid,
-                    "type": m_type,
-                    "args": args,
-                    "kwargs": kwargs,
-                })
+                self._socket.send_pyobj(
+                    {
+                        "pid": self.pid,
+                        "type": m_type,
+                        "args": args,
+                        "kwargs": kwargs,
+                    }
+                )
             except zmq.error.ZMQError:
                 _iter += 1
                 time.sleep(0.1)
@@ -202,6 +219,9 @@ class snmp_process_container(object):
                 process_name=self.__snmp_dict[snmp_idx]["msi_name"],
                 fuzzy_ceiling=3
             )
+            if not self.__run_flag:
+                # call stop
+                self.stop()
         elif data["type"] == "process_exit":
             self.log("SNMP process {:d} stopped (PID={:d})".format(snmp_idx, data["pid"]), logging_tools.LOG_LEVEL_WARN)
             self.__snmp_dict[snmp_idx]["stopped"] = True

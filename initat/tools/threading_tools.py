@@ -414,6 +414,7 @@ class poller_obj(object):
                                 for line in exc_info.log_lines:
                                     self.log("    {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                                 # raise exception, important
+                                self.log("re-raising exception")
                                 raise
                         else:
                             try:
@@ -492,8 +493,10 @@ class exception_handling_mixin(object):
         # FIXME
         exc_type = str(exc_info[0]).split(".")[-1].split("'")[0]
         if exc_type in self.__exception_table:
-            self.log("caught known exception {}".format(exc_type),
-                     logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "caught known exception {}".format(exc_type),
+                logging_tools.LOG_LEVEL_WARN
+            )
             self.__exception_table[exc_type](exc_info[1])
             _handled = True
         else:
@@ -501,8 +504,10 @@ class exception_handling_mixin(object):
             self.log(
                 "caught unknown exception {} ({}), traceback".format(
                     exc_type,
-                    except_info),
-                logging_tools.LOG_LEVEL_CRITICAL)
+                    except_info
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
             tb = self._exc_info[2]
             out_lines = ["Exception in process '{}'".format(self.name)]
             for file_name, line_no, name, line in traceback.extract_tb(tb):
@@ -514,9 +519,11 @@ class exception_handling_mixin(object):
                 )
                 out_lines.append("File '{}', line {:d} in {}".format(file_name, line_no, name))
                 if line:
-                    self.log(" - {:d} : {}".format(line_no, line),
-                             logging_tools.LOG_LEVEL_CRITICAL)
                     out_lines.append(" - {:d} : {}".format(line_no, line))
+                    self.log(
+                        out_lines[-1],
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
             out_lines.append(except_info)
             # write to logging-server
             err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
@@ -524,7 +531,8 @@ class exception_handling_mixin(object):
             err_h.close()
             self.log(
                 "waiting for 1 second",
-                logging_tools.LOG_LEVEL_WARN)
+                logging_tools.LOG_LEVEL_WARN
+            )
             time.sleep(1)
         return _handled
 
@@ -868,6 +876,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
 
 class process_pool(timer_base, poller_obj, process_base, exception_handling_mixin):
     def __init__(self, name, **kwargs):
+        threading.currentThread().setName(kwargs.get("name", "main"))
         self.debug_zmq = kwargs.get("zmq_debug", False)
         timer_base.__init__(self)
         poller_obj.__init__(self)
@@ -1160,6 +1169,8 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         self.log("process {} ({:d}) started".format(t_name, t_pid))
         self._flush_process_buffers(t_name)
         self.process_start(t_name, t_pid)
+        if self["exit_requested"]:
+            self.stop_running_processes()
 
     def _used_module_list(self, t_name, t_pid, *args):
         _list = args[0]
@@ -1284,8 +1295,14 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             if msg_type in self.__func_table:
                 self.__func_table[msg_type](src_process, src_pid, *mes_parts["args"], **mes_parts.get("kwargs", {}))
             else:
-                self.log("unknown msg_type '{}' from src_process {} (pid {:d})".format(msg_type, src_process, src_pid),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "unknown msg_type '{}' from src_process {} (pid {:d})".format(
+                        msg_type,
+                        src_process,
+                        src_pid
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
 
     def loop(self):
         self["loop_start_called"] = False

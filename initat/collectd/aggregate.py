@@ -323,10 +323,11 @@ class AGSink(object):
     def feed_ve(self, _ve):
         # feed vector entry
         # one target key or use _ve key
-        _t_key = self.target_key or _ve.key
-        if _t_key not in self.key_sinks:
-            self.key_sinks[_t_key] = KeySink(_ve, self.action)
-        self.key_sinks[_t_key].feed_ve(_ve)
+        if self.target_key:
+            _ve.key = self.target_key
+        if _ve.key not in self.key_sinks:
+            self.key_sinks[_ve.key] = KeySink(_ve, self.action)
+        self.key_sinks[_ve.key].feed_ve(_ve)
 
     def __repr__(self):
         return u"ag_sink [{}] {}: {}; {}".format(
@@ -437,6 +438,8 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         )
         connection.close()
         self.__debug = global_config["DEBUG"]
+        # cache address
+        self.__memcache_address = [global_config["MEMCACHE_ADDRESS"]]
         # last update of aggregation structure
         self.__struct_update = None
         # cache for filtered values
@@ -526,7 +529,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
             self.__struct_update = cur_time
 
     def get_mc(self):
-        return memcache.Client([global_config["MEMCACHE_ADDRESS"]])
+        return memcache.Client(self.__memcache_address)
 
     def _fetch_hosts(self, mc):
         try:

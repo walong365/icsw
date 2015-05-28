@@ -54,6 +54,7 @@ class RSyncMixin(object):
         if not hasattr(self, "do_rsync"):
             self._setup_rsync()
         if self.do_rsync:
+            self.log("syncing from disk to RAM")
             s_time = time.time()
             _cmd = "{} -a --delete {}/* {}".format(
                 self._rsync_bin,
@@ -71,6 +72,7 @@ class RSyncMixin(object):
         if not hasattr(self, "do_rsync"):
             self._setup_rsync()
         if self.do_rsync:
+            self.log("syncing from RAM to disk")
             s_time = time.time()
             _cmd = "{} -a {}/* {}".format(
                 self._rsync_bin,

@@ -100,7 +100,9 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.register_timer(self._check_background, 2, instant=True)
         self.__cached_stats, self.__cached_time = (None, time.time())
         self.register_timer(self._check_cached_stats, 30, first_timeout=5)
-        self.add_process(resize_process("resize"), start=True)
+        self.log("starting processes")
+        # stop resize-process at the end
+        self.add_process(resize_process("resize", priority=20), start=True)
         self.add_process(aggregate_process("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
         connection.close()
@@ -152,8 +154,10 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         if not self.__snmp_running:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
+            self.log("stopping SNMP-container")
             self.spc.stop()
             self.__snmp_running = False
+            self.__shutdown_msg_time = None
 
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
@@ -355,14 +359,14 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             else:
                 pass
 
-    def loop_end(self):
+    def loop_post(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
 
-    def loop_post(self):
+    def loop_end(self):
         self.stop_rrd_cached()
-        self.sync_from_disk_to_ram()
+        self.sync_from_ram_to_disk()
         self._log_stats()
         self.com_socket.close()
         self.receiver.close()
@@ -370,10 +374,11 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.__log_template.close()
 
     def _check_database(self):
-        self._handle_disabled_hosts()
-        _router = config_tools.router_object(self.log)
-        for _send_com in [self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]:
-            self._handle_xml(_send_com)
+        if self._still_active("check database"):
+            self._handle_disabled_hosts()
+            _router = config_tools.router_object(self.log)
+            for _send_com in [self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]:
+                self._handle_xml(_send_com)
 
     def _check_reachability(self, devs, var_cache, _router, _type):
         _reachable, _unreachable = ([], [])
@@ -487,7 +492,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             in_data.append(zmq_sock.recv())
             if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 break
-        if self.__snmp_running:
+        if self._still_active("received XML data"):
             if len(in_data) == 2:
                 in_uuid, in_xml = in_data
                 try:
@@ -507,8 +512,25 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                         )
                     zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
                     zmq_sock.send_unicode(unicode(in_com))
+
+    def _still_active(self, msg):
+        # return true if process is not shuting down
+        if self.__snmp_running:
+            return True
         else:
-            self.log("shutting down, ignoring input", logging_tools.LOG_LEVEL_WARN)
+            self._show_shutdown_msg(msg)
+            return False
+
+    def _show_shutdown_msg(self, msg):
+        cur_time = int(time.time())
+        if cur_time != self.__shutdown_msg_time:
+            self.__shutdown_msg_time = cur_time
+            self.log(
+                "shutting down, ignore {}".format(
+                    msg,
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def _init_snmp(self):
         self.spc = snmp_process_container(
@@ -545,7 +567,12 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
         self.__msi_block.save_block()
 
+    def process_exit(self, p_name, pid):
+        self.__msi_block.remove_actual_pid(pid, mult=3)
+        self.__msi_block.save_block()
+
     def _snmp_all_stopped(self):
+        self.log("all SNMP-processes stopped, setting exit_requested flag")
         self["exit_requested"] = True
 
     def _snmp_finished(self, data):
@@ -596,11 +623,11 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
 
     def _recv_data(self, in_sock):
         in_data = in_sock.recv()
-        if self.__snmp_running:
+        if self._still_active("received data"):
             # adopt tree format for faster handling in collectd loop
             try:
                 _xml = etree.fromstring(in_data)  # @UndefinedVariable
-            except:
+            except etree.XMLSyntaxError:
                 self.log(
                     "cannot parse tree: {}".format(
                         process_tools.get_except_info()
@@ -609,8 +636,6 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 )
             else:
                 self.process_data_xml(_xml, len(in_data))
-        else:
-            self.log("shutting down, ignoring input", logging_tools.LOG_LEVEL_WARN)
         if abs(time.time() - self.__start_time) > 300:
             # periodic log stats
             self._log_stats()
@@ -619,24 +644,16 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         xml_tag = _xml.tag.split("}")[-1]
         handle_name = "_handle_{}".format(xml_tag)
         if hasattr(self, handle_name):
-            try:
-                # loop
-                for p_data in getattr(self, handle_name)(_xml, data_len):
-                    _com = p_data[0]
-                    if _com == "mvector":
-                        self._handle_mvector_tree(p_data[1:])
-                    elif _com == "pdata":
-                        # always take the first value of data
-                        self._handle_perfdata(p_data[1])
-                    else:
-                        self.log("unknown data: {}".format(_com), logging_tools.LOG_LEVEL_ERROR)
-            except:
-                exc_info = process_tools.exception_info()
-                for _line in exc_info.log_lines:
-                    self.log(
-                        _line,
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
+            # loop
+            for p_data in getattr(self, handle_name)(_xml, data_len):
+                _com = p_data[0]
+                if _com == "mvector":
+                    self._handle_mvector_tree(p_data[1:])
+                elif _com == "pdata":
+                    # always take the first value of data
+                    self._handle_perfdata(p_data[1])
+                else:
+                    self.log("unknown data: {}".format(_com), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("unknown handle_name '{}'".format(handle_name), logging_tools.LOG_LEVEL_ERROR)
 
@@ -760,7 +777,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 if name:
                     try:
                         _tf = _host_info.target_file(name)
-                    except:
+                    except ValueError:
                         self.log("cannot get target file name for {}: {}".format(name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         if _tf:
@@ -790,7 +807,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 self.log("read...")
             try:
                 _content = "{}{}".format(_content, self.__rrdcached_socket.recv(4096))
-            except:
+            except IOError:
                 _com_error = True
                 self.log("error communicating with rrdcached, forcing reopening", logging_tools.LOG_LEVEL_ERROR)
                 _read = False
@@ -845,7 +862,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             try:
                 self.__rrdcached_socket.send("STATS\n")
                 _lines = self.__rrdcached_socket.recv(16384).split("\n")
-            except:
+            except IOError:
                 self.log("error communicating with rrdcached: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             else:
                 _first_line_parts = _lines[0].strip().split()
@@ -989,7 +1006,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         )
         try:
             host_filter = re.compile(h_filter)
-        except:
+        except re.error:
             host_filter = re.compile(".*")
             self.log(
                 "error interpreting '{}' as host re: {}".format(
@@ -1000,7 +1017,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             )
         try:
             key_filter = re.compile(k_filter)
-        except:
+        except re.error:
             key_filter = re.compile(".*")
             self.log(
                 "error interpreting '{}' as key re: {}".format(
