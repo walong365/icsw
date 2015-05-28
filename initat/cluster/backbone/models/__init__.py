@@ -813,6 +813,7 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
             ("show_status_history", "Access to status history", True),
+            ("discovery_server", "Access to discovery server", False)
         )
         fk_ignore_list = [
             "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", "DeviceLogEntry",

@@ -26,22 +26,6 @@ import operator
 from initat.cluster.backbone.models.discovery import DispatchSetting, ScanHistory
 
 
-class ScheduleItem(object):
-    def __init__(self, device, source, planned_date, dispatch_setting):
-        # date always means datetime
-        self.device = device
-        self.source = source
-        self.planned_date = planned_date  # date according to interval
-        self.dispatch_setting = dispatch_setting
-
-        self.expected_run_date = None  # date considering other jobs
-        self.expected_finish_date = None
-
-    def set_expected_dates(self, expected_run_date, expected_finish_date):
-        self.expected_run_date = expected_run_date
-        self.expected_finish_date = expected_finish_date
-
-
 class DiscoveryDispatcher(object):
     def __init__(self):
         pass
@@ -53,7 +37,7 @@ class DiscoveryDispatcher(object):
 
         # - at most n concurrent scans by source
 
-        # - run_now
+        # - run_now flag
 
         naive_run_list = self.get_next_planned_run_times(start, end)
         # sort prio: run_now, date, device_pk (to make sort somewhat stable)
@@ -98,7 +82,7 @@ class DiscoveryDispatcher(object):
 
             while planned_date < end:
                 run_list.append(
-                    ScheduleItem(
+                    _ScheduleItem(
                         device=dispatch_setting.device,
                         source=dispatch_setting.source,
                         planned_date=planned_date,
@@ -108,6 +92,22 @@ class DiscoveryDispatcher(object):
                 planned_date += relativedelta(**{interval.unit: interval.amount})
 
         return run_list
+
+
+class _ScheduleItem(object):
+    def __init__(self, device, source, planned_date, dispatch_setting):
+        # date always means datetime
+        self.device = device
+        self.source = source
+        self.planned_date = planned_date  # naive date according to interval
+        self.dispatch_setting = dispatch_setting
+
+        self.expected_run_date = None  # date considering other jobs
+        self.expected_finish_date = None
+
+    def set_expected_dates(self, expected_run_date, expected_finish_date):
+        self.expected_run_date = expected_run_date
+        self.expected_finish_date = expected_finish_date
 
 
 class _ScheduleInfo(object):
