@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -142,8 +142,6 @@ def main():
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many LogSources with my id present, exiting..."
         sys.exit(5)
-    # if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
-    #    _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     cluster_location.read_config_from_db(
         global_config,
         "server",
@@ -169,9 +167,6 @@ def main():
         ]
     )
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
-    # if not global_config["DEBUG"] and not global_config["COMMAND"]:
-    #    with daemon.DaemonContext():
     run_code(options)
     configfile.terminate_manager()
-    # exit
     return 0

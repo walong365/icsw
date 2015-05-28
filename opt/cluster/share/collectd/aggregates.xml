@@ -27,5 +27,15 @@
             <key top-level="proc" match="[^\.]+$"></key>
         </key_list>
     </aggregate>
+    <aggregate name="pdu-watt" action="sum" target-key="pdu.output.total.watt">
+        <key_list>
+            <key top-level="pdu.watt.total" match="used"></key>
+            <key top-level="pdu.output" match="power"></key>
+        </key_list>
+    </aggregate>
+    <aggregate name="pdu-ampere" action="sum" target-key="pdu.output.total.ampere">
+        <key_list>
+            <key top-level="pdu.ampere.total" match="used"></key>
+        </key_list>
+    </aggregate>
 </aggregates>
-

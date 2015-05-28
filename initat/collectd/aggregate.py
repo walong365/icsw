@@ -37,7 +37,7 @@ from initat.tools import threading_tools
 import zmq
 
 
-class ag_struct(object):
+class AGStruct(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.groups = []
@@ -151,7 +151,7 @@ class ag_struct(object):
                 self.__lut[_um].last_update = None
 
 
-class ag_device_group(object):
+class AGDeviceGroup(object):
     def __init__(self, name, uuid, send_name, cdg=False):
         self.name = name
         self.uuid = uuid
@@ -159,7 +159,7 @@ class ag_device_group(object):
         self.send_name = send_name
         self.cdg = cdg
         self.devices = []
-        # link to ag_struct
+        # link to AGStruct
         self.struct = None
 
     def add_device(self, agd):
@@ -169,13 +169,13 @@ class ag_device_group(object):
         self.struct.add_lut(agd)
 
 
-class ag_device(object):
+class AGDevice(object):
     def __init__(self, name, uuid):
         self.name = name
         self.uuid = uuid
         # uuid from collectd, may differ
         self.collectd_uuid = None
-        # link to ag_struct
+        # link to AGStruct
         self.struct = None
         # link to device_group
         self.group = None
@@ -189,6 +189,10 @@ AGGREGATE_NG = """
     </attribute>
     <attribute name="name">
     </attribute>
+    <optional>
+        <attribute name="target-key">
+        </attribute>
+    </optional>
     <element name="key_list">
         <oneOrMore>
             <element name="key">
@@ -203,7 +207,7 @@ AGGREGATE_NG = """
 """
 
 
-class ag_tls(object):
+class AGTopLevelStruct(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.__ags = []
@@ -242,6 +246,7 @@ class ag_tls(object):
     def _update_re(self):
         self.__top_level_keys = set()
         self.__second_level_keys = set()
+        # for speedup we organize the aggregates according to their top-level keys
         self.__top_level_res = {}
         for _key in self.__re_dict:
             _parts = _key.split(".")
@@ -258,13 +263,14 @@ class ag_tls(object):
             _sub_list = "|".join(_re_list)
             _re = "(?P<{}>({}))".format(_name, _sub_list)
             _list.append(_re)
-        # return a list of regexps so that one value can go into more than one aggregate
+        # incremental logging
         self.log(
             "re_list for key {}: {}".format(
                 key,
                 ", ".join(_list),
             )
         )
+        # return a list of regexps so that one value can go into more than one aggregate
         return [re.compile(_entry) for _entry in _list]
 
     def filter(self, in_list):
@@ -286,11 +292,11 @@ class ag_tls(object):
                                 # _res.append((self.__all_matched_lut[_key], _format, _key, _info, _unit, _v_type, _value, _base, _factor))
             if _key in self.__all_matched:
                 _used_aggs |= set(self.__all_matched_lut[_key])
-                _res.append((self.__all_matched_lut[_key], ve(*_v_values)))  # _format, _key, _info, _unit, _v_type, _value, _base, _factor))
+                _res.append((self.__all_matched_lut[_key], VE(*_v_values)))  # _format, _key, _info, _unit, _v_type, _value, _base, _factor))
         return _used_aggs, _res
 
 
-class ve(object):
+class VE(object):
     # vector entry
     def __init__(self, *args):
         self.format, self.key, self.info, self.unit, self.v_type, self.value, self.base, self.factor = args
@@ -302,11 +308,12 @@ class ve(object):
         return self.value * self.factor
 
 
-class ag_sink(object):
+class AGSink(object):
     # aggregate sink, has sub entries for each key
     def __init__(self, **kwargs):
         # aggregate sink
         self.action = kwargs.get("action", "sum")
+        self.target_key = kwargs.get("target_key", None)
         self.key_sinks = {}
         # base data set ?
 
@@ -315,12 +322,16 @@ class ag_sink(object):
 
     def feed_ve(self, _ve):
         # feed vector entry
+        # one target key or use _ve key
+        if self.target_key:
+            _ve.key = self.target_key
         if _ve.key not in self.key_sinks:
-            self.key_sinks[_ve.key] = key_sink(_ve, self.action)
+            self.key_sinks[_ve.key] = KeySink(_ve, self.action)
         self.key_sinks[_ve.key].feed_ve(_ve)
 
     def __repr__(self):
-        return u"ag_sink {}: {}; {}".format(
+        return u"ag_sink [{}] {}: {}; {}".format(
+            self.target_key if self.target_key else "N/A",
             logging_tools.get_plural("key_sink", len(self.key_sinks)),
             ", ".join(sorted(self.key_sinks.keys())),
             ", ".join([str(_val) for _val in self.key_sinks.itervalues()]),
@@ -338,7 +349,7 @@ class ag_sink(object):
         )
 
 
-class key_sink(object):
+class KeySink(object):
     def __init__(self, _ve, action):
         for _attr in ["format", "key", "info", "unit", "v_type", "base", "factor"]:
             setattr(self, _attr, getattr(_ve, _attr))
@@ -385,7 +396,7 @@ class key_sink(object):
         )
 
 
-class ag_obj(object):
+class AGObj(object):
     def __init__(self, ag_xml):
         # list of matched keys
         self.__matched = set()
@@ -397,6 +408,8 @@ class ag_obj(object):
             self.__re_list.append((_tl, _re))
             self.__re_dict.setdefault(_tl, []).append(_re)
         self.action = ag_xml.attrib["action"]
+        # target key, summarize all values
+        self.target_key = ag_xml.attrib.get("target-key", None)
         # set by ag_tls
         self.tls = None
         self.name = None
@@ -411,7 +424,7 @@ class ag_obj(object):
 
     def new_sink(self):
         # return empty structure
-        return ag_sink(action=self.action)
+        return AGSink(action=self.action, target_key=self.target_key)
 
 
 class aggregate_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
@@ -425,6 +438,8 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         )
         connection.close()
         self.__debug = global_config["DEBUG"]
+        # cache address
+        self.__memcache_address = [global_config["MEMCACHE_ADDRESS"]]
         # last update of aggregation structure
         self.__struct_update = None
         # cache for filtered values
@@ -457,7 +472,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         # validator
         _ng = etree.RelaxNG(etree.fromstring(AGGREGATE_NG))  # @UndefinedVariable
         _ag_dir = global_config["AGGREGATE_DIR"]
-        tls = ag_tls(self.log)
+        tls = AGTopLevelStruct(self.log)
         ag_xml = E.aggregates()
         for _dir, _dirs, _files in os.walk(_ag_dir):
             for _file in [_entry for _entry in _files if _entry.startswith("agg") and _entry.endswith(".xml")]:
@@ -481,7 +496,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
                                     _file,
                                 )
                             )
-                            tls.add_aggregate(ag_obj(_xml))
+                            tls.add_aggregate(AGObj(_xml))
                         else:
                             self.log(
                                 "aggregate #{:d} from {} is invalid: {}".format(
@@ -499,28 +514,33 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
             all_groups = device_group.objects.all().prefetch_related("device_group__domain_tree_node")
             _sys_group = [group for group in all_groups if group.cluster_device_group][0]
             _sys_md = [_dev for _dev in _sys_group.device_group.all() if _dev.is_meta_device][0]
-            _ags = ag_struct(self.log)
+            _ags = AGStruct(self.log)
             _ags.set_system_group(_sys_group, _sys_md.uuid, _sys_md.full_name)
             for _group in all_groups:
                 if _group.cluster_device_group:
                     continue
                 _devs = [_dev for _dev in _group.device_group.all() if not _dev.is_meta_device]
                 _meta_dev = [_dev for _dev in _group.device_group.all() if _dev.is_meta_device][0]
-                cur_agg = ag_device_group(_group.name, _meta_dev.uuid, _meta_dev.full_name)
+                cur_agg = AGDeviceGroup(_group.name, _meta_dev.uuid, _meta_dev.full_name)
                 _ags.add_group(cur_agg)
                 for _dev in _devs:
-                    cur_agg.add_device(ag_device(_dev.full_name, _dev.uuid))
+                    cur_agg.add_device(AGDevice(_dev.full_name, _dev.uuid))
             self.struct = _ags
             self.__struct_update = cur_time
 
     def get_mc(self):
-        return memcache.Client([global_config["MEMCACHE_ADDRESS"]])
+        return memcache.Client(self.__memcache_address)
 
     def _fetch_hosts(self, mc):
         try:
             h_dict = json.loads(mc.get("cc_hc_list"))
         except:
-            self.log("error fetching host_list: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error fetching host_list: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             h_dict = {}
         build_list = self.struct.match(h_dict)
         self.struct.set_last_update(h_dict)
@@ -589,7 +609,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
     def send_vector(self, target_uuid, send_name, entries):
         _vector = E.machine_vector(
             *[
-                key_sink.build_xml(_entry) for _entry in entries
+                KeySink.build_xml(_entry) for _entry in entries
             ],
             version="0",
             uuid=target_uuid,

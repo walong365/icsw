@@ -22,7 +22,6 @@
 import atexit
 import base64
 import inspect
-import locale
 import marshal
 import os
 import pickle
@@ -57,11 +56,6 @@ def compress_struct(input):
 
 def decompress_struct(b64_str):
     return json.loads(bz2.decompress((base64.b64decode(b64_str))))
-
-try:
-    ENCODING = locale.getpreferredencoding()
-except locale.Error:
-    ENCODING = "C"
 
 
 def getstatusoutput(cmd):
@@ -108,7 +102,7 @@ def get_except_info(exc_info=None, **kwargs):
                     frame.f_lineno,
                     frame.f_code.co_name,
                     frame.f_code.co_filename
-                    ) for frame in frame_info
+                ) for frame in frame_info
             ]
         except:
             frame_info = []
@@ -300,15 +294,19 @@ def bind_zmq_socket(zmq_socket, name):
                 logging_tools.my_syslog(
                     "error removing zmq_socket '{}': {}".format(
                         s_name,
-                        get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
+                        get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
     try:
         zmq_socket.bind(name)
     except:
         logging_tools.my_syslog(
             "error binding to zmq_socket '{}': {}".format(
                 name,
-                get_except_info()))
+                get_except_info()
+            )
+        )
         raise
     else:
         logging_tools.my_syslog("zmq_socket bound to {}".format(name))
@@ -690,7 +688,8 @@ class meta_server_info(object):
         return "{} ({}): {}".format(
             logging_tools.get_plural("unique pid", len(all_pids)),
             logging_tools.get_plural("total thread", len(self.__pids)),
-            all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---")
+            all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---"
+        )
 
     def save_block(self):
         pid_list = E.pid_list()
@@ -1051,97 +1050,6 @@ def delete_pid(name):
             pass
 
 
-def create_lockfile(lf_name):
-    open(lf_name, "w").write(".")
-    try:
-        os.unlink(get_msg_file_name(lf_name))
-    except:
-        pass
-
-
-def get_msg_file_name(lf_name):
-    return "{}_msg".format(lf_name)
-
-
-def set_lockfile_msg(lf_name, msg):
-    if msg and os.path.isfile(lf_name):
-        lf_msg_name = get_msg_file_name(lf_name)
-        try:
-            open(lf_msg_name, "w").write(msg.strip())
-        except:
-            pass
-
-
-def delete_lockfile(lf_name, msg="OK", check=True):
-    set_lockfile_msg(lf_name, msg)
-    if os.path.isfile(lf_name):
-        try:
-            os.unlink(lf_name)
-        except OSError:
-            if check:
-                logging_tools.my_syslog("error (OSError) deleting lockfile {}: {}".format(lf_name, get_except_info()))
-        except IOError:
-            if check:
-                logging_tools.my_syslog("error (IOError) deleting lockfile {}: {}".format(lf_name, get_except_info()))
-
-
-def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
-    lf_msg_name = get_msg_file_name(lf_name)
-    last_out = "???"
-    while True:
-        max_iter -= 1
-        if not max_iter:
-            print("timeout")
-            break
-        try:
-            try:
-                if os.path.isfile(lf_msg_name):
-                    out = open(lf_msg_name, "r").read().strip()
-                else:
-                    out = "."
-            except:
-                out = "."
-            if out == "." or out != last_out or not os.path.isfile(lf_name):
-                # write out if
-                # - lockfile is deleted
-                # - out is "." (standard wait)
-                # - out is different from last out
-                sys.stderr.write(" {}".format(out))
-                last_out = out
-            else:
-                # write dot if else ;-)
-                sys.stderr.write(".")
-            if os.path.isfile(lf_name):
-                pass
-            else:
-                break
-            time.sleep(timeout)
-        except int_error:
-            print("<got SIGINT>")
-            break
-    return
-
-
-def renice(nice=16):
-    try:
-        os.nice(nice)
-    except:
-        logging_tools.my_syslog("Cannot renice to {:d}".format(nice))
-    else:
-        logging_tools.my_syslog("reniced to {:d}".format(nice))
-
-
-def resolve_user(user):
-    try:
-        if type(user) in [int, long]:
-            uid_stuff = pwd.getpwuid(user)
-        else:
-            uid_stuff = pwd.getpwnam(user)
-    except KeyError:
-        uid_stuff = None
-    return uid_stuff
-
-
 def get_uid_from_name(user):
     try:
         if type(user) in [int, long]:
@@ -1198,16 +1106,19 @@ def change_user_group(user, group, groups=[], **kwargs):
             )
         )
         os.setgroups(add_groups)
-    logging_tools.my_syslog("Trying to drop pid {:d} from [{} ({:d}), {} ({:d})] to [{} ({:d}), {} ({:d})] ...".format(
-        os.getpid(),
-        act_uid_name,
-        act_uid,
-        act_gid_name,
-        act_gid,
-        new_uid_name,
-        new_uid,
-        new_gid_name,
-        new_gid))
+    logging_tools.my_syslog(
+        "Trying to drop pid {:d} from [{} ({:d}), {} ({:d})] to [{} ({:d}), {} ({:d})] ...".format(
+            os.getpid(),
+            act_uid_name,
+            act_uid,
+            act_gid_name,
+            act_gid,
+            new_uid_name,
+            new_uid,
+            new_gid_name,
+            new_gid
+        )
+    )
     try:
         if "global_config" in kwargs:
             kwargs["global_config"].set_uid_gid(new_uid, new_gid)
@@ -1258,16 +1169,19 @@ def change_user_group_path(path, user, group, **kwargs):
             act_gid_name = grp.getgrgid(act_gid)[0]
         except:
             act_gid_name = "<unknown>"
-        log_com("Trying to change path '{}' from [{} ({:d}), {} ({:d})] to [{} ({:d}), {} ({:d})] ...".format(
-            path,
-            act_uid_name,
-            act_uid,
-            act_gid_name,
-            act_gid,
-            new_uid_name,
-            new_uid,
-            new_gid_name,
-            new_gid))
+        log_com(
+            "Trying to change path '{}' from [{} ({:d}), {} ({:d})] to [{} ({:d}), {} ({:d})] ...".format(
+                path,
+                act_uid_name,
+                act_uid,
+                act_gid_name,
+                act_gid,
+                new_uid_name,
+                new_uid,
+                new_gid_name,
+                new_gid
+            )
+        )
         try:
             os.chown(path, new_uid, new_gid)
         except:
@@ -1459,11 +1373,14 @@ def fix_directories(user, group, f_list):
             try:
                 os.path.walk(dir_name, fd_change, (named_uid, named_gid))
             except:
-                logging_tools.my_syslog("Something went wrong while walking() '{}' (uid {:d}, gid {:d}): {}".format(
-                    dir_name,
-                    named_uid,
-                    named_gid,
-                    get_except_info()))
+                logging_tools.my_syslog(
+                    "Something went wrong while walking() '{}' (uid {:d}, gid {:d}): {}".format(
+                        dir_name,
+                        named_uid,
+                        named_gid,
+                        get_except_info()
+                    )
+                )
 
 
 def is_linux():
@@ -1517,90 +1434,6 @@ def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
     else:
         c_name = "not set"
     return c_name
-
-
-class automount_checker(object):
-    def __init__(self, **kwargs):
-        if kwargs.get("check_paths", True):
-            self._check_paths()
-        else:
-            self.__automount_path, self.__autofs_path = ("", "")
-            self.__valid = True
-
-    def _check_paths(self):
-        for act_p in ["/usr/sbin", "/usr/bin", "/sbin", "/bin"]:
-            act_path = "{}/automount".format(act_p)
-            if os.path.isfile(act_path):
-                break
-            else:
-                act_path = ""
-        self.__automount_path = act_path
-        for act_p in ["/etc/init.d", "/etc/rc.d"]:
-            act_path = "{}/autofs".format(act_p)
-            if os.path.isfile(act_path):
-                break
-            else:
-                act_path = ""
-        self.__autofs_path = act_path
-        self.__valid = self.__automount_path and self.__autofs_path
-
-    def valid(self):
-        return self.__valid
-
-    def set_dict(self, in_dict):
-        self.__act_dict = in_dict
-
-    def get_restart_command(self):
-        return "{} restart".format(self.__autofs_path)
-
-    def check(self):
-        stat, out = getstatusoutput("{} status".format(self.__autofs_path))
-        a_dict = {
-            "c": {},
-            "r": {}
-        }
-        act_mode = None
-        for line in [y.lower() for y in [x.strip() for x in out.split("\n")] if y and not y.startswith("---")]:
-            if line.startswith("config"):
-                act_mode = "c"
-            elif line.startswith("active"):
-                act_mode = "r"
-            else:
-                if act_mode in ["c", "r"]:
-                    line_split = line.split()
-                    line_split.pop(0)
-                    line_split = [x for x in line_split if not (x.startswith("--") or x.isdigit())]
-                    mount_point = line_split.pop(0)
-                    mount_type = ([x for x in line_split if x in ["yp", "ldap", "file"]] + ["unknown"])[0]
-                    a_dict[act_mode].setdefault(mount_type, []).append(mount_point)
-        self.__act_dict = a_dict
-        return a_dict
-
-    def dict_is_valid(self):
-        return "c" in self.__act_dict and "r" in self.__act_dict
-
-    def automounter_ok(self):
-        return self.get_config_string() == self.get_running_string()
-
-    def get_config_string(self):
-        return self._get_autofs_str(self.__act_dict["c"])
-
-    def get_running_string(self):
-        return self._get_autofs_str(self.__act_dict["r"])
-
-    def _get_autofs_str(self, in_dict):
-        if in_dict:
-            ret_f = []
-            for used_type in sorted(in_dict.keys()):
-                m_points = sorted(in_dict[used_type])
-                ret_f.append(
-                    "{} from {} ({})".format(
-                        logging_tools.get_plural("map", len(m_points)),
-                        used_type,
-                        ", ".join(m_points)))
-            return ", ".join(ret_f)
-        else:
-            return "None defined"
 
 
 def get_arp_dict():

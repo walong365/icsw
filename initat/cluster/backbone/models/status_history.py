@@ -239,7 +239,7 @@ class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
 
 
 class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
-    service = models.ForeignKey(mon_check_command, null=True)
+    service = models.ForeignKey(mon_check_command, null=True)  # null for unidentifiable services and dev independent
     service_info = models.TextField(blank=True, null=True)
 
     state = models.CharField(max_length=2, choices=mon_icinga_log_raw_service_alert_data.STATE_CHOICES)
@@ -427,11 +427,22 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             device_service_timespans = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
             for entry in queryset.prefetch_related(Prefetch("service")):
 
-                if not LicenseLockListDeviceService.objects.is_device_service_locked(
-                    license, entry.device_id, entry.service.pk
-                ):
+                if entry.service is not None:
+                    locked = LicenseLockListDeviceService.objects.is_device_service_locked(
+                        license,
+                        entry.device_id,
+                        entry.service.pk
+                    )
+                else:
+                    locked = LicenseLockListDeviceService.objects.is_device_locked(
+                        license,
+                        entry.device_id
+                    )
 
-                    used_device_services[entry.device_id].add(entry.service.pk)
+                if not locked:
+
+                    if entry.service is not None:
+                        used_device_services[entry.device_id].add(entry.service.pk)
 
                     relevant_data_from_entry = {
                         'state': trans[entry.state],
@@ -521,7 +532,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     state_type = models.CharField(max_length=2, choices=STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
 
-    service = models.ForeignKey(mon_check_command, null=True)  # null for old entries for special check commands
+    service = models.ForeignKey(mon_check_command, null=True)  # null for unidentifiable services
     service_info = models.TextField(blank=True, null=True)
 
     # ratio of time span spent in this (state_type, state)

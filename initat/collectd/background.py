@@ -224,7 +224,7 @@ class snmp_job(object):
         else:
             return False
 
-    def check(self):
+    def check(self, start=True):
         # return True if process is still running
         if self.running:
             if self.waiting_for:
@@ -233,7 +233,8 @@ class snmp_job(object):
                     self.running = False
         else:
             if self.last_start is None or abs(int(time.time() - self.last_start)) >= self.run_every and not self.to_remove:
-                self._start_snmp_batch()
+                if start:
+                    self._start_snmp_batch()
         return self.running
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -291,10 +292,10 @@ class snmp_job(object):
         return _to_create, _to_remove, _same
 
     @staticmethod
-    def check_jobs():
+    def check_jobs(start=True):
         _to_delete = []
         for id_str, job in snmp_job.ref_dict.iteritems():
-            job.check()
+            job.check(start=start)
             if job.to_remove and not job.running:
                 _to_delete.append(id_str)
         if _to_delete:
@@ -421,7 +422,7 @@ class bg_job(object):
         self.log("terminating job", logging_tools.LOG_LEVEL_ERROR)
         self.__ec.terminate()
 
-    def check(self):
+    def check(self, start=True):
         # return True if process is still running
         if self.running:
             self.result = self.__ec.finished()
@@ -456,7 +457,8 @@ class bg_job(object):
                         self.log("  {:3d} {}".format(line_num + 1, line), logging_tools.LOG_LEVEL_ERROR)
         else:
             if self.last_start is None or abs(int(time.time() - self.last_start)) >= self.run_every and not self.to_remove:
-                self._start_ext_com()
+                if start:
+                    self._start_ext_com()
         return self.running
     # static methods
 
@@ -496,10 +498,10 @@ class bg_job(object):
         return _to_create, _to_remove, _same
 
     @staticmethod
-    def check_jobs():
+    def check_jobs(start=True):
         _to_delete = []
         for id_str, job in bg_job.ref_dict.iteritems():
-            job.check()
+            job.check(start=start)
             if job.to_remove and not job.running:
                 _to_delete.append(id_str)
         if _to_delete:
