@@ -29,6 +29,11 @@ angular.module(
             icswDiscoveryDataService.add_to_scope(scope)
     }
 ]).service("icswDiscoveryDataService", ["Restangular", "ICSW_URLS", "$rootScope", (Restangular, ICSW_URLS, $rootScope) ->
+    dispatch_setting = Restangular.all(ICSW_URLS.REST_DISCOVERY_DISPATCH_SETTING_LIST.slice(1)).getList().$object
+    device = Restangular.all(ICSW_URLS.REST_DEVICE_LIST.slice(1)).getList().$object
+    return {
+        dispatch_setting: dispatch_setting
+    }
     #get_historic_data = (model_name, object_id) ->
     #    params = {
     #        model: model_name,
