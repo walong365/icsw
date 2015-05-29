@@ -245,6 +245,7 @@ ics_app = angular.module(
     "REST_DEVICE_TREE_DETAIL": "{% url 'rest:device_tree_detail' 1 %}"
     "REST_DEVICE_VARIABLE_DETAIL": "{% url 'rest:device_variable_detail' 1 %}"
     "REST_DEVICE_VARIABLE_LIST": "{% url 'rest:device_variable_list' %}"
+    "REST_DISCOVERY_DISPATCH_SETTING_LIST": "{% url 'rest:DispatchSettingList' %}"
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
     "REST_EXT_LICENSE_LIST": "{% url 'rest:ext_license_list' %}"

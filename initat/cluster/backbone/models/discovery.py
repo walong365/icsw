@@ -40,9 +40,8 @@ class DiscoverySource(IntEnum):
             return 5
 
 
-class DiscoveryInterval(models.Model):
-
-    class Units(IntEnum):
+class DispatchSetting(models.Model):
+    class DurationUnits(IntEnum):
         # as understood by dateutil.relativedelta
         months = 1
         weeks = 2
@@ -53,19 +52,11 @@ class DiscoveryInterval(models.Model):
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    amount = models.IntegerField(default=1)
-    unit = models.IntegerField(choices=[(u.value, u.name) for u in Units])
-    # TODO: or use duration class for units?
-
-
-class DispatchSetting(models.Model):
-    idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField(auto_now_add=True)
-
     device = models.ForeignKey("backbone.device")
     source = models.IntegerField(choices=[(src.value, src.name) for src in DiscoverySource])
 
-    interval = models.ForeignKey(DiscoveryInterval)
+    duration_amount = models.IntegerField(default=1)
+    duration_unit = models.IntegerField(choices=[(u.value, u.name) for u in DurationUnits])
 
     run_now = models.BooleanField(default=False)
 
