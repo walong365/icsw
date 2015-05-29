@@ -53,3 +53,4 @@ class kpi_selected_device_monitoring_category_tuple(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "kpi_selected_device"

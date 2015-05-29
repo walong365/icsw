@@ -247,6 +247,7 @@ class package(models.Model):
 
 @receiver(signals.pre_save, sender=package)
 def package_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_pack = package.objects.exclude(Q(pk=cur_inst.pk)).filter(

@@ -292,6 +292,7 @@ class net_ip(models.Model):
 
 @receiver(signals.pre_save, sender=net_ip)
 def net_ip_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         try:
@@ -524,6 +525,7 @@ def netdevice_pre_delete(sender, **kwargs):
 
 @receiver(signals.pre_save, sender=netdevice)
 def netdevice_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.devname:
@@ -589,6 +591,7 @@ def netdevice_pre_save(sender, **kwargs):
 
 @receiver(signals.post_save, sender=netdevice)
 def netdevice_post_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.device.bootserver_id:

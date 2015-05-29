@@ -1542,6 +1542,9 @@ class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     class CSW_Meta:
         backup = False
 
+    class Meta:
+        verbose_name = "mon_icinga_log_raw_service"
+
 
 class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
     flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
@@ -1549,6 +1552,8 @@ class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
 
     class CSW_Meta:
         backup = False
+    class Meta:
+        verbose_name = "mon_icinga_log_raw_host"
 
 
 class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
@@ -1562,6 +1567,8 @@ class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
 
     class CSW_Meta:
         backup = False
+    class Meta:
+        verbose_name = "mon_icinga_log_raw_service_2"
 
 
 class mon_icinga_log_raw_host_notification_data(mon_icinga_log_raw_base):
@@ -1571,6 +1578,8 @@ class mon_icinga_log_raw_host_notification_data(mon_icinga_log_raw_base):
 
     class CSW_Meta:
         backup = False
+    class Meta:
+        verbose_name = "mon_icinga_log_raw_host_2"
 
 
 class mon_icinga_log_file(models.Model):
@@ -1644,6 +1653,7 @@ class mon_icinga_log_aggregated_host_data(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "mon_icinga_log_agg_host"
 
     class CSW_Meta:
         backup = False
@@ -1672,6 +1682,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "mon_icinga_log_agg"
 
     class CSW_Meta:
         backup = False

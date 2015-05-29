@@ -1289,7 +1289,7 @@ def virtual_desktop_user_setting_post_save(sender, **kwargs):
 class virtual_desktop_protocol(models.Model):
     idx = models.AutoField(primary_key=True)
     # name of protocol to display to user
-    name = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=255, unique=True)
     # binary to start protocol server
     binary = models.CharField(max_length=256, default="")
     # description of protocol for user
@@ -1302,7 +1302,7 @@ class virtual_desktop_protocol(models.Model):
 class window_manager(models.Model):
     idx = models.AutoField(primary_key=True)
     # name of window manager to display to user
-    name = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=255, unique=True)
     # binary to start window manager
     binary = models.CharField(max_length=256, default="")
     # description of window manager for user

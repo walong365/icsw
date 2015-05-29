@@ -371,6 +371,7 @@ class device_variable(models.Model):
 
 @receiver(signals.pre_save, sender=device_variable)
 def device_variable_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.device_id:
@@ -845,6 +846,7 @@ class device_selection(object):
 
 @receiver(signals.post_save, sender=device)
 def device_post_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.bootserver_id:
@@ -890,6 +892,7 @@ def _get_top_level_dtn():
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
+    return
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
