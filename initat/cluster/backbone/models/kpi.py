@@ -37,8 +37,7 @@ class Kpi(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
 
-    date = models.DateTimeField(auto_now_add=True,
-                                default=django.utils.timezone.now)  # some default for migration
+    date = models.DateTimeField(auto_now_add=True)
 
     formula = models.TextField(blank=True)
 
