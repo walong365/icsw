@@ -328,30 +328,30 @@ class server_process(threading_tools.process_pool):
             if self.debug:
                 self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
 
-    def _log_con_error(self, zmq_id, dst_addr, error):
+    def _log_con_error(self, zmq_id, dst_addr, _error):
         _key = (zmq_id, dst_addr)
         if _key in self.connection_status:
             if self.connection_status[_key] != _error:
-                self._log_con[_key] = _error
+                self.connection_status[_key] = _error
                 self._log_con(zmq_id, dst_addr, "switched to error state: {}".format(_error))
             else:
                 # nothing changed
                 pass
         else:
-            self._log_con[_key] = _error
+            self.connection_status[_key] = _error
             self._log_con(zmq_id, dst_addr, "is in error state: {}".format(_error))
 
     def _log_con_ok(self, zmq_id, dst_addr):
         _key = (zmq_id, dst_addr)
         if _key in self.connection_status:
             if self.connection_status[_key]:
-                self._log_con[_key] = ""
+                self.connection_status[_key] = ""
                 self._log_con(zmq_id, dst_addr, "is now ok")
             else:
                 # nothing changed
                 pass
         else:
-            self._log_con[_key] = _error
+            self.connection_status[_key] = ""
             self._log_con(zmq_id, dst_addr, "is ok")
 
     def _log_con(self, zmq_id, dst_addr, info):
