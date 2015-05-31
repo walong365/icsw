@@ -320,7 +320,7 @@ class device_serializer_boot(device_serializer):
     # uptime_valid = serializers.Field(source="uptime_valid")
     network = serializers.SerializerMethodField("get_network")
     net_state = serializers.SerializerMethodField("get_net_state")
-    net_state_str = serializers.SerializerMethodField("get_net_state_str")
+    hoststatus_str = serializers.SerializerMethodField("get_hoststatus_str")
     act_image = serializers.Field(source="get_act_image")
     act_kernel = serializers.Field(source="get_act_kernel")
     master_connections = serializers.SerializerMethodField("get_master_connections")
@@ -371,18 +371,19 @@ class device_serializer_boot(device_serializer):
         return _source
 
     def get_net_state(self, obj):
-        _state = "down"
+        # returns unknown / down / ping / up
+        _state = "unknown"
         _node = self._get_dev_node(obj)
         if _node is not None:
-            _ip_state = _node.attrib.get("ip_state", "down")
-            if _ip_state == "up":
+            _state = _node.attrib.get("ip_state", "")
+            if _state == "up":
                 _state = "ping"
                 if _node.attrib.get("hoststatus_source", ""):
                     # hoststatus set, state is up
                     _state = "up"
         return _state
 
-    def get_net_state_str(self, obj):
+    def get_hoststatus_str(self, obj):
         _state_str = ""
         _node = self._get_dev_node(obj)
         if _node is not None:
@@ -400,7 +401,7 @@ class device_serializer_boot(device_serializer):
         fields = (
             "idx", "name", "full_name", "device_group_name", "access_level", "access_levels",
             # meta-fields
-            "hoststatus_source", "network", "net_state", "net_state_str",
+            "hoststatus_source", "network", "net_state", "hoststatus_str",
             # target state
             "new_state", "prod_link",
             # partition

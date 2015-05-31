@@ -295,12 +295,12 @@ angular.module(
                                 for entry in _resp
                                     dev = $scope.device_lut[entry.idx]
                                     # copied from bootcontrol, seems strange to me now ...
-                                    if entry.net_state_str
-                                         dev.recvreq_str = entry.net_state_str +  "(" + entry.hoststatus_source + ")"
+                                    if entry.hoststatus_str
+                                         dev.recvreq_str = entry.hoststatus_str +  "(" + entry.hoststatus_source + ")"
                                     else
                                          dev.recvreq_str = "rcv: ---"
                                     net_state = entry.net_state
-                                    tr_class = {"down" : "danger", "unknown" : "danger", "ping" : "warning", "up" : "success"}[net_state]
+                                    tr_class = {"down" : "danger", "unknown" : "warning", "ping" : "warning", "up" : "success"}[net_state]
                                     dev.network = "#{entry.network} (#{net_state})"
                                     dev.net_state = net_state
                                     dev.recvreq_state = tr_class

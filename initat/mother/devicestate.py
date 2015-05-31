@@ -108,6 +108,8 @@ class DSDevice(object):
             self.hoststatus_info = ResultStream()
         # pinger helper
         self.last_required = None
+        # last ping(s) sent
+        self.last_sent = None
         # pings pending
         self.pending = 0
         self.wait_list = []
@@ -140,11 +142,29 @@ class DSDevice(object):
     def require(self):
         self.last_required = time.time()
 
-    def not_idle(self, cur_time):
+    def do_ping(self, cur_time):
+        return self._required(cur_time) and self._ping_allowed(cur_time) and self._non_pending(cur_time)
+
+    def _ping_allowed(self, cur_time):
+        # return True if last_sent is at least 5 seconds ago
+        if self.last_sent:
+            return abs(self.last_sent - cur_time) > 5
+        else:
+            return True
+
+    def _required(self, cur_time):
+        # return True if last required is at most 30 seconds ago
         if self.last_required:
             return abs(cur_time - self.last_required) < 30
         else:
             return False
+
+    def start_ping(self):
+        self.last_sent = time.time()
+
+    def _non_pending(self, cur_time):
+        # return True if no pings are pending
+        return True if self.pending == 0 else False
 
     def emit_ping(self, ip):
         if not self.pending:
@@ -212,7 +232,7 @@ class CurrentState(object):
             self.ip or "???",
             "hoststatus is '{}' ({})".format(
                 self.hoststatus,
-                self.hostatus_source,
+                self.hoststatus_source,
             ) if self.hoststatus else "no hoststatus",
         )
 
@@ -251,6 +271,7 @@ class DeviceState(object):
         self.__log_com = log_com
         self.log("init")
         # uuid, boot_uuid, pk -> dev
+        self.__dev_pks = set()
         self.__unique_keys = set()
         self.__devices = {}
         # add private communication socket
@@ -260,8 +281,9 @@ class DeviceState(object):
 
     def add_device(self, dev, ping_only=False):
         # dev ... device object
-        if dev.pk not in self.__unique_keys:
+        if dev.pk not in self.__dev_pks:
             _new_dsd = DSDevice(dev, ping_only)
+            self.__dev_pks.add(dev.pk)
             for _new_id in _new_dsd.uuids:
                 self.__unique_keys.add(_new_id)
                 self.__devices[_new_id] = _new_dsd
@@ -285,6 +307,7 @@ class DeviceState(object):
     def remove_device(self, pk):
         _dsd = self.__devices[pk]
         self.log("removing device {} with pk {}".format(_dsd.full_name, pk))
+        self.__dev_pks.remove(_dsd.pk)
         for _id in _dsd.uuids:
             self.__unique_keys.remove(_id)
             del self.__devices[_id]
@@ -300,23 +323,26 @@ class DeviceState(object):
 
     def _get_non_idle_devices(self):
         cur_time = time.time()
-        return [_value for _value in self.__devices.itervalues() if _value.not_idle(cur_time)]
+        return [
+            self.__devices[_pk] for _pk in self.__dev_pks if self.__devices[_pk].do_ping(cur_time)
+        ]
 
     def ping(self):
         _non_idle = self._get_non_idle_devices()
         for _dev in _non_idle:
-            if not _dev.pending:
-                for _ip in _dev.get_ip_list():
-                    _id_str = _dev.emit_ping(_ip)
-                    self.process.send_pool_message(
-                        "ping",
-                        _id_str,
-                        _ip,
-                        4,
-                        3.0,
-                        target_process="icmp",
-                        ret_queue="control",
-                    )
+            _dev.start_ping()
+            # print("ping to {}".format(_dev.full_name))
+            for _ip in _dev.get_ip_list():
+                _id_str = _dev.emit_ping(_ip)
+                self.process.send_pool_message(
+                    "ping",
+                    _id_str,
+                    _ip,
+                    4,
+                    3.0,
+                    target_process="icmp",
+                    ret_queue="control",
+                )
 
     def ping_result(self, *args, **kwargs):
         # key is also in result
