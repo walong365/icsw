@@ -56,6 +56,7 @@ from initat.cluster.backbone.models import device, device_selection, device_conf
     quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting, \
     DeviceSNMPInfo, DeleteRequest
 
+from initat.cluster.backbone.serializers.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.monitoring import *  # @UnusedWildImport

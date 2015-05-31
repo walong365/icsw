@@ -56,6 +56,7 @@ from initat.tools import net_tools
 from initat.tools import process_tools
 from initat.tools import server_command
 
+from initat.cluster.backbone.models.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.models.config import *  # @UnusedWildImport
 from initat.cluster.backbone.models.monitoring import *  # @UnusedWildImport
@@ -549,6 +550,8 @@ class device(models.Model):
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
+    # capability list, like IPMI, WMI, SNMP
+    capability_list = models.ManyToManyField("backbone.capability")
     # has an IPMI interface
     ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
     # flag: is meta device ?

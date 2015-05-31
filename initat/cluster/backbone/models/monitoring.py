@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone-sql
 #
@@ -62,80 +62,7 @@ __all__ = [
     # unreachable info
     "mon_build_unreachable",  # track unreachable devices
     "parse_commandline",  # commandline parsing
-    "snmp_scheme_vendor",
-    "snmp_scheme",
-    "snmp_scheme_tl_oid",
 ]
-
-
-class snmp_scheme_vendor(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # name
-    name = models.CharField(max_length=128, unique=True)
-    # info (full name of company)
-    company_info = models.CharField(max_length=256, default="")
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "snmp_scheme_vendor {}".format(self.name)
-
-    class Meta:
-        app_label = "backbone"
-
-
-class snmp_scheme(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # vendor
-    snmp_scheme_vendor = models.ForeignKey("backbone.snmp_scheme_vendor")
-    # name
-    name = models.CharField(max_length=128, unique=True)
-    # description
-    description = models.CharField(max_length=128, default="")
-    # version
-    version = models.IntegerField(default=1)
-    # used for collectd calls
-    collect = models.BooleanField(default=False)
-    # when found make an initial lookup call
-    initial = models.BooleanField(default=False)
-    # moncheck
-    mon_check = models.BooleanField(default=False)
-    # power_control
-    power_control = models.BooleanField(default=False)
-    # priority for handling, schemes with higher priority will be handled first
-    priority = models.IntegerField(default=0)
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "snmp_scheme {}".format(self.name)
-
-    @property
-    def full_name(self):
-        return "{}.{}".format(
-            self.snmp_scheme_vendor.name,
-            self.name,
-        )
-
-    @property
-    def full_name_version(self):
-        return "{}_v{:d}".format(
-            self.full_name,
-            self.version,
-        )
-
-    class Meta:
-        app_label = "backbone"
-
-
-class snmp_scheme_tl_oid(models.Model):
-    idx = models.AutoField(primary_key=True)
-    snmp_scheme = models.ForeignKey("backbone.snmp_scheme")
-    oid = models.CharField(default="", max_length=255)
-    # is this oid optional ?
-    optional = models.BooleanField(default=False)
-    date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
 class mon_trace(models.Model):
