@@ -314,15 +314,79 @@ class device_serializer_boot(device_serializer):
     # current partition table
     act_partition_table = serializers.SerializerMethodField("get_act_partition_table")
     bootnetdevice = netdevice_serializer()
-    valid_state = serializers.Field(source="valid_state")
-    uptime = serializers.Field(source="get_uptime")
-    uptime_valid = serializers.Field(source="uptime_valid")
-    network = serializers.Field(source="network")
-    net_state = serializers.Field(source="net_state")
+    hoststatus_source = serializers.SerializerMethodField("get_hoststatus_source")
+    # uptime = serializers.Field(source="get_uptime")
+    # uptime_valid = serializers.Field(source="uptime_valid")
+    network = serializers.SerializerMethodField("get_network")
+    net_state = serializers.SerializerMethodField("get_net_state")
+    net_state_str = serializers.SerializerMethodField("get_net_state_str")
     act_image = serializers.Field(source="get_act_image")
     act_kernel = serializers.Field(source="get_act_kernel")
-    master_connections = cd_connection_serializer_boot(source="get_master_cons", many=True)
-    slave_connections = cd_connection_serializer_boot(source="get_slave_cons", many=True)
+    master_connections = serializers.SerializerMethodField("get_master_connections")
+    slave_connections = serializers.SerializerMethodField("get_slave_connections")
+
+    def _get_dev_node(self, dev):
+        _res = self.context["mother_result"]
+        if _res is not None:
+            _res = _res.xpath(".//ns:device[@pk='{:d}']".format(dev.pk))
+            if len(_res):
+                _res = _res[0]
+            else:
+                _res = None
+        return _res
+
+    def get_master_connections(self, obj):
+        _cd_con = self.context["cd_connections"]
+        return cd_connection_serializer_boot(
+            [
+                entry for entry in _cd_con if entry.parent_id == obj.pk
+            ],
+            many=True,
+            context=self.context
+        ).data
+
+    def get_slave_connections(self, obj):
+        _cd_con = self.context["cd_connections"]
+        return cd_connection_serializer_boot(
+            [
+                entry for entry in _cd_con if entry.child_id == obj.pk
+            ],
+            many=True,
+            context=self.context
+        ).data
+
+    def get_network(self, obj):
+        _network = "unknown"
+        _node = self._get_dev_node(obj)
+        if _node is not None:
+            _network = _node.attrib.get("network", "unknown") or "unknown"
+        return _network
+
+    def get_hoststatus_source(self, obj):
+        _source = ""
+        _node = self._get_dev_node(obj)
+        if _node is not None:
+            _source = _node.attrib.get("hoststatus_source", "") or ""
+        return _source
+
+    def get_net_state(self, obj):
+        _state = "down"
+        _node = self._get_dev_node(obj)
+        if _node is not None:
+            _ip_state = _node.attrib.get("ip_state", "down")
+            if _ip_state == "up":
+                _state = "ping"
+                if _node.attrib.get("hoststatus_source", ""):
+                    # hoststatus set, state is up
+                    _state = "up"
+        return _state
+
+    def get_net_state_str(self, obj):
+        _state_str = ""
+        _node = self._get_dev_node(obj)
+        if _node is not None:
+            _state_str = _node.attrib.get("hoststatus", "")
+        return _state_str
 
     def get_partition_table(self, obj):
         return obj.partition_table_id or None
@@ -335,8 +399,7 @@ class device_serializer_boot(device_serializer):
         fields = (
             "idx", "name", "full_name", "device_group_name", "access_level", "access_levels",
             # meta-fields
-            "valid_state", "network", "net_state", "uptime", "uptime_valid",
-            "recvstate", "reqstate",
+            "hoststatus_source", "network", "net_state", "net_state_str",
             # target state
             "new_state", "prod_link",
             # partition

@@ -79,8 +79,8 @@ class server_process(threading_tools.process_pool):
         if self._init_network_sockets():
             self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
             self.add_process(initat.mother.command.ExternalCommandProcess("command"), start=True)
-            self.add_process(initat.mother.control.node_control_process("control"), start=True)
-            self.add_process(initat.mother.control.direct_process("direct"), start=True)
+            self.add_process(initat.mother.control.NodeControlProcess("control"), start=True)
+            self.add_process(initat.mother.control.ICMPProcess("icmp"), start=True)
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
             self.add_process(snmp_process("snmp_process", conf_dict=conf_dict), start=True)
             connection.close()
@@ -172,6 +172,7 @@ class server_process(threading_tools.process_pool):
                 self.zmq_context,
                 sock_type,
                 identity=self.bind_id,
+                immediate=True,
             )
             conn_str = "tcp://*:{:d}".format(bind_port)
             try:
