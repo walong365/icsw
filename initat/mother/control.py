@@ -980,8 +980,6 @@ class Host(object):
                 text="DHCP / {} ({})".format(in_dict["key"], in_dict["ip"],),
             )
             # self.set_recv_state("got IP-Address via DHCP")
-            change_fields.add("recvstate")
-            change_fields.add("recvstate_timestamp")
             if change_fields:
                 self.device.save(update_fields=list(change_fields))
             if self.device.new_state:
