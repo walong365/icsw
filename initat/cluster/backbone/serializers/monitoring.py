@@ -50,25 +50,6 @@ __all__ = [
 ]
 
 
-class snmp_scheme_tl_oid_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = snmp_scheme_tl_oid
-
-
-class snmp_scheme_vendor_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = snmp_scheme_vendor
-
-
-class snmp_scheme_serializer(serializers.ModelSerializer):
-    snmp_scheme_vendor = snmp_scheme_vendor_serializer()
-    snmp_scheme_tl_oid_set = snmp_scheme_tl_oid_serializer(many=True)
-    full_name = serializers.Field(source="full_name")
-
-    class Meta:
-        model = snmp_scheme
-
-
 class mon_host_cluster_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_host_cluster
