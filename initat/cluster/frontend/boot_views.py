@@ -46,7 +46,6 @@ from rest_framework.views import APIView
 from initat.tools import logging_tools
 from initat.tools import server_command
 
-
 logger = logging.getLogger("cluster.boot")
 
 
@@ -86,43 +85,35 @@ class get_boot_info_json(View):
             srv_com = server_command.srv_command(command="status")
             srv_com["devices"] = srv_com.builder(
                 "devices",
-                *[srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_result])
+                *[
+                    srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_result
+                ]
+            )
             result = contact_server(request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
         else:
             result = None
         # print result.pretty_print()
-        for cur_dev in dev_result:
-            cur_dev.cd_cons = cd_cons
-            # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
-            if call_mother:
-                if result is not None:
-                    # copy from mother
-                    dev_node = result.xpath(".//ns:device[@pk='{:d}']".format(cur_dev.pk), smart_strings=False)
-                    if len(dev_node):
-                        dev_node = dev_node[0]
-                    else:
-                        dev_node = None
-                else:
-                    dev_node = None
-                cur_dev.mother_xml = dev_node
-            else:
-                cur_dev.mother_xml = False
+        # import pprint
         if result is not None and result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
             cd_result = {}
             for cd_ping in result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
-                cd_result[int(cd_ping.attrib["pk"])] = True if int(cd_ping.attrib["reachable"]) else False
+                # todo: support unknown state (ip_state == unknown)
+                cd_result[int(cd_ping.attrib["pk"])] = True if cd_ping.attrib["ip_state"] == "up" else False
             request.xml_response["cd_response"] = json.dumps(cd_result)
         ctx = {
             "request": request,
-            "fields": ["partition_table", "act_partition_table"]
+            "fields": ["partition_table", "act_partition_table"],
+            "mother_result": result,
+            "cd_connections": cd_cons,
         }
-        request.xml_response["response"] = JSONRenderer().render(
-            device_serializer_boot(
-                dev_result,
-                many=True,
-                context=ctx
-            ).data
-        )
+        _json = device_serializer_boot(
+            dev_result,
+            many=True,
+            context=ctx,
+        ).data
+        _resp = JSONRenderer().render(_json)
+        # pprint.pprint(_json)
+        request.xml_response["response"] = _resp
 
 
 class update_device(APIView):
@@ -279,15 +270,17 @@ class get_devlog_info(View):
         for dev_log in dev_logs:
             if dev_log.pk > lp_dict[dev_log.device_id]:
                 logs_transfered[dev_log.device_id] += 1
-                _lines.append([
-                    dev_log.pk,
-                    dev_log.device_id,
-                    dev_log.source_id,
-                    dev_log.user_id,
-                    dev_log.level_id,
-                    dev_log.text,
-                    time.mktime(cluster_timezone.normalize(dev_log.date).timetuple()),
-                ])
+                _lines.append(
+                    [
+                        dev_log.pk,
+                        dev_log.device_id,
+                        dev_log.source_id,
+                        dev_log.user_id,
+                        dev_log.level_id,
+                        dev_log.text,
+                        time.mktime(cluster_timezone.normalize(dev_log.date).timetuple()),
+                    ]
+                )
         return HttpResponse(json.dumps({"devlog_lines": _lines}), content_type="application/json")
 
 
@@ -299,11 +292,13 @@ class soft_control(View):
         dev_pk_list = json.loads(_post["dev_pk_list"])
         cur_devs = device.objects.filter(Q(pk__in=dev_pk_list))
         soft_state = _post["command"]
-        logger.info("sending soft_control '{}' to {}: {}".format(
-            soft_state,
-            logging_tools.get_plural("device", len(dev_pk_list)),
-            ", ".join(sorted([unicode(cur_dev) for cur_dev in cur_devs]))
-        ))
+        logger.info(
+            "sending soft_control '{}' to {}: {}".format(
+                soft_state,
+                logging_tools.get_plural("device", len(dev_pk_list)),
+                ", ".join(sorted([unicode(cur_dev) for cur_dev in cur_devs]))
+            )
+        )
         srv_com = server_command.srv_command(command="soft_control")
         srv_com["devices"] = srv_com.builder(
             "devices",
@@ -324,13 +319,19 @@ class hard_control(View):
         cd_con_pks = json.loads(_post["cd_pk_list"])
         cur_cd_cons = cd_connection.objects.select_related("child", "parent").filter(Q(pk__in=cd_con_pks))
         command = _post["command"]
-        logger.info("got hc command '{}' for {}:".format(
-            command,
-            logging_tools.get_plural("device", len(cd_con_pks))))
+        logger.info(
+            "got hc command '{}' for {}:".format(
+                command,
+                logging_tools.get_plural("device", len(cd_con_pks))
+            )
+        )
         for cur_cd_con in cur_cd_cons:
-            logger.info("  device {} (controlling device: {})".format(
-                unicode(cur_cd_con.child),
-                unicode(cur_cd_con.parent)))
+            logger.info(
+                "  device {} (controlling device: {})".format(
+                    unicode(cur_cd_con.child),
+                    unicode(cur_cd_con.parent)
+                )
+            )
         srv_com = server_command.srv_command(command="hard_control")
         srv_com["devices"] = srv_com.builder(
             "devices",
@@ -343,5 +344,6 @@ class hard_control(View):
                     bootserver_hint="{:d}".format(cur_cd_con.child.bootserver_id),
                 )
                 for cur_cd_con in cur_cd_cons
-            ])
+            ]
+        )
         contact_server(request, "mother", srv_com, timeout=10)

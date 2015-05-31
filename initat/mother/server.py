@@ -79,8 +79,8 @@ class server_process(threading_tools.process_pool):
         if self._init_network_sockets():
             self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
             self.add_process(initat.mother.command.ExternalCommandProcess("command"), start=True)
-            self.add_process(initat.mother.control.node_control_process("control"), start=True)
-            self.add_process(initat.mother.control.direct_process("direct"), start=True)
+            self.add_process(initat.mother.control.NodeControlProcess("control"), start=True)
+            self.add_process(initat.mother.control.ICMPProcess("icmp"), start=True)
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
             self.add_process(snmp_process("snmp_process", conf_dict=conf_dict), start=True)
             connection.close()
@@ -172,6 +172,7 @@ class server_process(threading_tools.process_pool):
                 self.zmq_context,
                 sock_type,
                 identity=self.bind_id,
+                immediate=True,
             )
             conn_str = "tcp://*:{:d}".format(bind_port)
             try:
@@ -194,6 +195,7 @@ class server_process(threading_tools.process_pool):
                 self.register_poller(client, zmq.POLLIN, target_func)  # @UndefinedVariable
                 self.socket_dict[key] = client
         self.connection_set = set()
+        self.connection_status = {}
         return success
 
     def _new_com(self, zmq_sock):
@@ -320,17 +322,47 @@ class server_process(threading_tools.process_pool):
             self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
             self.socket_dict["router"].send_unicode(unicode(com_str))
         except:
-            self.log(
-                u"error sending to {} ({}): {}".format(
-                    zmq_id,
-                    dst_addr,
-                    process_tools.get_except_info(),
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
+            self._log_con_error(zmq_id, dst_addr, process_tools.get_except_info())
         else:
+            self._log_con_ok(zmq_id, dst_addr)
             if self.debug:
                 self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
+
+    def _log_con_error(self, zmq_id, dst_addr, _error):
+        _key = (zmq_id, dst_addr)
+        if _key in self.connection_status:
+            if self.connection_status[_key] != _error:
+                self.connection_status[_key] = _error
+                self._log_con(zmq_id, dst_addr, "switched to error state: {}".format(_error))
+            else:
+                # nothing changed
+                pass
+        else:
+            self.connection_status[_key] = _error
+            self._log_con(zmq_id, dst_addr, "is in error state: {}".format(_error))
+
+    def _log_con_ok(self, zmq_id, dst_addr):
+        _key = (zmq_id, dst_addr)
+        if _key in self.connection_status:
+            if self.connection_status[_key]:
+                self.connection_status[_key] = ""
+                self._log_con(zmq_id, dst_addr, "is now ok")
+            else:
+                # nothing changed
+                pass
+        else:
+            self.connection_status[_key] = ""
+            self._log_con(zmq_id, dst_addr, "is ok")
+
+    def _log_con(self, zmq_id, dst_addr, info):
+        self.log(
+            "connection to {}@{} {}".format(
+                zmq_id,
+                dst_addr,
+                info,
+            ),
+            logging_tools.LOG_LEVEL_ERROR if info.count("error") else logging_tools.LOG_LEVEL_OK
+        )
 
     def _prepare_directories(self):
         self.log("Checking directories ...")

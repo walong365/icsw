@@ -239,7 +239,7 @@ class csw_permission(models.Model):
 
     class Meta:
         unique_together = (("content_type", "codename"),)
-        ordering = ("content_type__app_label", "content_type__name", "name",)
+        ordering = ("content_type__app_label", "content_type__model", "name",)
         app_label = "backbone"
         verbose_name = "Global permission"
 

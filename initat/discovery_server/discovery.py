@@ -19,23 +19,24 @@
 #
 """ discovery-server, discovery part """
 
+import time
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
-from initat.discovery_server.config import global_config
-from initat.discovery_server.hm_functions import hm_mixin
 from initat.snmp.struct import ResultNode, simple_snmp_oid
 from initat.snmp.functions import simplify_dict, oid_to_str
 from initat.snmp.sink import SNMPSink
 from initat.snmp.databasemap import Schemes
 from initat.tools import logging_tools
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import threading_tools
-import time
+
+from .config import global_config
+from .hm_functions import hm_mixin
 
 
 class snmp_batch(object):

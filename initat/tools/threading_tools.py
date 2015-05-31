@@ -615,12 +615,15 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         return self.__flags[fn]
 
     def send_pool_message(self, *args, **kwargs):
+        # for relaying via pool
         target = kwargs.pop("target", "main")
+        # for direct
+        target_process = kwargs.get("target_process", "main")
         _iter = 0
         while True:
             _iter += 1
             try:
-                self.__com_socket.send_unicode("main", zmq.SNDMORE)  # @UndefinedVariable
+                self.__com_socket.send_unicode(target_process, zmq.SNDMORE)  # @UndefinedVariable
                 self.__com_socket.send_pyobj(
                     {
                         "pid": self.pid,
@@ -654,6 +657,31 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.register_poller(com_socket, zmq.POLLIN, self._handle_message)  # @UndefinedVariable
         com_socket.connect(self.__main_queue_name)
         self.__com_socket = com_socket
+        self.__add_sockets = {}
+
+    # for process <-> process communication
+    def get_com_socket_name(self, proc_name):
+        _proc_title = setproctitle.getproctitle()
+        if _proc_title.startswith("icsw."):
+            # if process title is set and starts with icsw then set this as service_name
+            s_name = _proc_title.split(".", 1)[1]
+            cs_name = process_tools.get_zmq_ipc_name(proc_name, s_name=s_name)
+        else:
+            cs_name = process_tools.get_zmq_ipc_name(proc_name)
+        return cs_name
+
+    def bind_com_socket(self, dest_name):
+        self.__com_socket.connect(self.get_com_socket_name(dest_name))
+
+    def add_com_socket(self):
+        cs_name = self.get_com_socket_name(self.name)
+        zmq_socket = self.zmq_context.socket(zmq.ROUTER)
+        zmq_socket.setsockopt(zmq.IDENTITY, self.name)
+        zmq_socket.setsockopt(zmq.IMMEDIATE, True)
+        zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
+        process_tools.bind_zmq_socket(zmq_socket, cs_name)
+        self.register_poller(zmq_socket, zmq.POLLIN, self._handle_message)  # @UndefinedVariable
+        self.__add_sockets[cs_name] = zmq_socket
 
     def _send_start_message(self):
         # flush pool
@@ -675,6 +703,8 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         # wait for the last commands to settle, commented out by ALN on 20.7.2014
         time.sleep(0.25)
         self.__com_socket.close()
+        for _cs_name, _sock in self.__add_sockets.iteritems():
+            _sock.close()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print(

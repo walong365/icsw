@@ -22,6 +22,7 @@
 import os
 import stat
 import time
+import rrdtool
 
 from django.db import connection
 from initat.collectd.config import global_config
@@ -33,10 +34,6 @@ from initat.tools import threading_tools
 
 from .rsync import RSyncMixin
 
-try:
-    import rrdtool  # @UnresolvedImport
-except:
-    rrdtool = None
 
 # constant, change to limit RRDs to be converted at once
 MAX_FOUND = 0
@@ -93,9 +90,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
     def check_size(self):
         # init target coverage dict
         self.tc_dict = {}
-        if not rrdtool:
-            self.log("no rrdtool, ignoring resize call", logging_tools.LOG_LEVEL_WARN)
-        elif not self.rrd_coverage:
+        if not self.rrd_coverage:
             self.log("rrd_coverage is empty", logging_tools.LOG_LEVEL_WARN)
         elif not global_config["MODIFY_RRD_COVERAGE"]:
             self.log("rrd_coverage modification is disabled", logging_tools.LOG_LEVEL_WARN)

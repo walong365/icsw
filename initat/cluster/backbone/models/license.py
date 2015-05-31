@@ -28,7 +28,7 @@ from lxml import etree
 from dateutil import relativedelta
 
 from django.db.models import signals, Q
-from django.db import models, transaction
+from django.db import models, transaction, IntegrityError
 from django.dispatch import receiver
 import enum
 import operator
@@ -270,7 +270,7 @@ class LicenseUsage(object):
         :type license: LicenseEnum
         :type param_type: LicenseParameterTypeEnum
         """
-        from initat.cluster.backbone.models import device
+        from initat.cluster.backbone.models import device, mon_check_command
 
         # this produces queries for all objects
         # if that's too slow, we need a manual bulk get_or_create (check with one query, then create missing entries)
@@ -309,23 +309,33 @@ class LicenseUsage(object):
                     present_entries =\
                         frozenset(LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list("device_id",
                                                                                                         "service_id"))
+                    existing_dev_pks = frozenset(device.objects.all().values_list("pk", flat=True))
+                    existing_serv_pks = frozenset(mon_check_command.objects.all().values_list("pk", flat=True))
                     entries_to_add = []
                     for dev, serv_list in value.iteritems():
-                        for serv in serv_list:
-                            dev_id = LicenseUsage.device_to_pk(dev)
-                            serv_id = LicenseUsage.service_to_pk(serv)
-
-                            if (dev_id, serv_id) not in present_entries:
-                                entries_to_add.append(
-                                    LicenseUsageDeviceService(device_id=dev_id, service_id=serv_id, **common_params)
-                                )
+                        dev_id = LicenseUsage.device_to_pk(dev)
+                        if dev_id in existing_dev_pks:
+                            for serv in serv_list:
+                                serv_id = LicenseUsage.service_to_pk(serv)
+                                if serv_id in existing_serv_pks:
+                                    if (dev_id, serv_id) not in present_entries:
+                                        entries_to_add.append(
+                                            LicenseUsageDeviceService(device_id=dev_id, service_id=serv_id,
+                                                                      **common_params)
+                                        )
 
                     LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
             elif param_type == LicenseParameterTypeEnum.ext_license:
-                LicenseUsageExtLicense.objects.get_or_create(ext_license_id=LicenseUsage._ext_license_to_pk(value),
-                                                             **common_params)
+                try:
+                    LicenseUsageExtLicense.objects.get_or_create(ext_license_id=LicenseUsage._ext_license_to_pk(value),
+                                                                 **common_params)
+                except IntegrityError:
+                    pass
             elif param_type == LicenseParameterTypeEnum.user:
-                LicenseUsageUser.objects.get_or_create(user_id=LicenseUsage.user_to_pk(value), **common_params)
+                try:
+                    LicenseUsageUser.objects.get_or_create(user_id=LicenseUsage.user_to_pk(value), **common_params)
+                except IntegrityError:
+                    pass
             else:
                 raise RuntimeError("Invalid license parameter type id: {}".format(param_type))
 

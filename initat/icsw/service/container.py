@@ -57,7 +57,11 @@ else:
             License = None
         else:
             from initat.tools import config_tools
-            from initat.cluster.backbone.models import License, LicenseState
+            try:
+                from initat.cluster.backbone.models import License, LicenseState
+            except ImportError:
+                License = None
+                LicenseState = None
 
 
 class ServiceContainer(object):

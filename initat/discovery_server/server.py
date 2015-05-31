@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,19 +23,17 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.discovery_server.config import global_config, IPC_SOCK_SNMP
-from initat.discovery_server.discovery import discovery_process
 from initat.snmp.process import snmp_process_container
-from lxml import etree  # @UnresolvedImport @UnusedImport
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import logging_tools
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import threading_tools
 import zmq
+
+from .config import global_config, IPC_SOCK_SNMP
+from .discovery import discovery_process
 
 
 class server_process(threading_tools.process_pool):

@@ -28,7 +28,6 @@ import re
 
 from initat.tools import process_tools
 
-
 LOGSERVER_ROOT = "/var/log/cluster/logging-server"
 
 

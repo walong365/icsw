@@ -517,7 +517,7 @@ class csw_object_list(viewsets.ViewSet):
     @rest_logging
     def list(self, request):
         all_db_perms = csw_permission.objects.filter(Q(valid_for_object_level=True)).select_related("content_type")
-        perm_cts = ContentType.objects.filter(Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms])).order_by("name")
+        perm_cts = ContentType.objects.filter(Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms])).order_by("model")
         group_list = []
         for perm_ct in perm_cts:
             cur_group = csw_object_group(
