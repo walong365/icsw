@@ -21,7 +21,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation",
+        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda"
     ]
 ).controller("icswConfigKpiCtrl", [
     "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "access_level_service"
@@ -217,7 +217,6 @@ angular.module(
             update_kpi_data_source = () ->
                 icswCallAjaxService
                     url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
-
                     data:
                         tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
                         time_range: JSON.stringify(cur_edit_kpi.time_range)
@@ -283,6 +282,7 @@ angular.module(
                         orig_kpi[k] = v
 
                     delete orig_kpi.result  # don't want to put this, possibly remove it from here
+                    #delete orig_kpi.selected_device_monitoring_category_tuple
                     orig_kpi.put()
 
                 else
@@ -292,16 +292,32 @@ angular.module(
 
             child_scope.kpi_set = undefined
 
+
+            set_kpi_result_to_default = () ->
+                child_scope.kpi_result = {
+                    kpi_set: undefined
+                    kpi_error_report: undefined
+                    loading: false
+                }
+            set_kpi_result_to_default()
+
             child_scope.calculate_kpi = () ->
+                set_kpi_result_to_default()
+                child_scope.kpi_result.loading = true
                 icswCallAjaxService
                     url: ICSW_URLS.BASE_CALCULATE_KPI
                     data:
                         kpi_pk: cur_edit_kpi.idx
                         formula: cur_edit_kpi.formula
-                    dataType: "json"
-                    success: (res) ->
-                        console.log 'res', res
+                    success: (xml) ->
+                        if icswParseXMLResponseService(xml)
+                            child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
 
+                            kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
+                            if  kpi_error_report?
+                                #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
+                                child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
+                            child_scope.kpi_result.loading = false
 
             # parameters as understood by KpiData.parse_kpi_time_range
             child_scope.kpi_time_ranges = [
