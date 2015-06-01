@@ -82,8 +82,7 @@
                     <accordion-group heading="Evaluation" is-open="true" ng-show="true">
                         <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()" ></icsw-tools-button>
 
-                        <div ladda="true" style="background-color: #ffffff" ></div>
-                        <div ng-if="kpi_result.loading" ladda="kpi_result.loading" ></div>
+                        <div ng-if="kpi_result.loading" ladda="kpi_result.loading"></div>
 
                         <div ng-if="!kpi_result.loading">
                             <icsw-config-kpi-evaluation-graph kpi-result="kpi_result.kpi_set" width="870" ng-show="!kpi_result.kpi_error_report"></icsw-config-kpi-evaluation-graph>
