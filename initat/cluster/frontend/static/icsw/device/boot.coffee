@@ -531,6 +531,7 @@ angular.module(
                 else
                     return "warning"
             scope.valid_net_state = () ->
+                return true
                 return scope.dev.net_state == "up"
             scope.show_boot_option = (entry) ->
                 dev = scope.dev

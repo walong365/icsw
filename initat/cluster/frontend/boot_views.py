@@ -97,6 +97,7 @@ class get_boot_info_json(View):
         if result is not None and result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
             cd_result = {}
             for cd_ping in result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
+                # print cd_ping.attrib
                 # todo: support unknown state (ip_state == unknown)
                 cd_result[int(cd_ping.attrib["pk"])] = True if cd_ping.attrib["ip_state"] == "up" else False
             request.xml_response["cd_response"] = json.dumps(cd_result)
@@ -290,25 +291,48 @@ class soft_control(View):
     def post(self, request):
         _post = request.POST
         dev_pk_list = json.loads(_post["dev_pk_list"])
-        cur_devs = device.objects.filter(Q(pk__in=dev_pk_list))
+        cur_devs = {
+            _dev.pk: _dev for _dev in device.objects.filter(Q(pk__in=dev_pk_list))
+            }
         soft_state = _post["command"]
         logger.info(
             "sending soft_control '{}' to {}: {}".format(
                 soft_state,
                 logging_tools.get_plural("device", len(dev_pk_list)),
-                ", ".join(sorted([unicode(cur_dev) for cur_dev in cur_devs]))
+                logging_tools.reduce_list(sorted([unicode(cur_dev) for cur_dev in cur_devs.itervalues()])),
             )
         )
         srv_com = server_command.srv_command(command="soft_control")
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[
-                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk)) for cur_dev in cur_devs
+                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk)) for cur_dev in cur_devs.itervalues()
             ]
         )
         result = contact_server(request, "mother", srv_com, timeout=10, log_result=False)
+        _ok_list, _error_list = (
+            result.xpath(".//ns:device[@command_sent='1']/@pk"),
+            result.xpath(".//ns:device[@command_sent='0']/@pk"),
+        )
         if result:
-            request.xml_response.info("sent {} to {}".format(soft_state, unicode(cur_dev)), logger)
+            if _ok_list:
+                request.xml_response.info(
+                    "sent {} to {}".format(
+                        soft_state,
+                        logging_tools.reduce_list(sorted([cur_devs[int(_pk)].full_name for _pk in _ok_list])),
+                    ),
+                    logger
+                )
+            if _error_list:
+                request.xml_response.warn(
+                    "unable to send {} to {}".format(
+                        soft_state,
+                        logging_tools.reduce_list(sorted([cur_devs[int(_pk)].full_name for _pk in _error_list])),
+                    ),
+                    logger
+                )
+            if not _ok_list and not _error_list:
+                request.xml_response.warn("nothing to do")
 
 
 class hard_control(View):

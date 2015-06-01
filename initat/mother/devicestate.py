@@ -359,12 +359,31 @@ class DeviceState(object):
                     self.process.send_pool_message(
                         "contact_hoststatus",
                         _dev.get_hoststatus_uuid(_hoststatus_ip),
-                        # todo, handle reset / halt
                         "status",
                         _hoststatus_ip,
                     )
             else:
                 self.log("pk {:d} not present in devices, discarding".format(_dev_pk), logging_tools.LOG_LEVEL_ERROR)
+
+    def soft_control(self, dev_node, command):
+        # send soft_control command to device in XML-element dev_node idx==pk
+        _pk = int(dev_node.attrib["pk"])
+        if _pk in self.__devices:
+            _dev = self.__devices[_pk]
+            if dev_node.get("ip", ""):
+                if dev_node.get("hoststatus", ""):
+                    self.process.send_pool_message(
+                        "contact_hoststatus",
+                        _dev.get_hoststatus_uuid(dev_node.attrib["ip"]),
+                        command,
+                        dev_node.attrib["ip"],
+                    )
+                else:
+                    dev_node.attrib["soft_control_error"] = "hoststatus not set"
+            else:
+                dev_node.attrib["soft_control_error"] = "IP-address not set"
+        else:
+            dev_node.attrib["soft_control_error"] = "device not known to DeviceState"
 
     # feeds from hoststatus
     def feed_nodestatus(self, src_id, text):
