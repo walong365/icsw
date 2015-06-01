@@ -72,7 +72,10 @@ def _state_overview(opt_ns, result):
         print(
             "{:<30s}, target state is {:<20s} [{}], {} / {} in the last 24 hours".format(
                 _inst.get("name"),
-                {0: "stopped", 1: "started"}[int(_inst.attrib["target_state"])],
+                {
+                    0: "stopped",
+                    1: "started"
+                }[int(_inst.attrib["target_state"])],
                 "active" if int(_inst.attrib["active"]) else "inactive",
                 logging_tools.get_plural("state", len(_states)),
                 logging_tools.get_plural("action", len(_actions)),

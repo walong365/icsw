@@ -505,7 +505,7 @@ class Host(object):
         master_dev_list = device.objects.filter(
             Q(parent_device__child__in=[self.device.pk])
         ).prefetch_related(
-            "netdevice_set__net_ip_set"
+            "netdevice_set__net_ip_set",
             "netdevice_set__net_ip_set__network__network_type",
         )
         # ip_list fot controlling device

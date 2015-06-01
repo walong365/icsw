@@ -45,7 +45,7 @@ angular.module(
                     # reload (even on error)
                     $scope.reload()
         # mixins
-        $scope.cd_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.cd_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.cd_edit.create_template = "cd.connection.form"
         $scope.cd_edit.edit_template = "cd.connection.form"
         $scope.cd_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CD_CONNECTION_LIST.slice(1))
@@ -87,11 +87,10 @@ angular.module(
             )
         $scope.delete_cd = (cd, dev, event) ->
             $scope.cd_edit.delete_list = undefined
-            $scope.cd_edit.delete_obj(cd).then(
-                (do_it) ->
-                    if do_it
-                        dev.master_list = (entry for entry in dev.master_list when entry.idx != cd.idx)
-                        dev.slave_list  = (entry for entry in dev.slave_list  when entry.idx != cd.idx)
+            $scope.cd_edit.delete_obj(cd).then((do_it) ->
+                if do_it
+                    dev.master_list = (entry for entry in dev.master_list when entry.idx != cd.idx)
+                    dev.slave_list  = (entry for entry in dev.slave_list  when entry.idx != cd.idx)
             )
         $scope.any_valid_devs = (dev, only_cds) ->
             return if $scope.get_valid_devs(dev, only_cds).length then true else false
