@@ -19,7 +19,7 @@
 #
 
 class angular_edit_mixin
-    constructor : (@scope, @templateCache, @compile, @modal, @Restangular, @q, @name) ->
+    constructor : (@scope, @templateCache, @compile, @Restangular, @q, @name) ->
         @use_modal = true
         @new_object_at_tail = true
         @use_promise = false
@@ -168,60 +168,80 @@ class angular_edit_mixin
         else
             # move to toaster, FIXME, todo
             console.log "form validation problem"
-    modal_ctrl : ["$scope", "$modalInstance", "question", ($scope, $modalInstance, question) ->
-        $scope.question = question
-        $scope.ok = () ->
-            $modalInstance.close(true)
-        $scope.cancel = () ->
-            $modalInstance.dismiss("cancel")
-    ]
     delete_obj : (obj) =>
         if @use_promise
            ret = @q.defer()
         @my_modal = null
-        c_modal = @modal.open
-            template : @templateCache.get("icsw.tools.simple.modal")
-            controller : @modal_ctrl
-            backdrop : "static"
-            resolve :
-                question : () =>
-                    if @delete_confirm_str
-                        return @delete_confirm_str(obj)
-                    else
-                        return "Really delete object ?"
-        c_modal.result.then(
-            () =>
-                # FIXME, to be moved to icswTools call
-                remove_by_idx = (in_array, idx) ->
-                    for c_idx, val of in_array
-                        if val.idx == idx
-                            c_idx = parseInt(c_idx)
-                            rest = in_array.slice(c_idx + 1 || in_array.length)
-                            in_array.length = if c_idx < 0 then in_array.length + c_idx else c_idx
-                            in_array.push.apply(in_array, rest)
-                            break
+        if @delete_confirm_str
+            c_str = @delete_confirm_str(obj)
+        else
+            c_str = "Really delete object ?"
+        _loc_prom = @q.defer()
+        c_modal = BootstrapDialog.show
+            message: c_str
+            draggable: true
+            size: BootstrapDialog.SIZE_SMALL
+            title: "Please Confirm"
+            closable: true
+            closeByBackdrop: false
+            buttons: [
+                {
+                     icon: "glyphicon glyphicon-ok"
+                     cssClass: "btn-warning"
+                     label: "Yes"
+                     action: (dialog) ->
+                        dialog.close()
+                        _loc_prom.resolve(true)
+                },
+                {
 
-                # add restangular elements
-                if not obj.addRestangularMethod and @modify_rest_url
-                    @Restangular.restangularizeElement(null, obj, @modify_rest_url)
-                obj.remove().then(
-                    (resp) =>
-                        # todo, fixme, move to toaster
-                        # console.log "deleted instance"
-                        if @delete_list
-                            remove_by_idx(@delete_list, obj.idx)
-                        @close_modal()
-                        if @use_promise
-                            return ret.resolve(true)
-                        else
-                            @send_change_signal()
-                    () =>
-                        if @use_promise
-                            return ret.resolve(false)
-                )
-            () =>
-                if @use_promise
-                    return ret.resolve(false)
+                    icon: "glyphicon glyphicon-remove"
+                    label: "No"
+                    cssClass: "btn-success"
+                    action: (dialog) ->
+                        dialog.close()
+                        _loc_prom.resolve(false)
+                },
+            ]
+            onhidden: () =>
+                @scope.modal_active = false
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
+            onshown: () =>
+        _loc_prom.promise.then(
+            (result) =>
+                if result
+                    # FIXME, to be moved to icswTools call
+                    remove_by_idx = (in_array, idx) ->
+                        for c_idx, val of in_array
+                            if val.idx == idx
+                                c_idx = parseInt(c_idx)
+                                rest = in_array.slice(c_idx + 1 || in_array.length)
+                                in_array.length = if c_idx < 0 then in_array.length + c_idx else c_idx
+                                in_array.push.apply(in_array, rest)
+                                break
+
+                    # add restangular elements
+                    if not obj.addRestangularMethod and @modify_rest_url
+                        @Restangular.restangularizeElement(null, obj, @modify_rest_url)
+                    obj.remove().then(
+                        (resp) =>
+                            # todo, fixme, move to toaster
+                            # console.log "deleted instance"
+                            if @delete_list
+                                remove_by_idx(@delete_list, obj.idx)
+                            if @use_promise
+                                return ret.resolve(true)
+                            else
+                                @send_change_signal()
+                        () =>
+                            if @use_promise
+                                return ret.resolve(false)
+                    )
+                else
+                    if @use_promise
+                        return ret.resolve(false)
         )
         if @use_promise
             return ret.promise

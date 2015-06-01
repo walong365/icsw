@@ -228,7 +228,7 @@ class ServiceState(object):
         _save = False
         if (state, lic_state) != self.__state_dict.get(name, None):
             self.log(
-                "state for {} is {}".format(
+                "state for {} is {} (license: {})".format(
                     name,
                     constants.STATE_DICT[state],
                     constants.LIC_STATE_DICT[lic_state],

@@ -32,6 +32,10 @@ from initat.md_config_server.kpi.kpi_utils import print_tree, KpiUtils
 from initat.tools import logging_tools, process_tools, server_command, threading_tools
 
 
+class KpiEvaluationError(Exception):
+    pass
+
+
 class KpiProcess(threading_tools.process_obj):
 
     def process_init(self):
@@ -63,15 +67,17 @@ class KpiProcess(threading_tools.process_obj):
             json.loads(srv_com['time_range'].text),
             json.loads(srv_com['time_range_parameter'].text),
         )
+        self.log("Calculating KPI source data for: {}; start: {}; end: {}".format(dev_mon_cat_tuples, start, end))
         kpi_set = KpiData(self.log, dev_mon_cat_tuples=dev_mon_cat_tuples).get_kpi_set_for_dev_mon_cat_tuples(
             start,
             end,
         )
-        result = kpi_set.serialize()
         srv_com.set_result("ok")
-        srv_com['kpi_set'] = result
+        srv_com['kpi_set'] = json.dumps(kpi_set.serialize())
 
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+
+        self.log("Finished KPI source data")
 
     def update(self):
         """Recalculate all kpis and save result to database"""
@@ -84,20 +90,34 @@ class KpiProcess(threading_tools.process_obj):
             else:
                 # recalculate kpis
                 for kpi_db in Kpi.objects.filter(enabled=True):
-                    result_str = self._evaluate_kpi(data, kpi_db)
+                    try:
+                        result_str = self._evaluate_kpi(data, kpi_db)
+                    except KpiEvaluationError:
+                        result_str = None
                     kpi_db.set_result(result_str, django.utils.timezone.now())
 
-    def _calculate_kpi(self, kpi_db):
+    def _calculate_kpi(self, srv_com_src, **kwargs):
         """Calculate single kpi"""
-        # TODO: not fully implemented yet
+        srv_com = server_command.srv_command(source=srv_com_src)
         KpiGlobals.set_context()
+        kpi_db = Kpi.objects.get(pk=int(srv_com['kpi_pk'].text))
+        kpi_db.formula = srv_com['formula'].text  # don't save
+        self.log("Calculating KPI {} with custom formula".format(kpi_db))
         data = KpiData(self.log)
-        return self._evaluate_kpi(data, kpi_db)
+        try:
+            srv_com['kpi_set'] = self._evaluate_kpi(data, kpi_db)
+        except KpiEvaluationError as e:
+            srv_com['kpi_error_report'] = json.dumps(e.message)
+        srv_com.set_result("ok")
+
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.log("Finished calculating KPI")
 
     def _evaluate_kpi(self, data, kpi_db):
-        """Evaluates given kpi on data returning the result as string.
+        """Evaluates given kpi on data returning the result as string or raising KpiEvaluationError
         Does not write to the database.
         Kpi context must be set before call.
+        Returns json-ified serialized kpi set
         """
         self.log("Evaluating kpi {}".format(kpi_db))
         # print '\nevaluating kpi', kpi_db
@@ -116,9 +136,14 @@ class KpiProcess(threading_tools.process_obj):
             exec (kpi_db.formula, eval_globals, eval_locals)
         except Exception as e:
             self.log(e)
-            self.log("Exception while executing kpi {} with formula {}: {}".format(kpi_db, kpi_db.formula, e))
-            for line in traceback.format_exc().split("\n"):
+            error_report = [u"Exception while calculating kpi {}: {}".format(kpi_db, e)]
+            for idx, line in enumerate(traceback.format_exc().split("\n")):
+                if idx not in (1, 2):  # these are internal
+                    error_report.append(line)
+
                 self.log(line)
+
+            raise KpiEvaluationError(error_report)
         else:
             self.log("Kpi {} successfully evaluated".format(kpi_db))
             if 'kpi' not in eval_locals:

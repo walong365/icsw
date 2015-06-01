@@ -145,7 +145,7 @@ angular.module(
                 dev.selected = !dev.selected
             $scope.num_selected = (dev for dev in $scope.devices when dev.selected).length
         # mixins
-        $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.device_edit.modify_rest_url = ICSW_URLS.BOOT_UPDATE_DEVICE.slice(1).slice(0, -2)
         $scope.device_edit.use_promise = true
         $scope.device_edit.modify_data_before_put = (data) ->

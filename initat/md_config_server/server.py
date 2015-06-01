@@ -39,7 +39,7 @@ from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
-from initat.md_config_server.kpi import KpiProcess, KpiData
+from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
 from initat.tools import cluster_location
 import codecs

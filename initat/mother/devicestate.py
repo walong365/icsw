@@ -92,8 +92,9 @@ class PingInfo(object):
 class DSDevice(object):
     ping_id = 0
 
-    def __init__(self, dev, ping_only):
+    def __init__(self, log_com, dev, ping_only):
         # True for controlling devices
+        self.__log_com = log_com
         self.ping_only = ping_only
         self.pk = dev.pk
         self.uuid = dev.uuid
@@ -101,7 +102,7 @@ class DSDevice(object):
         self.full_name = unicode(dev)
         self.uuids = [self.pk, self.uuid, self.boot_uuid]
         # dict of IPs
-        self.ip_dict = {}
+        self.ip_dict = None
         # latest 10 hoststatus infos
         self.ping_info = ResultStream()
         if not self.ping_only:
@@ -114,14 +115,34 @@ class DSDevice(object):
         self.pending = 0
         self.wait_list = []
 
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[{}] {}".format(self.full_name, what), log_level)
+
     def set_ip_dict(self, ip_dict):
+        prev_dict = self.ip_dict
         self.ip_dict = {
             key: (
                 value.network.network_type.identifier,
                 value.network.identifier
             ) for key, value in ip_dict.iteritems() if value.network.network_type.identifier not in ["s", "l"]
         }
-        # print self.ip_dict
+        if prev_dict is None:
+            _prev_id_str = ""
+        else:
+            _prev_id_str = ", ".join(
+                [
+                    "{}[{}]".format(_key, prev_dict[_key][0]) for _key in sorted(prev_dict)
+                ]
+            )
+        _new_id_str = ", ".join(
+            [
+                "{}[{}]".format(_key, self.ip_dict[_key][0]) for _key in sorted(self.ip_dict)
+            ]
+        )
+        if _prev_id_str != _new_id_str:
+            self.log(
+                "set ip_dict to {}".format(_new_id_str)
+            )
 
     def get_ip_list(self):
         return self.ip_dict.keys()
@@ -282,7 +303,7 @@ class DeviceState(object):
     def add_device(self, dev, ping_only=False):
         # dev ... device object
         if dev.pk not in self.__dev_pks:
-            _new_dsd = DSDevice(dev, ping_only)
+            _new_dsd = DSDevice(self.log, dev, ping_only)
             self.__dev_pks.add(dev.pk)
             for _new_id in _new_dsd.uuids:
                 self.__unique_keys.add(_new_id)
@@ -359,12 +380,31 @@ class DeviceState(object):
                     self.process.send_pool_message(
                         "contact_hoststatus",
                         _dev.get_hoststatus_uuid(_hoststatus_ip),
-                        # todo, handle reset / halt
                         "status",
                         _hoststatus_ip,
                     )
             else:
                 self.log("pk {:d} not present in devices, discarding".format(_dev_pk), logging_tools.LOG_LEVEL_ERROR)
+
+    def soft_control(self, dev_node, command):
+        # send soft_control command to device in XML-element dev_node idx==pk
+        _pk = int(dev_node.attrib["pk"])
+        if _pk in self.__devices:
+            _dev = self.__devices[_pk]
+            if dev_node.get("ip", ""):
+                if dev_node.get("hoststatus", ""):
+                    self.process.send_pool_message(
+                        "contact_hoststatus",
+                        _dev.get_hoststatus_uuid(dev_node.attrib["ip"]),
+                        command,
+                        dev_node.attrib["ip"],
+                    )
+                else:
+                    dev_node.attrib["soft_control_error"] = "hoststatus not set"
+            else:
+                dev_node.attrib["soft_control_error"] = "IP-address not set"
+        else:
+            dev_node.attrib["soft_control_error"] = "device not known to DeviceState"
 
     # feeds from hoststatus
     def feed_nodestatus(self, src_id, text):

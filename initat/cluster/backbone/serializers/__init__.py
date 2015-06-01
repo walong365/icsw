@@ -372,10 +372,11 @@ class device_serializer_boot(device_serializer):
 
     def get_net_state(self, obj):
         # returns unknown / down / ping / up
+        # unknown is also used when the device is not a valid device for mother
         _state = "unknown"
         _node = self._get_dev_node(obj)
         if _node is not None:
-            _state = _node.attrib.get("ip_state", "")
+            _state = _node.attrib.get("ip_state", "unknown")
             if _state == "up":
                 _state = "ping"
                 if _node.attrib.get("hoststatus_source", ""):

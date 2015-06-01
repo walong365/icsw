@@ -30,7 +30,9 @@ angular.module(
             restrict: "E"
             templateUrl: "icsw.config.kpi.evaluation_graph"
             scope:
+                # this directive needs either a kpi index or a kpi result (for custom stuff)
                 kpiIdx: '&kpiIdx'
+                kpiResult: '&kpiResult'
                 width: '&width'
             link: (scope, el, attrs) ->
 
@@ -48,7 +50,6 @@ angular.module(
                 )
 
                 node_height = 80
-
 
                 scope.kpi_set_to_show = undefined
 
@@ -73,12 +74,19 @@ angular.module(
                         # wait for tree
                         $timeout(scope.redraw, 200)
                     else
+                        if scope.kpiIdx()? and scope.kpiResult()?
+                            console.error "Both kpi index and kpi result defined for evaluation graph"
+
                         if scope.kpiIdx()?
                             kpi = icswConfigKpiDataService.get_kpi(scope.kpiIdx())
                             if kpi.enabled and kpi.result?  # only for enabled's
                                 scope.data = kpi.result.json
                                 # scope.height = 70
                                 scope.update_dthree()
+
+                        if scope.kpiResult()?
+                            scope.data = scope.kpiResult()
+                            scope.update_dthree()
 
                 scope.update_dthree = () ->
 
@@ -234,7 +242,6 @@ angular.module(
 
                     scope.redraw()
                 scope.on_mouse_enter = (node) ->
-
                     $timeout(
                         () ->
                             if scope._mouse_on_node == node
@@ -252,8 +259,11 @@ angular.module(
                 scope.get_div_height_style = () ->
                     return {'height': scope.div_height}
 
-                scope.$watch(
-                    () -> return scope.kpiIdx()
+                scope.$watchGroup(
+                    [
+                        () -> scope.kpiIdx()
+                        () -> scope.kpiResult()
+                    ]
                     () -> scope.redraw()
                 )
         }

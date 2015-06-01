@@ -49,10 +49,16 @@ def get_cluster_id():
             else:
                 from django.db.models import Q
                 from initat.cluster.backbone.models import device_variable
-                _vars = device_variable.objects.values_list("val_str", flat=True).filter(
-                    Q(name="CLUSTER_ID") &
-                    Q(device__device_group__cluster_device_group=True)
-                )
-                if len(_vars):
-                    cluster_id = _vars[0]
+                try:
+                    _vars = device_variable.objects.all().count()
+                except:
+                    # database not initialised
+                    pass
+                else:
+                    _vars = device_variable.objects.values_list("val_str", flat=True).filter(
+                        Q(name="CLUSTER_ID") &
+                        Q(device__device_group__cluster_device_group=True)
+                    )
+                    if len(_vars):
+                        cluster_id = _vars[0]
     return cluster_id

@@ -2074,17 +2074,17 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ><label for="id_bridge_device" class="control-label col-sm-3">
  Bridge device
  </label><div class="controls col-sm-8"><ui-select ng-model='_edit_obj.bridge_device' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='bridge master device'>{{$select.selected.devname}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_bridge_masters(_edit_obj)'><div ng-bind-html='value.devname | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset><fieldset 
- ><legend>Routing settings</legend><div id="div_id_penalty"
- class="form-group 
- "
- ><label for="id_penalty" class="control-label col-sm-3">
- Cost
- </label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_penalty" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" type="number" value="1" /> </div></div><div class="form-group"><div id="div_id_routing"
+ ><legend>Routing settings</legend><div class="form-group"><div id="div_id_routing"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_routing" class=""><input class="checkboxinput checkbox" id="id_routing" name="routing" ng-model="_edit_obj.routing" type="checkbox" />
  network topology central node
- </label></div></div></div><div class="form-group"><div id="div_id_inter_device_routing"
+ </label></div></div></div><div id="div_id_penalty"
+ class="form-group 
+ "
+ ><label for="id_penalty" class="control-label col-sm-3">
+ Cost
+ </label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_penalty" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" type="number" value="1" /> </div></div><div class="form-group"><div id="div_id_inter_device_routing"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_inter_device_routing" class=""><input class="checkboxinput checkbox" id="id_inter_device_routing" name="inter_device_routing" ng-model="_edit_obj.inter_device_routing" type="checkbox" />
@@ -3005,6 +3005,36 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  id="submit-id-submit"
  /> </div></div></form>
 </script>
+<script type='text/ng-template' id='cd.connection.form'>
+<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Connection {{ get_cd_info() }}</h2><fieldset 
+ ><legend>Settings</legend><div id="div_id_connection_info"
+ class="form-group 
+ "
+ ><label for="id_connection_info" class="control-label col-sm-4 requiredField">
+ Connection info<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_connection_info" maxlength="256" name="connection_info" ng-model="_edit_obj.connection_info" required="True" type="text" value="not set" /> </div></div><div id="div_id_parameter_i1"
+ class="form-group 
+ "
+ ><label for="id_parameter_i1" class="control-label col-sm-4 requiredField">
+ Parameter i1<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i1" max="256" min="0" name="parameter_i1" ng-model="_edit_obj.parameter_i1" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i2"
+ class="form-group 
+ "
+ ><label for="id_parameter_i2" class="control-label col-sm-4 requiredField">
+ Parameter i2<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i2" max="256" min="0" name="parameter_i2" ng-model="_edit_obj.parameter_i2" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i3"
+ class="form-group 
+ "
+ ><label for="id_parameter_i3" class="control-label col-sm-4 requiredField">
+ Parameter i3<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i3" max="256" min="0" name="parameter_i3" ng-model="_edit_obj.parameter_i3" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i4"
+ class="form-group 
+ "
+ ><label for="id_parameter_i4" class="control-label col-sm-4 requiredField">
+ Parameter i4<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i4" max="256" min="0" name="parameter_i4" ng-model="_edit_obj.parameter_i4" required="True" type="number" value="0" /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ name="submit"
+ value=""
+ class="btn btn-primary primaryAction"
+ id="submit-id-submit"
+ ng-value="action_string"
+ /> </div></form>
+</script>
 <script type='text/ng-template' id='partition.disc.form'>
 <form id="id_partition_disc_form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><div 
  ><h2>Disc '{{ _edit_obj.disc }}'</h2><fieldset 
@@ -3160,36 +3190,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="btn btn-warning"
  id="button-id-change-password"
  ng-click="change_password()"
- /> </div></form>
-</script>
-<script type='text/ng-template' id='cd.connection.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Connection {{ get_cd_info() }}</h2><fieldset 
- ><legend>Settings</legend><div id="div_id_connection_info"
- class="form-group 
- "
- ><label for="id_connection_info" class="control-label col-sm-4 requiredField">
- Connection info<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_connection_info" maxlength="256" name="connection_info" ng-model="_edit_obj.connection_info" required="True" type="text" value="not set" /> </div></div><div id="div_id_parameter_i1"
- class="form-group 
- "
- ><label for="id_parameter_i1" class="control-label col-sm-4 requiredField">
- Parameter i1<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i1" max="256" min="0" name="parameter_i1" ng-model="_edit_obj.parameter_i1" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i2"
- class="form-group 
- "
- ><label for="id_parameter_i2" class="control-label col-sm-4 requiredField">
- Parameter i2<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i2" max="256" min="0" name="parameter_i2" ng-model="_edit_obj.parameter_i2" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i3"
- class="form-group 
- "
- ><label for="id_parameter_i3" class="control-label col-sm-4 requiredField">
- Parameter i3<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i3" max="256" min="0" name="parameter_i3" ng-model="_edit_obj.parameter_i3" required="True" type="number" value="0" /> </div></div><div id="div_id_parameter_i4"
- class="form-group 
- "
- ><label for="id_parameter_i4" class="control-label col-sm-4 requiredField">
- Parameter i4<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i4" max="256" min="0" name="parameter_i4" ng-model="_edit_obj.parameter_i4" required="True" type="number" value="0" /> </div></div></fieldset><div class="form-actions"><input type="submit"
- name="submit"
- value=""
- class="btn btn-primary primaryAction"
- id="submit-id-submit"
- ng-value="action_string"
  /> </div></form>
 </script>
 <script type='text/ng-template' id='mon.contactgroup.form'>

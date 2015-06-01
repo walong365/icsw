@@ -104,7 +104,7 @@ angular.module(
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, msgbus) ->
         $scope.entries = []
         # mixins
-        $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "gfx")
+        $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "gfx")
         $scope.gfx_mixin.use_modal = true
         $scope.gfx_mixin.use_promise = true
         $scope.gfx_mixin.new_object = (scope) -> return scope.new_location_gfx()
@@ -391,7 +391,7 @@ angular.module(
         $scope.entries = []
         # mixins
         # edit mixin for cateogries
-        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "cat")
+        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "cat")
         $scope.edit_mixin.use_modal = false
         $scope.edit_mixin.use_promise = true
         $scope.edit_mixin.new_object = (scope) -> return scope.new_object()

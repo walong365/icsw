@@ -17,7 +17,6 @@
         </tab>
     </tabset>
 
-
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.edit_dialog">
@@ -57,7 +56,6 @@
                                     </div>
                                 </div>
 
-
                             </div>
                             <div class="checkbox">
                                 <label>
@@ -81,9 +79,19 @@
                     <accordion-group heading="Formula" is-open="true">
                         <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
                     </accordion-group>
-                    <accordion-group heading="Evaluation" is-open="true" ng-show="false">
-                        <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()"></icsw-tools-button>
-                        <icsw-config-kpi-evaluation-graph kpi-idx="cur_edit_kpi.idx" width="870"></icsw-config-kpi-evaluation-graph>
+                    <accordion-group heading="Evaluation" is-open="true" ng-show="true">
+                        <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()" ></icsw-tools-button>
+
+                        <div ng-if="kpi_result.loading" ladda="kpi_result.loading"></div>
+
+                        <div ng-if="!kpi_result.loading">
+                            <icsw-config-kpi-evaluation-graph kpi-result="kpi_result.kpi_set" width="870" ng-show="!kpi_result.kpi_error_report"></icsw-config-kpi-evaluation-graph>
+
+                            <div ng-show="kpi_result.kpi_error_report">
+                                <br />
+                                <alert type="danger" ng-bind-html="kpi_result.kpi_error_report"></alert>
+                            </div>
+                        </div>
                     </accordion-group>
             </tab>
         </tabset>
@@ -136,7 +144,6 @@
                 Please make appropriate marks to select which checks from monitoring categories should apply to which device categories.
             </div>
             -->
-
             <table class="table table-condensed table-hover" style="width: auto;">
                 <tr>
                     <td></td>

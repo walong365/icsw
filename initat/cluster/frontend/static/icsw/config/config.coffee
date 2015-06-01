@@ -114,7 +114,7 @@ config_module = angular.module(
         $scope.change_filter_setting = (name) ->
             $scope.pagSettings.conf.filter_settings["filter_#{name}"] = ! $scope.pagSettings.conf.filter_settings["filter_#{name}"]
         # config edit
-        $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
+        $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular)
         $scope.config_edit.create_template = "config.form"
         $scope.config_edit.edit_template = "config.form"
         $scope.config_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_LIST.slice(1))
@@ -131,7 +131,7 @@ config_module = angular.module(
             }
             return new_obj
         # catalog edit
-        $scope.catalog_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.catalog_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.catalog_edit.create_template = "config.catalog.form"
         $scope.catalog_edit.edit_template = "config.catalog.form"
         $scope.catalog_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1))
@@ -144,10 +144,10 @@ config_module = angular.module(
                 "name" : "new catalog", "author" : $window.CURRENT_USER.login, "url" : "http://localhost/",
             }
             return new_obj
-        $scope.var_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.var_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.var_edit.use_promise = true
         $scope.var_edit.new_object_at_tail = false
-        $scope.script_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.script_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.script_edit.create_template = "config.script.form"
         $scope.script_edit.edit_template = "config.script.form"
         $scope.script_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_SCRIPT_LIST.slice(1))
@@ -155,7 +155,7 @@ config_module = angular.module(
         $scope.script_edit.use_promise = true
         $scope.script_edit.new_object_at_tail = false
         $scope.script_edit.min_width = "1000px"
-        $scope.mon_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.mon_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.mon_edit.create_template = "mon.check.command.form"
         $scope.mon_edit.edit_template = "mon.check.command.form"
         $scope.mon_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1))

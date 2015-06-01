@@ -148,7 +148,7 @@ angular.module(
         $scope.netip_open = false
         $scope.peer_open = false
         # mixins
-        $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
+        $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
         $scope.netdevice_edit.create_template = "netdevice.form"
         $scope.netdevice_edit.edit_template = "netdevice.form"
         $scope.netdevice_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1))
@@ -156,7 +156,7 @@ angular.module(
         $scope.netdevice_edit.new_object_at_tail = false
         $scope.netdevice_edit.use_promise = true
 
-        $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "ni")
+        $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "ni")
         $scope.netip_edit.create_template = "net.ip.form"
         $scope.netip_edit.edit_template = "net.ip.form"
         $scope.netip_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1))
@@ -164,7 +164,7 @@ angular.module(
         $scope.netip_edit.new_object_at_tail = false
         $scope.netip_edit.use_promise = true
 
-        $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "np")
+        $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "np")
         $scope.peer_edit.create_template = "peer.information.form"
         $scope.peer_edit.edit_template = "peer.information.form"
         #$scope.peer_edit.edit_template = "netip_template.html"
@@ -173,7 +173,7 @@ angular.module(
         $scope.peer_edit.new_object_at_tail = false
         $scope.peer_edit.use_promise = true
 
-        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nb")
+        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nb")
         $scope.boot_edit.edit_template = "device.boot.form"
         $scope.boot_edit.put_parameters = {"only_boot" : true}
         $scope.boot_edit.modify_rest_url = ICSW_URLS.REST_DEVICE_TREE_DETAIL.slice(1).slice(0, -2)

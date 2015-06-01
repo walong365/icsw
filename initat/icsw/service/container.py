@@ -89,7 +89,18 @@ class ServiceContainer(object):
 
     def update_valid_licenses(self):
         if License:
-            self.__valid_licenses = License.objects.get_valid_licenses()
+            try:
+                self.__valid_licenses = License.objects.get_valid_licenses()
+            except AttributeError:
+                # catch transient error, see UCS integration
+                # 10 File '/opt/python-init/lib/python2.7/site-packages/initat/meta_server/server.py', line 349 in _check_processes
+                # 11  - 349 : _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
+                # 12 File '/opt/python-init/lib/python2.7/site-packages/initat/icsw/service/container.py', line 110 in check_system
+                # 13  - 110 : self.update_valid_licenses()
+                # 14 File '/opt/python-init/lib/python2.7/site-packages/initat/icsw/service/container.py', line 88 in update_valid_licenses
+                # 15  - 88 : self.__valid_licenses = License.objects.get_valid_licenses()
+                # 16 <type 'exceptions.AttributeError'> ('_LicenseManager' object has no attribute 'get_valid_licenses')Exception in process 'main'
+                self.__valid_licenses = None
         else:
             self.__valid_licenses = None
 

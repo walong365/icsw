@@ -225,15 +225,12 @@ class Host(object):
 
     @staticmethod
     def ping(srv_com):
+        if "user_id" in srv_com:
+            log_user = user.objects.get(Q(pk=srv_com["user_id"].text))  # @UndefinedVariable
+        else:
+            log_user = None
         # send ping(s) to all valid IPs of then selected devices
-        keys = set(map(lambda x: int(x), srv_com.xpath(".//ns:device/@pk", smart_strings=False))) & set(Host.__unique_keys)
-        _bldr = srv_com.builder()
-        Host.device_state.require_ping(keys)
-        for u_key in keys:
-            # print
-            cur_dev = Host.get_device(u_key)
-            dev_node = srv_com.xpath(".//ns:device[@pk='{:d}']".format(cur_dev.pk))
-            Host.device_state.get_device_state(u_key).modify_xml(dev_node[0])
+        keys = set(map(lambda x: int(x), srv_com.xpath(".//ns:device/@pk"))) & set(Host.__unique_keys)
         master_dev_list = set(
             device.objects.filter(
                 Q(parent_device__child__in=keys)
@@ -245,19 +242,87 @@ class Host(object):
                 "netdevice__net_ip__network__network_type__identifier",
             )
         )
-        Host.device_state.require_ping([_key for _key, _value, _nwt in master_dev_list])
         # create dict for master / slave relations
         _master_dict = {
             key: value for key, value, nwt in master_dev_list if value and nwt not in ["l"]
         }
+        # list of devices to ping (== require status)
+        ping_keys, error_keys = ([], [])
+        for dev_node in srv_com.xpath(".//ns:device[@pk]"):
+            # print
+            u_key = int(dev_node.attrib["pk"])
+            cur_dev = Host.get_device(u_key)
+            if cur_dev is None:
+                DeviceLogEntry.new(
+                    device=device.objects.get(Q(pk=u_key)),
+                    source=Host.process.mother_src,
+                    level=logging_tools.LOG_LEVEL_ERROR,
+                    text="not a valid device",
+                    user=log_user,
+                )
+                error_keys.append(u_key)
+            else:
+                ping_keys.append(u_key)
+                command = dev_node.attrib.get("soft_command", "status")
+                Host.device_state.get_device_state(u_key).modify_xml(dev_node)
+                if command not in ["status"]:
+                    Host.device_state.soft_control(dev_node, command)
+                    if "soft_control_error" in dev_node.attrib:
+                        cur_dev.log(
+                            "error sending soft_control {}: {}".format(
+                                command,
+                                dev_node.attrib["soft_control_error"],
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                        DeviceLogEntry.new(
+                            device=cur_dev.device,
+                            source=Host.process.mother_src,
+                            level=logging_tools.LOG_LEVEL_WARN,
+                            text="cannot send async soft control '{}': {}".format(
+                                command,
+                                dev_node.attrib["soft_control_error"],
+                            ),
+                            user=log_user,
+                        )
+                        dev_node.attrib["command_sent"] = "0"
+                    else:
+                        cur_dev.log("sent soft_control {}".format(command))
+                        DeviceLogEntry.new(
+                            device=cur_dev.device,
+                            source=Host.process.mother_src,
+                            text="async soft control '{}'".format(
+                                command,
+                            ),
+                            user=log_user,
+                        )
+                        dev_node.attrib["command_sent"] = "1"
+                # print dev_node.attrib
+        Host.device_state.require_ping(ping_keys + _master_dict.keys())
+        _bldr = srv_com.builder()
         cd_ping_list = _bldr.cd_ping_list()
         if _master_dict:
             for master_pk, master_ip in _master_dict.iteritems():
-                cur_cd_ping = _bldr.cd_ping( pk="{:d}".format(master_pk))
+                cur_cd_ping = _bldr.cd_ping(pk="{:d}".format(master_pk))
                 Host.device_state.get_device_state(master_pk).modify_xml(cur_cd_ping)
                 cd_ping_list.append(cur_cd_ping)
             srv_com["cd_ping_list"] = cd_ping_list
-        return False
+        # result logging
+        if error_keys:
+            srv_com.set_result(
+                "handled {} ({} unknown)".format(
+                    logging_tools.get_plural("device", len(ping_keys)),
+                    logging_tools.get_plural("device", len(error_keys)),
+                ),
+                server_command.SRV_REPLY_STATE_WARN
+            )
+        else:
+            srv_com.set_result(
+                "handled {}".format(
+                    logging_tools.get_plural("device", len(ping_keys)),
+                ),
+            )
+        # return False
 
     def set_maint_ip(self, ip=None):
         if ip:
@@ -439,8 +504,8 @@ class Host(object):
             self.device.reachable = False
         master_dev_list = device.objects.filter(
             Q(parent_device__child__in=[self.device.pk])
-        ).select_related(
-            "netdevice_set__net_ip_set"
+        ).prefetch_related(
+            "netdevice_set__net_ip_set",
             "netdevice_set__net_ip_set__network__network_type",
         )
         # ip_list fot controlling device
@@ -1170,12 +1235,12 @@ class NodeControlProcess(threading_tools.process_obj):
         Host.sync()
         self.register_func("refresh", self._refresh)
         # self.register_func("alter_macaddr", self.alter_macaddr)
-        self.register_func("soft_control", self._soft_control)
+        self.register_func("status", self._status)
+        self.register_func("soft_control", self._status)
         self.register_func("ds_ping_result", self.device_state.ping_result)
         self.register_timer(self._check_commands, 10)
         # self.kernel_dev = config_tools.server_check(server_type="kernel_server")
         self.register_func("syslog_line", self._syslog_line)
-        self.register_func("status", self._status)
         self.register_func("nodeinfo", self._nodeinfo)
         self.register_func("nodestatus", self._nodestatus)
         # build dhcp res
@@ -1272,48 +1337,16 @@ class NodeControlProcess(threading_tools.process_obj):
             in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
             self.send_pool_message("send_return", id_str, unicode(in_com))
 
-    def _soft_control(self, zmq_id, in_com, *args, **kwargs):
-        # soft_control takes the same path as ping but uses a different hoststatus command (not status)
-        self.log("got soft_control from id {}".format(zmq_id))
-        in_com = server_command.srv_command(source=in_com)
-        # set zmq_id in structure
-        in_com["command"].attrib["zmq_id"] = zmq_id
-        # log soft control
-        if "user_id" in in_com:
-            log_user = user.objects.get(Q(pk=in_com["user_id"].text))  # @UndefinedVariable
-        else:
-            log_user = None
-        for xml_dev in in_com.xpath(".//ns:devices/ns:device"):
-            u_key = int(xml_dev.attrib["pk"])
-            dev = Host.get_device(u_key)
-            if dev is None:
-                DeviceLogEntry.new(
-                    device=device.objects.get(Q(pk=u_key)),
-                    source=self.mother_src,
-                    level=logging_tools.LOG_LEVEL_ERROR,
-                    text="not a device",
-                    user=log_user,
-                )
-            else:
-                DeviceLogEntry.new(
-                    device=dev.device,
-                    source=self.mother_src,
-                    text="soft control '{}'".format(
-                        xml_dev.attrib["soft_command"]
-                    ),
-                    user=log_user,
-                )
-        Host.ping(in_com)
-        in_com.set_result("handled ping")
-        self.send_pool_message("send_return", in_com.xpath(".//ns:command/@zmq_id", smart_strings=False)[0], unicode(in_com))
-
     def _status(self, zmq_id, in_com, *args, **kwargs):
-        self.log("got status from id {}".format(zmq_id))
         in_com = server_command.srv_command(source=in_com)
-        in_com["command"].attrib["zmq_id"] = zmq_id
+        self.log(
+            "got {} from id {}".format(
+                in_com["*command"],
+                zmq_id,
+            )
+        )
         Host.ping(in_com)
-        in_com.set_result("handled command")
-        self.send_pool_message("send_return", in_com.xpath(".//ns:command/@zmq_id", smart_strings=False)[0], unicode(in_com))
+        self.send_pool_message("send_return", zmq_id, unicode(in_com))
 
     def _nodeinfo(self, id_str, node_text, **kwargs):
         self.device_state.feed_nodeinfo(id_str, node_text)

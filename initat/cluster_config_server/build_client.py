@@ -19,15 +19,17 @@
 #
 """ cluster-config-server, build client """
 
+import os
+import shutil
+
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from initat.cluster_config_server.build_container import build_container, generated_tree
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.partition_setup import partition_setup
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
-import shutil
+
+from .build_container import build_container, generated_tree
+from .config import global_config
+from .partition_setup import partition_setup
 
 
 class build_client(object):
@@ -36,9 +38,14 @@ class build_client(object):
         name = kwargs["name"]
         if name.count("."):
             # fqdn
-            self.pk = int(kwargs.get("pk", device.objects.values("pk").get(
-                Q(name=name.split(".")[0]) &
-                Q(domain_tree_node__full_name=name.split(".", 1)[1]))["pk"]))
+            self.pk = int(
+                kwargs.get(
+                    "pk", device.objects.values("pk").get(
+                        Q(name=name.split(".")[0]) &
+                        Q(domain_tree_node__full_name=name.split(".", 1)[1])
+                    )["pk"]
+                )
+            )
         else:
             # short name
             self.pk = int(kwargs.get("pk", device.objects.values("pk").get(Q(name=name))["pk"]))
@@ -77,12 +84,15 @@ class build_client(object):
         else:
             log_keys = self.set_keys
         if len(self.set_keys):
-            self.log("%s defined, %d new%s:" % (
-                logging_tools.get_plural("attribute", len(self.set_keys)),
-                len(log_keys),
-                ", %s" % (info_str) if info_str else ""))
+            self.log(
+                "{} defined, {:d} new{}:".format(
+                    logging_tools.get_plural("attribute", len(self.set_keys)),
+                    len(log_keys),
+                    ", {}".format(info_str) if info_str else ""
+                )
+            )
         for key in sorted(log_keys):
-            self.log(" %-24s : %s" % (key, getattr(self, key)))
+            self.log(" {:<24s} : {}".format(key, getattr(self, key)))
         self.logged_keys = self.set_keys
 
     def add_set_keys(self, *keys):
@@ -93,13 +103,16 @@ class build_client(object):
 
     def create_logger(self):
         self.__log_template = logging_tools.get_logger(
-            "%s.%s" % (global_config["LOG_NAME"],
-                       self.name.replace(".", r"\.")),
+            "{}.{}".format(
+                global_config["LOG_NAME"],
+                self.name.replace(".", r"\.")
+            ),
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=build_client.srv_process.zmq_context,
-            init_logger=True)
-        self.log("added client (%s [%d])" % (self.name, self.pk))
+            init_logger=True
+        )
+        self.log("added client ({} [{:d})".format(self.name, self.pk))
 
     def close(self):
         if self.__log_template is not None:
@@ -111,7 +124,7 @@ class build_client(object):
             self.add_set_keys("info_str", "state_level")
             self.internal_state = kwargs["state"]
             self.info_str = what
-            self.state_level = "%d" % (level)
+            self.state_level = "{:d}".format(level)
         if kwargs.get("register", False):
             self.__error_dict.setdefault(level, []).append(what)
 
@@ -256,20 +269,25 @@ class build_client(object):
 
     def clean_directory(self, prod_key):
         # cleans directory of network_key
+        prod_key = prod_key.replace(" ", "_")
         rem_file_list, rem_dir_list = ([], [])
-        dir_list = ["%s/configdir_%s" % (self.node_dir, prod_key),
-                    "%s/config_dir_%s" % (self.node_dir, prod_key),
-                    "%s/content_%s" % (self.node_dir, prod_key)]
-        file_list = ["%s/config_files_%s" % (self.node_dir, prod_key),
-                     "%s/config_dirs_%s" % (self.node_dir, prod_key),
-                     "%s/config_links_%s" % (self.node_dir, prod_key),
-                     "%s/config_delete_%s" % (self.node_dir, prod_key),
-                     "%s/config_%s" % (self.node_dir, prod_key),
-                     "%s/configl_%s" % (self.node_dir, prod_key),
-                     "%s/config_d%s" % (self.node_dir, prod_key)]
+        dir_list = [
+            os.path.join(self.node_dir, "configdir_{}".format(prod_key)),
+            os.path.join(self.node_dir, "config_dir_{}".format(prod_key)),
+            os.path.join(self.node_dir, "content_{}".format(prod_key)),
+        ]
+        file_list = [
+            os.path.join(self.node_dir, "config_files_{}".format(prod_key)),
+            os.path.join(self.node_dir, "config_dirs_{}".format(prod_key)),
+            os.path.join(self.node_dir, "config_links_{}".format(prod_key)),
+            os.path.join(self.node_dir, "config_delete_{}".format(prod_key)),
+            os.path.join(self.node_dir, "config_{}".format(prod_key)),
+            os.path.join(self.node_dir, "configl_{}".format(prod_key)),
+            os.path.join(self.node_dir, "config_d{}".format(prod_key)),
+        ]
         for old_name in dir_list:
             if os.path.isdir(old_name):
-                rem_file_list.extend(["%s/%s" % (old_name, file_name) for file_name in os.listdir(old_name)])
+                rem_file_list.extend([os.path.join(old_name, file_name) for file_name in os.listdir(old_name)])
                 rem_dir_list.append(old_name)
         for old_name in file_list:
             if os.path.isfile(old_name):
@@ -287,13 +305,22 @@ class build_client(object):
                     ent_type = "dir"
                     os.rmdir(del_name)
             except:
-                self.log("error removing %s %s: %s" % (ent_type, del_name, process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error removing {} {}: {}".format(
+                        ent_type,
+                        del_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 num_removed[ent_type] += 1
         if sum(num_removed.values()):
-            self.log("removed %s for key '%s'" % (
-                " and ".join([logging_tools.get_plural(key, value) for key, value in num_removed.iteritems()]),
-                prod_key))
+            self.log(
+                "removed {} for key '{}'".format(
+                    " and ".join([logging_tools.get_plural(key, value) for key, value in num_removed.iteritems()]),
+                    prod_key
+                )
+            )
         else:
-            self.log("config on disk for key '%s' was empty" % (prod_key))
+            self.log("config on disk for key '{}' was empty".format(prod_key))

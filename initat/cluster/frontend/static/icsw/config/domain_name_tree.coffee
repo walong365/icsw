@@ -27,7 +27,7 @@ angular.module(
         $scope.dnt = new icswConfigDomainNameTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("dtn_base", $scope)
         $scope.entries = []
-        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.edit_mixin.use_modal = false
         $scope.edit_mixin.use_promise = true
         $scope.edit_mixin.new_object = (scope) -> return {
