@@ -255,7 +255,7 @@ class CalculateKpi(ListAPIView):
         srv_com = server_command.srv_command(command="calculate_kpi")
         srv_com["kpi_pk"] = request.POST['kpi_pk']
         srv_com["formula"] = request.POST['formula']
-        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False, timeout=120)
         if result:
             request.xml_response['kpi_set'] = result.get('kpi_set', json.dumps(None))
             request.xml_response['kpi_error_report'] = result.get('kpi_error_report', json.dumps(None))
