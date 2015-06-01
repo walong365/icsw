@@ -39,7 +39,6 @@ from initat.tools import process_tools
 from .utils import generate_password, DirSave, get_icsw_root
 from .connection_tests import test_psql, test_mysql, test_sqlite
 
-
 ICSW_ROOT = get_icsw_root()
 CMIG_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone", "migrations")
 MIGRATION_DIRS = [
@@ -133,10 +132,13 @@ def call_manage(args, **kwargs):
     if c_stat == 256 and c_out.lower().count("nothing seems to have changed"):
         c_stat = 0
     if c_stat:
-        print("something went wrong calling '{}' in {} ({:d}):".format(
-            com_str,
-            logging_tools.get_diff_time_str(e_time - s_time),
-            c_stat))
+        print(
+            "something went wrong calling '{}' in {} ({:d}):".format(
+                com_str,
+                logging_tools.get_diff_time_str(e_time - s_time),
+                c_stat
+            )
+        )
         for _line in c_out.split("\n"):
             print("  {}".format(_line))
         if _output:
@@ -343,7 +345,18 @@ def check_for_pre17(opts):
         # first step: move 1.7 models / serializers away
         _move_dirs = ["models", "serializers"]
         for _dir in _move_dirs:
-            os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
+            # check for UCS migration problems
+            if not os.path.isdir(os.path.join(BACKBONE_DIR, _dir)):
+                print("Directory {} not found in {}".format(_dir, BACKBONE_DIR))
+                print("directory listing:")
+                for _entry in os.listdir(BACKBONE_DIR):
+                    print("  {}".format(_entry))
+                print("bailing out, sorry...")
+                sys.exit(-1)
+            os.rename(
+                os.path.join(BACKBONE_DIR, _dir),
+                os.path.join(BACKBONE_DIR, ".{}".format(_dir))
+            )
         # next step: move pre-models to current models
         os.rename(PRE_MODELS_DIR, MODELS_DIR)
         # next step: remove all serializer relations from model files
