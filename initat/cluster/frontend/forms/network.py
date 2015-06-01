@@ -204,8 +204,8 @@ class netdevice_form(ModelForm):
         ),
         Fieldset(
             "Routing settings",
-            Field("penalty", min=1, max=128),
             Field("routing"),
+            Field("penalty", min=1, max=128),
             Field("inter_device_routing"),
         ),
         Fieldset(
@@ -260,7 +260,8 @@ class netdevice_form(ModelForm):
         fields = (
             "devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
             "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
-            "bridge_device", "inter_device_routing", "enabled", "mtu")
+            "bridge_device", "inter_device_routing", "enabled", "mtu",
+        )
         widgets = {
             "netdevice_speed": ui_select_widget(),
             "bridge_device": ui_select_widget(),
@@ -296,7 +297,6 @@ class net_ip_form(ModelForm):
                 placeholder="network",
                 display="info_string",
                 filter="{info_string:$select.search}",
-                # wrapper_ng_show="create_mode",
             ),
             Field(
                 "domain_tree_node",
@@ -304,7 +304,6 @@ class net_ip_form(ModelForm):
                 placeholder="Domain tree node",
                 display="tree_info",
                 filter="{tree_info:$select.search}",
-                # wrapper_ng_show="create_mode",
             ),
         ),
         Fieldset(

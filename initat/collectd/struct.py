@@ -36,7 +36,6 @@ import memcache
 from initat.tools import process_tools
 from initat.tools import rrd_tools
 
-
 mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])
 
 
@@ -559,9 +558,15 @@ class host_info(object):
             entry.attrib["file_name"] = _tf
 
         # check for timeout
-        to_keys = set([key for key, _value in self.__dict.iteritems() if _value.timeout and _value.timeout < cur_time])
+        to_keys = set(
+            [
+                key for key, _value in self.__dict.iteritems() if _value.timeout and _value.timeout < cur_time
+            ]
+        )
         for to_key in to_keys:
             del self.__dict[to_key]
+            if to_key in old_keys:
+                old_keys.remove(to_key)
         self._store_json_to_memcached()
         new_keys = set(self.__dict.keys())
         c_keys = old_keys ^ new_keys
