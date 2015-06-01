@@ -67,6 +67,7 @@ class KpiProcess(threading_tools.process_obj):
             json.loads(srv_com['time_range'].text),
             json.loads(srv_com['time_range_parameter'].text),
         )
+        self.log("Calculating KPI source data for: {}; start: {}; end: {}".format(dev_mon_cat_tuples, start, end))
         kpi_set = KpiData(self.log, dev_mon_cat_tuples=dev_mon_cat_tuples).get_kpi_set_for_dev_mon_cat_tuples(
             start,
             end,
@@ -75,6 +76,8 @@ class KpiProcess(threading_tools.process_obj):
         srv_com['kpi_set'] = json.dumps(kpi_set.serialize())
 
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+
+        self.log("Finished KPI source data")
 
     def update(self):
         """Recalculate all kpis and save result to database"""
@@ -97,9 +100,10 @@ class KpiProcess(threading_tools.process_obj):
         """Calculate single kpi"""
         srv_com = server_command.srv_command(source=srv_com_src)
         KpiGlobals.set_context()
-        data = KpiData(self.log)
         kpi_db = Kpi.objects.get(pk=int(srv_com['kpi_pk'].text))
         kpi_db.formula = srv_com['formula'].text  # don't save
+        self.log("Calculating KPI {} with custom formula".format(kpi_db))
+        data = KpiData(self.log)
         try:
             srv_com['kpi_set'] = self._evaluate_kpi(data, kpi_db)
         except KpiEvaluationError as e:
@@ -107,6 +111,7 @@ class KpiProcess(threading_tools.process_obj):
         srv_com.set_result("ok")
 
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.log("Finished calculating KPI")
 
     def _evaluate_kpi(self, data, kpi_db):
         """Evaluates given kpi on data returning the result as string or raising KpiEvaluationError
