@@ -74,6 +74,7 @@ angular.module(
                         scope.cur_edit_kpi.available_device_categories.push(tup[0])
                     if ! _.contains(scope.cur_edit_kpi.available_monitoring_categories, tup[1])
                         scope.cur_edit_kpi.available_monitoring_categories.push(tup[1])
+                scope._rebuild_tree()
 
             class base_tree_config extends tree_config
                 constructor: (@scope, args) ->
