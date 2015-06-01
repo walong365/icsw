@@ -581,7 +581,8 @@ class KpiSet(object):
 
     def at_least(self, num_ok, num_warn=None, result=KpiResult.ok):
         """
-        Check if at_least a number of objects have a certain result.
+        Check if at_least a number of objects have at least a certain result
+        (i.e. if checking for e.g. warning, ok is included).
         If num_warn is None, the result can only be ok or critical.
         :type result: KpiResult
         """
@@ -592,7 +593,7 @@ class KpiSet(object):
                               arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
                               operands=[self])
 
-        num = sum(1 for obj in self.result_objects if obj.result == result)
+        num = sum(1 for obj in self.result_objects if obj.result >= result)
 
         if num > num_ok:
             return KpiSet.get_singleton_ok(origin=origin)
