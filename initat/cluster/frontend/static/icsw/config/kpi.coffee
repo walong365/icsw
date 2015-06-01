@@ -97,7 +97,9 @@ angular.module(
                 selection_changed: (entry) =>
                     # update selection in model
                     if entry.selected
-                        @get_category_list().push(entry.obj.idx)
+                        # entry might already be contained if gui information is not present
+                        if !_.contains(@get_category_list(), entry.obj.idx)
+                            @get_category_list().push(entry.obj.idx)
                     else
                         _.remove(@get_category_list(), (rem_item) -> return rem_item == entry.obj.idx)
 
