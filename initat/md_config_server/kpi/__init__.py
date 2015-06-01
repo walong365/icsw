@@ -33,7 +33,10 @@ from initat.tools import logging_tools, process_tools, server_command, threading
 
 
 class KpiEvaluationError(Exception):
-    pass
+    def __init__(self, error_report):
+        if not isinstance(error_report, (tuple, list)):
+            error_report = [error_report]
+        super(KpiEvaluationError, self).__init__(error_report)
 
 
 class KpiProcess(threading_tools.process_obj):
@@ -145,10 +148,12 @@ class KpiProcess(threading_tools.process_obj):
 
             raise KpiEvaluationError(error_report)
         else:
-            self.log("Kpi {} successfully evaluated".format(kpi_db))
             if 'kpi' not in eval_locals:
-                self.log("Kpi {} does not define result".format(kpi_db))
+                msg = "{} does not define the variable `kpi` and therefore has no result.".format(kpi_db)
+                self.log(msg)
+                raise KpiEvaluationError(msg)
             else:
+                self.log("{} successfully evaluated".format(kpi_db))
                 result = eval_locals['kpi']
 
                 # print 'full result',
