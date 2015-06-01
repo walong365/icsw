@@ -57,9 +57,9 @@ for server in ${SERVER_SERVICES} ; do
 done
 
 # PostInstallScripts
-[ -x ${ICSW_PIS}/sge_post_install.sh ] && ${ICSW_PIS}/sge_post_install.sh
-[ -x ${ICSW_PIS}/webfrontend_post_install.sh ] && ${ICSW_PIS}/webfrontend_post_install.sh
 [ -x ${ICSW_PIS}/cluster_post_install.sh ] && ${ICSW_PIS}/cluster_post_install.sh
+[ -x ${ICSW_PIS}/webfrontend_post_install.sh ] && ${ICSW_PIS}/webfrontend_post_install.sh
+[ -x ${ICSW_PIS}/sge_post_install.sh ] && ${ICSW_PIS}/sge_post_install.sh
 
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
