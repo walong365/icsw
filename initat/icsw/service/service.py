@@ -245,7 +245,10 @@ class Service(object):
                 diff_str = ", [diff: {}]".format(
                     ", ".join(
                         [
-                            "{:d}: {:d}".format(_key, _value) for _key, _value in diff_dict.iteritems()
+                            "{:d}: {:d}".format(
+                                _key,
+                                _value
+                            ) for _key, _value in diff_dict.iteritems()
                         ]
                     )
                 )
@@ -561,7 +564,6 @@ class MetaService(Service):
             ms_block = process_tools.meta_server_info(ms_name)
             start_time = ms_block.start_time
             _check = ms_block.check_block(act_proc_dict)
-            #    print self.name, ms_block.pid_check_string
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
             act_pids = ms_block.pids_found
@@ -574,7 +576,6 @@ class MetaService(Service):
                 act_state = SERVICE_OK
                 num_found = num_started
             num_diff = diff_threads
-            # print ms_block.pids, ms_block.pid_check_string
             result.append(
                 E.state_info(
                     *[
@@ -735,4 +736,3 @@ class MetaService(Service):
                     process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
                 )
         return _arg_list
-

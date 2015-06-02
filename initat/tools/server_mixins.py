@@ -24,10 +24,41 @@ import time
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import threading_tools
-from initat.tools import server_command
+from initat.tools import server_command, configfile
 import zmq
-import time
 from enum import IntEnum
+
+
+class ServerStatusMixin(object):
+    # populates the srv_command with the current server stats
+    def server_status(self, srv_com, msi_block, global_config=None):
+        _status = msi_block.check_block()
+        _proc_info_dict = self.get_info_dict()
+        # add configfile manager
+        _mpid = configfile.get_manager_pid()
+        if _mpid is not None:
+            # salt proc_info_dict
+            _proc_info_dict[_mpid] = {
+                "name": "manager",
+                "pid": _mpid,
+                "alive": True
+            }
+        _pid_info = msi_block.pid_check_string(_proc_info_dict)
+        if global_config is not None:
+            try:
+                _vers = global_config["VERSION"]
+            except:
+                pass
+            else:
+                _pid_info = "{}, Version: {}".format(
+                    _pid_info,
+                    _vers,
+                )
+
+        srv_com.set_result(
+            _pid_info,
+            server_command.SRV_REPLY_STATE_OK if _status else server_command.SRV_REPLY_STATE_ERROR,
+        )
 
 
 # exception mixin
