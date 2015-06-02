@@ -24,14 +24,12 @@
 
 import logging
 
-from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
 from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsage
 from initat.cluster.frontend.rest_views import rest_logging
-
 from initat.cluster.backbone.models import License
 
 
@@ -98,7 +96,9 @@ class GetValidLicenses(RetrieveAPIView):
                                                    'all_licenses': [l.name for l in LicenseEnum]}))
     @rest_logging
     def get(self, request, *args, **kwargs):
-        return Response({
-            'valid_licenses': [l.name for l in License.objects.get_valid_licenses()],
-            'all_licenses': [l.name for l in LicenseEnum],
-        })
+        return Response(
+            {
+                'valid_licenses': [l.name for l in License.objects.get_valid_licenses()],
+                'all_licenses': [l.name for l in LicenseEnum],
+            }
+        )
