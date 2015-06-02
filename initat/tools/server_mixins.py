@@ -256,20 +256,20 @@ class RemoteAsyncHelper(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            return None, None, None
+            return None, None, None, None
         else:
             func_name, src_id, zmq_sock, s_time = self.__lut[async_id]
             e_time = time.time()
             del self.__lut[async_id]
             del srv_com["async_helper_id"]
-            self.log(
-                "finished async call {} ({:d}) in {}".format(
-                    func_name,
-                    async_id,
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                )
+            _log_str = "finished async call {} ({:d}) in {}".format(
+                func_name,
+                async_id,
+                logging_tools.get_diff_time_str(e_time - s_time),
             )
-            return zmq_sock, src_id, srv_com
+            if zmq_sock is None:
+                self.log(_log_str)
+            return zmq_sock, src_id, srv_com, _log_str
 
 
 def RemoteCallProcess(klass):
@@ -356,7 +356,6 @@ class RemoteCallMixin(object):
                     else:
                         rcs.handle(self, src_id, srv_com)
             else:
-                print in_data
                 self.log(
                     "no matching signature found for msg_type {} (command='{}')".format(
                         msg_type,
@@ -390,7 +389,8 @@ class RemoteCallMixin(object):
                 )
                 self._send_remote_call_reply(zmq_sock, in_data[0], _reply)
 
-    def _send_remote_call_reply(self, zmq_sock, src_id, reply):
+    def _send_remote_call_reply(self, zmq_sock, src_id, reply, add_log=None):
+        add_log = " ({})".format(add_log) if add_log is not None else ""
         # send return
         _send_str = unicode(reply)
         try:
@@ -398,32 +398,34 @@ class RemoteCallMixin(object):
             zmq_sock.send_unicode(_send_str)
         except:
             self.log(
-                "error sending reply to {} ({}): {}".format(
+                "error sending reply to {} ({}): {}{}".format(
                     src_id,
                     logging_tools.get_size_str(len(_send_str)),
                     process_tools.get_except_info(),
+                    add_log
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
             self.log(
-                "sent {} to {}".format(
+                "sent {} to {}{}".format(
                     logging_tools.get_size_str(len(_send_str)),
                     src_id,
+                    add_log,
                 )
             )
 
     def remote_call_async_result(self, *args, **kwargs):
         _src_proc, _src_pid, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
-        _sock, _src_id, _reply = self.remote_async_helper.result(srv_com)
+        _sock, _src_id, _reply, _log_str = self.remote_async_helper.result(srv_com)
         if _sock is not None:
-            self._send_remote_call_reply(_sock, _src_id, _reply)
+            self._send_remote_call_reply(_sock, _src_id, _reply, _log_str)
 
     def remote_call_async_done(self, *args, **kwargs):
         _src_proc, _src_pid, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
-        _sock, _src_id, _reply = self.remote_async_helper.result(srv_com)
+        self.remote_async_helper.result(srv_com)
 
 
 class RemoteCallMessageType(IntEnum):
