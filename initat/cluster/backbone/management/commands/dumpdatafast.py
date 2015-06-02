@@ -475,7 +475,7 @@ class Dependencies(object):
         res = []
         for field in model_obj._meta.fields:
             if isinstance(field, (ForeignKey, OneToOneField)):
-                res.append(field.related.parent_model)
+                res.append(field.related.model)
         return res
 
     def _dependency_tree(self, model_obj):
