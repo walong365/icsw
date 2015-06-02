@@ -481,6 +481,8 @@ class create_device(permission_required_mixin, View):
                     request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
             else:
                 request.xml_response.warn(u"device {} already exists".format(unicode(cur_dev)), logger=logger)
+                cur_dev = None
+
             if cur_dev is not None:
                 try:
                     cur_nd = netdevice.objects.get(Q(device=cur_dev) & Q(devname='eth0'))
