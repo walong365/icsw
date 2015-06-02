@@ -636,28 +636,37 @@ angular.module(
         template : $templateCache.get("icsw.tools.old.paginator")
         link     : link
     }
-]).service("icswToolsSimpleModalService", ["$modal", "$q", "$templateCache", ($modal, $q, $templateCache) ->
+]).service("icswToolsSimpleModalService", ["$q", ($q) ->
     return (question) ->
-        c_modal = $modal.open
-            template : $templateCache.get("icsw.tools.simple.modal")
-            controller : ["$scope", "$modalInstance", "question", ($scope, $modalInstance, question) ->
-                $scope.question = question
-                $scope.ok = () ->
-                    $modalInstance.close(true)
-                $scope.cancel = () ->
-                    $modalInstance.dismiss("cancel")
-            ]
-            backdrop : "static"
-            resolve :
-                question : () ->
-                    return question
         d = $q.defer()
-        c_modal.result.then(
-            () ->
-                return d.resolve()
-            () ->
-                return d.reject()
-        )
+        BootstrapDialog.show
+            message: question
+            draggable: true
+            size: BootstrapDialog.SIZE_SMALL
+            title: "Please confirm"
+            closable: true
+            closeByBackdrop: false
+            buttons: [
+                {
+                     icon: "glyphicon glyphicon-ok"
+                     cssClass: "btn-warning"
+                     label: "Yes"
+                     action: (dialog) ->
+                        dialog.close()
+                        d.resolve()
+                },
+                {
+                    icon: "glyphicon glyphicon-remove"
+                    label: "No"
+                    cssClass: "btn-success"
+                    action: (dialog) ->
+                        dialog.close()
+                        d.reject()
+                },
+            ]
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
         return d.promise
 ]).service("icswToolsUUID", [() ->
     return () ->
