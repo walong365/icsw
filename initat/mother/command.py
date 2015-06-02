@@ -310,13 +310,15 @@ class ExternalCommandProcess(threading_tools.process_obj):
         if simple_command.idle():
             self.unregister_timer(self._check_commands)
 
-    def _hard_control(self, zmq_id, in_com, *args, **kwargs):
+    def _hard_control(self, in_com, *args, **kwargs):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
         in_com = server_command.srv_command(source=in_com)
         self.router_obj.check_for_update()
         for cur_dev in in_com.xpath(".//ns:device", smart_strings=False):
             hc_command(in_com.get("user_id", None), cur_dev, self.router_obj, self.snmp_sink)
+        in_com.set_result("ok handled hc command")
+        self.send_pool_message("remote_call_async_result", unicode(in_com))
 
     def sc_finished(self, sc_com):
         # output

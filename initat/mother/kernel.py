@@ -47,7 +47,6 @@ class kernel_sync_process(threading_tools.process_obj):
         )
         # close database connection
         connection.close()
-        self.register_func("srv_command", self._srv_command)
         self.register_func("rescan_kernels", self._rescan_kernels)
         self.kernel_dev = config_tools.server_check(server_type="kernel_server")
 
@@ -58,15 +57,9 @@ class kernel_sync_process(threading_tools.process_obj):
         self.__log_template.close()
 
     def _rescan_kernels(self, *args, **kwargs):
-        src_id, srv_com_str = args[0:2]
-        srv_com = server_command.srv_command(source=srv_com_str)
+        srv_com = server_command.srv_command(source=args[0])
         self._check_kernel_dir(srv_com)
-        self.send_pool_message("send_return", src_id, unicode(srv_com))
-
-    def _srv_command(self, srv_com, **kwargs):
-        srv_com = server_command.srv_command(source=srv_com)
-        if srv_com["command"].text == "check_kernel_dir":
-            self._check_kernel_dir(srv_com)
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _check_kernel_dir(self, srv_com):
         self.log("checking kernel dir")

@@ -24,8 +24,7 @@
 import sys
 import zmq
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 def open_socket(zmq_context):

@@ -21,7 +21,7 @@
 import json
 
 import os
-from initat.tools.server_mixins import RemoteCallMessageType, RemoteCall
+from initat.tools.server_mixins import RemoteCallMessageType, RemoteCall, ServerStatusMixin
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -55,11 +55,14 @@ import zmq
 
 
 @server_mixins.RemoteCallProcess
-class server_process(threading_tools.process_pool,
-                     version_check_mixin,
-                     server_mixins.RemoteCallMixin,
-                     server_mixins.OperationalErrorMixin,
-                     server_mixins.NetworkBindMixin):
+class server_process(
+    threading_tools.process_pool,
+    version_check_mixin,
+    server_mixins.RemoteCallMixin,
+    server_mixins.OperationalErrorMixin,
+    server_mixins.NetworkBindMixin,
+    ServerStatusMixin,
+):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -542,6 +545,10 @@ class server_process(threading_tools.process_pool,
     @RemoteCall(target_process="dynconfig")
     def passive_check_results_as_chunk(self, srv_com, **kwargs):
         return srv_com
+
+    @RemoteCall()
+    def status(self, srv_com, **kwargs):
+        return self.server_status(srv_com, self.__msi_block, global_config)
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
