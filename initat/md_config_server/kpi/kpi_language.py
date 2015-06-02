@@ -699,7 +699,7 @@ class KpiSet(object):
 
                 # also aggregate state types
                 ratio = sum(v for k, v in aggregated_tl.iteritems()
-                            if k[0] == result)
+                            if k[0] >= result)
 
                 if discard_planned_downtimes:
                     ratio_planned_down = sum(v for k, v in aggregated_tl.iteritems()
