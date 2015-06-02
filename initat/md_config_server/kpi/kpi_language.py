@@ -231,8 +231,12 @@ class KpiDetailObject(KpiObject):
         return super(KpiDetailObject, self).__repr__(child_repr=child_repr + ";time_line:{}".format(self.time_line))
 
     def serialize(self):
+        aggr_tl = TimeLineUtils.merge_state_types(
+            self.time_line,
+            KpiGlobals.current_kpi.soft_states_as_hard_states,
+        )
         return dict(
-            aggregated_tl={unicode(k): v for k, v in TimeLineUtils.merge_state_types(self.time_line).iteritems()},
+            aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
             **super(KpiDetailObject, self).serialize()
         )
 
@@ -340,7 +344,10 @@ class KpiTimeLineObject(KpiObject):
         self.time_line = time_line
 
     def serialize(self):
-        aggr_tl = TimeLineUtils.merge_state_types(TimeLineUtils.aggregate_time_line(self.time_line))
+        aggr_tl = TimeLineUtils.merge_state_types(
+            TimeLineUtils.aggregate_time_line(self.time_line),
+            KpiGlobals.current_kpi.soft_states_as_hard_states,
+        )
         return dict(
             aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
             **super(KpiTimeLineObject, self).serialize()

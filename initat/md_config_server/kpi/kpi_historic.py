@@ -23,8 +23,8 @@ import django.utils.timezone
 from django.db.models import Q
 import operator
 import itertools
-from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList, \
-    mon_icinga_log_raw_host_alert_data
+from initat.md_config_server.kpi.kpi_language import KpiResult
+from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList
 
 
 # itertools recipe
@@ -170,10 +170,23 @@ class TimeLineUtils(list):
         return {k: v / total_time_span for k, v in states_accumulator.iteritems()}
 
     @staticmethod
-    def merge_state_types(aggregated_tl):
+    def merge_state_types(time_line, soft_states_as_hard_states):
+        """
+        Remove state type intelligently
+        """
         accumulator = collections.defaultdict(lambda: 0)
-        for k, v in aggregated_tl.iteritems():
-            accumulator[k[0]] += v
+        if soft_states_as_hard_states:
+            for k, v in time_line.iteritems():
+                accumulator[k[0]] += v
+        else:
+            for k, v in time_line.iteritems():
+                # treat some soft states as different states (soft down isn't necessarily actually down)
+                if k[0] == KpiResult.critical and k[1] == mon_icinga_log_raw_base.STATE_TYPE_SOFT:
+                    actual_state = KpiResult.warning
+                else:
+                    # states like soft ok and soft warn are just treated as ok and warn respectively
+                    actual_state = k[0]
+                accumulator[actual_state] += v
         return accumulator
 
 

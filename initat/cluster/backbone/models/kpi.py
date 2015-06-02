@@ -54,6 +54,9 @@ class Kpi(models.Model):
 
     gui_selected_categories = models.TextField(blank=True)  # json
 
+    # if this is false, states like 'soft critical' is not interpreted as actually critical
+    soft_states_as_hard_states = models.BooleanField(default=True)
+
     def set_result(self, result_str, date):
         try:
             self.kpistoredresult.result = result_str
