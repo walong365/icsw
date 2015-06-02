@@ -23,7 +23,6 @@ import django.utils.timezone
 from django.db.models import Q
 import operator
 import itertools
-from initat.md_config_server.kpi.kpi_language import KpiResult
 from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList
 
 
@@ -174,6 +173,7 @@ class TimeLineUtils(list):
         """
         Remove state type intelligently
         """
+        from initat.md_config_server.kpi.kpi_language import KpiResult
         accumulator = collections.defaultdict(lambda: 0)
         if soft_states_as_hard_states:
             for k, v in time_line.iteritems():

@@ -37,8 +37,7 @@ import initat.collectd.aggregate
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject, KpiSet, \
-    KpiOperation
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject, KpiSet
 from initat.md_config_server.kpi.kpi_utils import KpiUtils
 
 
