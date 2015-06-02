@@ -135,13 +135,13 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
     ignore_list_static = [entry for entry in ignore_list]
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
-        _rel_name = rel_obj.model._meta.object_name
+        _rel_name = rel_obj.related_model._meta.object_name
         if _rel_name not in ignore_list_static:
             if rel_obj.field.rel.on_delete == models.SET_NULL:
                 # ignore foreign keys where on_delete == SET_NULL
                 pass
             else:
-                ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
+                ref_list = [entry for entry in rel_obj.related_model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
                 if ref_list:
                     if related_objects is not None:
                         rel_obj.ref_list = ref_list
