@@ -28,7 +28,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import Kpi, License
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
-from initat.md_config_server.kpi.kpi_utils import print_tree, KpiUtils
+from initat.md_config_server.kpi.kpi_utils import print_tree
 from initat.tools import logging_tools, process_tools, server_command, threading_tools
 
 
@@ -66,7 +66,7 @@ class KpiProcess(threading_tools.process_obj):
     def _get_kpi_source_data(self, srv_com_src, **kwargs):
         srv_com = server_command.srv_command(source=srv_com_src)
         dev_mon_cat_tuples = json.loads(srv_com['tuples'].text)
-        start, end = KpiUtils.parse_kpi_time_range(
+        start, end = Kpi.objects.parse_kpi_time_range(
             json.loads(srv_com['time_range'].text),
             json.loads(srv_com['time_range_parameter'].text),
         )

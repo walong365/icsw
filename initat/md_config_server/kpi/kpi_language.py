@@ -29,7 +29,6 @@ from collections import defaultdict
 from enum import IntEnum, Enum
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
-from initat.md_config_server.kpi.kpi_utils import KpiUtils
 from initat.tools import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_aggregated_host_data
@@ -643,7 +642,7 @@ class KpiSet(object):
 
         objects = []
         if relevant_obj_identifiers:
-            start, end = KpiUtils.parse_kpi_time_range_from_kpi(KpiGlobals.current_kpi)
+            start, end = KpiGlobals.current_kpi.get_time_range()
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())

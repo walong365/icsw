@@ -38,7 +38,6 @@ from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDa
 from initat.md_config_server.common import live_socket
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject, KpiSet
-from initat.md_config_server.kpi.kpi_utils import KpiUtils
 
 
 class KpiData(object):
@@ -68,7 +67,7 @@ class KpiData(object):
         dev_mon_tuples = kpi_db.kpidatasourcetuple_set.all()
 
         if kpi_db.has_historic_data():
-            start, end = KpiUtils.parse_kpi_time_range_from_kpi(kpi_db)
+            start, end = kpi_db.get_time_range()
         else:
             start, end = None, None
 
