@@ -37,6 +37,7 @@ __all__ = [
     "snmp_scheme_vendor",
     "snmp_scheme",
     "snmp_scheme_tl_oid",
+    "ComCapability",
 ]
 
 

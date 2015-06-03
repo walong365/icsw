@@ -65,10 +65,11 @@ class server_process(
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
         self._init_processes()
+        # not really necessary
         self.install_remote_call_handlers()
         self.__run_idx = 0
         self.__pending_commands = {}
-        if process_tools.get_machine_name() == "eddie" and global_config["DEBUG"]:
+        if process_tools.get_machine_name() == "eddiex" and global_config["DEBUG"]:
             self._test()
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -136,36 +137,31 @@ class server_process(
         for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
         conf_info = global_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
+        self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
 
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
-            self.__msi_block.save_block()
+        self.__msi_block.add_actual_pid(src_pid, mult=mult)
+        self.__msi_block.save_block()
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
-        if not global_config["DEBUG"] or True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("discovery-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("discovery-server")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+        msi_block.kill_pids = True
+        msi_block.save_block()
         return msi_block
 
     def loop_end(self):
         self.spc.close()
         process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.network_unbind()
@@ -195,6 +191,18 @@ class server_process(
 
     @RemoteCall(target_process="discovery")
     def snmp_basic_scan(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
+    def snmp_basic_scan(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
+    def snmp_basic_scan(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
+    def base_scan(self, srv_com, **kwargs):
         return srv_com
 
     def _snmp_finished(self, args):

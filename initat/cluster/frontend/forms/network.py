@@ -391,7 +391,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
             </ui-select>
             <!--<select chosen="True" class="select form-control" ng-model="_edit_obj.s_netdevice"
                 ng-options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()"
-                required="True" ng-if="!source_is_local">
+                required="required" ng-if="!source_is_local">
             </select>-->
         </div>
     </div>
@@ -410,7 +410,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
             </ui-select>
             <!--<select chosen="True" class="select form-control" ng-model="_edit_obj.d_netdevice"
                 ng-options="value.idx as value.devname for value in _current_dev.netdevice_set"
-                required="True" ng-if="!source_is_local">
+                required="required" ng-if="!source_is_local">
             </select>-->
         </div>
     </div>
@@ -475,7 +475,8 @@ class device_network_scan_form(Form):
         ),
         # HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)'"
         # " select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
-        HTML("<tabset><tab heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
+        HTML("<tabset><tab heading='BaseScan' select='set_scan_mode(\"base\")' active='_current_dev.scan_base_active'>"),
+        HTML("</tab><tab heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
         Fieldset(
             "Flags",
             Field("strict_mode"),

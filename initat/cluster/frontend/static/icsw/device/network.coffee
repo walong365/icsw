@@ -182,7 +182,7 @@ angular.module(
 
         $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
         $scope.scan_mixin.template = "device.network.scan.form"
-        
+
         $scope.devsel_list = []
         $scope.devices = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -356,12 +356,13 @@ angular.module(
             dev.snmp_version = 1
             dev.remove_not_found = false
             dev.strict_mode = true
+            dev.scan_base_active = false
             dev.scan_hm_active = false
             dev.scan_snmp_active = false
             if $scope.no_objects_defined(dev)
-                $scope.set_scan_mode("snmp")
+                $scope.set_scan_mode("base")
             else
-                $scope.set_scan_mode("hm")
+                $scope.set_scan_mode("snmp")
             $scope.scan_mixin.edit(dev, event).then(
                 (mod_obj) ->
                     true

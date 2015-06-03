@@ -558,16 +558,12 @@ class device(models.Model):
     is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
-    # scan active ?
+    # scan active, can be one of
+    # ... base (base scan)
+    # ... com_capability_matchcode
     active_scan = models.CharField(
         max_length=16,
         default="",
-        choices=[
-            ("snmp", "SNMP"),
-            ("ipmi", "IPMI"),
-            # also used for partition fetch
-            ("hm", "Host monitor"),
-        ],
         blank=True
     )
 
