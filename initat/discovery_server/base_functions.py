@@ -29,12 +29,15 @@ from lxml import etree
 
 
 class BaseScanBatch(object):
-    def __init__(self, srv_com, scan_dev):
+    def __init__(self, dev_com, scan_dev):
         self.start_time = time.time()
-        self.srv_com = srv_com
+        self.dev_com = dev_com
         self.device = scan_dev
         self.id = BaseScanBatch.next_batch_id(self)
-        BaseScanBatch.process.get_route_to_devices([self.device])
+        if "scan_address" in dev_com.attrib:
+            self.device.target_ip = dev_com.attrib["scan_address"]
+        else:
+            BaseScanBatch.process.get_route_to_devices([self.device])
         if self.device.target_ip:
             self._ext_com = ExtCom(self.log, self._build_command())
             self._ext_com.run()
@@ -76,11 +79,6 @@ class BaseScanBatch(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, result=False):
         BaseScanBatch.process.log("[base {:d}] {}".format(self.id, what), log_level)
-        if result:
-            self.srv_com.set_result(
-                what,
-                server_command.log_level_to_srv_reply(log_level)
-            )
 
     def check_ext_com(self):
         _res = self._ext_com.finished()
@@ -101,7 +99,29 @@ class BaseScanBatch(object):
                     )
                 )
                 _xml = etree.fromstring(_output[0])
-                print etree.tostring(_xml, pretty_print=True)
+                found_comspecs = set()
+                for _port in _xml.xpath(".//port[state[@state='open']]", smart_strings=False):
+                    _portspec = "{}/{}".format(
+                        _port.attrib["portid"],
+                        _port.attrib["protocol"],
+                    )
+                    if _portspec in self.port_ref_lust:
+                        found_comspecs.add(self.port_ref_lust[_portspec])
+                    else:
+                        self.log("unknown portspec {}".format(_portspec), logging_tools.LOG_LEVEL_WARN)
+                if found_comspecs:
+                    self.log(
+                        "found {}: {}".format(
+                            logging_tools.get_plural("comspec", len(found_comspecs)),
+                            ", ".join(found_comspecs)
+                        )
+                    )
+                    self.device.com_capability_list.all().delete()
+                    for _spec in found_comspecs:
+                        self.device.com_capability_list.add(ComCapability.objects.get(Q(matchcode=_spec)))
+                else:
+                    # todo: handle some kind of strict mode and delete all comspecs
+                    self.log("no comspecs found", logging_tools.LOG_LEVEL_WARN)
             self.finish()
 
     def finish(self):
