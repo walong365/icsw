@@ -39,12 +39,11 @@ from .config import global_config
 from .hm_functions import hm_mixin
 
 
-class snmp_batch(object):
-    def __init__(self, src_uid, srv_com):
-        self.src_uid = src_uid
+class SNMPBatch(object):
+    def __init__(self, srv_com):
         self.srv_com = srv_com
-        self.id = snmp_batch.next_snmp_batch_id()
-        snmp_batch.add_batch(self)
+        self.id = SNMPBatch.next_snmp_batch_id()
+        SNMPBatch.add_batch(self)
         self.init_run(self.srv_com["*command"])
         self.batch_valid = True
         try:
@@ -65,7 +64,7 @@ class snmp_batch(object):
             self.batch_valid = False
             self.finish()
         else:
-            if snmp_batch.process.device_is_idle(self.device, "snmp"):
+            if SNMPBatch.process.device_is_idle(self.device, "snmp"):
                 self.log("SNMP scan started", result=True)
                 self.start_run()
             else:
@@ -102,7 +101,7 @@ class snmp_batch(object):
         self.log("set snmp props to {}@{} (v{:d})".format(self.snmp_community, self.snmp_address, self.snmp_version))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, result=False):
-        snmp_batch.process.log("[batch {:d}] {}".format(self.id, what), log_level)
+        SNMPBatch.process.log("[batch {:d}] {}".format(self.id, what), log_level)
         if result:
             self.srv_com.set_result(
                 what,
@@ -111,9 +110,9 @@ class snmp_batch(object):
 
     def new_run(self, flag, timeout, *oid_list, **kwargs):
         if self.batch_valid:
-            _run_id = snmp_batch.next_snmp_run_id(self.id)
+            _run_id = SNMPBatch.next_snmp_run_id(self.id)
             self.__snmp_results[_run_id] = None
-            snmp_batch.process.send_pool_message(
+            SNMPBatch.process.send_pool_message(
                 "snmp_run",
                 self.snmp_version,
                 self.snmp_address,
@@ -227,49 +226,49 @@ class snmp_batch(object):
 
     def finish(self):
         if self.device.active_scan:
-            snmp_batch.process.clear_scan(self.device)
+            SNMPBatch.process.clear_scan(self.device)
         # self.send_return()
-        snmp_batch.remove_batch(self)
+        SNMPBatch.remove_batch(self)
 
     def send_return(self):
-        self.process.send_pool_message("discovery_result", self.src_uid, unicode(self.srv_com))
+        self.process.send_pool_message("remote_call_async_result", unicode(self.srv_com))
 
     @staticmethod
     def glob_feed_snmp(_run_id, error, src, results):
-        snmp_batch.batch_dict[snmp_batch.run_batch_lut[_run_id]].feed_snmp(_run_id, error, src, results)
-        del snmp_batch.run_batch_lut[_run_id]
+        SNMPBatch.batch_dict[SNMPBatch.run_batch_lut[_run_id]].feed_snmp(_run_id, error, src, results)
+        del SNMPBatch.run_batch_lut[_run_id]
 
     @staticmethod
     def setup(proc):
-        snmp_batch.process = proc
-        snmp_batch.snmp_batch_id = 0
-        snmp_batch.snmp_run_id = 0
-        snmp_batch.pending = {}
-        snmp_batch.run_batch_lut = {}
-        snmp_batch.batch_dict = {}
+        SNMPBatch.process = proc
+        SNMPBatch.snmp_batch_id = 0
+        SNMPBatch.snmp_run_id = 0
+        SNMPBatch.pending = {}
+        SNMPBatch.run_batch_lut = {}
+        SNMPBatch.batch_dict = {}
 
     @staticmethod
     def next_snmp_run_id(batch_id):
-        snmp_batch.snmp_run_id += 1
-        snmp_batch.run_batch_lut[snmp_batch.snmp_run_id] = batch_id
-        return snmp_batch.snmp_run_id
+        SNMPBatch.snmp_run_id += 1
+        SNMPBatch.run_batch_lut[SNMPBatch.snmp_run_id] = batch_id
+        return SNMPBatch.snmp_run_id
 
     @staticmethod
     def next_snmp_batch_id():
-        snmp_batch.snmp_batch_id += 1
-        return snmp_batch.snmp_batch_id
+        SNMPBatch.snmp_batch_id += 1
+        return SNMPBatch.snmp_batch_id
 
     @staticmethod
     def add_batch(batch):
-        snmp_batch.batch_dict[batch.id] = batch
+        SNMPBatch.batch_dict[batch.id] = batch
 
     @staticmethod
     def remove_batch(batch):
-        del snmp_batch.batch_dict[batch.id]
+        del SNMPBatch.batch_dict[batch.id]
         del batch
 
 
-class discovery_process(threading_tools.process_obj, hm_mixin):
+class DiscoveryProcess(threading_tools.process_obj, hm_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # self.add_process(build_process("build"), start=True)
@@ -283,16 +282,14 @@ class discovery_process(threading_tools.process_obj, hm_mixin):
         self._init_snmp()
 
     def _fetch_partition_info(self, *args, **kwargs):
-        src_uid, srv_com = args[0:2]
-        srv_com = server_command.srv_command(source=srv_com)
+        srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "fetch_partition_info", "hm")
-        self.send_pool_message("discovery_result", src_uid, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _scan_network_info(self, *args, **kwargs):
-        src_uid, srv_com = args[0:2]
-        srv_com = server_command.srv_command(source=srv_com)
+        srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "scan_network_info", "hm")
-        self.send_pool_message("discovery_result", src_uid, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _iterate(self, srv_com, c_name, scan_type):
         total_result = ResultNode()
@@ -356,12 +353,11 @@ class discovery_process(threading_tools.process_obj, hm_mixin):
         self.__log_template.close()
 
     def _init_snmp(self):
-        snmp_batch.setup(self)
+        SNMPBatch.setup(self)
 
     def _snmp_basic_scan(self, *args, **kwargs):
-        src_uid, srv_com = args[0:2]
-        snmp_batch(src_uid, server_command.srv_command(source=srv_com))
+        SNMPBatch(server_command.srv_command(source=args[0]))
 
     def _snmp_result(self, *args, **kwargs):
         _batch_id, _error, _src, _results = args
-        snmp_batch.glob_feed_snmp(_batch_id, _error, _src, _results)
+        SNMPBatch.glob_feed_snmp(_batch_id, _error, _src, _results)

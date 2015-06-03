@@ -32,7 +32,8 @@ from enum import IntEnum
 
 class ServerStatusMixin(object):
     # populates the srv_command with the current server stats
-    def server_status(self, srv_com, msi_block, global_config=None):
+    def server_status(self, srv_com, msi_block, global_config=None, spc=None):
+        # spc is an optional snmp_process_container
         _status = msi_block.check_block()
         _proc_info_dict = self.get_info_dict()
         # add configfile manager
@@ -44,6 +45,8 @@ class ServerStatusMixin(object):
                 "pid": _mpid,
                 "alive": True
             }
+        if spc is not None:
+            spc.salt_proc_info_dict(_proc_info_dict)
         _pid_info = msi_block.pid_check_string(_proc_info_dict)
         if global_config is not None:
             try:
@@ -248,28 +251,35 @@ class RemoteAsyncHelper(object):
         self.__lut[self.__async_id] = (rcs.func_name, src_id, zmq_sock, time.time())
 
     def result(self, srv_com):
-        async_id = int(srv_com["*async_helper_id"])
-        if async_id not in self.__lut:
+        if "async_helper_id" not in srv_com:
             self.log(
-                "asnyc_id {:d} not defined in lut, discarding message".format(
-                    asnyc_id
-                ),
+                "asnyc_helper_id  not found in srv_com, discarding message",
                 logging_tools.LOG_LEVEL_ERROR
             )
             return None, None, None, None
         else:
-            func_name, src_id, zmq_sock, s_time = self.__lut[async_id]
-            e_time = time.time()
-            del self.__lut[async_id]
-            del srv_com["async_helper_id"]
-            _log_str = "finished async call {} ({:d}) in {}".format(
-                func_name,
-                async_id,
-                logging_tools.get_diff_time_str(e_time - s_time),
-            )
-            if zmq_sock is None:
-                self.log(_log_str)
-            return zmq_sock, src_id, srv_com, _log_str
+            async_id = int(srv_com["*async_helper_id"])
+            if async_id not in self.__lut:
+                self.log(
+                    "asnyc_id {:d} not defined in lut, discarding message".format(
+                        asnyc_id
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                return None, None, None, None
+            else:
+                func_name, src_id, zmq_sock, s_time = self.__lut[async_id]
+                e_time = time.time()
+                del self.__lut[async_id]
+                del srv_com["async_helper_id"]
+                _log_str = "finished async call {} ({:d}) in {}".format(
+                    func_name,
+                    async_id,
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                )
+                if zmq_sock is None:
+                    self.log(_log_str)
+                return zmq_sock, src_id, srv_com, _log_str
 
 
 def RemoteCallProcess(klass):
@@ -345,11 +355,7 @@ class RemoteCallMixin(object):
                 else:
                     if rcs.send_async_return:
                         if not hasattr(self, "remote_async_helper"):
-                            self.remote_async_helper = RemoteAsyncHelper(self)
-                            # callback to send result
-                            self.register_func("remote_call_async_result", self.remote_call_async_result)
-                            # callback to forget async helper entry
-                            self.register_func("remote_call_async_done", self.remote_call_async_done)
+                            self.install_remote_call_handlers()
                         self.remote_async_helper.register(rcs, src_id, srv_com, zmq_sock)
                     if msg_type == RemoteCallMessageType.flat:
                         rcs.handle(self, src_id, data)
@@ -388,6 +394,14 @@ class RemoteCallMixin(object):
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
                 self._send_remote_call_reply(zmq_sock, in_data[0], _reply)
+
+    def install_remote_call_handlers(self):
+        if not hasattr(self, "remote_async_helper"):
+            self.remote_async_helper = RemoteAsyncHelper(self)
+            # callback to send result
+            self.register_func("remote_call_async_result", self.remote_call_async_result)
+            # callback to forget async helper entry
+            self.register_func("remote_call_async_done", self.remote_call_async_done)
 
     def _send_remote_call_reply(self, zmq_sock, src_id, reply, add_log=None):
         add_log = " ({})".format(add_log) if add_log is not None else ""
