@@ -82,7 +82,7 @@ class Parser(object):
         except:
             print("cannot interpret '{}', using default".format(opt_ns.node_filter))
             opt_ns.node_re = re.compile("^$")
-        opt_ns.line_format = "{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}}{{msg}}".format(
+        opt_ns.line_format = u"{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}}{{msg}}".format(
             max_system_len
         )
         opt_ns.used_systems = [_entry for _entry in opt_ns.systems if opt_ns.system_re.match(_entry)]

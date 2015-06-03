@@ -21,6 +21,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ show and follow cluster logs """
+import codecs
 
 import os
 import datetime
@@ -79,7 +80,7 @@ class LogWatcher(object):
 
     def open(self):
         try:
-            self.fd = open(self.path)
+            self.fd = codecs.open(self.path, "r", "utf-8")
         except:
             if self.opt_ns.verbose:
                 print("Cannot open {}: {}".format(self.path, process_tools.get_except_info()))
@@ -165,7 +166,7 @@ class LogCache(object):
     def show(self):
         if self.lines:
             print(
-                "\n".join(
+                u"\n".join(
                     [
                         unicode(_line) for _line in self.lines
                     ]
