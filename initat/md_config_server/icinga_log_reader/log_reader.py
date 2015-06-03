@@ -205,12 +205,15 @@ class icinga_log_reader(threading_tools.process_obj):
                 for day_missed in xrange(missed_timedelta.days + 1):  # include last
                     missed_log_day = last_read_date + datetime.timedelta(days=day_missed)
 
+                    format_num = lambda num: "{:02d}".format(num)
+
                     day_files = glob.glob(
                         os.path.join(icinga_log_reader.get_icinga_log_archive_dir(),
                                      "{}-{}-{}-{}-*".format(global_config['MD_TYPE'],
-                                                            missed_log_day.month,
-                                                            missed_log_day.day,
-                                                            missed_log_day.year)))
+                                                            format_num(missed_log_day.month),
+                                                            format_num(missed_log_day.day),
+                                                            format_num(missed_log_day.year)))
+                    )
                     files_to_check.extend(day_files)
 
                 # read archive
