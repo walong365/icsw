@@ -182,6 +182,7 @@ angular.module(
 
         $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
         $scope.scan_mixin.template = "device.network.scan.form"
+        $scope.scan_mixin.cssClass = "modal-tall"
 
         $scope.devsel_list = []
         $scope.devices = []
@@ -342,15 +343,22 @@ angular.module(
         $scope.scan_device_network = (dev, event) ->
             $scope._current_dev = dev
             $scope.scan_device = dev
-            ip_list = []
+            network_type_names = []
+            ip_dict = {}
             for ndev in dev.netdevice_set
                 for ip in ndev.net_ip_set
                     if ip.network of $scope.network_lut
                         network = $scope.network_lut[ip.network]
                         if network.network_type_identifier != "l" and not (network.netmask == "255.0.0.0" and network.network == "127.0.0.0")
-                            ip_list.push(ip.ip)
-            ip_list = _.sortBy(ip_list)
-            dev.ip_list = ip_list
+                            if network.network_type_name not of ip_dict
+                                ip_dict[network.network_type_name] = []
+                                network_type_names.push(network.network_type_name)
+                            ip_dict[network.network_type_name].push(ip.ip)
+            for key, value of ip_dict
+                ip_dict[key] = _.sortBy(value)
+            network_type_names = _.sortBy(network_type_names)
+            dev.ip_dict = ip_dict
+            dev.network_type_names = network_type_names
             dev.manual_address = "0.0.0.0"
             dev.snmp_community = "public"
             dev.snmp_version = 1

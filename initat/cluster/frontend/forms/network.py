@@ -464,8 +464,8 @@ class device_network_scan_form(Form):
             HTML("""
 <div>{% verbatim %}
 <ul class="list-group">
-    <li class="list-group-item" ng-repeat="ip in _edit_obj.ip_list">
-        <input type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input>
+    <li class="list-group-item" ng-repeat="name in _edit_obj.network_type_names">
+        {{ name }}: <input ng-repeat="ip in _edit_obj.ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input>
     </li>
     <li class="list-group-item">
         IP: <input ng-model="_edit_obj.manual_address"></input>

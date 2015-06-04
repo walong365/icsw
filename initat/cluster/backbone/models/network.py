@@ -166,6 +166,9 @@ class network(models.Model):
     def get_identifier(self):
         return self.network_type.identifier
 
+    def get_type_name(self):
+        return self.network_type.description
+
     def num_ip(self):
         return self.net_ip_set.all().count()
 
