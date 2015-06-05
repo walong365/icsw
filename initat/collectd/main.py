@@ -94,8 +94,10 @@ def main():
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="rrd_collector")
     if not sql_info.effective_device:
-        print "not an rrd_collector"
-        sys.exit(5)
+        sql_info = config_tools.server_check(server_type="rrd_server")
+        if not sql_info.effective_device:
+            print("not an rrd_collector or rrd_server")
+            sys.exit(5)
     else:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     global_config.add_config_entries(
@@ -128,7 +130,10 @@ def main():
             ("RRD_COVERAGE_3", configfile.str_c_var("15mins for 1month", database=True)),
             ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
             ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
-            ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
+            (
+                "MODIFY_RRD_COVERAGE",
+                configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)
+            ),
             ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
             ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
             ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
