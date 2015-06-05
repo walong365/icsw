@@ -24,6 +24,7 @@
 
 import os
 import time
+import hashlib
 
 from initat.tools import logging_tools
 from initat.tools import process_tools
@@ -69,6 +70,8 @@ class ServiceContainer(object):
         self.__log_com = log_com
         self.__act_proc_dict = None
         self.__valid_licenses = None
+        self.__model_md5 = self.get_models_md5()
+        self.__models_changed = False
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SrvC] {}".format(what), log_level)
@@ -110,11 +113,26 @@ class ServiceContainer(object):
         else:
             self.__valid_licenses = None
 
+    def get_models_md5(self):
+        _dict = {}
+        if config_tools:
+            _mdir = os.path.normpath(os.path.join(os.path.dirname(config_tools.__file__), "..", "cluster", "backbone", "models"))
+            self.log("generating MD5s for models from dir {}".format(_mdir))
+            for _entry in os.listdir(_mdir):
+                if _entry.endswith(".py"):
+                    _md5 = hashlib.new("md5")
+                    _md5.update(file(os.path.join(_mdir, _entry)).read())
+                    _checksum = _md5.hexdigest()
+                    _dict[_entry] = _checksum
+        return _dict
+
     def check_service(self, entry, use_cache=True, refresh=True):
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
             self.update_valid_licenses()
         entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools, valid_licenses=self.valid_licenses)
+        if not entry.config_check_ok:
+            self._all_config_checks_ok = False
 
     def apply_filter(self, service_list, instance_xml):
         check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
@@ -136,11 +154,19 @@ class ServiceContainer(object):
 
     # main entry point: check_system
     def check_system(self, opt_ns, instance_xml):
+        def _get_fp(in_dict):
+            return ":".join([in_dict[_key] for _key in sorted(in_dict.iterkeys())])
         check_list = self.apply_filter(opt_ns.service, instance_xml)
         self.update_proc_dict()
         self.update_valid_licenses()
+        self._all_config_checks_ok = True
         for entry in check_list:
-            self.check_service(entry, use_cache=True, refresh=True)
+            self.check_service(entry, use_cache=True, refresh=True, models_changed=self.__models_changed)
+        if not self._all_config_checks_ok:
+            if self.__model_md5:
+                if _get_fp(self.__model_md5) != _get_fp(self.get_models_md5()):
+                    self.log("models have changed, forcing all services with DB-checks to state dead")
+                    self.__models_changed = True
         return check_list
 
     def decide(self, subcom, service):

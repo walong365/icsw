@@ -552,6 +552,7 @@ class device(models.Model):
     has_active_rrds = models.BooleanField(default=False)
     # communication capability list, like IPMI, WMI, SNMP
     com_capability_list = models.ManyToManyField("backbone.ComCapability")
+    # x = models.BigIntegerField(default=0)
     # has an IPMI interface
     # ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
     # flag: is meta device ?
