@@ -229,7 +229,7 @@ def enter_data(c_dict, engine_selected, database_selected):
         "mysql": "django.db.backends.mysql",
         "psql": "django.db.backends.postgresql_psycopg2",
         "sqlite": "django.db.backends.sqlite3",
-        }[c_dict["_engine"]]
+    }[c_dict["_engine"]]
 
 
 def create_db_cf(opts):
@@ -345,14 +345,6 @@ def check_for_pre17(opts):
         # first step: move 1.7 models / serializers away
         _move_dirs = ["models", "serializers"]
         for _dir in _move_dirs:
-            # check for UCS migration problems
-            if not os.path.isdir(os.path.join(BACKBONE_DIR, _dir)):
-                print("Directory {} not found in {}".format(_dir, BACKBONE_DIR))
-                print("directory listing:")
-                for _entry in os.listdir(BACKBONE_DIR):
-                    print("  {}".format(_entry))
-                print("bailing out, sorry...")
-                sys.exit(-1)
             os.rename(
                 os.path.join(BACKBONE_DIR, _dir),
                 os.path.join(BACKBONE_DIR, ".{}".format(_dir))
@@ -360,7 +352,9 @@ def check_for_pre17(opts):
         # next step: move pre-models to current models
         os.rename(PRE_MODELS_DIR, MODELS_DIR)
         # next step: remove all serializer relations from model files
+        _files_found = 0
         for _path in [os.path.join(MODELS_DIR, _entry) for _entry in os.listdir(MODELS_DIR) if _entry.endswith(".py")]:
+            _files_found += 1
             new_lines = []
             _add = True
             _removed, _kept = (0, 0)
@@ -386,6 +380,9 @@ def check_for_pre17(opts):
                     _removed += 1
             print("file {}: removed {:d}, kept {:d}".format(_path, _removed, _kept))
             file(_path, "w").write("\n".join(new_lines))
+        if not _files_found:
+            print("no .py-files found in {}, exit...".format(MODELS_DIR))
+            sys.exit(-1)
         # next step: delete south models
         _mig_dir = os.path.join(BACKBONE_DIR, "migrations")
         for _entry in sorted(os.listdir(_mig_dir)):
