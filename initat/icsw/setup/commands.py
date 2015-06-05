@@ -379,17 +379,23 @@ def check_for_pre17(opts):
                 else:
                     _removed += 1
             print("file {}: removed {:d}, kept {:d}".format(_path, _removed, _kept))
+            print("")
             file(_path, "w").write("\n".join(new_lines))
         if not _files_found:
             print("no .py-files found in {}, exit...".format(MODELS_DIR))
             sys.exit(-1)
         # next step: delete south models
         _mig_dir = os.path.join(BACKBONE_DIR, "migrations")
+        _mig_save_dict = {}
         for _entry in sorted(os.listdir(_mig_dir)):
             if _entry[0].isdigit() and _entry.count("py"):
-                _full_path = os.path.join(_mig_dir, _entry)
-                print("    removing file {}".format(_full_path))
-                os.unlink(_full_path)
+                _num = int(_entry[0:4])
+                if _num >= 799:
+                    _path = os.path.join(_mig_dir, _entry)
+                    _mig_save_dict[_path] = file(_path, "r").read()
+                    print("    storing file {} for later restore".format(_path))
+                print("    removing file {}".format(_path))
+                os.unlink(_path)
         # next step: migrate backbone
         migrate_app("backbone", migrate_args=["--fake"])
         # next step: move pre-1.7 models dir away
@@ -397,6 +403,9 @@ def check_for_pre17(opts):
         # next step: move 1.7 models back in place
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
+        # restore migation files
+        for _key, _value in _mig_save_dict.iteritems():
+            file(_key, "w").write(_value)
 
 
 def check_for_0800(opts):
