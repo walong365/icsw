@@ -265,6 +265,8 @@ class ServiceState(object):
                 (cur_time, self.__service_lut[name]),
             ).fetchall()
             _stable = True
+            # correct times
+            _records = [(_a, _b, abs(_c)) for _a, _b, _c in _records]
             # print _records
             _first = _records.pop(0)
             _stable_time = _first[2]
