@@ -276,8 +276,8 @@
  ><label for="id_comment" class="control-label col-sm-3">
  Comment
  </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="_edit_obj.comment" type="text" /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
- ComChannels
- </label><div class='col-sm-9 form-control-static'><icsw-device-com-channels device="_edit_obj" detail="1"></icsw-device-com-channels></div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
+ ComCapabilities
+ </label><div class='col-sm-9 form-control-static'><icsw-device-com-capabilities device="_edit_obj" detail="1"></icsw-device-com-capabilities></div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
  IP Info
  </label><div class='col-sm-9 form-control-static'>
  {{ get_ip_info() }}
@@ -329,12 +329,6 @@
  "
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="_edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
- </label></div></div></div></fieldset><fieldset 
- ><legend>IPMI settings</legend><div class="form-group"><div id="div_id_ipmi_capable"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="_edit_obj.ipmi_capable" type="checkbox" />
- IPMI cabaple
  </label></div></div></div></fieldset><fieldset 
  ><legend>Info</legend><div 
  class="row" ><div 
@@ -1039,20 +1033,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="edit_obj.change_store_rrd_data"
  ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
- </label></div></div></div></div></div><div 
- class="row" ><div 
- class="col-md-2" ><div class="form-group"><div id="div_id_change_ipmi_capable"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_change_ipmi_capable" name="change_ipmi_capable" ng-model="edit_obj.change_ipmi_capable" type="checkbox" />
- IPMI capable
- </label></div></div></div></div><div 
- class="col-md-10" ><div class="form-group"><div id="div_id_ipmi_capable"
- class="checkbox
- "
- ng_show="edit_obj.change_ipmi_capable"
- ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
- IPMI cabaple
  </label></div></div></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value="Modify many"
@@ -1770,11 +1750,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enable_perfdata" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox" />
  Enable perfdata, check IPMI and SNMP
- </label></div></div></div><div class="form-group"><div id="div_id_ipmi_capable"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
- IPMI cabaple
  </label></div></div></div></div><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_store_rrd_data"
  class="checkbox

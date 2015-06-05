@@ -45,7 +45,6 @@ device_module = angular.module(
             # short, full, default
             ["tln", "TLN", false, "Show top level node"]
             ["rrd_store", "RRD store", false, "Show if sensor data is store on disk"]
-            ["ipmi_capable", "IPMI capable", false, "Device is IPMI capable"],
             ["passwd", "Password", false, "Show if a password is set"]
             ["mon_master", "MonMaster", false, "Show monitoring master"]
             ["boot_master", "BootMaster", false, "Show boot master"]
@@ -151,6 +150,7 @@ device_module = angular.module(
                 message: $scope.edit_div
                 draggable: true
                 size: BootstrapDialog.SIZE_WIDE
+                cssClass: "modal-tall"
                 closable: true
                 closeByBackdrop: false
                 onhidden: () =>
@@ -260,7 +260,6 @@ device_module = angular.module(
                 "enabled" : true
                 "enable_perfdata": true
                 "store_rrd_data": true
-                "ipmi_capable": false
                 "flap_detection_enabled": true
             }
             if a_name == "device_group"
@@ -322,7 +321,6 @@ device_module = angular.module(
                         st_attrs['enabled'] = obj.enabled
                         st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.domain_tree_node, $scope.rest_data.domain_tree_node))
                         st_attrs['rrd_store'] = obj.store_rrd_data
-                        st_attrs['ipmi_capable'] = obj.ipmi_capable
                         st_attrs['passwd'] = obj.root_passwd_set
                         st_attrs['mon_master'] = array_lookupFilter(obj.monitor_server, $scope.rest_data.monitor_server, "full_name_wt")
                         st_attrs['boot_master'] = array_lookupFilter(obj.bootserver, $scope.rest_data.mother_server, "full_name")

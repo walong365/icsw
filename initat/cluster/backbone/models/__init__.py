@@ -553,7 +553,7 @@ class device(models.Model):
     # communication capability list, like IPMI, WMI, SNMP
     com_capability_list = models.ManyToManyField("backbone.ComCapability")
     # has an IPMI interface
-    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
+    # ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
     # flag: is meta device ?
     is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
@@ -563,8 +563,8 @@ class device(models.Model):
     # ... com_capability_matchcode
     active_scan = models.CharField(
         max_length=16,
-        default="",
-        blank=True
+        default=u"",
+        blank=True,
     )
 
     @property

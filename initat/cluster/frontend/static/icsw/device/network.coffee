@@ -725,10 +725,10 @@ angular.module(
                 else
                     return "warning text-center"
     }
-]).directive("icswDeviceComChannels", ["$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", ($templateCache, $compile, icswCachingCall, ICSW_URLS) ->
+]).directive("icswDeviceComCapabilities", ["$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", ($templateCache, $compile, icswCachingCall, ICSW_URLS) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("icsw.device.com.channels")
+        template: $templateCache.get("icsw.device.com.capabilities")
         scope:
             device: "=device"
             detail: "=detail"
@@ -741,17 +741,16 @@ angular.module(
                 else
                     return "btn-danger"
             scope.com_caps = []
-            scope.com_cap_str = "..."
             scope.$watch("device.active_scan", (new_val) ->
                 if new_val == "base"
+                    el.find("span.ladda-label").text("...")
                     scope.pending = true
-                    scope.com_cap_str = "..."
                 else
                     update_com_cap()
             )
             update_com_cap = () ->
-                scope.pending = true
                 el.find("span.ladda-label").text("...")
+                scope.pending = true
                 icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
                     scope.com_caps = data[0]
                     scope.pending = false

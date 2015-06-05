@@ -100,13 +100,16 @@ class BaseScanBatch(object):
                 )
                 _xml = etree.fromstring(_output[0])
                 found_comspecs = set()
-                for _port in _xml.xpath(".//port[state[@state='open']]", smart_strings=False):
+                for _port in _xml.xpath(".//port[state[@state]]", smart_strings=False):
                     _portspec = "{}/{}".format(
                         _port.attrib["portid"],
                         _port.attrib["protocol"],
                     )
+                    _state = _port.find("state").get("state")
+                    self.log("state of port {} is {}".format(_portspec, _state))
                     if _portspec in self.port_ref_lut:
-                        found_comspecs.add(self.port_ref_lut[_portspec])
+                        if _state.count("open"):
+                            found_comspecs.add(self.port_ref_lut[_portspec])
                     else:
                         self.log("unknown portspec {}".format(_portspec), logging_tools.LOG_LEVEL_WARN)
                 if found_comspecs:

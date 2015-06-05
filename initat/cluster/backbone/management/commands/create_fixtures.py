@@ -449,7 +449,7 @@ class Command(BaseCommand):
             matchcode="ipmi",
             name="IPMI",
             info="Intelligent Platform Management Interface",
-            port_spec="631/udp",
+            port_spec="623/udp",
         )
         factories.ComCapability(
             matchcode="wmi",

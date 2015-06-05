@@ -460,7 +460,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             ),
             {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
         )
-        ipmi_hosts = device.all_enabled.filter(Q(enable_perfdata=True) & Q(ipmi_capable=True))
+        ipmi_hosts = device.all_enabled.filter(Q(enable_perfdata=True) & Q(com_capability_list__matchcode="ipmi"))
         _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")
         ipmi_com = server_command.srv_command(command="ipmi_hosts")
         _bld = ipmi_com.builder()

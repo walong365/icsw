@@ -54,7 +54,7 @@ class hc_command(object):
             # FIXME, why the first entry ?
             _pc_scheme = _pc_schemes[0]
             _mode = "SNMP"
-        elif self.cd_obj.parent.ipmi_capable:
+        elif self.cd_obj.parent.com_capability_list.filter(Q(matchcode="ipmi")).count():
             _mode = "IPMI"
         else:
             _mode = None

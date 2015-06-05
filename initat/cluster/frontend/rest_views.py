@@ -185,7 +185,7 @@ class db_prefetch_mixin(object):
         return ["domain_tree_node", "device_group", "mon_ext_host"]
 
     def _device_prefetch(self):
-        return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set"]
+        return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set", "com_capability_list"]
 
     def _mon_check_command_prefetch(self):
         return ["exclude_devices", "categories"]
@@ -732,6 +732,7 @@ class device_tree_list(
             "device_group",
         ).prefetch_related(
             "snmp_schemes__snmp_scheme_vendor",
+            "com_capability_list",
             "DeviceSNMPInfo",
             "snmp_schemes__snmp_scheme_tl_oid_set",
         )

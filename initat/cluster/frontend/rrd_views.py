@@ -59,7 +59,7 @@ class merge_cds(View):
         cd_pks = list(
             device.all_real_enabled.filter(
                 (
-                    Q(ipmi_capable=True) |
+                    Q(com_capability_list__matchcode="ipmi") |
                     Q(snmp_schemes__power_control=True)
                 ) &
                 Q(master_connections__in=devs)
@@ -108,7 +108,7 @@ class graph_rrds(View):
             cd_pks = list(
                 device.all_real_enabled.filter(
                     (
-                        Q(ipmi_capable=True) |
+                        Q(com_capability_list__matchcode="ipmi") |
                         Q(snmp_schemes__power_control=True)
                     ) &
                     Q(master_connections__in=devs)

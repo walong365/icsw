@@ -426,6 +426,13 @@ class ComCapability(factory.django.DjangoModelFactory):
             self.save()
 
     @factory.post_generation
+    def port_spec(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.port_spec != extracted:
+            self.port_spec = extracted
+            self.save()
+
+    @factory.post_generation
     def name(self, create, extracted, **kwargs):
         extracted = extracted or ""
         if self.name != extracted:

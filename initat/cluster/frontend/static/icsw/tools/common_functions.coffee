@@ -268,12 +268,6 @@ class angular_modal_mixin
                 modal.getModal().find(".modal-body").css("max-height", height)
             onshown: () =>
                 @scope.modal_active = true
-            #buttons: [{
-            #    label: 'close',
-            #    cssClass: "btn-danger"
-            #    action: (dialog) ->
-            #        dialog.close()
-            #    }]
         return @_prom.promise
     close_modal : () =>
         @my_modal.close()

@@ -179,9 +179,8 @@ class manual_connection(View):
         # all cd / non-cd devices
         # FIXME
         cd_devices = device.all_real_enabled.filter(
-            Q(ipmi_capable=True) | (
-                Q(snmp_schemes__power_control=True)
-            )
+            Q(com_capability_list__matchcode="ipmi") |
+            Q(snmp_schemes__power_control=True)
         )
         # print cd_devices
         non_cd_devices = device.all_real_enabled()

@@ -116,7 +116,7 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.com.channels">
+<script type="text/ng-template" id="icsw.device.com.capabilities">
     <button type="button" class="btn btn-xs" ng-class="com_class()" data-spinner-size="12" ladda="pending" data-style="expand-left">
     </button>
 </script>
@@ -126,7 +126,7 @@
         {{ ndip_obj.full_name }}
     </td>
     <td>
-        <icsw-device-com-channels device="ndip_obj"></icsw-device-com-channels>
+        <icsw-device-com-capabilities device="ndip_obj"></icsw-device-com-capabilities>
     </td>
     <td>
         <button type="button" class="btn btn-xs btn-warning" data-spinner-size="12" ng-show="ndip_obj.active_scan" ladda="ndip_obj.active_scan" data-style="expand-left">
