@@ -12,7 +12,7 @@ def migrate_ipmi_flag(apps, schema_editor):
         _ipmi_com = comcap.objects.get(Q(matchcode="ipmi"))
     except:
         # creating missing comcap
-        _ipmi_com = comcap.objects(
+        _ipmi_com = comcap(
             matchcode="ipmi",
             name="IPMI",
             info="Intelligent Platform Management Interface",
