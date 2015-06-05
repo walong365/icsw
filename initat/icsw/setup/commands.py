@@ -390,8 +390,8 @@ def check_for_pre17(opts):
         for _entry in sorted(os.listdir(_mig_dir)):
             if _entry[0].isdigit() and _entry.count("py"):
                 _num = int(_entry[0:4])
+                _path = os.path.join(_mig_dir, _entry)
                 if _num >= 799:
-                    _path = os.path.join(_mig_dir, _entry)
                     _mig_save_dict[_path] = file(_path, "r").read()
                     print("    storing file {} for later restore".format(_path))
                 print("    removing file {}".format(_path))
