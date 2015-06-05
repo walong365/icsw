@@ -276,6 +276,8 @@
  ><label for="id_comment" class="control-label col-sm-3">
  Comment
  </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="_edit_obj.comment" type="text" /> </div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
+ ComCapabilities
+ </label><div class='col-sm-9 form-control-static'><icsw-device-com-capabilities device="_edit_obj" detail="1"></icsw-device-com-capabilities></div></div><div class='form-group' ng-show="is_device()"><label class='control-label col-sm-3'>
  IP Info
  </label><div class='col-sm-9 form-control-static'>
  {{ get_ip_info() }}
@@ -328,12 +330,6 @@
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="_edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
  </label></div></div></div></fieldset><fieldset 
- ><legend>IPMI settings</legend><div class="form-group"><div id="div_id_ipmi_capable"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="_edit_obj.ipmi_capable" type="checkbox" />
- IPMI cabaple
- </label></div></div></div></fieldset><fieldset 
  ><legend>Info</legend><div 
  class="row" ><div 
  class="col-md-6" ng-show="is_device()"><input type="button"
@@ -365,43 +361,43 @@
  "
  ><label for="id_sun_range" class="control-label col-sm-3">
  Sun range
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_sun_range" maxlength="48" name="sun_range" ng-model="edit_obj.sun_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="True" type="text" /> </div></div><div id="div_id_mon_range"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_sun_range" maxlength="48" name="sun_range" ng-model="edit_obj.sun_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" /> </div></div><div id="div_id_mon_range"
  class="form-group 
  ng-class:form_error(&#39;sun_range&#39;) 
  "
  ><label for="id_mon_range" class="control-label col-sm-3">
  Mon range
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mon_range" maxlength="48" name="mon_range" ng-model="edit_obj.mon_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="True" type="text" /> </div></div><div id="div_id_tue_range"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mon_range" maxlength="48" name="mon_range" ng-model="edit_obj.mon_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" /> </div></div><div id="div_id_tue_range"
  class="form-group 
  ng-class:form_error(&#39;sun_range&#39;) 
  "
  ><label for="id_tue_range" class="control-label col-sm-3">
  Tue range
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_tue_range" maxlength="48" name="tue_range" ng-model="edit_obj.tue_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="True" type="text" /> </div></div><div id="div_id_wed_range"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_tue_range" maxlength="48" name="tue_range" ng-model="edit_obj.tue_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" /> </div></div><div id="div_id_wed_range"
  class="form-group 
  ng-class:form_error(&#39;sun_range&#39;) 
  "
  ><label for="id_wed_range" class="control-label col-sm-3">
  Wed range
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wed_range" maxlength="48" name="wed_range" ng-model="edit_obj.wed_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="True" type="text" /> </div></div><div id="div_id_thu_range"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wed_range" maxlength="48" name="wed_range" ng-model="edit_obj.wed_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" /> </div></div><div id="div_id_thu_range"
  class="form-group 
  ng-class:form_error(&#39;sun_range&#39;) 
  "
  ><label for="id_thu_range" class="control-label col-sm-3">
  Thu range
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_thu_range" maxlength="48" name="thu_range" ng-model="edit_obj.thu_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="True" type="text" /> </div></div><div id="div_id_fri_range"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_thu_range" maxlength="48" name="thu_range" ng-model="edit_obj.thu_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" /> </div></div><div id="div_id_fri_range"
  class="form-group 
  ng-class:form_error(&#39;sun_range&#39;) 
  "
  ><label for="id_fri_range" class="control-label col-sm-3">
  Fri range
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_fri_range" maxlength="48" name="fri_range" ng-model="edit_obj.fri_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="True" type="text" /> </div></div><div id="div_id_sat_range"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_fri_range" maxlength="48" name="fri_range" ng-model="edit_obj.fri_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" /> </div></div><div id="div_id_sat_range"
  class="form-group 
  ng-class:form_error(&#39;sun_range&#39;) 
  "
  ><label for="id_sat_range" class="control-label col-sm-3">
  Sat range
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_sat_range" maxlength="48" name="sat_range" ng-model="edit_obj.sat_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="True" type="text" /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_sat_range" maxlength="48" name="sat_range" ng-model="edit_obj.sat_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -772,8 +768,8 @@
 </script>
 <script type='text/ng-template' id='monitoring.hint.form'>
 <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Monitoring hint '{{ _edit_obj.m_type }} / {{ _edit_obj.key }}'</h2><fieldset 
- ><legend>lower bounds</legend><div class="form-group"><label class="control-label col-sm-4">Lower Critical</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.lower_crit_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input><input class="form-control" ng-model="_edit_obj.lower_crit_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input></div></div><div class="form-group"><label class="control-label col-sm-4">Lower Warning</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.lower_warn_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input><input class="form-control" ng-model="_edit_obj.lower_warn_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input></div></div></fieldset><fieldset 
- ><legend>upper bounds</legend><div class="form-group"><label class="control-label col-sm-4">Upper Warning</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.upper_warn_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input><input class="form-control" ng-model="_edit_obj.upper_warn_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input></div></div><div class="form-group"><label class="control-label col-sm-4">Upper Critial</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.upper_crit_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input><input class="form-control" ng-model="_edit_obj.upper_crit_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input></div></div></fieldset><div class="form-actions"><input type="submit"
+ ><legend>lower bounds</legend><div class="form-group"><label class="control-label col-sm-4">Lower Critical</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.lower_crit_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/> <input class="form-control" ng-model="_edit_obj.lower_crit_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/> </div></div><div class="form-group"><label class="control-label col-sm-4">Lower Warning</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.lower_warn_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/> <input class="form-control" ng-model="_edit_obj.lower_warn_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/> </div></div></fieldset><fieldset 
+ ><legend>upper bounds</legend><div class="form-group"><label class="control-label col-sm-4">Upper Warning</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.upper_warn_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/> <input class="form-control" ng-model="_edit_obj.upper_warn_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/> </div></div><div class="form-group"><label class="control-label col-sm-4">Upper Critial</label><div class="controls col-sm-8"><input class="form-control" ng-model="_edit_obj.upper_crit_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/> <input class="form-control" ng-model="_edit_obj.upper_crit_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -798,11 +794,11 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  Source
  </label><div class='col-sm-9'><ui-select ng-model="_edit_obj.s_netdevice" ng-required="true"><ui-select-match placeholder="select a target device">{{$select.selected.info_string}}</ui-select-match><ui-select-choices repeat="value.idx as value in get_route_peers() | props_filter:{info_string:$select.search}" group-by="'device_group_name'"><div ng-bind-html="value.info_string | highlight: $select.search"></div></ui-select-choices></ui-select><!--<select chosen="True" class="select form-control" ng-model="_edit_obj.s_netdevice"
  ng-options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()"
- required="True" ng-if="!source_is_local"></select>--></div></div></div><div ng-if="!source_is_local"><div class='form-group' ng-if="create_mode"><label class='control-label col-sm-2'>
+ required="required" ng-if="!source_is_local"></select>--></div></div></div><div ng-if="!source_is_local"><div class='form-group' ng-if="create_mode"><label class='control-label col-sm-2'>
  Destination
  </label><div class='col-sm-9'><ui-select ng-model="_edit_obj.d_netdevice" ng-required="true"><ui-select-match placeholder="select a netdevice">{{$select.selected.devname}}</ui-select-match><ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set | props_filter:{devname:$select.search}"><div ng-bind-html="value.devname | highlight: $select.search"></div></ui-select-choices></ui-select><!--<select chosen="True" class="select form-control" ng-model="_edit_obj.d_netdevice"
  ng-options="value.idx as value.devname for value in _current_dev.netdevice_set"
- required="True" ng-if="!source_is_local"></select>--></div></div></div><div id="div_id_s_spec"
+ required="required" ng-if="!source_is_local"></select>--></div></div></div><div id="div_id_s_spec"
  class="form-group 
  "
  ><label for="id_s_spec" class="control-label col-sm-2">
@@ -1037,20 +1033,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="edit_obj.change_store_rrd_data"
  ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_store_rrd_data" class=""><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="edit_obj.store_rrd_data" type="checkbox" />
  Store rrd data
- </label></div></div></div></div></div><div 
- class="row" ><div 
- class="col-md-2" ><div class="form-group"><div id="div_id_change_ipmi_capable"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_change_ipmi_capable" name="change_ipmi_capable" ng-model="edit_obj.change_ipmi_capable" type="checkbox" />
- IPMI capable
- </label></div></div></div></div><div 
- class="col-md-10" ><div class="form-group"><div id="div_id_ipmi_capable"
- class="checkbox
- "
- ng_show="edit_obj.change_ipmi_capable"
- ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
- IPMI cabaple
  </label></div></div></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value="Modify many"
@@ -1768,11 +1750,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enable_perfdata" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox" />
  Enable perfdata, check IPMI and SNMP
- </label></div></div></div><div class="form-group"><div id="div_id_ipmi_capable"
- class="checkbox
- "
- ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_ipmi_capable" class=""><input class="checkboxinput checkbox" id="id_ipmi_capable" name="ipmi_capable" ng-model="edit_obj.ipmi_capable" type="checkbox" />
- IPMI cabaple
  </label></div></div></div></div><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_store_rrd_data"
  class="checkbox
@@ -1869,14 +1846,16 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 </script>
 <script type='text/ng-template' id='device.network.scan.form'>
 <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Scan network of settings device {{ _current_dev.full_name }}</h2><fieldset 
- ><legend>Scan address, {{ _current_dev.ip_list.length }} non-local IPs defined</legend><div><ul class="list-group"><li class="list-group-item" ng-repeat="ip in _edit_obj.ip_list"><input type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input></li><li class="list-group-item">
- IP: <input ng-model="_edit_obj.manual_address"></input></li></ul></div></fieldset><tabset><tab heading='Hostmonitor' select='set_scan_mode("hm")' active='_current_dev.scan_hm_active'><fieldset 
+ ><legend>Scan address, {{ _current_dev.ip_list.length }} non-local IPs defined</legend><div><ul class="list-group"><li class="list-group-item" ng-repeat="name in _edit_obj.network_type_names">
+ {{ name }}: <input ng-repeat="ip in _edit_obj.ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input></li><li class="list-group-item">
+ IP: <input ng-model="_edit_obj.manual_address"></input></li></ul></div></fieldset><tabset><tab heading='BaseScan' select='set_scan_mode("base")' active='_current_dev.scan_base_active'></tab><tab ng-show='has_com_capability(_edit_obj, "hm")' heading='Hostmonitor' select='set_scan_mode("hm")' active='_current_dev.scan_hm_active'>"
+<fieldset 
  ><legend>Flags</legend><div class="form-group"><div id="div_id_strict_mode"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_strict_mode" class=""><input class="checkboxinput checkbox" id="id_strict_mode" name="strict_mode" ng-model="_edit_obj.strict_mode" type="checkbox" />
  all netdevices must be recognizable and all existing peers must be conserverd
- </label></div></div></div><div class="alert alert-danger" ng-show="!_edit_obj.strict_mode">attention: peers might get lost</div></fieldset></tab><tab heading='SNMP' select='set_scan_mode("snmp")' active='_current_dev.scan_snmp_active'><fieldset 
+ </label></div></div></div><div class="alert alert-danger" ng-show="!_edit_obj.strict_mode">attention: peers might get lost</div></fieldset></tab><tab ng-show='has_com_capability(_edit_obj, "snmp")' heading='SNMP' select='set_scan_mode("snmp")' active='_current_dev.scan_snmp_active'><fieldset 
  ><legend>Base data</legend><div id="div_id_snmp_community"
  class="form-group 
  "

@@ -57,10 +57,20 @@
                                 </div>
 
                             </div>
-                            <div class="checkbox">
+
+                            <div class="col-sm-2"></div>
+                            <div class="checkbox col-sm-10">
                                 <label>
                                     <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
                                     Enabled
+                                </label>
+                            </div>
+
+                            <div class="col-sm-2"></div>
+                            <div class="checkbox col-sm-10">
+                                <label>
+                                    <input class="" ng-model="cur_edit_kpi.soft_states_as_hard_states" type="checkbox"/>
+                                    Interpret soft states as hard states (historic only)
                                 </label>
                             </div>
                         </form>

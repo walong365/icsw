@@ -360,27 +360,35 @@ def check_for_pre17(opts):
         # next step: move pre-models to current models
         os.rename(PRE_MODELS_DIR, MODELS_DIR)
         # next step: remove all serializer relations from model files
-        for _entry in os.listdir(MODELS_DIR):
-            if _entry.endswith(".py"):
-                _path = os.path.join(MODELS_DIR, _entry)
-                new_lines = []
-                _add = True
-                for _line in file(_path, "r").readlines():
-                    _line = _line.rstrip()
-                    empty_line = True if not _line.strip() else False
-                    _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
-                    if not empty_line:
-                        if _ser_line:
-                            _add = False
-                            new_lines.append("{} = True".format(_line.split()[1].split("(")[0]))
-                        elif _line[0] != " ":
-                            _add = True
-                    if _add:
-                        new_lines.append(_line)
-                file(_path, "w").write("\n".join(new_lines))
+        for _path in [os.path.join(MODELS_DIR, _entry) for _entry in os.listdir(MODELS_DIR) if _entry.endswith(".py")]:
+            new_lines = []
+            _add = True
+            _removed, _kept = (0, 0)
+            for _line_num, _line in enumerate(file(_path, "r").readlines(), 1):
+                _line = _line.rstrip()
+                empty_line = True if not _line.strip() else False
+                _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
+                if not empty_line:
+                    if _ser_line:
+                        print("detected serializer line '{}'@{:d}".format(_line, _line_num))
+                        _add = False
+                        # add dummy declaration
+                        new_lines.append("{} = True".format(_line.split()[1].split("(")[0]))
+                    elif _line[0] != " ":
+                        _add = True
+                    else:
+                        # leave _add flag on old value
+                        pass
+                if _add:
+                    new_lines.append(_line)
+                    _kept += 1
+                else:
+                    _removed += 1
+            print("file {}: removed {:d}, kept {:d}".format(_path, _removed, _kept))
+            file(_path, "w").write("\n".join(new_lines))
         # next step: delete south models
         _mig_dir = os.path.join(BACKBONE_DIR, "migrations")
-        for _entry in os.listdir(_mig_dir):
+        for _entry in sorted(os.listdir(_mig_dir)):
             if _entry[0].isdigit() and _entry.count("py"):
                 _full_path = os.path.join(_mig_dir, _entry)
                 print("    removing file {}".format(_full_path))
@@ -548,17 +556,22 @@ def _check_dirs():
         sys.exit(6)
 
 
-def app_has_unapplied_migrations(app_name):
-    # Note: We cannot configure Django globally, because some config files
-    # might not exist yet.
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
+def setup_django():
     import django
     django.setup()
 
     from django.db.migrations.recorder import MigrationRecorder
     from django.apps import apps
     from django.db import connection
+    return connection, apps, MigrationRecorder
+
+
+def app_has_unapplied_migrations(app_name):
+    # Note: We cannot configure Django globally, because some config files
+    # might not exist yet.
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+    connection, apps, MigrationRecorder = setup_django()
 
     recorder = MigrationRecorder(connection)
     applied_migrations = {

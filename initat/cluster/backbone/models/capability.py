@@ -37,6 +37,7 @@ __all__ = [
     "snmp_scheme_vendor",
     "snmp_scheme",
     "snmp_scheme_tl_oid",
+    "ComCapability",
 ]
 
 
@@ -110,12 +111,14 @@ class snmp_scheme_tl_oid(models.Model):
         app_label = "backbone"
 
 
-class capability(models.Model):
+class ComCapability(models.Model):
     idx = models.AutoField(primary_key=True)
+    # matchode, is in most cases name in lowercase
+    matchcode = models.CharField(max_length=16, unique=True)
     # short name
     name = models.CharField(max_length=16, unique=True)
     # info
-    info = models.CharField(max_length=64, unique=True)
+    info = models.CharField(max_length=64)
     # port spec
     port_spec = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)

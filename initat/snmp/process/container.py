@@ -61,6 +61,15 @@ class snmp_process_container(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com(u"[spc] {}".format(what), log_level)
 
+    def salt_proc_info_dict(self, pi_dict):
+        # update pi_dict with information from the running SNMP processes
+        for _idx, _struct in self.__snmp_dict.iteritems():
+            pi_dict[_struct["name"]] = {
+                "pid": _struct["proc"].pid,
+                "alive": _struct["running"],
+                "name": _struct["name"],
+            }
+
     def check(self):
         cur_running = self.__snmp_dict.keys()
         to_start = self.max_procs - len(cur_running)

@@ -20,10 +20,11 @@
 # -*- coding: utf-8 -*-
 #
 """ model definitions for key performance indicators """
-
+import datetime
 
 from django.db import models
 import django.utils.timezone
+from initat.cluster.backbone.models.functions import duration
 
 
 __all__ = [
@@ -33,7 +34,51 @@ __all__ = [
 ]
 
 
+class _KpiManager(models.Manager):
+    @staticmethod
+    def parse_kpi_time_range(time_range, time_range_parameter):
+        def get_duration_class_start_end(duration_class, time_point):
+            start = duration_class.get_time_frame_start(
+                time_point
+            )
+            end = duration_class.get_end_time_for_start(start)
+            return start, end
+
+        start, end = None, None
+
+        if time_range == 'none':
+            pass
+        elif time_range == 'yesterday':
+            start, end = get_duration_class_start_end(
+                duration.Day,
+                django.utils.timezone.now() - datetime.timedelta(days=1),
+                )
+        elif time_range == 'last week':
+            start, end = get_duration_class_start_end(
+                duration.Week,
+                django.utils.timezone.now() - datetime.timedelta(days=7),
+                )
+        elif time_range == 'last month':
+            start, end = get_duration_class_start_end(
+                duration.Month,
+                django.utils.timezone.now().replace(day=1) - datetime.timedelta(days=1)
+            )
+        elif time_range == 'last year':
+            start, end = get_duration_class_start_end(
+                duration.Year,
+                django.utils.timezone.now().replace(day=1, month=1) - datetime.timedelta(days=1)
+            )
+        elif time_range == 'last n days':
+            start = duration.Day.get_time_frame_start(
+                django.utils.timezone.now() - datetime.timedelta(days=time_range_parameter)
+            )
+            end = start + datetime.timedelta(days=time_range_parameter)
+
+        return (start, end)
+
+
 class Kpi(models.Model):
+    objects = _KpiManager()
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
 
@@ -54,6 +99,9 @@ class Kpi(models.Model):
 
     gui_selected_categories = models.TextField(blank=True)  # json
 
+    # if this is false, states like 'soft critical' is not interpreted as actually critical
+    soft_states_as_hard_states = models.BooleanField(default=True)
+
     def set_result(self, result_str, date):
         try:
             self.kpistoredresult.result = result_str
@@ -64,6 +112,12 @@ class Kpi(models.Model):
 
     def has_historic_data(self):
         return self.time_range != 'none'
+
+    def get_time_range(self):
+        start, end = _KpiManager.parse_kpi_time_range(self.time_range, self.time_range_parameter)
+        if start is None:
+            raise RuntimeError("get_historic_data called for kpi with no defined time range.")
+        return start, end
 
     def __unicode__(self):
         return u"KPI {}".format(self.name)

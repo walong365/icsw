@@ -313,7 +313,7 @@ angular.module(
                 scope.error = ""
 
                 # calculate data to show
-                if time_frame?
+                if time_frame? and scope.data?
 
                     if scope.data.length > 5000
                         scope.error = "Too much data to display"

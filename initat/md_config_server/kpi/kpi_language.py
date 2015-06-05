@@ -29,11 +29,11 @@ from collections import defaultdict
 from enum import IntEnum, Enum
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
-from initat.md_config_server.kpi.kpi_utils import KpiUtils
 from initat.tools import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_aggregated_host_data
-from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command, category, device
+from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command, category, device, \
+    cluster_timezone
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
@@ -231,8 +231,12 @@ class KpiDetailObject(KpiObject):
         return super(KpiDetailObject, self).__repr__(child_repr=child_repr + ";time_line:{}".format(self.time_line))
 
     def serialize(self):
+        aggr_tl = TimeLineUtils.merge_state_types(
+            self.time_line,
+            KpiGlobals.current_kpi.soft_states_as_hard_states,
+        )
         return dict(
-            aggregated_tl={unicode(k): v for k, v in TimeLineUtils.merge_state_types(self.time_line).iteritems()},
+            aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
             **super(KpiDetailObject, self).serialize()
         )
 
@@ -340,7 +344,10 @@ class KpiTimeLineObject(KpiObject):
         self.time_line = time_line
 
     def serialize(self):
-        aggr_tl = TimeLineUtils.merge_state_types(TimeLineUtils.aggregate_time_line(self.time_line))
+        aggr_tl = TimeLineUtils.merge_state_types(
+            TimeLineUtils.aggregate_time_line(self.time_line),
+            KpiGlobals.current_kpi.soft_states_as_hard_states,
+        )
         return dict(
             aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
             **super(KpiTimeLineObject, self).serialize()
@@ -452,12 +459,12 @@ class KpiSet(object):
     def get_singleton_unknown(cls, **kwargs):
         return KpiSet([KpiObject(result=KpiResult.unknown)], **kwargs)
 
-    def __init__(self, objects, origin):
+    def __init__(self, objects=None, origin=None):
         """
         :type objects: list of KpiObject
         :type origin: KpiOperation | None
         """
-        self.objects = objects
+        self.objects = objects if objects is not None else []
         self.origin = origin if origin else KpiOperation(type=KpiOperation.Type.initial)
 
     """
@@ -631,12 +638,21 @@ class KpiSet(object):
     def historic_and(self):
         return self.aggregate_historic(method='and')
 
-    def get_historic_data(self):
+    def get_historic_data(self, start=None, end=None):
         relevant_obj_identifiers = [obj.get_machine_object_id_properties() for obj in self.host_objects]
 
         objects = []
         if relevant_obj_identifiers:
-            start, end = KpiUtils.parse_kpi_time_range_from_kpi(KpiGlobals.current_kpi)
+            if start is None or end is None:
+                if start or end:
+                    raise RuntimeError("start or end must either be both set or both not set")
+
+                start, end = KpiGlobals.current_kpi.get_time_range()
+            else:
+                # help user by fixing their timezones
+                fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=cluster_timezone)
+                start = fix_tz(start)
+                end = fix_tz(end)
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())
@@ -699,7 +715,7 @@ class KpiSet(object):
 
                 # also aggregate state types
                 ratio = sum(v for k, v in aggregated_tl.iteritems()
-                            if k[0] == result)
+                            if k[0] >= result)
 
                 if discard_planned_downtimes:
                     ratio_planned_down = sum(v for k, v in aggregated_tl.iteritems()

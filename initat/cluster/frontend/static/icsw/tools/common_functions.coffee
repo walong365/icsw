@@ -175,13 +175,13 @@ class angular_edit_mixin
         if @delete_confirm_str
             c_str = @delete_confirm_str(obj)
         else
-            c_str = "Really delete object ?"
+            c_str = "Really delete object?"
         _loc_prom = @q.defer()
         c_modal = BootstrapDialog.show
             message: c_str
             draggable: true
             size: BootstrapDialog.SIZE_SMALL
-            title: "Please Confirm"
+            title: "Please confirm"
             closable: true
             closeByBackdrop: false
             buttons: [
@@ -194,7 +194,6 @@ class angular_edit_mixin
                         _loc_prom.resolve(true)
                 },
                 {
-
                     icon: "glyphicon glyphicon-remove"
                     label: "No"
                     cssClass: "btn-success"
@@ -269,12 +268,6 @@ class angular_modal_mixin
                 modal.getModal().find(".modal-body").css("max-height", height)
             onshown: () =>
                 @scope.modal_active = true
-            #buttons: [{
-            #    label: 'close',
-            #    cssClass: "btn-danger"
-            #    action: (dialog) ->
-            #        dialog.close()
-            #    }]
         return @_prom.promise
     close_modal : () =>
         @my_modal.close()

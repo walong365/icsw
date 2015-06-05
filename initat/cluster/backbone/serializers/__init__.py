@@ -219,7 +219,14 @@ class device_serializer(serializers.ModelSerializer):
         return {key: value for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()}
 
     def get_is_cd_device(self, obj):
-        return True if (obj.ipmi_capable or len([_scheme.power_control for _scheme in obj.snmp_schemes.all() if _scheme.power_control])) else False
+        return True if (
+            "ipmi" in [_cc.matchcode for _cc in obj.com_capability_list.all()]
+            or len(
+                [
+                    _scheme.power_control for _scheme in obj.snmp_schemes.all() if _scheme.power_control
+                ]
+            )
+        ) else False
 
     class Meta:
         model = device
@@ -231,7 +238,7 @@ class device_serializer(serializers.ModelSerializer):
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_group_name", "bootserver",
             "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data", "ipmi_capable",
+            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
             "access_level", "access_levels", "store_rrd_data",
             # dhcp error
             "dhcp_error",

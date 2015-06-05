@@ -946,7 +946,10 @@ def enable_config_access(user_name, group_name):
 
 
 def get_manager_pid():
-    return cur_manager._process.pid
+    if cur_manager.address:
+        return cur_manager._process.pid
+    else:
+        return None
 
 
 # type:

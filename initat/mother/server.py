@@ -21,17 +21,18 @@
 #
 """ mother daemon """
 
-from lxml import etree  # @UnresolvedImports
 import os
 
+from initat.tools.server_mixins import RemoteCall, ServerStatusMixin, \
+    RemoteCallProcess, RemoteCallMixin, NetworkBindMixin
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import network, status
-from initat.cluster.backbone.routing import get_server_uuid
 from initat.mother.config import global_config
 from initat.snmp.process import snmp_process
 from initat.tools import cluster_location
 from initat.tools import configfile
+import initat.tools.server_mixins
 import initat.mother
 import initat.mother.command
 import initat.mother.control
@@ -45,7 +46,8 @@ from initat.tools import uuid_tools
 import zmq
 
 
-class server_process(threading_tools.process_pool):
+@RemoteCallProcess
+class server_process(threading_tools.process_pool, RemoteCallMixin, ServerStatusMixin, NetworkBindMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -71,8 +73,6 @@ class server_process(threading_tools.process_pool):
         # check status entries
         self._check_status_entries()
         self.__msi_block = self._init_msi_block()
-        self._init_subsys()
-        self.register_func("send_return", self._send_return)
         self.register_func("contact_hoststatus", self._contact_hoststatus)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '{}'".format(my_uuid.get_urn()))
@@ -81,11 +81,9 @@ class server_process(threading_tools.process_pool):
             self.add_process(initat.mother.command.ExternalCommandProcess("command"), start=True)
             self.add_process(initat.mother.control.NodeControlProcess("control"), start=True)
             self.add_process(initat.mother.control.ICMPProcess("icmp"), start=True)
+            connection.close()
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
             self.add_process(snmp_process("snmp_process", conf_dict=conf_dict), start=True)
-            connection.close()
-            # self.add_process(build_process("build"), start=True)
-            # self.register_func("client_update", self._client_update)
             # send initial commands
             self.send_to_process(
                 "kernel",
@@ -124,9 +122,6 @@ class server_process(threading_tools.process_pool):
         msi_block.save_block()
         return msi_block
 
-    def _init_subsys(self):
-        self.log("init subsystems")
-
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -154,173 +149,84 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        for open_sock in self.socket_dict.itervalues():
-            open_sock.close()
+        self.network_unbind()
+        self.network_unbind(main_socket_name="pull_socket")
         self.__log_template.close()
 
     def _init_network_sockets(self):
-        success = True
-        my_0mq_id = get_server_uuid("mother")
-        self.bind_id = my_0mq_id
-        self.socket_dict = {}
-        # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
-        for key, sock_type, bind_port, target_func in [
-            ("router", "ROUTER", global_config["SERVER_PUB_PORT"], self._new_com),
-            ("pull", "PULL", global_config["SERVER_PULL_PORT"], self._new_com),
-        ]:
-            client = process_tools.get_socket(
-                self.zmq_context,
-                sock_type,
-                identity=self.bind_id,
-                immediate=True,
-            )
-            conn_str = "tcp://*:{:d}".format(bind_port)
-            try:
-                client.bind(conn_str)
-            except zmq.ZMQError:
-                self.log(
-                    "error binding to {}{{{}}}: {}".format(
-                        conn_str,
-                        sock_type,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_CRITICAL
-                )
-                client.close()
-                success = False
-            else:
-                self.log("bind to port {}{{{}}}".format(
-                    conn_str,
-                    sock_type))
-                self.register_poller(client, zmq.POLLIN, target_func)  # @UndefinedVariable
-                self.socket_dict[key] = client
+        self.network_bind(
+            need_all_binds=True,
+            bind_port=global_config["SERVER_COM_PORT"],
+            pollin=self.remote_call,
+            server_type="mother",
+        )
         self.connection_set = set()
         self.connection_status = {}
-        return success
+        return True
 
-    def _new_com(self, zmq_sock):
-        data = [zmq_sock.recv_unicode()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-            data.append(zmq_sock.recv_unicode())
-        if len(data) == 2:
-            # print "UUID", data[0]
-            if data[0].endswith("syslog_scan"):
-                self.send_to_process("control", "syslog_line", data[1])
-            else:
-                try:
-                    srv_com = server_command.srv_command(source=data[1])
-                except:
-                    self.log("cannot interpret '{}': {}".format(data[1][:40], process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
-                    zmq_sock.send_unicode("error interpreting")
-                else:
-                    try:
-                        cur_com = srv_com["command"].text
-                    except:
-                        cur_com = None
-                        for node_ct in ["nodeinfo", "nodestatus"]:
-                            if srv_com.tree.find(node_ct) is not None:
-                                node_text = srv_com.tree.findtext(node_ct)
-                                t_proc = "control"
-                                cur_com = node_ct
-                                if self.debug:
-                                    self.log("got command {}, sending to {} process".format(cur_com, t_proc))
-                                self.send_to_process(
-                                    t_proc,
-                                    cur_com,
-                                    data[0],
-                                    node_text
-                                )
-                        if cur_com is None:
-                            self.log(
-                                "got command '{}' from {}, ignoring".format(
-                                    etree.tostring(srv_com.tree),  # @UndefinedVariable
-                                    data[0]
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                    else:
-                        srv_com.update_source()
-                        if cur_com in ["status", "refresh", "soft_control"]:
-                            t_proc = "control"
-                            self.log(
-                                "got command {} from '{}', sending to {} process".format(
-                                    cur_com,
-                                    data[0],
-                                    t_proc,
-                                )
-                            )
-                            self.send_to_process(
-                                t_proc,
-                                cur_com,
-                                data[0],
-                                unicode(srv_com)
-                            )
-                        elif cur_com == "get_0mq_id":
-                            srv_com["zmq_id"] = self.bind_id
-                            srv_com.set_result("0MQ_ID is {}".format(self.bind_id), server_command.SRV_REPLY_STATE_OK)
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
-                            zmq_sock.send_unicode(unicode(srv_com))
-                        elif cur_com == "server_status":
-                            srv_com.set_result("up and running", server_command.SRV_REPLY_STATE_OK)
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
-                            zmq_sock.send_unicode(unicode(srv_com))
-                        elif cur_com in ["hard_control"]:
-                            srv_com.set_result("ok handled hc command", server_command.SRV_REPLY_STATE_OK)
-                            t_proc = "command"
-                            self.log("got command {}, sending to {} process".format(cur_com, t_proc))
-                            self.send_to_process(
-                                t_proc,
-                                cur_com,
-                                data[0],
-                                unicode(srv_com)
-                            )
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
-                            zmq_sock.send_unicode(unicode(srv_com))
-                        elif cur_com in ["rescan_kernels"]:
-                            t_proc = "kernel"
-                            self.send_to_process(
-                                t_proc,
-                                cur_com,
-                                data[0],
-                                unicode(srv_com),
-                            )
-                        else:
-                            srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
-                            zmq_sock.send_unicode(unicode(srv_com))
-        else:
-            self.log("wrong number of data chunks ({:d} != 2), data is '{}'".format(len(data), data[:20]),
-                     logging_tools.LOG_LEVEL_ERROR)
+    @RemoteCall(
+        id_filter="^.*syslog_scan$",
+        msg_type=initat.tools.server_mixins.RemoteCallMessageType.flat,
+        target_process="control",
+        send_async_return=False,
+    )
+    def syslog_line(self, payload, **kwargs):
+        return payload
 
-    def _send_return(self, src_id, src_pid, zmq_id, srv_com, *args):
-        self.log("returning 0MQ message to {} ({} ...)".format(zmq_id, srv_com[0:16]))
-        if zmq_id.endswith(":hoststatus:"):
-            self.log("refuse to send return to {}".format(zmq_id), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            try:
-                self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
-                self.socket_dict["router"].send_unicode(unicode(srv_com))
-            except:
-                self.log(
-                    u"error sending to {}: {}".format(
-                        zmq_id,
-                        process_tools.get_except_info(),
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
+    @RemoteCall(
+        id_filter="^.*:tell_mother:.*$",
+        target_process="control",
+    )
+    # received and required commands
+    def node_status(self, srv_com, **kwargs):
+        # remove node with namespace, hack
+        _id_el = srv_com.tree.find(".//ns:async_helper_id", namespaces={"ns": server_command.XML_NS})
+        _id_el.getparent().remove(_id_el)
+        srv_com = server_command.add_namespace(unicode(srv_com))
+        srv_com["async_helper_id"] = _id_el.text
+        return srv_com
+
+    @RemoteCall(target_process="control")
+    def nodestatus(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="control")
+    def refresh(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="control")
+    def soft_control(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="command")
+    def hard_control(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="kernel")
+    def rescan_kernels(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall()
+    def get_0mq_id(self, srv_com, **kwargs):
+        srv_com["zmq_id"] = self.bind_id
+        srv_com.set_result("0MQ_ID is {}".format(self.bind_id), server_command.SRV_REPLY_STATE_OK)
+        return srv_com
+
+    @RemoteCall()
+    def status(self, srv_com, **kwargs):
+        return self.server_status(srv_com, self.__msi_block, global_config)
 
     def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str, target_ip):
         dst_addr = "tcp://{}:2002".format(target_ip)
         if dst_addr not in self.connection_set:
             self.log("adding connection {}".format(dst_addr))
             self.connection_set.add(dst_addr)
-            self.socket_dict["router"].connect(dst_addr)
+            self.main_socket.connect(dst_addr)
         # print "done"
         zmq_id = "{}:hoststatus:".format(zmq_id)
         try:
-            self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
-            self.socket_dict["router"].send_unicode(unicode(com_str))
+            self.main_socket.send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(unicode(com_str))
         except:
             self._log_con_error(zmq_id, dst_addr, process_tools.get_except_info())
         else:

@@ -20,13 +20,14 @@
 """ database definitions for monitoring """
 
 from initat.cluster.backbone.models import snmp_scheme, snmp_scheme_vendor, \
-    snmp_scheme_tl_oid, capability
+    snmp_scheme_tl_oid, ComCapability
 from rest_framework import serializers
 
 __all__ = [
     "snmp_scheme_serializer",
     "snmp_scheme_vendor_serializer",
     "snmp_scheme_tl_oid_serializer",
+    "ComCapabilitySerializer",
 ]
 
 
@@ -49,7 +50,7 @@ class snmp_scheme_serializer(serializers.ModelSerializer):
         model = snmp_scheme
 
 
-class capability_serializer(serializers.ModelSerializer):
+class ComCapabilitySerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = capability
+        model = ComCapability

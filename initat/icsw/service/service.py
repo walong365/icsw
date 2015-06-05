@@ -58,6 +58,7 @@ class Service(object):
         self.name = entry.attrib["name"]
         self.__entry = entry
         self.__attrib = dict(self.__entry.attrib)
+        self.config_check_ok = True
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[srv {}] {}".format(self.name, what), log_level)
@@ -139,7 +140,7 @@ class Service(object):
         else:
             return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None):
+    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, models_changed=False):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -160,10 +161,13 @@ class Service(object):
                         try:
                             _cr = config_tools.server_check(server_type=_conf_name)
                         except:
+                            self.config_check_ok = False
+                            # _exc_info = process_tools.exception_info()
                             _cr = None
                     if _cr is not None:
                         if _cr.effective_device:
                             dev_config.append(_cr)
+        self.config_check_ok = False
         _result = E.result()
         self.entry.append(_result)
 
@@ -171,22 +175,30 @@ class Service(object):
 
         act_state = int(_result.find("state_info").attrib["state"])
         if self.attrib["runs_on"] == "server":
-            if dev_config:  # is not None:
-                sql_info = ", ".join(
-                    [
-                        _dc.server_info_str for _dc in dev_config
-                    ]
-                )
+            if models_changed:
+                # force state to failed
+                act_state = SERVICE_DEAD
+                _state_info = _result.find("state_info")
+                _state_info.text = "models changed"
+                _state_info.attrib["state"] = "{:d}".format(act_state)
+                sql_info = "models changed"
             else:
-                if self.entry.find(".//ignore-missing-database") is not None:
-                    sql_info = "relayer mode"
+                if dev_config:  # is not None:
+                    sql_info = ", ".join(
+                        [
+                            _dc.server_info_str for _dc in dev_config
+                        ]
+                    )
                 else:
-                    act_state = SERVICE_NOT_CONFIGURED
-                    sql_info = "not configured"
-                    # update state info
-                    _state_info = _result.find("state_info")
-                    _state_info.text = "no processes"
-                    _state_info.attrib["state"] = "{:d}".format(act_state)
+                    if self.entry.find(".//ignore-missing-database") is not None:
+                        sql_info = "relayer mode"
+                    else:
+                        act_state = SERVICE_NOT_CONFIGURED
+                        sql_info = "not configured"
+                        # update state info
+                        _state_info = _result.find("state_info")
+                        _state_info.text = "no processes"
+                        _state_info.attrib["state"] = "{:d}".format(act_state)
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -245,7 +257,10 @@ class Service(object):
                 diff_str = ", [diff: {}]".format(
                     ", ".join(
                         [
-                            "{:d}: {:d}".format(_key, _value) for _key, _value in diff_dict.iteritems()
+                            "{:d}: {:d}".format(
+                                _key,
+                                _value
+                            ) for _key, _value in diff_dict.iteritems()
                         ]
                     )
                 )
@@ -561,7 +576,6 @@ class MetaService(Service):
             ms_block = process_tools.meta_server_info(ms_name)
             start_time = ms_block.start_time
             _check = ms_block.check_block(act_proc_dict)
-            #    print self.name, ms_block.pid_check_string
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
             act_pids = ms_block.pids_found
@@ -574,7 +588,6 @@ class MetaService(Service):
                 act_state = SERVICE_OK
                 num_found = num_started
             num_diff = diff_threads
-            # print ms_block.pids, ms_block.pid_check_string
             result.append(
                 E.state_info(
                     *[
@@ -735,4 +748,3 @@ class MetaService(Service):
                     process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
                 )
         return _arg_list
-

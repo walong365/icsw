@@ -24,45 +24,43 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
     netdevice_speed, peer_information
-from initat.discovery_server.config import global_config
 from initat.snmp.struct import ResultNode
-import base64
-import bz2
 from initat.tools import config_tools
 from initat.tools import logging_tools
 from initat.tools import net_tools
 from initat.tools import partition_tools
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import server_command
+
+from .config import global_config
 
 # removed tun from list to enable adding of FWs from Madar, move to option?
 IGNORE_LIST = ["tap", "vnet"]
 
 
-class nd_struct(object):
+class NDStruct(object):
     def __init__(self, dev_name, in_dict, br_dict):
         self.dev_name = dev_name
         self.in_dict = in_dict
         self.br_dict = br_dict
         self.nd = None
-        nd_struct.dict[self.dev_name] = self
+        NDStruct.dict[self.dev_name] = self
 
     @staticmethod
     def setup(cur_inst, device, default_nds):
-        nd_struct.cur_inst = cur_inst
-        nd_struct.device = device
-        nd_struct.default_nds = default_nds
-        nd_struct.dict = {}
+        NDStruct.cur_inst = cur_inst
+        NDStruct.device = device
+        NDStruct.default_nds = default_nds
+        NDStruct.dict = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        nd_struct.cur_inst.log("[nd {}] {}".format(self.dev_name, what), log_level)
+        NDStruct.cur_inst.log("[nd {}] {}".format(self.dev_name, what), log_level)
 
     def create(self):
         cur_nd = netdevice(
-            device=nd_struct.device,
+            device=NDStruct.device,
             devname=self.dev_name,
-            netdevice_speed=nd_struct.default_nds,
+            netdevice_speed=NDStruct.default_nds,
             routing=False,
             penalty=1,
             dhcp_device=False,
@@ -92,55 +90,26 @@ class nd_struct(object):
 
     def link_bridge_slaves(self):
         for _slave_name in self.br_dict.get("interfaces", []):
-            if _slave_name in nd_struct.dict:
-                _slave_nd = nd_struct.dict[_slave_name].nd
+            if _slave_name in NDStruct.dict:
+                _slave_nd = NDStruct.dict[_slave_name].nd
                 if _slave_nd is not None:
                     _slave_nd.bridge_device = self.nd
                     self.log("enslaving {}".format(_slave_name))
                     _slave_nd.save()
 
 
-class hm_mixin(object):
+class HostMonitoringMixin(object):
     def fetch_partition_info(self, dev_com, scan_dev):
         # target_pks = srv_com["device_pk"].text.split(",")
         # self.log("got %s: %s" % (
         #    logging_tools.get_plural("pk", len(target_pks)),
         #    ", ".join(target_pks))
         # )
-        src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
-        target_devs = [scan_dev]
-        self.log("device list: %s" % (", ".join([unicode(cur_dev) for cur_dev in target_devs])))
-        router_obj = config_tools.router_object(self.log)
-        for cur_dev in target_devs:
-            routes = router_obj.get_ndl_ndl_pathes(
-                src_nds,
-                cur_dev.netdevice_set.all().values_list("pk", flat=True),
-                only_endpoints=True,
-                add_penalty=True)
-            cur_dev.target_ip = None
-            if routes:
-                for route in sorted(routes):
-                    found_ips = net_ip.objects.filter(Q(netdevice=route[2]))
-                    if found_ips:
-                        cur_dev.target_ip = found_ips[0].ip
-                        break
-            if cur_dev.target_ip:
-                self.log(
-                    "contact device %s via %s" % (
-                        unicode(cur_dev),
-                        cur_dev.target_ip
-                    )
-                )
-            else:
-                self.log(
-                    u"no route to device {} found".format(unicode(cur_dev)),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-        del router_obj
+        self.get_route_to_devices([scan_dev])
         zmq_con = net_tools.zmq_connection(
-            "server:%s" % (process_tools.get_machine_name()),
-            context=self.zmq_context)
+            "server:{}".format(process_tools.get_machine_name()),
+            context=self.zmq_context
+        )
         result_devs = []
         for target_dev in target_devs:
             if target_dev.target_ip:
@@ -182,7 +151,7 @@ class hm_mixin(object):
                     res_node.error(u"%s: error missing keys in dict" % (target_dev))
                 else:
                     try:
-                        _old_stuff = bz2.decompress(base64.b64decode(lvm_dict.text))
+                        _old_stuff = server_command.decompress(lvm_dict.text)
                     except:
                         lvm_info = partition_tools.lvm_struct("xml", xml=lvm_dict)
                     else:
@@ -416,6 +385,7 @@ class hm_mixin(object):
                         logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))
                     )
                 )
+        self.clear_scan(scan_dev)
         return res_node
 
     def scan_network_info(self, dev_com, scan_dev):
@@ -492,14 +462,14 @@ class hm_mixin(object):
                         all_ok = True
                         _all_devs = set(networks)
                         _br_devs = set(bridges)
-                        nd_struct.setup(self, target_dev, default_nds)
+                        NDStruct.setup(self, target_dev, default_nds)
                         for dev_name in sorted(list(_all_devs & _br_devs)) + sorted(list(_all_devs - _br_devs)):
                             if any([dev_name.startswith(_ignore_pf) for _ignore_pf in IGNORE_LIST]):
                                 self.log("ignoring device {}".format(dev_name))
                                 num_ignored += 1
                                 continue
                             _struct = networks[dev_name]
-                            cur_nd = nd_struct(dev_name, _struct, bridges.get(dev_name, None))
+                            cur_nd = NDStruct(dev_name, _struct, bridges.get(dev_name, None))
                             try:
                                 cur_nd.create()
                             except:
@@ -525,7 +495,7 @@ class hm_mixin(object):
                                 all_ok = False
                             else:
                                 res_node.warn(_err_str)
-                        [nd_struct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(nd_struct.dict.keys())]
+                        [NDStruct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(NDStruct.dict.keys())]
                         if not all_ok and strict_mode:
                             self.log("rolling back to savepoint because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
                             num_taken -= target_dev.netdevice_set.all().count()
@@ -536,4 +506,5 @@ class hm_mixin(object):
             res_node.ok("{} taken".format(logging_tools.get_plural("netdevice", num_taken)))
         if num_ignored:
             res_node.ok("{} ignored".format(logging_tools.get_plural("netdevice", num_ignored)))
+        self.clear_scan(scan_dev)
         return res_node

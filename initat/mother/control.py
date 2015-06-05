@@ -1235,14 +1235,13 @@ class NodeControlProcess(threading_tools.process_obj):
         Host.sync()
         self.register_func("refresh", self._refresh)
         # self.register_func("alter_macaddr", self.alter_macaddr)
-        self.register_func("status", self._status)
+        self.register_func("nodestatus", self._status)
         self.register_func("soft_control", self._status)
         self.register_func("ds_ping_result", self.device_state.ping_result)
         self.register_timer(self._check_commands, 10)
         # self.kernel_dev = config_tools.server_check(server_type="kernel_server")
         self.register_func("syslog_line", self._syslog_line)
-        self.register_func("nodeinfo", self._nodeinfo)
-        self.register_func("nodestatus", self._nodestatus)
+        self.register_func("node_status", self._node_status)
         # build dhcp res
         self.__dhcp_res = {
             "discover": re.compile("(?P<program>\S+): DHCPDISCOVER from (?P<macaddr>\S+) via .*$"),
@@ -1322,44 +1321,42 @@ class NodeControlProcess(threading_tools.process_obj):
 
     def _refresh(self, *args, **kwargs):
         if len(args):
-            id_str, in_com = args
-            in_com = server_command.srv_command(source=in_com)
+            in_com = server_command.srv_command(source=args[0])
             dev_list = map(lambda x: int(x), in_com.xpath(".//ns:device/@pk", smart_strings=False))
             Host.iterate("refresh_target_kernel", device_keys=dev_list)
             Host.iterate("handle_mac_command", "alter", device_keys=dev_list)
+            in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
+            self.send_pool_message("remote_call_async_result", unicode(in_com))
         else:
             # full refresh
-            id_str, in_com = (None, None)
             # use kwargs to specify certain devices
             Host.iterate("refresh_target_kernel", refresh=kwargs.get("refresh", True))
             Host.iterate("handle_mac_command", "alter", refresh=kwargs.get("refresh", True))
-        if id_str:
-            in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
-            self.send_pool_message("send_return", id_str, unicode(in_com))
 
-    def _status(self, zmq_id, in_com, *args, **kwargs):
+    def _status(self, in_com, *args, **kwargs):
         in_com = server_command.srv_command(source=in_com)
-        self.log(
-            "got {} from id {}".format(
-                in_com["*command"],
-                zmq_id,
-            )
-        )
         Host.ping(in_com)
-        self.send_pool_message("send_return", zmq_id, unicode(in_com))
+        self.send_pool_message("remote_call_async_result", unicode(in_com))
 
-    def _nodeinfo(self, id_str, node_text, **kwargs):
-        self.device_state.feed_nodeinfo(id_str, node_text)
-        node_id, instance = id_str.split(":", 1)
-        cur_dev = Host.get_device(node_id)
-        if cur_dev:
-            ret_str = cur_dev.nodeinfo(node_text, instance)
+    def _node_status(self, srv_com, **kwargs):  # id_str, node_text, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com)
+        # exytract node_status text
+        for node_ct in ["nodeinfo", "nodestatus"]:
+            if node_ct in srv_com:
+                node_text = srv_com["*{}".format(node_ct)]
+                break
+        if node_ct == "nodestatus":
+            self.device_state.feed_nodestatus(kwargs.get("src_id"), node_text)
+            self.send_pool_message("remote_call_async_done", unicode(srv_com))
         else:
-            ret_str = "error no node with id '{}' found".format(node_id)
-        self.send_pool_message("send_return", id_str, ret_str)
-
-    def _nodestatus(self, id_str, node_text, **kwargs):
-        self.device_state.feed_nodestatus(id_str, node_text)
+            self.device_state.feed_nodeinfo(kwargs.get("src_id"), node_text)
+            node_id, instance = kwargs.get("src_id").split(":", 1)
+            cur_dev = Host.get_device(node_id)
+            if cur_dev:
+                ret_str = cur_dev.nodeinfo(node_text, instance)
+            else:
+                ret_str = "error no node with id '{}' found".format(node_id)
+            self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def loop_post(self):
         Host.shutdown()

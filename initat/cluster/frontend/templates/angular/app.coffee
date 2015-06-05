@@ -233,6 +233,7 @@ ics_app = angular.module(
     "REST_CONFIG_STR_LIST": "{% url 'rest:config_str_list'%}"
     "REST_CSW_OBJECT_LIST": "{% url 'rest:csw_object_list' %}"
     "REST_CSW_PERMISSION_LIST": "{% url 'rest:csw_permission_list' %}"
+    "REST_DEVICE_COM_CAPABILITIES": "{% url 'rest:device_com_capabilities' %}"
     "REST_DEVICE_GROUP_LIST": "{% url 'rest:device_group_list' %}"
     "REST_DEVICE_DETAIL": "{% url 'rest:device_detail' 1 %}"
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"

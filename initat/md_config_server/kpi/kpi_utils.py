@@ -33,63 +33,6 @@ def print_tree(t, i=0):
         print_tree(p, i + 8)
 
 
-class KpiUtils(object):
-    @staticmethod
-    def parse_kpi_time_range_from_kpi(kpi_db):
-        start, end = KpiUtils.parse_kpi_time_range(kpi_db.time_range, kpi_db.time_range_parameter)
-        if start is None:
-            raise RuntimeError("get_historic called for kpi with no defined time range.")
-        return start, end
-
-    @staticmethod
-    def parse_kpi_time_range(time_range, time_range_parameter):
-        """
-        return datetime.datetime.combine(datetime.date(2014, 01, 18),
-                                         datetime.datetime.min.time()).replace(tzinfo=pytz.utc),\
-               datetime.datetime.combine(datetime.date(2014, 02, 01),
-                                         datetime.datetime.min.time()).replace(tzinfo=pytz.utc)
-        # """
-
-        def get_duration_class_start_end(duration_class, time_point):
-            start = duration_class.get_time_frame_start(
-                time_point
-            )
-            end = duration_class.get_end_time_for_start(start)
-            return start, end
-
-        start, end = None, None
-
-        if time_range == 'none':
-            pass
-        elif time_range == 'yesterday':
-            start, end = get_duration_class_start_end(
-                duration.Day,
-                django.utils.timezone.now() - datetime.timedelta(days=1),
-                )
-        elif time_range == 'last week':
-            start, end = get_duration_class_start_end(
-                duration.Week,
-                django.utils.timezone.now() - datetime.timedelta(days=7),
-                )
-        elif time_range == 'last month':
-            start, end = get_duration_class_start_end(
-                duration.Month,
-                django.utils.timezone.now().replace(day=1) - datetime.timedelta(days=1)
-            )
-        elif time_range == 'last year':
-            start, end = get_duration_class_start_end(
-                duration.Year,
-                django.utils.timezone.now().replace(day=1, month=1) - datetime.timedelta(days=1)
-            )
-        elif time_range == 'last n days':
-            start = duration.Day.get_time_frame_start(
-                django.utils.timezone.now() - datetime.timedelta(days=time_range_parameter)
-            )
-            end = start + datetime.timedelta(days=time_range_parameter)
-
-        return (start, end)
-
-
 def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
     """
     Return a formatted dump of the tree in *node*.  This is mainly useful for

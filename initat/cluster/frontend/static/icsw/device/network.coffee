@@ -182,7 +182,8 @@ angular.module(
 
         $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
         $scope.scan_mixin.template = "device.network.scan.form"
-        
+        $scope.scan_mixin.cssClass = "modal-tall"
+
         $scope.devsel_list = []
         $scope.devices = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -339,29 +340,42 @@ angular.module(
         $scope.set_scan_mode = (sm) ->
             $scope.scan_device.scan_mode = sm
             $scope.scan_device["scan_#{sm}_active"] = true
+        $scope.has_com_capability = (dev, cc) ->
+            return cc in dev.com_caps
         $scope.scan_device_network = (dev, event) ->
             $scope._current_dev = dev
             $scope.scan_device = dev
-            ip_list = []
+            network_type_names = []
+            ip_dict = {}
             for ndev in dev.netdevice_set
                 for ip in ndev.net_ip_set
                     if ip.network of $scope.network_lut
                         network = $scope.network_lut[ip.network]
                         if network.network_type_identifier != "l" and not (network.netmask == "255.0.0.0" and network.network == "127.0.0.0")
-                            ip_list.push(ip.ip)
-            ip_list = _.sortBy(ip_list)
-            dev.ip_list = ip_list
+                            if network.network_type_name not of ip_dict
+                                ip_dict[network.network_type_name] = []
+                                network_type_names.push(network.network_type_name)
+                            ip_dict[network.network_type_name].push(ip.ip)
+            for key, value of ip_dict
+                ip_dict[key] = _.sortBy(value)
+            network_type_names = _.sortBy(network_type_names)
+            dev.ip_dict = ip_dict
+            dev.network_type_names = network_type_names
             dev.manual_address = "0.0.0.0"
             dev.snmp_community = "public"
+            if not dev.com_caps?
+                # init com_caps array if not already set
+                dev.com_caps = []
             dev.snmp_version = 1
             dev.remove_not_found = false
             dev.strict_mode = true
+            dev.scan_base_active = false
             dev.scan_hm_active = false
             dev.scan_snmp_active = false
-            if $scope.no_objects_defined(dev)
+            if not $scope.no_objects_defined(dev) and $scope.has_com_capability(dev, "snmp")
                 $scope.set_scan_mode("snmp")
             else
-                $scope.set_scan_mode("hm")
+                $scope.set_scan_mode("base")
             $scope.scan_mixin.edit(dev, event).then(
                 (mod_obj) ->
                     true
@@ -710,7 +724,49 @@ angular.module(
                     return "success text-center"
                 else
                     return "warning text-center"
-    }        
+    }
+]).directive("icswDeviceComCapabilities", ["$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", ($templateCache, $compile, icswCachingCall, ICSW_URLS) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("icsw.device.com.capabilities")
+        scope:
+            device: "=device"
+            detail: "=detail"
+        link: (scope, el, attrs) ->
+            scope.com_class = () ->
+                if scope.pending
+                    return "btn-warning"
+                else if scope.com_caps.length
+                    return "btn-success"
+                else
+                    return "btn-danger"
+            scope.com_caps = []
+            scope.$watch("device.active_scan", (new_val) ->
+                if new_val == "base"
+                    el.find("span.ladda-label").text("...")
+                    scope.pending = true
+                else
+                    update_com_cap()
+            )
+            update_com_cap = () ->
+                el.find("span.ladda-label").text("...")
+                scope.pending = true
+                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
+                    scope.com_caps = data[0]
+                    scope.pending = false
+                    if scope.com_caps.length
+                        scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
+                        scope.device.com_cap_names = (_entry.name for _entry in scope.com_caps)
+                        if scope.detail?
+                            el.find("span.ladda-label").text(scope.device.com_cap_names.join(", "))
+                        else
+                            el.find("span.ladda-label").text(scope.device.com_caps.join(", "))
+                    else
+                        el.find("span.ladda-label").text("N/A")
+                )
+            update_com_cap()
+    }
+
 ]).directive("icswDeviceNetworkIpRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"

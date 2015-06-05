@@ -550,25 +550,22 @@ class device(models.Model):
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
-    # capability list, like IPMI, WMI, SNMP
-    capability_list = models.ManyToManyField("backbone.capability")
+    # communication capability list, like IPMI, WMI, SNMP
+    com_capability_list = models.ManyToManyField("backbone.ComCapability")
+    # x = models.BigIntegerField(default=0)
     # has an IPMI interface
-    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
+    # ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
     # flag: is meta device ?
     is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
-    # scan active ?
+    # scan active, can be one of
+    # ... base (base scan)
+    # ... com_capability_matchcode
     active_scan = models.CharField(
         max_length=16,
-        default="",
-        choices=[
-            ("snmp", "SNMP"),
-            ("ipmi", "IPMI"),
-            # also used for partition fetch
-            ("hm", "Host monitor"),
-        ],
-        blank=True
+        default=u"",
+        blank=True,
     )
 
     @property

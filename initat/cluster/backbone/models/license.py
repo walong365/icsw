@@ -132,8 +132,10 @@ class _LicenseManager(models.Manager):
 
     def get_valid_licenses(self):
         """Returns all licenses which are active (and should be displayed to the user)"""
-        return [lic for lic in set().union(*[r.get_valid_licenses() for r in self._license_readers])
-                if not LicenseViolation.objects.is_hard_violated(lic)]
+        return [
+            lic for lic in set().union(*[r.get_valid_licenses() for r in self._license_readers])
+            if not LicenseViolation.objects.is_hard_violated(lic)
+        ]
 
     def get_license_packages(self):
         """Returns license packages in custom format for the client."""

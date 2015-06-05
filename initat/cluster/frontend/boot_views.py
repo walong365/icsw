@@ -82,7 +82,7 @@ class get_boot_info_json(View):
         call_mother = True if int(_post["call_mother"]) else False
         # to speed up things while testing
         if call_mother:
-            srv_com = server_command.srv_command(command="status")
+            srv_com = server_command.srv_command(command="nodestatus")
             srv_com["devices"] = srv_com.builder(
                 "devices",
                 *[

@@ -33,8 +33,8 @@ import setproctitle
 
 from initat.tools import io_stream_helper
 from initat.tools import logging_tools
-import psutil
 from initat.tools import process_tools
+import psutil
 import zmq
 
 
@@ -46,7 +46,7 @@ _DEBUG = False
 
 def _debug(what):
     if _DEBUG:
-        print "dbg {} {:5d}: {}".format(str(time.ctime()), os.getpid(), what)
+        print("dbg {} {:5d}: {}".format(str(time.ctime()), os.getpid(), what))
 
 
 # base class
@@ -95,7 +95,8 @@ class hup_error(my_error):
 def get_except_info():
     return u"{} ({})".format(
         str(sys.exc_info()[0]),
-        str(sys.exc_info()[1]))
+        str(sys.exc_info()[1])
+    )
 
 
 def get_act_thread_name():
@@ -236,7 +237,7 @@ class _timer_obj(object):
             self.cb_func(self.data)
 
 
-class timer_base(object):
+class TimerBase(object):
     def __init__(self, **kwargs):
         # timer structure
         self.__timer_list, self.__next_timeout = ([], None)
@@ -537,10 +538,10 @@ class exception_handling_mixin(object):
         return _handled
 
 
-class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base, exception_handling_mixin):
+class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, exception_handling_mixin):
     def __init__(self, name, **kwargs):
         multiprocessing.Process.__init__(self, target=self._code, name=name)
-        timer_base.__init__(self, loop_timer=kwargs.get("loop_timer", 0))
+        TimerBase.__init__(self, loop_timer=kwargs.get("loop_timer", 0))
         poller_obj.__init__(self)
         self.kill_myself = kwargs.get("kill_myself", False)
         exception_handling_mixin.__init__(self)
@@ -904,11 +905,11 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                     raise
 
 
-class process_pool(timer_base, poller_obj, process_base, exception_handling_mixin):
+class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin):
     def __init__(self, name, **kwargs):
         threading.currentThread().setName(kwargs.get("name", "main"))
         self.debug_zmq = kwargs.get("zmq_debug", False)
-        timer_base.__init__(self)
+        TimerBase.__init__(self)
         poller_obj.__init__(self)
         exception_handling_mixin.__init__(self)
         self.name = name
@@ -1160,7 +1161,13 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             return self.__processes[p_name]
 
     def get_info_dict(self):
-        p_dict = dict([(key, {"alive": self.get_process(key).is_alive()}) for key in self.get_process_names()])
+        p_dict = {
+            key: {
+                "alive": self.get_process(key).is_alive(),
+                "pid": self.get_process(key).pid,
+                "name": key,
+            } for key in self.get_process_names()
+        }
         return p_dict
 
     def is_alive(self):
