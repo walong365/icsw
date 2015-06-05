@@ -126,11 +126,11 @@ class ServiceContainer(object):
                     _dict[_entry] = _checksum
         return _dict
 
-    def check_service(self, entry, use_cache=True, refresh=True):
+    def check_service(self, entry, use_cache=True, refresh=True, models_changed=False):
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
             self.update_valid_licenses()
-        entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools, valid_licenses=self.valid_licenses)
+        entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools, valid_licenses=self.valid_licenses, models_changed=models_changed)
         if not entry.config_check_ok:
             self._all_config_checks_ok = False
 
