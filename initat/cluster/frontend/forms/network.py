@@ -476,13 +476,19 @@ class device_network_scan_form(Form):
         # HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)'"
         # " select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
         HTML("<tabset><tab heading='BaseScan' select='set_scan_mode(\"base\")' active='_current_dev.scan_base_active'>"),
-        HTML("</tab><tab heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
+        HTML("""
+</tab>
+<tab ng-show='has_com_capability(_edit_obj, "hm")' heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"
+"""),
         Fieldset(
             "Flags",
             Field("strict_mode"),
             HTML("""{% verbatim %}<div class="alert alert-danger" ng-show="!_edit_obj.strict_mode">attention: peers might get lost</div>{% endverbatim %}""")
         ),
-        HTML("</tab><tab heading='SNMP' select='set_scan_mode(\"snmp\")' active='_current_dev.scan_snmp_active'>"),
+        HTML("""
+</tab>
+<tab ng-show='has_com_capability(_edit_obj, "snmp")' heading='SNMP' select='set_scan_mode(\"snmp\")' active='_current_dev.scan_snmp_active'>
+"""),
         Fieldset(
             "Base data",
             Field("snmp_community"),

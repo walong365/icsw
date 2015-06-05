@@ -340,6 +340,8 @@ angular.module(
         $scope.set_scan_mode = (sm) ->
             $scope.scan_device.scan_mode = sm
             $scope.scan_device["scan_#{sm}_active"] = true
+        $scope.has_com_capability = (dev, cc) ->
+            return cc in dev.com_caps
         $scope.scan_device_network = (dev, event) ->
             $scope._current_dev = dev
             $scope.scan_device = dev
@@ -361,16 +363,19 @@ angular.module(
             dev.network_type_names = network_type_names
             dev.manual_address = "0.0.0.0"
             dev.snmp_community = "public"
+            if not dev.com_caps?
+                # init com_caps array if not already set
+                dev.com_caps = []
             dev.snmp_version = 1
             dev.remove_not_found = false
             dev.strict_mode = true
             dev.scan_base_active = false
             dev.scan_hm_active = false
             dev.scan_snmp_active = false
-            if $scope.no_objects_defined(dev)
-                $scope.set_scan_mode("base")
-            else
+            if not $scope.no_objects_defined(dev) and $scope.has_com_capability(dev, "snmp")
                 $scope.set_scan_mode("snmp")
+            else
+                $scope.set_scan_mode("base")
             $scope.scan_mixin.edit(dev, event).then(
                 (mod_obj) ->
                     true
@@ -719,7 +724,50 @@ angular.module(
                     return "success text-center"
                 else
                     return "warning text-center"
-    }        
+    }
+]).directive("icswDeviceComChannels", ["$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", ($templateCache, $compile, icswCachingCall, ICSW_URLS) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("icsw.device.com.channels")
+        scope:
+            device: "=device"
+            detail: "=detail"
+        link: (scope, el, attrs) ->
+            scope.com_class = () ->
+                if scope.pending
+                    return "btn-warning"
+                else if scope.com_caps.length
+                    return "btn-success"
+                else
+                    return "btn-danger"
+            scope.com_caps = []
+            scope.com_cap_str = "..."
+            scope.$watch("device.active_scan", (new_val) ->
+                if new_val == "base"
+                    scope.pending = true
+                    scope.com_cap_str = "..."
+                else
+                    update_com_cap()
+            )
+            update_com_cap = () ->
+                scope.pending = true
+                el.find("span.ladda-label").text("...")
+                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
+                    scope.com_caps = data[0]
+                    scope.pending = false
+                    if scope.com_caps.length
+                        scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
+                        scope.device.com_cap_names = (_entry.name for _entry in scope.com_caps)
+                        if scope.detail?
+                            el.find("span.ladda-label").text(scope.device.com_cap_names.join(", "))
+                        else
+                            el.find("span.ladda-label").text(scope.device.com_caps.join(", "))
+                    else
+                        el.find("span.ladda-label").text("N/A")
+                )
+            update_com_cap()
+    }
+
 ]).directive("icswDeviceNetworkIpRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"

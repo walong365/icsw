@@ -73,7 +73,7 @@ class BaseScanBatch(object):
             self.device.target_ip,
         )
         # store port reference lut
-        self.port_ref_lust = _ref_lut
+        self.port_ref_lut = _ref_lut
         self.log("scan_command is {}".format(_com))
         return _com
 
@@ -105,8 +105,8 @@ class BaseScanBatch(object):
                         _port.attrib["portid"],
                         _port.attrib["protocol"],
                     )
-                    if _portspec in self.port_ref_lust:
-                        found_comspecs.add(self.port_ref_lust[_portspec])
+                    if _portspec in self.port_ref_lut:
+                        found_comspecs.add(self.port_ref_lut[_portspec])
                     else:
                         self.log("unknown portspec {}".format(_portspec), logging_tools.LOG_LEVEL_WARN)
                 if found_comspecs:
@@ -116,7 +116,7 @@ class BaseScanBatch(object):
                             ", ".join(found_comspecs)
                         )
                     )
-                    self.device.com_capability_list.all().delete()
+                    self.device.com_capability_list.clear()
                     for _spec in found_comspecs:
                         self.device.com_capability_list.add(ComCapability.objects.get(Q(matchcode=_spec)))
                 else:

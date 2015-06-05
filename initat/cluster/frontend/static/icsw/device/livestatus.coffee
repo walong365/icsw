@@ -365,6 +365,7 @@ angular.module(
     class LoadInfo
         constructor: (@key, @url, @options) ->
             @client_dict = {}
+            @client_pk_list = {}
             # initial value is null (== no filtering)
             @pk_list = null
         add_pk_list: (client, pk_list) =>
@@ -373,7 +374,8 @@ angular.module(
                 if @pk_list == null
                     # init pk_list if the list was still null
                     @pk_list = []
-                @pk_list = @pk_list.concat(pk_list)
+                @pk_list = _.uniq(@pk_list.concat(pk_list))
+            @client_pk_list[client] = pk_list
             _defer = $q.defer()
             @client_dict[client] = _defer
             return _defer
@@ -389,7 +391,15 @@ angular.module(
             Restangular.all(@url.slice(1)).getList(opts).then(
                 (result) =>
                     for c_id, _defer of @client_dict
-                        _defer.resolve(result)
+                        _c_pk_list = @client_pk_list[c_id]
+                        if !_c_pk_list or _c_pk_list.length == @pk_list.length
+                            _defer.resolve(result)
+                        else
+                            local_result = []
+                            for _pk_res in _.zip(@pk_list, result)
+                                if _pk_res[0] in _c_pk_list
+                                    local_result.push(_pk_res[1])
+                            _defer.resolve(local_result)
                     @client_dict = {}
                     @pk_list = null
             )

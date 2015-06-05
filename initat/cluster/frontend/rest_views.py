@@ -35,7 +35,8 @@ from initat.cluster.backbone.models import get_related_models, get_change_reset_
     ext_license_usage_coarse
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
+    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, \
+    network_with_ip_serializer, ComCapabilitySerializer
 from initat.cluster.frontend import forms
 from initat.cluster.backbone.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -402,7 +403,7 @@ class ext_peer_object(dict):
         self["fqdn"] = "{}{}".format(
             self["device__name"],
             ".{}".format(self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
-            )
+        )
 
 
 class ext_peer_serializer(serializers.Serializer):
@@ -620,11 +621,12 @@ class device_tree_detail(detail_view, device_tree_mixin):
             return device_serializer
 
 
-class device_tree_list(mixins.ListModelMixin,
-                       mixins.CreateModelMixin,
-                       generics.MultipleObjectAPIView,
-                       device_tree_mixin,
-                       ):
+class device_tree_list(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.MultipleObjectAPIView,
+    device_tree_mixin,
+):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device
@@ -785,6 +787,20 @@ class device_selection_list(APIView):
     def get(self, request):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
         return Response(ser.data)
+
+
+class device_com_capabilities(APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        _devs = json.loads(request.QUERY_PARAMS.get("devices"))
+        _devs = device.objects.filter(Q(pk__in=_devs)).prefetch_related("com_capability_list")
+        _data = []
+        for _dev in _devs:
+            _data.append(ComCapabilitySerializer([_cap for _cap in _dev.com_capability_list.all()], many=True).data)
+        return Response(_data)
+
 
 for src_mod, obj_name in REST_LIST:
     is_camelcase = obj_name[0].lower() != obj_name[0]

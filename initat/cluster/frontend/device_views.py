@@ -273,7 +273,6 @@ class scan_device_network(View):
             )
             srv_com["devices"] = _dev_node
         elif _sm == "base":
-            print _json_dev["scan_address"]
             srv_com = server_command.srv_command(command="base_scan")
             _dev_node = srv_com.builder("device")
             _dev_node.attrib.update(

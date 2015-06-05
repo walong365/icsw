@@ -113,6 +113,14 @@ class device_info_form(ModelForm):
                 HTML("""
 <div class='form-group' ng-show="is_device()">
     <label class='control-label col-sm-3'>
+        ComChannels
+    </label>
+    <div class='col-sm-9 form-control-static'>
+        <icsw-device-com-channels device="_edit_obj" detail="1"></icsw-device-com-channels>
+    </div>
+</div>
+<div class='form-group' ng-show="is_device()">
+    <label class='control-label col-sm-3'>
         IP Info
     </label>
     <div class='col-sm-9 form-control-static'>

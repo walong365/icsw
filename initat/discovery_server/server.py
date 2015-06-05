@@ -67,6 +67,8 @@ class server_process(
         self._init_processes()
         # not really necessary
         self.install_remote_call_handlers()
+        # clear pending scans
+        self.clear_pending_scans()
         self.__run_idx = 0
         self.__pending_commands = {}
         if process_tools.get_machine_name() == "eddiex" and global_config["DEBUG"]:
@@ -79,6 +81,14 @@ class server_process(
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
+    def clear_pending_scans(self):
+        _pdevs = device.objects.exclude(Q(active_scan=""))
+        if len(_pdevs):
+            self.log("clearing active_scan of {}".format(logging_tools.get_plural("device", len(_pdevs))))
+            for _dev in _pdevs:
+                _dev.active_scan = ""
+                _dev.save(update_fields=["active_scan"])
 
     def _int_error(self, err_cause):
         if not self.__snmp_running:
