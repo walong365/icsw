@@ -774,7 +774,7 @@ class device_tree_list(
             _q = _q.prefetch_related(
                 "netdevice_set__net_ip_set__network__network_type",
                 "netdevice_set__net_ip_set__network__network_device_type",
-                )
+            )
         # ordering: at first cluster device group, then by group / is_meta_device / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])

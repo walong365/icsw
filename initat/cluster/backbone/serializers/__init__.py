@@ -220,7 +220,7 @@ class device_serializer(serializers.ModelSerializer):
 
     def get_is_cd_device(self, obj):
         return True if (
-            obj.com_capability_list.filter(Q(matchcode="ipmi")).count()
+            "ipmi" in [_cc.matchcode for _cc in obj.com_capability_list.all()]
             or len(
                 [
                     _scheme.power_control for _scheme in obj.snmp_schemes.all() if _scheme.power_control
