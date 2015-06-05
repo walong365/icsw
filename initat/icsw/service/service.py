@@ -167,7 +167,6 @@ class Service(object):
                     if _cr is not None:
                         if _cr.effective_device:
                             dev_config.append(_cr)
-        self.config_check_ok = False
         _result = E.result()
         self.entry.append(_result)
 
