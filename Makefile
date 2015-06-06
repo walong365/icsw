@@ -220,11 +220,6 @@ install:
 	# /opt/cluster/share
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/cert/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/webcache/
-	mkdir -p ${DESTDIR}/${ICSW_BASE}/share/rrd_grapher
-	mkdir -p ${DESTDIR}/${ICSW_BASE}/share/rrd_grapher/color_rules.d
-	mkdir -p ${DESTDIR}/${ICSW_BASE}/share/rrd_grapher/color_tables.d
-	cp -a color_rules.xml ${DESTDIR}/${ICSW_BASE}/share/rrd_grapher
-	cp -a color_tables.xml ${DESTDIR}/${ICSW_BASE}/share/rrd_grapher 
 	${INSTALL} ${INSTALL_OPTS} cert/* ${DESTDIR}/opt/cluster/share/cert
 	# Various python files
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}

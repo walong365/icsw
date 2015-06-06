@@ -105,7 +105,7 @@ lic_module.controller("icswLicenseOverviewCtrl",
     restrict: "EA"
     templateUrl: "icsw.license.overview"
 
-]).directive("icseLicenseGraph", ["$templateCache", "$resource", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($templateCache, $resource, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswLicenseGraph", ["$templateCache", "$resource", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($templateCache, $resource, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     return {
     restrict : "EA"
     template : """

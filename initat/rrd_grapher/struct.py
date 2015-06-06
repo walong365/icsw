@@ -19,21 +19,17 @@
 #
 """ data_store structure for rrd-grapher """
 
-from django.db.models import Q
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models import MachineVector, MVStructEntry, MVValueEntry
-from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools
-import os
-import pprint  # @UnusedImport
-from initat.tools import process_tools
 import re
-import time
+
+from django.db.models import Q
+from initat.cluster.backbone.models import MachineVector, MVStructEntry
+from initat.rrd_grapher.config import global_config
+from initat.tools import logging_tools
+from initat.tools import process_tools
 
 
-class compound_entry(object):
+class CompoundEntry(object):
     def __init__(self, _xml):
         self.__re_list = []
         self.__key = _xml.attrib["key"]
@@ -188,81 +184,44 @@ COMPOUND_NG = """
 """
 
 
-class compound_tree(object):
+class CompoundTree(object):
     def __init__(self, log_com):
         self.__compounds = []
         self.__log_com = log_com
-        compound_xml = """
-<compounds>
-    <compound key="compound.load" info="load">
-        <key_list>
-            <key match="^load\.1$" required="1" color="#ff0000"></key>
-            <key match="^load\.5$" color="#4444cc"></key>
-            <key match="^load\.15$" required="1" color="#44aa44" draw_type="LINE2"></key>
-        </key_list>
-    </compound>
-    <compound key="compound.cpu" info="CPU">
-        <key_list>
-            <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1"></key>
-            <key match="^vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
-            <key match="^vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
-            <key match="^vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
-            <key match="^vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
-            <key match="^vms\.steal$" required="0" color="#fbd462" draw_type="AREA1STACK"></key>
-            <key match="^vms\.nice$" required="0" color="#fccde5" draw_type="AREA1STACK"></key>
-            <key match="^vms\.idle$" required="1" color="#b3de69" draw_type="AREA1STACK"></key>
-            <key match="^vms\.guest$" required="0" color="#ff0000" draw_type="LINE2"></key>
-            <key match="^vms\.guest_nice$" required="0" color="#ffff00" draw_type="LINE2"></key>
-        </key_list>
-    </compound>
-    <compound key="compound.sys.processes" info="Processes">
-        <key_list>
-            <key match="^proc\..*$" nomatch="proc\.(sleeping|total)" required="1" color="set312" draw_type="LINE1"></key>
-        </key_list>
-    </compound>
-    <compound key="compound.sys.memory" info="System Memory">
-        <key_list>
-            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
-            <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
-            <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
-            <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
-            <!--<key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="AREASTACK"></key>-->
-            <!--<key match="mem\.free\.swap$" required="0" color="#55ee55" draw_type="AREA1STACK"></key>-->
-            <key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="LINE2"></key>
-        </key_list>
-    </compound>
-    <compound key="compound.io" info="IO">
-        <key_list>
-            <key match="^net\.all\.rx$" required="1" color="#44ffffa0" draw_type="AREA1"></key>
-            <key match="^net\.all\.tx$" required="1" invert="1" color="#ff4444a0" draw_type="AREA1"></key>
-            <key match="^io\.total\.bytes\.read$" required="1" color="#4444ffa0" draw_type="AREA1"></key>
-            <key match="^io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
-        </key_list>
-    </compound>
-    <compound key="compound.icsw memory" info="CORVUS Memory">
-        <key_list>
-            <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
-        </key_list>
-    </compound>
-    <compound key="compound.net.snmp_{key}" info="SNMP info for interface {key}" order_key="key">
-        <key_list>
-            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.rx$" required="1" color="#00dd00" draw_type="AREA"></key>
-            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.tx$" required="1" color="#0000ff" draw_type="LINE1"></key>
-            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.errors$" required="1" color="#ff0000" draw_type="LINE2"></key>
-        </key_list>
-    </compound>
-</compounds>
-        """
         _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))  # @UndefinedVariable
-        comp_xml = etree.fromstring(compound_xml)  # @UndefinedVariable
-        for _entry in comp_xml.findall("compound"):
-            _valid = _ng.validate(_entry)
-            if _valid:
-                new_comp = compound_entry(_entry)
-                self.__compounds.append(new_comp)
-                self.log("added {}".format(unicode(new_comp)))
-            else:
-                self.log("compound is invalid: {}".format(str(_ng.error_log)), logging_tools.LOG_LEVEL_ERROR)
+        compound_xml = E.compounds()
+        _comp_dir = global_config["COMPOUND_DIR"]
+        for _dir, _dirs, _files in os.walk():
+            for _file in [_entry for _entry in _files if _entry.startswith("comp") and _entry.endswith(".xml")]:
+                _file = os.path.join(_dir, _file)
+                try:
+                    cur_xml = etree.fromstring(file(_file, "rb").read())
+                except:
+                    self.log(
+                        "error interpreting compound file {}: {}".format(
+                            _file,
+                            process_tools.get_except_info(),
+                        )
+                    )
+                else:
+                    for _xml_num, _xml in enumerate(cur_xml, 1):
+                        _valid = _ng.validate(_xml)
+                        if _valid:
+                            self.log(
+                                "added compound #{:d} from {}".format(
+                                    _xml_num,
+                                    _file,
+                                )
+                            )
+                            self.__compounds.append(CompoundEntry(_xml))
+                        else:
+                            self.log(
+                                "compound #{:d} from {} is invalid: {}".format(
+                                    _xml_num,
+                                    _file,
+                                    str(_ng.error_log),
+                                )
+                            )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[comp] {}".format(what), log_level)
@@ -382,7 +341,7 @@ class DataStore(object):
         for mv in MachineVector.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)):
             DataStore.g_log("building structure for {}".format(unicode(mv.device)))
             new_ds = DataStore(mv)
-        DataStore.compound_tree = compound_tree(DataStore.g_log)
+        DataStore.compound_tree = CompoundTree(DataStore.g_log)
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):

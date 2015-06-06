@@ -1,0 +1,60 @@
+<compounds>
+    <compound key="compound.load" info="load">
+        <key_list>
+            <key match="^load\.1$" required="1" color="#ff0000"></key>
+            <key match="^load\.5$" color="#4444cc"></key>
+            <key match="^load\.15$" required="1" color="#44aa44" draw_type="LINE2"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.cpu" info="CPU">
+        <key_list>
+            <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1"></key>
+            <key match="^vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
+            <key match="^vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
+            <key match="^vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
+            <key match="^vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
+            <key match="^vms\.steal$" required="0" color="#fbd462" draw_type="AREA1STACK"></key>
+            <key match="^vms\.nice$" required="0" color="#fccde5" draw_type="AREA1STACK"></key>
+            <key match="^vms\.idle$" required="1" color="#b3de69" draw_type="AREA1STACK"></key>
+            <key match="^vms\.guest$" required="0" color="#ff0000" draw_type="LINE2"></key>
+            <key match="^vms\.guest_nice$" required="0" color="#ffff00" draw_type="LINE2"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.sys.processes" info="Processes">
+        <key_list>
+            <key match="^proc\..*$" nomatch="proc\.(sleeping|total)" required="1" color="set312" draw_type="LINE1"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.sys.memory" info="System Memory">
+        <key_list>
+            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
+            <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
+            <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
+            <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
+            <!--<key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="AREASTACK"></key>-->
+            <!--<key match="mem\.free\.swap$" required="0" color="#55ee55" draw_type="AREA1STACK"></key>-->
+            <key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="LINE2"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.io" info="IO">
+        <key_list>
+            <key match="^net\.all\.rx$" required="1" color="#44ffffa0" draw_type="AREA1"></key>
+            <key match="^net\.all\.tx$" required="1" invert="1" color="#ff4444a0" draw_type="AREA1"></key>
+            <key match="^io\.total\.bytes\.read$" required="1" color="#4444ffa0" draw_type="AREA1"></key>
+            <key match="^io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.icsw memory" info="CORVUS Memory">
+        <key_list>
+            <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.net.snmp_{key}" info="SNMP info for interface {key}" order_key="key">
+        <key_list>
+            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.rx$" required="1" color="#00dd00" draw_type="AREA"></key>
+            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.tx$" required="1" color="#0000ff" draw_type="LINE1"></key>
+            <key match="^net\.snmp_(?P&lt;key&gt;.*)\.errors$" required="1" color="#ff0000" draw_type="LINE2"></key>
+        </key_list>
+    </compound>
+</compounds>
+
