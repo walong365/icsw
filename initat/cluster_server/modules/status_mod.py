@@ -48,10 +48,17 @@ class server_status(cs_base_class.server_com):
         _def_ns = service_parser.Parser.get_default_ns()
         cur_c.check_system(_def_ns, inst_xml)
         cur_inst.srv_com["status"] = inst_xml
-        cur_inst.srv_com["metastatus"] = main.query_local_meta_server()["overview:instances"]
-        cur_inst.srv_com.set_result(
-            "checked system",
-        )
+        _local_state = main.query_local_meta_server()
+        if _local_state is not None:
+            cur_inst.srv_com["metastatus"] = _local_state["overview:instances"]
+            cur_inst.srv_com.set_result(
+                "checked system",
+            )
+        else:
+            cur_inst.srv_com.set_result(
+                "error querying local meta-server (timeout?)",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
 
 
 class server_control(cs_base_class.server_com):
