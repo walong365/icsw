@@ -161,6 +161,15 @@ class id_discovery(object):
 
     @staticmethod
     def reload_mapping():
+        # illegal server names
+        ISN_SET = set(
+            [
+                "clusterserver",
+                "ccserver",
+                "sgeserver",
+                "rrd_grapher",
+            ]
+        )
         id_discovery.reverse_mapping = {}
         # mapping connection string -> 0MQ id
         id_discovery.save_file = True
@@ -172,12 +181,15 @@ class id_discovery(object):
                 id_discovery.mapping_xml = etree.fromstring(map_content)  # @UndefinedVariable
                 for host_el in id_discovery.mapping_xml.findall(".//host"):
                     for uuid_el in host_el.findall(".//uuid"):
-                        conn_str = "{}://{}:{}".format(
-                            uuid_el.get("proto"),
-                            host_el.get("address"),
-                            uuid_el.get("port"),
+                        if any([_uuid_el.text.count(_isn) for _isn in ISN_SET]):
+                            pass
+                        else:
+                            conn_str = "{}://{}:{}".format(
+                                uuid_el.get("proto"),
+                                host_el.get("address"),
+                                uuid_el.get("port"),
                             )
-                        id_discovery.set_mapping(conn_str, uuid_el.text)
+                            id_discovery.set_mapping(conn_str, uuid_el.text)
             else:
                 # old format
                 map_lines = [line.strip().split("=", 1) for line in map_content.split("\n") if line.strip() and line.count("=")]
@@ -193,7 +205,8 @@ class id_discovery(object):
                     logging_tools.get_plural("mapping", len(id_discovery.mapping_xml.findall(".//uuid"))),
                     MAPPING_FILE_IDS,
                     len(map_content.split("\n")),
-                    ))
+                )
+            )
             for key, value in id_discovery.mapping.iteritems():
                 # only use ip-address / hostname from key
                 id_discovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
