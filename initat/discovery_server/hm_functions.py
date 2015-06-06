@@ -111,11 +111,12 @@ class HostMonitoringMixin(object):
             context=self.zmq_context
         )
         result_devs = []
+        target_devs = [scan_dev]
         for target_dev in target_devs:
             if target_dev.target_ip:
                 result_devs.append(target_dev)
                 conn_str = "tcp://{}:{:d}".format(
-                    cur_dev.target_ip,
+                    target_dev.target_ip,
                     2001
                 )
                 self.log(u"connection_str for {} is {}".format(unicode(target_dev), conn_str))

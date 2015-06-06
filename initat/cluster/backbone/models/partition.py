@@ -252,7 +252,7 @@ class partition_disc(models.Model):
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
     if "instance" in kwargs:
-        disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+)|mapper/.*|ida/(.*)|cciss/(.*))$")
+        disc_re = re.compile("^/dev/([shv]d[a-z]{1,2}|dm-(\d+)|mapper/.*|ida/(.*)|cciss/(.*))$")
         cur_inst = kwargs["instance"]
         d_name = cur_inst.disc.strip().lower()
         if not d_name:
