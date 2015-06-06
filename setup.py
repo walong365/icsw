@@ -189,7 +189,16 @@ setup(
             [
             ]
         ),
-
+        (
+            "/opt/cluster/share/rrd_grapher/color_tables.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher/color_rules.d",
+            [
+            ]
+        ),
 
     ],
     scripts=[
