@@ -181,7 +181,7 @@ class id_discovery(object):
                 id_discovery.mapping_xml = etree.fromstring(map_content)  # @UndefinedVariable
                 for host_el in id_discovery.mapping_xml.findall(".//host"):
                     for uuid_el in host_el.findall(".//uuid"):
-                        if any([_uuid_el.text.count(_isn) for _isn in ISN_SET]):
+                        if any([uuid_el.text.count(_isn) for _isn in ISN_SET]):
                             pass
                         else:
                             conn_str = "{}://{}:{}".format(
