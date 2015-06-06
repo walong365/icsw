@@ -68,6 +68,7 @@ def main():
             ("RRD_CACHED_DIR", configfile.str_c_var("/var/run/rrdcached", database=True)),
             ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached/rrdcached.sock", database=True)),
             ("GRAPHCONFIG_BASE", configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="name of colortable file")),
+            ("COMPOUND_DIR", configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="include dir for compound XMLs")),
         ]
     )
     global_config.parse_file()

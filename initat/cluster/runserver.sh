@@ -9,10 +9,12 @@ _doforms=1
 function print_help {
     echo "usage:"
     echo
-    echo "$0 [--nostatic] [--localstatic] [--noforms] [-h]"
+    echo "$0 [--nostatic] [--localstatic] [--noforms] [-h] [[ EXTRA_OPTIONS ]]"
     echo
     exit -1
 }
+
+EXTRA_OPTIONS=""
 
 while (( "$#" )) ; do
     case "$1" in
@@ -31,8 +33,7 @@ while (( "$#" )) ; do
             print_help
             ;;
         *)
-            echo "unknown option $1"
-            print_help
+            EXTRA_OPTIONS="${EXTRA_OPTIONS} $1"
             ;;
     esac
     shift
@@ -44,7 +45,7 @@ RSOPTIONS="--traceback"
 [ "${_localstatic}" == "1" ] && export LOCAL_STATIC=1
 [ "${_insecure}" == "1" ] && RSOPTIONS="${RSOPTIONS} --insecure"
 
-echo "settings: DEBUG=${_debug}, LOCAL_STATIC=${_localstatic}, NOSTATIC=${_nostatic}, INSECURE=${_insecure}, DOFORMS='${_doforms}', RSOPTIONS='${RSOPTIONS}'"
+echo "settings: DEBUG=${_debug}, LOCAL_STATIC=${_localstatic}, NOSTATIC=${_nostatic}, INSECURE=${_insecure}, DOFORMS='${_doforms}', RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 export NODE_PATH=$(/opt/cluster/bin/npm -g root)
 export NODE_PATH=${NODE_PATH}:${NODE_PATH}/npm/node_modules
 echo "NODE_PATH=${NODE_PATH}"
@@ -60,4 +61,4 @@ if [ "${_nostatic}" == "0" ] ; then
     echo "done"
 fi
 
-./manage.py runserver ${RSOPTIONS} 0.0.0.0:8080
+./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8080

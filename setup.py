@@ -176,6 +176,30 @@ setup(
             [
             ]
         ),
+        (
+            "/opt/cluster/share/rrd_grapher",
+            [   
+                "opt/cluster/share/rrd_grapher/color_rules.xml",
+                "opt/cluster/share/rrd_grapher/color_tables.xml",
+                "opt/cluster/share/rrd_grapher/compound.xml",
+            ]   
+        ),  
+        (
+            "/opt/cluster/share/rrd_grapher/compound.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher/color_tables.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher/color_rules.d",
+            [
+            ]
+        ),
+
     ],
     scripts=[
     ],

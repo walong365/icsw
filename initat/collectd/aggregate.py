@@ -473,7 +473,6 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         _ng = etree.RelaxNG(etree.fromstring(AGGREGATE_NG))  # @UndefinedVariable
         _ag_dir = global_config["AGGREGATE_DIR"]
         tls = AGTopLevelStruct(self.log)
-        ag_xml = E.aggregates()
         for _dir, _dirs, _files in os.walk(_ag_dir):
             for _file in [_entry for _entry in _files if _entry.startswith("agg") and _entry.endswith(".xml")]:
                 _file = os.path.join(_dir, _file)
