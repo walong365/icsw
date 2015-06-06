@@ -170,7 +170,7 @@ class ServiceState(object):
             ("action", "created"),
         ]:
             _idx_name = "{}_{}".format(_t_name, _f_name)
-            conn.execute("CREATE INDEX {} ON {}({})".format(_idx_name, _t_name, _f_name))
+            conn.execute("CREATE INDEX IF NOT EXISTS {} ON {}({})".format(_idx_name, _t_name, _f_name))
         conn.commit()
 
     def get_cursor(self, cached=True):
