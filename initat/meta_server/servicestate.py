@@ -162,6 +162,15 @@ class ServiceState(object):
             if _t_name not in all_tables:
                 self.log("creating table {}: {}".format(_t_name, _sql_str))
                 conn.execute("{};".format(_sql_str))
+        # create indices
+        for _t_name, _f_name in [
+            ("state", "service"),
+            ("state", "created"),
+            ("action", "service"),
+            ("action", "created"),
+        ]:
+            _idx_name = "{}_{}".format(_t_name, _f_name)
+            conn.execute("CREATE INDEX {} ON {}({})".format(_idx_name, _t_name, _f_name))
         conn.commit()
 
     def get_cursor(self, cached=True):
@@ -484,7 +493,9 @@ class ServiceState(object):
                 services = []
             with self.get_cursor() as crsr:
                 with self.get_cursor() as state_crsr:
-                    for _srv_id, name, target_state, active in crsr.execute("SELECT idx, name, target_state, active FROM service ORDER BY name"):
+                    for _srv_id, name, target_state, active in crsr.execute(
+                        "SELECT idx, name, target_state, active FROM service ORDER BY name"
+                    ):
                         if services and name not in services:
                             continue
                         instances.append(
@@ -497,7 +508,8 @@ class ServiceState(object):
                                             created="{:d}".format(int(created)),
                                             proc_info_str=proc_info_str,
                                         ) for state, license_state, created, proc_info_str in state_crsr.execute(
-                                            "SELECT state, license_state, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                                            "SELECT state, license_state, created, proc_info_str FROM state " \
+                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )
                                     ]
@@ -511,7 +523,8 @@ class ServiceState(object):
                                             finished="{:d}".format(finished),
                                             created="{:d}".format(int(created)),
                                         ) for action, success, runtime, finished, created in state_crsr.execute(
-                                            "SELECT action, success, runtime, finished, created FROM action WHERE service=? AND created > ? ORDER BY -created",
+                                            "SELECT action, success, runtime, finished, created FROM action " \
+                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )
                                     ]
@@ -583,4 +596,5 @@ class ServiceState(object):
                 "command {} not defined".format(srv_com["command"].text),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
+        self.log("handled command {} in {}".format(_com, logging_tools.get_diff_time_str(time.time() - cur_time)))
         return trigger
