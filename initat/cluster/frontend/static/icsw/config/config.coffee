@@ -114,7 +114,7 @@ config_module = angular.module(
         $scope.change_filter_setting = (name) ->
             $scope.pagSettings.conf.filter_settings["filter_#{name}"] = ! $scope.pagSettings.conf.filter_settings["filter_#{name}"]
         # config edit
-        $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular)
+        $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.config_edit.create_template = "config.form"
         $scope.config_edit.edit_template = "config.form"
         $scope.config_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_LIST.slice(1))

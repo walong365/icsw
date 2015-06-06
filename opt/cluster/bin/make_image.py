@@ -73,14 +73,6 @@ NEEDED_PACKAGES_2 = [
     "modules-init",
 ]
 
-START_SCRIPTS = [
-    "loadmodules",
-    "logging-server",
-    "meta-server",
-    "host-monitoring",
-    "package-client",
-]
-
 COMPRESS_MAP = {
     "gz": "z",
     "bz2": "j",
