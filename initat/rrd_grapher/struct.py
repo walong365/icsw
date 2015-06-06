@@ -21,7 +21,9 @@
 
 from lxml import etree  # @UnresolvedImport
 import re
+import os
 
+from lxml.builder import E
 from django.db.models import Q
 from initat.cluster.backbone.models import MachineVector, MVStructEntry
 from initat.rrd_grapher.config import global_config
@@ -191,7 +193,7 @@ class CompoundTree(object):
         _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))  # @UndefinedVariable
         compound_xml = E.compounds()
         _comp_dir = global_config["COMPOUND_DIR"]
-        for _dir, _dirs, _files in os.walk():
+        for _dir, _dirs, _files in os.walk(_comp_dir):
             for _file in [_entry for _entry in _files if _entry.startswith("comp") and _entry.endswith(".xml")]:
                 _file = os.path.join(_dir, _file)
                 try:
