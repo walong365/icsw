@@ -19,31 +19,27 @@
 #
 """ machine information """
 
-from initat.host_monitoring import hm_classes, limits
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import commands
-from initat.tools import cpu_database
-from initat.tools import logging_tools
 import os
-from initat.tools import partition_tools
-from initat.tools import pci_database
 import platform
-import pprint  # @UnusedImport
-from initat.tools import process_tools
 import re
-from initat.tools import server_command
 import statvfs
 import sys
 import json
 import tempfile
 import time
+
+from initat.host_monitoring import hm_classes, limits
+from initat.tools import cpu_database
+from initat.tools import logging_tools
+from initat.tools import partition_tools
+from initat.tools import pci_database
+from initat.tools import process_tools
+from initat.tools import server_command
 from initat.tools import uuid_tools
 import psutil
-try:
-    from initat.host_monitoring_version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.client_version import VERSION_STRING
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -71,6 +67,18 @@ class _general(hm_classes.hm_module):
         return self.stat_list
 
     def _rescan_valid_disk_stuff(self):
+        def _follow_link(start):
+            _result = [start]
+            while True:
+                if os.path.islink(start):
+                    start = os.path.normpath(os.path.join(start, os.readlink(start)))
+                    _result.append(start)
+                else:
+                    break
+            return _result
+        # _parts = psutil.disk_partitions()
+        # for _part in _parts:
+        #     print _follow_link(_part.device)
         self.log("checking valid block_device names and major numbers")
         valid_block_devs, valid_major_nums = ({}, {})
         try:
@@ -99,15 +107,18 @@ class _general(hm_classes.hm_module):
         except:
             self.log("error in rescan_valid_disk_stuff: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            self.log("Found %s and %s: %s; %s" % (
-                logging_tools.get_plural("device_name", len(valid_block_devs.keys())),
-                logging_tools.get_plural("major number", len(valid_major_nums.keys())),
-                ", ".join(valid_block_devs.keys()),
-                ", ".join(["%d" % (x) for x in valid_major_nums.keys()])))
-        self.valid_block_devs, self.valid_major_nums = (valid_block_devs,
-                                                        valid_major_nums)
-        # pprint.pprint(psutil.disk_io_counters(perdisk=True))
-        # print "*", self.valid_block_devs, self.valid_major_nums
+            self.log(
+                "Found %s and %s: %s; %s" % (
+                    logging_tools.get_plural("device_name", len(valid_block_devs.keys())),
+                    logging_tools.get_plural("major number", len(valid_major_nums.keys())),
+                    ", ".join(valid_block_devs.keys()),
+                    ", ".join(["%d" % (x) for x in valid_major_nums.keys()])
+                )
+            )
+        self.valid_block_devs, self.valid_major_nums = (
+            valid_block_devs,
+            valid_major_nums
+        )
 
     def set_machine_vector_flags(self, mv):
         mv.vector_flags["detailed_cpu_statistics"] = False
@@ -259,6 +270,10 @@ class _general(hm_classes.hm_module):
             return n_dict
 
     def _vmstat_int(self, mvect):
+        def _remove_partition_part(pname):
+            while pname[-1].isdigit():
+                pname = pname[:-1]
+            return pname
         act_time = time.time()
         # disk_stat format: device -> (sectors read/written, milliseconds spent read/written)
         stat_dict, disk_stat = ({}, {})
@@ -294,7 +309,10 @@ class _general(hm_classes.hm_module):
                         int(parts[0]), int(parts[1])
                     ] + [
                         long(cur_val) for cur_val in parts[3:]
-                    ] for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14}
+                    ] for parts in [
+                        line.strip().split() for line in open("/proc/diskstats", "r").readlines()
+                    ] if len(parts) == 14
+                }
             except:
                 pass
             else:
@@ -367,12 +385,13 @@ class _general(hm_classes.hm_module):
                 # sort out partition stuff
                 last_name = ""
                 ds_keys_ok_by_major = []
-                for d_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
-                    if last_name and not (d_name.startswith("dm-") or d_name.startswith("md")) and d_name.startswith(last_name):
+                for p_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
+                    _disk_name = _remove_partition_part(d_name)
+                    if last_name and not (p_name.startswith("dm-") or p_name.startswith("md")) and _disk_name != last_name:
                         pass
                     else:
-                        ds_keys_ok_by_major.append(d_name)
-                        last_name = d_name
+                        ds_keys_ok_by_major.append(p_name)
+                        last_name = _disk_name
                 if ds_keys_ok_by_name != ds_keys_ok_by_major:
                     self._rescan_valid_disk_stuff()
                     ds_keys_ok_by_major = ds_keys_ok_by_name
@@ -444,6 +463,11 @@ class _general(hm_classes.hm_module):
                 # pprint.pprint(disk_stat)
         # print dev_list, disk_stat
         # stat_dict["disk_io"] = [blks_read, blks_written]
+        # import pprint
+        # pprint.pprint(disk_stat)
+        # pprint.pprint(psutil.disk_io_counters(perdisk=True))
+        # print sum([_v.write_bytes for _v in psutil.disk_io_counters(perdisk=True).itervalues()])
+        # pprint.pprint(psutil.disk_io_counters(perdisk=False))
         if self.last_vmstat_time is not None:
             tdiff = act_time - self.last_vmstat_time
             vms_tdiff = tdiff
