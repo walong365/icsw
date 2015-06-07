@@ -94,7 +94,7 @@ class _general(hm_classes.hm_module):
                         block_devs_dict[int(lp[0])] = lp[1]
             block_dir = "/sys/block"
             if os.path.isdir(block_dir):
-                for entry in os.listdir(block_dir):
+                for entry in sorted(os.listdir(block_dir)):
                     dev_file = "%s/%s/dev" % (block_dir, entry)
                     if os.path.isfile(dev_file):
                         major, minor = [int(x) for x in open(dev_file, "r").read().strip().split(":")]
@@ -383,15 +383,15 @@ class _general(hm_classes.hm_module):
                 # get unique devices
                 ds_keys_ok_by_name = sorted([key for key in ds_dict.iterkeys() if key in self.valid_block_devs])
                 # sort out partition stuff
-                last_name = ""
+                _last_disk_name = ""
                 ds_keys_ok_by_major = []
                 for p_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
                     _disk_name = _remove_partition_part(p_name)
-                    if last_name and not (p_name.startswith("dm-") or p_name.startswith("md")) and _disk_name != last_name:
+                    if _last_disk_name and not (p_name.startswith("dm-") or p_name.startswith("md")) and _disk_name == _last_disk_name:
                         pass
                     else:
                         ds_keys_ok_by_major.append(p_name)
-                        last_name = _disk_name
+                        _last_disk_name = _disk_name
                 if ds_keys_ok_by_name != ds_keys_ok_by_major:
                     self._rescan_valid_disk_stuff()
                     ds_keys_ok_by_major = ds_keys_ok_by_name
