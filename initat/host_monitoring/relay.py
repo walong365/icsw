@@ -934,7 +934,7 @@ class relay_code(threading_tools.process_pool):
                             conn_str,
                             process_tools.get_except_info(),
                         ),
-                        server_command.SRV_REPLY_STATE_CRITICAL
+                        server_command.SRV_REPLY_STATE_ERROR
                     )
                 else:
                     if int(srv_com.get("raw_connect", "0")):
