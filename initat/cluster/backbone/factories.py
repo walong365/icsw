@@ -46,6 +46,7 @@ class PartitionFS(factory.django.DjangoModelFactory):
         model = partition_fs
         django_get_or_create = ("name", "identifier",)
     kernel_module = ""
+    need_hexid = True
 
     @factory.post_generation
     def kernel_module(self, create, extracted, **kwargs):
