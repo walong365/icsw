@@ -290,6 +290,8 @@ user_module = angular.module(
             $scope._edit_obj.object = null
             return []
         $scope.get_export_list = () ->
+            for entry in $scope.home_export_list
+                entry.home_info_string = $scope.get_home_info_string(entry)
             return $scope.home_export_list
         $scope.get_home_info_string = (entry) ->
             cur_group = (_entry for _entry in $scope.group_list when _entry.idx == $scope._edit_obj.group)
@@ -638,7 +640,10 @@ user_module = angular.module(
                         else
                             max_value = _hard
                         used_str = icswTools.get_size_str(_used, 1024, "B")
-                    _filled = parseInt(100 * _used / max_value)
+                    if max_value > 0
+                        _filled = parseInt(100 * _used / max_value)
+                    else
+                        _filled = 0
                     r_stack.push(
                         {
                             "value" : _filled
@@ -649,7 +654,10 @@ user_module = angular.module(
                     )
                     if _used < _soft
                         # soft limit not reached
-                        _lsoft = parseInt(100 * (_soft - _used) / max_value)
+                        if max_value > 0
+                            _lsoft = parseInt(100 * (_soft - _used) / max_value)
+                        else
+                            _lsoft = 0
                         if _type == "files"
                             lsoft_str = icswTools.get_size_str(_soft - _used, 1000, "")
                         else
@@ -663,7 +671,10 @@ user_module = angular.module(
                             }
                         )
                         if _hard > _soft
-                            _sth = parseInt(100 * (_hard - _soft) / max_value)
+                            if max_value > 0
+                                _sth = parseInt(100 * (_hard - _soft) / max_value)
+                            else
+                                _sth = 0
                             if _type == "files"
                                 sth_str = icswTools.get_size_str(_hard - _soft, 1000, "")
                             else
@@ -678,7 +689,10 @@ user_module = angular.module(
                             )
                     else
                         # soft limit reached
-                        _lhard = parseInt(100 * (_hard - _used) / max_value)
+                        if max_value > 0
+                            _lhard = parseInt(100 * (_hard - _used) / max_value)
+                        else
+                            _lhard = 0
                         if _type == "files"
                             sth_str = icswTools.get_size_str(_hard - _used, 1000, "")
                         else

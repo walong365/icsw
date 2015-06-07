@@ -76,7 +76,7 @@ dashboard_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.user.job.info")
         link: (scope, element, attrs) ->
-]).directive("icswUserVduOverview", ["$compile", "$templateCache", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $templateCache, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswUserVduOverview", ["$compile", "$window", "$templateCache", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $window, $templateCache, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         restrict : "EA"
         template : $templateCache.get("icsw.user.vdu.overview")
         link: (scope, element, attrs) ->
@@ -115,7 +115,9 @@ dashboard_module = angular.module(
                 return _.find(scope.window_manager, (vd) -> vd.idx == index)
             scope.open_vdus_in_new_tab = (vdus) ->
                 url = ICSW_URLS.MAIN_VIRTUAL_DESKTOP_VIEWER
-                window.open(url + "?vdus_index="+vdus.idx)
+                $window.open(url + "?vdus_index=#{vdus.idx}")
+                # prevent angular security error (due to coffeescript returning the last result)
+                return false
             scope.show_viewer_command_line = (vdus) ->
                 vdus.show_viewer_command_line = !vdus.show_viewer_command_line
             scope.retrieve_device_ip = (index) ->

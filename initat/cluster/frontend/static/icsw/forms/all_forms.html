@@ -1535,7 +1535,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="!_edit_obj.only_webfrontend"
  ><label for="id_export" class="control-label col-sm-2">
  Export
- </label><div class="controls col-sm-8"><select class="select form-control" id="id_export" name="export" ng-model="_edit_obj.export" ng-options="value.idx as get_home_info_string(value) for value in get_export_list()"><option value="" selected="selected">None</option></select></div></div><div class='form-group' ng-show='!_edit_obj.only_webfrontend'><label class='control-label col-sm-2'>
+ </label><div class="controls col-sm-8"><select class="select form-control" id="id_export" name="export" ng-model="_edit_obj.export" ng-options="value.idx as value.home_info_string for value in get_export_list()"><option value="" selected="selected">None</option></select></div></div><div class='form-group' ng-show='!_edit_obj.only_webfrontend'><label class='control-label col-sm-2'>
  Homedir status
  </label><div class='col-sm-8'><input
  type="button"
