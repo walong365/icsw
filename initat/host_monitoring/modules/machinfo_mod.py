@@ -386,7 +386,7 @@ class _general(hm_classes.hm_module):
                 last_name = ""
                 ds_keys_ok_by_major = []
                 for p_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
-                    _disk_name = _remove_partition_part(d_name)
+                    _disk_name = _remove_partition_part(p_name)
                     if last_name and not (p_name.startswith("dm-") or p_name.startswith("md")) and _disk_name != last_name:
                         pass
                     else:
