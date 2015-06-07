@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,10 +16,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.host_monitoring import limits, hm_classes
 from lxml import etree  # @UnresolvedImport
 import commands
 import os
+
+from initat.host_monitoring import limits, hm_classes
 from initat.tools import process_tools
 from initat.tools import server_command
 
@@ -56,22 +57,30 @@ class sge_queue_status_command(hm_classes.hm_command):
                 )
             )
             if cur_stat:
-                srv_com.set_result("error getting qhost info (%d): %s" % (
-                    cur_stat,
-                    cur_out), server_command.SRV_REPLY_STATE_ERROR)
+                srv_com.set_result(
+                    "error getting qhost info ([:d}): {}".format(
+                        cur_stat,
+                        cur_out
+                    ),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             else:
                 try:
                     cur_xml = etree.fromstring(cur_out)  # @UndefinedVariable
                 except:
-                    srv_com.set_result("error building xml: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
+                    srv_com.set_result("error building xml: {}".format(process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
                 else:
-                    q_el = cur_xml.xpath(".//host[@name='%s']" % (cur_ns.sge_host), smart_strings=False)
-                    if not q_el and not cur_ns.sge_host.count("."):
-                        # try with short name if no FQDN is given
-                        q_el = cur_xml.xpath(".//host[starts-with(@name, '%s.')]" % (cur_ns.sge_host), smart_strings=False)
-                        if not q_el:
-                            # last try, only with short name
-                            q_el = cur_xml.xpath(".//host[@name='%s')]" % (cur_ns.sge_host), smart_strings=False)
+                    q_el = cur_xml.xpath(".//host[@name='{}']".format(cur_ns.sge_host), smart_strings=False)
+                    if not q_el:
+                        if not cur_ns.sge_host.count("."):
+                            # try with short name if no FQDN is given
+                            q_el = cur_xml.xpath(".//host[starts-with(@name, '{}.')]".format(cur_ns.sge_host), smart_strings=False)
+                            if not q_el:
+                                # last try, only with short name
+                                q_el = cur_xml.xpath(".//host[@name='{}')]".format(cur_ns.sge_host), smart_strings=False)
+                        else:
+                            # try short name of FQDN
+                            q_el = cur_xml.xpath(".//host[starts-with(@name, '{}.')]".format(cur_ns.sge_host.split(".")[0]), smart_strings=False)
                     if q_el:
                         q_el = q_el[0]
                         q_el.attrib["sge_host"] = cur_ns.sge_host
@@ -79,9 +88,13 @@ class sge_queue_status_command(hm_classes.hm_command):
                             q_el.attrib["sge_queue"] = cur_ns.sge_queue
                         srv_com["queue_result"] = q_el
                     else:
-                        srv_com.set_result("no host/queue element found for '%s'/'%s'" % (
-                            cur_ns.sge_host,
-                            cur_ns.sge_queue), server_command.SRV_REPLY_STATE_ERROR)
+                        srv_com.set_result(
+                            "no host/queue element found for '{}'/'{}'".format(
+                                cur_ns.sge_host,
+                                cur_ns.sge_queue
+                            ),
+                            server_command.SRV_REPLY_STATE_ERROR
+                        )
         return
 
     def interpret(self, srv_com, cur_ns):
