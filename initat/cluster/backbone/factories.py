@@ -61,6 +61,12 @@ class PartitionFS(factory.django.DjangoModelFactory):
             self.hexid = extracted
             self.save()
 
+    @factory.post_generation
+    def need_hexid(self, create, extracted, **kwargs):
+        if self.need_hexid != extracted:
+            self.need_hexid = extracted
+            self.save()
+
 
 class Status(factory.django.DjangoModelFactory):
     class Meta:

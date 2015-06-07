@@ -46,6 +46,8 @@ class partition_fs(models.Model):
     name = models.CharField(unique=True, max_length=48)
     identifier = models.CharField(max_length=3)
     descr = models.CharField(max_length=765, blank=True)
+    # hexid needed, False for GPFS (for instance)
+    need_hexid = models.BooleanField(default=True)
     hexid = models.CharField(max_length=6)
     # none, one or more (space sepearted) kernel modules needed for ths fs
     kernel_module = models.CharField(max_length=128, default="")

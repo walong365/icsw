@@ -665,14 +665,18 @@ class _general(hm_classes.hm_module):
         for file_name in file_list:
             b_name = os.path.basename(file_name)
             try:
-                cur_list = [line.strip().split() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
+                cur_list = [
+                    line.strip().split() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+                ]
             except:
                 pass
             else:
                 file_dict[b_name] = cur_list
-        read_err_list = [os.path.basename(file_name) for file_name in file_list if os.path.basename(file_name) not in file_dict]
+        read_err_list = [
+            os.path.basename(file_name) for file_name in file_list if os.path.basename(file_name) not in file_dict
+        ]
         file_dict["partitions"] = [line[0:4] for line in file_dict["partitions"] if len(line) > 3]
-        dev_dict, sys_dict = ({}, {})
+        dev_dict = {}
         try:
             real_root_dev = int(open("/proc/sys/kernel/real-root-dev", "r").read().strip())
         except:
@@ -870,7 +874,7 @@ class _general(hm_classes.hm_module):
                     # automount mointpoints
                     auto_mps = []
                     # drop unneeded entries
-                    real_mounts, sys_mounts = ([], [])
+                    real_mounts = []
                     parts_found = []
                     # build fs_tab_dict
                     fs_tab_dict = {}
@@ -994,15 +998,8 @@ class _general(hm_classes.hm_module):
                         else:
                             if part == mp:
                                 part = "none"
-                            if part not in sys_dict or not any([entry["mountpoint"] == mp for entry in sys_dict[part]]):
-                                sys_dict.setdefault(part, []).append({
-                                    "mountpoint": mp,
-                                    "fstype": fstype,
-                                    "options": opts
-                                })
-                                sys_mounts.append((part, mp, fstype, opts))
                     ret_str = ""
-        return ret_str, dev_dict, sys_dict
+        return ret_str, dev_dict
 
 
 class df_command(hm_classes.hm_command):
@@ -2013,28 +2010,52 @@ class lvminfo_command(hm_classes.hm_command):
 class partinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
-        ret_str, dev_dict, sys_dict = self.module._partinfo_int()
+        ret_str, dev_dict = self.module._partinfo_int()
         srv_com["ret_str"] = ret_str
         srv_com["dev_dict"] = dev_dict
-        srv_com["sys_dict"] = sys_dict
+        _disk_devices = [_part.device for _part in psutil.disk_partitions()]
+        _all_parts = psutil.disk_partitions(all=True)
+        srv_com["partitions"] = [
+            {
+                "is_disk": _part.device in _disk_devices,
+                "device": _part.device,
+                "mountpoint": _part.mountpoint,
+                "fstype": _part.fstype,
+                "opts": _part.opts
+            } for _part in _all_parts
+        ]
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
-        # print srv_com.pretty_print()
 
     def interpret(self, srv_com, cur_ns):
-        dev_dict, sys_dict, lvm_dict = (
+        dev_dict, lvm_dict = (
             srv_com["dev_dict"],
-            srv_com["sys_dict"],
-            srv_com["lvm_dict"])
-        # (server_command.decompress(srv_com["dev_dict"].text, marshal=True),
-        #                                server_command.decompress(srv_com["sys_dict"].text, marshal=True),
-        #                                server_command.decompress(srv_com["lvm_dict"].text, pickle=True))
+            srv_com["lvm_dict"]
+        )
         lvm_stuff = partition_tools.lvm_struct("xml", xml=lvm_dict)
         all_disks = sorted(dev_dict.keys())
+        if "partitions" in srv_com:
+            partitions = srv_com["*partitions"]
+            # import pprint
+            # pprint.pprint(partitions)
+            sys_dict = {
+                _part["fstype"]: _part for _part in partitions if not _part["is_disk"]
+            }
+            # pprint.pprint(sys_dict)
+        else:
+            sys_dict = srv_com["sys_dict"]
+            for _value in sys_dict.itervalues():
+                # rewrite dict
+                _value["opts"] = _value["options"]
+            partitions = []
         all_sys = sorted(sys_dict.keys())
-        ret_f = ["found %s (%s) and %s:" % (
-            logging_tools.get_plural("disc", len(all_disks)),
-            logging_tools.get_plural("partition", sum([len(value) for value in dev_dict.itervalues()])),
-            logging_tools.get_plural("special mount", len(all_sys)))]
+        ret_f = [
+            "found {} ({}, {}) and {}:".format(
+                logging_tools.get_plural("disc", len(all_disks)),
+                logging_tools.get_plural("partition", sum([len(value) for value in dev_dict.itervalues()])),
+                logging_tools.get_plural("mounted partition", len(partitions)),
+                logging_tools.get_plural("special mount", len(all_sys))
+            )
+        ]
         to_list = logging_tools.new_form_list()
         # to_list.set_format_string(2, pre_string="(", post_string=")")
         # to_list.set_format_string(3, left="", post_string=" MB,")
@@ -2104,7 +2125,7 @@ class partinfo_command(hm_classes.hm_command):
             for s_stuff in sys_stuff:
                 to_list.append([logging_tools.form_entry(disk, header="part"),
                                 logging_tools.form_entry(s_stuff["fstype"], header="type"),
-                                logging_tools.form_entry(s_stuff["options"], header="option"),
+                                logging_tools.form_entry(s_stuff["opts"], header="option"),
                                 logging_tools.form_entry(s_stuff["mountpoint"], header="mountpoint")])
         ret_f.extend(str(to_list).split("\n"))
         if lvm_stuff.lvm_present:
