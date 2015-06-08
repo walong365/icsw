@@ -27,6 +27,7 @@ import pprint
 
 from collections import defaultdict
 from enum import IntEnum, Enum
+import pytz
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
 from initat.tools import logging_tools
@@ -679,7 +680,7 @@ class KpiSet(object):
                 start, end = KpiGlobals.current_kpi.get_time_range()
             else:
                 # help user by fixing their timezones
-                fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=cluster_timezone)
+                fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
                 start = fix_tz(start)
                 end = fix_tz(end)
 
