@@ -172,6 +172,7 @@ angular.module(
                     icswConfigKpiDialogService.show_modify_kpi_dlg(scope, kpi)
                 scope.delete_kpi = (kpi) ->
                     icswToolsSimpleModalService("Do you really want to delete the kpi #{kpi.name}?").then(() ->
+                        delete kpi.result  # results is a circular structure
                         kpi.remove().then(() ->
                             _.remove(icswConfigKpiDataService.kpi, kpi)
                         )
