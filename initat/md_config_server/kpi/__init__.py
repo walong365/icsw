@@ -87,17 +87,66 @@ class KpiProcess(threading_tools.process_obj):
         if License.objects.has_valid_license(LicenseEnum.kpi):
             KpiGlobals.set_context()
             try:
-                data = KpiData(self.log)
+                kpi_data = KpiData(self.log)
             except Exception as e:
                 self.log("Exception when gathering kpi data: {}".format(process_tools.get_except_info()))
             else:
                 # recalculate kpis
                 for kpi_db in Kpi.objects.filter(enabled=True):
                     try:
-                        result_str = self._evaluate_kpi(data, kpi_db)
+                        result_str = self._evaluate_kpi(kpi_data, kpi_db)
                     except KpiEvaluationError:
                         result_str = None
                     kpi_db.set_result(result_str, django.utils.timezone.now())
+
+                """
+                # code for exporting kpi results as csv (written for oekotex KPIs June 2015)
+
+                import csv
+                with open("/tmp/a.csv", "w") as f:
+                    writer = csv.writer(f)
+                    for kpi_db in Kpi.objects.filter(enabled=True):
+                        try:
+                            print 'data', kpi_data
+                            result_str = self._evaluate_kpi(kpi_data, kpi_db)
+                        except KpiEvaluationError:
+                            result_str = None
+
+                        kpi_db.set_result(result_str, django.utils.timezone.now())
+                        writer.writerow([unicode(kpi_db)])
+
+                        writer.writerow(["Month", "Ok", 'Warn', 'Critical', 'Undetermined'])
+                        if result_str is None:
+                            writer.writerow(["no result"])
+                        else:
+                            for month, obj in enumerate(json.loads(result_str)['objects']):
+                                data = obj['aggregated_tl']
+                                ok_val = data.pop('Ok', 0)
+                                warn_val = data.pop('Warning', 0)
+                                crit_val = data.pop('Critical', 0)
+                                undet_val = data.pop('Undetermined', 0) + data.pop("Unknown", 0)
+                                if data:
+                                    raise RuntimeError("item not used: {}".format(data))
+
+                                format = lambda f: "{:.5f}".format(f)
+
+                                month_table = {
+                                    0: "Jan",
+                                    1: "Feb",
+                                    2: "Mar",
+                                    3: "Apr",
+                                    4: "May",
+                                }
+                                writer.writerow([
+                                    month_table[month],
+                                    format(ok_val),
+                                    format(warn_val),
+                                    format(crit_val),
+                                    format(undet_val)
+                                ])
+                print 'done'
+                """
+
 
     def _calculate_kpi(self, srv_com_src, **kwargs):
         """Calculate single kpi"""
