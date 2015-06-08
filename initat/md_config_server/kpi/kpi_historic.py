@@ -86,6 +86,7 @@ class TimeLineUtils(list):
                     tl.append(
                         TimeLineEntry(date=alert.date, state=(convert_state(alert.state), alert.state_type))
                     )
+                last_alert = alert
 
         # add final entry
         for tl in time_lines.itervalues():
