@@ -175,7 +175,7 @@ class KpiProcess(threading_tools.process_obj):
         # print '\nevaluating kpi', kpi_db
         # print eval("return {}".format(kpi_db.formula), {'data': kpi_set})
         eval_globals = {
-            'data': data.get_kpi_set_for_kpi(kpi_db),
+            'initial_data': data.get_kpi_set_for_kpi(kpi_db),
             'KpiSet': KpiSet,
             'KpiObject': KpiObject,
             'KpiResult': KpiResult,
