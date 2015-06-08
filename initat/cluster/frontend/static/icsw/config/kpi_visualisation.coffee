@@ -344,7 +344,7 @@ angular.module(
                     parts.push kpi_obj.check_command
 
                 if kpi_obj.aggregated_tl?
-                    # parts.push "{" + ( "#{k}: #{(v*100).toFixed(2)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
+                    # parts.push "{" + ( "#{k}: #{(v*100).toFixed(3)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
                     parts.push "timeline"
 
                 if kpi_obj.result?
@@ -370,7 +370,7 @@ angular.module(
 
 
                 if kpi_obj.aggregated_tl?
-                    parts.push "{" + ( "#{k}: #{(v*100).toFixed(2)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
+                    parts.push "{" + ( "#{k}: #{(v*100).toFixed(3)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
 
                 return parts.join(",")
 

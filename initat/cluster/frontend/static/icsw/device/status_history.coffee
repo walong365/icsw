@@ -83,7 +83,7 @@ angular.module(
                 else  # legacy data, only have some kind of id string to show
                     serv_name = description
                 return serv_name
-            scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
+            scope.float_format = (n) -> return (n*100).toFixed(3) + "%"
 
             scope.get_time_frame = () ->
                 return status_history_ctrl.time_frame
