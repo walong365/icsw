@@ -17,31 +17,33 @@
 #
 """ cluster-server, server process """
 
+import datetime
+import os
+import time
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.cluster_server.capabilities import capability_process
-from initat.cluster_server.backup_process import backup_process
-from initat.cluster_server.license_checker import LicenseChecker
-from initat.cluster_server.config import global_config
-from initat.cluster_server.notify import notify_mixin
 from initat.tools import cluster_location
 from initat.tools import configfile
-import datetime
 import initat.cluster_server.modules
 from initat.tools import logging_tools
-import os
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import server_mixins
 from initat.tools import threading_tools
-import time
 from initat.tools import uuid_tools
 import zmq
 
+from .capabilities import capability_process
+from .backup_process import backup_process
+from .license_checker import LicenseChecker
+from .config import global_config
+from .notify import notify_mixin
 
-class server_process(threading_tools.process_pool, notify_mixin, server_mixins.network_bind_mixin):
+
+class server_process(threading_tools.process_pool, notify_mixin, server_mixins.NetworkBindMixin, server_mixins.ServerStatusMixin):
     def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
@@ -51,11 +53,13 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             # rewrite LOG_NAME and PID_NAME
             global_config["PID_NAME"] = "{}-direct-{}-{:d}".format(
                 global_config["PID_NAME"],
-                "%04d%02d%02d-%02d:%02d" % tuple(time.localtime()[0:5]),
-                os.getpid())
+                "{:04d}{:02d}{:02d}-{:02d}:{:02d}".format(*tuple(time.localtime()[0:5])),
+                os.getpid()
+            )
             global_config["LOG_NAME"] = "{}-direct-{}".format(
                 global_config["LOG_NAME"],
-                global_config["COMMAND"])
+                global_config["COMMAND"]
+            )
         self.__pid_name = global_config["PID_NAME"]
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
@@ -132,6 +136,10 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
         else:
             self.log("re-insert config")
             cluster_location.write_config("server", global_config)
+
+    @property
+    def msi_block(self):
+        return self.__msi_block
 
     def process_start(self, src_process, src_pid):
         mult = 3

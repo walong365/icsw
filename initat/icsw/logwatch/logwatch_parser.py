@@ -28,7 +28,6 @@ import re
 
 from initat.tools import process_tools
 
-
 LOGSERVER_ROOT = "/var/log/cluster/logging-server"
 
 
@@ -44,7 +43,8 @@ class Parser(object):
         parser.add_argument("--machine", type=str, default=_mach_name, help="machine to use [%(default)s]")
         parser.add_argument("-n", type=int, default=400, help="show latest [%(default)d] lines")
         parser.add_argument("--format", type=str, default="%a %b %d %H:%M:%S %Y", help="argument for parsing loglines [%(default)s]")
-        parser.add_argument("-f", dest="follow", default=False, action="store_true", help="enable follow mode [%(default)s]")
+        parser.add_argument("-f", dest="follow", default=True, action="store_true", help="enable follow mode, always enabled [%(default)s]")
+        parser.add_argument("-F", dest="follow", default=True, action="store_false", help="disable follow mode")
         parser.add_argument("--system-filter", type=str, default=".*", help="regexp filter for system [%(default)s]")
         parser.add_argument("--with-nodes", default=False, action="store_true", help="add node logs [%(default)s]")
         parser.add_argument("--node-filter", type=str, default=".*", help="regexp filter for nodes [%(default)s]")
@@ -82,7 +82,7 @@ class Parser(object):
         except:
             print("cannot interpret '{}', using default".format(opt_ns.node_filter))
             opt_ns.node_re = re.compile("^$")
-        opt_ns.line_format = "{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}}{{msg}}".format(
+        opt_ns.line_format = u"{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}}{{msg}}".format(
             max_system_len
         )
         opt_ns.used_systems = [_entry for _entry in opt_ns.systems if opt_ns.system_re.match(_entry)]

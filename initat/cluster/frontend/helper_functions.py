@@ -236,6 +236,11 @@ def contact_server(request, srv_type, send_com, **kwargs):
     _xml_req = kwargs.get("xml_request", hasattr(request, "xml_response"))
     # simple mapping
     cur_router = routing.srv_type_routing()
+
+    if not cur_router.has_type(srv_type):
+        # try again harder (rebuild routing table)
+        cur_router = routing.srv_type_routing(force=True)
+
     if cur_router.has_type(srv_type):
         # print send_com.pretty_print()
         if request.user:

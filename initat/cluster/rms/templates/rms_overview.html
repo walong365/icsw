@@ -24,8 +24,8 @@
         <tab heading="{{ get_done_info() }}">
             <icsw-rms-job-done-table></icsw-rms-job-done-table>
         </tab>
-        <tab heading="{{ get_node_info() }}">
-            <icsw-rms-node-table></icsw-rms-node-table>
+        <tab heading="{{ get_queue_info() }}">
+            <icsw-rms-queue-table></icsw-rms-queue-table>
         </tab>
         <tab ng-repeat="io_struct in io_dict" heading="{{ io_struct.get_name() }}" active="io_struct.active">
             <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>

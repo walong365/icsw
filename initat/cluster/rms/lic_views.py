@@ -30,7 +30,7 @@ from django.db.models.aggregates import Sum
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.license import LicenseUsage
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
@@ -104,15 +104,22 @@ class license_state_coarse_list(ListAPIView):
         lic_id = int(request.GET["lic_id"])
         (duration_type, start, end) = duration_utils.parse_duration_from_request(request)
 
-        LicenseUsage.log_usage(LicenseEnum.license_optimisation_management, LicenseParameterTypeEnum.ext_lic, lic_id)
+        if LicenseLockListExtLicense.objects.is_ext_license_locked(LicenseEnum.license_optimisation_management, lic_id):
+            return Response([])
+        else:
+            LicenseUsage.log_usage(LicenseEnum.license_optimisation_management,
+                                   LicenseParameterTypeEnum.ext_lic,
+                                   lic_id)
 
-        logger.debug("retrieving data for license {} from {} to {}, type {}".format(lic_id, start, end, duration_type))
-        self.object_list = ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
-                                                                   ext_license_check_coarse__duration_type=duration_type.ID,
-                                                                   ext_license_check_coarse__start_date__range=(start, end))
+            logger.debug("retrieving data for license {} from {} to {}, type {}".format(lic_id, start, end,
+                                                                                        duration_type))
+            self.object_list =\
+                ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
+                                                        ext_license_check_coarse__duration_type=duration_type.ID,
+                                                        ext_license_check_coarse__start_date__range=(start, end))
 
-        serializer = self.get_serializer(self.object_list, many=True)
-        return Response(serializer.data)
+            serializer = self.get_serializer(self.object_list, many=True)
+            return Response(serializer.data)
 
 
 class license_version_state_coarse_list(ListAPIView):

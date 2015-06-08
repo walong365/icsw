@@ -376,14 +376,14 @@ class get_file_content(View):
                         # ie freezes if it displays too much text
                         text = cur_file.text
                         magic_limit = 350000
-                        if int(_post.get("is_ie", "0")) and text and len(cur_file.text) > magic_limit:
+                        if int(_post.get("is_ie", "0")) and text and len(text) > magic_limit:
                             request.xml_response.info("file is too large, truncating beginning")
                             # return last lines such that in total, we transfer about $magic_limit
-                            text = ""
                             lines = text.split("\n")
-                            while len(text) < magic_limit and lines:
-                                text = lines.pop() + u"\n" + text
-                            text = u"[truncated]\n" + text
+                            new_text = u""
+                            while len(new_text) < magic_limit and lines:
+                                new_text = lines.pop() + u"\n" + new_text
+                            text = u"[truncated]\n" + new_text
 
                         _resp_list.append(
                             E.file_info(

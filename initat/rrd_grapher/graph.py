@@ -19,33 +19,36 @@
 #
 """ grapher part of rrd-grapher service """
 
-from django.conf import settings
-from django.db import connection
-from django.db.models import Q
-from initat.cluster.backbone.models.license import License
-from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVStructEntry, MVValueEntry
-from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
-import copy
 import datetime
-import dateutil.parser
-from initat.tools import logging_tools
 import os
-import pprint  # @UnusedImport
-from initat.tools import process_tools
 import re
 import rrdtool  # @UnresolvedImport
 import select
-from initat.tools import server_command
+import pprint
 import json
-from initat.tools import server_mixins
 import socket
 import stat
-from initat.tools import threading_tools
+import math
 import time
 import uuid
+
+from django.conf import settings
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
+    LicenseParameterTypeEnum
+from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
+    MVValueEntry
+from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.rrd_grapher.config import global_config
+from lxml.builder import E  # @UnresolvedImport
+import dateutil.parser
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import server_command
+from initat.tools import server_mixins
+from initat.tools import threading_tools
 
 FLOAT_FMT = "{:.6f}"
 
@@ -203,6 +206,9 @@ class GraphVar(object):
         # device name
         self.dev_name = dev_name
         self.rrd_graph = rrd_graph
+        self.draw_result = None
+        self.scale_y_factor = 1
+        self.y_scaled = False
         self.graph_target = graph_target
         if self.rrd_graph.para_dict["show_values"]:
             self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
@@ -215,6 +221,33 @@ class GraphVar(object):
 
     def __contains__(self, key):
         return key in self.entry.attrib
+
+    def set_draw_result(self, res):
+        self.draw_result = res
+
+    def adjust_max_y(self, max_val):
+        _max, _min = (0, 0)
+        if self.draw_result and "MAXIMUM" in self.draw_result:
+            if not math.isnan(self.draw_result["MAXIMUM"]):
+                _max = abs(self.draw_result["MAXIMUM"])
+        if self.draw_result and "MINIMUM" in self.draw_result:
+            if not math.isnan(self.draw_result["MINIMUM"]):
+                _min = abs(self.draw_result["MINIMUM"])
+        if _max or _min:
+            self.set_y_scaling(max_val / max(_max, _min))
+
+    def valid_graph_var(self):
+        return True if self.draw_result and "MAXIMUM" in self.draw_result and not math.isnan(self.draw_result.get("MAXIMUM", 0.)) else False
+
+    def get_y_scaling(self):
+        if self.y_scaled:
+            return self.scale_y_factor
+        else:
+            return 1
+
+    def set_y_scaling(self, val):
+        self.scale_y_factor = val
+        self.y_scaled = True
 
     def get(self, key, default):
         return self.entry.attrib.get(key, default)
@@ -248,6 +281,17 @@ class GraphVar(object):
         else:
             return True
 
+    @property
+    def is_stacked(self):
+        return self.style_dict.get("draw_type", "LINE1").endswith("STACK")
+
+    # helper function
+    def _transform(self, lines, var_name, postfix, form_str):
+        new_name = "{}{}".format(var_name, postfix)
+        add_line = form_str.format(new_name, var_name)
+        lines.append(add_line)
+        return new_name
+
     def graph_def(self, unique_id, **kwargs):
         # unique_id = device pk
         timeshift = kwargs.get("timeshift", 0)
@@ -262,15 +306,9 @@ class GraphVar(object):
         c_lines = [
             "DEF:{}={}".format(self.name, _src_str)
         ]
+        draw_name = self.name
         if int(self.style_dict.get("invert", "0")):
-            c_lines.append(
-                "CDEF:{}inv={},-1,*".format(self.name, self.name),
-            )
-            draw_name = "{}inv".format(self.name)
-        else:
-            draw_name = self.name
-        # if timeshift:
-        #    c_lines.append("SHIFT:{}:{:d}".format(draw_name, timeshift))
+            draw_name = self._transform(c_lines, draw_name, "inv", "CDEF:{}={},-1,*")
         draw_type = self.style_dict.get("draw_type", "LINE1")
         _stacked = draw_type.endswith("STACK")
         if _stacked:
@@ -284,6 +322,8 @@ class GraphVar(object):
         # print draw_name, draw_type, _stacked
         if draw_type.startswith("AREA"):  # in ["AREA", "AREA1", "AREA2", "AREA3"]:
             # support area with outline style
+            if self.y_scaled:
+                draw_name = self._transform(c_lines, draw_name, "sc", "CDEF:{{}}={{}},{},*".format(self.scale_y_factor))
             c_lines.append(
                 "{}:{}{}:<tt>{}</tt>{}".format(
                     "AREA",
@@ -295,22 +335,19 @@ class GraphVar(object):
             )
             if draw_type != "AREA":
                 if _stacked:
-                    # arealine draw_name
-                    c_lines.append(
-                        "CDEF:{}zero={},0,*".format(self.name, self.name),
-                    )
-                    al_dn = "{}zero".format(self.name)
-                else:
-                    al_dn = draw_name
+                    draw_name = self._transform(c_lines, draw_name, "z", "CDEF:{}={},0,*")
                 c_lines.append(
                     "{}:{}{}:{}".format(
                         draw_type.replace("AREA", "LINE"),
-                        al_dn,
+                        draw_name,
                         "#000000",
                         ":STACK" if _stacked else "",
                     )
                 )
         else:
+            # scale test
+            if self.y_scaled:
+                draw_name = self._transform(c_lines, draw_name, "scl", "CDEF:{{}}={{}},{},*".format(self.scale_y_factor))
             c_lines.append(
                 "{}:{}{}:<tt>{}</tt>{}".format(
                     draw_type,
@@ -340,12 +377,14 @@ class GraphVar(object):
                     "CDEF:{0}lsls={0},POP,{0}dl,COUNT,*,{0}kl,+".format(
                         draw_name,
                     ),
-                    "{}:{}lsls{}".format(
-                        draw_type.replace("AREA", "LINE"),
-                        draw_name,
-                        self.color,
-                    ),
-                ],
+                ]
+            )
+            c_lines.append(
+                "{}:{}lsls{}".format(
+                    draw_type.replace("AREA", "LINE"),
+                    draw_name,
+                    self.color,
+                ),
             )
         if timeshift:
             # draw timeshifted graph
@@ -363,6 +402,12 @@ class GraphVar(object):
                         self.rrd_graph.abs_start_time - timeshift,
                         self.rrd_graph.abs_end_time - timeshift,
                     ),
+                ]
+            )
+            if self.y_scaled:
+                ts_name = self._transform(c_lines, ts_name, "scl", "CDEF:{{}}={{}},{},*".format(self.scale_y_factor))
+            c_lines.extend(
+                [
                     "CDEF:{}inv={},{:d},*".format(ts_name, ts_name, -1 if int(self.style_dict.get("invert", "0")) else 1),
                     "SHIFT:{}inv:{:d}".format(
                         ts_name,
@@ -467,10 +512,14 @@ class GraphVar(object):
 
 
 class GraphTarget(object):
+    """
+    graph (==png) to create
+    """
     def __init__(self, g_key, dev_list, graph_keys):
         # can also be a short key (for instance 'load')
         self.graph_key = g_key
         self.dev_list = dev_list
+        self.__header = None
         self.__headers = []
         # list of full keys (<type>:<root>.<leaf>)
         self.graph_keys = graph_keys
@@ -483,16 +532,24 @@ class GraphTarget(object):
         )
         # rrd post arguments, will not be reset
         self.__post_args = {}
-        self.reset_keys()
-
-    def reset_keys(self):
+        self.removed_keys = []
+        # evaluated defs
+        self.defs = {}
+        # graph vars
+        self.vars = {}
+        self.file_names = set()
         self.__draw_keys = []
         self.__unique = 0
+
+    def set_header(self, title):
+        self.__header = title
 
     @property
     def header(self):
         # hacky but working
-        if self.graph_keys:
+        if self.__header:
+            return self.__header
+        elif self.graph_keys:
             return self.graph_keys[0][0].split(".")[0]
         else:
             return "???"
@@ -527,21 +584,49 @@ class GraphTarget(object):
             self.__post_args[key] = value
 
     def reset(self):
-        self.defs = {}
-        self.file_names = set()
         self.draw_result = None
-        self.removed_keys = []
         self.__result_dict = None
 
     def get_def_idx(self):
-        return len(self.defs) + 1
+        return self.__unique + 1
 
-    def add_def(self, key, g_var, header_str, **kwargs):
+    def add_def(self, key, g_var, header_str):
         self.__unique += 1
         self.__draw_keys.append((self.__unique, key))
         self.__headers.append(header_str)
-        self.defs[(self.__unique, key)] = g_var.graph_def(self.__unique, **kwargs)
+        self.vars[(self.__unique, key)] = g_var
         self.file_names.add(g_var.mvs_entry.file_name)
+
+    def graph_var_def(self, key, **kwargs):
+        _unique = key[0]
+        return self.vars[key].graph_def(_unique, **kwargs)
+
+    def feed_draw_result(self, key, draw_res):
+        self.vars[key].set_draw_result(draw_res)
+
+    def adjust_max_y(self, max_val):
+        [_val.adjust_max_y(max_val) for _val in self.vars.itervalues()]
+        # list of keys with the same factor
+        _eval_list = []
+        for _key in self.draw_keys:
+            _var = self.vars[_key]
+            if _var.valid_graph_var():
+                if self.vars[_key].is_stacked:
+                    _eval_list.append(_key)
+                else:
+                    if len(_eval_list) > 1:
+                        self._same_scaling(_eval_list, max_val)
+                    _eval_list = [_key]
+        if len(_eval_list) > 1:
+            self._same_scaling(_eval_list, max_val)
+
+    def _same_scaling(self, eval_list, max_val):
+        _total = 0
+        for _key in eval_list:
+            _var = self.vars[_key]
+            _total += _var.draw_result["MAXIMUM"]
+        _min_fac = max_val / max(_total, 1)
+        [self.vars[_key].set_y_scaling(_min_fac) for _key in eval_list]
 
     def set_y_mm(self, _min, _max):
         # set min / max values for ordinate
@@ -562,7 +647,7 @@ class GraphTarget(object):
 
     @property
     def valid(self):
-        return True if self.defs and (self.draw_result is not None) else False
+        return True if self.__draw_keys and (self.draw_result is not None) else False
 
     @property
     def result_dict(self):
@@ -690,8 +775,9 @@ class RRDGraph(object):
             "hide_empty":  False,
             "include_zero": False,
             "show_forecast": False,
-            "scale_y": False,
+            "scale_mode": "level",
             "merge_devices": True,
+            "merge_graphs": False,
             "job_mode": "none",
             "selected_job": 0,
             "merge_cd": False,
@@ -902,6 +988,11 @@ class RRDGraph(object):
                 )
             )
         )
+        if self.para_dict["merge_graphs"]:
+            # reorder all graph_keys into one graph_key_dict
+            s_graph_key_dict = {
+                "all": sum(s_graph_key_dict.values(), [])
+            }
         self.log(
             "graph keys: {}".format(
                 ", ".join([full_graph_key(_v) for _v in graph_keys])
@@ -959,12 +1050,15 @@ class RRDGraph(object):
                         ) for dev_id, dev_pk in enumerated_dev_pks
                     ]
                 )
+        if self.para_dict["merge_graphs"]:
+            # set header
+            [_gt.set_header("all") for _gt in sum(graph_key_list, [])]
         self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
         graph_list = E.graph_list()
         _job_add_dict = self._get_jobs(dev_dict)
         for _graph_line in graph_key_list:
             self.log("starting graph_line")
-            # iterate in case scale_y is True
+            # iterate in case scale_mode is not None
             _iterate_line, _line_iteration = (True, 0)
             while _iterate_line:
                 for _graph_target in _graph_line:
@@ -993,8 +1087,6 @@ class RRDGraph(object):
                         "--start", "{:d}".format(self.abs_start_time),  # start
                         GraphVar(self, _graph_target, None, None, "").header_line,
                     ]
-                    # reset graph keys
-                    _graph_target.reset_keys()
                     # outer loop: iterate over all keys for the graph
                     for graph_key in sorted(_graph_target.graph_keys):
                         # inner loop: iterate over all dev ids for the graph
@@ -1022,7 +1114,8 @@ class RRDGraph(object):
                                             logging_tools.LOG_LEVEL_ERROR
                                         )
                                         _take = False
-                                    if _take:
+                                    if _take and _line_iteration == 0:
+                                        # add GraphVars only on the first iteration
                                         # print "**", graph_key, _mvs.key, _mvv.key
                                         # store def
                                         _graph_target.add_def(
@@ -1036,13 +1129,20 @@ class RRDGraph(object):
                                                 dev_dict[cur_pk]
                                             ),
                                             "header_str",
-                                            timeshift=self.para_dict["timeshift"]
                                         )
-                    if _graph_target.defs:
+                    if _graph_target.draw_keys:
                         draw_it = True
                         removed_keys = set()
                         while draw_it:
-                            rrd_args = rrd_pre_args + sum([_graph_target.defs[_key] for _key in _graph_target.draw_keys], [])
+                            rrd_args = rrd_pre_args + sum(
+                                [
+                                    _graph_target.graph_var_def(
+                                        _key,
+                                        timeshift=self.para_dict["timeshift"],
+                                    ) for _key in _graph_target.draw_keys
+                                ],
+                                []
+                            )
                             rrd_args.extend(_graph_target.rrd_post_args)
                             rrd_args.extend(
                                 [
@@ -1073,7 +1173,7 @@ class RRDGraph(object):
                                 draw_result = None
                                 draw_it = False
                             else:
-                                # compare draw results, add -l / -u when scale_y is true
+                                # compare draw results, add -l / -u when scale_mode is not None
                                 # pprint.pprint(draw_result)
                                 res_dict = {
                                     value.split("=", 1)[0]: value.split("=", 1)[1] for key, value in draw_result.iteritems() if key.startswith("print[")
@@ -1096,6 +1196,8 @@ class RRDGraph(object):
                                     if value is not None:
                                         val_dict.setdefault((_unique_id, (_s_key, _v_key)), {})[cf] = value
                                 # pprint.pprint(val_dict)
+                                for key, value in val_dict.iteritems():
+                                    _graph_target.feed_draw_result(key, value)
                                 # check if the graphs shall always include y=0
                                 draw_it = False
                                 if self.para_dict["include_zero"]:
@@ -1128,22 +1230,32 @@ class RRDGraph(object):
                         self.log("no DEFs for graph_key_dict {}".format(_graph_target.graph_key), logging_tools.LOG_LEVEL_ERROR)
                 _iterate_line = False
                 _valid_graphs = [_entry for _entry in _graph_line if _entry.valid]
-                if _line_iteration == 0 and self.para_dict["scale_y"] and len(_valid_graphs) > 1:
+                if _line_iteration == 0 and self.para_dict["scale_mode"] in [
+                    "level", "to100"
+                ] and (len(_valid_graphs) > 1 or self.para_dict["scale_mode"] == "to100"):
                     _line_iteration += 1
-                    _vmin_v, _vmax_v = (
-                        [_entry.draw_result["value_min"] for _entry in _valid_graphs],
-                        [_entry.draw_result["value_max"] for _entry in _valid_graphs],
-                    )
-                    if set(_vmin_v) > 1 or set(_vmax_v) > 1:
-                        _vmin, _vmax = (FLOAT_FMT.format(min(_vmin_v)), FLOAT_FMT.format(max(_vmax_v)))
-                        self.log(
-                            "setting y_min / y_max for {} to {} / {}".format(
-                                _valid_graphs[0].graph_key,
-                                _vmin,
-                                _vmax,
-                            )
+                    if self.para_dict["scale_mode"] == "level":
+                        _vmin_v, _vmax_v = (
+                            [_entry.draw_result["value_min"] for _entry in _valid_graphs],
+                            [_entry.draw_result["value_max"] for _entry in _valid_graphs],
                         )
-                        [_entry.set_y_mm(_vmin, _vmax) for _entry in _valid_graphs]
+                        if set(_vmin_v) > 1 or set(_vmax_v) > 1:
+                            _vmin, _vmax = (
+                                FLOAT_FMT.format(min(_vmin_v)),
+                                FLOAT_FMT.format(max(_vmax_v)),
+                            )
+                            self.log(
+                                "setting y_min / y_max for {} to {} / {}".format(
+                                    _valid_graphs[0].graph_key,
+                                    _vmin,
+                                    _vmax,
+                                )
+                            )
+                            [_entry.set_y_mm(_vmin, _vmax) for _entry in _valid_graphs]
+                            _iterate_line = True
+                    else:
+                        [_entry.adjust_max_y(100) for _entry in _valid_graphs]
+                        self.log("set max y_val to 100 for all graphs")
                         _iterate_line = True
                 if not _iterate_line:
                     graph_list.extend(
@@ -1153,7 +1265,7 @@ class RRDGraph(object):
         return graph_list
 
 
-class graph_process(threading_tools.process_obj, server_mixins.operational_error_mixin):
+class graph_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -1231,16 +1343,22 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
             self.log("no file names given, skipping flush()", logging_tools.LOG_LEVEL_WARN)
 
     def _graph_rrd(self, *args, **kwargs):
-        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        dev_pks = device.objects.filter(
-            Q(pk__in=srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) &
-            Q(machinevector__pk__gt=0)
+        srv_com = server_command.srv_command(source=args[0])
+        orig_dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
+        orig_dev_pks = device.objects.filter(
+            Q(pk__in=orig_dev_pks) & Q(machinevector__pk__gt=0)
         ).values_list("pk", flat=True)
+        dev_pks = [
+            dev_pk for dev_pk in orig_dev_pks
+            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
+        ]
+        if len(orig_dev_pks) != len(dev_pks):
+            self.log(
+                "Access to device rrds denied to to locking: {}".format(set(orig_dev_pks).difference(dev_pks)),
+                logging_tools.LOG_LEVEL_ERROR,
+            )
+        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         graph_keys = json.loads(srv_com["*graph_key_list"])
-        #    [
-        #        (_el.get("struct_key"), _el.get("value_key")) for _el in srv_com.xpath(".//graph_key_list/graph_key[@struct_key]", smart_strings=False)
-        #    ]
-        # )
         para_dict = {}
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text
@@ -1252,7 +1370,7 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
         for key, _default in [
             ("hide_empty", "0"),
             ("merge_devices", "1"),
-            ("scale_y", "0"),
+            ("merge_graphs", "0"),
             ("show_values", "1"),
             ("include_zero", "0"),
             ("show_forecast", "0"),
@@ -1284,4 +1402,4 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
                 server_command.SRV_REPLY_STATE_OK
             )
         self._close_rrdcached_socket()
-        self.send_pool_message("send_command", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))

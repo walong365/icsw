@@ -68,6 +68,9 @@ base_patterns = patterns(
     url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
     url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
     url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
+    url("^kpi$", base_views.KpiView.as_view(), name="kpi"),
+    url("^GetKpiSourceData$", base_views.GetKpiSourceData.as_view(), name="GetKpiSourceData"),
+    url("^CalculateKpi$", base_views.CalculateKpi.as_view(), name="CalculateKpi"),
 )
 
 setup_patterns = patterns(
@@ -242,6 +245,7 @@ rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_selection$", rest_views.device_selection_list.as_view(), name="device_selection_list"),
+    url("^device_com_cap_list$", rest_views.device_com_capabilities.as_view(), name="device_com_capabilities"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get": "list"}), name="csw_object_list"),
     url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get": "list"}), name="netdevice_peer_list"),

@@ -17,13 +17,6 @@
 #
 """ virtual desktop capability """
 
-from django.db.models import Q
-from django.utils import timezone
-from initat.cluster.backbone.models import device
-from initat.cluster_server.capabilities.base import bg_stuff
-from initat.cluster_server.config import global_config
-from initat.tools import process_tools
-import psutil
 import os
 import shutil
 import subprocess
@@ -31,13 +24,22 @@ import glob
 import pwd
 import datetime
 import sys
-import daemon
 import multiprocessing
 import socket
 import random
 import string
 import tempfile
-from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, virtual_desktop_user_setting
+
+from django.db.models import Q
+from django.utils import timezone
+from initat.cluster.backbone.models import device
+from initat.cluster_server.capabilities.base import bg_stuff
+from initat.cluster_server.config import global_config
+from initat.tools import process_tools
+import psutil
+import daemon
+from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, \
+    virtual_desktop_user_setting
 
 
 # utility classes for virtual desktop handling. They are located here but don't have any dependency here.
@@ -409,5 +411,3 @@ def _get_running_process(pid, process_name=None, log=None):
             log("No such process {} {}".format(pid, process_name))
         pass
     return None
-
-

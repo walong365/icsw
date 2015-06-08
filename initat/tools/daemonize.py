@@ -30,6 +30,7 @@ import grp
 import os
 
 import daemon
+#  do NOT but initat imports here (otherwise path manipulations below will not work)
 
 
 def get_gid_from_name(group):
@@ -40,6 +41,7 @@ def get_gid_from_name(group):
             gid_stuff = grp.getgrnam(group)
         new_gid, new_gid_name = (gid_stuff[2], gid_stuff[0])
     except KeyError:
+        from initat.tools import logging_tools
         new_gid, new_gid_name = (0, "root")
         logging_tools.my_syslog("Cannot find group '{}', using {} ({:d})".format(group, new_gid_name, new_gid))
     return new_gid, new_gid_name
@@ -53,22 +55,10 @@ def get_uid_from_name(user):
             uid_stuff = pwd.getpwnam(user)
         new_uid, new_uid_name = (uid_stuff[2], uid_stuff[0])
     except KeyError:
+        from initat.tools import logging_tools
         new_uid, new_uid_name = (0, "root")
         logging_tools.my_syslog("Cannot find user '{}', using {} ({:d})".format(user, new_uid_name, new_uid))
     return new_uid, new_uid_name
-
-
-def get_gid_from_name(group):
-    try:
-        if type(group) in [int, long]:
-            gid_stuff = grp.getgrgid(group)
-        else:
-            gid_stuff = grp.getgrnam(group)
-        new_gid, new_gid_name = (gid_stuff[2], gid_stuff[0])
-    except KeyError:
-        new_gid, new_gid_name = (0, "root")
-        logging_tools.my_syslog("Cannot find group '{}', using {} ({:d})".format(group, new_gid_name, new_gid))
-    return new_gid, new_gid_name
 
 
 def main():
@@ -79,7 +69,7 @@ def main():
     _parser.add_argument("--proctitle", default="", type=str, help="process title to set [%(default)s]")
     _parser.add_argument("--user", type=str, default="root", help="user to use for the process [%(default)s]")
     _parser.add_argument("--group", type=str, default="root", help="group to use for the process [%(default)s]")
-    _parser.add_argument("--groups", type=str, default="", help="coma-separated list of groups for the process [%(default)s]")
+    _parser.add_argument("--groups", type=str, default="", help="comma-separated list of groups for the process [%(default)s]")
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     _parser.add_argument("--debug", default=False, action="store_true", help="enable debug mode (modify sys.path), [%(default)s]")
     _parser.add_argument("extra_args", nargs="*", type=str, help="extra  arguments")

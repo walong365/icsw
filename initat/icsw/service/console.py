@@ -146,4 +146,7 @@ class SrvController(object):
 
 
 def main(opt_ns, srv_c, inst_xml):
-    SrvController(opt_ns, srv_c, inst_xml).loop()
+    if len(srv_c.check_system(opt_ns, inst_xml)):
+        SrvController(opt_ns, srv_c, inst_xml).loop()
+    else:
+        srv_c.log("nothing to do", logging_tools.LOG_LEVEL_ERROR)

@@ -186,8 +186,6 @@ angular.module(
 
                             show_delete_dialog(related_objects, deletable_objects)
 
-
-
             try_delete()
 ]).service('icswDialogDeleteCheckDeletionService',
     ['ICSW_URLS', 'blockUI', 'icswCallAjaxService', '$interval', 'icswParseXMLResponseService', 'toaster', '$rootScope'

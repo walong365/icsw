@@ -330,4 +330,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(u"Exiting due to error: {}".format(e))
+        sys.exit(1)

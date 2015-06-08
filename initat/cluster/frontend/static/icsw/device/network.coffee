@@ -148,7 +148,7 @@ angular.module(
         $scope.netip_open = false
         $scope.peer_open = false
         # mixins
-        $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
+        $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
         $scope.netdevice_edit.create_template = "netdevice.form"
         $scope.netdevice_edit.edit_template = "netdevice.form"
         $scope.netdevice_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1))
@@ -156,7 +156,7 @@ angular.module(
         $scope.netdevice_edit.new_object_at_tail = false
         $scope.netdevice_edit.use_promise = true
 
-        $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "ni")
+        $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "ni")
         $scope.netip_edit.create_template = "net.ip.form"
         $scope.netip_edit.edit_template = "net.ip.form"
         $scope.netip_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1))
@@ -164,7 +164,7 @@ angular.module(
         $scope.netip_edit.new_object_at_tail = false
         $scope.netip_edit.use_promise = true
 
-        $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "np")
+        $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "np")
         $scope.peer_edit.create_template = "peer.information.form"
         $scope.peer_edit.edit_template = "peer.information.form"
         #$scope.peer_edit.edit_template = "netip_template.html"
@@ -173,7 +173,7 @@ angular.module(
         $scope.peer_edit.new_object_at_tail = false
         $scope.peer_edit.use_promise = true
 
-        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nb")
+        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nb")
         $scope.boot_edit.edit_template = "device.boot.form"
         $scope.boot_edit.put_parameters = {"only_boot" : true}
         $scope.boot_edit.modify_rest_url = ICSW_URLS.REST_DEVICE_TREE_DETAIL.slice(1).slice(0, -2)
@@ -182,7 +182,8 @@ angular.module(
 
         $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
         $scope.scan_mixin.template = "device.network.scan.form"
-        
+        $scope.scan_mixin.cssClass = "modal-tall"
+
         $scope.devsel_list = []
         $scope.devices = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -339,29 +340,42 @@ angular.module(
         $scope.set_scan_mode = (sm) ->
             $scope.scan_device.scan_mode = sm
             $scope.scan_device["scan_#{sm}_active"] = true
+        $scope.has_com_capability = (dev, cc) ->
+            return cc in dev.com_caps
         $scope.scan_device_network = (dev, event) ->
             $scope._current_dev = dev
             $scope.scan_device = dev
-            ip_list = []
+            network_type_names = []
+            ip_dict = {}
             for ndev in dev.netdevice_set
                 for ip in ndev.net_ip_set
                     if ip.network of $scope.network_lut
                         network = $scope.network_lut[ip.network]
                         if network.network_type_identifier != "l" and not (network.netmask == "255.0.0.0" and network.network == "127.0.0.0")
-                            ip_list.push(ip.ip)
-            ip_list = _.sortBy(ip_list)
-            dev.ip_list = ip_list
+                            if network.network_type_name not of ip_dict
+                                ip_dict[network.network_type_name] = []
+                                network_type_names.push(network.network_type_name)
+                            ip_dict[network.network_type_name].push(ip.ip)
+            for key, value of ip_dict
+                ip_dict[key] = _.sortBy(value)
+            network_type_names = _.sortBy(network_type_names)
+            dev.ip_dict = ip_dict
+            dev.network_type_names = network_type_names
             dev.manual_address = "0.0.0.0"
             dev.snmp_community = "public"
+            if not dev.com_caps?
+                # init com_caps array if not already set
+                dev.com_caps = []
             dev.snmp_version = 1
             dev.remove_not_found = false
             dev.strict_mode = true
+            dev.scan_base_active = false
             dev.scan_hm_active = false
             dev.scan_snmp_active = false
-            if $scope.no_objects_defined(dev)
+            if not $scope.no_objects_defined(dev) and $scope.has_com_capability(dev, "snmp")
                 $scope.set_scan_mode("snmp")
             else
-                $scope.set_scan_mode("hm")
+                $scope.set_scan_mode("base")
             $scope.scan_mixin.edit(dev, event).then(
                 (mod_obj) ->
                     true
@@ -655,12 +669,15 @@ angular.module(
                         $scope.reload()
         $scope.get_bootdevice_info_class = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
-            if num_bootips == 0
-                return ""
-            else if num_bootips == 1
-                return "btn-success"
-            else
+            if obj.dhcp_error
                 return "btn-danger"
+            else
+                if num_bootips == 0
+                    return "btn-warning"
+                else if num_bootips == 1
+                    return "btn-success"
+                else
+                    return "btn-danger"
         $scope.get_num_bootips = (obj) ->
             num_bootips = 0
             for net_dev in obj.netdevice_set
@@ -670,7 +687,12 @@ angular.module(
             return num_bootips
         $scope.get_boot_value = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
-            return "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
+            r_val = "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
+            if obj.dhcp_error
+                r_val = "#{r_val}, #{obj.dhcp_error}"
+            if obj.dhcp_write != obj.dhcp_written
+                r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
+            return r_val
 ]).directive("icswDeviceNetworkNetdeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
@@ -702,7 +724,49 @@ angular.module(
                     return "success text-center"
                 else
                     return "warning text-center"
-    }        
+    }
+]).directive("icswDeviceComCapabilities", ["$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", ($templateCache, $compile, icswCachingCall, ICSW_URLS) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("icsw.device.com.capabilities")
+        scope:
+            device: "=device"
+            detail: "=detail"
+        link: (scope, el, attrs) ->
+            scope.com_class = () ->
+                if scope.pending
+                    return "btn-warning"
+                else if scope.com_caps.length
+                    return "btn-success"
+                else
+                    return "btn-danger"
+            scope.com_caps = []
+            scope.$watch("device.active_scan", (new_val) ->
+                if new_val == "base"
+                    el.find("span.ladda-label").text("...")
+                    scope.pending = true
+                else
+                    update_com_cap()
+            )
+            update_com_cap = () ->
+                el.find("span.ladda-label").text("...")
+                scope.pending = true
+                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
+                    scope.com_caps = data[0]
+                    scope.pending = false
+                    if scope.com_caps.length
+                        scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
+                        scope.device.com_cap_names = (_entry.name for _entry in scope.com_caps)
+                        if scope.detail?
+                            el.find("span.ladda-label").text(scope.device.com_cap_names.join(", "))
+                        else
+                            el.find("span.ladda-label").text(scope.device.com_caps.join(", "))
+                    else
+                        el.find("span.ladda-label").text("N/A")
+                )
+            update_com_cap()
+    }
+
 ]).directive("icswDeviceNetworkIpRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"

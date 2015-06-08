@@ -176,4 +176,12 @@ class rescan_kernels(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="rescan_kernels")
-        _srv_result = contact_server(request, "mother", srv_com, timeout=180, log_result=True, split_send=False)
+        _srv_result = contact_server(
+            request,
+            "mother",
+            srv_com,
+            timeout=180,
+            log_result=True,
+            split_send=False
+        )
+

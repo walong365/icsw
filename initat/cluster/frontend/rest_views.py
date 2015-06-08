@@ -35,7 +35,8 @@ from initat.cluster.backbone.models import get_related_models, get_change_reset_
     ext_license_usage_coarse
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
+    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, \
+    network_with_ip_serializer, ComCapabilitySerializer
 from initat.cluster.frontend import forms
 from initat.cluster.backbone.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -184,7 +185,7 @@ class db_prefetch_mixin(object):
         return ["domain_tree_node", "device_group", "mon_ext_host"]
 
     def _device_prefetch(self):
-        return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set"]
+        return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set", "com_capability_list"]
 
     def _mon_check_command_prefetch(self):
         return ["exclude_devices", "categories"]
@@ -341,7 +342,8 @@ class list_view(mixins.ListModelMixin,
     @rest_logging
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
-        if resp.status_code in [200, 201, 202, 203]:
+        silent = int(request.GET.get('silent', 0))
+        if not silent and resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '{}'".format(unicode(self.object))]
         return resp
 
@@ -387,6 +389,13 @@ class list_view(mixins.ListModelMixin,
             res = res.order_by(special_dict["order_by"])
         if "num_entries" in special_dict:
             res = res[0:special_dict["num_entries"]]
+        if model_name == "quota_capable_blockdevice":
+            res = res.prefetch_related(
+                "device__snmp_schemes__snmp_scheme_vendor",
+                "device__com_capability_list",
+                "device__DeviceSNMPInfo",
+                "device__snmp_schemes__snmp_scheme_tl_oid_set",
+            )
         return res
 
 
@@ -401,7 +410,7 @@ class ext_peer_object(dict):
         self["fqdn"] = "{}{}".format(
             self["device__name"],
             ".{}".format(self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
-            )
+        )
 
 
 class ext_peer_serializer(serializers.Serializer):
@@ -620,11 +629,12 @@ class device_tree_detail(detail_view, device_tree_mixin):
             return device_serializer
 
 
-class device_tree_list(mixins.ListModelMixin,
-                       mixins.CreateModelMixin,
-                       generics.MultipleObjectAPIView,
-                       device_tree_mixin,
-                       ):
+class device_tree_list(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.MultipleObjectAPIView,
+    device_tree_mixin,
+):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device
@@ -730,6 +740,7 @@ class device_tree_list(mixins.ListModelMixin,
             "device_group",
         ).prefetch_related(
             "snmp_schemes__snmp_scheme_vendor",
+            "com_capability_list",
             "DeviceSNMPInfo",
             "snmp_schemes__snmp_scheme_tl_oid_set",
         )
@@ -771,7 +782,7 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.prefetch_related(
                 "netdevice_set__net_ip_set__network__network_type",
                 "netdevice_set__net_ip_set__network__network_device_type",
-                )
+            )
         # ordering: at first cluster device group, then by group / is_meta_device / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])
@@ -785,6 +796,20 @@ class device_selection_list(APIView):
     def get(self, request):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
         return Response(ser.data)
+
+
+class device_com_capabilities(APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        _devs = json.loads(request.QUERY_PARAMS.get("devices"))
+        _devs = device.objects.filter(Q(pk__in=_devs)).prefetch_related("com_capability_list")
+        _data = []
+        for _dev in _devs:
+            _data.append(ComCapabilitySerializer([_cap for _cap in _dev.com_capability_list.all()], many=True).data)
+        return Response(_data)
+
 
 for src_mod, obj_name in REST_LIST:
     is_camelcase = obj_name[0].lower() != obj_name[0]

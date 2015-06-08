@@ -22,22 +22,21 @@
 
 """ RRD views """
 
+import datetime
+import json
+import logging
+
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImports
-import datetime
 import dateutil.parser
 import dateutil.tz
-import json
-import logging
 from initat.tools import logging_tools
 from initat.tools import server_command
 
@@ -47,14 +46,7 @@ logger = logging.getLogger("cluster.rrd")
 class device_rrds(View):
     @method_decorator(login_required)
     def post(self, request):
-        orig_dev_pks = request.POST.getlist("pks[]")
-        dev_pks = [
-            dev_pk for dev_pk in orig_dev_pks
-            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
-        ]
-        if len(orig_dev_pks) != len(dev_pks):
-            logger.info("Access to device rrds denied to to locking: {}".format(set(orig_dev_pks).difference(dev_pks)))
-        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
+        dev_pks = request.POST.getlist("pks[]")
         return _get_node_rrd(request, dev_pks)
 
 
@@ -67,7 +59,7 @@ class merge_cds(View):
         cd_pks = list(
             device.all_real_enabled.filter(
                 (
-                    Q(ipmi_capable=True) |
+                    Q(com_capability_list__matchcode="ipmi") |
                     Q(snmp_schemes__power_control=True)
                 ) &
                 Q(master_connections__in=devs)
@@ -116,7 +108,7 @@ class graph_rrds(View):
             cd_pks = list(
                 device.all_real_enabled.filter(
                     (
-                        Q(ipmi_capable=True) |
+                        Q(com_capability_list__matchcode="ipmi") |
                         Q(snmp_schemes__power_control=True)
                     ) &
                     Q(master_connections__in=devs)
@@ -147,11 +139,12 @@ class graph_rrds(View):
             E.include_zero(self._parse_post_boolean(_post, "include_zero", "0")),
             E.show_values(self._parse_post_boolean(_post, "show_values", "0")),
             E.show_forecast(self._parse_post_boolean(_post, "show_forecast", "0")),
-            E.scale_y(self._parse_post_boolean(_post, "scale_y", "0")),
+            E.scale_mode(_post.get("scale_mode", "level")),
             E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
             E.merge_devices(self._parse_post_boolean(_post, "merge_devices", "1")),
+            E.merge_graphs(self._parse_post_boolean(_post, "merge_graphs", "0")),
             E.timeshift(_post.get("timeshift", "0")),
         )
         result = contact_server(request, "grapher", srv_com, timeout=30)

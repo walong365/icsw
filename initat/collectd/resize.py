@@ -22,6 +22,7 @@
 import os
 import stat
 import time
+import rrdtool
 
 from django.db import connection
 from initat.collectd.config import global_config
@@ -31,16 +32,14 @@ from initat.tools import rrd_tools
 from initat.tools import server_mixins
 from initat.tools import threading_tools
 
-try:
-    import rrdtool  # @UnresolvedImport
-except:
-    rrdtool = None
+from .rsync import RSyncMixin
+
 
 # constant, change to limit RRDs to be converted at once
 MAX_FOUND = 0
 
 
-class resize_process(threading_tools.process_obj, server_mixins.operational_error_mixin):
+class resize_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin, RSyncMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -57,6 +56,16 @@ class resize_process(threading_tools.process_obj, server_mixins.operational_erro
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
         self.register_timer(self.check_size, 6 * 3600, first_timeout=1)
         self.__verbose = global_config["VERBOSE"]
+        self._setup_rsync()
+        if self.do_rsync:
+            self.log(
+                "enabling periodic RAM-to-disk sync from {} to {} every {}".format(
+                    global_config["RRD_DIR"],
+                    global_config["RRD_DISK_CACHE"],
+                    logging_tools.get_diff_time_str(global_config["RRD_DISK_CACHE_SYNC"]),
+                )
+            )
+            self.register_timer(self.sync_from_ram_to_disk, global_config["RRD_DISK_CACHE_SYNC"])
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -81,9 +90,7 @@ class resize_process(threading_tools.process_obj, server_mixins.operational_erro
     def check_size(self):
         # init target coverage dict
         self.tc_dict = {}
-        if not rrdtool:
-            self.log("no rrdtool, ignoring resize call", logging_tools.LOG_LEVEL_WARN)
-        elif not self.rrd_coverage:
+        if not self.rrd_coverage:
             self.log("rrd_coverage is empty", logging_tools.LOG_LEVEL_WARN)
         elif not global_config["MODIFY_RRD_COVERAGE"]:
             self.log("rrd_coverage modification is disabled", logging_tools.LOG_LEVEL_WARN)
@@ -238,6 +245,9 @@ class resize_process(threading_tools.process_obj, server_mixins.operational_erro
         else:
             _changed = False
         return _changed
+
+    def loop_end(self):
+        self.sync_from_ram_to_disk()
 
     def loop_post(self):
         self.__log_template.close()

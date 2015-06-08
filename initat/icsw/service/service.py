@@ -58,6 +58,7 @@ class Service(object):
         self.name = entry.attrib["name"]
         self.__entry = entry
         self.__attrib = dict(self.__entry.attrib)
+        self.config_check_ok = True
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[srv {}] {}".format(self.name, what), log_level)
@@ -139,7 +140,7 @@ class Service(object):
         else:
             return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None):
+    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, models_changed=False):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -160,6 +161,8 @@ class Service(object):
                         try:
                             _cr = config_tools.server_check(server_type=_conf_name)
                         except:
+                            self.config_check_ok = False
+                            # _exc_info = process_tools.exception_info()
                             _cr = None
                     if _cr is not None:
                         if _cr.effective_device:
@@ -171,22 +174,30 @@ class Service(object):
 
         act_state = int(_result.find("state_info").attrib["state"])
         if self.attrib["runs_on"] == "server":
-            if dev_config:  # is not None:
-                sql_info = ", ".join(
-                    [
-                        _dc.server_info_str for _dc in dev_config
-                    ]
-                )
+            if models_changed:
+                # force state to failed
+                act_state = SERVICE_DEAD
+                _state_info = _result.find("state_info")
+                _state_info.text = "models changed"
+                _state_info.attrib["state"] = "{:d}".format(act_state)
+                sql_info = "models changed"
             else:
-                if self.entry.find(".//ignore-missing-database") is not None:
-                    sql_info = "relayer mode"
+                if dev_config:  # is not None:
+                    sql_info = ", ".join(
+                        [
+                            _dc.server_info_str for _dc in dev_config
+                        ]
+                    )
                 else:
-                    act_state = SERVICE_NOT_CONFIGURED
-                    sql_info = "not configured"
-                    # update state info
-                    _state_info = _result.find("state_info")
-                    _state_info.text = "no processes"
-                    _state_info.attrib["state"] = "{:d}".format(act_state)
+                    if self.entry.find(".//ignore-missing-database") is not None:
+                        sql_info = "relayer mode"
+                    else:
+                        act_state = SERVICE_NOT_CONFIGURED
+                        sql_info = "not configured"
+                        # update state info
+                        _state_info = _result.find("state_info")
+                        _state_info.text = "no processes"
+                        _state_info.attrib["state"] = "{:d}".format(act_state)
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -236,7 +247,8 @@ class Service(object):
             except:
                 _result.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
 
-    def _get_proc_info_str(self, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
+    def _get_proc_info_str(self, unique_pids, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
+        num_procs = len(unique_pids)
         if any_ok:
             ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
         else:
@@ -244,7 +256,10 @@ class Service(object):
                 diff_str = ", [diff: {}]".format(
                     ", ".join(
                         [
-                            "{:d}: {:d}".format(_key, _value) for _key, _value in diff_dict.iteritems()
+                            "{:d}: {:d}".format(
+                                _key,
+                                _value
+                            ) for _key, _value in diff_dict.iteritems()
                         ]
                     )
                 )
@@ -264,9 +279,9 @@ class Service(object):
                 )
                 da_name = "warning"
             else:
-                ret_str = "the thread is running" if num_started == 1 else "{}{} ({}) running".format(
-                    "all " if num_pids > 1 else "",
-                    logging_tools.get_plural("process", num_pids),
+                ret_str = "the process is running" if num_started == 1 else "{}{} ({}) running".format(
+                    "all " if num_procs > 1 else "",
+                    logging_tools.get_plural("process", num_procs),
                     logging_tools.get_plural("thread", num_started),
                 )
         return ret_str
@@ -352,6 +367,7 @@ class Service(object):
             "cleanup": self.cleanup,
             "wait": self.wait,
             "debug": self.debug,
+            "reload": self.reload,
             # special command when active service is restart: signal a simple restart command
             "signal_restart": self.signal_restart,
         }[action]
@@ -362,6 +378,15 @@ class Service(object):
 
     def wait(self, act_proc_dict):
         return
+
+    def reload(self, act_proc_dict):
+        if not int(self.entry.get("reload", "1")) and False:
+            return
+        self._reload()
+
+    def _reload(self):
+        # for subclasses
+        pass
 
     def start(self, act_proc_dict):
         if not int(self.entry.get("startstop", "1")):
@@ -524,6 +549,7 @@ class PIDService(Service):
                     start_time="{:d}".format(start_time),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
+                        set(act_pids),
                         num_started,
                         num_found,
                         num_diff,
@@ -549,10 +575,10 @@ class MetaService(Service):
             ms_block = process_tools.meta_server_info(ms_name)
             start_time = ms_block.start_time
             _check = ms_block.check_block(act_proc_dict)
-            #    print self.name, ms_block.pid_check_string
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_threads = sum(ms_block.bound_dict.values())
             act_pids = ms_block.pids_found
+            unique_pids = set(act_pids)
             num_started = len(act_pids)
             if diff_threads:
                 act_state = SERVICE_INCOMPLETE
@@ -561,7 +587,6 @@ class MetaService(Service):
                 act_state = SERVICE_OK
                 num_found = num_started
             num_diff = diff_threads
-            # print ms_block.pids, ms_block.pid_check_string
             result.append(
                 E.state_info(
                     *[
@@ -577,6 +602,7 @@ class MetaService(Service):
                     start_time="{:d}".format(int(start_time)),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
+                        unique_pids,
                         num_started,
                         num_found,
                         num_diff,
@@ -599,15 +625,31 @@ class MetaService(Service):
         if len(_meta_pids):
             try:
                 if _main_pids:
-                    os.kill(_main_pids[0], 15)
-                    self.log("sent signal 15 to {:d}".format(_main_pids[0]))
+                    os.kill(_main_pids[0], signal.SIGTERM)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _main_pids[0]))
                 else:
-                    os.kill(_meta_pids[0], 15)
-                    self.log("sent signal 15 to {:d}".format(_meta_pids[0]))
+                    os.kill(_meta_pids[0], signal.SIGTERM)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _meta_pids[0]))
             except OSError:
                 self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("no pids to kill")
+
+    def _reload(self):
+        _main_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid[@main='1']")]
+        _meta_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid")]
+        if len(_meta_pids):
+            try:
+                if _main_pids:
+                    os.kill(_main_pids[0], signal.SIGHUP)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGHUP, _main_pids[0]))
+                else:
+                    os.kill(_meta_pids[0], signal.SIGHUP)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGHUP, _meta_pids[0]))
+            except OSError:
+                self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no pids to signal")
 
     def _start(self):
         arg_list = self._generate_py_arg_list()

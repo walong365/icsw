@@ -72,7 +72,10 @@ def _state_overview(opt_ns, result):
         print(
             "{:<30s}, target state is {:<20s} [{}], {} / {} in the last 24 hours".format(
                 _inst.get("name"),
-                {0: "stopped", 1: "started"}[int(_inst.attrib["target_state"])],
+                {
+                    0: "stopped",
+                    1: "started"
+                }[int(_inst.attrib["target_state"])],
                 "active" if int(_inst.attrib["active"]) else "inactive",
                 logging_tools.get_plural("state", len(_states)),
                 logging_tools.get_plural("action", len(_actions)),
@@ -109,7 +112,7 @@ def main(opt_ns):
     inst_xml = instance.InstanceXML(log_com).tree
     cur_c = container.ServiceContainer(log_com)
 
-    if opt_ns.subcom == "status":
+    if opt_ns.childcom == "status":
         if opt_ns.interactive:
             from . import console
             console.main(opt_ns, cur_c, inst_xml)
@@ -117,19 +120,26 @@ def main(opt_ns):
             cur_c.check_system(opt_ns, inst_xml)
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
             show_form_list(form_list)
-    elif opt_ns.subcom in ["start", "stop", "restart", "debug"]:
-        if opt_ns.subcom == "debug":
+    elif opt_ns.childcom in ["start", "stop", "restart", "debug", "reload"]:
+        if opt_ns.childcom == "debug":
             debug_args = opt_ns.debug_args
         else:
             debug_args = None
-        cur_t = transition.ServiceTransition(opt_ns, cur_c, inst_xml, log_com, debug_args=debug_args)
+        cur_t = transition.ServiceTransition(
+            opt_ns.childcom,
+            opt_ns.service,
+            cur_c,
+            inst_xml,
+            log_com,
+            debug_args=debug_args
+        )
         while True:
             _left = cur_t.step(cur_c)
             if _left:
                 time.sleep(1)
             else:
                 break
-    elif opt_ns.subcom in ["state"]:
+    elif opt_ns.childcom in ["state"]:
         # override logger
         log_com = logging.get_logger(opt_ns.logger, all=True)
         # contact meta-server at localhost
@@ -149,3 +159,10 @@ def main(opt_ns):
             _state_overview(opt_ns, _result)
         elif opt_ns.statecom in ["disable", "enable"]:
             log_com(*_result.get_log_tuple())
+    else:
+        log_com(
+            "unknown childcom '{}'".format(
+                opt_ns.childcom
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )

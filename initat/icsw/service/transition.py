@@ -37,12 +37,17 @@ from .constants import *
 
 
 class ServiceTransition(object):
-    def __init__(self, opt_ns, cur_c, inst_xml, log_com, id=None, debug_args=None):
+    def __init__(self, target, service_list, cur_c, inst_xml, log_com, id=None, debug_args=None):
         self.__log_com = log_com
-        self.target = opt_ns.subcom
+        self.target = target
         self.debug_args = debug_args
         self.id = id
-        self.list = cur_c.apply_filter(opt_ns.service, inst_xml)
+        self.list = cur_c.apply_filter(service_list, inst_xml)
+        if not self.list:
+            self.log(
+                "nothing to do",
+                logging_tools.LOG_LEVEL_ERROR,
+            )
         self.finished = False
         self.__step_num = 0
         self.log(

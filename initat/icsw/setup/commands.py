@@ -39,7 +39,6 @@ from initat.tools import process_tools
 from .utils import generate_password, DirSave, get_icsw_root
 from .connection_tests import test_psql, test_mysql, test_sqlite
 
-
 ICSW_ROOT = get_icsw_root()
 CMIG_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone", "migrations")
 MIGRATION_DIRS = [
@@ -133,10 +132,13 @@ def call_manage(args, **kwargs):
     if c_stat == 256 and c_out.lower().count("nothing seems to have changed"):
         c_stat = 0
     if c_stat:
-        print("something went wrong calling '{}' in {} ({:d}):".format(
-            com_str,
-            logging_tools.get_diff_time_str(e_time - s_time),
-            c_stat))
+        print(
+            "something went wrong calling '{}' in {} ({:d}):".format(
+                com_str,
+                logging_tools.get_diff_time_str(e_time - s_time),
+                c_stat
+            )
+        )
         for _line in c_out.split("\n"):
             print("  {}".format(_line))
         if _output:
@@ -227,7 +229,7 @@ def enter_data(c_dict, engine_selected, database_selected):
         "mysql": "django.db.backends.mysql",
         "psql": "django.db.backends.postgresql_psycopg2",
         "sqlite": "django.db.backends.sqlite3",
-        }[c_dict["_engine"]]
+    }[c_dict["_engine"]]
 
 
 def create_db_cf(opts):
@@ -343,35 +345,57 @@ def check_for_pre17(opts):
         # first step: move 1.7 models / serializers away
         _move_dirs = ["models", "serializers"]
         for _dir in _move_dirs:
-            os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
+            os.rename(
+                os.path.join(BACKBONE_DIR, _dir),
+                os.path.join(BACKBONE_DIR, ".{}".format(_dir))
+            )
         # next step: move pre-models to current models
         os.rename(PRE_MODELS_DIR, MODELS_DIR)
         # next step: remove all serializer relations from model files
-        for _entry in os.listdir(MODELS_DIR):
-            if _entry.endswith(".py"):
-                _path = os.path.join(MODELS_DIR, _entry)
-                new_lines = []
-                _add = True
-                for _line in file(_path, "r").readlines():
-                    _line = _line.rstrip()
-                    empty_line = True if not _line.strip() else False
-                    _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
-                    if not empty_line:
-                        if _ser_line:
-                            _add = False
-                            new_lines.append("{} = True".format(_line.split()[1].split("(")[0]))
-                        elif _line[0] != " ":
-                            _add = True
-                    if _add:
-                        new_lines.append(_line)
-                file(_path, "w").write("\n".join(new_lines))
+        _files_found = 0
+        for _path in [os.path.join(MODELS_DIR, _entry) for _entry in os.listdir(MODELS_DIR) if _entry.endswith(".py")]:
+            _files_found += 1
+            new_lines = []
+            _add = True
+            _removed, _kept = (0, 0)
+            for _line_num, _line in enumerate(file(_path, "r").readlines(), 1):
+                _line = _line.rstrip()
+                empty_line = True if not _line.strip() else False
+                _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
+                if not empty_line:
+                    if _ser_line:
+                        print("detected serializer line '{}'@{:d}".format(_line, _line_num))
+                        _add = False
+                        # add dummy declaration
+                        new_lines.append("{} = True".format(_line.split()[1].split("(")[0]))
+                    elif _line[0] != " ":
+                        _add = True
+                    else:
+                        # leave _add flag on old value
+                        pass
+                if _add:
+                    new_lines.append(_line)
+                    _kept += 1
+                else:
+                    _removed += 1
+            print("file {}: removed {:d}, kept {:d}".format(_path, _removed, _kept))
+            print("")
+            file(_path, "w").write("\n".join(new_lines))
+        if not _files_found:
+            print("no .py-files found in {}, exit...".format(MODELS_DIR))
+            sys.exit(-1)
         # next step: delete south models
         _mig_dir = os.path.join(BACKBONE_DIR, "migrations")
-        for _entry in os.listdir(_mig_dir):
+        _mig_save_dict = {}
+        for _entry in sorted(os.listdir(_mig_dir)):
             if _entry[0].isdigit() and _entry.count("py"):
-                _full_path = os.path.join(_mig_dir, _entry)
-                print("    removing file {}".format(_full_path))
-                os.unlink(_full_path)
+                _num = int(_entry[0:4])
+                _path = os.path.join(_mig_dir, _entry)
+                if _num >= 799:
+                    _mig_save_dict[_path] = file(_path, "r").read()
+                    print("    storing file {} for later restore".format(_path))
+                print("    removing file {}".format(_path))
+                os.unlink(_path)
         # next step: migrate backbone
         migrate_app("backbone", migrate_args=["--fake"])
         # next step: move pre-1.7 models dir away
@@ -379,6 +403,9 @@ def check_for_pre17(opts):
         # next step: move 1.7 models back in place
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
+        # restore migation files
+        for _key, _value in _mig_save_dict.iteritems():
+            file(_key, "w").write(_value)
 
 
 def check_for_0800(opts):
@@ -535,17 +562,22 @@ def _check_dirs():
         sys.exit(6)
 
 
-def app_has_unapplied_migrations(app_name):
-    # Note: We cannot configure Django globally, because some config files
-    # might not exist yet.
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
+def setup_django():
     import django
     django.setup()
 
     from django.db.migrations.recorder import MigrationRecorder
     from django.apps import apps
     from django.db import connection
+    return connection, apps, MigrationRecorder
+
+
+def app_has_unapplied_migrations(app_name):
+    # Note: We cannot configure Django globally, because some config files
+    # might not exist yet.
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+    connection, apps, MigrationRecorder = setup_django()
 
     recorder = MigrationRecorder(connection)
     applied_migrations = {

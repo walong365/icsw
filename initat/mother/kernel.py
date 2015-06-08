@@ -33,7 +33,7 @@ from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import threading_tools
 
-from kernel_sync_tools import kernel_helper
+from kernel_sync_tools import KernelHelper
 
 
 class kernel_sync_process(threading_tools.process_obj):
@@ -47,7 +47,6 @@ class kernel_sync_process(threading_tools.process_obj):
         )
         # close database connection
         connection.close()
-        self.register_func("srv_command", self._srv_command)
         self.register_func("rescan_kernels", self._rescan_kernels)
         self.kernel_dev = config_tools.server_check(server_type="kernel_server")
 
@@ -58,15 +57,9 @@ class kernel_sync_process(threading_tools.process_obj):
         self.__log_template.close()
 
     def _rescan_kernels(self, *args, **kwargs):
-        src_id, srv_com_str = args[0:2]
-        srv_com = server_command.srv_command(source=srv_com_str)
+        srv_com = server_command.srv_command(source=args[0])
         self._check_kernel_dir(srv_com)
-        self.send_pool_message("send_return", src_id, unicode(srv_com))
-
-    def _srv_command(self, srv_com, **kwargs):
-        srv_com = server_command.srv_command(source=srv_com)
-        if srv_com["command"].text == "check_kernel_dir":
-            self._check_kernel_dir(srv_com)
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _check_kernel_dir(self, srv_com):
         self.log("checking kernel dir")
@@ -90,86 +83,98 @@ class kernel_sync_process(threading_tools.process_obj):
         self.log(
             "option_dict has {}: {}".format(
                 logging_tools.get_plural("key", len(opt_dict.keys())),
-                ", ".join(["%s (%s, %s)" % (key, str(type(value)), str(value)) for key, value in opt_dict.iteritems()])
+                ", ".join(
+                    [
+                        "{} ({}, {})".format(key, str(type(value)), str(value)) for key, value in opt_dict.iteritems()
+                    ]
+                )
             )
         )
-        # kernels_found, problems = ({}, [])
         srv_com.update_source()
-        # send reply now or do we need more data ?
-        reply_now = (opt_dict["insert_all_found"] is True)
         # problems are global problems, not kernel local
-        kernels_found = []
-        problems = []
-        # print srv_com.pretty_print()
-        # srv_reply.set_option_dict({"problems"      : problems,
-        #                           "kernels_found" : kernels_found})
-        if reply_now:
-            srv_com.set_result("starting check of kernel_dir '%s'" % (global_config["KERNEL_DIR"]))
-            # send return, FIXME
-        # print srv_com.pretty_print()
-        # if reply_now:
-        #    srv_reply.set_ok_result("starting check of kernel_dir")
-        #    if srv_com.get_queue():
-        #        srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
+        kernels_found, problems = ([], [])
         if not self.kernel_dev.effective_device:
-            self.log("no kernel_server, skipping check ...",
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "no kernel_server, skipping check ...",
+                logging_tools.LOG_LEVEL_ERROR
+            )
             srv_com.set_result("no kernel server", server_command.SRV_REPLY_STATE_ERROR)
         else:
             all_k_servers = config_tools.device_with_config("kernel_server")
             def_k_servers = all_k_servers.get("kernel_server", [])
-            self.log("found %s: %s" % (logging_tools.get_plural("kernel_server", len(def_k_servers)),
-                                       ", ".join(sorted([unicode(s_struct.effective_device) for s_struct in def_k_servers]))))
-            all_kernels = dict([(cur_kern.name, cur_kern) for cur_kern in kernel.objects.all()])
+            self.log(
+                "found {}: {}".format(
+                    logging_tools.get_plural("kernel_server", len(def_k_servers)),
+                    ", ".join(sorted([unicode(s_struct.effective_device) for s_struct in def_k_servers]))
+                )
+            )
+            all_kernels = {cur_kern.name: cur_kern for cur_kern in kernel.objects.all()}
             any_found_in_database = len(all_kernels) > 0
             if any_found_in_database:
                 self.log("some kernels already present in database, not inserting all found", logging_tools.LOG_LEVEL_WARN)
                 opt_dict["insert_all_found"] = False
             kct_start = time.time()
-            self.log("Checking for kernels (%d already in database) ..." % (len(all_kernels.keys())))
+            self.log("Checking for kernels ({:d} already in database) ...".format(len(all_kernels.keys())))
             if opt_dict["kernels_to_insert"]:
-                self.log(" - only %s to insert: %s" % (
-                    logging_tools.get_plural("kernels", len(opt_dict["kernels_to_insert"])),
-                    ", ".join(opt_dict["kernels_to_insert"])))
+                self.log(
+                    " - only {} to insert: {}".format(
+                        logging_tools.get_plural("kernels", len(opt_dict["kernels_to_insert"])),
+                        ", ".join(opt_dict["kernels_to_insert"])
+                    )
+                )
             if "TFTP_DIR" in global_config:
                 if not os.path.isdir(global_config["TFTP_DIR"]):
-                    self.log("TFTP_DIR '%s' is not a directory" % (global_config["TFTP_DIR"]), logging_tools.LOG_LEVEL_ERROR)
-                    problems.append("TFTP_DIR '%s' is not a directory" % (global_config["TFTP_DIR"]))
+                    self.log("TFTP_DIR '{}' is not a directory".format(global_config["TFTP_DIR"]), logging_tools.LOG_LEVEL_ERROR)
+                    problems.append("TFTP_DIR '{}' is not a directory".format(global_config["TFTP_DIR"]))
             kern_dir = global_config["KERNEL_DIR"]
             if not os.path.isdir(kern_dir):
-                self.log("kernel_dir '%s' is not a directory" % (kern_dir), logging_tools.LOG_LEVEL_ERROR)
+                self.log("kernel_dir '{}' is not a directory".format(kern_dir), logging_tools.LOG_LEVEL_ERROR)
                 problems.append("kernel_dir '%s' is not a directory" % (kern_dir))
             else:
                 for entry in os.listdir(kern_dir):
                     if not opt_dict["check_list"] or entry in opt_dict["check_list"]:
                         try:
-                            act_kernel = kernel_helper(entry, kern_dir, self.log, global_config, master_server=self.kernel_dev.effective_device)
-                        except IOError, what:
+                            act_kernel = KernelHelper(
+                                entry,
+                                kern_dir,
+                                self.log,
+                                global_config,
+                                master_server=self.kernel_dev.effective_device
+                            )
+                        except:
                             self.log(
-                                "error %s: %s" % (
+                                "error in kernel handling ({}): {}".format(
+                                    entry,
                                     process_tools.get_except_info(),
-                                    unicode(what)),
-                                logging_tools.LOG_LEVEL_ERROR)
-                            problems.append(unicode(what))
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                            problems.append(unicode(process_tools.get_except_info()))
+                            for _log_line in process_tools.exception_info().log_lines:
+                                self.log("    {}".format(_log_line), logging_tools.LOG_LEVEL_ERROR)
                         else:
                             # handle initrd generated by old populate_ramdisk.py
                             act_kernel.move_old_initrd()
-                            if act_kernel.name in all_kernels.keys():
-                                act_kernel.db_kernel = all_kernels[act_kernel.name]
-                                act_kernel.check_md5_sums()
-                                act_kernel.check_kernel_dir()
-                            else:
-                                act_kernel.check_md5_sums()
-                                act_kernel.check_kernel_dir()
+                            act_kernel.check_md5_sums()
+                            act_kernel.check_kernel_dir()
                             act_kernel.set_option_dict_values()
                             # determine if we should insert the kernel into the database
                             if act_kernel.check_for_db_insert(opt_dict):
                                 act_kernel.insert_into_database()
                                 act_kernel.check_initrd()
-                            act_kernel.store_option_dict()
                             kernels_found.append(act_kernel.name)
                             act_kernel.log_statistics()
                             del act_kernel
             kct_end = time.time()
-            self.log("checking of kernel_dir took {}".format(logging_tools.get_diff_time_str(kct_end - kct_start)))
-            srv_com.set_result("check of kernel_dir took {}".format(logging_tools.get_diff_time_str(kct_end - kct_start)))
+            _ret_str = "checking of kernel_dir took {}{}".format(
+                logging_tools.get_diff_time_str(kct_end - kct_start),
+                ", problems: {}".format(", ".join(problems)) if problems else "",
+            )
+            self.log(
+                _ret_str,
+                logging_tools.LOG_LEVEL_ERROR if problems else logging_tools.LOG_LEVEL_OK
+            )
+            srv_com.set_result(
+                _ret_str,
+                server_command.SRV_REPLY_STATE_ERROR if problems else server_command.SRV_REPLY_STATE_OK
+            )

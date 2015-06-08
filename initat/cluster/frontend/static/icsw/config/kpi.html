@@ -1,0 +1,274 @@
+
+<script type="text/ng-template" id="icsw.config.kpi">
+
+    <h2>
+        Key performance indicators
+        <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
+    </h2>
+
+    <tabset>
+        <tab heading="Configuration">
+
+            <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
+        </tab>
+        <tab heading="Evaluation">
+
+            <icsw-config-kpi-evaluation-table></icsw-config-kpi-evaluation-table>
+        </tab>
+    </tabset>
+
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.edit_dialog">
+
+    <div style="font-size: 12px"> <!-- fix large font size from bootstrap dlg -->
+
+        <tabset>
+            <tab heading="Basic">
+                <accordion close-others="false">
+                    <accordion-group heading="Basic properties" is-open="true">
+                        <form class="form-horizontal">
+                            <div class="form-group">
+                                <label class="control-label col-sm-2">Name:</label>
+
+                                <div class="controls col-sm-6">
+                                    <input class="form-control" ng-model="cur_edit_kpi.name" type="text"
+                                           placeholder="name"/>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-sm-2">Time range:</label>
+
+                                <div class="controls col-sm-6">
+                                    <ui-select ng-model="cur_edit_kpi.time_range">
+                                        <ui-select-match placeholder="select a time range">{{$select.selected.display_str}}</ui-select-match>
+                                        <ui-select-choices repeat="value.id_str as value in kpi_time_ranges | props_filter:{display_str:$select.search}">
+                                            <div ng-bind-html="value.display_str | highlight: $select.search"></div>
+                                        </ui-select-choices>
+                                    </ui-select>
+
+                                    <div ng-show="cur_edit_kpi.time_range == 'last n days'" class="controls form-inline">
+                                        <div style="margin-top: 10px">
+                                        Last
+                                        <input class="form-control " type="number" ng-model="cur_edit_kpi.time_range_parameter"/>
+                                        days
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="col-sm-2"></div>
+                            <div class="checkbox col-sm-10">
+                                <label>
+                                    <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
+                                    Enabled
+                                </label>
+                            </div>
+
+                            <div class="col-sm-2"></div>
+                            <div class="checkbox col-sm-10">
+                                <label>
+                                    <input class="" ng-model="cur_edit_kpi.soft_states_as_hard_states" type="checkbox"/>
+                                    Interpret soft states as hard states (historic only)
+                                </label>
+                            </div>
+                        </form>
+                    </accordion-group>
+                </accordion>
+            </tab>
+            <tab heading="Data source">
+                <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
+
+                <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
+            </tab>
+
+            <tab heading="KPI calculation">
+
+                <accordion close-others="false">
+                    <accordion-group heading="Formula" is-open="true">
+                        <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
+                    </accordion-group>
+                    <accordion-group heading="Evaluation" is-open="true" ng-show="true">
+                        <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()" ></icsw-tools-button>
+
+                        <div ng-if="kpi_result.loading" ladda="kpi_result.loading"></div>
+
+                        <div ng-if="!kpi_result.loading">
+                            <icsw-config-kpi-evaluation-graph kpi-result="kpi_result.kpi_set" width="870" ng-show="!kpi_result.kpi_error_report"></icsw-config-kpi-evaluation-graph>
+
+                            <div ng-show="kpi_result.kpi_error_report">
+                                <br />
+                                <alert type="danger" ng-bind-html="kpi_result.kpi_error_report"></alert>
+                            </div>
+                        </div>
+                    </accordion-group>
+            </tab>
+        </tabset>
+
+        <icsw-tools-button type="create" ng-show="mode == 'create'" ng-click="submit_kpi()"></icsw-tools-button>
+        <icsw-tools-button type="modify" ng-show="mode != 'create'" ng-click="submit_kpi()"></icsw-tools-button>
+
+    </div>
+</script>
+
+
+<script type="text/ng-template" id="icsw.config.kpi.dev_mon_selection">
+    <accordion close-others="false">
+        <accordion-group heading="Select device and monitoring categories" is-open="true">
+            <div class="row">
+                <div class="col-md-6">
+                    Device categories
+                    <tree treeconfig="device_category_tree" max-height="350"></tree>
+                </div>
+                <div class="col-md-6">
+                    Monitoring categories
+                    <tree treeconfig="monitoring_category_tree" max-height="350"></tree>
+                </div>
+            </div>
+            <button class="btn btn-default btn-xs" ng-click="show_all_selected_categories()">Show all categories selected below</button>
+        </accordion-group>
+    </accordion>
+</script>
+
+
+<script type="text/ng-template" id="icsw.config.kpi.dev_mon_linker">
+
+    <accordion close-others="false">
+        <accordion-group heading="Select which monitoring categories apply to which device categories" is-open="true">
+
+            <div class="alert alert-warning"
+                 ng-show="cur_edit_kpi.available_device_categories.length == 0 && cur_edit_kpi.available_monitoring_categories.length == 0">
+                Please select device and monitoring categories.
+            </div>
+            <div class="alert alert-warning"
+                 ng-show="cur_edit_kpi.available_device_categories.length == 0 && cur_edit_kpi.available_monitoring_categories.length >  0">
+                Please select device categories.
+            </div>
+            <div class="alert alert-warning"
+                 ng-show="cur_edit_kpi.available_device_categories.length >  0 && cur_edit_kpi.available_monitoring_categories.length == 0">
+                Please select monitoring categories.
+            </div>
+            <!--
+            <div class="alert alert-info alert-dismissible" role="alert" ng-show="get_device_categories().length >  0 && get_monitoring_categories().length >  0">
+                Please make appropriate marks to select which checks from monitoring categories should apply to which device categories.
+            </div>
+            -->
+            <table class="table table-condensed table-hover" style="width: auto;">
+                <tr>
+                    <td></td>
+                    <th ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories | orderBy:get_cat_name">
+                        {{get_cat_name(mon_cat)}}
+                    </th>
+                </tr>
+                <tr ng-repeat="dev_cat in cur_edit_kpi.available_device_categories | orderBy:get_cat_name">
+                    <th>{{get_cat_name(dev_cat)}}</th>
+                    <td ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories | orderBy:get_cat_name"
+                        icsw-tools-td-checkbox is-checked="is_checked(dev_cat, mon_cat)"
+                        on-click="toggle_dev_mon_cat(dev_cat, mon_cat)">
+                    </td>
+                </tr>
+            </table>
+
+            <icsw-config-kpi-show-kpi-set
+                    kpi-set="selected_cats_kpi_set" title="Hosts and services of selected categories"
+                    show-close="0"
+                    body-height="300"
+                    ></icsw-config-kpi-show-kpi-set>
+
+        </accordion-group>
+    </accordion>
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.configuration_table">
+
+    <div ng-show="kpi.length == 0">
+        <alert type="info">
+            No KPIs defined.
+            <span ng-show="acl_create(null, 'backbone.kpi.kpi')">Please define one using the 'create' button.</span>
+        </alert>
+    </div>
+    <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto" ng-show="kpi.length>0">
+        <tr>
+            <th st-sort="name">Name</th>
+            <th st-sort="enabled">Enabled</th>
+            <th st-sort="formula">Formula</th>
+            <!--
+            <th>Result</th>
+            <th>Last calculation</th>
+            -->
+            <th>actions</th>
+        </tr>
+        <tr ng-repeat="entry in entries_displayed">
+            <td>{{entry.name}}</td>
+            <td>{{entry.enabled | yesno2}}</td>
+            <td>
+                <div ng-show="!entry._show_full_formula">
+                    <pre>{{entry.formula | limit_text:100:false }} <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = true"
+                        ng-show="entry.formula.length > 100" >show full formula</button> </pre>
+                </div>
+
+                <div ng-show="entry._show_full_formula">
+                    <pre>{{entry.formula}}</pre>
+                    <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
+                </div>
+            </td>
+            <!--
+            <td>{{get_result_from_kpi_entry(entry)}}</td>
+            <td>
+                <div ng-show="entry.result">
+                    {{entry.result.date | datetime_concise}}
+                </div>
+            </td>
+            -->
+            <td>
+                <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)" ng-show="acl_modify(null, 'backbone.kpi.kpi')"></icsw-tools-button>
+                <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)" ng-show="acl_delete(null, 'backbone.kpi.kpi')"></icsw-tools-button>
+            </td>
+        </tr>
+    </table>
+
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.evaluation_table">
+    <div ng-show="kpi.length == 0">
+        <alert type="info">
+            No KPIs defined.
+        </alert>
+    </div>
+    <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed icsw-table-striped-2-by-2" style="width: 1250px" ng-show="kpi.length>0">
+        <tr>
+            <th st-sort="name">Name</th>
+            <th st-sort="formula">Formula</th>
+            <th>Time span</th>
+            <th>Result</th>
+            <th>Last calculation</th>
+        </tr>
+        <tr ng-repeat-start="entry in entries_displayed" ng-show="entry.enabled">
+            <td>{{entry.name}}</td>
+            <td>
+                <div ng-show="!entry._show_full_formula">
+                    <pre>{{entry.formula | limit_text:100:false }} <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = true"
+                        ng-show="entry.formula.length > 100" >show full formula</button> </pre>
+                </div>
+
+                <div ng-show="entry._show_full_formula">
+                    <pre>{{entry.formula}}</pre>
+                    <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
+                </div>
+            </td>
+            <td>{{entry.time_range}}</td>
+            <td>{{get_result_from_kpi_entry(entry)}}</td>
+            <td>
+                <div ng-show="entry.result">
+                    {{entry.result.date | datetime_concise}}
+                </div>
+            </td>
+        </tr>
+        <tr ng-repeat-end ng-show="entry.enabled">
+            <td colspan="99" style="border-top-width: 0" width="1000">
+                <icsw-config-kpi-evaluation-graph kpi-idx="entry.idx"></icsw-config-kpi-evaluation-graph>
+            </td>
+        </tr>
+    </table>
+</script>

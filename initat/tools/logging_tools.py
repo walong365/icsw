@@ -1172,7 +1172,7 @@ def list_to_struct(in_list, **kwargs):
     else:
         _pfs = sorted(list(_pfs))
         # check for integer pfs
-        if all([_pf.isdigit() and _pf[0] != "0" for _pf in _pfs]):
+        if all([_pf.isdigit() and (_pf[0] != "0" or _pf == "0") for _pf in _pfs]):
             _dict = {}
             _pfs = set()
             for _value in in_list:
@@ -1183,14 +1183,14 @@ def list_to_struct(in_list, **kwargs):
                     _pf = _value[:2]
                 else:
                     _pf = _value[0]
-                _pfs.add(int(_pf))
+                _pfs.add((int(_pf), _pf))
                 _dict.setdefault(_pf, []).append(_value[len(_pf):])
             _pfs = sorted(list(_pfs))
             if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
                 # all values are the same, return compressed list
-                return [("[{}]".format(compress_num_list(_pfs)), list_to_struct(_dict.values()[0], **kwargs))]
+                return [("[{}]".format(compress_num_list([_int for _int, _val in _pfs])), list_to_struct(_dict.values()[0], **kwargs))]
             else:
-                _pfs = ["{:d}".format(_val) for _val in _pfs]
+                _pfs = [_val for _int, _val in _pfs]
                 return [(_pf, list_to_struct(_dict[_pf], **kwargs)) for _pf in _pfs]
         else:
             if len(_pfs[0]) < pf_min_size and min(len(_v) for _v in in_list) > pf_min_size:

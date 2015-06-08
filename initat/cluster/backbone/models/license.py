@@ -27,10 +27,11 @@ import logging
 from lxml import etree
 from dateutil import relativedelta
 
-from django.db.models import signals
-from django.db import models, transaction
+from django.db.models import signals, Q
+from django.db import models, transaction, IntegrityError
 from django.dispatch import receiver
 import enum
+import operator
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models.rms import ext_license
@@ -120,7 +121,8 @@ class _LicenseManager(models.Manager):
 
         # unlicensed version
         if not product_licenses:
-            return InitProduct.NESTOR
+            # decision by AL, BM, SR (20150519): if the product is not decided, it can become anything, so it's a CORVUS
+            return InitProduct.CORVUS
 
         if InitProduct.NESTOR in product_licenses and InitProduct.NOCTUA in product_licenses:
             return InitProduct.CORVUS
@@ -130,8 +132,10 @@ class _LicenseManager(models.Manager):
 
     def get_valid_licenses(self):
         """Returns all licenses which are active (and should be displayed to the user)"""
-        return [lic for lic in set().union(*[r.get_valid_licenses() for r in self._license_readers])
-                if not LicenseViolation.objects.is_hard_violated(lic)]
+        return [
+            lic for lic in set().union(*[r.get_valid_licenses() for r in self._license_readers])
+            if not LicenseViolation.objects.is_hard_violated(lic)
+        ]
 
     def get_license_packages(self):
         """Returns license packages in custom format for the client."""
@@ -264,10 +268,11 @@ class LicenseUsage(object):
     def log_usage(license, param_type, value):
         """
         Can currently handle missing device ids, all other data must be valid
+        Sometimes we expect iterables and sometimes single objects
         :type license: LicenseEnum
         :type param_type: LicenseParameterTypeEnum
         """
-        from initat.cluster.backbone.models import device
+        from initat.cluster.backbone.models import device, mon_check_command
 
         # this produces queries for all objects
         # if that's too slow, we need a manual bulk get_or_create (check with one query, then create missing entries)
@@ -280,27 +285,59 @@ class LicenseUsage(object):
                 # TODO: generalize this bulk create_if_nonexistent to all tables
                 dev_pks = frozenset(LicenseUsage.device_to_pk(dev) for dev in value)
                 present_keys = frozenset(
-                    LicenseUsageDeviceService.objects.filter(device_id__in=dev_pks, service=None, **common_params)
-                    .values_list("device_id", flat=True)
+                    LicenseUsageDeviceService.objects.filter(
+                        device_id__in=dev_pks, service=None, **common_params
+                    ).values_list("device_id", flat=True)
                 )
                 dev_pks_missing = dev_pks.difference(present_keys)
                 # check if devices are still present
                 dev_pks_missing_dev_present = device.objects.filter(pk__in=dev_pks_missing).values_list("pk", flat=True)
-                entries_to_add = [LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
-                                  for dev_pk in dev_pks_missing_dev_present]
+                entries_to_add = [
+                    LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
+                    for dev_pk in dev_pks_missing_dev_present
+                ]
                 LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
 
             elif param_type == LicenseParameterTypeEnum.service:
-                for dev, serv_list in value.iteritems():
-                    for serv in serv_list:
-                        LicenseUsageDeviceService.objects.get_or_create(device_id=LicenseUsage.device_to_pk(dev),
-                                                                        service_id=LicenseUsage.service_to_pk(serv),
-                                                                        **common_params)
+                if value and any(value.itervalues()):  # not empty
+                    dev_serv_filter = reduce(
+                        operator.ior,
+                        (Q(device_id=LicenseUsage.device_to_pk(dev), service_id=LicenseUsage.service_to_pk(serv))
+                         for dev, serv_list in value.iteritems()
+                         for serv in serv_list
+                         )
+                    ) & Q(**common_params)
+
+                    present_entries =\
+                        frozenset(LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list("device_id",
+                                                                                                        "service_id"))
+                    existing_dev_pks = frozenset(device.objects.all().values_list("pk", flat=True))
+                    existing_serv_pks = frozenset(mon_check_command.objects.all().values_list("pk", flat=True))
+                    entries_to_add = []
+                    for dev, serv_list in value.iteritems():
+                        dev_id = LicenseUsage.device_to_pk(dev)
+                        if dev_id in existing_dev_pks:
+                            for serv in serv_list:
+                                serv_id = LicenseUsage.service_to_pk(serv)
+                                if serv_id in existing_serv_pks:
+                                    if (dev_id, serv_id) not in present_entries:
+                                        entries_to_add.append(
+                                            LicenseUsageDeviceService(device_id=dev_id, service_id=serv_id,
+                                                                      **common_params)
+                                        )
+
+                    LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
             elif param_type == LicenseParameterTypeEnum.ext_license:
-                LicenseUsageExtLicense.objects.get_or_create(ext_license_id=LicenseUsage._ext_license_to_pk(value),
-                                                             **common_params)
+                try:
+                    LicenseUsageExtLicense.objects.get_or_create(ext_license_id=LicenseUsage._ext_license_to_pk(value),
+                                                                 **common_params)
+                except IntegrityError:
+                    pass
             elif param_type == LicenseParameterTypeEnum.user:
-                LicenseUsageUser.objects.get_or_create(user_id=LicenseUsage.user_to_pk(value), **common_params)
+                try:
+                    LicenseUsageUser.objects.get_or_create(user_id=LicenseUsage.user_to_pk(value), **common_params)
+                except IntegrityError:
+                    pass
             else:
                 raise RuntimeError("Invalid license parameter type id: {}".format(param_type))
 
@@ -347,8 +384,11 @@ class _LicenseLockListDeviceServiceManager(models.Manager):
     def is_service_locked(self, license, service):
         return LicenseUsage.service_to_pk(service) in self._get_lock_list_service(license)
 
-    def is_device_service_locked(self, license, device_id, service_id):
-        return (LicenseUsage.device_to_pk(device_id), LicenseUsage.service_to_pk(service_id)) in \
+    def is_device_service_locked(self, license, device, service, check_device_locks=True):
+        if check_device_locks and self.is_device_locked(license, device):
+            return True
+
+        return (LicenseUsage.device_to_pk(device), LicenseUsage.service_to_pk(service)) in \
             self._get_lock_list_device_service(license)
 
     @memoize_with_expiry(20)
@@ -361,16 +401,25 @@ class _LicenseLockListDeviceServiceManager(models.Manager):
 
     @memoize_with_expiry(20)
     def _get_lock_list_device_service(self, license):
-        return frozenset(self.filter(license=license.name).values_list("device_id", "service_id", flat=True))
+        return frozenset(self.filter(license=license.name).values_list("device_id", "service_id"))
 
 
 class _LicenseLockListUserManager(models.Manager):
-    def is_user_locked(self, license, user_id):
-        return LicenseUsage.user_to_pk(user_id) in self._get_lock_list_user(license)
+    def is_user_locked(self, license, user):
+        return LicenseUsage.user_to_pk(user) in self._get_lock_list_user(license)
 
     @memoize_with_expiry(20)
     def _get_lock_list_user(self, license):
         return frozenset(self.filter(license=license.name).values_list("user_id", flat=True))
+
+
+class _LicenseLockListExtLicenseManager(models.Manager):
+    def is_ext_license_locked(self, license, ext_lic):
+        return LicenseUsage._ext_license_to_pk(ext_lic) in self._get_lock_list_ext_license(license)
+
+    @memoize_with_expiry(20)
+    def _get_lock_list_ext_license(self, license):
+        return frozenset(self.filter(license=license.name).values_list("ext_license_id", flat=True))
 
 
 class LicenseLockListDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
@@ -382,8 +431,7 @@ class LicenseLockListUser(_LicenseUsageBase, _LicenseUsageUser):
 
 
 class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
-    pass
-    # objects = _LicenseLockListManager()
+    objects = _LicenseLockListExtLicenseManager()
 
 
 ########################################

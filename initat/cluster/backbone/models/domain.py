@@ -444,8 +444,19 @@ class category_tree(object):
             yield self[pk]
 
 
-# category
+class CategoryManager(models.Manager):
+
+    def get_device_categories(self):
+        return self.filter(full_name__startswith="/device/")
+
+    def get_monitoring_categories(self):
+        return self.filter(full_name__startswith="/mon/")
+
+
 class category(models.Model):
+
+    objects = CategoryManager()
+
     idx = models.AutoField(primary_key=True)
     # the top node has no name
     name = models.CharField(max_length=64, default="")

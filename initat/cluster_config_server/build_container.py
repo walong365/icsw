@@ -196,10 +196,13 @@ class generated_tree(tree_node_g):
         # tree_node.objects.bulk_create([cur_tn for cur_tn, cur_wc in write_list])
         # wc_files.objects.bulk_create([cur_wc for cur_tn, cur_wc in write_list])
         # print write_list
-        active_identifier = cur_bc.conf_dict["net"].identifier
-        cur_c.log("writing config files for {} to {}".format(
-            active_identifier,
-            cur_c.node_dir))
+        active_identifier = cur_bc.conf_dict["net"].identifier.replace(" ", "_")
+        cur_c.log(
+            "writing config files for {} to {}".format(
+                active_identifier,
+                cur_c.node_dir
+            )
+        )
         config_dir = os.path.join(cur_c.node_dir, "content_{}".format(active_identifier))
         if not os.path.isdir(config_dir):
             cur_c.log("creating directory {}".format(config_dir))

@@ -35,7 +35,7 @@ def _get_parser():
     parser.add_argument("-p", help="port [%(default)d]", default=2001, dest="port", type=int)
     parser.add_argument("-P", help="protocoll [%(default)s]", type=str, default="tcp", choices=["tcp", "ipc"], dest="protocoll")
     parser.add_argument("-S", help="servername [%(default)s]", type=str, default="collrelay", dest="server_name")
-    parser.add_argument("-H", help="host [%(default)s] or server", default="localhost", dest="host")
+    parser.add_argument("-H", "--host", help="host [%(default)s] or server", default="localhost", dest="host")
     parser.add_argument("-v", help="verbose mode [%(default)s]", default=False, dest="verbose", action="store_true")
     parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="sc", dest="identity_substring")
     parser.add_argument("-I", help="set identity string [%(default)s], has precedence over -i", type=str, default="", dest="identity_string")

@@ -302,8 +302,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.log("syncing http-users")
         self.__gen_config._create_access_entries()
 
-    def _build_host_config(self, *args, **kwargs):
-        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+    def _build_host_config(self, srv_com_str, *args, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com_str)
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         dev_cache_modes = list(set(srv_com.xpath(".//device_list/device/@mode", smart_strings=False)))
         if dev_cache_modes:
@@ -316,8 +316,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             srv_com["result"] = self._rebuild_config(*dev_names, cache_mode=dev_cache_mode)
             srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         else:
-            srv_com.set_result("no devices gaven", server_command.SRV_REPLY_STATE_ERROR)
-        self.send_pool_message("send_command", src_id, unicode(srv_com))
+            srv_com.set_result("no devices given", server_command.SRV_REPLY_STATE_ERROR)
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _cleanup_db(self):
         # cleanup tasks for the database
@@ -489,10 +489,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 _bc.single_build = single_build
                 _bc.debug = self.gc["DEBUG"]
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                self.log("create host")
-                self.log("bc {}".format(_bc))
-                self.log("cur gc {}".format(cur_gc))
-                self.log("cur_dmap {}".format(cur_dmap))
                 self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if not single_build:

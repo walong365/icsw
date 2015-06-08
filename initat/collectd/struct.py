@@ -36,7 +36,6 @@ import memcache
 from initat.tools import process_tools
 from initat.tools import rrd_tools
 
-
 mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])
 
 
@@ -127,7 +126,7 @@ class file_creator(object):
                             "{:d}".format(_step),
                         ] + _ds_list + _rra_list
                         rrdtool.create(*_args)
-                    except:
+                    except rrdtool.error:
                         self.log(
                             "error creating file {}: {}".format(
                                 _path,
@@ -313,7 +312,7 @@ class host_matcher(object):
                 if _dir.endswith("df."):
                     try:
                         shutil.rmtree(_dir)
-                    except:
+                    except IOError:
                         self.log("error removing {}: {}".format(_dir, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         self.log("removed tree below {}".format(_dir))
@@ -415,7 +414,7 @@ class ext_com(object):
         if self.popen:
             try:
                 return self.popen.communicate()
-            except:
+            except OSError:
                 self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return ("", "")
         else:
@@ -559,9 +558,15 @@ class host_info(object):
             entry.attrib["file_name"] = _tf
 
         # check for timeout
-        to_keys = set([key for key, _value in self.__dict.iteritems() if _value.timeout and _value.timeout < cur_time])
+        to_keys = set(
+            [
+                key for key, _value in self.__dict.iteritems() if _value.timeout and _value.timeout < cur_time
+            ]
+        )
         for to_key in to_keys:
             del self.__dict[to_key]
+            if to_key in old_keys:
+                old_keys.remove(to_key)
         self._store_json_to_memcached()
         new_keys = set(self.__dict.keys())
         c_keys = old_keys ^ new_keys
@@ -597,7 +602,7 @@ class host_info(object):
                     self.__dict[key].name,
                     self.__dict[key].transform(value, cur_time),
                 )
-            except:
+            except ValueError, KeyError:
                 self.log("error transforming {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return (None, None)
         else:

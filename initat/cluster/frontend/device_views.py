@@ -179,9 +179,8 @@ class manual_connection(View):
         # all cd / non-cd devices
         # FIXME
         cd_devices = device.all_real_enabled.filter(
-            Q(ipmi_capable=True) | (
-                Q(snmp_schemes__power_control=True)
-            )
+            Q(com_capability_list__matchcode="ipmi") |
+            Q(snmp_schemes__power_control=True)
         )
         # print cd_devices
         non_cd_devices = device.all_real_enabled()
@@ -259,7 +258,7 @@ class scan_device_network(View):
                 }
             )
             srv_com["devices"] = _dev_node
-        else:
+        elif _sm == "snmp":
             srv_com = server_command.srv_command(command="snmp_basic_scan")
             _dev_node = srv_com.builder("device")
             _dev_node.attrib.update(
@@ -272,7 +271,26 @@ class scan_device_network(View):
                 }
             )
             srv_com["devices"] = _dev_node
-        _result = contact_server(request, "discovery", srv_com, timeout=30)
+        elif _sm == "base":
+            srv_com = server_command.srv_command(command="base_scan")
+            _dev_node = srv_com.builder("device")
+            _dev_node.attrib.update(
+                {
+                    "pk": "{:d}".format(_dev.pk),
+                }
+            )
+            if _json_dev["scan_address"] != "0.0.0.0":
+                _dev_node.attrib.update(
+                    {
+                        "scan_address": _json_dev["scan_address"],
+                    }
+                )
+            srv_com["devices"] = _dev_node
+        else:
+            srv_com = None
+            request.xml_response.error("invalid scan type {}".format(_sm))
+        if srv_com is not None:
+            _result = contact_server(request, "discovery", srv_com, timeout=30)
 
 
 class device_info(View):

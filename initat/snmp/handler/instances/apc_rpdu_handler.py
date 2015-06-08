@@ -19,9 +19,10 @@
 #
 """ SNMP handler for APC rack PDUs """
 
+from lxml.builder import E
+
 from ...struct import simple_snmp_oid
 from ..base import SNMPHandler
-from lxml.builder import E
 
 
 class handler(SNMPHandler):

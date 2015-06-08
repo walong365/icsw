@@ -12,6 +12,7 @@
                 <thead>
                     <tr>
                         <th>Device</th>
+                        <th>Coms</th>
                         <th>ScanInfo</th>
                         <th>BootInfo</th>
                         <th>#Ports</th>
@@ -115,9 +116,17 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="icsw.device.com.capabilities">
+    <button type="button" class="btn btn-xs" ng-class="com_class()" data-spinner-size="12" ladda="pending" data-style="expand-left">
+    </button>
+</script>
+
 <script type="text/ng-template" id="icsw.device.network.device.row">
     <td>
         {{ ndip_obj.full_name }}
+    </td>
+    <td>
+        <icsw-device-com-capabilities device="ndip_obj"></icsw-device-com-capabilities>
     </td>
     <td>
         <button type="button" class="btn btn-xs btn-warning" data-spinner-size="12" ng-show="ndip_obj.active_scan" ladda="ndip_obj.active_scan" data-style="expand-left">
@@ -127,7 +136,7 @@
     <td>
         <input
             type="button"
-            class="btn btn-xs btn-warning"
+            class="btn btn-xs"
             ng-class="get_bootdevice_info_class(ndip_obj)"
             ng-show="get_num_bootips(ndip_obj)"
             ng-value="get_boot_value(ndip_obj)"
@@ -176,7 +185,7 @@
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
                 ng-show="acl_create(obj, 'backbone.device.change_network')"
-                ng-click="scan_device_network(ndip_obj, $event)"/>
+                ng-click="scan_device_network(ndip_obj, $event)"></icsw-tools-button>
         </div>
     </td>
 </script>

@@ -368,8 +368,8 @@ function copy_config() {
     conf_str=`get_conf_str "ack_config"`
     num_ack=`echo $conf_str| cut -d " " -f 1`
     tot_req=$(($num_req + $num_ack))
-    send_info "got config for net $1 after $tot_req request(s)"
-    set_hoststat "${COPY_CONF} $1 net"
+    send_info "got config for network $1 after $tot_req request(s)"
+    set_hoststat "${COPY_CONF} $1 network"
     if [ -f /conf/.config_files -a "$2" = "0" ] ; then
         while read file ; do
             rm -f /$basedir/$file ;

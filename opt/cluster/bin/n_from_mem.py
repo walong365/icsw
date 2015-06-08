@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007-2009,2012,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2012,2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -67,8 +67,10 @@ def main():
     # not used right now
     # if options.cores == 0:
     #    options.cores = len([True for line in file("/proc/cpuinfo", "r").read().split("\n") if line.lower().startswith("processor")])
-    mem_tot_rel, mem_tot_abs = (options.memory * (1. - options.reserve_relative / 100.),
-                                options.memory - 1024 * 1024 * options.reserve_absolute)
+    mem_tot_rel, mem_tot_abs = (
+        options.memory * (1. - options.reserve_relative / 100.),
+        options.memory - 1024 * 1024 * options.reserve_absolute
+    )
     mem_tot_use = min(mem_tot_rel, mem_tot_abs) * options.nodes
     if mem_tot_use <= 0:
         print "No memory left, please check settings"

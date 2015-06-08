@@ -204,8 +204,8 @@ class netdevice_form(ModelForm):
         ),
         Fieldset(
             "Routing settings",
-            Field("penalty", min=1, max=128),
             Field("routing"),
+            Field("penalty", min=1, max=128),
             Field("inter_device_routing"),
         ),
         Fieldset(
@@ -260,7 +260,8 @@ class netdevice_form(ModelForm):
         fields = (
             "devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
             "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
-            "bridge_device", "inter_device_routing", "enabled", "mtu")
+            "bridge_device", "inter_device_routing", "enabled", "mtu",
+        )
         widgets = {
             "netdevice_speed": ui_select_widget(),
             "bridge_device": ui_select_widget(),
@@ -296,7 +297,6 @@ class net_ip_form(ModelForm):
                 placeholder="network",
                 display="info_string",
                 filter="{info_string:$select.search}",
-                # wrapper_ng_show="create_mode",
             ),
             Field(
                 "domain_tree_node",
@@ -304,7 +304,6 @@ class net_ip_form(ModelForm):
                 placeholder="Domain tree node",
                 display="tree_info",
                 filter="{tree_info:$select.search}",
-                # wrapper_ng_show="create_mode",
             ),
         ),
         Fieldset(
@@ -392,7 +391,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
             </ui-select>
             <!--<select chosen="True" class="select form-control" ng-model="_edit_obj.s_netdevice"
                 ng-options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()"
-                required="True" ng-if="!source_is_local">
+                required="required" ng-if="!source_is_local">
             </select>-->
         </div>
     </div>
@@ -411,7 +410,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
             </ui-select>
             <!--<select chosen="True" class="select form-control" ng-model="_edit_obj.d_netdevice"
                 ng-options="value.idx as value.devname for value in _current_dev.netdevice_set"
-                required="True" ng-if="!source_is_local">
+                required="required" ng-if="!source_is_local">
             </select>-->
         </div>
     </div>
@@ -465,8 +464,8 @@ class device_network_scan_form(Form):
             HTML("""
 <div>{% verbatim %}
 <ul class="list-group">
-    <li class="list-group-item" ng-repeat="ip in _edit_obj.ip_list">
-        <input type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input>
+    <li class="list-group-item" ng-repeat="name in _edit_obj.network_type_names">
+        {{ name }}: <input ng-repeat="ip in _edit_obj.ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input>
     </li>
     <li class="list-group-item">
         IP: <input ng-model="_edit_obj.manual_address"></input>
@@ -476,13 +475,20 @@ class device_network_scan_form(Form):
         ),
         # HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)'"
         # " select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
-        HTML("<tabset><tab heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
+        HTML("<tabset><tab heading='BaseScan' select='set_scan_mode(\"base\")' active='_current_dev.scan_base_active'>"),
+        HTML("""
+</tab>
+<tab ng-show='has_com_capability(_edit_obj, "hm")' heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"
+"""),
         Fieldset(
             "Flags",
             Field("strict_mode"),
             HTML("""{% verbatim %}<div class="alert alert-danger" ng-show="!_edit_obj.strict_mode">attention: peers might get lost</div>{% endverbatim %}""")
         ),
-        HTML("</tab><tab heading='SNMP' select='set_scan_mode(\"snmp\")' active='_current_dev.scan_snmp_active'>"),
+        HTML("""
+</tab>
+<tab ng-show='has_com_capability(_edit_obj, "snmp")' heading='SNMP' select='set_scan_mode(\"snmp\")' active='_current_dev.scan_snmp_active'>
+"""),
         Fieldset(
             "Base data",
             Field("snmp_community"),

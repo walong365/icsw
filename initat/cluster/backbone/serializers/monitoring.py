@@ -23,8 +23,7 @@ from initat.cluster.backbone.models import mon_host_cluster, mon_service_cluster
     mon_check_command, mon_host_dependency, mon_service_dependency, host_check_command, \
     mon_notification, mon_contact, mon_contactgroup, mon_check_command_special, mon_device_templ, \
     mon_service_templ, mon_period, mon_host_dependency_templ, mon_service_dependency_templ, \
-    mon_device_esc_templ, monitoring_hint, mon_service_esc_templ, snmp_scheme, snmp_scheme_vendor, \
-    snmp_scheme_tl_oid
+    mon_device_esc_templ, monitoring_hint, mon_service_esc_templ
 from rest_framework import serializers
 
 __all__ = [
@@ -48,31 +47,7 @@ __all__ = [
     # distribution models
     "monitoring_hint_serializer",
     "mon_check_command_special_serializer",
-    # trace
-    # unreachable info
-    "snmp_scheme_serializer",
-    "snmp_scheme_vendor_serializer",
-    "snmp_scheme_tl_oid_serializer",
 ]
-
-
-class snmp_scheme_tl_oid_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = snmp_scheme_tl_oid
-
-
-class snmp_scheme_vendor_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = snmp_scheme_vendor
-
-
-class snmp_scheme_serializer(serializers.ModelSerializer):
-    snmp_scheme_vendor = snmp_scheme_vendor_serializer()
-    snmp_scheme_tl_oid_set = snmp_scheme_tl_oid_serializer(many=True)
-    full_name = serializers.Field(source="full_name")
-
-    class Meta:
-        model = snmp_scheme
 
 
 class mon_host_cluster_serializer(serializers.ModelSerializer):

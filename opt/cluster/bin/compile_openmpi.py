@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007-2009,2012,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2007-2009,2012,2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cbc-tools
 #
@@ -27,11 +27,7 @@ to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
 """
 import argparse
 import commands
-from initat.tools import compile_tools
-from initat.tools import cpu_database
-from initat.tools import logging_tools
 import os
-from initat.tools import rpm_build_tools
 import shutil
 import subprocess
 import sys
@@ -39,9 +35,14 @@ import tarfile
 import tempfile
 import time
 
+from initat.tools import compile_tools
+from initat.tools import cpu_database
+from initat.tools import logging_tools
+from initat.tools import rpm_build_tools
+
 MPI_VERSION_FD = {
-    "openmpi": "/opt/cluster/share/openmpi_versions",
-    "mpich": "/opt/cluster/share/mpich_versions",
+    "openmpi": "/opt/cluster/share/source-versions/openmpi_versions",
+    "mpich": "/opt/cluster/share/source-versions/mpich_versions",
 }
 
 
@@ -58,10 +59,14 @@ class my_opt_parser(argparse.ArgumentParser):
             is_64_bit = False
         self._read_mpi_versions()
         target_dir = "/opt/libs/"
-        fc_choices = sorted(["GNU",
-                             "INTEL",
-                             "PGI",
-                             "PATHSCALE"])
+        fc_choices = sorted(
+            [
+                "GNU",
+                "INTEL",
+                "PGI",
+                "PATHSCALE",
+            ]
+        )
         self.cpu_id = cpu_database.get_cpuid()
         self.add_argument(
             "-c",
@@ -209,10 +214,10 @@ class my_opt_parser(argparse.ArgumentParser):
                     ]
                 }
                 self.compiler_dict = {
-                    "CC": "%s/bin/gcc" % (self.options.fcompiler_path),
-                    "CXX": "%s/bin/g++" % (self.options.fcompiler_path),
-                    "F77": "%s/bin/gfortran" % (self.options.fcompiler_path),
-                    "FC": "%s/bin/gfortran" % (self.options.fcompiler_path)
+                    "CC": "{}/bin/gcc".format(self.options.fcompiler_path),
+                    "CXX": "{}/bin/g++".format(self.options.fcompiler_path),
+                    "F77": "{}/bin/gfortran".format(self.options.fcompiler_path),
+                    "FC": "{}/bin/gfortran".format(self.options.fcompiler_path)
                 }
             else:
                 self.compiler_dict = {
@@ -221,7 +226,7 @@ class my_opt_parser(argparse.ArgumentParser):
                     "F77": "gfortran",
                     "FC": "gfortran"
                 }
-            stat, out = commands.getstatusoutput("%s --version" % self.compiler_dict['CC'])
+            stat, out = commands.getstatusoutput("{} --version".format(self.compiler_dict['CC']))
             if stat:
                 raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
             self.small_version = out.split(")")[1].split()[0]
@@ -466,7 +471,7 @@ class mpi_builder(object):
             "append-path PATH {}/bin".format(self.parser.mpi_dir),
             "append-path LD_LIBRARY_PATH {}".format(lib_dir),
             ""
-            ]
+        ]
         targ_dir = "{}{}".format(self.tempdir, self.parser.options.module_dir)
         if not os.path.isdir(targ_dir):
             os.makedirs(targ_dir)
@@ -476,52 +481,56 @@ class mpi_builder(object):
         self.mpi_selector_sh_name = "%s.sh" % (self.parser.package_name)
         self.mpi_selector_csh_name = "%s.csh" % (self.parser.package_name)
         self.mpi_selector_dir = "/var/mpi-selector/data"
-        sh_lines = ['#PATH',
-                    'if test -z "`echo $PATH | grep %s/bin`"; then' % (self.parser.mpi_dir),
-                    '    PATH="%s/bin:${PATH}"' % (self.parser.mpi_dir),
-                    '    export PATH',
-                    'fi',
-                    '# LD_LIBRARY_PATH',
-                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib64`"; then' % (self.parser.mpi_dir),
-                    '    if [ -d "%s/lib64" ] ; then' % (self.parser.mpi_dir),
-                    '        LD_LIBRARY_PATH=%s/lib64:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
-                    '        export LD_LIBRARY_PATH',
-                    '    fi',
-                    'fi',
-                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib`"; then' % (self.parser.mpi_dir),
-                    '    if [ -d "%s/lib" ] ; then' % (self.parser.mpi_dir),
-                    '        LD_LIBRARY_PATH=%s/lib:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
-                    '        export LD_LIBRARY_PATH',
-                    '    fi',
-                    'fi',
-                    '',
-                    '# MANPATH',
-                    'if test -z "`echo $MANPATH | grep %s/share/man`"; then' % (self.parser.mpi_dir),
-                    '    MANPATH=%s/man:${MANPATH}' % (self.parser.mpi_dir),
-                    '    export MANPATH',
-                    'fi']
-        csh_lines = ['# path',
-                     'if ("" == "`echo $path | grep %s/bin`") then',
-                     '    set path=(%s/bin $path)',
-                     'endif',
-                     '',
-                     '# LD_LIBRARY_PATH',
-                     'if ("1" == "$?LD_LIBRARY_PATH") then',
-                     '    if ("$LD_LIBRARY_PATH" !~ *%s/lib64*) then' % (self.parser.mpi_dir),
-                     '        setenv LD_LIBRARY_PATH %s/lib64:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
-                     '    endif',
-                     'else',
-                     '    setenv LD_LIBRARY_PATH %s/lib64' % (self.parser.mpi_dir),
-                     'endif',
-                     '',
-                     '# MANPATH',
-                     'if ("1" == "$?MANPATH") then',
-                     '    if ("$MANPATH" !~ *%s/share/man*) then' % (self.parser.mpi_dir),
-                     '        setenv MANPATH %s/share/man:${MANPATH}' % (self.parser.mpi_dir),
-                     '    endif',
-                     'else',
-                     '    setenv MANPATH %s/share/man:' % (self.parser.mpi_dir),
-                     'endif']
+        sh_lines = [
+            '#PATH',
+            'if test -z "`echo $PATH | grep %s/bin`"; then' % (self.parser.mpi_dir),
+            '    PATH="%s/bin:${PATH}"' % (self.parser.mpi_dir),
+            '    export PATH',
+            'fi',
+            '# LD_LIBRARY_PATH',
+            'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib64`"; then' % (self.parser.mpi_dir),
+            '    if [ -d "%s/lib64" ] ; then' % (self.parser.mpi_dir),
+            '        LD_LIBRARY_PATH=%s/lib64:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
+            '        export LD_LIBRARY_PATH',
+            '    fi',
+            'fi',
+            'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib`"; then' % (self.parser.mpi_dir),
+            '    if [ -d "%s/lib" ] ; then' % (self.parser.mpi_dir),
+            '        LD_LIBRARY_PATH=%s/lib:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
+            '        export LD_LIBRARY_PATH',
+            '    fi',
+            'fi',
+            '',
+            '# MANPATH',
+            'if test -z "`echo $MANPATH | grep %s/share/man`"; then' % (self.parser.mpi_dir),
+            '    MANPATH=%s/man:${MANPATH}' % (self.parser.mpi_dir),
+            '    export MANPATH',
+            'fi',
+        ]
+        csh_lines = [
+            '# path',
+            'if ("" == "`echo $path | grep %s/bin`") then',
+            '    set path=(%s/bin $path)',
+            'endif',
+            '',
+            '# LD_LIBRARY_PATH',
+            'if ("1" == "$?LD_LIBRARY_PATH") then',
+            '    if ("$LD_LIBRARY_PATH" !~ *%s/lib64*) then' % (self.parser.mpi_dir),
+            '        setenv LD_LIBRARY_PATH %s/lib64:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
+            '    endif',
+            'else',
+            '    setenv LD_LIBRARY_PATH %s/lib64' % (self.parser.mpi_dir),
+            'endif',
+            '',
+            '# MANPATH',
+            'if ("1" == "$?MANPATH") then',
+            '    if ("$MANPATH" !~ *%s/share/man*) then' % (self.parser.mpi_dir),
+            '        setenv MANPATH %s/share/man:${MANPATH}' % (self.parser.mpi_dir),
+            '    endif',
+            'else',
+            '    setenv MANPATH %s/share/man:' % (self.parser.mpi_dir),
+            'endif',
+        ]
         targ_dir = "%s/%s" % (self.tempdir, self.mpi_selector_dir)
         if not os.path.isdir(targ_dir):
             os.makedirs(targ_dir)

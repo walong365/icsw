@@ -289,7 +289,7 @@ class device_recognition(object):
         except device.DoesNotExist:
             self.device = None
         # get IP-adresses (from IP)
-        self.local_ips = net_ip.objects.filter(Q(netdevice__device__name=self.short_host_name)).values_list("ip", flat=True)
+        self.local_ips = list(net_ip.objects.filter(Q(netdevice__device__name=self.short_host_name)).values_list("ip", flat=True))
         # get configured IP-Adresses
         ipv4_dict = {
             cur_if_name: [

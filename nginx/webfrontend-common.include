@@ -9,26 +9,27 @@ env=NODE_PATH=/opt/cluster/lib/node_modules:/opt/cluster/lib/node_modules/npm/no
 env=DJANGO_SETTINGS_MODULE=settings
 ; needed for pre-start script
 env=DJANGO_APP_DIR=%(django_app_dir)
-env=PYTHON_EGG_CACHE=/tmp/.uwsgi_corvus_egg_cache
+env=PYTHON_EGG_CACHE=/tmp/.uwsgi_icsw_egg_cache
 env=DJANGO_APP=%(django_app)
 
 py-programname=python-init
 
 module=wsgi:application
 master=True
-; DO NOT use vacuum. It may introduce a race condition which will
-; leave instances in an unusable state after an emperor reload.
-vacuum=False
+vacuum=True
 max-requests=150
+# harakiri=30
 harakiri-verbose=1
-processes=2
-post-buffering=1
+processes=1
+zerg-server=/var/run/%(django_app)/broodlord.sock
+post-buffering=0
+; be lazy (workers load application, not the master)
+lazy-apps=1
 workers=8
 show-config=1
 ; reduce mercy period to speed up reload
 worker-reload-mercy=10
-; be lazy (workers load application, not the master)
-lazy=1
+enable-threads=1
 
 # buffer size
 buffer-size=32768
@@ -40,3 +41,12 @@ touch-chain-reload=%d/reload/%(django_app).touch
 memory-report=1
 
 stats=/var/run/%(django_app)/stats.sock
+
+[zerg]
+zerg=/var/run/%(django_app)/broodlord.sock
+master=true
+module=wsgi:application
+processes=1
+idle=30
+die-on-idle=true
+enable-threads=1

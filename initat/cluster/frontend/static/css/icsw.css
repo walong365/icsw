@@ -75,6 +75,10 @@ th.rotate > div > span {
     background: #ffff00 !important;
 }
 
+.CodeMirror pre {
+    padding-left: 35px !important;
+}
+
 circle.fixed {
     fill : #ffaaaa ;
     stroke : #5555ff ;
@@ -106,6 +110,14 @@ and every even row contains a collapsible row which is hidden by default */
     background-color: #f9f9f9;
 }
 
+/* always stripe 2 at a time */
+.icsw-table-striped-2-by-2 > tbody > tr:nth-child(4n+0) {
+    background-color: #f9f9f9;
+}
+.icsw-table-striped-2-by-2 > tbody > tr:nth-child(4n+1) {
+    background-color: #f9f9f9;
+}
+
 /* striping as bootstrap striping but exactly the other row */
 .icsw-table-striped-other > tbody > tr:nth-child(2n) {
     background-color: #f9f9f9;
@@ -117,3 +129,4 @@ ins {
 del {
     color: #a00;
 }
+

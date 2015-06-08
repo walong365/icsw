@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """ base views """
+import traceback
 
 from PIL import Image
 import datetime
@@ -11,13 +12,14 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework.generics import ListAPIView
+from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
     category_tree, location_gfx, DeleteRequest
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import category_form, location_gfx_form
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImport
 import initat.cluster.backbone.models
@@ -221,6 +223,44 @@ class change_category(View):
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
 
 
+class KpiView(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request,
+            "kpi.html",
+            {}
+        )()
+
+
+class GetKpiSourceData(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    @rest_logging
+    def post(self, request):
+        srv_com = server_command.srv_command(command="get_kpi_source_data")
+        srv_com['tuples'] = request.POST['tuples']
+        srv_com['time_range'] = request.POST['time_range']
+        srv_com['time_range_parameter'] = request.POST['time_range_parameter']
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
+        if result:
+            request.xml_response['response'] = result['kpi_set']
+
+
+class CalculateKpi(ListAPIView):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    @rest_logging
+    def post(self, request):
+        srv_com = server_command.srv_command(command="calculate_kpi")
+        srv_com["kpi_pk"] = request.POST['kpi_pk']
+        srv_com["formula"] = request.POST['formula']
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False, timeout=120)
+        if result:
+            request.xml_response['kpi_set'] = result.get('kpi_set', json.dumps(None))
+            request.xml_response['kpi_error_report'] = result.get('kpi_error_report', json.dumps(None))
+
+
 class CheckDeleteObject(View):
     """
     This is an advanced delete which handles further actions which might
@@ -350,4 +390,3 @@ class CheckDeletionStatus(View):
                 msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
 
             request.xml_response['msg_{}'.format(k)] = msg
-

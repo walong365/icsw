@@ -98,7 +98,7 @@ class sync_users(View):
         if config_tools.server_check(server_type="yp_server").effective_device:
             srv_com = server_command.srv_command(command="write_yp_config")
             _result = contact_server(request, "server", srv_com, timeout=30)
-        if config_tools.server_check(server_type="md-config").effective_device:
+        if config_tools.server_check(server_type="monitor_server").effective_device:
             srv_com = server_command.srv_command(command="sync_http_users")
             _result = contact_server(request, "md-config", srv_com)
 
@@ -373,7 +373,9 @@ class GetObjectPermissions(RetrieveAPIView):
 class GetInitProduct(RetrieveAPIView):
     @rest_logging
     def get(self, request, *args, **kwargs):
-        return Response({
-            'name': License.objects.get_init_product().name,
-            'version': '2.1',
-        })
+        return Response(
+            {
+                'name': License.objects.get_init_product().name,
+                'version': '2.1',
+            }
+        )

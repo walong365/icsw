@@ -99,7 +99,6 @@ def main():
             ret_code = 5
         if not ret_code:
             global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
-            process_tools.renice(global_config["NICE_LEVEL"])
             run_code()
             configfile.terminate_manager()
             # exit

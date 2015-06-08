@@ -21,15 +21,15 @@
 #
 """ package server """
 
+import os
+
 from django.db import connection
-from initat.cluster.backbone.routing import get_server_uuid
 from initat.package_install.server.config import global_config
 from initat.package_install.server.repository_process import repo_process
 from initat.package_install.server.structs import client
 from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import logging_tools
-import os
 from initat.tools import config_tools
 from initat.tools import process_tools
 from initat.tools import server_command
@@ -38,7 +38,7 @@ from initat.tools import threading_tools
 import zmq
 
 
-class server_process(threading_tools.process_pool, server_mixins.network_bind_mixin, server_mixins.operational_error_mixin):
+class server_process(threading_tools.process_pool, server_mixins.NetworkBindMixin, server_mixins.OperationalErrorMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]

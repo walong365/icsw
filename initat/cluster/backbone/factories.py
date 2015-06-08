@@ -7,7 +7,8 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, LogSource, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
-    window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid
+    window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
+    ComCapability
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -45,6 +46,7 @@ class PartitionFS(factory.django.DjangoModelFactory):
         model = partition_fs
         django_get_or_create = ("name", "identifier",)
     kernel_module = ""
+    need_hexid = True
 
     @factory.post_generation
     def kernel_module(self, create, extracted, **kwargs):
@@ -58,6 +60,14 @@ class PartitionFS(factory.django.DjangoModelFactory):
     def hexid(self, create, extracted, **kwargs):
         if self.hexid != extracted:
             self.hexid = extracted
+            self.save()
+
+    @factory.post_generation
+    def need_hexid(self, create, extracted, **kwargs):
+        if extracted is None:
+            extracted = True
+        if self.need_hexid != extracted :
+            self.need_hexid = extracted
             self.save()
 
 
@@ -409,4 +419,31 @@ class SNMPSchemeVendor(factory.django.DjangoModelFactory):
         extracted = extracted or ""
         if self.company_info != extracted:
             self.company_info = extracted
+            self.save()
+
+
+class ComCapability(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ComCapability
+        django_get_or_create = ("matchcode",)
+
+    @factory.post_generation
+    def info(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.info != extracted:
+            self.info = extracted
+            self.save()
+
+    @factory.post_generation
+    def port_spec(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.port_spec != extracted:
+            self.port_spec = extracted
+            self.save()
+
+    @factory.post_generation
+    def name(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.name != extracted:
+            self.name = extracted
             self.save()

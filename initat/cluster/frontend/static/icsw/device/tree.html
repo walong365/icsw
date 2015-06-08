@@ -117,7 +117,6 @@
     </td>
     <td ng-show="hide_lut['tln']">{{ obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="hide_lut['rrd_store']">{{ obj.store_rrd_data | yesno2 }}</td>
-    <td ng-show="hide_lut['ipmi_capable']">{{ obj.ipmi_capable | yesno2 }}</td>
     <td ng-show="hide_lut['passwd']">{{ obj.root_passwd_set | isset }}</td>
     <td ng-show="hide_lut['mon_master']">{{ obj.monitor_server | array_lookup:rest_data.monitor_server:"full_name_wt" }}</td>
     <td ng-show="hide_lut['boot_master']">{{ obj.bootserver | array_lookup:rest_data.mother_server:"full_name" }}</td>

@@ -19,18 +19,15 @@
 
 import os
 
-from django.db.models import Q
-from initat.cluster.backbone.models import device
 from initat.cluster.backbone import routing
-from initat.cluster_server.config import global_config
 from initat.icsw.service import instance, container, service_parser, main
-from initat.tools import cluster_location
 import initat.cluster_server
-from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import uuid_tools
 from initat.tools import net_tools
+
+from initat.cluster_server.config import global_config
 
 import cs_base_class
 
@@ -41,21 +38,7 @@ class status(cs_base_class.server_com):
 
     def _call(self, cur_inst):
         p_dict = self.main_proc.get_info_dict()
-        cur_cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        cluster_name = cluster_location.db_device_variable(cur_cdg, "CLUSTER_NAME").get_value() or "CN_not_set"
-        cur_inst.srv_com["clustername"] = cluster_name
-        cur_inst.srv_com["version"] = global_config["VERSION"]
-        num_running = len([True for value in p_dict.itervalues() if value["alive"]])
-        num_stopped = len([True for value in p_dict.itervalues() if not value["alive"]])
-        all_running = num_stopped == 0
-        cur_inst.srv_com.set_result(
-            "%s running,%s clustername is %s, version is %s" % (
-                logging_tools.get_plural("process", num_running),
-                "{} stopped, ".format(logging_tools.get_plural("process", num_stopped)) if num_stopped else "",
-                cluster_name,
-                global_config["VERSION"]),
-            server_command.SRV_REPLY_STATE_OK if all_running else server_command.SRV_REPLY_STATE_ERROR,
-        )
+        self.main_proc.server_status(cur_inst.srv_com, self.main_proc.msi_block, global_config)
 
 
 class server_status(cs_base_class.server_com):
@@ -65,10 +48,17 @@ class server_status(cs_base_class.server_com):
         _def_ns = service_parser.Parser.get_default_ns()
         cur_c.check_system(_def_ns, inst_xml)
         cur_inst.srv_com["status"] = inst_xml
-        cur_inst.srv_com["metastatus"] = main.query_local_meta_server()["overview:instances"]
-        cur_inst.srv_com.set_result(
-            "checked system",
-        )
+        _local_state = main.query_local_meta_server()
+        if _local_state is not None:
+            cur_inst.srv_com["metastatus"] = _local_state["overview:instances"]
+            cur_inst.srv_com.set_result(
+                "checked system",
+            )
+        else:
+            cur_inst.srv_com.set_result(
+                "error querying local meta-server (timeout?)",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
 
 
 class server_control(cs_base_class.server_com):

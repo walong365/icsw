@@ -130,6 +130,7 @@ angular.module(
     }
 ]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "gettextCatalog", "$window", "$q", (Restangular, ICSW_URLS, gettextCatalog, $window, $q) ->
     data = {
+        state_valid: false
         all_licenses: []
         license_packages: []
         # no reload:
@@ -142,6 +143,7 @@ angular.module(
             Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES.slice(1)).getList(),
         ]
         $q.all(promises).then((new_lists) ->
+            data.state_valid = true
             data.all_licenses.length = 0
             for entry in new_lists[0]
                 data.all_licenses.push(entry)
@@ -169,13 +171,13 @@ angular.module(
         parameters_sortable = _.sum(_.values(issued_lic.parameters))
         if moment(issued_lic.valid_from) < moment() and moment() < add_grace_period(moment(issued_lic.valid_to))
             if moment() < moment(issued_lic.valid_to)
-                return ([0, parameters_sortable, {
+                return ([0, parameters_sortable, 0, {
                     state_id: 'valid'
                     state_str: gettextCatalog.getString('Valid')
                     date_info: gettextCatalog.getString('until') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                 }])
             else
-                return ([3, parameters_sortable, {
+                return ([3, parameters_sortable, 0,  {
                     state_id: 'grace'
                     state_str: gettextCatalog.getString('In grace period')
                     date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
@@ -206,7 +208,7 @@ angular.module(
             return ""
     get_license_state = (issued_lic) ->
         state =  _get_license_state_internal(issued_lic)
-        return if state? then state[2] else undefined
+        return if state? then state[3] else undefined
 
     calculate_license_state = (packages, license_id=undefined, cluster_id=undefined) ->
         # calculate the current state of either all licenses in a package or of a certain one for a given cluster_id or all cluster_ids
@@ -219,13 +221,13 @@ angular.module(
                     for pack_lic in lic_list
                         if !license_id? or pack_lic.id == license_id
                             lic_state = _get_license_state_internal(pack_lic)
-                            lic_state[2].package = pack
-                            lic_state[2].lic = pack_lic
+                            lic_state[3].package = pack
+                            lic_state[3].lic = pack_lic
                             states.push(lic_state)
 
                 # has dict of cluster_licenses (get_license_packages django view)
                 for cluster_id_iter, cluster_lic_list of pack.cluster_licenses
-                    # HACK: in django mode, cluster_id is string (actual cluster id)
+                    # cluster_id is string (actual cluster id)
                     if cluster_id_iter == cluster_id
                         check_licenses(cluster_lic_list)
 
@@ -239,7 +241,7 @@ angular.module(
                         # for parameters, we want higher values
                         return if a[1] < b[1] then 1 else -1
                 )
-                state = states[0][2]
+                state = states[0][3]
 
         if data.license_violations[license_id]? and data.license_violations[license_id].type == 'hard'
             if !state?
@@ -268,10 +270,14 @@ angular.module(
             warnings = []
             if data.license_violations[issued_license.id]?
                 violation = data.license_violations[issued_license.id]
-                date_str = moment(violation['revocation_date']).format("YYYY-MM-DD HH:mm")
+                revocation_date = moment(violation['revocation_date'])
+                date_str = revocation_date.format("YYYY-MM-DD HH:mm")
 
                 msg =  "Your license for #{violation['name']} is violated and "
-                msg += "will be revoked on <strong>#{date_str}</strong>."
+                if revocation_date > moment()
+                    msg += "will be revoked on <strong>#{date_str}</strong>."
+                else
+                    msg += "has been revoked on <strong>#{date_str}</strong>."
 
                 warnings.push [violation['revocation_date'], msg]
 

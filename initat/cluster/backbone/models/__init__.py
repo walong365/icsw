@@ -56,6 +56,7 @@ from initat.tools import net_tools
 from initat.tools import process_tools
 from initat.tools import server_command
 
+from initat.cluster.backbone.models.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.models.config import *  # @UnusedWildImport
 from initat.cluster.backbone.models.monitoring import *  # @UnusedWildImport
@@ -70,6 +71,7 @@ from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.models.graph import *  # @UnusedWildImport
 from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
+from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
 import initat.cluster.backbone.models.model_history
@@ -493,13 +495,13 @@ class device(models.Model):
     rsync_compressed = models.BooleanField(default=False)
     prod_link = models.ForeignKey("backbone.network", db_column="prod_link", null=True, blank=True)
     # states (with timestamp)
-    recvstate = models.TextField(blank=True, default="not set")
-    recvstate_timestamp = models.DateTimeField(null=True)
-    reqstate = models.TextField(blank=True, default="not set")
-    reqstate_timestamp = models.DateTimeField(null=True)
+    # recvstate = models.TextField(blank=True, default="not set")
+    # recvstate_timestamp = models.DateTimeField(null=True)
+    # reqstate = models.TextField(blank=True, default="not set")
+    # reqstate_timestamp = models.DateTimeField(null=True)
     # uptime (with timestamp)
-    uptime = models.IntegerField(default=0)
-    uptime_timestamp = models.DateTimeField(null=True, default=None)
+    # uptime = models.IntegerField(default=0)
+    # uptime_timestamp = models.DateTimeField(null=True, default=None)
     bootnetdevice = models.ForeignKey("backbone.netdevice", null=True, related_name="boot_net_device", on_delete=models.SET_NULL)
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server", blank=True)
     reachable_via_bootserver = models.BooleanField(default=False)
@@ -548,23 +550,22 @@ class device(models.Model):
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
+    # communication capability list, like IPMI, WMI, SNMP
+    com_capability_list = models.ManyToManyField("backbone.ComCapability")
+    # x = models.BigIntegerField(default=0)
     # has an IPMI interface
-    ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
+    # ipmi_capable = models.BooleanField(default=False, verbose_name="IPMI cabaple", blank=True)
     # flag: is meta device ?
     is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
-    # scan active ?
+    # scan active, can be one of
+    # ... base (base scan)
+    # ... com_capability_matchcode
     active_scan = models.CharField(
         max_length=16,
-        default="",
-        choices=[
-            ("snmp", "SNMP"),
-            ("ipmi", "IPMI"),
-            # also used for partition fetch
-            ("hm", "Host monitor"),
-        ],
-        blank=True
+        default=u"",
+        blank=True,
     )
 
     @property
@@ -658,12 +659,6 @@ class device(models.Model):
             _list.extend(["{}.{}".format(_name, _domain) for _name in _add_names])
         return list(set(_list))
 
-    def get_master_cons(self):
-        return [entry for entry in self.cd_cons if entry.parent_id == self.pk]
-
-    def get_slave_cons(self):
-        return [entry for entry in self.cd_cons if entry.child_id == self.pk]
-
     def get_act_image(self):
         if self.imagedevicehistory_set.all().count():
             _ho = self.imagedevicehistory_set.all()[0]
@@ -678,99 +673,43 @@ class device(models.Model):
         else:
             return None
 
-    def valid_state(self):
-        _rs = ""
-        if self.mother_xml is not None:
-            if int(self.mother_xml.get("ok", "0")):
-                now, recv_ts, req_ts = (
-                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-                    self.recvstate_timestamp,
-                    self.reqstate_timestamp,
-                )
-                if recv_ts is not None:
-                    recv_timeout = (now - recv_ts).seconds
-                else:
-                    recv_timeout = 3600
-                if req_ts is not None:
-                    req_timeout = (now - req_ts).seconds
-                else:
-                    req_timeout = 3600
-                if req_timeout > recv_timeout:
-                    # recv_state is newer
-                    _rs = "recv"
-                else:
-                    # req_state is newer
-                    _rs = "req"
-        return _rs
+    # def get_uptime(self):
+    #    _rs = 0
+    #    if self.mother_xml is not None:
+    #        if int(self.mother_xml.get("ok", "0")):
+    #            now, uptime_ts = (
+    #                cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
+    #                self.uptime_timestamp,
+    #            )
+    #            if uptime_ts is not None:
+    #                uptime_timeout = (now - uptime_ts).seconds
+    #            else:
+    #                uptime_timeout = 3600
+    #            if uptime_timeout > 30:
+    #                # too long ago, outdated
+    #                _rs = 0
+    #            else:
+    #                _rs = self.uptime
+    #    return _rs
 
-    def net_state(self):
-        _rs = "down"
-        if self.mother_xml is not None:
-            if int(self.mother_xml.get("ok", "0")):
-                now, recv_ts, req_ts = (
-                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-                    self.recvstate_timestamp,
-                    self.reqstate_timestamp,
-                )
-                if recv_ts is not None:
-                    recv_timeout = (now - recv_ts).seconds
-                else:
-                    recv_timeout = 3600
-                if req_ts is not None:
-                    req_timeout = (now - req_ts).seconds
-                else:
-                    req_timeout = 3600
-                if min(req_timeout, recv_timeout) > 20:
-                    # too long ago, deem as outdated (not reachable by mother)
-                    _rs = "ping"
-                else:
-                    _rs = "up"
-        return _rs
-
-    def network(self):
-        _rs = "unknown"
-        if self.mother_xml is not None:
-            if int(self.mother_xml.get("ok", "0")):
-                _rs = self.mother_xml.attrib["network"]
-        return _rs
-
-    def get_uptime(self):
-        _rs = 0
-        if self.mother_xml is not None:
-            if int(self.mother_xml.get("ok", "0")):
-                now, uptime_ts = (
-                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-                    self.uptime_timestamp,
-                )
-                if uptime_ts is not None:
-                    uptime_timeout = (now - uptime_ts).seconds
-                else:
-                    uptime_timeout = 3600
-                if uptime_timeout > 30:
-                    # too long ago, outdated
-                    _rs = 0
-                else:
-                    _rs = self.uptime
-        return _rs
-
-    def uptime_valid(self):
-        _rs = False
-        if self.mother_xml is not None:
-            if int(self.mother_xml.get("ok", "0")):
-                now, uptime_ts = (
-                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-                    self.uptime_timestamp,
-                )
-                if uptime_ts is not None:
-                    uptime_timeout = (now - uptime_ts).seconds
-                else:
-                    uptime_timeout = 3600
-                if uptime_timeout > 30:
-                    # too long ago, outdated
-                    _rs = False
-                else:
-                    _rs = True
-        return _rs
+    # def uptime_valid(self):
+    #    _rs = False
+    #    if self.mother_xml is not None:
+    #        if int(self.mother_xml.get("ok", "0")):
+    #            now, uptime_ts = (
+    #                cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
+    #                self.uptime_timestamp,
+    #            )
+    #            if uptime_ts is not None:
+    #                uptime_timeout = (now - uptime_ts).seconds
+    #            else:
+    #                uptime_timeout = 3600
+    #            if uptime_timeout > 30:
+    #                # too long ago, outdated
+    #                _rs = False
+    #            else:
+    #                _rs = True
+    #    return _rs
 
     def latest_contact(self):
         lc_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_server_last_contact"]
@@ -819,6 +758,8 @@ class device(models.Model):
             "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
             "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
             "mon_icinga_log_raw_service_notification_data", "mon_icinga_log_raw_host_notification_data",
+            "mon_icinga_log_raw_service_downtime_data", "mon_icinga_log_raw_host_downtime_data",
+            "LicenseUsageDeviceService", "LicenseLockListDeviceService",
         ]
 
     class Meta:
@@ -1487,6 +1428,8 @@ def _register_models():
         category,
         # mon
         mon_check_command, mon_check_command_special,
+        # kpi
+        Kpi, KpiDataSourceTuple,
         # lic
         License,
     )

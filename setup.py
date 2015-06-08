@@ -48,6 +48,7 @@ setup(
         "initat.md_config_server.icinga_log_reader",
         "initat.md_config_server.special_commands",
         "initat.md_config_server.special_commands.instances",
+        "initat.md_config_server.kpi",
         "initat.package_install",
         "initat.package_install.server",
         "initat.package_install.client",
@@ -99,20 +100,106 @@ setup(
                 "opt/cluster/bin/ics_tools.sh",
                 # license
                 "opt/cluster/bin/license_server_tool.py",
+                # set passive checkresult
+                "opt/cluster/bin/set_passive_checkresult.py",
+                # cdfetch for collectd
+                "opt/cluster/bin/cdfetch.py",
+                "opt/cluster/bin/sgestat.py",
+                "opt/cluster/bin/cluster-server.py",
+                "opt/cluster/bin/license_progs.py",
+                "opt/cluster/bin/loadsensor.py",
+                "opt/cluster/bin/modify_object.py",
             ]
         ),
         (
             "/opt/cluster/sbin/pis",
             [
-                "pis/cluster_post_install.sh",
-                "pis/sge_post_install.sh",
-                "pis/webfrontend_pre_start.sh",
-                "pis/webfrontend_post_install.sh",
-                "pis/hpc_library_post_install.py",
-                "pis/icsw_client_post_install.sh",
-                "pis/icsw_server_post_install.sh",
+                "opt/cluster/sbin/pis/cluster_post_install.sh",
+                "opt/cluster/sbin/pis/sge_post_install.sh",
+                "opt/cluster/sbin/pis/modify_service.sh",
+                "opt/cluster/sbin/pis/webfrontend_pre_start.sh",
+                "opt/cluster/sbin/pis/webfrontend_post_install.sh",
+                "opt/cluster/sbin/pis/hpc_library_post_install.py",
+                "opt/cluster/sbin/pis/icsw_client_post_install.sh",
+                "opt/cluster/sbin/pis/icsw_server_post_install.sh",
             ]
         ),
+        (
+            "/opt/cluster/sbin",
+            [
+                "opt/cluster/sbin/tls_verify.py",
+                "opt/cluster/sbin/openvpn_scan.py",
+                "opt/cluster/sbin/collclient.py",
+                "opt/cluster/sbin/log_error.py",
+                "opt/cluster/sbin/logging-client.py",
+                "opt/cluster/sbin/tls_verify.py",
+                "opt/cluster/sbin/lse",
+                "opt/cluster/sbin/check_rpm_lists.py",
+                "opt/cluster/sbin/make_package.py",
+                "opt/cluster/sbin/force_redhat_init_script.sh",
+            ]
+        ),
+        (
+            "/opt/cluster/sge",
+            [
+                "opt/cluster/sge/sge_editor_conf.py",
+                "opt/cluster/sge/modify_sge_config.sh",
+                "opt/cluster/sge/add_logtail.sh",
+                "opt/cluster/sge/sge_request",
+                "opt/cluster/sge/sge_qstat",
+                "opt/cluster/sge/build_sge6x.sh",
+                "opt/cluster/sge/create_sge_links.py",
+                "opt/cluster/sge/proepilogue.py",
+                "opt/cluster/sge/qlogin_wrapper.sh",
+                "opt/cluster/sge/sge_starter.sh",
+                "opt/cluster/sge/batchsys.sh_client",
+                # info files
+                "opt/cluster/sge/.sge_files",
+                "opt/cluster/sge/.party_files",
+            ]
+        ),
+        (
+            "/opt/cluster/sge/init.d",
+            [
+                "opt/cluster/sge/init.d/sgemaster",
+                "opt/cluster/sge/init.d/sgeexecd",
+            ]
+        ),
+        (
+            "/opt/cluster/share/collectd",
+            [
+                "opt/cluster/share/collectd/aggregates.xml",
+            ]
+        ),
+        (
+            "/opt/cluster/share/collectd/aggregates.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher",
+            [   
+                "opt/cluster/share/rrd_grapher/color_rules.xml",
+                "opt/cluster/share/rrd_grapher/color_tables.xml",
+                "opt/cluster/share/rrd_grapher/compound.xml",
+            ]   
+        ),  
+        (
+            "/opt/cluster/share/rrd_grapher/compound.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher/color_tables.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher/color_rules.d",
+            [
+            ]
+        ),
+
     ],
     scripts=[
     ],

@@ -8,6 +8,13 @@
                 <icsw-login-form></icsw-login-form>
                 <p class="text-right">Version {{ initProduct.version }} on Django {{ DJANGO_VERSION }}</p>
                 <p class="text-right" ng-show="CLUSTER_ID">ClusterID is {{ CLUSTER_ID }}</p>
+                <alert ng-show="lds.license_packages.length == 0 && lds.state_valid" style="font-size: larger">
+                    You are running an <strong>unlicensed version</strong>.<br />
+                    Please contact <strong>support@init.at</strong> in order to obtain a license.
+                </alert>
+                <alert ng-show="lds.license_packages.length == 0 && !lds.state_valid" style="font-size: larger">
+                    Awaiting license information ...
+                </alert>
             </div>
         </div>
     </div>

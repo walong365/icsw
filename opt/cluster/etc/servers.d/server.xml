@@ -6,7 +6,7 @@
         <old-binary>logcheck-server</old-binary>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
+    <instance check_type="meta" name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1" reload="1">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
@@ -27,9 +27,10 @@
         </config_names>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45">
+    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45" reload="1">
         <config_names>
             <config_name>rrd_server</config_name>
+            <config_name>rrd_collector</config_name>
         </config_names>
         <start-argument>
             <arg key="user">idrrd</arg>
@@ -44,6 +45,8 @@
             <dir value="/var/run/collectd" user="idrrd" group="idg" create="1"/>
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
             <dir value="/var/run/rrdcached" user="idrrd" group="idg" create="1"/>
+            <dir value="/opt/cluster/share/collectd" user="idrrd" group="idg" create="1"/>
+            <dir value="/opt/cluster/system/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
     <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
@@ -70,6 +73,7 @@
     <instance name="rrdcached" check_type="pid_file" any_threads_ok="1" runs_on="system" pid_file_name="rrdcached/rrdcached.pid" startstop="0">
         <config_names>
             <config_name>rrd_server</config_name>
+            <config_name>rrd_grapher</config_name>
         </config_names>
     </instance>
     <instance check_type="meta" name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1">
@@ -86,12 +90,12 @@
         <old-binary>rrd-grapher</old-binary>
         <access-rights>
             <dir value="/var/run/rrd-grapher" user="idrrd" group="idg" create="1"/>
-            <dir value="/tmp/.icsw/static/graphs" user="idrrd" group="idg"/>
+            <dir value="/tmp/.icsw/static/graphs" user="idrrd" group="idg" create="1"/>
             <dir value="/srv/www/htdocs/icsw/static/graphs" user="idrrd" group="idg" create="1"/>
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server">
+    <instance check_type="meta" name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server" reload="1">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
@@ -117,15 +121,11 @@
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
-        <start-argument>
-            <arg key="user">iddis</arg>
-            <arg key="group">idg</arg>
-        </start-argument>
         <required-license>discovery_server</required-license>
         <old-binary>discovery-server</old-binary>
         <nice-level>15</nice-level>
         <access-rights>
-            <dir value="/var/run/discovery-server" user="iddis" group="idg" create="1"/>
+            <dir value="/var/run/discovery-server" user="root" group="root" create="1"/>
         </access-rights>
     </instance>
     <instance check_type="meta" name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
@@ -142,7 +142,7 @@
             <dir value="/var/run/cluster-config-server" user="idccs" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
+    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay" reload="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
@@ -162,7 +162,7 @@
         <old-binary>snmp-relay</old-binary>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1">
+    <instance check_type="meta" name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" reload="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>

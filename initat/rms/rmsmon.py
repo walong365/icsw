@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,24 +20,24 @@
 
 """ rms-server, monitoring process """
 
+from lxml import etree  # @UnresolvedImport @UnusedImport
+import commands
+import os
+import time
+import uuid
+
 from django.core.cache import cache
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
-from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
-import commands
 from initat.tools import logging_tools
-import os
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import sge_tools
 from initat.tools import threading_tools
-import time
-import uuid
 import zmq
 
 
@@ -137,7 +137,8 @@ class rms_mon_process(threading_tools.process_obj):
             verbose=True if global_config["DEBUG"] else False,
             is_active=True,
             source="local",
-            sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]]))
+            sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]])
+        )
         self._update()
         # set environment
         os.environ["SGE_ROOT"] = global_config["SGE_ROOT"]
@@ -424,14 +425,17 @@ class rms_mon_process(threading_tools.process_obj):
         srv_com = server_command.srv_command(source=srv_src)
         job_id = srv_com["send_id"].text.split(":")[0]
         file_name = srv_com["name"].text
-        content = srv_com["content"].text
+        # in case of empty file
+        content = srv_com["content"].text or ""
         last_update = int(float(srv_com["update"].text))
-        self.log("got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
-            file_name,
-            job_id,
-            len(content),
-            last_update,
-            ))
+        self.log(
+            "got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
+                file_name,
+                job_id,
+                len(content),
+                last_update,
+            )
+        )
         if len(job_id) and job_id[0].isdigit():
             # job_id is ok
             try:

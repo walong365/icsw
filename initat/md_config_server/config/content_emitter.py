@@ -33,14 +33,14 @@ class content_emitter(object):
         if self.ignore_content(in_dict):
             return []
         _content = [
-            "define {} {{".format(dest_type)
+            u"define {} {{".format(dest_type)
         ] + [
-            "  {} {}".format(
+            u"  {} {}".format(
                 act_key,
                 self._build_value_string(act_key, in_dict[act_key])
             ) for act_key in sorted(in_dict.iterkeys())
         ] + [
-            "}", ""
+            u"}", ""
         ]
         return _content
 

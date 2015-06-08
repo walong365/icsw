@@ -911,7 +911,12 @@ class relay_code(threading_tools.process_pool):
                 except:
                     self._send_result(src_id, "error connecting: {}".format(process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
                 else:
-                    self.log("connected ROUTER client to {}".format(conn_str))
+                    self.log(
+                        "connected ROUTER client to {} (id={})".format(
+                            conn_str,
+                            id_discovery.get_mapping(conn_str),
+                        )
+                    )
                     connected = True
                     self.__nhm_connections.add(conn_str)
             if connected:
@@ -929,7 +934,7 @@ class relay_code(threading_tools.process_pool):
                             conn_str,
                             process_tools.get_except_info(),
                         ),
-                        server_command.SRV_REPLY_STATE_CRITICAL
+                        server_command.SRV_REPLY_STATE_ERROR
                     )
                 else:
                     if int(srv_com.get("raw_connect", "0")):

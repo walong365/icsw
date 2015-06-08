@@ -108,11 +108,27 @@ def decompress(in_str, **kwargs):
     return ret_struct
 
 
+def add_namespace(in_str):
+    # add namespace info to all elements, hacky code
+    # mostly needed to add NS info to C-Code generated XML
+    def _transform(sub_str):
+        return sub_str.replace("<", "<ns:").replace("<ns:/", "</ns:")
+    _parts = _transform(in_str).split(">", 1)
+    in_str = "{} xmlns:ns=\"{}\">{}".format(
+        _parts[0],
+        XML_NS,
+        _parts[1],
+    )
+    return srv_command(source=in_str)
+
+
 class srv_command(object):
     srvc_open = 0
     __slots__ = ["__builder", "__tree", "srvc_open"]
 
     def __init__(self, **kwargs):
+        # init tree with None so that __del__ always succeeds
+        self.__tree = None
         srv_command.srvc_open += 1
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
@@ -226,10 +242,21 @@ class srv_command(object):
 
     def get_element(self, key):
         if key:
-            xpath_str = "/ns:ics_batch/{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
+            xpath_str = "/ns:ics_batch/{}".format(
+                "/".join(
+                    [
+                        "ns:{}".format(sub_arg) for sub_arg in key.split(":")
+                    ]
+                )
+            )
         else:
             xpath_str = "/ns:ics_batch"
         return self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
+
+    def __delitem__(self, key):
+        xpath_res = self.get_element(key)
+        for _res in xpath_res:
+            _res.getparent().remove(_res)
 
     def __getitem__(self, key):
         if key.startswith("*"):
@@ -337,9 +364,20 @@ class srv_command(object):
     def _create_element(self, key):
         """ creates all element(s) down to key.split(":") """
         xpath_str = "/ns:ics_batch"
-        cur_element = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})[0]
+        cur_element = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
+        if len(cur_element):
+            _with_ns = True
+        else:
+            # check for XML without namespace (from tell_mother for instance)
+            xpath_str = "/ics_batch"
+            cur_element = self.__tree.xpath(xpath_str, smart_strings=False)
+            _with_ns = False
+        cur_element = cur_element[0]
         for cur_key in key.split(":"):
-            xpath_str = "{}/ns:{}".format(xpath_str, self._escape_key(cur_key))
+            if _with_ns:
+                xpath_str = "{}/ns:{}".format(xpath_str, self._escape_key(cur_key))
+            else:
+                xpath_str = "{}/{}".format(xpath_str, self._escape_key(cur_key))
             full_key = "{{{}}}{}".format(XML_NS, self._escape_key(cur_key))
             sub_el = cur_element.find("./{}".format(full_key))
             if sub_el is not None:
@@ -400,10 +438,14 @@ class srv_command(object):
             return def_value
 
     def update_source(self):
-        self.__tree.xpath(".//ns:source", smart_strings=False, namespaces={"ns": XML_NS})[0].attrib.update({
-            "host": os.uname()[1],
-            "pid": "{:d}".format(os.getpid())
-        })
+        _source = self.__tree.xpath(".//ns:source", smart_strings=False, namespaces={"ns": XML_NS})
+        if len(_source):
+            _source[0].attrib.update(
+                {
+                    "host": os.uname()[1],
+                    "pid": "{:d}".format(os.getpid())
+                }
+            )
 
     def pretty_print(self):
         return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)  # @UndefinedVariable
