@@ -270,10 +270,14 @@ angular.module(
             warnings = []
             if data.license_violations[issued_license.id]?
                 violation = data.license_violations[issued_license.id]
-                date_str = moment(violation['revocation_date']).format("YYYY-MM-DD HH:mm")
+                revocation_date = moment(violation['revocation_date'])
+                date_str = revocation_date.format("YYYY-MM-DD HH:mm")
 
                 msg =  "Your license for #{violation['name']} is violated and "
-                msg += "will be revoked on <strong>#{date_str}</strong>."
+                if revocation_date > moment()
+                    msg += "will be revoked on <strong>#{date_str}</strong>."
+                else
+                    msg += "has been revoked on <strong>#{date_str}</strong>."
 
                 warnings.push [violation['revocation_date'], msg]
 
