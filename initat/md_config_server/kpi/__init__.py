@@ -147,7 +147,6 @@ class KpiProcess(threading_tools.process_obj):
                 print 'done'
                 """
 
-
     def _calculate_kpi(self, srv_com_src, **kwargs):
         """Calculate single kpi"""
         srv_com = server_command.srv_command(source=srv_com_src)
