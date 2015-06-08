@@ -683,7 +683,7 @@ class KpiSet(object):
             # help user by fixing their timezones
             fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
 
-            start = fix_tz(start) if start is not None else kpi_global_end
+            start = fix_tz(start) if start is not None else kpi_global_start
             end = fix_tz(end) if end is not None else kpi_global_end
 
             if start < kpi_global_start:
