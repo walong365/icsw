@@ -116,7 +116,7 @@ class Kpi(models.Model):
     def get_time_range(self):
         start, end = _KpiManager.parse_kpi_time_range(self.time_range, self.time_range_parameter)
         if start is None:
-            raise RuntimeError("get_historic_data called for kpi with no defined time range.")
+            raise RuntimeError("get_historic_data() called for kpi with no defined time range.")
         return start, end
 
     def __unicode__(self):

@@ -669,20 +669,36 @@ class KpiSet(object):
         return self.aggregate_historic(method='and')
 
     def get_historic_data(self, start=None, end=None):
+        """
+        Returns a KpiSet containing historic data for each KpiObject in the original set which has historic data.
+        :param start: Desired start for historic data. Defaults to global kpi time range start
+        :param end: Desired end for historic data. Defaults to global kpi time range end
+        """
         relevant_obj_identifiers = [obj.get_machine_object_id_properties() for obj in self.host_objects]
 
         objects = []
         if relevant_obj_identifiers:
-            if start is None or end is None:
-                if start or end:
-                    raise RuntimeError("start or end must either be both set or both not set")
+            kpi_global_start, kpi_global_end = KpiGlobals.current_kpi.get_time_range()
 
-                start, end = KpiGlobals.current_kpi.get_time_range()
-            else:
-                # help user by fixing their timezones
-                fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
-                start = fix_tz(start)
-                end = fix_tz(end)
+            # help user by fixing their timezones
+            fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
+
+            start = fix_tz(start) if start is not None else kpi_global_end
+            end = fix_tz(end) if end is not None else kpi_global_end
+
+            if start < kpi_global_start:
+                raise RuntimeError(
+                    "Start date for get_historic_data() is earlier than KPI time range start ({} < {})".format(
+                        start, kpi_global_start,
+                    )
+                )
+
+            if end > kpi_global_end:
+                raise RuntimeError(
+                    "End date for get_historic_data() is later than KPI time range end ({} > {})".format(
+                        end, kpi_global_end,
+                    )
+                )
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())
