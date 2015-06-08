@@ -231,6 +231,9 @@ angular.module(
                             scope.selected_cats_kpi_set = res
             update_kpi_data_source()
 
+            child_scope.on_data_source_tab_selected = () ->
+                update_kpi_data_source()
+
             child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
                 return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> return elem[0] == dev_cat_id and elem[1] == mon_cat_id)
             child_scope.toggle_dev_mon_cat = (dev_cat_id, mon_cat_id) ->
