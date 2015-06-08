@@ -151,8 +151,14 @@ class KpiProcess(threading_tools.process_obj):
         """Calculate single kpi"""
         srv_com = server_command.srv_command(source=srv_com_src)
         KpiGlobals.set_context()
-        kpi_db = Kpi.objects.get(pk=int(srv_com['kpi_pk'].text))
-        kpi_db.formula = srv_com['formula'].text  # don't save
+
+        # set kpi to serialized data (but don't save)
+        kpi_serialized = json.loads(srv_com['kpi_serialized'].text)
+        kpi_db = Kpi.objects.get(pk=kpi_serialized['idx'])
+        for k, v in kpi_serialized.iteritems():
+            if hasattr(kpi_db, k):
+                setattr(kpi_db, k, v)
+
         self.log("Calculating KPI {} with custom formula".format(kpi_db))
         data = KpiData(self.log)
         try:

@@ -306,14 +306,22 @@ angular.module(
             set_kpi_result_to_default()
 
             child_scope.calculate_kpi = () ->
+                kpi_serialized = {}
+                for k, v of cur_edit_kpi.plain()
+                    # use keys of plain() object, but values from actual object
+                    # this is because plain() resets all values to the ones sent by the server
+
+                    if k != 'result'  # result would cause circular structure error
+                        kpi_serialized[k] = cur_edit_kpi[k]
+
+                kpi_serialized = JSON.stringify(kpi_serialized)
                 set_kpi_result_to_default()
                 child_scope.kpi_result.loading = true
                 icswCallAjaxService
                     url: ICSW_URLS.BASE_CALCULATE_KPI
                     timeout: 120 * 1000
                     data:
-                        kpi_pk: cur_edit_kpi.idx
-                        formula: cur_edit_kpi.formula
+                        kpi_serialized: kpi_serialized
                     success: (xml) ->
                         if icswParseXMLResponseService(xml)
                             child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
