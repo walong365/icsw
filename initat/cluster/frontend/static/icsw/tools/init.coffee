@@ -943,4 +943,11 @@ angular.module(
             schedule_load(_key(url, options, pk_list))
             return _defer.promise
     }
+]).directive("icswLogDomCreation", [() ->
+    return {
+        restrict: 'A'
+        link : (scope, el, attrs) ->
+            mom = moment()
+            console.log("creating element: ", attrs.icswLogDomCreation, scope.$index, mom.format(), mom.milliseconds())
+    }
 ])
