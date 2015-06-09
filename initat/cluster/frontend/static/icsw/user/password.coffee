@@ -22,46 +22,69 @@ password_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswUserPasswordCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $modal) ->
+).controller("icswUserPasswordCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window) ->
         $scope.$on("icsw.enter_password", () ->
-            $modal.open
-                template : $templateCache.get("icsw.user.password.set")
-                controller : ["$scope", "$modalInstance", "scope", "$window", ($scope, $modalInstance, scope, $window) ->
-                    $scope.PASSWORD_CHARACTER_COUNT = $window.PASSWORD_CHARACTER_COUNT
-                    $scope.pwd = {
-                        "pwd1" : ""
-                        "pwd2" : ""
-                    }
-                    $scope.dyn_check = (val) ->
-                        $scope.check()
-                        _rc = []
-                        if val.length < 8
-                            _rc.push("has-error")
-                        return _rc.join(" ")
-                    $scope.ok = () ->
-                        $modalInstance.close(true)
-                        scope.$emit("icsw.set_password", $scope.pwd.pwd1)
-                    $scope.check = () ->
-                        if $scope.pwd.pwd1 == "" and $scope.pwd.pwd1 == $scope.pwd.pwd2
-                            $scope.pwd_error = "empty passwords"
-                            $scope.pwd_error_class = "alert alert-warning"
-                            return false
-                        else if $scope.pwd.pwd1.length >= $scope.PASSWORD_CHARACTER_COUNT and $scope.pwd.pwd1 == $scope.pwd.pwd2
-                            $scope.pwd_error = "passwords match"
-                            $scope.pwd_error_class = "alert alert-success"
-                            return true
-                        else
-                            $scope.pwd_error = "passwords do not match or too short"
-                            $scope.pwd_error_class = "alert alert-danger"
-                            return false
-                    $scope.cancel = () ->
-                        $modalInstance.dismiss("cancel")
+            child_scope = $scope.$new()
+            child_scope.PASSWORD_CHARACTER_COUNT = $window.PASSWORD_CHARACTER_COUNT
+            child_scope.pwd = {
+                "pwd1" : ""
+                "pwd2" : ""
+            }
+            child_scope.dyn_check = (val) ->
+                child_scope.check()
+                _rc = []
+                if val.length < 8
+                    _rc.push("has-error")
+                return _rc.join(" ")
+            child_scope.check = () ->
+                if child_scope.pwd.pwd1 == "" and child_scope.pwd.pwd1 == child_scope.pwd.pwd2
+                    child_scope.pwd_error = "empty passwords"
+                    child_scope.pwd_error_class = "alert alert-warning"
+                    return false
+                else if child_scope.pwd.pwd1.length >= child_scope.PASSWORD_CHARACTER_COUNT and child_scope.pwd.pwd1 == child_scope.pwd.pwd2
+                    child_scope.pwd_error = "passwords match"
+                    child_scope.pwd_error_class = "alert alert-success"
+                    return true
+                else
+                    child_scope.pwd_error = "passwords do not match or too short"
+                    child_scope.pwd_error_class = "alert alert-danger"
+                    return false
+            msg = $compile($templateCache.get("icsw.user.password.set"))(child_scope)
+            BootstrapDialog.show
+                message : msg
+                draggable: true
+                size: BootstrapDialog.SIZE_MEDIUM
+                title: "Enter password (min len: #{$window.PASSWORD_CHARACTER_COUNT})"
+                closable: true
+                closeByBackdrop: false
+                buttons: [
+                    {
+                         cssClass: "btn-primary"
+                         label: "Check"
+                         action: (dialog) ->
+                             child_scope.check()
+                    },
+                    {
+                         icon: "glyphicon glyphicon-ok"
+                         cssClass: "btn-success"
+                         label: "Save"
+                         action: (dialog) ->
+                             if child_scope.check()
+                                 $scope.$emit("icsw.set_password", child_scope.pwd.pwd1)
+                                 dialog.close()
+                    },
+                    {
+                        icon: "glyphicon glyphicon-remove"
+                        label: "Cancel"
+                        cssClass: "btn-warning"
+                        action: (dialog) ->
+                            dialog.close()
+                    },
                 ]
-                backdrop : "static"
-                resolve:
-                    scope: () ->
-                        return $scope
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
         )
 ]).directive("accountDetail", ["$templateCache", ($templateCache) ->
     return {
