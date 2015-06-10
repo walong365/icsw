@@ -843,49 +843,49 @@ rms_module = angular.module(
                 scope.$watch("job", (job) ->
                     scope.job = job
                 )
-                cp_scope = ["$scope", "$modalInstance", "job", "oper", ($scope, $modalInstance, job, oper) ->
-                    $scope.job = job
-                    $scope.cur_priority = parseInt($scope.job.priority.value)
-                    $scope.get_max_priority = () ->
-                        return if oper then 1024 else 0
-                    $scope.get_job_id = () ->
-                        _id = $scope.job.job_id.value
-                        if $scope.job.task_id.value
-                            _id = "#{_id}." + $scope.job.task_id.value
-                        return _id
-                    $scope.ok = () ->
-                        _job_id = $scope.get_job_id()
-                        $modalInstance.close([$scope.cur_priority, _job_id])
-                    $scope.cancel = () ->
-                        $modalInstance.dismiss("cancel")
-                ]
+
                 scope.change_priority = () ->
-                    c_modal = $modal.open
-                        template : $templateCache.get("icsw.rms.change.priority")
-                        controller : cp_scope
-                        backdrop : "static"
-                        resolve :
-                            job : () =>
-                                return scope.job
-                            oper: () =>
-                                return is_oper
-                    c_modal.result.then(
-                        (_tuple) ->
-                            new_pri = _tuple[0]
-                            job_id = _tuple[1]
-                            icswCallAjaxService
-                                url      : ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
-                                data:
-                                    "job_id": job_id
-                                    "new_pri" : new_pri
-                                success  : (xml) =>
-                                    if icswParseXMLResponseService(xml)
-                                        scope.$apply(
-                                            scope.job.priority.value = new_pri
-                                        )
-                    )
+                    child_scope = scope.$new()
+                    child_scope.cur_priority = parseInt(scope.job.priority.value)
+                    child_scope.get_job_id = () ->
+                        _id = scope.job.job_id.value
+                        if scope.job.task_id.value
+                            _id = "#{_id}." + scope.job.task_id.value
+                        return _id
+                    child_scope.get_max_priority = () ->
+                        return if is_oper then 1024 else 0
+                    msg = $compile($templateCache.get("icsw.rms.change.priority"))(child_scope)
+
+                    on_ok = (new_pri, job_id) ->
+                        icswCallAjaxService
+                            url      : ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
+                            data:
+                                "job_id": job_id
+                                "new_pri" : new_pri
+                            success  : (xml) =>
+                                if icswParseXMLResponseService(xml)
+                                    scope.$apply(
+                                        scope.job.priority.value = new_pri
+                                    )
+
+                    child_scope.modal = BootstrapDialog.show
+                        title: "Change priority of job #{child_scope.get_job_id()}"
+                        message: msg
+                        draggable: true
+                        closable: true
+                        closeByBackdrop: false
+                        onshow: (modal) =>
+                            height = $(window).height() - 100
+                            modal.getModal().find(".modal-body").css("max-height", height)
+
+                    child_scope.ok = () ->
+                        on_ok(child_scope.cur_priority, child_scope.get_job_id())
+                        child_scope.modal.close()
+
+                    child_scope.cancel = () ->
+                        child_scope.modal.close()
+
                 el.append($compile($templateCache.get(if is_oper then "icsw.rms.job.action.oper" else "icsw.rms.job.action"))(scope))
-      
     }
 ]).directive("icswRmsQueueState", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
