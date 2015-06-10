@@ -30,6 +30,7 @@ class Parser(object):
     def _add_dev_parser(self, sub_parser):
         parser = sub_parser.add_parser("device", help="device information")
         parser.set_defaults(subcom="device", execute=self._execute)
+        parser.add_argument("--action", type=str, default="info", help="action on device list [%(default)s]")
         parser.add_argument("dev", type=str, nargs="+", help="device to query [%(default)s]", default="")
         return parser
 
