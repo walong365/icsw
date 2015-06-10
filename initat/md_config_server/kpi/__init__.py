@@ -94,7 +94,7 @@ class KpiProcess(threading_tools.process_obj):
                 # recalculate kpis
                 for kpi_db in Kpi.objects.filter(enabled=True):
                     try:
-                        initial_kpi_set = kpi_data.get_kpi_set_for_kpi(kpi_db),
+                        initial_kpi_set = kpi_data.get_kpi_set_for_kpi(kpi_db)
                         result_str = self._evaluate_kpi(initial_kpi_set, kpi_db)
                     except KpiEvaluationError:
                         result_str = None
