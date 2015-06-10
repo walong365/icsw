@@ -77,7 +77,7 @@
                     </accordion-group>
                 </accordion>
             </tab>
-            <tab heading="Data source">
+            <tab heading="Data source" select="on_data_source_tab_selected()">
                 <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
 
                 <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
@@ -213,14 +213,6 @@
                     <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
                 </div>
             </td>
-            <!--
-            <td>{{get_result_from_kpi_entry(entry)}}</td>
-            <td>
-                <div ng-show="entry.result">
-                    {{entry.result.date | datetime_concise}}
-                </div>
-            </td>
-            -->
             <td>
                 <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)" ng-show="acl_modify(null, 'backbone.kpi.kpi')"></icsw-tools-button>
                 <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)" ng-show="acl_delete(null, 'backbone.kpi.kpi')"></icsw-tools-button>

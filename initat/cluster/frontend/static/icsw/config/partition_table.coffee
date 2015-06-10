@@ -22,8 +22,8 @@ partition_table_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
     ]
-).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswToolsSimpleModalService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswToolsSimpleModalService) ->
+).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, ICSW_URLS, icswToolsSimpleModalService) ->
         $scope.entries = []
         $scope.edit_pts = []
         $scope.pagSettings = paginatorSettings.get_paginator("parts", $scope)
@@ -81,7 +81,7 @@ partition_table_module = angular.module(
             edit_part.tab_active = true
             $scope.edit_pts.push(edit_part)
         $scope.reload()
-]).directive("icswConfigDiskLayout", ["$compile", "$modal", "$templateCache", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $modal, $templateCache, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswConfigDiskLayout", ["$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "$q", ($compile, $templateCache, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, $q) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.disk.layout")
@@ -145,7 +145,7 @@ partition_table_module = angular.module(
                 if not scope.create_mode
                     scope.validate()
             )
-            scope.layout_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.layout_edit = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.layout_edit.change_signal = "icsw.part_changed"
             scope.layout_edit.create_template = "partition.disc.form"
             scope.layout_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_PARTITION_DISC_LIST.slice(1))
@@ -159,7 +159,7 @@ partition_table_module = angular.module(
                     "disc"              : "/dev/sd"
                     "label_type"        : "gpt"
                 }
-            scope.sys_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.sys_edit = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.sys_edit.change_signal = "icsw.part_changed"
             scope.sys_edit.create_template = "partition.sys.form"
             scope.sys_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_SYS_PARTITION_LIST.slice(1))
@@ -182,7 +182,7 @@ partition_table_module = angular.module(
         link : (scope, element, attrs) ->
              scope.edit_obj = scope.data
     }
-]).directive("icswConfigPartitionTableDisc", ["$compile", "$templateCache", "$modal", "Restangular", "ICSW_URLS", ($compile, $templateCache, $modal, Restangular, ICSW_URLS) ->
+]).directive("icswConfigPartitionTableDisc", ["$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS", ($compile, $templateCache, $q, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
         #replace : true
@@ -193,7 +193,7 @@ partition_table_module = angular.module(
                 # dirty hack but working
                 element.after($("<tr>").append($templateCache.get("icsw.config.partition.table.header")))
             scope.partition_fs = scope.$eval(attrs["partitionFs"])
-            scope.disc_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.disc_edit = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.disc_edit.change_signal = "icsw.part_changed"
             scope.disc_edit.create_template = "partition.form"
             scope.disc_edit.edit_template = "partition.disc.form"
@@ -216,24 +216,24 @@ partition_table_module = angular.module(
                     "partition_hex" : "82"
                 }
     }
-]).directive("icswConfigPartitionTablePartition", ["$compile", "$templateCache", "$modal", "Restangular", "ICSW_URLS", ($compile, $templateCache, $modal, Restangular, ICSW_URLS) ->
+]).directive("icswConfigPartitionTablePartition", ["$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS", ($compile, $templateCache, $q, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.partition.table.partition")
         link : (scope, element, attrs) ->
-            scope.part_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.part_edit = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.part_edit.change_signal = "icsw.part_changed"
             scope.part_edit.edit_template = "partition.form"
             scope.part_edit.modify_rest_url = ICSW_URLS.REST_PARTITION_DETAIL.slice(1).slice(0, -2)
             scope.part_edit.delete_list = scope.disc.partition_set
             scope.part_edit.delete_confirm_str = (obj) -> "Really delete partition '#{obj.pnum}' ?"
     }
-]).directive("icswConfigPartitionTableSystemPartition", ["$compile", "$templateCache", "$modal", "Restangular", "ICSW_URLS", ($compile, $templateCache, $modal, Restangular, ICSW_URLS) ->
+]).directive("icswConfigPartitionTableSystemPartition", ["$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS", ($compile, $templateCache, $q, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.partition.table.system.partition")
         link : (scope, element, attrs) ->
-            scope.sys_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.sys_edit = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.sys_edit.change_signal = "icsw.part_changed"
             scope.sys_edit.edit_template = "partition.sys.form"
             scope.sys_edit.modify_rest_url = ICSW_URLS.REST_SYS_PARTITION_DETAIL.slice(1).slice(0, -2)

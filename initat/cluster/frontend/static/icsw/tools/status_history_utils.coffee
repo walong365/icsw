@@ -38,7 +38,7 @@ angular.module(
             scope.detailed_view = scope.$eval(attrs.detailedView)
 
             # TODO: make this into a filter, then remove also from serviceHist*
-            scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
+            scope.float_format = (n) -> return (n*100).toFixed(3) + "%"
 
             scope.pie_data = []
             weights = {
@@ -106,7 +106,7 @@ angular.module(
         link: (scope, element, attrs, status_history_ctrl) ->
 
             # TODO: see above
-            scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
+            scope.float_format = (n) -> return (n*100).toFixed(3) + "%"
 
             scope.pie_data = []
 
@@ -195,7 +195,7 @@ angular.module(
         }
         base = Restangular.all(ICSW_URLS.MON_GET_HIST_TIMESPAN.slice(1))
         base.customGET("", query_data).then(cont)
-    float_format = (n) -> return (n*100).toFixed(2) + "%"
+    float_format = (n) -> return (n*100).toFixed(3) + "%"
     preprocess_state_data = (new_data, weights, colors) ->
         formatted_data = _.cloneDeep(new_data)
         for key of weights
