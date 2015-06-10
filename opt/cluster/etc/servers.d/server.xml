@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <instances>
     <instance check_type="meta" name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck-server">
         <config_names>
