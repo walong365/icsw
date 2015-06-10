@@ -51,7 +51,16 @@ def main(opt_ns):
         )
     )
     for dev_name in sorted(dev_dict.keys()):
-        device_info(dev_dict[dev_name])
+        cur_dev = dev_dict[dev_name]
+        if opt_ns.action == "info":
+            device_info(cur_dev)
+        else:
+            print(
+                "unknown action {} for device {}".format(
+                    opt_ns.action,
+                    unicode(cur_dev),
+                )
+            )
 
 
 def device_info(cur_dev):
