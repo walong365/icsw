@@ -19,25 +19,27 @@
 #
 """ cluster-config-server, server part """
 
+from lxml import etree  # @UnresolvedImport
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.cluster_config_server.build_process import build_process
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.config_control import config_control
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
-from initat.tools import threading_tools
+from initat.tools import threading_tools, server_mixins
 import zmq
 
+from .build_process import build_process
+from .config import global_config
+from .config_control import config_control
 
-class server_process(threading_tools.process_pool):
+
+class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
