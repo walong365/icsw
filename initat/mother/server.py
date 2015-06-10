@@ -28,7 +28,6 @@ from initat.tools.server_mixins import RemoteCall, ServerStatusMixin, \
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import network, status
-from initat.mother.config import global_config
 from initat.snmp.process import snmp_process
 from initat.tools import cluster_location
 from initat.tools import configfile
@@ -37,13 +36,13 @@ import initat.mother
 import initat.mother.command
 import initat.mother.control
 import initat.mother.kernel
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 import psutil
 from initat.tools import server_command
-from initat.tools import threading_tools
-from initat.tools import uuid_tools
+from initat.tools import threading_tools, uuid_tools
 import zmq
+
+from .config import global_config
 
 
 @RemoteCallProcess
@@ -174,7 +173,7 @@ class server_process(threading_tools.process_pool, RemoteCallMixin, ServerStatus
         return payload
 
     @RemoteCall(
-        id_filter="^.*:tell_mother:.*$",
+        id_filter="^.*:(tell_mother|hoststatus):.*$",
         target_process="control",
     )
     # received and required commands

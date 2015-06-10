@@ -33,7 +33,7 @@ from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import threading_tools
 
-from kernel_sync_tools import KernelHelper
+from initat.tools.kernel_sync_tools import KernelHelper
 
 
 class kernel_sync_process(threading_tools.process_obj):
