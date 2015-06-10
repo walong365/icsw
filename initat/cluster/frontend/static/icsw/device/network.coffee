@@ -819,25 +819,32 @@ angular.module(
             _sel = _.intersection(cluster.device_pks, $scope.devices)
             return if _sel.length then "yes (#{_sel.length})" else "no"
         $scope.show_cluster = (cluster) ->
-            _modal = $modal.open(
-                {
-                    templateUrl : "icsw.device.network.cluster.info"
-                    controller  : ["$scope", "$modalInstance", "Restangular", "ICSW_URLS", "cluster", ($scope, $modalInstance, Restangular, ICSW_URLS, cluster) ->
-                        $scope.cluster = cluster
-                        $scope.devices = []
-                        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
-                            (data) ->
-                                $scope.devices = data
-                        )
-                        $scope.ok = () ->
-                            $modalInstance.close()
+            child_scope = $scope.$new()
+            child_scope.cluster = cluster
+            child_scope.devices = []
+            Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
+                (data) ->
+                    child_scope.devices = data
+            )
+            msg = $compile($templateCache.get("icsw.device.network.cluster.info"))(child_scope)
+            child_scope.modal = BootstrapDialog.show
+                title: "Devices in cluster (#{child_scope.cluster.device_pks.length})"
+                message: msg
+                draggable: true
+                closable: true
+                closeByBackdrop: false
+                buttons: [
+                    {
+                         cssClass: "btn-primary"
+                         label: "Close"
+                         action: (dialog) ->
+                             dialog.close()
+                    },
                     ]
-                    size : "lg"
-                    resolve : {
-                        "cluster" : () -> return cluster
-                    }
-                }
-            )          
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+
         $scope.reload()
 ]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "icswLivestatusFilterFactory",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, icswLivestatusFilterFactory) ->
