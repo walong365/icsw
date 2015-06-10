@@ -143,14 +143,23 @@ class HostMonitoringMixin(object):
                     )
             else:
                 try:
-                    dev_dict, sys_dict, lvm_dict = (
+                    dev_dict, lvm_dict = (
                         result["dev_dict"],
-                        result["sys_dict"],
                         result["lvm_dict"],
                     )
                 except KeyError:
                     res_node.error(u"%s: error missing keys in dict" % (target_dev))
                 else:
+                    if "sys_dict" in result:
+                        sys_dict = result["sys_dict"]
+                        for _value in sys_dict.itervalues():
+                            # rewrite dict
+                            _value["opts"] = _value["options"]
+                    else:
+                        partitions = result["*partitions"]
+                        sys_dict = {
+                            _part["fstype"]: _part for _part in partitions if not _part["is_disk"]
+                        }
                     try:
                         _old_stuff = server_command.decompress(lvm_dict.text)
                     except:
@@ -319,7 +328,7 @@ class HostMonitoringMixin(object):
                                     partition_table=new_part_table,
                                     name=p_stuff["fstype"] if part == "none" else part,
                                     mountpoint=p_stuff["mountpoint"],
-                                    mount_options=p_stuff["options"],
+                                    mount_options=p_stuff["opts"],
                                 )
                                 new_sys.save()
                     if lvm_info.lvm_present:

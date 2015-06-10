@@ -371,7 +371,7 @@ class Command(BaseCommand):
         factories.PartitionFS(name="xfs", identifier="f", descr="XFS Filesystem", hexid="83", kernel_module="xfs")
         factories.PartitionFS(name="btrfs", identifier="f", descr="BTRFS Filesystem", hexid="83", kernel_module="btrfs")
         factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kernel_module="ocfs2")
-        factories.PartitionFS(name="gpfs", identifier="f", descr="GPFS Filesystem", hexid="00", kernel_module="mmfs26")
+        factories.PartitionFS(name="gpfs", identifier="f", descr="GPFS Filesystem", hexid="00", kernel_module="mmfs26", need_hexid=False)
         # LogLevel
         factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
         factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")

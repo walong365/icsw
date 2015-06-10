@@ -362,7 +362,11 @@ class _LicenseViolationManager(models.Manager):
         :type license: LicenseEnum
         """
         # only hard violations are actual violations, else it's a warning (grace)
-        return LicenseViolation.objects.filter(license=license.name, hard=True).exists()
+        return license.name in self._get_hard_violated_licenses_names()
+
+    @memoize_with_expiry(1)
+    def _get_hard_violated_licenses_names(self):
+        return frozenset(LicenseViolation.objects.filter(hard=True).values_list('license', flat=True))
 
 
 class LicenseViolation(_LicenseUsageBase):

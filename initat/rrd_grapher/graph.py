@@ -705,7 +705,7 @@ class DataSource(object):
         _mvv_list = MVValueEntry.objects.filter(
             Q(full_key__in=_query_keys) &
             Q(mv_struct_entry__machine_vector__device__in=dev_pks)
-        ).select_related("mvstructentry")
+        ).select_related("mv_struct_entry")
         _mvv_dict = {}
         for _mvv in _mvv_list:
             _mvv_dict.setdefault(_mvv.full_key, []).append(_mvv)

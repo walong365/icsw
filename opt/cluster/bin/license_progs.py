@@ -25,13 +25,14 @@
 
 from lxml import etree
 import argparse
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
-from initat.tools import sge_license_tools
 import sys
 import tempfile
 import time
+
+from initat.tools import logging_tools
+from initat.tools import process_tools
+from initat.tools import sge_license_tools
 
 
 # dummy logger

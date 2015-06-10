@@ -112,7 +112,7 @@ user_module = angular.module(
         $scope.tree = new user_tree($scope)
         $scope.filterstr = ""
         # init edit mixins
-        $scope.group_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular)
+        $scope.group_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.group_edit.modify_rest_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
         $scope.group_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_GROUP_LIST.slice(1))
         $scope.group_edit.use_modal = false
@@ -131,7 +131,7 @@ user_module = angular.module(
                 "group_quota_setting": []
             }
             return r_obj
-        $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular)
+        $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.user_edit.modify_rest_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
         $scope.user_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1))
         $scope.user_edit.use_modal = false

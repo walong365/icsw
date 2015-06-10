@@ -70,14 +70,14 @@ device_variable_module = angular.module(
         catch exc
             cur_re = new RegExp("^$", "gi")
         return (entry for entry in arr when entry.name.match(cur_re))
-]).directive("icswDeviceVariableTable", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
+]).directive("icswDeviceVariableTable", ["$templateCache", "$compile", "$q", "Restangular", "ICSW_URLS", ($templateCache, $compile, $q, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.variable.table")
         link : (scope, el, attrs) ->
             scope.device = scope.$eval(attrs["device"])
             scope.filtervalue = scope.$eval(attrs["filtervalue"])
-            scope.edit_mixin = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.edit_mixin = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.edit_mixin.delete_confirm_str = (obj) -> "Really delete variable '#{obj.name}' ?"
             scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
             scope.edit_mixin.delete_list = scope.device.device_variable_set
@@ -137,7 +137,7 @@ device_variable_module = angular.module(
     }
 ]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
-        $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular)
+        $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
         $scope.base_edit.new_object = (scope) ->
