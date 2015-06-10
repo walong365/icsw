@@ -69,7 +69,7 @@ class ServerStatusMixin(object):
 # exception mixin
 class OperationalErrorMixin(threading_tools.exception_handling_base):
     def __init__(self):
-        # init by exception_handling_mxin
+        # init by exception_handling_mixin
         self.register_exception("OperationalError", self._op_error)
 
     def _op_error(self, info):

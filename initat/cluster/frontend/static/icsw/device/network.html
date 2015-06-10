@@ -308,28 +308,19 @@
         {{ ndip_obj.peer.info }}
     </td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.cluster.info">
-    <div class="modal-header">
-        <h3 class="modal-title">Devices in cluster ({{ cluster.device_pks.length }})</h3>
-    </div>
-    <div class="modal-body">
-        <ul>
-            <li ng-repeat="device in devices">
-                {{ device.full_name }} ({{ device.device_group_name }})
-            </li>
-        </ul>
-        Selected: <b>{{ selected.item }}</b>
-    </div>
-    <div class="modal-footer">
-        <button class="btn btn-primary" ng-click="ok()">close</button>
-    </div>
+    <ul>
+        <li ng-repeat="device in devices">
+            {{ device.full_name }} ({{ device.device_group_name }})
+        </li>
+    </ul>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.host.node">
