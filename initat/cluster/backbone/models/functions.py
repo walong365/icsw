@@ -160,9 +160,9 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
             m2m_field_name = m2m_obj.field.name
             if detail:
-                used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name: in_obj}))))
+                used_objs.extend(list(m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj}))))
             else:
-                used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name: in_obj})).count()
+                used_objs += m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj})).count()
     in_obj._lock_list = _lock_list
     if ignore_list:
         raise ImproperlyConfigured(
