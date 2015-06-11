@@ -290,6 +290,10 @@ COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 # STATIC_PRECOMPILER_CACHE = not DEBUG
 
 # pipeline settings
+
+# the pipeline function wrapper breaks FileSaver.js
+PIPELINE_DISABLE_WRAPPER = True
+
 PIPELINE_JS_COMPRESSOR = 'pipeline.compressors.uglifyjs.UglifyJSCompressor'
 PIPELINE_UGLIFYJS_BINARY = "/opt/cluster/lib/node_modules/uglify-js/bin/uglifyjs"
 PIPELINE_UGLIFYJS_ARGUMENTS = "--terminal"
