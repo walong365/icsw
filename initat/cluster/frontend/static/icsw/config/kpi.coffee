@@ -323,7 +323,7 @@ angular.module(
                 set_kpi_result_to_default()
                 child_scope.kpi_result.loading = true
                 icswCallAjaxService
-                    url: ICSW_URLS.BASE_CALCULATE_KPI
+                    url: ICSW_URLS.BASE_CALCULATE_KPI_PREVIEW
                     timeout: 120 * 1000
                     data:
                         kpi_serialized: kpi_serialized

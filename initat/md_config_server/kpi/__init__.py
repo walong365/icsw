@@ -52,10 +52,11 @@ class KpiProcess(threading_tools.process_obj):
         )
         connection.close()
 
-        self.register_timer(self.update, 60 if global_config["DEBUG"] else 300, instant=True)
+        self.register_timer(self.periodic_update, 60 if global_config["DEBUG"] else 300, instant=True)
 
         self.register_func('get_kpi_source_data', self._get_kpi_source_data)
-        self.register_func('calculate_kpi', self._calculate_kpi)
+        self.register_func('calculate_kpi_preview', self._calculate_kpi_preview)
+        self.register_func('calculate_kpi_db', self._calculate_kpi_db)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -82,7 +83,24 @@ class KpiProcess(threading_tools.process_obj):
 
         self.log("Finished KPI source data")
 
-    def update(self):
+    def _calculate_kpi_db(self, srv_com_src, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com_src)
+        kpi_data = KpiData(self.log)
+        kpi_pk = int(srv_com['kpi_pk'].text)
+        kpi_db = Kpi.objects.get(pk=kpi_pk)
+        self._update_single_kpi_result(kpi_data, kpi_db)
+
+    def _update_single_kpi_result(self, kpi_data, kpi_db):
+        try:
+            initial_kpi_set = kpi_data.get_kpi_set_for_kpi(kpi_db)
+            result_str = self._evaluate_kpi(initial_kpi_set, kpi_db)
+        except KpiEvaluationError:
+            result_str = None
+        kpi_db.set_result(result_str, django.utils.timezone.now())
+
+
+
+    def periodic_update(self):
         """Recalculate all kpis and save result to database"""
         if License.objects.has_valid_license(LicenseEnum.kpi):
             KpiGlobals.set_context()
@@ -93,12 +111,7 @@ class KpiProcess(threading_tools.process_obj):
             else:
                 # recalculate kpis
                 for kpi_db in Kpi.objects.filter(enabled=True):
-                    try:
-                        initial_kpi_set = kpi_data.get_kpi_set_for_kpi(kpi_db)
-                        result_str = self._evaluate_kpi(initial_kpi_set, kpi_db)
-                    except KpiEvaluationError:
-                        result_str = None
-                    kpi_db.set_result(result_str, django.utils.timezone.now())
+                    self._update_single_kpi_result(kpi_data, kpi_db)
 
                 """
                 # code for exporting kpi results as csv (written for oekotex KPIs June 2015)
@@ -148,8 +161,8 @@ class KpiProcess(threading_tools.process_obj):
                 print 'done'
                 """
 
-    def _calculate_kpi(self, srv_com_src, **kwargs):
-        """Calculate single kpi"""
+    def _calculate_kpi_preview(self, srv_com_src, **kwargs):
+        """Calculate single kpi with data from command and return result without saving"""
         srv_com = server_command.srv_command(source=srv_com_src)
         KpiGlobals.set_context()
 
