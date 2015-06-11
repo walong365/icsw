@@ -2,5 +2,6 @@
 
 from .icsw_parser import ICSWParser
 
-options = ICSWParser().parse_args()
-options.execute(options)
+if __name__ == '__main__':
+    options = ICSWParser().parse_args()
+    options.execute(options)
