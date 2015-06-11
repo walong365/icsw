@@ -21,6 +21,5 @@ char* parse_uuid() {
     } else {
         sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
     };
-    printf(identity_str);
     return identity_str;
 };
