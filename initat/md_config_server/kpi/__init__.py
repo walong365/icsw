@@ -98,8 +98,6 @@ class KpiProcess(threading_tools.process_obj):
             result_str = None
         kpi_db.set_result(result_str, django.utils.timezone.now())
 
-
-
     def periodic_update(self):
         """Recalculate all kpis and save result to database"""
         if License.objects.has_valid_license(LicenseEnum.kpi):
