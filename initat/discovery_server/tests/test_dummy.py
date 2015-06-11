@@ -1,8 +1,10 @@
 
+import unittest
 from django.test import TestCase
 
 
 class DummyTest(TestCase):
+    @unittest.skip("disabled")
     def test_a(self):
         self.assertTrue(False)
 
@@ -17,5 +19,4 @@ if __name__ == '__main__':
     import django
     django.setup()
 
-    import unittest
     unittest.main()

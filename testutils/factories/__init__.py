@@ -20,12 +20,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from factory import DjangoModelFactory, Sequence
-from initat.cluster.backbone.models import device
+from factory import DjangoModelFactory, Sequence, SubFactory
+from initat.cluster.backbone.models import device, device_group
 
 
-class DeviceFactory(DjangoModelFactory):
+class DeviceGroupTestFactory(DjangoModelFactory):
+    class Meta:
+        model = device_group
+
+    name = Sequence(lambda n: 'test_device_group_{}'.format(n))
+
+
+class DeviceTestFactory(DjangoModelFactory):
     class Meta:
         model = device
 
-    name = Sequence(lambda n: 'device{}'.format(n))
+    name = Sequence(lambda n: 'test_device_{}'.format(n))
+    device_group = SubFactory(DeviceGroupTestFactory)

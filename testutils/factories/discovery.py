@@ -21,18 +21,27 @@
 #
 
 from factory import DjangoModelFactory, SubFactory, Iterator
-from initat.cluster.backbone.models import ScanHistory, DiscoverySource
-from testutils.factories import DeviceFactory
+from initat.cluster.backbone.models import ScanHistory, DiscoverySource, DispatchSetting
+from testutils.factories import DeviceTestFactory
 
 
-class ScanHistoryFactory(DjangoModelFactory):
+class DispatchSettingTestFactory(DjangoModelFactory):
+    class Meta:
+        model = DispatchSetting
+
+    device = SubFactory(DeviceTestFactory)
+
+
+class ScanHistoryTestFactory(DjangoModelFactory):
     class Meta:
         model = ScanHistory
 
-    device = SubFactory(DeviceFactory)
+    device = SubFactory(DeviceTestFactory)
     source = Iterator([s.value for s in DiscoverySource])
 
     duration = 10
 
     success = True
+
+
 

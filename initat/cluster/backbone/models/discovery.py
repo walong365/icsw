@@ -20,6 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 from collections import defaultdict
+import dateutil.relativedelta
 
 from django.db import models
 from django.db.models import Avg
@@ -62,10 +63,16 @@ class DispatchSetting(models.Model):
 
     # TODO: probably needs enabled flag
 
+    def get_source_enum_instance(self):
+        return DiscoverySource(self.source)
+
+    def get_interval_as_delta(self):
+        return dateutil.relativedelta.relativedelta(**{self.DurationUnits(self.duration_unit).name: self.duration_amount})
+
 
 class _ScanHistoryManager(models.Manager):
     def get_average_run_duration(self, source, device):
-        default = 60  # TODO: source-dependent default?
+        default = dateutil.relativedelta.relativedelta(minutes=1)  # TODO: source-dependent default?
         return self.__get_run_duration_cache().get(source, {}).get(device, default)
 
     @memoize_with_expiry(10)

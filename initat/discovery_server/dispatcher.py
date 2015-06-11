@@ -39,22 +39,26 @@ class DiscoveryDispatcher(object):
 
         # - run_now flag
 
-        naive_run_list = self.get_next_planned_run_times(start, end)
-        # sort prio: run_now, date, device_pk (to make sort somewhat stable)
-        naive_run_list.sort(key=lambda entry: (not entry.dispatch_setting.run_now, entry.planned_date, entry.device.pk))
+        naive_run_list = self._get_next_planned_run_times(start, end)
+
+        presorted_list = self._presort_list(naive_run_list)
 
         sched_info = _ScheduleInfo()
 
-        for item in naive_run_list:
+        for item in presorted_list:
             expected_run_date = item.planned_date
 
             # we can run as soon as source limit is fulfilled
-            n_th_last_by_src = sched_info.items_by_source[item.source][- item.source.get_maximal_concurrent_runs()]
-            expected_run_date = max(expected_run_date, n_th_last_by_src.expected_finish_date)
+            max_concurrent_runs = item.source.get_maximal_concurrent_runs()
+            if len(sched_info.items_by_source[item.source]) >= max_concurrent_runs:
+                # queue is full
+                n_th_last_by_src = sched_info.items_by_source[item.source][-item.source.get_maximal_concurrent_runs()]
+                expected_run_date = max(expected_run_date, n_th_last_by_src.expected_finish_date)
 
-            # device constraint (only one by device
-            last_by_device = sched_info.items_by_device[item.device][-1]
-            expected_run_date = max(expected_run_date, last_by_device.expected_finish_date)
+            # device constraint (only one by device)
+            if sched_info.items_by_device[item.device]:
+                last_by_device = sched_info.items_by_device[item.device][-1]
+                expected_run_date = max(expected_run_date, last_by_device.expected_finish_date)
 
             item.expected_run_date = expected_run_date
             item.expected_finish_date =\
@@ -62,8 +66,35 @@ class DiscoveryDispatcher(object):
 
             sched_info.add_item(item)
 
-    def get_next_planned_run_times(self, start, end):
-        """Returns planned run times without considering any constraints"""
+            # TODO: make sure that at least $interval time is between runs
+
+        run_list = sorted(naive_run_list, key=operator.attrgetter('expected_run_date'))
+        return run_list
+
+    def _presort_list(self, naive_run_list):
+        """sort according to run_now and planned_date
+        :rtype: list of _ScheduleItem
+        """
+        # for each dispatch setting with run_now flag, add first entry here
+        run_now_list = []
+        regular_list = []
+        dispatch_settings_in_run_now_list = set()
+        for item in naive_run_list:
+            if item.dispatch_setting.run_now and item.dispatch_setting not in dispatch_settings_in_run_now_list:
+                dispatch_settings_in_run_now_list.add(item.dispatch_setting)
+                run_now_list.append(item)
+            else:
+                regular_list.append(item)
+
+        # sort prio: run_now, date, device_pk (to make sort somewhat stable)
+        run_now_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
+        regular_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
+        return run_now_list + regular_list
+
+    def _get_next_planned_run_times(self, start, end):
+        """Returns planned run times without considering any constraints
+        :rtype: list of _ScheduleItem
+        """
         if end < start:
             raise ValueError()
         run_list = []
@@ -74,8 +105,7 @@ class DiscoveryDispatcher(object):
                 planned_date = start
             else:
                 if last_run.successful:
-                    interval = dispatch_setting.interval
-                    planned_date = last_run.date + relativedelta(**{interval.unit: interval.amount})
+                    planned_date = last_run.date + dispatch_setting.get_interval_as_delta()
                 else:
                     # last run failed, rerun earlier:
                     planned_date = max(last_run.date + relativedelta(hours=4), start)
@@ -84,12 +114,13 @@ class DiscoveryDispatcher(object):
                 run_list.append(
                     _ScheduleItem(
                         device=dispatch_setting.device,
-                        source=dispatch_setting.source,
+                        source=dispatch_setting.get_source_enum_instance(),
                         planned_date=planned_date,
                         dispatch_setting=dispatch_setting,
                     )
                 )
-                planned_date += relativedelta(**{interval.unit: interval.amount})
+
+                planned_date += dispatch_setting.get_interval_as_delta()
 
         return run_list
 
@@ -108,6 +139,11 @@ class _ScheduleItem(object):
     def set_expected_dates(self, expected_run_date, expected_finish_date):
         self.expected_run_date = expected_run_date
         self.expected_finish_date = expected_finish_date
+
+    def __repr__(self):
+        return "ScheduleItem(dev={}, src={}, planned={}, expected_run={}, expected_finish={})".format(
+            self.device, self.source, self.planned_date, self.expected_run_date, self.expected_finish_date
+        )
 
 
 class _ScheduleInfo(object):
