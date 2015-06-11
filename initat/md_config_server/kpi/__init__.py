@@ -199,10 +199,15 @@ class KpiProcess(threading_tools.process_obj):
         }
         eval_locals = {}
         result_str = None
+        # build function such that return works in the kpi function
+        eval_formula = u"def _kpi():\n"
+        # indent
+        eval_formula += u"\n".join(((u"    " + line) for line in kpi_db.formula.split(u"\n"))) + u"\n"
+        eval_formula += u"kpi = _kpi()\n"
         try:
             # KpiGlobals are used for evaluation, but not exposed to kpi user
             KpiGlobals.current_kpi = kpi_db
-            exec (kpi_db.formula, eval_globals, eval_locals)
+            exec (eval_formula, eval_globals, eval_locals)
         except Exception as e:
             self.log(e)
             error_report = [u"Exception while calculating kpi {}: {}".format(kpi_db, e)]
@@ -215,12 +220,16 @@ class KpiProcess(threading_tools.process_obj):
             raise KpiEvaluationError(error_report)
         else:
             if 'kpi' not in eval_locals:
-                msg = "{} does not define the variable `kpi` and therefore has no result.".format(kpi_db)
+                msg = "Internal error evaluating kpis (1)"
                 self.log(msg)
                 raise KpiEvaluationError(msg)
             else:
                 self.log("{} successfully evaluated".format(kpi_db))
                 result = eval_locals['kpi']
+
+                if result is None:
+                    raise KpiEvaluationError("Kpi formula did not return a result.\n" +
+                                             "Please use `return kpi_set`, where kpi_set is your result.")
 
                 if not isinstance(result, KpiSet):
                     raise KpiEvaluationError("Result is not a KpiSet but {}".format(type(result)))
