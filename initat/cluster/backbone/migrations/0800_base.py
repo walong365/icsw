@@ -998,7 +998,7 @@ class Migration(migrations.Migration):
             bases=(models.Model,),
         ),
         migrations.CreateModel(
-            name='kpi',
+            name='Kpi',
             fields=[
                 ('idx', models.AutoField(serialize=False, primary_key=True)),
                 ('name', models.TextField()),
@@ -1014,7 +1014,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('idx', models.AutoField(serialize=False, primary_key=True)),
                 ('device_category', models.ForeignKey(related_name='device_cateogory', to='backbone.category')),
-                ('kpi', models.ForeignKey(to='backbone.kpi')),
+                ('kpi', models.ForeignKey(to='backbone.Kpi')),
                 ('monitoring_category', models.ForeignKey(related_name='monitoring_category', to='backbone.category')),
             ],
             options={
