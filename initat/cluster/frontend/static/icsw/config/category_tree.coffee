@@ -104,7 +104,7 @@ angular.module(
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, msgbus) ->
         $scope.entries = []
         # mixins
-        $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "gfx")
+        $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "gfx")
         $scope.gfx_mixin.use_modal = true
         $scope.gfx_mixin.use_promise = true
         $scope.gfx_mixin.new_object = (scope) -> return scope.new_location_gfx()
@@ -383,15 +383,16 @@ angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
     "$q", "$modal", "access_level_service", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService", "msgbus",
     "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService",
+    "icswToolsSimpleModalService",
    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, $q, $modal, access_level_service,
     blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, msgbus, icswCallAjaxService, icswParseXMLResponseService, toaster,
-    icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService) ->
+    icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, icswToolsSimpleModalService) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
         # mixins
         # edit mixin for cateogries
-        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "cat")
+        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "cat")
         $scope.edit_mixin.use_modal = false
         $scope.edit_mixin.use_promise = true
         $scope.edit_mixin.new_object = (scope) -> return scope.new_object()
@@ -499,27 +500,14 @@ angular.module(
         $scope.prune_tree = () ->
             $scope.cat.clear_active()
             $scope.close_modal()
-            $modal.open(
-                template : $templateCache.get("icsw.tools.simple.modal")
-                controller : ($scope, $modalInstance, question) ->
-                    $scope.question = question
-                    $scope.ok = () ->
-                        $modalInstance.close(true)
-                    $scope.cancel = () ->
-                        $modalInstance.dismiss("cancel")
-                backdrop : "static"
-                resolve :
-                    question : () =>
-                            return "Really prune tree (delete empty elements) ?"
-            ).result.then(
-                () =>
-                    blockUI.start()
-                    icswCallAjaxService
-                        url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
-                        success : (xml) ->
-                            icswParseXMLResponseService(xml)
-                            $scope.reload()
-                            blockUI.stop()
+            icswToolsSimpleModalService("Really prune tree (delete empty elements) ?").then(() ->
+                blockUI.start()
+                icswCallAjaxService
+                    url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
+                    success : (xml) ->
+                        icswParseXMLResponseService(xml)
+                        $scope.reload()
+                        blockUI.stop()
             )
         $scope.reload()
 ]).service("icswConfigCategoryTreeService", () ->

@@ -359,13 +359,13 @@ done
 bin_dir=`GetPathToBinaries`
 if [ "$bin_dir" = "none" ]; then
    echo "can't determine path to Grid Engine binaries"
-   exit 5  # LSB compliant exit status - program is not installed
+   exit 3  # LSB compliant exit status - program is not installed
 fi
 
 utilbin_dir=`GetPathToUtilbin`
 if [ "$utilbin_dir" = "none" ]; then
    echo "can't determine path to Grid Engine utility binaries"
-   exit 5  # LSB compliant exit status - program is not installed
+   exit 3  # LSB compliant exit status - program is not installed
 fi
 
 # HOST is the aliased name (SGE name)

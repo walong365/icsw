@@ -19,31 +19,27 @@
 #
 """ machine information """
 
-from initat.host_monitoring import hm_classes, limits
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import commands
-from initat.tools import cpu_database
-from initat.tools import logging_tools
 import os
-from initat.tools import partition_tools
-from initat.tools import pci_database
 import platform
-import pprint  # @UnusedImport
-from initat.tools import process_tools
 import re
-from initat.tools import server_command
 import statvfs
 import sys
 import json
 import tempfile
 import time
+
+from initat.host_monitoring import hm_classes, limits
+from initat.tools import cpu_database
+from initat.tools import logging_tools
+from initat.tools import partition_tools
+from initat.tools import pci_database
+from initat.tools import process_tools
+from initat.tools import server_command
 from initat.tools import uuid_tools
 import psutil
-try:
-    from initat.host_monitoring_version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+from initat.client_version import VERSION_STRING
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -71,6 +67,18 @@ class _general(hm_classes.hm_module):
         return self.stat_list
 
     def _rescan_valid_disk_stuff(self):
+        def _follow_link(start):
+            _result = [start]
+            while True:
+                if os.path.islink(start):
+                    start = os.path.normpath(os.path.join(start, os.readlink(start)))
+                    _result.append(start)
+                else:
+                    break
+            return _result
+        # _parts = psutil.disk_partitions()
+        # for _part in _parts:
+        #     print _follow_link(_part.device)
         self.log("checking valid block_device names and major numbers")
         valid_block_devs, valid_major_nums = ({}, {})
         try:
@@ -86,8 +94,8 @@ class _general(hm_classes.hm_module):
                         block_devs_dict[int(lp[0])] = lp[1]
             block_dir = "/sys/block"
             if os.path.isdir(block_dir):
-                for entry in os.listdir(block_dir):
-                    dev_file = "%s/%s/dev" % (block_dir, entry)
+                for entry in sorted(os.listdir(block_dir)):
+                    dev_file = os.path.join(block_dir, entry, "dev")
                     if os.path.isfile(dev_file):
                         major, minor = [int(x) for x in open(dev_file, "r").read().strip().split(":")]
                         if major in block_devs_dict:
@@ -97,17 +105,20 @@ class _general(hm_classes.hm_module):
                             self.log("   adding %-14s (major %3d, minor %3d) to block_device_list" % (dev_name, major, minor))
                             # print dev_name, block_devs_dict[major], minor
         except:
-            self.log("error in rescan_valid_disk_stuff: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+            self.log("error in rescan_valid_disk_stuff: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            self.log("Found %s and %s: %s; %s" % (
-                logging_tools.get_plural("device_name", len(valid_block_devs.keys())),
-                logging_tools.get_plural("major number", len(valid_major_nums.keys())),
-                ", ".join(valid_block_devs.keys()),
-                ", ".join(["%d" % (x) for x in valid_major_nums.keys()])))
-        self.valid_block_devs, self.valid_major_nums = (valid_block_devs,
-                                                        valid_major_nums)
-        # pprint.pprint(psutil.disk_io_counters(perdisk=True))
-        # print "*", self.valid_block_devs, self.valid_major_nums
+            self.log(
+                "Found {} and {}: {}; {}".format(
+                    logging_tools.get_plural("device_name", len(valid_block_devs.keys())),
+                    logging_tools.get_plural("major number", len(valid_major_nums.keys())),
+                    ", ".join(valid_block_devs.keys()),
+                    ", ".join(["%d" % (x) for x in valid_major_nums.keys()])
+                )
+            )
+        self.valid_block_devs, self.valid_major_nums = (
+            valid_block_devs,
+            valid_major_nums
+        )
 
     def set_machine_vector_flags(self, mv):
         mv.vector_flags["detailed_cpu_statistics"] = False
@@ -239,17 +250,26 @@ class _general(hm_classes.hm_module):
                         "df.{}.f".format(key),
                         0.,
                         "free space on $2 ({}, {})".format(n_dict[key]["mountpoint"], n_dict[key]["fs"]),
-                        "Byte", 1000, 1000)
+                        "Byte",
+                        1000,
+                        1000
+                    )
                     mvect.register_entry(
                         "df.{}.u".format(key),
                         0.,
                         "used space on $2 ({}, {})".format(n_dict[key]["mountpoint"], n_dict[key]["fs"]),
-                        "Byte", 1000, 1000)
+                        "Byte",
+                        1000,
+                        1000
+                    )
                     mvect.register_entry(
                         "df.{}.t".format(key),
                         0.,
                         "size of $2 ({}, {})".format(n_dict[key]["mountpoint"], n_dict[key]["fs"]),
-                        "Byte", 1000, 1000)
+                        "Byte",
+                        1000,
+                        1000
+                    )
             self.disk_dict = n_dict
             for key in self.disk_dict:
                 mvect["df.{}.f".format(key)] = self.disk_dict[key]["b_free"]
@@ -259,6 +279,10 @@ class _general(hm_classes.hm_module):
             return n_dict
 
     def _vmstat_int(self, mvect):
+        def _remove_partition_part(pname):
+            while pname[-1].isdigit():
+                pname = pname[:-1]
+            return pname
         act_time = time.time()
         # disk_stat format: device -> (sectors read/written, milliseconds spent read/written)
         stat_dict, disk_stat = ({}, {})
@@ -294,7 +318,10 @@ class _general(hm_classes.hm_module):
                         int(parts[0]), int(parts[1])
                     ] + [
                         long(cur_val) for cur_val in parts[3:]
-                    ] for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14}
+                    ] for parts in [
+                        line.strip().split() for line in open("/proc/diskstats", "r").readlines()
+                    ] if len(parts) == 14
+                }
             except:
                 pass
             else:
@@ -365,14 +392,15 @@ class _general(hm_classes.hm_module):
                 # get unique devices
                 ds_keys_ok_by_name = sorted([key for key in ds_dict.iterkeys() if key in self.valid_block_devs])
                 # sort out partition stuff
-                last_name = ""
+                _last_disk_name = ""
                 ds_keys_ok_by_major = []
-                for d_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
-                    if last_name and not (d_name.startswith("dm-") or d_name.startswith("md")) and d_name.startswith(last_name):
+                for p_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
+                    _disk_name = _remove_partition_part(p_name)
+                    if _last_disk_name and not (p_name.startswith("dm-") or p_name.startswith("md")) and _disk_name == _last_disk_name:
                         pass
                     else:
-                        ds_keys_ok_by_major.append(d_name)
-                        last_name = d_name
+                        ds_keys_ok_by_major.append(p_name)
+                        _last_disk_name = _disk_name
                 if ds_keys_ok_by_name != ds_keys_ok_by_major:
                     self._rescan_valid_disk_stuff()
                     ds_keys_ok_by_major = ds_keys_ok_by_name
@@ -410,7 +438,7 @@ class _general(hm_classes.hm_module):
                     try:
                         bname = os.path.basename(dl)
                         if dl.startswith("cciss"):
-                            bname = "cciss!%s" % (bname)
+                            bname = "cciss!{}".format(bname)
                         cur_bs = int(file("/sys/block/{}/queue/hw_sector_size".format(bname), "r").read().strip())
                     except:
                         self.log(
@@ -444,6 +472,11 @@ class _general(hm_classes.hm_module):
                 # pprint.pprint(disk_stat)
         # print dev_list, disk_stat
         # stat_dict["disk_io"] = [blks_read, blks_written]
+        # import pprint
+        # pprint.pprint(disk_stat)
+        # pprint.pprint(psutil.disk_io_counters(perdisk=True))
+        # print sum([_v.write_bytes for _v in psutil.disk_io_counters(perdisk=True).itervalues()])
+        # pprint.pprint(psutil.disk_io_counters(perdisk=False))
         if self.last_vmstat_time is not None:
             tdiff = act_time - self.last_vmstat_time
             vms_tdiff = tdiff
@@ -502,9 +535,13 @@ class _general(hm_classes.hm_module):
                 for act_disk in [dev for dev in unique_dev_list if dev in self.disk_stat]:
                     # print act_disk, disk_stat[act_disk]
                     for idx, what in [(0, "read"), (1, "written")]:
-                        mvect["io.{}.blks.{}".format(act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
+                        mvect["io.{}.blks.{}".format(act_disk, what)] = int(
+                            sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff
+                        )
                     for idx, what in [(5, "read"), (6, "written")]:
-                        mvect["io.{}.bytes.{}".format(act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
+                        mvect["io.{}.bytes.{}".format(act_disk, what)] = int(
+                            sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff
+                        )
                     for idx, what in [(2, "read"), (3, "written"), (4, "io")]:
                         mvect["io.{}.time.{}".format(act_disk, what)] = float(
                             sub_wrap(
@@ -545,7 +582,9 @@ class _general(hm_classes.hm_module):
                 mvect.register_entry("nfs.rpc.badauth", 0., "RPC bad auth", "1/s")
                 mvect.register_entry("nfs.rpc.badclnt", 0., "RPC bad clnt", "1/s")
             nfs_dict = {
-                parts[0]: self._interpret_nfsstat_line(*parts) for parts in [line.split() for line in file(nfs_file, "r").read().split("\n")] if len(parts)
+                parts[0]: self._interpret_nfsstat_line(*parts) for parts in [
+                    line.split() for line in file(nfs_file, "r").read().split("\n")
+                ] if len(parts)
             }
             if self.last_nfsstat_time:
                 tdiff = act_time - self.last_nfsstat_time
@@ -641,14 +680,18 @@ class _general(hm_classes.hm_module):
         for file_name in file_list:
             b_name = os.path.basename(file_name)
             try:
-                cur_list = [line.strip().split() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
+                cur_list = [
+                    line.strip().split() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+                ]
             except:
                 pass
             else:
                 file_dict[b_name] = cur_list
-        read_err_list = [os.path.basename(file_name) for file_name in file_list if os.path.basename(file_name) not in file_dict]
+        read_err_list = [
+            os.path.basename(file_name) for file_name in file_list if os.path.basename(file_name) not in file_dict
+        ]
         file_dict["partitions"] = [line[0:4] for line in file_dict["partitions"] if len(line) > 3]
-        dev_dict, sys_dict = ({}, {})
+        dev_dict = {}
         try:
             real_root_dev = int(open("/proc/sys/kernel/real-root-dev", "r").read().strip())
         except:
@@ -834,7 +877,7 @@ class _general(hm_classes.hm_module):
                                 while dev_name[-1].isdigit():
                                     dev_name = dev_name[:-1]
                                 part_num = int(part_name[len(dev_name):])
-                                dev_name = "/dev/%s" % (dev_name)
+                                dev_name = os.path.join("/dev", dev_name)
                                 if dev_name not in dev_dict:
                                     dev_dict[dev_name] = {}
                                 dev_dict[dev_name]["%d" % (part_num)] = {
@@ -846,7 +889,7 @@ class _general(hm_classes.hm_module):
                     # automount mointpoints
                     auto_mps = []
                     # drop unneeded entries
-                    real_mounts, sys_mounts = ([], [])
+                    real_mounts = []
                     parts_found = []
                     # build fs_tab_dict
                     fs_tab_dict = {}
@@ -914,10 +957,11 @@ class _general(hm_classes.hm_module):
                                         vg_name, lv_name = part.split("/")[2:4]
                                 except:
                                     self.log(
-                                        "error splitting path %s (line %d): %s" % (
+                                        "error splitting path {} (line {:d}): {}".format(
                                             part,
                                             mount_idx,
-                                            process_tools.get_except_info()),
+                                            process_tools.get_except_info()
+                                        ),
                                         logging_tools.LOG_LEVEL_ERROR
                                     )
                                 else:
@@ -970,15 +1014,8 @@ class _general(hm_classes.hm_module):
                         else:
                             if part == mp:
                                 part = "none"
-                            if part not in sys_dict or not any([entry["mountpoint"] == mp for entry in sys_dict[part]]):
-                                sys_dict.setdefault(part, []).append({
-                                    "mountpoint": mp,
-                                    "fstype": fstype,
-                                    "options": opts
-                                })
-                                sys_mounts.append((part, mp, fstype, opts))
                     ret_str = ""
-        return ret_str, dev_dict, sys_dict
+        return ret_str, dev_dict
 
 
 class df_command(hm_classes.hm_command):
@@ -1121,7 +1158,7 @@ class df_command(hm_classes.hm_command):
                     btrfs_result["system"]["total"] +
                     btrfs_result["metadata"]["total"] +
                     btrfs_result["data"]["used"]
-                    ) / 1024
+                ) / 1024
                 # recalc perc
                 result["perc"] = result["used"] * 100 / result["total"]
                 # add an asterisk to show the df-info as recalced
@@ -1165,7 +1202,8 @@ class df_command(hm_classes.hm_command):
                     max_stuff["perc"],
                     max_part,
                     max_stuff["mountpoint"],
-                    logging_tools.get_plural("partition", len(all_parts)))
+                    logging_tools.get_plural("partition", len(all_parts))
+                )
             else:
                 return limits.nag_STATE_CRITICAL, "no partitions found"
 
@@ -1183,7 +1221,8 @@ class df_command(hm_classes.hm_command):
                 logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
                 logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
                 ", mp %s" % (result["mountpoint"]) if "mountpoint" in result else "",
-                part_str)
+                part_str
+            )
         else:
             # all-partition result
             max_stuff = {}
@@ -1199,7 +1238,8 @@ class df_command(hm_classes.hm_command):
                 max_stuff["perc"],
                 max_part,
                 max_stuff["mountpoint"],
-                logging_tools.get_plural("partition", len(all_parts)))
+                logging_tools.get_plural("partition", len(all_parts))
+            )
 
 
 class version_command(hm_classes.hm_command):
@@ -1275,7 +1315,7 @@ class get_uuid_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "uuid is %s" % (srv_com["uuid"].text)
+            return limits.nag_STATE_OK, "uuid is {}".format(srv_com["uuid"].text)
         except:
             return limits.nag_STATE_CRITICAL, "uuid not found"
 
@@ -1327,7 +1367,7 @@ class swap_command(hm_classes.hm_command):
             return ret_state, "swapinfo: %d %% of %s swap" % (
                 swap,
                 logging_tools.get_size_str(swaptot * 1024, strip_spaces=True),
-                )
+            )
 
 
 class mem_command(hm_classes.hm_command):
@@ -1414,7 +1454,8 @@ class mem_command(hm_classes.hm_command):
             memp,
             logging_tools.get_size_str(memtot * 1024),
             allp,
-            logging_tools.get_size_str(alltot * 1024))
+            logging_tools.get_size_str(alltot * 1024)
+        )
 
 
 class sysinfo_command(hm_classes.hm_command):
@@ -1530,11 +1571,16 @@ class uptime_command(hm_classes.hm_command):
         return limits.nag_STATE_OK, "up for %s, %d:%02d" % (
             logging_tools.get_plural("day", up_d),
             up_h,
-            up_m)
+            up_m
+        )
 
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
-        return limits.nag_STATE_OK, "up for %s days, %s hours and %s mins" % (result["up_days"], result["up_hours"], result["up_minutes"])
+        return limits.nag_STATE_OK, "up for {} days, {} hours and {} mins".format(
+            result["up_days"],
+            result["up_hours"],
+            result["up_minutes"]
+        )
 
 
 class date_command(hm_classes.hm_command):
@@ -1552,12 +1598,14 @@ class date_command(hm_classes.hm_command):
             return limits.nag_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
-                err_diff)
+                err_diff
+            )
         elif diff_time > warn_diff:
             return limits.nag_STATE_WARNING, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
-                warn_diff)
+                warn_diff
+            )
         else:
             return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
 
@@ -1572,12 +1620,14 @@ class date_command(hm_classes.hm_command):
             return limits.nag_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
-                err_diff)
+                err_diff
+            )
         elif diff_time > warn_diff:
             return limits.nag_STATE_WARNING, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
-                warn_diff)
+                warn_diff
+            )
         else:
             return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
 
@@ -1631,8 +1681,10 @@ class macinfo_command(hm_classes.hm_command):
             mac_list = []
             for sub_el in sorted(srv_com["macinfo"].iterkeys()):
                 mac_list.append("%s (%s)" % (sub_el, srv_com["macinfo"][sub_el]))
-            return limits.nag_STATE_OK, "%s: %s" % (logging_tools.get_plural("device", len(mac_list)),
-                                                    ", ".join(sorted(mac_list)))
+            return limits.nag_STATE_OK, "{}: {}".format(
+                logging_tools.get_plural("device", len(mac_list)),
+                ", ".join(sorted(mac_list))
+            )
         else:
             return limits.nag_STATE_CRITICAL, "no macaddresses found"
 
@@ -1792,7 +1844,7 @@ class thugepageinfo_command(hm_classes.hm_command):
                 ret_state, ret_str = (limits.nag_STATE_WARNING, "warning: enable=%s, defrag=%s" % (enable_state, defrag_state))
         else:
             ret_state, ret_str = (limits.nag_STATE_CRITICAL, "problem: %s, %s" % (thpage_d_info.text, thpage_f_info.text))
-        return ret_state, "transparent hugepage %s" % (ret_str)
+        return ret_state, "transparent hugepage {}".format(ret_str)
 
 
 class pciinfo_command(hm_classes.hm_command):
@@ -1947,10 +1999,15 @@ class cpuinfo_command(hm_classes.hm_command):
                             logging_tools.form_entry("offline")
                         ]
                     )
-            join_str, head_str = ("\n", "%s: %s, %s%s" % (pre_str,
-                                                          logging_tools.get_plural("socket", cpu_info.num_sockets()),
-                                                          logging_tools.get_plural("core", cpu_info.num_cores()),
-                                                          ", %s" % (", ".join(header_errors)) if header_errors else ""))
+            join_str, head_str = (
+                "\n",
+                "{}: {}, {}{}".format(
+                    pre_str,
+                    logging_tools.get_plural("socket", cpu_info.num_sockets()),
+                    logging_tools.get_plural("core", cpu_info.num_cores()),
+                    ", %s" % (", ".join(header_errors)) if header_errors else ""
+                )
+            )
         return ret_state, join_str.join([head_str] + str(out_list).split("\n"))  # ret_f)
 
 
@@ -1978,9 +2035,13 @@ class lvminfo_command(hm_classes.hm_command):
                 ]
                 for sub_struct in lvm_struct:
                     for sub_el in sub_struct:
-                        out_f.append("%s %-20s: %s" % (sub_el.tag.split("}")[1],
-                                                       sub_el.attrib["name"],
-                                                       sub_el.attrib["uuid"]))
+                        out_f.append(
+                            "{} {:<20s}: {}".format(
+                                sub_el.tag.split("}")[1],
+                                sub_el.attrib["name"],
+                                sub_el.attrib["uuid"]
+                            )
+                        )
                 return limits.nag_STATE_OK, "\n".join(out_f)
             else:
                 return limits.nag_STATE_WARNING, "no LVM-binaries found"
@@ -1989,28 +2050,52 @@ class lvminfo_command(hm_classes.hm_command):
 class partinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
-        ret_str, dev_dict, sys_dict = self.module._partinfo_int()
+        ret_str, dev_dict = self.module._partinfo_int()
         srv_com["ret_str"] = ret_str
         srv_com["dev_dict"] = dev_dict
-        srv_com["sys_dict"] = sys_dict
+        _disk_devices = [_part.device for _part in psutil.disk_partitions()]
+        _all_parts = psutil.disk_partitions(all=True)
+        srv_com["partitions"] = [
+            {
+                "is_disk": _part.device in _disk_devices,
+                "device": _part.device,
+                "mountpoint": _part.mountpoint,
+                "fstype": _part.fstype,
+                "opts": _part.opts
+            } for _part in _all_parts
+        ]
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
-        # print srv_com.pretty_print()
 
     def interpret(self, srv_com, cur_ns):
-        dev_dict, sys_dict, lvm_dict = (
+        dev_dict, lvm_dict = (
             srv_com["dev_dict"],
-            srv_com["sys_dict"],
-            srv_com["lvm_dict"])
-        # (server_command.decompress(srv_com["dev_dict"].text, marshal=True),
-        #                                server_command.decompress(srv_com["sys_dict"].text, marshal=True),
-        #                                server_command.decompress(srv_com["lvm_dict"].text, pickle=True))
+            srv_com["lvm_dict"]
+        )
         lvm_stuff = partition_tools.lvm_struct("xml", xml=lvm_dict)
         all_disks = sorted(dev_dict.keys())
+        if "partitions" in srv_com:
+            partitions = srv_com["*partitions"]
+            # import pprint
+            # pprint.pprint(partitions)
+            sys_dict = {
+                _part["fstype"]: _part for _part in partitions if not _part["is_disk"]
+            }
+            # pprint.pprint(sys_dict)
+        else:
+            sys_dict = srv_com["sys_dict"]
+            for _value in sys_dict.itervalues():
+                # rewrite dict
+                _value["opts"] = _value["options"]
+            partitions = []
         all_sys = sorted(sys_dict.keys())
-        ret_f = ["found %s (%s) and %s:" % (
-            logging_tools.get_plural("disc", len(all_disks)),
-            logging_tools.get_plural("partition", sum([len(value) for value in dev_dict.itervalues()])),
-            logging_tools.get_plural("special mount", len(all_sys)))]
+        ret_f = [
+            "found {} ({}, {}) and {}:".format(
+                logging_tools.get_plural("disc", len(all_disks)),
+                logging_tools.get_plural("partition", sum([len(value) for value in dev_dict.itervalues()])),
+                logging_tools.get_plural("mounted partition", len(partitions)),
+                logging_tools.get_plural("special mount", len(all_sys))
+            )
+        ]
         to_list = logging_tools.new_form_list()
         # to_list.set_format_string(2, pre_string="(", post_string=")")
         # to_list.set_format_string(3, left="", post_string=" MB,")
@@ -2050,7 +2135,8 @@ class partinfo_command(hm_classes.hm_command):
                         part_stuff["fstype"],
                         part_stuff["options"],
                         part_stuff["dump"],
-                        part_stuff["fsck"])
+                        part_stuff["fsck"]
+                    )
                 else:
                     mount_info = ""
                 lut_info = part_stuff.get("lut", None)
@@ -2063,13 +2149,17 @@ class partinfo_command(hm_classes.hm_command):
                         lut_str = "; ".join(lut_info)
                 else:
                     lut_str = "---"
-                to_list.append([logging_tools.form_entry(part_name, header="partition"),
-                                logging_tools.form_entry(part_stuff["hextype"], header="hex"),
-                                logging_tools.form_entry(part_stuff["info"], header="info"),
-                                logging_tools.form_entry_right(part_stuff["size"], header="size (MB)"),
-                                logging_tools.form_entry(part_stuff.get("mountpoint", "none"), header="mountpoint"),
-                                logging_tools.form_entry(mount_info, header="info"),
-                                logging_tools.form_entry(lut_str, header="lut")])
+                to_list.append(
+                    [
+                        logging_tools.form_entry(part_name, header="partition"),
+                        logging_tools.form_entry(part_stuff["hextype"], header="hex"),
+                        logging_tools.form_entry(part_stuff["info"], header="info"),
+                        logging_tools.form_entry_right(part_stuff["size"], header="size (MB)"),
+                        logging_tools.form_entry(part_stuff.get("mountpoint", "none"), header="mountpoint"),
+                        logging_tools.form_entry(mount_info, header="info"),
+                        logging_tools.form_entry(lut_str, header="lut"),
+                    ]
+                )
         ret_f.extend(str(to_list).split("\n"))
         ret_f.append("System partition overview")
         to_list = logging_tools.new_form_list()
@@ -2078,10 +2168,14 @@ class partinfo_command(hm_classes.hm_command):
             if type(sys_stuff) == dict:
                 sys_stuff = [sys_stuff]
             for s_stuff in sys_stuff:
-                to_list.append([logging_tools.form_entry(disk, header="part"),
-                                logging_tools.form_entry(s_stuff["fstype"], header="type"),
-                                logging_tools.form_entry(s_stuff["options"], header="option"),
-                                logging_tools.form_entry(s_stuff["mountpoint"], header="mountpoint")])
+                to_list.append(
+                    [
+                        logging_tools.form_entry(disk, header="part"),
+                        logging_tools.form_entry(s_stuff["fstype"], header="type"),
+                        logging_tools.form_entry(s_stuff["opts"], header="option"),
+                        logging_tools.form_entry(s_stuff["mountpoint"], header="mountpoint"),
+                    ]
+                )
         ret_f.extend(str(to_list).split("\n"))
         if lvm_stuff.lvm_present:
             ret_f.append("LVM info")
@@ -2124,9 +2218,9 @@ class mdstat_command(hm_classes.hm_command):
                 [
                     "{} ({}{}{})".format(
                         cur_raid["name"],
-                        "%s %s" % (cur_raid["state"], cur_raid["type"]) if cur_raid["state"] == "active" else cur_raid["state"],
-                        ", %d blocks" % (cur_raid["blocks"]) if "blocks" in cur_raid else "",
-                        ", resync %s" % (cur_raid["resync"]) if "resync" in cur_raid else ""
+                        "{} {}".format(cur_raid["state"], cur_raid["type"]) if cur_raid["state"] == "active" else cur_raid["state"],
+                        ", {:d} blocks".format(cur_raid["blocks"]) if "blocks" in cur_raid else "",
+                        ", resync {}".format(cur_raid["resync"]) if "resync" in cur_raid else ""
                     ) for cur_raid in raid_list
                 ]
             )
@@ -2269,7 +2363,7 @@ class dmiinfo_command(hm_classes.hm_command):
                 if h_info.lower().startswith("invalid"):
                     break
                 if len(h_info.split(",")) < 3:
-                    h_info = "%s, %s" % (h_info, dec_lines.pop(0)[1])
+                    h_info = "{}, {}".format(h_info, dec_lines.pop(0)[1])
                 top_level, info_str = dec_lines.pop(0)
                 h_info_spl = [part.strip().split() for part in h_info.split(",")]
                 handle_dict = {
@@ -2285,9 +2379,13 @@ class dmiinfo_command(hm_classes.hm_command):
                         try:
                             key, value = line.split(":", 1)
                         except:
-                            self.log("error decoding dmi-line %s: %s" % (line,
-                                                                         process_tools.get_except_info()),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "error decoding dmi-line {}: {}".format(
+                                    line,
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                         else:
                             handle_dict["content"][key.strip()] = value.strip()
                     elif n_level == top_level + 2:
@@ -2304,17 +2402,21 @@ class dmiinfo_command(hm_classes.hm_command):
             # pprint.pprint(dmi_struct)
             out_f = dmi_struct["info"]
             for handle in dmi_struct["handles"]:
-                out_f.extend(["",
-                              handle["info"]])
+                out_f.extend(
+                    [
+                        "",
+                        handle["info"]
+                    ]
+                )
                 for c_key in sorted(handle["content"].keys()):
                     c_value = handle["content"][c_key]
                     if type(c_value) == list:
-                        out_f.append("    %s:" % (c_key))
+                        out_f.append("    {}:".format(c_key))
                         for sub_value in c_value:
-                            out_f.append("        %s" % (sub_value))
+                            out_f.append("        {}".format(sub_value))
                     else:
-                        out_f.append("    %s: %s" % (c_key, c_value))
-            return limits.nag_STATE_OK, "ok %s" % ("\n".join(out_f))
+                        out_f.append("    {}: {}".format(c_key, c_value))
+            return limits.nag_STATE_OK, "ok {}".format("\n".join(out_f))
 
 
 # helper routines

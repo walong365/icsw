@@ -17,7 +17,6 @@
         </tab>
     </tabset>
 
-
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.edit_dialog">
@@ -57,19 +56,28 @@
                                     </div>
                                 </div>
 
-
                             </div>
-                            <div class="checkbox">
+
+                            <div class="col-sm-2"></div>
+                            <div class="checkbox col-sm-10">
                                 <label>
                                     <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
                                     Enabled
+                                </label>
+                            </div>
+
+                            <div class="col-sm-2"></div>
+                            <div class="checkbox col-sm-10">
+                                <label>
+                                    <input class="" ng-model="cur_edit_kpi.soft_states_as_hard_states" type="checkbox"/>
+                                    Interpret soft states as hard states (historic only)
                                 </label>
                             </div>
                         </form>
                     </accordion-group>
                 </accordion>
             </tab>
-            <tab heading="Data source">
+            <tab heading="Data source" select="on_data_source_tab_selected()">
                 <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
 
                 <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
@@ -81,9 +89,19 @@
                     <accordion-group heading="Formula" is-open="true">
                         <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
                     </accordion-group>
-                    <accordion-group heading="Evaluation" is-open="true" ng-show="false">
-                        <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()"></icsw-tools-button>
-                        <icsw-config-kpi-evaluation-graph kpi-idx="cur_edit_kpi.idx" width="870"></icsw-config-kpi-evaluation-graph>
+                    <accordion-group heading="Evaluation" is-open="true" ng-show="true">
+                        <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()" ></icsw-tools-button>
+
+                        <div ng-if="kpi_result.loading" ladda="kpi_result.loading"></div>
+
+                        <div ng-if="!kpi_result.loading">
+                            <icsw-config-kpi-evaluation-graph kpi-result="kpi_result.kpi_set" width="870" ng-show="!kpi_result.kpi_error_report"></icsw-config-kpi-evaluation-graph>
+
+                            <div ng-show="kpi_result.kpi_error_report">
+                                <br />
+                                <alert type="danger" ng-bind-html="kpi_result.kpi_error_report"></alert>
+                            </div>
+                        </div>
                     </accordion-group>
             </tab>
         </tabset>
@@ -136,7 +154,6 @@
                 Please make appropriate marks to select which checks from monitoring categories should apply to which device categories.
             </div>
             -->
-
             <table class="table table-condensed table-hover" style="width: auto;">
                 <tr>
                     <td></td>
@@ -196,14 +213,6 @@
                     <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
                 </div>
             </td>
-            <!--
-            <td>{{get_result_from_kpi_entry(entry)}}</td>
-            <td>
-                <div ng-show="entry.result">
-                    {{entry.result.date | datetime_concise}}
-                </div>
-            </td>
-            -->
             <td>
                 <icsw-tools-button type="modify" size="xs" ng-click="modify_kpi(entry)" ng-show="acl_modify(null, 'backbone.kpi.kpi')"></icsw-tools-button>
                 <icsw-tools-button type="delete" size="xs" ng-click="delete_kpi(entry)" ng-show="acl_delete(null, 'backbone.kpi.kpi')"></icsw-tools-button>

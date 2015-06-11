@@ -21,7 +21,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation",
+        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda"
     ]
 ).controller("icswConfigKpiCtrl", [
     "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "access_level_service"
@@ -74,6 +74,7 @@ angular.module(
                         scope.cur_edit_kpi.available_device_categories.push(tup[0])
                     if ! _.contains(scope.cur_edit_kpi.available_monitoring_categories, tup[1])
                         scope.cur_edit_kpi.available_monitoring_categories.push(tup[1])
+                scope._rebuild_tree()
 
             class base_tree_config extends tree_config
                 constructor: (@scope, args) ->
@@ -97,7 +98,9 @@ angular.module(
                 selection_changed: (entry) =>
                     # update selection in model
                     if entry.selected
-                        @get_category_list().push(entry.obj.idx)
+                        # entry might already be contained if gui information is not present
+                        if !_.contains(@get_category_list(), entry.obj.idx)
+                            @get_category_list().push(entry.obj.idx)
                     else
                         _.remove(@get_category_list(), (rem_item) -> return rem_item == entry.obj.idx)
 
@@ -169,6 +172,7 @@ angular.module(
                     icswConfigKpiDialogService.show_modify_kpi_dlg(scope, kpi)
                 scope.delete_kpi = (kpi) ->
                     icswToolsSimpleModalService("Do you really want to delete the kpi #{kpi.name}?").then(() ->
+                        delete kpi.result  # results is a circular structure
                         kpi.remove().then(() ->
                             _.remove(icswConfigKpiDataService.kpi, kpi)
                         )
@@ -217,9 +221,8 @@ angular.module(
             update_kpi_data_source = () ->
                 icswCallAjaxService
                     url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
-
                     data:
-                        tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
+                        dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
                         time_range: JSON.stringify(cur_edit_kpi.time_range)
                         time_range_parameter: JSON.stringify(cur_edit_kpi.time_range_parameter)
                     success: (xml) ->
@@ -227,6 +230,9 @@ angular.module(
                             res = angular.fromJson($(xml).find("value[name='response']").text())
                             scope.selected_cats_kpi_set = res
             update_kpi_data_source()
+
+            child_scope.on_data_source_tab_selected = () ->
+                update_kpi_data_source()
 
             child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
                 return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> return elem[0] == dev_cat_id and elem[1] == mon_cat_id)
@@ -283,6 +289,7 @@ angular.module(
                         orig_kpi[k] = v
 
                     delete orig_kpi.result  # don't want to put this, possibly remove it from here
+                    #delete orig_kpi.selected_device_monitoring_category_tuple
                     orig_kpi.put()
 
                 else
@@ -292,16 +299,46 @@ angular.module(
 
             child_scope.kpi_set = undefined
 
-            child_scope.calculate_kpi = () ->
-                icswCallAjaxService
-                    url: ICSW_URLS.BASE_CALCULATE_KPI
-                    data:
-                        kpi_pk: cur_edit_kpi.idx
-                        formula: cur_edit_kpi.formula
-                    dataType: "json"
-                    success: (res) ->
-                        console.log 'res', res
 
+            set_kpi_result_to_default = () ->
+                child_scope.kpi_result = {
+                    kpi_set: undefined
+                    kpi_error_report: undefined
+                    loading: false
+                }
+            set_kpi_result_to_default()
+
+            child_scope.calculate_kpi = () ->
+                kpi_serialized = {}
+                key_obj = if cur_edit_kpi.plain? then cur_edit_kpi.plain() else cur_edit_kpi
+                for k in Object.keys(key_obj)
+                    # use keys of plain() object, but values from actual object
+                    # this is because plain() resets all values to the ones sent by the server
+                    # if it's the initial object, it does not have plain yet and we can use the actual obj
+
+                    if k != 'result'  # result would cause circular structure error
+                        kpi_serialized[k] = cur_edit_kpi[k]
+
+                kpi_serialized = JSON.stringify(kpi_serialized)
+                set_kpi_result_to_default()
+                child_scope.kpi_result.loading = true
+                icswCallAjaxService
+                    url: ICSW_URLS.BASE_CALCULATE_KPI_PREVIEW
+                    timeout: 120 * 1000
+                    data:
+                        kpi_serialized: kpi_serialized
+                        dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
+                    success: (xml) ->
+                        if icswParseXMLResponseService(xml)
+                            child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
+
+                            kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
+                            if  kpi_error_report?
+                                # sometimes <type 'int'> or similar occurs in error, handle that
+                                kpi_error_report = (_.escape(line) for line in kpi_error_report)
+                                #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
+                                child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
+                            child_scope.kpi_result.loading = false
 
             # parameters as understood by KpiData.parse_kpi_time_range
             child_scope.kpi_time_ranges = [
@@ -346,6 +383,8 @@ angular.module(
                 time_range: 'none'
                 time_range_parameter: 1
                 enabled: true
+                soft_states_as_hard_states: true
+                formula: "kpi = initial_data"
             }
             show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
         ret.show_modify_kpi_dlg = (scope, kpi) ->

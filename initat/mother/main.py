@@ -57,8 +57,7 @@ def main():
             ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True, help_string="modify /etc/exports [%(default)s]", action="store_true")),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-            ("SERVER_PUB_PORT", configfile.int_c_var(8000, help_string="server publish port [%(default)d]")),
-            ("SERVER_PULL_PORT", configfile.int_c_var(8001, help_string="server pull port [%(default)d]")),
+            ("SERVER_COM_PORT", configfile.int_c_var(8000, help_string="server communication port [%(default)d]")),
         ]
     )
     global_config.parse_file()

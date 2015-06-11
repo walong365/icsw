@@ -52,6 +52,7 @@ angular.module(
                     when 'year' then {'data': ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Sep", "Oct", "Nov", "Dec" ], 'time_points': false}
             else
                 return []
+        return this
 ]).directive("icswDeviceStatusHistoryDevice", ["status_utils_functions", "Restangular", "ICSW_URLS", "msgbus", "$q", (status_utils_functions, Restangular, ICSW_URLS, msgbus, $q) ->
     return {
         restrict : "EA"
@@ -82,7 +83,7 @@ angular.module(
                 else  # legacy data, only have some kind of id string to show
                     serv_name = description
                 return serv_name
-            scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
+            scope.float_format = (n) -> return (n*100).toFixed(3) + "%"
 
             scope.get_time_frame = () ->
                 return status_history_ctrl.time_frame

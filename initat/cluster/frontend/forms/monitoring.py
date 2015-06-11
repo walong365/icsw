@@ -56,13 +56,55 @@ class mon_period_form(ModelForm):
         ),
         Fieldset(
             "Time ranges",
-            Field("sun_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-            Field("mon_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-            Field("tue_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-            Field("wed_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-            Field("thu_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-            Field("fri_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-            Field("sat_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+            Field(
+                "sun_range",
+                placeholder="00:00-24:00",
+                wrapper_class="ng-class:form_error('sun_range')",
+                ng_pattern="/^\d+:\d+-\d+:\d+$/",
+                required="required"
+            ),
+            Field(
+                "mon_range",
+                placeholder="00:00-24:00",
+                wrapper_class="ng-class:form_error('sun_range')",
+                ng_pattern="/^\d+:\d+-\d+:\d+$/",
+                required="required"
+            ),
+            Field(
+                "tue_range",
+                placeholder="00:00-24:00",
+                wrapper_class="ng-class:form_error('sun_range')",
+                ng_pattern="/^\d+:\d+-\d+:\d+$/",
+                required="required"
+            ),
+            Field(
+                "wed_range",
+                placeholder="00:00-24:00",
+                wrapper_class="ng-class:form_error('sun_range')",
+                ng_pattern="/^\d+:\d+-\d+:\d+$/",
+                required="required"
+            ),
+            Field(
+                "thu_range",
+                placeholder="00:00-24:00",
+                wrapper_class="ng-class:form_error('sun_range')",
+                ng_pattern="/^\d+:\d+-\d+:\d+$/",
+                required="required"
+            ),
+            Field(
+                "fri_range",
+                placeholder="00:00-24:00",
+                wrapper_class="ng-class:form_error('sun_range')",
+                ng_pattern="/^\d+:\d+-\d+:\d+$/",
+                required="required"
+            ),
+            Field(
+                "sat_range",
+                placeholder="00:00-24:00",
+                wrapper_class="ng-class:form_error('sun_range')",
+                ng_pattern="/^\d+:\d+-\d+:\d+$/",
+                required="required"
+            ),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
@@ -106,7 +148,7 @@ class mon_notification_form(ModelForm):
             "Flags and text",
             Field("enabled"),
             Field("subject", wrapper_ng_show="edit_obj.channel == 'mail'"),
-            Field("content", required=True),
+            Field("content", required="required"),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
@@ -1326,15 +1368,15 @@ class monitoring_hint_form(ModelForm):
 <div class="form-group">
     <label class="control-label col-sm-4">Lower Critical</label>
     <div class="controls col-sm-8">
-        <input class="form-control" ng-model="_edit_obj.lower_crit_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
-        <input class="form-control" ng-model="_edit_obj.lower_crit_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+        <input class="form-control" ng-model="_edit_obj.lower_crit_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/>
+        <input class="form-control" ng-model="_edit_obj.lower_crit_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/>
     </div>
 </div>
 <div class="form-group">
     <label class="control-label col-sm-4">Lower Warning</label>
     <div class="controls col-sm-8">
-        <input class="form-control" ng-model="_edit_obj.lower_warn_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
-        <input class="form-control" ng-model="_edit_obj.lower_warn_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+        <input class="form-control" ng-model="_edit_obj.lower_warn_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/>
+        <input class="form-control" ng-model="_edit_obj.lower_warn_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/>
     </div>
 </div>
 """),
@@ -1345,15 +1387,15 @@ class monitoring_hint_form(ModelForm):
 <div class="form-group">
     <label class="control-label col-sm-4">Upper Warning</label>
     <div class="controls col-sm-8">
-        <input class="form-control" ng-model="_edit_obj.upper_warn_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
-        <input class="form-control" ng-model="_edit_obj.upper_warn_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+        <input class="form-control" ng-model="_edit_obj.upper_warn_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/>
+        <input class="form-control" ng-model="_edit_obj.upper_warn_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/>
     </div>
 </div>
 <div class="form-group">
     <label class="control-label col-sm-4">Upper Critial</label>
     <div class="controls col-sm-8">
-        <input class="form-control" ng-model="_edit_obj.upper_crit_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
-        <input class="form-control" ng-model="_edit_obj.upper_crit_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+        <input class="form-control" ng-model="_edit_obj.upper_crit_float" required="required" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"/>
+        <input class="form-control" ng-model="_edit_obj.upper_crit_int" required="required" type="number" ng-show="_edit_obj.v_type == 'i'"/>
     </div>
 </div>
 """),

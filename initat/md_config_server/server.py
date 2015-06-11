@@ -21,7 +21,7 @@
 import json
 
 import os
-from initat.tools.server_mixins import RemoteCallMessageType, RemoteCall
+from initat.tools.server_mixins import RemoteCallMessageType, RemoteCall, ServerStatusMixin
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -39,7 +39,7 @@ from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
-from initat.md_config_server.kpi import KpiProcess, KpiData
+from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
 from initat.tools import cluster_location
 import codecs
@@ -55,11 +55,14 @@ import zmq
 
 
 @server_mixins.RemoteCallProcess
-class server_process(threading_tools.process_pool,
-                     version_check_mixin,
-                     server_mixins.RemoteCallMixin,
-                     server_mixins.OperationalErrorMixin,
-                     server_mixins.NetworkBindMixin):
+class server_process(
+    threading_tools.process_pool,
+    version_check_mixin,
+    server_mixins.RemoteCallMixin,
+    server_mixins.OperationalErrorMixin,
+    server_mixins.NetworkBindMixin,
+    ServerStatusMixin,
+):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -472,11 +475,15 @@ class server_process(threading_tools.process_pool,
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
 
-    @server_mixins.RemoteCall(target_process="KpiProcess")
-    def calculate_kpi(self, srv_com, **kwargs):
+    @RemoteCall(target_process="KpiProcess")
+    def calculate_kpi_preview(self, srv_com, **kwargs):
         return srv_com
 
-    @server_mixins.RemoteCall(target_process="KpiProcess")
+    @RemoteCall(target_process="KpiProcess")
+    def calculate_kpi_db(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="KpiProcess")
     def get_kpi_source_data(self, srv_com, **kwargs):
         return srv_com
 
@@ -542,6 +549,10 @@ class server_process(threading_tools.process_pool,
     @RemoteCall(target_process="dynconfig")
     def passive_check_results_as_chunk(self, srv_com, **kwargs):
         return srv_com
+
+    @RemoteCall()
+    def status(self, srv_com, **kwargs):
+        return self.server_status(srv_com, self.__msi_block, global_config)
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)

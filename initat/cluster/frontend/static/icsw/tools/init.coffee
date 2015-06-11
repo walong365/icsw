@@ -636,28 +636,37 @@ angular.module(
         template : $templateCache.get("icsw.tools.old.paginator")
         link     : link
     }
-]).service("icswToolsSimpleModalService", ["$modal", "$q", "$templateCache", ($modal, $q, $templateCache) ->
+]).service("icswToolsSimpleModalService", ["$q", ($q) ->
     return (question) ->
-        c_modal = $modal.open
-            template : $templateCache.get("icsw.tools.simple.modal")
-            controller : ["$scope", "$modalInstance", "question", ($scope, $modalInstance, question) ->
-                $scope.question = question
-                $scope.ok = () ->
-                    $modalInstance.close(true)
-                $scope.cancel = () ->
-                    $modalInstance.dismiss("cancel")
-            ]
-            backdrop : "static"
-            resolve :
-                question : () ->
-                    return question
         d = $q.defer()
-        c_modal.result.then(
-            () ->
-                return d.resolve()
-            () ->
-                return d.reject()
-        )
+        BootstrapDialog.show
+            message: question
+            draggable: true
+            size: BootstrapDialog.SIZE_SMALL
+            title: "Please confirm"
+            closable: true
+            closeByBackdrop: false
+            buttons: [
+                {
+                     icon: "glyphicon glyphicon-ok"
+                     cssClass: "btn-warning"
+                     label: "Yes"
+                     action: (dialog) ->
+                        dialog.close()
+                        d.resolve()
+                },
+                {
+                    icon: "glyphicon glyphicon-remove"
+                    label: "No"
+                    cssClass: "btn-success"
+                    action: (dialog) ->
+                        dialog.close()
+                        d.reject()
+                },
+            ]
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
         return d.promise
 ]).service("icswToolsUUID", [() ->
     return () ->
@@ -859,4 +868,86 @@ angular.module(
             # not an array, ignore filter
             out = items
         return out
-)
+).service("icswCachingCall", ["$interval", "$timeout", "$q", "Restangular", ($inteval, $timeout, $q, Restangular) ->
+    class LoadInfo
+        constructor: (@key, @url, @options) ->
+            @client_dict = {}
+            @client_pk_list = {}
+            # initial value is null (== no filtering)
+            @pk_list = null
+        add_pk_list: (client, pk_list) =>
+            if pk_list != null
+                # got a non-null pk_list
+                if @pk_list == null
+                    # init pk_list if the list was still null
+                    @pk_list = []
+                @pk_list = _.uniq(@pk_list.concat(pk_list))
+            @client_pk_list[client] = pk_list
+            _defer = $q.defer()
+            @client_dict[client] = _defer
+            return _defer
+        load: () =>
+            opts = {}
+            for key, value of @options
+                if value == "<PKS>"
+                    if @pk_list != null
+                        # only set options when pk_list was not null
+                        opts[key] = angular.toJson(@pk_list)
+                else
+                    opts[key] = value
+            Restangular.all(@url.slice(1)).getList(opts).then(
+                (result) =>
+                    for c_id, _defer of @client_dict
+                        _c_pk_list = @client_pk_list[c_id]
+                        if !_c_pk_list or _c_pk_list.length == @pk_list.length
+                            _defer.resolve(result)
+                        else
+                            local_result = []
+                            for _pk_res in _.zip(@pk_list, result)
+                                if _pk_res[0] in _c_pk_list
+                                    local_result.push(_pk_res[1])
+                            _defer.resolve(local_result)
+                    @client_dict = {}
+                    @pk_list = null
+            )
+    start_timeout = {}
+    load_info = {}
+    schedule_load = (key) ->
+        # called when new listeners register
+        # don't update immediately, wait until more controllers have registered
+        if start_timeout[key]?
+            $timeout.cancel(start_timeout[key])
+            delete start_timeout[key]
+        if not start_timeout[key]?
+            start_timeout[key] = $timeout(
+                () ->
+                    load_info[key].load()
+                1
+            )
+    add_client = (client, url, options, pk_list) ->
+        url_key = _key(url, options, pk_list)
+        if url_key not of load_info
+            load_info[url_key] = new LoadInfo(url_key, url, options)
+        return load_info[url_key].add_pk_list(client, pk_list)
+    _key = (url, options, pk_list) ->
+        url_key = url
+        for key, value of options
+            url_key = "#{url_key},#{key}=#{value}"
+        if pk_list == null
+            # distinguish calls with pk_list == null (all devices required)
+            url_key = "#{url_key}Z"
+        return url_key
+    return {
+        "fetch" : (client, url, options, pk_list) ->
+            _defer = add_client(client, url, options, pk_list)
+            schedule_load(_key(url, options, pk_list))
+            return _defer.promise
+    }
+]).directive("icswLogDomCreation", [() ->
+    return {
+        restrict: 'A'
+        link : (scope, el, attrs) ->
+            mom = moment()
+            console.log("creating element: ", attrs.icswLogDomCreation, scope.$index, mom.format(), mom.milliseconds())
+    }
+])

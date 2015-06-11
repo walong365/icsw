@@ -27,13 +27,14 @@ import pprint
 
 from collections import defaultdict
 from enum import IntEnum, Enum
+import pytz
 
 from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
-from initat.md_config_server.kpi.kpi_utils import KpiUtils
 from initat.tools import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
-    mon_icinga_log_raw_host_alert_data, mon_icinga_log_aggregated_host_data
-from initat.cluster.backbone.models import mon_icinga_log_aggregated_service_data, mon_check_command, category, device
+    mon_icinga_log_raw_host_alert_data
+from initat.cluster.backbone.models import mon_check_command, device, \
+    cluster_timezone
 
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
@@ -231,8 +232,12 @@ class KpiDetailObject(KpiObject):
         return super(KpiDetailObject, self).__repr__(child_repr=child_repr + ";time_line:{}".format(self.time_line))
 
     def serialize(self):
+        aggr_tl = TimeLineUtils.merge_state_types(
+            self.time_line,
+            KpiGlobals.current_kpi.soft_states_as_hard_states,
+        )
         return dict(
-            aggregated_tl={unicode(k): v for k, v in TimeLineUtils.merge_state_types(self.time_line).iteritems()},
+            aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
             **super(KpiDetailObject, self).serialize()
         )
 
@@ -340,7 +345,10 @@ class KpiTimeLineObject(KpiObject):
         self.time_line = time_line
 
     def serialize(self):
-        aggr_tl = TimeLineUtils.merge_state_types(TimeLineUtils.aggregate_time_line(self.time_line))
+        aggr_tl = TimeLineUtils.merge_state_types(
+            TimeLineUtils.aggregate_time_line(self.time_line),
+            KpiGlobals.current_kpi.soft_states_as_hard_states,
+        )
         return dict(
             aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
             **super(KpiTimeLineObject, self).serialize()
@@ -366,6 +374,7 @@ class KpiOperation(object):
         evaluate_rrd = 7
         get_historic_data = 8
         aggregate_historic = 9
+        exclude = 10
 
     def __init__(self, type, operands=None, arguments=None):
         if arguments is None:
@@ -452,12 +461,12 @@ class KpiSet(object):
     def get_singleton_unknown(cls, **kwargs):
         return KpiSet([KpiObject(result=KpiResult.unknown)], **kwargs)
 
-    def __init__(self, objects, origin):
+    def __init__(self, objects=None, origin=None):
         """
         :type objects: list of KpiObject
         :type origin: KpiOperation | None
         """
-        self.objects = objects
+        self.objects = objects if objects is not None else []
         self.origin = origin if origin else KpiOperation(type=KpiOperation.Type.initial)
 
     """
@@ -491,6 +500,42 @@ class KpiSet(object):
         else:
             result = KpiResult.critical
         return result
+
+    def _filter_impl(self, parameters, positive):
+        """
+        Implementation of filter and exclude
+        :param parameters: kwargs of actual filter/exclude fun
+        :param positive: True for filter, False for exclude
+        """
+        objects = self.objects
+
+        def check_match(match_check_fun, obj):
+            # apply match_check_fun to obj
+            if isinstance(obj, (list, tuple)):
+                # for convenience in specifying kpis:
+                return any(match_check_fun(obj_entry) for obj_entry in obj)
+            else:
+                return match_check_fun(obj)
+
+        for k, v in parameters.iteritems():
+            # match_check_fun is actually 'equality'-testing
+            if isinstance(v, basestring):
+                match_re = re.compile(u".*{}.*".format(v))
+                match_check_fun = lambda x: x is not None and match_re.match(x)
+            else:
+                match_check_fun = lambda x: x == v
+
+            if positive:
+                objects = [
+                    obj for obj in objects if
+                    check_match(match_check_fun, getattr(obj, k, None))
+                ]
+            else:
+                objects = [
+                    obj for obj in objects if
+                    not check_match(match_check_fun, getattr(obj, k, None))
+                ]
+        return objects
 
     ########################################
     # data accessors
@@ -553,25 +598,17 @@ class KpiSet(object):
         Matches on all properties. Interprets strings as regexp /.*thestring.*/.
         If properties are lists or tuples, checks if any of them match.
         """
-        objects = self.objects
-
-        def check_match(match_check_fun, obj):
-            if isinstance(obj, (list, tuple)):
-                # for convenience in specifying kpis:
-                return any(match_check_fun(obj_entry) for obj_entry in obj)
-            else:
-                return match_check_fun(obj)
-
-        for k, v in kwargs.iteritems():
-            if isinstance(v, basestring):
-                match_re = re.compile(u".*{}.*".format(v))
-                match_check_fun = lambda x: x is not None and match_re.match(x)
-            else:
-                match_check_fun = lambda x: x == v
-            objects = [obj for obj in objects if
-                       check_match(match_check_fun, getattr(obj, k, None))]
-
+        objects = self._filter_impl(kwargs, positive=True)
         return KpiSet(objects, origin=KpiOperation(KpiOperation.Type.filter, arguments=kwargs, operands=[self]))
+
+    def exclude(self, **kwargs):
+        """
+        Inverse to `filter`. Returns all objects which `filter` removes.
+        This invariant holds for any kpi_set and params (modulo ordering):
+        kpi_set == kpi_set.filter(params) + kpi_set.exclude(params)
+        """
+        objects = self._filter_impl(kwargs, positive=False)
+        return KpiSet(objects, origin=KpiOperation(KpiOperation.Type.exclude, arguments=kwargs, operands=[self]))
 
     def union(self, kpi_set):
         return KpiSet(self.objects + kpi_set.objects,
@@ -581,7 +618,8 @@ class KpiSet(object):
 
     def at_least(self, num_ok, num_warn=None, result=KpiResult.ok):
         """
-        Check if at_least a number of objects have a certain result.
+        Check if at_least a number of objects have at least a certain result
+        (i.e. if checking for e.g. warning, ok is included).
         If num_warn is None, the result can only be ok or critical.
         :type result: KpiResult
         """
@@ -592,7 +630,7 @@ class KpiSet(object):
                               arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
                               operands=[self])
 
-        num = sum(1 for obj in self.result_objects if obj.result == result)
+        num = sum(1 for obj in self.result_objects if obj.result >= result)
 
         if num > num_ok:
             return KpiSet.get_singleton_ok(origin=origin)
@@ -630,12 +668,37 @@ class KpiSet(object):
     def historic_and(self):
         return self.aggregate_historic(method='and')
 
-    def get_historic_data(self):
+    def get_historic_data(self, start=None, end=None):
+        """
+        Returns a KpiSet containing historic data for each KpiObject in the original set which has historic data.
+        :param start: Desired start for historic data. Defaults to global kpi time range start
+        :param end: Desired end for historic data. Defaults to global kpi time range end
+        """
         relevant_obj_identifiers = [obj.get_machine_object_id_properties() for obj in self.host_objects]
 
         objects = []
         if relevant_obj_identifiers:
-            start, end = KpiUtils.parse_kpi_time_range_from_kpi(KpiGlobals.current_kpi)
+            kpi_global_start, kpi_global_end = KpiGlobals.current_kpi.get_time_range()
+
+            # help user by fixing their timezones
+            fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
+
+            start = fix_tz(start) if start is not None else kpi_global_start
+            end = fix_tz(end) if end is not None else kpi_global_end
+
+            if start < kpi_global_start:
+                raise RuntimeError(
+                    "Start date for get_historic_data() is earlier than KPI time range start ({} < {})".format(
+                        start, kpi_global_start,
+                    )
+                )
+
+            if end > kpi_global_end:
+                raise RuntimeError(
+                    "End date for get_historic_data() is later than KPI time range end ({} > {})".format(
+                        end, kpi_global_end,
+                    )
+                )
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())
@@ -698,7 +761,7 @@ class KpiSet(object):
 
                 # also aggregate state types
                 ratio = sum(v for k, v in aggregated_tl.iteritems()
-                            if k[0] == result)
+                            if k[0] >= result)
 
                 if discard_planned_downtimes:
                     ratio_planned_down = sum(v for k, v in aggregated_tl.iteritems()

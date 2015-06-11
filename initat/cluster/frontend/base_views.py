@@ -239,26 +239,26 @@ class GetKpiSourceData(View):
     @rest_logging
     def post(self, request):
         srv_com = server_command.srv_command(command="get_kpi_source_data")
-        srv_com['tuples'] = request.POST['tuples']
+        srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
         srv_com['time_range'] = request.POST['time_range']
         srv_com['time_range_parameter'] = request.POST['time_range_parameter']
         result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
         if result:
-            request.xml_response['response'] = json.dumps(result['kpi_set'])
+            request.xml_response['response'] = result['kpi_set']
 
 
-class CalculateKpi(ListAPIView):
+class CalculateKpiPreview(ListAPIView):
     @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
     @rest_logging
     def post(self, request):
-        # TODO: not fully implemented yet
-        srv_com = server_command.srv_command(command="calculate_kpi")
-        srv_com["kpi_pk"] = request.POST['kpi_pk']
-        srv_com["formula"] = request.POST['formula']
-        print 'contacting server'
-        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
-        print 'contact serv result', result
-        return HttpResponse(json.dumps(""))
+        srv_com = server_command.srv_command(command="calculate_kpi_preview")
+        srv_com["kpi_serialized"] = request.POST['kpi_serialized']
+        srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
+        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False, timeout=120)
+        if result:
+            request.xml_response['kpi_set'] = result.get('kpi_set', json.dumps(None))
+            request.xml_response['kpi_error_report'] = result.get('kpi_error_report', json.dumps(None))
 
 
 class CheckDeleteObject(View):

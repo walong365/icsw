@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,23 +22,29 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.routing import get_server_uuid
-from initat.discovery_server.config import global_config, IPC_SOCK_SNMP
-from initat.discovery_server.discovery import discovery_process
 from initat.snmp.process import snmp_process_container
-from lxml import etree  # @UnresolvedImport @UnusedImport
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import logging_tools
-import pprint  # @UnusedImport
 from initat.tools import process_tools
 from initat.tools import server_command
+from initat.tools import server_mixins
 from initat.tools import threading_tools
 import zmq
+from initat.tools.server_mixins import RemoteCall
+
+from .config import global_config, IPC_SOCK_SNMP
+from .discovery import DiscoveryProcess
 
 
-class server_process(threading_tools.process_pool):
+@server_mixins.RemoteCallProcess
+class server_process(
+    threading_tools.process_pool,
+    server_mixins.NetworkBindMixin,
+    server_mixins.RemoteCallMixin,
+    server_mixins.OperationalErrorMixin,
+    server_mixins.ServerStatusMixin,
+):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -51,18 +57,21 @@ class server_process(threading_tools.process_pool):
         self._re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
-        self.add_process(discovery_process("discovery"), start=True)
+        self.add_process(DiscoveryProcess("discovery"), start=True)
         self._init_network_sockets()
-        self.register_func("discovery_result", self._discovery_result)
         self.register_func("snmp_run", self._snmp_run)
         # self.add_process(build_process("build"), start=True)
         connection.close()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
         self._init_processes()
+        # not really necessary
+        self.install_remote_call_handlers()
+        # clear pending scans
+        self.clear_pending_scans()
         self.__run_idx = 0
         self.__pending_commands = {}
-        if process_tools.get_machine_name() == "eddie" and global_config["DEBUG"]:
+        if process_tools.get_machine_name() == "eddiex" and global_config["DEBUG"]:
             self._test()
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -72,6 +81,14 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
+    def clear_pending_scans(self):
+        _pdevs = device.objects.exclude(Q(active_scan=""))
+        if len(_pdevs):
+            self.log("clearing active_scan of {}".format(logging_tools.get_plural("device", len(_pdevs))))
+            for _dev in _pdevs:
+                _dev.active_scan = ""
+                _dev.save(update_fields=["active_scan"])
 
     def _int_error(self, err_cause):
         if not self.__snmp_running:
@@ -130,100 +147,73 @@ class server_process(threading_tools.process_pool):
         for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
         conf_info = global_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
+        self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
 
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
-            self.__msi_block.save_block()
+        self.__msi_block.add_actual_pid(src_pid, mult=mult)
+        self.__msi_block.save_block()
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
-        if not global_config["DEBUG"] or True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("discovery-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("discovery-server")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+        msi_block.kill_pids = True
+        msi_block.save_block()
         return msi_block
 
     def loop_end(self):
         self.spc.close()
         process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.com_socket.close()
+        self.network_unbind()
         self.__log_template.close()
 
     def _init_network_sockets(self):
-        my_0mq_id = get_server_uuid("config")
-        self.bind_id = my_0mq_id
-        # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
-        self.com_socket = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id)
-        conn_str = "tcp://*:{:d}".format(global_config["SERVER_PORT"])
-        try:
-            self.com_socket.bind(conn_str)
-        except zmq.ZMQError:
-            self.log(
-                "error binding to {}: {}".format(
-                    conn_str,
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
-            self.com_socket.close()
-        else:
-            self.log(
-                "bind socket to {}".format(
-                    conn_str,
-                )
-            )
-            self.register_poller(self.com_socket, zmq.POLLIN, self._new_com)  # @UndefinedVariable
+        self.network_bind(
+            need_all_binds=False,
+            bind_port=global_config["SERVER_PORT"],
+            bind_to_localhost=True,
+            server_type="discovery",
+            simple_server_bind=True,
+            pollin=self.remote_call,
+        )
 
-    def _discovery_result(self, *args, **kwargs):
-        _src_prod, _src_pid, id_str, srv_com = args
-        if id_str:
-            try:
-                self.com_socket.send_unicode(id_str, zmq.SNDMORE)  # @UndefinedVariable
-                self.com_socket.send_unicode(srv_com)
-            except:
-                self.log(
-                    "error sending to {}: {}".format(id_str, process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-        else:
-            self.log("empty id_str, sending no return", logging_tools.LOG_LEVEL_WARN)
+    @RemoteCall()
+    def status(self, srv_com, **kwargs):
+        return self.server_status(srv_com, self.__msi_block, global_config, spc=self.spc)
 
-    def _new_com(self, zmq_sock):
-        data = [zmq_sock.recv_unicode()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-            data.append(zmq_sock.recv_unicode())
-        if len(data) == 2:
-            c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
-            cur_com = srv_com["command"].text
-            srv_com.update_source()
-            if cur_com in [
-                "fetch_partition_info", "scan_network_info", "snmp_basic_scan",
-            ]:
-                self.send_to_process("discovery", cur_com, c_uid, unicode(srv_com))
-            else:
-                srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                self.com_socket.send_unicode(c_uid, zmq.SNDMORE)  # @UndefinedVariable
-                self.com_socket.send_unicode(unicode(srv_com))
+    @RemoteCall(target_process="discovery")
+    def fetch_partition_info(self, srv_com, **kwargs):
+        return srv_com
 
-        else:
-            self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
-                     logging_tools.LOG_LEVEL_ERROR)
+    @RemoteCall(target_process="discovery")
+    def scan_network_info(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
+    def snmp_basic_scan(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
+    def snmp_basic_scan(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
+    def snmp_basic_scan(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
+    def base_scan(self, srv_com, **kwargs):
+        return srv_com
 
     def _snmp_finished(self, args):
         self.send_to_process("discovery", "snmp_result", *args["args"])
@@ -239,7 +229,7 @@ class server_process(threading_tools.process_pool):
             # snmp_address="192.168.1.50",
             # snmp_address="192.168.2.12",
         )
-        self.send_to_process("discovery", _srv_com["*command"], "", unicode(_srv_com))
+        self.send_to_process("discovery", _srv_com["*command"], unicode(_srv_com))
 
     def _snmp_run(self, *args, **kwargs):
         # ignore src specs

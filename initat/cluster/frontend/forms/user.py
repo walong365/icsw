@@ -350,7 +350,7 @@ class user_detail_form(ModelForm):
             Field(
                 "export",
                 wrapper_ng_show="!_edit_obj.only_webfrontend",
-                ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"
+                ng_options="value.idx as value.home_info_string for value in get_export_list()"
             ),
             HTML("""
 <div class='form-group' ng-show='!_edit_obj.only_webfrontend'>

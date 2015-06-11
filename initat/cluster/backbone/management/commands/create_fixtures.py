@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -371,6 +371,7 @@ class Command(BaseCommand):
         factories.PartitionFS(name="xfs", identifier="f", descr="XFS Filesystem", hexid="83", kernel_module="xfs")
         factories.PartitionFS(name="btrfs", identifier="f", descr="BTRFS Filesystem", hexid="83", kernel_module="btrfs")
         factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kernel_module="ocfs2")
+        factories.PartitionFS(name="gpfs", identifier="f", descr="GPFS Filesystem", hexid="00", kernel_module="mmfs26", need_hexid=False)
         # LogLevel
         factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
         factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")
@@ -432,6 +433,31 @@ class Command(BaseCommand):
         factories.WindowManager(name="gnome", description="GNOME", binary="gnome-session")
         factories.WindowManager(name="windowmaker", description="Window Maker", binary="wmaker")
 
+        # ComCapabilities
+        factories.ComCapability(
+            matchcode="hm",
+            name="host-monitoring",
+            info="init.at host-monitoring software",
+            port_spec="2001/tcp",
+        )
+        factories.ComCapability(
+            matchcode="snmp",
+            name="SNMP",
+            info="Simple Network Management Protocol",
+            port_spec="161/tcp, 161/udp",
+        )
+        factories.ComCapability(
+            matchcode="ipmi",
+            name="IPMI",
+            info="Intelligent Platform Management Interface",
+            port_spec="623/udp",
+        )
+        factories.ComCapability(
+            matchcode="wmi",
+            name="WMI",
+            info="Windows Management Instrumentation",
+            port_spec="135/tcp",
+        )
         # hints
         _server_cfg = factories.ConfigHint(
             config_name="server",

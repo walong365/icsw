@@ -1015,7 +1015,7 @@ def rescan_kernels():
     _conn = net_tools.zmq_connection(
         "copy_local_kernel",
         timeout=30,
-        )
+    )
     result = _conn.add_connection(_conn_str, srv_com)
     if result is None:
         res_str, res_state = (

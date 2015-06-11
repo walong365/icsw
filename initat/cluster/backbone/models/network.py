@@ -166,6 +166,9 @@ class network(models.Model):
     def get_identifier(self):
         return self.network_type.identifier
 
+    def get_type_name(self):
+        return self.network_type.description
+
     def num_ip(self):
         return self.net_ip_set.all().count()
 
@@ -355,7 +358,6 @@ def net_ip_pre_delete(sender, **kwargs):
 def net_ip_post_save(sender, **kwargs):
     cur_inst = kwargs["instance"]
     if kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
-        cur_inst = kwargs["instance"]
         if cur_inst.ip == "127.0.0.1" and kwargs["created"] and not cur_inst.alias.strip():
             cur_inst.alias = "localhost"
             cur_inst.alias_excl = True
@@ -377,6 +379,8 @@ def net_ip_post_save(sender, **kwargs):
                     raise ValidationError("too many IP-adresses in a boot network defined")
             if cur_inst.netdevice.device.bootserver_id:
                 bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
+        if cur_inst.netdevice.device.bootserver_id:
+            bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="netdevice_changed")
 
 
 class netdevice(models.Model):
@@ -554,8 +558,10 @@ def netdevice_pre_save(sender, **kwargs):
                 cur_inst.macaddr = cur_inst.macaddr.replace("-", ":").lower()
             if cur_inst.fake_macaddr:
                 cur_inst.fake_macaddr = cur_inst.fake_macaddr.replace("-", ":").lower()
-            dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
-                                 re.compile("^{}$".format(":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
+            dummy_mac, mac_re = (
+                ":".join(["00"] * cur_inst.network_device_type.mac_bytes),
+                re.compile("^{}$".format(":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes)))
+            )
             # set empty if not set
             try:
                 if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:

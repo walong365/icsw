@@ -17,9 +17,10 @@ char* parse_uuid() {
             if (uuid_buffer[i] == ':') colons_passed++;
         };
         close(uuid_file);
-        sprintf(identity_str, "%s:%s", identity_str, SERVICE_NAME);
+        sprintf(identity_str, "%s:%s:", identity_str, SERVICE_NAME);
     } else {
         sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
     };
+    printf(identity_str);
     return identity_str;
 };

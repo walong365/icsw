@@ -35,6 +35,7 @@ class network_type_serializer(serializers.ModelSerializer):
 class network_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
     network_type_identifier = serializers.Field(source="get_identifier")
+    network_type_name = serializers.Field(source="get_type_name")
     num_ip = serializers.Field(0)
 
     class Meta:

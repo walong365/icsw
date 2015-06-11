@@ -23,8 +23,7 @@ import django.utils.timezone
 from django.db.models import Q
 import operator
 import itertools
-from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList, \
-    mon_icinga_log_raw_host_alert_data
+from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList
 
 
 # itertools recipe
@@ -87,6 +86,7 @@ class TimeLineUtils(list):
                     tl.append(
                         TimeLineEntry(date=alert.date, state=(convert_state(alert.state), alert.state_type))
                     )
+                last_alert = alert
 
         # add final entry
         for tl in time_lines.itervalues():
@@ -130,7 +130,7 @@ class TimeLineUtils(list):
             mon_icinga_log_raw_base.STATE_UNDETERMINED: 2,
         }
 
-        def add_to_compound_tl(date, current_tl_states):
+        def add_to_compound_tl(date, current_tl_states, force_add=False):
             # key_fun = lambda state: (state_ordering[state[0]], state_type_ordering[state[1]])
             key_fun = lambda state: (state[0], state_type_ordering[state[1]])
             if method == 'or':
@@ -141,7 +141,8 @@ class TimeLineUtils(list):
                 raise RuntimeError("Invalid aggregate_historic method: {}".format(method) +
                                    "(must be either 'or' or 'and')")
 
-            if not compound_time_line or compound_time_line[-1].state != next_state:  # only update on state change
+            if not compound_time_line or compound_time_line[-1].state != next_state or force_add:
+                # only add entries on state change or if otherwise necessary
                 compound_time_line.append(TimeLineEntry(date, next_state))
 
         current_tl_states = [tl[0].state for tl in time_lines]
@@ -155,7 +156,10 @@ class TimeLineUtils(list):
             next_entry = time_lines[next_queue].popleft()
             current_tl_states[next_queue] = next_entry.state
 
-            add_to_compound_tl(next_entry.date, current_tl_states)
+            is_last = not any(time_lines)
+            # we need to make sure that the last entry is added as every time line ends with the final date
+
+            add_to_compound_tl(next_entry.date, current_tl_states, force_add=is_last)
 
         return compound_time_line
 
@@ -170,10 +174,24 @@ class TimeLineUtils(list):
         return {k: v / total_time_span for k, v in states_accumulator.iteritems()}
 
     @staticmethod
-    def merge_state_types(aggregated_tl):
+    def merge_state_types(time_line, soft_states_as_hard_states):
+        """
+        Remove state type intelligently
+        """
+        from initat.md_config_server.kpi.kpi_language import KpiResult
         accumulator = collections.defaultdict(lambda: 0)
-        for k, v in aggregated_tl.iteritems():
-            accumulator[k[0]] += v
+        if soft_states_as_hard_states:
+            for k, v in time_line.iteritems():
+                accumulator[k[0]] += v
+        else:
+            for k, v in time_line.iteritems():
+                # treat some soft states as different states (soft down isn't necessarily actually down)
+                if k[0] == KpiResult.critical and k[1] == mon_icinga_log_raw_base.STATE_TYPE_SOFT:
+                    actual_state = KpiResult.warning
+                else:
+                    # states like soft ok and soft warn are just treated as ok and warn respectively
+                    actual_state = k[0]
+                accumulator[actual_state] += v
         return accumulator
 
 

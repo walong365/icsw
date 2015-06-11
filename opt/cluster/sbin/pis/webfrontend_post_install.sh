@@ -27,8 +27,6 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
         echo "no reload-dir found, please restart uwsgi-init"
     fi
 
-    # restart memcached to clean compiled coffeescript snippets
-    echo "restarting memcached (invalidating all existing sessions)"
-    /etc/init.d/memcached restart
+    # restart memcached is now handled via the meta-server
 
 fi

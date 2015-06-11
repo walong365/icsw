@@ -770,9 +770,9 @@ class meta_server_info(object):
             return None
 
     def check_block(self, act_dict={}):
+        if not act_dict:
+            act_dict = get_proc_list()
         if not self.__pids:
-            if not act_dict:
-                act_dict = get_proc_list()
             # search pids
             # print act_dict.keys()
             try:
@@ -844,26 +844,42 @@ class meta_server_info(object):
                 _ok = True
         return _ok
 
-    @property
-    def pid_check_string(self):
-        return ", ".join(
-            [
-                "{:d}: {}".format(
-                    cur_pid,
-                    "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in self.missing_list else (
-                        "{:d} {}, {:d} found)".format(
-                            abs(self.bound_dict[cur_pid]),
-                            "missing (lower bound is {:d}".format(
-                                self.__pids_expected[cur_pid][0]
-                            ) if self.bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
-                                self.__pids_expected[cur_pid][1]
-                            ),
-                            self.__pids_found.get(cur_pid, 0),
-                        ) if self.bound_dict[cur_pid] else "OK"
-                    )
-                ) for cur_pid in sorted(self.bound_dict.iterkeys())
-            ]
-        ) or "no PIDs"
+    def pid_check_string(self, proc_dict):
+        def _get_mis_info(cur_pid):
+            if cur_pid in self.missing_list:
+                return "all {} missing".format(self.__pids_expected[cur_pid][0])
+            elif self.bound_dict[cur_pid]:
+                return "{:d} {}, {:d} found)".format(
+                    abs(self.bound_dict[cur_pid]),
+                    "missing (lower bound is {:d}".format(
+                        self.__pids_expected[cur_pid][0]
+                    ) if self.bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
+                        self.__pids_expected[cur_pid][1]
+                    ),
+                    self.__pids_found.get(cur_pid, 0),
+                )
+            else:
+                return "OK"
+
+        def _get_name(cur_pid):
+            return _pid_dict.get(cur_pid, {}).get("name", "unknown")
+        # proc_dict is from threading_tools.get_info_dict
+        # map
+        _pid_dict = {_value["pid"]: _value for _key, _value in proc_dict.iteritems()}
+        _p_list = [
+            "{}@{:d}: {}".format(
+                _get_name(cur_pid),
+                cur_pid,
+                _get_mis_info(cur_pid),
+            ) for cur_pid in sorted(self.bound_dict.iterkeys())
+        ]
+        if _p_list:
+            return "{}: {}".format(
+                logging_tools.get_plural("process", len(_p_list)),
+                ", ".join(_p_list),
+            )
+        else:
+            return "no processes"
 
     def kill_all_found_pids(self):
         all_pids = sorted(self.__pids_found.keys())

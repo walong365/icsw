@@ -15,6 +15,7 @@ setup(
         "initat.icsw.setup",
         "initat.icsw.service",
         "initat.icsw.license",
+        "initat.icsw.device",
         "initat.tools",
         "initat.rms",
         "initat.cluster",
@@ -85,7 +86,6 @@ setup(
                 "opt/cluster/bin/dump_graph_structure.py",
                 "opt/cluster/bin/user_info.py",
                 "opt/cluster/bin/clog.py",
-                "opt/cluster/bin/device_info.py",
                 "opt/cluster/bin/load_firmware.sh",
                 "opt/cluster/bin/populate_ramdisk.py",
                 "opt/cluster/bin/make_image.py",
@@ -176,6 +176,30 @@ setup(
             [
             ]
         ),
+        (
+            "/opt/cluster/share/rrd_grapher",
+            [   
+                "opt/cluster/share/rrd_grapher/color_rules.xml",
+                "opt/cluster/share/rrd_grapher/color_tables.xml",
+                "opt/cluster/share/rrd_grapher/compound.xml",
+            ]   
+        ),  
+        (
+            "/opt/cluster/share/rrd_grapher/compound.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher/color_tables.d",
+            [
+            ]
+        ),
+        (
+            "/opt/cluster/share/rrd_grapher/color_rules.d",
+            [
+            ]
+        ),
+
     ],
     scripts=[
     ],

@@ -145,7 +145,7 @@ angular.module(
                 dev.selected = !dev.selected
             $scope.num_selected = (dev for dev in $scope.devices when dev.selected).length
         # mixins
-        $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.device_edit.modify_rest_url = ICSW_URLS.BOOT_UPDATE_DEVICE.slice(1).slice(0, -2)
         $scope.device_edit.use_promise = true
         $scope.device_edit.modify_data_before_put = (data) ->
@@ -295,13 +295,12 @@ angular.module(
                                 for entry in _resp
                                     dev = $scope.device_lut[entry.idx]
                                     # copied from bootcontrol, seems strange to me now ...
-                                    valid_str = "#{entry.valid_state}state"
-                                    if entry[valid_str]
-                                         dev.recvreq_str = entry[valid_str] +  "(" + entry.valid_state + ")"
+                                    if entry.hoststatus_str
+                                         dev.recvreq_str = entry.hoststatus_str +  "(" + entry.hoststatus_source + ")"
                                     else
                                          dev.recvreq_str = "rcv: ---"
                                     net_state = entry.net_state
-                                    tr_class = {"down" : "danger", "unknown" : "danger", "ping" : "warning", "up" : "success"}[net_state]
+                                    tr_class = {"down" : "danger", "unknown" : "warning", "ping" : "warning", "up" : "success"}[net_state]
                                     dev.network = "#{entry.network} (#{net_state})"
                                     dev.net_state = net_state
                                     dev.recvreq_state = tr_class

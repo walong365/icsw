@@ -67,7 +67,7 @@ angular.module(
 ).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         access_level_service.install($scope)
-        $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
+        $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"
         $scope.hint_edit.modify_rest_url = ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2)
         $scope.hint_edit.modify_data_before_put = (hint) ->
