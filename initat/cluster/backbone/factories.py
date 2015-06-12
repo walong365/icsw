@@ -66,7 +66,7 @@ class PartitionFS(factory.django.DjangoModelFactory):
     def need_hexid(self, create, extracted, **kwargs):
         if extracted is None:
             extracted = True
-        if self.need_hexid != extracted :
+        if self.need_hexid != extracted:
             self.need_hexid = extracted
             self.save()
 

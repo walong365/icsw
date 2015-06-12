@@ -296,7 +296,6 @@ PIPELINE_DISABLE_WRAPPER = True
 
 PIPELINE_JS_COMPRESSOR = 'pipeline.compressors.uglifyjs.UglifyJSCompressor'
 PIPELINE_UGLIFYJS_BINARY = "/opt/cluster/lib/node_modules/uglify-js/bin/uglifyjs"
-PIPELINE_UGLIFYJS_ARGUMENTS = "--terminal"
 
 PIPELINE_CSS_COMPRESSOR = 'pipeline.compressors.cssmin.CSSMinCompressor'
 PIPELINE_CSSMIN_BINARY = '/opt/cluster/lib/node_modules/ycssmin/bin/cssmin'
