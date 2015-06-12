@@ -17,15 +17,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import functools
+import time
+from lxml import etree
+from lxml.builder import E
 
 import django.utils.timezone
 from django.db import connection
+import zmq
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import LicenseUsage, License
 from initat.cluster.backbone.models.license import LicenseViolation
-from initat.tools import threading_tools, logging_tools
+from initat.tools import threading_tools, logging_tools, uuid_tools, process_tools, server_command
 from initat.md_config_server.config import global_config
+from initat.host_monitoring import hm_classes
 
 
 class LicenseChecker(threading_tools.process_obj):
@@ -43,7 +47,17 @@ class LicenseChecker(threading_tools.process_obj):
         # self.register_func("check_license_violations", self._check_from_command)
 
         # and is run periodically
-        self.register_timer(functools.partial(self.check, self.log), 30 * 60, instant=True)
+        self._update_interval = 30 * 60
+        self.register_timer(self.periodic_update, self._update_interval, instant=True)
+
+        self._init_network()
+
+    def _init_network(self):
+        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
+        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        vector_socket.connect(conn_str)
+        self.vector_socket = vector_socket
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -51,20 +65,51 @@ class LicenseChecker(threading_tools.process_obj):
     def loop_post(self):
         self.__log_template.close()
 
-    # this does not work from cluster-server (especially answering)
-    # def _check_from_command(self, *args, **kwargs):
-    #    src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-    #    self.check()
-    #    srv_com.set_result("finished checking license violations")  # need some result, else there is a warning
-    #    self.send_pool_message("send_command", src_id, unicode(srv_com))
+    def periodic_update(self):
+        # actual check
+        license_usages = self.check(self.log)
+
+        # also report usage value as rrd
+        self.report_usage_values(license_usages)
+
+    def report_usage_values(self, license_usages):
+        drop_com = server_command.srv_command(command="set_vector")
+        _bldr = drop_com.builder()
+        license_usage_vector = _bldr("values")
+        valid_until = int(time.time()) + self._update_interval
+        for license, usage in license_usages.iteritems():
+            for param_name, value in usage.iteritems():
+                license_usage_vector.append(
+                    hm_classes.mvect_entry(
+                        "license_usage.{}.{}".format(license.name, param_name.name),
+                        info="Usage of {} for {}".format(
+                            logging_tools.get_plural(param_name.name, num=2, show_int=False),
+                            license.name,
+                        ),
+                        unit="1",
+                        base="1",
+                        v_type="i",
+                        factor="1",
+                        value=unicode(value),
+                        valid_until=valid_until,
+                    ).build_xml(_bldr)
+                )
+        drop_com['license_usage_vector'] = license_usage_vector
+        drop_com['license_usage_vector'].attrib['type'] = 'vector'
+
+        self.vector_socket.send_unicode(unicode(drop_com))
 
     @staticmethod
     def check(log):
         log("starting license violation checking")
-        for license in LicenseEnum:
-            usage = LicenseUsage.get_license_usage(license)
+
+        license_usages = {license: LicenseUsage.get_license_usage(license) for license in LicenseEnum}
+
+        # violation checking
+        for license, usage in license_usages.iteritems():
             violated = False
-            if usage:
+
+            if usage:  # only check for violation if there is actually some kind of usage
                 violated = not License.objects.has_valid_license(license, usage, ignore_violations=True)
 
             try:
@@ -83,4 +128,6 @@ class LicenseChecker(threading_tools.process_obj):
                     new_violation = LicenseViolation(license=license.name)
                     new_violation.save()
                     log("violation {} detected".format(new_violation))
+
         log("finished license violation checking")
+        return license_usages

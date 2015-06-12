@@ -120,6 +120,11 @@ def main(opt_ns):
             cur_c.check_system(opt_ns, inst_xml)
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
             show_form_list(form_list)
+            _res = inst_xml.findall(".//result")
+            if len(_res) == 1:
+                # set return state to single-state result
+                _state = int(_res[0].find("state_info").get("state"))
+                sys-exit(_state)
     elif opt_ns.childcom in ["start", "stop", "restart", "debug", "reload"]:
         if opt_ns.childcom == "debug":
             debug_args = opt_ns.debug_args
@@ -152,6 +157,9 @@ def main(opt_ns):
                 services=",".join(opt_ns.service),
             ),
         )
+        if _result is None:
+            log_com("Got no result from meta-server")
+            sys.exit(1)
         if _result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
             log_com(*_result.get_log_tuple())
             sys.exit(1)

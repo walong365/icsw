@@ -630,11 +630,11 @@ class KpiSet(object):
                               arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
                               operands=[self])
 
-        num = sum(1 for obj in self.result_objects if obj.result >= result)
+        num = sum(1 for obj in self.result_objects if obj.result <= result)
 
-        if num > num_ok:
+        if num >= num_ok:
             return KpiSet.get_singleton_ok(origin=origin)
-        elif num_warn is not None and num > num_warn:
+        elif num_warn is not None and num >= num_warn:
             return KpiSet.get_singleton_warn(origin=origin)
         else:
             return KpiSet.get_singleton_critical(origin=origin)
@@ -761,7 +761,7 @@ class KpiSet(object):
 
                 # also aggregate state types
                 ratio = sum(v for k, v in aggregated_tl.iteritems()
-                            if k[0] >= result)
+                            if k[0] <= result)
 
                 if discard_planned_downtimes:
                     ratio_planned_down = sum(v for k, v in aggregated_tl.iteritems()

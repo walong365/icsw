@@ -26,9 +26,10 @@
 import os
 import sqlite3
 import time
+import commands
 
 from initat.meta_server.config import global_config
-from initat.tools import logging_tools, server_command
+from initat.tools import logging_tools, server_command, process_tools
 from initat.icsw.service import constants
 
 
@@ -212,6 +213,84 @@ class ServiceState(object):
         else:
             _ts = constants.TARGET_STATE_RUNNING
         return _ts
+
+    def _sync_system_states(self):
+        # sync system states with internal target states for meta-server and logging-server
+        _sys_states = self._parse_system_states()
+        if None not in _sys_states:
+            _log_s, _meta_s = (
+                True if self.__target_dict["logging-server"] == 1 else False,
+                True if self.__target_dict["meta-server"] == 1 else False,
+            )
+            if _log_s == _meta_s:
+                # we only support same stats for meta- and logging-serer
+                if (_log_s, _meta_s) != _sys_states:
+                    if _log_s:
+                        # enable logging and meta server
+                        self.log("enabling logging- and meta-server for system startup")
+                        self._handle_ls_for_system(True)
+                    else:
+                        # disable logging and meta server
+                        self.log("disabling logging- and meta-server for system startup")
+                        self._handle_ls_for_system(False)
+
+    def _handle_ls_for_system(self, enable):
+        _insserv_bin = process_tools.find_file("insserv")
+        _update_rc_bin = process_tools.find_file("update-rc.d")
+        _chkconfig_bin = process_tools.find_file("chkconfig")
+        if enable:
+            _srvs = ["logging-server", "meta-server"]
+        else:
+            _srvs = ["meta-server", "logging-server"]
+        for _srv in _srvs:
+            if _insserv_bin:
+                _cmdline = "{} {} {}".format(
+                    _insserv_bin,
+                    "" if enable else "-r",
+                    _srv
+                )
+            elif _update_rc_bin:
+                _cmdline = "{} {} {}".format(
+                    _update_rc_bin,
+                    _srv,
+                    "enable" if enable else "disable",
+                )
+            elif _chkconfig_bin:
+                _cmdline = "{} {0 {}".format(
+                    _chkconfig_bin,
+                    _srv,
+                    "on" if enable else "off",
+                )
+            _stat, _out = commands.getstatusoutput(_cmdline)
+            _lines = _out.split("\n")
+            self.log(
+                "{} gave [{:d}] {}".format(
+                    _cmdline,
+                    _stat,
+                    logging_tools.get_plural("line", len(_lines)),
+                )
+            )
+            for _l_num, _line in enumerate(_lines, 1):
+                self.log("  {:3d} {}".format(_l_num, _line))
+
+    def _disable_ls_for_system(self):
+        pass
+
+    def _parse_system_states(self):
+        # parse runlevel, for transition from meta-server / logging-server / host-monitoring to icsw-client
+        t_dirs = [_dir for _dir in ["/etc/rc3.d/", "/etc/init.d/rc3.d", "/etc/rc.d/rc3.d"] if os.path.isdir(_dir)]
+        _start_l, _start_m = (None, None)
+        if t_dirs:
+            _start_l, _start_m = (False, False)
+            t_dir = t_dirs[0]
+            for entry in os.listdir(t_dir):
+                _path = os.path.join(t_dir, entry)
+                if os.path.islink(_path) and entry.startswith("S"):
+                    if entry.endswith("logging-server"):
+                        _start_l = True
+                    elif entry.endswith("meta-server"):
+                        _start_m = True
+        return (_start_l, _start_m)
 
     def _init_states(self):
         # init state cache
@@ -409,6 +488,8 @@ class ServiceState(object):
                 else:
                     _el.log("no result entry found", logging_tools.LOG_LEVEL_WARN)
         self.conn.commit()
+        # sync system states with target states (for meta-server and logging-server)
+        self._sync_system_states()
         return t_list
         # print _res, etree.tostring(_el.entry, pretty_print=True)
 
@@ -563,6 +644,7 @@ class ServiceState(object):
                 )
             )
             trigger = self._update_target_dict()
+            self._sync_system_states()
         elif _com == "disable":
             services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
             with self.get_cursor(cached=False) as crsr:
@@ -591,6 +673,7 @@ class ServiceState(object):
                 )
             )
             trigger = self._update_target_dict()
+            self._sync_system_states()
         else:
             srv_com.set_result(
                 "command {} not defined".format(srv_com["command"].text),
