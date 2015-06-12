@@ -56,27 +56,18 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
-	    ${ICSW} service start logging-server
+            ${ICSW} service start logging-server
         fi
         rc_status -v
     ;;
     stop)
         echo -n "Stopping logging-server"
         if [ -f ${SERVER_PID} ] ; then
-	    ${ICSW} service stop logging-server
-            for i in $(seq 10) ; do
-                echo -n "."
-                if [ -x /bin/usleep ] ; then
-                    usleep 250000
-                else
-                    sleep 1
-                fi
-                [ ! -f ${SERVER_PID} ] && break 
-            done
-            [ $i -gt 8 ] && rc_failed || rc_reset
+            ${ICSW} service stop logging-server
         else
             rc_failed
         fi
+        rm -f ${SERVER_PID} ${META_FILE}
         rc_status -v
     ;;
     status)
