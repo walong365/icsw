@@ -31,6 +31,7 @@ class DiscoveryDispatcher(object):
     def __init__(self):
         pass
 
+
     def calculate(self, start, end):
         """
         Main method.
@@ -54,59 +55,9 @@ class DiscoveryDispatcher(object):
         print 'presort'
         pprint.pprint(presorted_list)
 
-        sched_info = _ScheduleInfo()
+        run_list = self._handle_constraints(presorted_list, end=end)
 
-        for item in presorted_list:
-            expected_run_date = item.planned_date
-
-            # we can run as soon as source limit is fulfilled
-            max_concurrent_runs = item.source.get_maximal_concurrent_runs()
-            if len(sched_info.items_by_source[item.source]) >= max_concurrent_runs:
-                # queue is full
-                n_th_last_by_src = sched_info.items_by_source[item.source][-item.source.get_maximal_concurrent_runs()]
-                expected_run_date = max(expected_run_date, n_th_last_by_src.expected_finish_date)
-
-            # device constraint (only one by device)
-            if sched_info.items_by_device[item.device]:
-                last_by_device = sched_info.items_by_device[item.device][-1]
-                expected_run_date = max(expected_run_date, last_by_device.expected_finish_date)
-
-            item.set_expected_dates(
-                expected_run_date,
-                expected_run_date + ScanHistory.objects.get_average_run_duration(item.source, item.device),
-            )
-
-            sched_info.add_item(item)
-
-            # TODO: make sure that at least $interval time is between runs
-
-        run_list = sorted(naive_run_list, key=operator.attrgetter('expected_run_date'))
         return run_list
-
-    def _presort_list(self, naive_run_list):
-        """sort according to run_now and planned_date
-        :rtype: list of _ScheduleItem
-        """
-        # for each dispatch setting with run_now flag, add first entry here
-        run_now_list = []
-        regular_list = []
-        dispatch_settings_in_run_now_list = set()
-        for item in naive_run_list:
-            if item.dispatch_setting.run_now and item.dispatch_setting not in dispatch_settings_in_run_now_list:
-                dispatch_settings_in_run_now_list.add(item.dispatch_setting)
-                print 'add prio', item
-                run_now_list.append(item)
-            else:
-                regular_list.append(item)
-
-        # sort prio: run_now, date, device_pk (to make sort somewhat stable)
-        run_now_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
-        print 'reg before'
-        pprint.pprint(regular_list)
-        regular_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
-        print 'reg after'
-        pprint.pprint(regular_list)
-        return run_now_list + regular_list
 
     def _get_next_planned_run_times(self, start, end):
         """Returns planned run times without considering any constraints
@@ -153,9 +104,73 @@ class DiscoveryDispatcher(object):
 
         return run_list
 
+    def _presort_list(self, naive_run_list):
+        """sort according to run_now and planned_date
+        :rtype: list of _ScheduleItem
+        """
+        # for each dispatch setting with run_now flag, add first entry here
+        run_now_list = []
+        regular_list = []
+        dispatch_settings_in_run_now_list = set()
+        for item in naive_run_list:
+            if item.dispatch_setting.run_now and item.dispatch_setting not in dispatch_settings_in_run_now_list:
+                dispatch_settings_in_run_now_list.add(item.dispatch_setting)
+                print 'add prio', item
+                run_now_list.append(item)
+            else:
+                regular_list.append(item)
+
+        # sort prio: run_now, date, device_pk (to make sort somewhat stable)
+        run_now_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
+        print 'reg before'
+        pprint.pprint(regular_list)
+        regular_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
+        print 'reg after'
+        pprint.pprint(regular_list)
+        return run_now_list + regular_list
+
+    def _handle_constraints(self, presorted_list, end):
+        sched_info = _ScheduleInfo()
+        for item in presorted_list:
+            expected_run_date = item.planned_date
+
+            # we can run as soon as source limit is fulfilled
+            max_concurrent_runs = item.source.get_maximal_concurrent_runs()
+            if len(sched_info.items_by_source[item.source]) >= max_concurrent_runs:
+                # queue is full
+                n_th_last_by_src = sched_info.items_by_source[item.source][-item.source.get_maximal_concurrent_runs()]
+                expected_run_date = max(expected_run_date, n_th_last_by_src.expected_finish_date)
+
+            # device constraint (only one by device)
+            if sched_info.items_by_device[item.device]:
+                last_by_device = sched_info.items_by_device[item.device][-1]
+                expected_run_date = max(expected_run_date, last_by_device.expected_finish_date)
+
+            # make sure that we are not running faster than the interval for this dispatch setting
+            if sched_info.items_by_dispatch_setting[item.dispatch_setting]:
+                last_by_dispatch_setting = sched_info.items_by_dispatch_setting[item.dispatch_setting][-1]
+                expected_run_date = max(
+                    expected_run_date,
+                    last_by_dispatch_setting.expected_run_date + item.dispatch_setting.get_interval_as_delta()
+                )
+
+            item.set_expected_dates(
+                expected_run_date,
+                expected_run_date + ScanHistory.objects.get_average_run_duration(item.source, item.device),
+            )
+
+            sched_info.add_item(item)
+
+        list_cut_off = (item for item in presorted_list if item.expected_run_date <= end)
+
+        return sorted(list_cut_off, key=operator.attrgetter('expected_run_date'))
+
 
 class _ScheduleItem(object):
     def __init__(self, device, source, planned_date, dispatch_setting):
+        """
+        :type dispatch_setting: DispatchSetting
+        """
         # date always means datetime
         self.device = device
         self.source = source
@@ -182,6 +197,7 @@ class _ScheduleInfo(object):
     def __init__(self):
         self.items_by_device = defaultdict(lambda: [])
         self.items_by_source = defaultdict(lambda: [])
+        self.items_by_dispatch_setting = defaultdict(lambda: [])
 
     def add_item(self, item):
         # TODO: insertion sort?
@@ -190,3 +206,6 @@ class _ScheduleInfo(object):
 
         self.items_by_source[item.source].append(item)
         self.items_by_source[item.source].sort(key=operator.attrgetter("expected_finish_date"))
+
+        self.items_by_dispatch_setting[item.dispatch_setting].append(item)
+        self.items_by_dispatch_setting[item.dispatch_setting].sort(key=operator.attrgetter("expected_finish_date"))

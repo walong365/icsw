@@ -131,7 +131,7 @@ class DiscoveryDispatcherTest(TestCase):
         source1 = DiscoverySource.SNMP
 
         # one long one with priority
-        DispatchSettingTestFactory(
+        ds_long = DispatchSettingTestFactory(
             device=device0,
             source=source0,
             duration_amount=1,
@@ -147,7 +147,7 @@ class DiscoveryDispatcherTest(TestCase):
         )
 
         # short ones without priority
-        DispatchSettingTestFactory(
+        ds_short = DispatchSettingTestFactory(
             device=device0,
             source=source1,
             duration_amount=1,
@@ -157,5 +157,12 @@ class DiscoveryDispatcherTest(TestCase):
         dispatcher = DiscoveryDispatcher()
         res = dispatcher.calculate(self.jan_fst, self.jan_thrd)
 
-        print 'final res'
-        pprint.pprint(res)
+        # we want that the short ones run after the long one, but not in short succession
+        # (they shouldn't run more often than their interval)
+
+        self.assertEqual(res[0].dispatch_setting, ds_long)
+
+        for item0, item1 in pairwise(item for item in res if item.dispatch_setting == ds_short):
+            self.assertLessEqual(item0.expected_run_date + ds_short.get_interval_as_delta(),
+                                 item1.expected_run_date)
+

@@ -57,6 +57,7 @@ class DispatchSetting(models.Model):
     device = models.ForeignKey("backbone.device")
     source = models.IntegerField(choices=[(src.value, src.name) for src in DiscoverySource])
 
+    # interval for executions. a run is scheduled exactly this duration after the last start (but it may be delayed)
     duration_amount = models.IntegerField(default=1)
     duration_unit = models.IntegerField(choices=[(u.value, u.name) for u in DurationUnits])
 
