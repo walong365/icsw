@@ -475,11 +475,15 @@ class server_process(
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
 
-    @server_mixins.RemoteCall(target_process="KpiProcess")
-    def calculate_kpi(self, srv_com, **kwargs):
+    @RemoteCall(target_process="KpiProcess")
+    def calculate_kpi_preview(self, srv_com, **kwargs):
         return srv_com
 
-    @server_mixins.RemoteCall(target_process="KpiProcess")
+    @RemoteCall(target_process="KpiProcess")
+    def calculate_kpi_db(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="KpiProcess")
     def get_kpi_source_data(self, srv_com, **kwargs):
         return srv_com
 

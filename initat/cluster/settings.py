@@ -306,13 +306,21 @@ COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 # STATIC_PRECOMPILER_CACHE = not DEBUG
 
 # pipeline settings
-PIPELINE_YUGLIFY_BINARY = "/opt/cluster/lib/node_modules/yuglify/bin/yuglify"
-if not SLAVE_MODE:
-    if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
-        raise ImproperlyConfigured("no {} found".format(PIPELINE_YUGLIFY_BINARY))
 
-PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
-PIPELINE_YUGLIFY_JS_ARGUMENTS = "--terminal"
+# the pipeline function wrapper breaks FileSaver.js
+PIPELINE_DISABLE_WRAPPER = True
+
+PIPELINE_JS_COMPRESSOR = 'pipeline.compressors.uglifyjs.UglifyJSCompressor'
+PIPELINE_UGLIFYJS_BINARY = "/opt/cluster/lib/node_modules/uglify-js/bin/uglifyjs"
+
+PIPELINE_CSS_COMPRESSOR = 'pipeline.compressors.cssmin.CSSMinCompressor'
+PIPELINE_CSSMIN_BINARY = '/opt/cluster/lib/node_modules/ycssmin/bin/cssmin'
+
+if not SLAVE_MODE:
+    for binary in [PIPELINE_UGLIFYJS_BINARY, PIPELINE_CSSMIN_BINARY]:
+        if not os.path.exists(binary):
+            raise ImproperlyConfigured("{} does not exist".format(binary))
+
 if DEBUG:
     STATICFILES_STORAGE = "pipeline.storage.PipelineStorage"
 else:

@@ -26,6 +26,7 @@ import os
 import stat
 import subprocess
 import signal
+import netifaces
 import sys
 
 from lxml.builder import E  # @UnresolvedImport
@@ -140,6 +141,12 @@ class Service(object):
         else:
             return "error"
 
+    def _modify_state(self, result, act_state, info_str):
+        _state_info = result.find("state_info")
+        _state_info.text = info_str
+        _state_info.attrib["state"] = "{:d}".format(act_state)
+        return info_str
+
     def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, models_changed=False):
         if self.entry.find("result") is not None:
             if refresh:
@@ -167,6 +174,21 @@ class Service(object):
                     if _cr is not None:
                         if _cr.effective_device:
                             dev_config.append(_cr)
+        required_ips = set(list(self.entry.xpath(".//required-ips/required-ip/text()", smart_strings=True)))
+        if required_ips:
+            _found_ips = set(
+                [
+                    _val["addr"] for _val in sum(
+                        [
+                            netifaces.ifaddresses(_dev).get(netifaces.AF_INET, []) for _dev in netifaces.interfaces()
+                        ],
+                        []
+                    )
+                ]
+            )
+            ip_match = True if required_ips & _found_ips else False
+        else:
+            ip_match = True
         _result = E.result()
         self.entry.append(_result)
 
@@ -176,13 +198,11 @@ class Service(object):
         if self.attrib["runs_on"] == "server":
             if models_changed:
                 # force state to failed
-                act_state = SERVICE_DEAD
-                _state_info = _result.find("state_info")
-                _state_info.text = "models changed"
-                _state_info.attrib["state"] = "{:d}".format(act_state)
-                sql_info = "models changed"
+                sql_info = self._modify_state(_result, SERVICE_DEAD, "models changed")
+            elif not ip_match:
+                sql_info = self._modify_state(_result, SERVICE_DEAD, "IP address mismatch")
             else:
-                if dev_config:  # is not None:
+                if dev_config:
                     sql_info = ", ".join(
                         [
                             _dc.server_info_str for _dc in dev_config
@@ -192,12 +212,7 @@ class Service(object):
                     if self.entry.find(".//ignore-missing-database") is not None:
                         sql_info = "relayer mode"
                     else:
-                        act_state = SERVICE_NOT_CONFIGURED
-                        sql_info = "not configured"
-                        # update state info
-                        _state_info = _result.find("state_info")
-                        _state_info.text = "no processes"
-                        _state_info.attrib["state"] = "{:d}".format(act_state)
+                        sql_info = self._modify_state(_result, SERVICE_NOT_CONFIGURED, "not configured")
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -213,7 +228,10 @@ class Service(object):
             else:
                 lic_state = -1
         else:
-            sql_info = self.attrib["runs_on"]
+            if not ip_match:
+                sql_info = self._modify_state(_result, SERVICE_DEAD, "IP address mismatch")
+            else:
+                sql_info = self.attrib["runs_on"]
             lic_state = -1
         if isinstance(sql_info, basestring):
             _result.append(

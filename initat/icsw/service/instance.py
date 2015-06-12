@@ -51,23 +51,45 @@ class InstanceXML(object):
     def read(self):
         self.tree = E.instances()
         # check for additional instances
+        _tree_dict = {}
         if os.path.isdir(SERVERS_DIR):
-            for entry in os.listdir(SERVERS_DIR):
-                if entry.endswith(".xml"):
-                    try:
-                        add_inst_list = etree.fromstring(open(os.path.join(SERVERS_DIR, entry), "r").read())  # @UndefinedVariable
-                    except:
-                        self.log(
-                            "cannot read entry '{}' from {}: {}".format(
-                                entry,
-                                SERVERS_DIR,
-                                process_tools.get_except_info(),
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                    else:
-                        for sub_inst in add_inst_list.findall("instance"):
-                            self.tree.append(sub_inst)
+            for entry in [_file for _file in os.listdir(SERVERS_DIR) if _file.endswith(".xml")]:
+                try:
+                    _tree_dict[entry] = etree.fromstring(open(os.path.join(SERVERS_DIR, entry), "r").read())  # @UndefinedVariable
+                except:
+                    self.log(
+                        "cannot read entry '{}' from {}: {}".format(
+                            entry,
+                            SERVERS_DIR,
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+        _inst_keys, _overlay_keys = (
+            [
+                _key for _key, _value in _tree_dict.iteritems() if not int(_value.get("overlay", "0"))
+            ],
+            [
+                _key for _key, _value in _tree_dict.iteritems() if int(_value.get("overlay", "0"))
+            ],
+        )
+        for _inst_key in _inst_keys:
+            for sub_inst in _tree_dict[_inst_key].findall("instance"):
+                self.tree.append(sub_inst)
+        for _overlay_key in _overlay_keys:
+            for sub_inst in _tree_dict[_overlay_key].findall("instance"):
+                _main_inst = self.tree.find("instance[@name='{}']".format(sub_inst.get("name")))
+                if _main_inst is None:
+                    self.log(
+                        "cannot find instance with name '{}' for overlay".format(
+                            sub_inst.get("name"),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    # simply append, fixme todo: intelligent merge
+                    for _el in sub_inst:
+                        _main_inst.append(_el)
 
     def normalize(self):
         for cur_el in self.tree.findall("instance"):

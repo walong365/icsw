@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <instances>
     <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="client">
     </instance>

@@ -24,9 +24,6 @@
 import os
 
 from django.db import connection
-from initat.package_install.server.config import global_config
-from initat.package_install.server.repository_process import repo_process
-from initat.package_install.server.structs import client
 from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import logging_tools
@@ -36,6 +33,10 @@ from initat.tools import server_command
 from initat.tools import server_mixins
 from initat.tools import threading_tools
 import zmq
+
+from .config import global_config
+from .repository_process import repo_process
+from .structs import client
 
 
 class server_process(threading_tools.process_pool, server_mixins.NetworkBindMixin, server_mixins.OperationalErrorMixin):
@@ -371,7 +372,8 @@ class server_process(threading_tools.process_pool, server_mixins.NetworkBindMixi
                     act_routing_info = _pserver.get_route_to_other_device(
                         router_obj,
                         dev_sc,
-                        allow_route_to_other_networks=True
+                        allow_route_to_other_networks=True,
+                        prefer_production_net=True,
                     )
                     if act_routing_info:
                         _ip = act_routing_info[0][3][1][0]
