@@ -38,10 +38,8 @@ class ScanHistoryTestFactory(DjangoModelFactory):
 
     device = SubFactory(DeviceTestFactory)
     source = Iterator([s.value for s in DiscoverySource])
+    del s  # variable from list comprehension is leaked and factory boy tries to use it
 
     duration = 10
 
     success = True
-
-
-

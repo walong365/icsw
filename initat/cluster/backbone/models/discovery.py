@@ -21,6 +21,7 @@
 #
 from collections import defaultdict
 import dateutil.relativedelta
+import django.utils.timezone
 
 from django.db import models
 from django.db.models import Avg
@@ -73,20 +74,21 @@ class DispatchSetting(models.Model):
 class _ScanHistoryManager(models.Manager):
     def get_average_run_duration(self, source, device):
         default = dateutil.relativedelta.relativedelta(minutes=1)  # TODO: source-dependent default?
-        return self.__get_run_duration_cache().get(source, {}).get(device, default)
+        return self.__get_run_duration_cache().get(source, {}).get(device.pk, default)
 
     @memoize_with_expiry(10)
     def __get_run_duration_cache(self):
         cache = defaultdict(lambda: {})
         for entry in self.values("source", "device_id").annotate(avg_duration=Avg("duration")):
-            cache[entry['source']][entry['device_id']] = entry['avg_duration']
+            cache[entry['source']][entry['device_id']] =\
+                dateutil.relativedelta.relativedelta(seconds=entry['avg_duration'])
         return cache
 
 
 class ScanHistory(models.Model):
     objects = _ScanHistoryManager()
     idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField(default=django.utils.timezone.now)  # auto_add_now breaks factory boy
 
     device = models.ForeignKey("backbone.device")
     source = models.IntegerField(choices=[(src.value, src.name) for src in DiscoverySource])

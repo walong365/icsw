@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+import pprint
 from dateutil.relativedelta import relativedelta
 from collections import defaultdict
 import operator
@@ -31,6 +32,10 @@ class DiscoveryDispatcher(object):
         pass
 
     def calculate(self, start, end):
+        """
+        Main method.
+        :rtype: list of _ScheduleItem
+        """
         # consider constraints
 
         # - at most one concurrent scan by device
@@ -41,7 +46,13 @@ class DiscoveryDispatcher(object):
 
         naive_run_list = self._get_next_planned_run_times(start, end)
 
+        print 'naive'
+        pprint.pprint(naive_run_list)
+
         presorted_list = self._presort_list(naive_run_list)
+
+        print 'presort'
+        pprint.pprint(presorted_list)
 
         sched_info = _ScheduleInfo()
 
@@ -60,9 +71,10 @@ class DiscoveryDispatcher(object):
                 last_by_device = sched_info.items_by_device[item.device][-1]
                 expected_run_date = max(expected_run_date, last_by_device.expected_finish_date)
 
-            item.expected_run_date = expected_run_date
-            item.expected_finish_date =\
-                expected_run_date + ScanHistory.objects.get_average_run_duration(item.source, item.device)
+            item.set_expected_dates(
+                expected_run_date,
+                expected_run_date + ScanHistory.objects.get_average_run_duration(item.source, item.device),
+            )
 
             sched_info.add_item(item)
 
@@ -82,13 +94,18 @@ class DiscoveryDispatcher(object):
         for item in naive_run_list:
             if item.dispatch_setting.run_now and item.dispatch_setting not in dispatch_settings_in_run_now_list:
                 dispatch_settings_in_run_now_list.add(item.dispatch_setting)
+                print 'add prio', item
                 run_now_list.append(item)
             else:
                 regular_list.append(item)
 
         # sort prio: run_now, date, device_pk (to make sort somewhat stable)
         run_now_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
+        print 'reg before'
+        pprint.pprint(regular_list)
         regular_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
+        print 'reg after'
+        pprint.pprint(regular_list)
         return run_now_list + regular_list
 
     def _get_next_planned_run_times(self, start, end):
@@ -99,16 +116,28 @@ class DiscoveryDispatcher(object):
             raise ValueError()
         run_list = []
         for dispatch_setting in DispatchSetting.objects.all():
+            _qs = ScanHistory.objects.filter(device=dispatch_setting.device, source=dispatch_setting.source)
             try:
-                last_run = ScanHistory.objects.get(device=dispatch_setting.device, source=dispatch_setting.source)
+                last_run = _qs.latest('date')
             except ScanHistory.DoesNotExist:
                 planned_date = start
             else:
-                if last_run.successful:
-                    planned_date = last_run.date + dispatch_setting.get_interval_as_delta()
+                print 'last run', last_run
+                if dispatch_setting.run_now:
+                    # priority, run soon
+                    planned_date = start
+                    interval = None
+                elif last_run.success:
+                    # last run worked, this is the regular case
+                    interval = dispatch_setting.get_interval_as_delta()
                 else:
-                    # last run failed, rerun earlier:
-                    planned_date = max(last_run.date + relativedelta(hours=4), start)
+                    # last run failed, rerun earlier (cut interval):
+                    interval = dispatch_setting.get_interval_as_delta() / 10
+
+                if interval is not None:
+                    planned_date = max(last_run.date + dispatch_setting.get_interval_as_delta(), start)
+
+            print 'plan', planned_date
 
             while planned_date < end:
                 run_list.append(
