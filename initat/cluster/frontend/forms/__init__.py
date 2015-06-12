@@ -110,7 +110,10 @@ class device_info_form(ModelForm):
                     filter="{tree_info:$select.search}",
                 ),
                 Field("comment"),
-                Field("alias"),
+                Field(
+                    "alias",
+                    wrapper_ng_show="is_device()",
+                ),
                 HTML("""
 <div class='form-group' ng-show="is_device()">
     <label class='control-label col-sm-3'>
