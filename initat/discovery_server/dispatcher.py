@@ -31,31 +31,29 @@ class DiscoveryDispatcher(object):
     def __init__(self):
         pass
 
-
     def calculate(self, start, end):
         """
-        Main method.
+        Main method. Returns list of scheduled DispatchSettings where scheduled start is in [start, end)
         :rtype: list of _ScheduleItem
         """
-        # consider constraints
 
-        # - at most one concurrent scan by device
-
-        # - at most n concurrent scans by source
-
-        # - run_now flag
-
+        # generate list which would work in an ideal world with infinite resources and no conflicts
         naive_run_list = self._get_next_planned_run_times(start, end)
 
-        print 'naive'
-        pprint.pprint(naive_run_list)
+        # print 'naive'
+        # pprint.pprint(naive_run_list)
 
+        # sort according to priority (run_now) and planned date
         presorted_list = self._presort_list(naive_run_list)
 
-        print 'presort'
-        pprint.pprint(presorted_list)
+        # print 'presort'
+        # pprint.pprint(presorted_list)
 
+        # delay according to constraints
         run_list = self._handle_constraints(presorted_list, end=end)
+
+        # print 'run list'
+        # pprint.pprint(run_list)
 
         return run_list
 
@@ -73,22 +71,17 @@ class DiscoveryDispatcher(object):
             except ScanHistory.DoesNotExist:
                 planned_date = start
             else:
-                print 'last run', last_run
                 if dispatch_setting.run_now:
                     # priority, run soon
                     planned_date = start
-                    interval = None
-                elif last_run.success:
+                else:
                     # last run worked, this is the regular case
                     interval = dispatch_setting.get_interval_as_delta()
-                else:
-                    # last run failed, rerun earlier (cut interval):
-                    interval = dispatch_setting.get_interval_as_delta() / 10
+                    if not last_run.success:
+                        # last run failed, rerun earlier (cut interval):
+                        interval /= 10
 
-                if interval is not None:
-                    planned_date = max(last_run.date + dispatch_setting.get_interval_as_delta(), start)
-
-            print 'plan', planned_date
+                    planned_date = max(last_run.date + interval, start)
 
             while planned_date < end:
                 run_list.append(
@@ -115,21 +108,19 @@ class DiscoveryDispatcher(object):
         for item in naive_run_list:
             if item.dispatch_setting.run_now and item.dispatch_setting not in dispatch_settings_in_run_now_list:
                 dispatch_settings_in_run_now_list.add(item.dispatch_setting)
-                print 'add prio', item
                 run_now_list.append(item)
             else:
                 regular_list.append(item)
 
         # sort prio: run_now, date, device_pk (to make sort somewhat stable)
         run_now_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
-        print 'reg before'
-        pprint.pprint(regular_list)
         regular_list.sort(key=lambda entry: (entry.planned_date, entry.device.pk))
-        print 'reg after'
-        pprint.pprint(regular_list)
         return run_now_list + regular_list
 
     def _handle_constraints(self, presorted_list, end):
+        """
+        :rtype: list of _ScheduleItem
+        """
         sched_info = _ScheduleInfo()
         for item in presorted_list:
             expected_run_date = item.planned_date
@@ -161,7 +152,7 @@ class DiscoveryDispatcher(object):
 
             sched_info.add_item(item)
 
-        list_cut_off = (item for item in presorted_list if item.expected_run_date <= end)
+        list_cut_off = (item for item in presorted_list if item.expected_run_date < end)
 
         return sorted(list_cut_off, key=operator.attrgetter('expected_run_date'))
 
