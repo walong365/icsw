@@ -262,13 +262,16 @@ class ServiceState(object):
                     "on" if enable else "off",
                 )
             _stat, _out = commands.getstatusoutput(_cmdline)
+            _lines = _out.split("\n")
             self.log(
-                "{} gave [{:d}]: {}".format(
+                "{} gave [{:d}] {}".format(
                     _cmdline,
                     _stat,
-                    _out
+                    logging_tools.get_plural("line", len(_lines)),
                 )
             )
+            for _l_num, _line in enumerate(_lines, 1):
+                self.log("  {:3d} {}".format(_l_num, _line))
 
     def _disable_ls_for_system(self):
         pass
