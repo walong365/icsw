@@ -253,7 +253,7 @@ class ServiceState(object):
                 _cmdline = "{} {} {}".format(
                     _update_rc_bin,
                     _srv,
-                    "start" if enable else "stop",
+                    "enable" if enable else "disable",
                 )
             elif _chkconfig_bin:
                 _cmdline = "{} {0 {}".format(
