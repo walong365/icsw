@@ -9,6 +9,7 @@ import pytz
 import mock
 
 from initat.cluster.backbone.models import DiscoverySource, DispatchSetting
+from initat.cluster.backbone.models.functions import clear_memoize_cache
 from initat.discovery_server.dispatcher import DiscoveryDispatcher
 
 from testutils.factories import DeviceTestFactory
@@ -35,6 +36,8 @@ class DiscoveryDispatcherTest(TestCase):
         self.jan_fst_three_am = datetime.datetime(2015, 1, 1, 3, 0, tzinfo=pytz.utc)
         self.jan_snd = datetime.datetime(2015, 1, 2, 1, 0, tzinfo=pytz.utc)
         self.jan_thrd = datetime.datetime(2015, 1, 3, 1, 0, tzinfo=pytz.utc)
+
+        clear_memoize_cache()
 
     def test_empty(self):
         dispatcher = DiscoveryDispatcher()
