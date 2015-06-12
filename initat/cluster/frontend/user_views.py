@@ -35,6 +35,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.http.response import HttpResponse
 import itertools
+from initat.cluster.backbone.models.license import InitProduct
 from initat.cluster.backbone.models.model_history import icsw_deletion_record
 from rest_framework.response import Response
 import reversion
@@ -50,6 +51,7 @@ from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from lxml.builder import E  # @UnresolvedImport
 from initat.cluster.frontend.license_views import login_required_rest
+from initat.server_version import VERSION_STRING, VERSION_MAJOR
 from initat.tools import config_tools
 from initat.tools import server_command
 from initat.cluster.frontend.rest_views import rest_logging
@@ -373,9 +375,12 @@ class GetObjectPermissions(RetrieveAPIView):
 class GetInitProduct(RetrieveAPIView):
     @rest_logging
     def get(self, request, *args, **kwargs):
+        product = License.objects.get_init_product()
+        family = product.get_version_family(VERSION_MAJOR)
         return Response(
             {
-                'name': License.objects.get_init_product().name,
-                'version': '2.1',
+                'name': product.name,
+                'version': VERSION_STRING,
+                'family': family,
             }
         )

@@ -58,6 +58,27 @@ class InitProduct(enum.Enum):
     NOCTUA = 2
     NESTOR = 3
 
+    def get_version_family(self, version):
+        if version == "0.0":
+            version = _PRODUCT_FAMILY_MATRIX.keys()[-1]
+
+        return _PRODUCT_FAMILY_MATRIX.get(version, {}).get(self, "")
+
+_PRODUCT_FAMILY_MATRIX = collections.OrderedDict(  # ordered dict so we know which is last
+    [
+        ("2.5", {
+            InitProduct.CORVUS: u"Corvus hawaiiensis",  # Hawaiikraehe
+            InitProduct.NOCTUA: u"Strigidae occidentalis",  # Fleckenkauz
+            InitProduct.NESTOR: u"Nestor notabilis",  # Kea
+        }),
+        ("3.0", {
+            InitProduct.CORVUS: u"Corvus splendens",  # Glanzkraehe
+            InitProduct.NOCTUA: u"Strigidae rufipes",  # Rostfusskauz
+            InitProduct.NESTOR: u"Nestor meridionalis",  # Kaka (Waldpapagei)
+        })
+    ]
+)
+
 
 class LicenseState(enum.IntEnum):
     # NOTE: this is ordered in the sense that if multiple licenses are
