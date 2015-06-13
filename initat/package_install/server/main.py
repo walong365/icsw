@@ -28,8 +28,8 @@ django.setup()
 
 from django.db import connection
 from initat.cluster.backbone.models import LogSource
-from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
-from initat.package_install.server.config import global_config
+from .constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
+from .config import global_config
 from initat.tools import config_tools, configfile, process_tools
 
 from initat.server_version import VERSION_STRING

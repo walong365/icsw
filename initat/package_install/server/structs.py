@@ -32,26 +32,24 @@ from initat.cluster.backbone.models import package_repo, cluster_timezone, \
     package_service
 from initat.cluster.backbone.serializers import package_device_connection_wp_serializer, \
     package_repo_serializer
-from initat.package_install.server.config import global_config
-from initat.package_install.server.constants import CONFIG_NAME, \
-    PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
 from lxml.builder import E  # @UnresolvedImport
 from rest_framework.renderers import XMLRenderer
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, process_tools, server_command
+
+from .config import global_config
+from .constants import CONFIG_NAME, PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
 
 
-class repository(object):
+class Repository(object):
     def __init__(self):
         pass
 
 
-class rpm_repository(repository):
+class RPMRepository(Repository):
     pass
 
 
-class repo_type(object):
+class RepoType(object):
     def __init__(self, master_process):
         self.master_process = master_process
         self.log_com = master_process.log
@@ -74,12 +72,12 @@ class repo_type(object):
         cur_search.save(update_fields=["last_search_string", "current_state", "num_searches", "results"])
 
 
-class repo_type_rpm_yum(repo_type):
+class RepoTypeRpmYum(RepoType):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "yum"
     SCAN_REPOS = "yum -v repolist all --color=no"
     CLEAR_CACHE = "yum -y clean all"
-    REPO_CLASS = rpm_repository
+    REPO_CLASS = RPMRepository
 
     def search_package(self, s_string):
         return "yum -v --showduplicates search {}".format(s_string)
@@ -139,12 +137,13 @@ class repo_type_rpm_yum(repo_type):
             if global_config["DELETE_MISSING_REPOS"]:
                 self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
                 package_repo.objects.filter(Q(name__in=old_repos)).delete()
-        if s_struct.src_id:
+        if s_struct.srv_com is not None:
+            s_struct.srv_com.set_result(
+                "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos)))
+            )
             self.master_process.send_pool_message(
-                "delayed_result",
-                s_struct.src_id,
-                "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos))),
-                server_command.SRV_REPLY_STATE_OK
+                "remote_call_async_result",
+                unicode(s_struct.srv_com),
             )
         self.master_process._reload_searches()
 
@@ -211,13 +210,13 @@ class repo_type_rpm_yum(repo_type):
         self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
 
 
-class repo_type_rpm_zypper(repo_type):
+class RepoTypeRpmZypper(RepoType):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "zypper"
     # changed on 2014-02-27, query services (includes repositories)
     SCAN_REPOS = "zypper --xml ls -r -d"
     CLEAR_CACHE = "zypper clean -a"
-    REPO_CLASS = rpm_repository
+    REPO_CLASS = RPMRepository
 
     def search_package(self, s_string):
         return "zypper --xml search -s {}".format(s_string)
@@ -298,12 +297,14 @@ class repo_type_rpm_zypper(repo_type):
             if global_config["DELETE_MISSING_REPOS"]:
                 self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
                 package_repo.objects.filter(Q(name__in=old_repos)).delete()
-        if s_struct.src_id:
+        if s_struct.srv_com is not None:
+            s_struct.srv_com.set_result(
+                "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos)))
+            )
             self.master_process.send_pool_message(
-                "delayed_result",
-                s_struct.src_id,
-                "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos))),
-                server_command.SRV_REPLY_STATE_OK)
+                "remote_call_async_result",
+                unicode(s_struct.srv_com),
+            )
         self.master_process._reload_searches()
 
     def search_result(self, s_struct):
@@ -336,7 +337,7 @@ class repo_type_rpm_zypper(repo_type):
                     ), logging_tools.LOG_LEVEL_ERROR)
 
 
-class subprocess_struct(object):
+class SubprocessStruct(object):
     run_idx = 0
 
     class Meta:
@@ -345,17 +346,17 @@ class subprocess_struct(object):
         use_popen = True
         verbose = False
 
-    def __init__(self, master_process, src_id, com_line, **kwargs):
+    def __init__(self, master_process, srv_com, com_line, **kwargs):
         self.log_com = master_process.log
-        subprocess_struct.run_idx += 1
-        self.run_idx = subprocess_struct.run_idx
+        SubprocessStruct.run_idx += 1
+        self.run_idx = SubprocessStruct.run_idx
         # copy Meta keys
-        for key in dir(subprocess_struct.Meta):
+        for key in dir(SubprocessStruct.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
-                setattr(self.Meta, key, getattr(subprocess_struct.Meta, key))
+                setattr(self.Meta, key, getattr(SubprocessStruct.Meta, key))
         if "verbose" in kwargs:
             self.Meta.verbose = kwargs["verbose"]
-        self.src_id = src_id
+        self.srv_com = srv_com
         self.command_line = com_line
         self.multi_command = type(self.command_line) == list
         self.com_num = 0
@@ -436,7 +437,7 @@ class subprocess_struct(object):
         return fin
 
 
-class client(object):
+class Client(object):
     all_clients = {}
     name_set = set()
 
@@ -457,22 +458,22 @@ class client(object):
                     self.name.replace(".", r"\.")),
                 global_config["LOG_DESTINATION"],
                 zmq=True,
-                context=client.srv_process.zmq_context,
+                context=Client.srv_process.zmq_context,
                 init_logger=True
             )
             self.log("added client")
 
     @staticmethod
     def init(srv_process):
-        client.srv_process = srv_process
-        client.uuid_set = set()
-        client.name_set = set()
-        client.lut = {}
+        Client.srv_process = srv_process
+        Client.uuid_set = set()
+        Client.name_set = set()
+        Client.lut = {}
         if not os.path.exists(CONFIG_NAME):
             file(CONFIG_NAME, "w").write(etree.tostring(E.package_clients(), pretty_print=True))  # @UndefinedVariable
-        client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())  # @UndefinedVariable
-        for client_el in client.xml.xpath(".//package_client", smart_strings=False):
-            client.register(client_el.text, client_el.attrib["name"])
+        Client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())  # @UndefinedVariable
+        for client_el in Client.xml.xpath(".//package_client", smart_strings=False):
+            Client.register(client_el.text, client_el.attrib["name"])
 
     @staticmethod
     def full_uuid(in_uuid):
@@ -480,50 +481,50 @@ class client(object):
 
     @staticmethod
     def get(key):
-        return client.lut[key]
+        return Client.lut[key]
 
     @staticmethod
     def register(uid, name):
         if not uid.endswith(":pclient:"):
             uid = "{}:pclient:".format(uid)
-        if uid not in client.uuid_set:
+        if uid not in Client.uuid_set:
             try:
-                new_client = client(uid, name)
+                new_client = Client(uid, name)
             except device.DoesNotExist:
-                client.srv_process.log("no client with name '{}' found".format(name), logging_tools.LOG_LEVEL_ERROR)
+                Client.srv_process.log("no client with name '{}' found".format(name), logging_tools.LOG_LEVEL_ERROR)
                 if name.count("."):
                     s_name = name.split(".")[0]
-                    client.srv_process.log("trying with short name '{}'".format(s_name), logging_tools.LOG_LEVEL_WARN)
+                    Client.srv_process.log("trying with short name '{}'".format(s_name), logging_tools.LOG_LEVEL_WARN)
                     try:
-                        new_client = client(uid, s_name)
+                        new_client = Client(uid, s_name)
                     except:
                         new_client = None
                     else:
-                        client.srv_process.log("successfull with short name", logging_tools.LOG_LEVEL_WARN)
+                        Client.srv_process.log("successfull with short name", logging_tools.LOG_LEVEL_WARN)
                 else:
-                    client.srv_process.log("trying with name '{}'".format(name), logging_tools.LOG_LEVEL_WARN)
+                    Client.srv_process.log("trying with name '{}'".format(name), logging_tools.LOG_LEVEL_WARN)
                     try:
-                        new_client = client(uid, name)
+                        new_client = Client(uid, name)
                     except:
                         new_client = None
                     else:
-                        client.srv_process.log("successfull with name", logging_tools.LOG_LEVEL_WARN)
+                        Client.srv_process.log("successfull with name", logging_tools.LOG_LEVEL_WARN)
             if new_client is not None:
-                client.uuid_set.add(uid)
-                client.name_set.add(name)
-                client.lut[uid] = new_client
-                client.lut[name] = new_client
-                client.srv_process.log("added client {} ({})".format(name, uid))
-                cur_el = client.xml.xpath(".//package_client[@name='{}']".format(name), smart_strings=False)
+                Client.uuid_set.add(uid)
+                Client.name_set.add(name)
+                Client.lut[uid] = new_client
+                Client.lut[name] = new_client
+                Client.srv_process.log("added client {} ({})".format(name, uid))
+                cur_el = Client.xml.xpath(".//package_client[@name='{}']".format(name), smart_strings=False)
                 _rewrite = False
                 if not len(cur_el):
-                    client.xml.append(E.package_client(uid, name=name))
+                    Client.xml.append(E.package_client(uid, name=name))
                     _rewrite = True
                 elif cur_el[0].text != uid:
                     cur_el[0].text = uid
                     _rewrite = True
                 if _rewrite:
-                    file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))  # @UndefinedVariable
+                    file(CONFIG_NAME, "w").write(etree.tostring(Client.xml, pretty_print=True))  # @UndefinedVariable
 
     def close(self):
         if self.__log_template is not None:
@@ -700,28 +701,23 @@ class client(object):
         self._modify_device_variable(LAST_CONTACT_VAR_NAME, "last contact of the client", "d", datetime.datetime(*time.localtime()[0:6]))
         srv_com.update_source()
         if cur_com == "get_package_list":
-            send_reply = True
             srv_com["command"] = "package_list"
             self._get_package_list(srv_com)
         elif cur_com == "get_repo_list":
-            send_reply = True
             srv_com["command"] = "repo_list"
             self._get_repo_list(srv_com)
         elif cur_com == "package_info":
-            send_reply = False
             self._package_info(srv_com)
+            srv_com = None
         else:
-            send_reply = True
+            srv_com.set_result(
+                "unknown package-client command '{}'".format(
+                    cur_com
+                ),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
             self.log(
                 "unknown command '{}'".format(cur_com),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        if send_reply:
-            self.send_reply(srv_com)
-        e_time = time.time()
-        self.log(
-            "handled command {} in {}".format(
-                cur_com,
-                logging_tools.get_diff_time_str(e_time - s_time)
-            )
-        )
+        return srv_com
