@@ -215,24 +215,26 @@ class ServiceState(object):
         return _ts
 
     def _sync_system_states(self):
-        # sync system states with internal target states for meta-server and logging-server
-        _sys_states = self._parse_system_states()
-        if None not in _sys_states:
-            _log_s, _meta_s = (
-                True if self.__target_dict["logging-server"] == 1 else False,
-                True if self.__target_dict["meta-server"] == 1 else False,
-            )
-            if _log_s == _meta_s:
-                # we only support same stats for meta- and logging-serer
-                if (_log_s, _meta_s) != _sys_states:
-                    if _log_s:
-                        # enable logging and meta server
-                        self.log("enabling logging- and meta-server for system startup")
-                        self._handle_ls_for_system(True)
-                    else:
-                        # disable logging and meta server
-                        self.log("disabling logging- and meta-server for system startup")
-                        self._handle_ls_for_system(False)
+        # ignore when in shutdown mode
+        if not self.__shutdown:
+            # sync system states with internal target states for meta-server and logging-server
+            _sys_states = self._parse_system_states()
+            if None not in _sys_states:
+                _log_s, _meta_s = (
+                    True if self.__target_dict["logging-server"] == 1 else False,
+                    True if self.__target_dict["meta-server"] == 1 else False,
+                )
+                if _log_s == _meta_s:
+                    # we only support same stats for meta- and logging-serer
+                    if (_log_s, _meta_s) != _sys_states:
+                        if _log_s:
+                            # enable logging and meta server
+                            self.log("enabling logging- and meta-server for system startup")
+                            self._handle_ls_for_system(True)
+                        else:
+                            # disable logging and meta server
+                            self.log("disabling logging- and meta-server for system startup")
+                            self._handle_ls_for_system(False)
 
     def _handle_ls_for_system(self, enable):
         _insserv_bin = process_tools.find_file("insserv")
@@ -272,9 +274,6 @@ class ServiceState(object):
             )
             for _l_num, _line in enumerate(_lines, 1):
                 self.log("  {:3d} {}".format(_l_num, _line))
-
-    def _disable_ls_for_system(self):
-        pass
 
     def _parse_system_states(self):
         # parse runlevel, for transition from meta-server / logging-server / host-monitoring to icsw-client
