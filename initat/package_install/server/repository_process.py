@@ -21,27 +21,27 @@
 #
 """ package server, repository process """
 
+import os
+import time
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import package_search
-from initat.package_install.server.config import global_config
-from initat.package_install.server.structs import repo_type_rpm_yum, repo_type_rpm_zypper, \
-    subprocess_struct
-from initat.tools import logging_tools
-import os
-from initat.tools import server_command
-from initat.tools import threading_tools
-import time
+from initat.tools import logging_tools, server_command, threading_tools
+
+from .config import global_config
+from .structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct
 
 
-class repo_process(threading_tools.process_obj):
+class RepoProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=self.zmq_context,
-            init_logger=True)
+            init_logger=True
+        )
         # close database connection
         connection.close()
         self.register_func("rescan_repos", self._rescan_repos)
@@ -53,9 +53,9 @@ class repo_process(threading_tools.process_obj):
         self.register_timer(self._check_delayed, 1)
         # set repository type
         if os.path.isfile("/etc/centos-release") or os.path.isfile("/etc/redhat-release"):
-            self.repo_type = repo_type_rpm_yum(self)
+            self.repo_type = RepoTypeRpmYum(self)
         else:
-            self.repo_type = repo_type_rpm_zypper(self)
+            self.repo_type = RepoTypeRpmZypper(self)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -94,13 +94,15 @@ class repo_process(threading_tools.process_obj):
 
     def _clear_cache(self, *args, **kwargs):
         self.log("clearing cache")
-        self.__background_commands.append(subprocess_struct(
-            self,
-            0,
-            self.repo_type.CLEAR_CACHE,
-            start=True,
-            verbose=global_config["DEBUG"],
-        ))
+        self.__background_commands.append(
+            SubprocessStruct(
+                self,
+                None,
+                self.repo_type.CLEAR_CACHE,
+                start=True,
+                verbose=global_config["DEBUG"],
+            )
+        )
 
     def _rescan_repos(self, *args, **kwargs):
         if args:
@@ -108,20 +110,23 @@ class repo_process(threading_tools.process_obj):
         else:
             srv_com = None
         self.log("rescan repositories")
-        self.__background_commands.append(subprocess_struct(
-            self,
-            0 if srv_com is None else int(srv_com["return_id"].text),
-            self.repo_type.SCAN_REPOS,
-            start=True,
-            verbose=global_config["DEBUG"],
-            post_cb_func=self.repo_type.repo_scan_result))
+        self.__background_commands.append(
+            SubprocessStruct(
+                self,
+                srv_com,
+                self.repo_type.SCAN_REPOS,
+                start=True,
+                verbose=global_config["DEBUG"],
+                post_cb_func=self.repo_type.repo_scan_result
+            )
+        )
 
     def _search(self, s_string):
-        self.log("searching for '%s'" % (s_string))
+        self.log("searching for '{}'".format(s_string))
         self.__background_commands.append(
-            subprocess_struct(
+            SubprocessStruct(
                 self,
-                0,
+                None,
                 self.repo_type.search_package(s_string),
                 start=True,
                 verbose=global_config["DEBUG"],
@@ -131,18 +136,25 @@ class repo_process(threading_tools.process_obj):
 
     def _reload_searches(self, *args, **kwargs):
         self.log("reloading searches")
+        if len(args):
+            srv_com = server_command.srv_command(source=args[0])
+            srv_com.set_result("ok reloading searches")
+            self.send_pool_message("remote_call_async_result", unicode(srv_com))
         search_list = []
         for cur_search in package_search.objects.filter(Q(deleted=False) & Q(current_state__in=["ini", "wait"])):
             search_list.append((self.repo_type.search_package(cur_search.search_string), cur_search))
         if search_list:
             self.log("%s found" % (logging_tools.get_plural("search", len(search_list))))
-            self.__background_commands.append(subprocess_struct(
-                self,
-                0,
-                search_list,
-                start=True,
-                verbose=global_config["DEBUG"],
-                pre_cb_func=self.repo_type.init_search,
-                post_cb_func=self.repo_type.search_result))
+            self.__background_commands.append(
+                SubprocessStruct(
+                    self,
+                    None,
+                    search_list,
+                    start=True,
+                    verbose=global_config["DEBUG"],
+                    pre_cb_func=self.repo_type.init_search,
+                    post_cb_func=self.repo_type.search_result
+                )
+            )
         else:
             self.log("nothing to search", logging_tools.LOG_LEVEL_WARN)

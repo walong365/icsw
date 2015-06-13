@@ -19,18 +19,16 @@
 #
 """ daemon to automatically install packages (.rpm, .deb) """
 
-from initat.package_install.client.config import global_config
-from initat.package_install.client.install_process import yum_install_process, zypper_install_process, \
-    get_srv_command
-from initat.tools import configfile
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
 import time
-from initat.tools import uuid_tools
+
+from initat.tools import configfile, logging_tools, process_tools, server_command, \
+    threading_tools, uuid_tools
 import zmq
+
+from .config import global_config
+from .install_process import yum_install_process, zypper_install_process, \
+    get_srv_command
 
 
 class server_process(threading_tools.process_pool):

@@ -300,7 +300,7 @@ def RemoteCallProcess(klass):
 
 
 class RemoteCallMixin(object):
-    def remote_call(self, zmq_sock):
+    def remote_call(self, zmq_sock, **kwargs):
         in_data = []
         while True:
             in_data.append(zmq_sock.recv())
@@ -348,7 +348,7 @@ class RemoteCallMixin(object):
                     if msg_type == RemoteCallMessageType.flat:
                         result = rcs.handle(self, src_id, data)
                     else:
-                        result = rcs.handle(self, src_id, srv_com)
+                        result = rcs.handle(self, src_id, srv_com, **kwargs)
                     if com_type == "router" and result is not None:
                         # send reply
                         self._send_remote_call_reply(zmq_sock, src_id, result)
@@ -360,7 +360,7 @@ class RemoteCallMixin(object):
                     if msg_type == RemoteCallMessageType.flat:
                         rcs.handle(self, src_id, data)
                     else:
-                        rcs.handle(self, src_id, srv_com)
+                        rcs.handle(self, src_id, srv_com, **kwargs)
             else:
                 self.log(
                     "no matching signature found for msg_type {} (command='{}')".format(
@@ -483,9 +483,9 @@ class RemoteCallSignature(object):
         if self.id_filter:
             id_filter_dict[re.compile(self.id_filter)] = self
 
-    def handle(self, instance, src_id, srv_com):
+    def handle(self, instance, src_id, srv_com, **kwargs):
         # print 'RemoteCall handle', self, instance, src_id, srv_com, 'target', self.target_process, self.func.__name__
-        _result = self.func(instance, srv_com, src_id=src_id)
+        _result = self.func(instance, srv_com, src_id=src_id, **kwargs)
         if self.sync:
             return _result
         else:
