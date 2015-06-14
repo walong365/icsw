@@ -376,12 +376,12 @@ class KpiOperation(object):
         aggregate_historic = 9
         exclude = 10
 
-    def __init__(self, op_type, operands=None, arguments=None):
+    def __init__(self, type, operands=None, arguments=None):
         if arguments is None:
             arguments = {}
         if operands is None:  # only for initial and possibly specially constructed sets
             operands = []
-        self.type = op_type
+        self.type = type
         self.operands = operands
         self.arguments = arguments
 

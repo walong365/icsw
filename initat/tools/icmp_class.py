@@ -272,7 +272,7 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
         if parsed_dgram is not None:
             self.received(parsed_dgram, recv_time=recv_time)
 
-    def received(self, dgram):
+    def received(self, dgram, **kwargs):
         """ to be overwritten """
         print "received datagram", dgram
 
