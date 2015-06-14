@@ -259,6 +259,7 @@ class ctrl_type_ips(ctrl_type):
         else:
             return ret_state, "; ".join(ret_f)
 
+
 class aac_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)

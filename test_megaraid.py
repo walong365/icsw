@@ -41,7 +41,8 @@ class dummy_ccs(object):
 
 if __name__ == "__main__":
     # example:
-    # ./test_megaraid.py initat/host_monitoring/modules/raidinfos/v20_ldpdinfo initat/host_monitoring/modules/raidinfos/v20_bbustatus initat/host_monitoring/modules/raidinfos/v20_encstatus
+    # ./test_megaraid.py initat/host_monitoring/modules/raidinfos/v20_ldpdinfo initat/host_monitoring/modules/raidinfos/
+    # v20_bbustatus initat/host_monitoring/modules/raidinfos/v20_encstatus
 
     print("debugging")
     _sas = ctrl_type_megaraid_sas(dummy_mod(), None)

@@ -370,7 +370,7 @@ class DeviceState(object):
         _key, _result = args[0:2]
         try:
             _dev_pk = int(_key.split("@")[1])
-        except ValueError, IndexError:
+        except (ValueError, IndexError):
             self.log("error parsing key '{}': {}".format(_key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
             if _dev_pk in self.__devices:

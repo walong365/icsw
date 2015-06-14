@@ -25,14 +25,15 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.db.models import Q, get_app, get_models
-from initat.cluster.backbone.models import device, device_group, \
-     mon_contact, mon_contactgroup, mon_check_command_type, mon_check_command, \
-     config, mon_service_templ, user, mon_period, mon_ext_host, mon_service_templ, \
-     mon_device_templ, device_group, group, user, config_str, config_int, config_bool, \
-     config_blob
+from initat.cluster.backbone.models import device, device_group, mon_contact, \
+    mon_contactgroup, mon_check_command_type, mon_check_command, \
+    config, mon_service_templ, user, mon_period, mon_ext_host, mon_service_templ, \
+    mon_device_templ, device_group, group, user, config_str, config_int, config_bool, \
+    config_blob
 import datetime
 from initat.tools import logging_tools
 from initat.tools import process_tools
+
 
 def _parse_value(in_str):
     esc = False
@@ -61,6 +62,7 @@ def _parse_value(in_str):
         new_results.append(new_val)
     return new_results
 
+
 def check_for_zero_fks():
     # get all apps
     checked, fixed, errors = (0, 0, 0)
@@ -72,7 +74,7 @@ def check_for_zero_fks():
             logging_tools.get_plural("check_field", len(c_fields)),
             ", ".join([cur_c.name for cur_c in c_fields]),
             logging_tools.get_plural("entry", model.objects.all().count()),
-            )
+        )
         if c_fields:
             obj_count = model.objects.count()
             for obj_idx, cur_obj in enumerate(model.objects.all()):
@@ -88,7 +90,7 @@ def check_for_zero_fks():
                                 c_field.name,
                                 unicode(cur_obj),
                                 process_tools.get_except_info(),
-                                )
+                            )
                         save_it = True
                     else:
                         try:
@@ -119,6 +121,7 @@ def check_for_zero_fks():
                 ", ".join(["%d" % (cur_pk) for cur_pk in del_pks]))
     print "checked / fixed / errors: %d / %d / %d" % (checked, fixed, errors)
 
+
 def remove_duplicate_config_sibs():
     for e_name in [config_str, config_int, config_bool, config_blob]:
         cur_num = e_name.objects.all().count()
@@ -136,7 +139,8 @@ def remove_duplicate_config_sibs():
                 print "    %s : %s" % (mult_key, ref_dict[mult_key])
                 for del_pk, del_value in ref_dict[mult_key][:-1]:
                     e_name.objects.get(Q(pk=del_pk)).delete()
-            # print key
+                    # print key
+
 
 def main():
     # remove duplicate config str/int/blob
@@ -146,22 +150,30 @@ def main():
     sys.exit(0)
     data_file = sys.argv[1]
     transfer_dict = {
-        "ng_check_command_type" : (mon_check_command_type, ["pk", "name", None], [],),
-        "ng_check_command"      : (mon_check_command, ["pk", None, ("config", config), ("mon_check_command_type", mon_check_command_type), ("mon_service_templ", mon_service_templ), "name", "command_line", "description", None, None], ["name", ],),
-        "ng_contact"            : (mon_contact, ["pk", ("user", user), ("snperiod", mon_period), ("hnperiod", mon_period), "snrecovery", "sncritical", "snwarning", "snunknown", "hnrecovery", "hndown", "hnunreachable", "sncommand", "hncommand"], [],),
-        "ng_contactgroup"       : (mon_contactgroup, ["pk", "name", "alias"], [],),
-        "ng_service_templ"      : (mon_service_templ, ["pk", "name", "volatile", ("nsc_period", mon_period), "max_attempts", "check_interval", "retry_interval", "ninterval", ("nsn_period", mon_period), "nrecovery", "ncritical", "nwarning", "nunknown"], []),
-        "ng_device_templ"       : (mon_device_templ, ["pk", "name", ("mon_service_templ", mon_service_templ), "ccommand", "max_attempts", "ninterval", ("mon_period", mon_period), "nrecovery", "ndown", "nunreachable", "is_default"], []),
+        "ng_check_command_type": (mon_check_command_type, ["pk", "name", None], [],),
+        "ng_check_command": (mon_check_command,
+                             ["pk", None, ("config", config), ("mon_check_command_type", mon_check_command_type), ("mon_service_templ", mon_service_templ),
+                              "name", "command_line", "description", None, None], ["name", ],),
+        "ng_contact": (mon_contact,
+                       ["pk", ("user", user), ("snperiod", mon_period), ("hnperiod", mon_period), "snrecovery", "sncritical", "snwarning", "snunknown",
+                        "hnrecovery", "hndown", "hnunreachable", "sncommand", "hncommand"], [],),
+        "ng_contactgroup": (mon_contactgroup, ["pk", "name", "alias"], [],),
+        "ng_service_templ": (mon_service_templ,
+                             ["pk", "name", "volatile", ("nsc_period", mon_period), "max_attempts", "check_interval", "retry_interval", "ninterval",
+                              ("nsn_period", mon_period), "nrecovery", "ncritical", "nwarning", "nunknown"], []),
+        "ng_device_templ": (mon_device_templ,
+                            ["pk", "name", ("mon_service_templ", mon_service_templ), "ccommand", "max_attempts", "ninterval", ("mon_period", mon_period),
+                             "nrecovery", "ndown", "nunreachable", "is_default"], []),
     }
     copy_dict = {
-        "device" : (
+        "device": (
             device, [
                 (11, "mon_ext_host", "mon_ext_host"),
                 (10, "mon_device_templ", mon_device_templ),
                 (57, "monitor_checks", None),
-                ]
-            ),
-        "group" : (
+            ]
+        ),
+        "group": (
             group, [
                 (6, "first_name", None),
                 (7, "last_name", None),
@@ -169,9 +181,9 @@ def main():
                 (9, "email", None),
                 (10, "tel", None),
                 (11, "comment", None),
-                ]
-            ),
-        "user"  : (
+            ]
+        ),
+        "user": (
             user, [
                 (13, "first_name", None),
                 (14, "last_name", None),
@@ -181,10 +193,10 @@ def main():
                 (18, "tel", None),
                 (19, "comment", None),
             ]
-            ),
+        ),
     }
     lut_dict = {
-        "ng_ext_host" : ("mon_ext_host", mon_ext_host, 1, "name"),
+        "ng_ext_host": ("mon_ext_host", mon_ext_host, 1, "name"),
     }
     lut_table = {}
     for line in file(data_file, "r").xreadlines():
@@ -196,7 +208,7 @@ def main():
                 values = [_parse_value(val) for val in line.split(None, 4)[-1][1:-2].split("),(")]
                 t_name, obj_class, lut_idx, lut_name = lut_dict[t_obj_name]
                 for value in values:
-                    lut_table.setdefault(t_name, {})[value[0]] = obj_class.objects.get(Q(**{lut_name : value[lut_idx]}))
+                    lut_table.setdefault(t_name, {})[value[0]] = obj_class.objects.get(Q(**{lut_name: value[lut_idx]}))
             if t_obj_name in transfer_dict:
                 values = [_parse_value(val) for val in line.split(None, 4)[-1][1:-2].split("),(")]
                 obj_class, t_list, unique_list = transfer_dict[t_obj_name]
@@ -268,19 +280,19 @@ def main():
                     c_group = mon_contactgroup.objects.get(Q(pk=value[1]))
                     c_group.service_templates.add(mon_service_templ.objects.get(Q(pk=value[2])))
     fix_dict = {
-        "device" : {
-            "zero_to_null" : [
+        "device": {
+            "zero_to_null": [
                 "bootserver", "mon_device_templ", "mon_ext_host",
                 "act_kernel", "new_kernel", "new_image", "act_image",
                 "bootnetdevice", "prod_link", "rrd_class", "partition_table",
                 "act_partition_table", "new_state", "monitor_server", "nagvis_parent",
             ],
-            "zero_to_value" : [
+            "zero_to_value": [
                 # ("device_class", device_class.objects.all()[0]),
             ]
         },
-        "device_group" : {
-            "zero_to_null" : ["device", ],
+        "device_group": {
+            "zero_to_null": ["device", ],
         }
     }
     for obj_name, f_dict in fix_dict.iteritems():
@@ -302,6 +314,6 @@ def main():
                 cur_obj.save()
         print "changed %d" % (len(change_list))
 
+
 if __name__ == "__main__":
     main()
-

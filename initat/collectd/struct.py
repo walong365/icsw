@@ -602,7 +602,7 @@ class host_info(object):
                     self.__dict[key].name,
                     self.__dict[key].transform(value, cur_time),
                 )
-            except ValueError, KeyError:
+            except (ValueError, KeyError):
                 self.log("error transforming {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return (None, None)
         else:

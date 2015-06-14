@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2009,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,8 +22,10 @@
 """ logs an error """
 
 import argparse
+
 from initat.tools import io_stream_helper
 import zmq
+
 
 def main():
     my_parser = argparse.ArgumentParser()
@@ -42,4 +44,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

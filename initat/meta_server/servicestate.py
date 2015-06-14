@@ -428,19 +428,19 @@ class ServiceState(object):
             ]
 
     def transition_finished(self, trans):
-        id = trans.id
-        self.log("transition {:d} finished".format(id))
+        t_id = trans.id
+        self.log("transition {:d} finished".format(t_id))
         with self.get_cursor(cached=False) as crs:
             crs.execute(
                 "UPDATE action SET runtime=?, finished=1 WHERE idx=?",
                 (
-                    abs(time.time() - trans.init_time), id
+                    abs(time.time() - trans.init_time), t_id
                 ),
             )
             # get service
             name = crs.execute(
                 "SELECT s.name FROM service s, action a WHERE a.service=s.idx AND a.idx=?",
-                (id,),
+                (t_id,),
             ).fetchone()[0]
             if name in self.__transition_lock_dict:
                 del self.__transition_lock_dict[name]

@@ -313,4 +313,3 @@ class imap_serviceinfo_command(hm_classes.hmb_command):
         else:
             ret_state, ret_str = limits.nag_STATE_CRITICAL, "Error no info found"
         return ret_state, ret_str
-
