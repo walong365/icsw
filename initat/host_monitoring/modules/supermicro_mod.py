@@ -307,8 +307,7 @@ CMM IP address:
 CMM 1 IP: 192.168.102.130
 """,
     },
-    "sys3": {
-
+    "sys4": {
         "system": """
 Blade Module (10/20)
 --------------------
@@ -448,7 +447,8 @@ class smcipmi_struct(hm_classes.subprocess_struct):
                 target_host,
                 login,
                 passwd,
-                command),
+                command
+            ),
         )
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
@@ -468,7 +468,7 @@ class smcipmi_struct(hm_classes.subprocess_struct):
             self.srv_com["output"] = output
 
 
-MOCK_MODE = None # "sys1"
+MOCK_MODE = None  # "sys1"
 
 
 class smcipmi_command(hm_classes.hm_command):

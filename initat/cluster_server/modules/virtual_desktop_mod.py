@@ -46,4 +46,3 @@ class reload_virtual_desktop(cs_base_class.server_com):
         if vdus.to_delete:
             cur_inst.log("removing virtual desktop {}".format(vdus_pk))
             vdus.delete()
-

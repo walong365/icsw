@@ -30,77 +30,24 @@ from initat.tools import configfile
 from lxml import etree
 import zmq
 
+
 def main():
     ret_state = 1
-    my_config = configfile.configuration("send_command",
-                                         [("PORT"           , configfile.int_c_var(8012, help_string="port [%(default)d]", short_options="p")),
-                                          ("HOST"           , configfile.str_c_var("localhost", help_string="target host [%(default)s]")),
-                                          ("PROTOCOLL"      , configfile.str_c_var("tcp", help_string="protocoll [%(default)s]", short_options="P")),
-                                          ("RETRY"          , configfile.int_c_var(1, help_string="number of retries [%(default)d]", short_options="n")),
-                                          ("MEASURE"        , configfile.bool_c_var(False, help_string="measuer execution time [%(default)s]")),
-                                          ("TIMEOUT"        , configfile.int_c_var(10, help_string="timeout in seconds [%(default)d]", short_options="t")),
-                                          ("IDENTITY_STRING", configfile.str_c_var("sc", help_string="set identity substring [%(default)s]")),
-                                          ("ZMQ"            , configfile.bool_c_var(False, help_string="enable 0MQ mode [%(default)s]")),
-                                          ("SRV_COM_MODE"   , configfile.bool_c_var(True, help_string="disbale server command mode [%(default)s], always True for 0MQ", short_options="S"))])
+    my_config = configfile.configuration(
+        "send_command",
+        [
+            ("PORT", configfile.int_c_var(8012, help_string="port [%(default)d]", short_options="p")),
+            ("HOST", configfile.str_c_var("localhost", help_string="target host [%(default)s]")),
+            ("PROTOCOLL", configfile.str_c_var("tcp", help_string="protocoll [%(default)s]", short_options="P")),
+            ("RETRY", configfile.int_c_var(1, help_string="number of retries [%(default)d]", short_options="n")),
+            ("MEASURE", configfile.bool_c_var(False, help_string="measuer execution time [%(default)s]")),
+            ("TIMEOUT", configfile.int_c_var(10, help_string="timeout in seconds [%(default)d]", short_options="t")),
+            ("IDENTITY_STRING", configfile.str_c_var("sc", help_string="set identity substring [%(default)s]")),
+            ("ZMQ", configfile.bool_c_var(False, help_string="enable 0MQ mode [%(default)s]")),
+            ("SRV_COM_MODE", configfile.bool_c_var(True, help_string="disbale server command mode [%(default)s], always True for 0MQ", short_options="S"))
+        ]
+    )
     options = my_config.handle_commandline(add_writeback_option=False, positional_arguments=True)
-##    print options.PROTO
-##    print my_config["PROTO"]
-##    print my_config
-##    try:
-##        opts, args = getopt.getopt(sys.argv[1:], "T:t:hmMdDn:cH:ep:", ["help"])
-##    except:
-##        print "error"
-##        sys.exit(1)
-##    else:
-##        if not args and not opts:
-##            opts = [("-h", "")]
-##        timeout, de_pickle, pre_pickle, num, srv_com_mode, host_dict, meassure_time, protocoll = (10., False, False, 1, True, {}, 0, 1)
-##        s_t = "tcp"
-##        for opt, arg in opts:
-##            if opt in ["-h", "--help"]:
-##                print "Usage: %s [ -H Hosts ] [ -T type ] [ -t timeout ] [ -n NUM ] [ -p PROTO ] [ -h | --help ] [ -m ] [ -M ] host port command [KEY:VALUE] [KEY:VALUE] ..." % (os.path.basename(sys.argv[0]))
-##                print "  default timeout is %d seconds" % (timeout)
-##                print "  -M, -D enables pickeling for sending (only valid for non-server_command mode)"
-##                print "  -m, -d enables depickeling for receiving (only valid for non-server_command mode)"
-##                print "  -n sets number of retries"
-##                print "  -t sets timeout"
-##                print "  -T sets send_type (t)cp or (u)dp, default is (%s)%s" % (s_t[0], s_t[1:])
-##                print "  -c enables non-server_command mode"
-##                print "  -H HOSTS comma-separated list of hosts, each host can have a colon separated option (i.e. rom00:off,rom01)"
-##                print "  -e meassure execution time"
-##                print "  -p PROTO sets protocoll, default is %d" % (protocoll)
-##                sys.exit(-1)
-##            if opt == "-p":
-##                protocoll = int(arg)
-##            if opt == "-e":
-##                meassure_time = 1
-##            if opt == "-H":
-##                host_dict = dict([(x.split(":", 1) + [""])[0:2] for x in arg.split(",")])
-##            if opt == "-T":
-##                if arg == "t":
-##                    s_t = "tcp"
-##                elif arg == "u":
-##                    s_t = "udp"
-##                else:
-##                    print "Cannot parse type '%s'" % (arg)
-##                    sys.exit(-1)
-##            if opt == "-t":
-##                try:
-##                    timeout = float(arg)
-##                except:
-##                    print "cannot parse timeout %s" % (arg)
-##                    sys.exit(-1)
-##            if opt == "-c":
-##                srv_com_mode = False
-##            if opt in ["-m", "-d"]:
-##                de_pickle = True
-##            if opt in ["-M", "-D"]:
-##                pre_pickle = True
-##            if opt == "-n":
-##                num = int(arg)
-##        if len(args) < 3:
-##            print "Need more arguments (%d given)" % (len(args))
-##            sys.exit(-1)
     start_time = time.time()
     if my_config["ZMQ"]:
         conn_str = "%s://%s:%d" % (my_config["PROTOCOLL"],
@@ -120,23 +67,23 @@ def main():
         args = options.arguments
         if not my_config["SRV_COM_MODE"]:
             if pre_pickle:
-                command = server_command.sys_to_net({"command" : args[0], "args" : args[1:]})
+                command = server_command.sys_to_net({"command": args[0], "args": args[1:]})
             else:
                 command = " ".join(args)
         else:
             command = server_command.server_command(command=args[0])
-##            command.set_nodes(host_dict.keys())
-##            for t_host, host_com in host_dict.iteritems():
-##                if host_com:
-##                    command.set_node_command(t_host, host_com)
             opt_dict = {}
             if len(args) > 1:
                 command.set_option_dict(dict([x.split(":", 1) for x in args[1:] if len(x.split(":")) > 1]))
         for idx in range(my_config["RETRY"]):
             if my_config["PROTOCOLL"] == "tcp":
-                errnum, data = net_tools.single_connection(mode="tcp", host=my_config["HOST"], port=my_config["PORT"], command=command, timeout=my_config["TIMEOUT"], protocoll=protocoll).iterate()
+                errnum, data = net_tools.single_connection(
+                    mode="tcp", host=my_config["HOST"], port=my_config["PORT"], command=command, timeout=my_config["TIMEOUT"], protocoll=protocoll
+                ).iterate()
             else:
-                errnum, data = net_tools.single_connection(mode="udp", host=my_config["HOST"], port=my_config["PORT"], command=command, timeout=my_config["TIMEOUT"], protocoll=protocoll).iterate()
+                errnum, data = net_tools.single_connection(
+                    mode="udp", host=my_config["HOST"], port=my_config["PORT"], command=command, timeout=my_config["TIMEOUT"], protocoll=protocoll
+                ).iterate()
             if errnum:
                 print "error: %d %s" % (errnum, data)
             else:
@@ -167,6 +114,7 @@ def main():
     if my_config["MEASURE"]:
         print "took %s" % (logging_tools.get_diff_time_str(end_time - start_time))
     sys.exit(ret_state)
+
 
 if __name__ == "__main__":
     main()

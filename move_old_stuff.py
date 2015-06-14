@@ -7,6 +7,7 @@ import shutil
 
 OLD_DIR_NAME = ".old"
 
+
 def main():
     if len(sys.argv) != 2:
         print "Need directory"
@@ -34,15 +35,19 @@ def main():
                             act_arch = file_parts.pop(-1)
                         else:
                             act_arch = "au"
-                        #rel_part = ".".join(file_parts.pop(-1).split(".")[:-2])
-                        #ver_part = file_parts.pop(-1)
                         file_parts = (".".join(file_parts)).split("-")
                         if len(file_parts) >= 3:
                             act_rel = file_parts.pop(-1)
                             act_ver = file_parts.pop(-1)
                             if act_ver[-1].isdigit() and act_ver[0].isdigit() and act_rel.isdigit():
                                 act_name = "-".join(file_parts)
-                                rpm_dict.setdefault(act_name, {}).setdefault(act_arch, []).append(([int(part) if part.isdigit() else part for part in act_ver.split(".")], int(act_rel), file_name))
+                                rpm_dict.setdefault(
+                                    act_name,
+                                    {}
+                                ).setdefault(
+                                    act_arch,
+                                    []
+                                ).append(([int(part) if part.isdigit() else part for part in act_ver.split(".")], int(act_rel), file_name))
             for rpm_name, arch_dict in rpm_dict.iteritems():
                 for act_arch, rpm_list in arch_dict.iteritems():
                     rpm_list.sort()
@@ -56,6 +61,6 @@ def main():
                         if os.path.isfile(pyi_file):
                             os.unlink(pyi_file)
 
+
 if __name__ == "__main__":
     main()
-    

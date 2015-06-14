@@ -588,7 +588,7 @@ class ServiceState(object):
                                             created="{:d}".format(int(created)),
                                             proc_info_str=proc_info_str,
                                         ) for state, license_state, created, proc_info_str in state_crsr.execute(
-                                            "SELECT state, license_state, created, proc_info_str FROM state " \
+                                            "SELECT state, license_state, created, proc_info_str FROM state "
                                             "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )
@@ -603,7 +603,7 @@ class ServiceState(object):
                                             finished="{:d}".format(finished),
                                             created="{:d}".format(int(created)),
                                         ) for action, success, runtime, finished, created in state_crsr.execute(
-                                            "SELECT action, success, runtime, finished, created FROM action " \
+                                            "SELECT action, success, runtime, finished, created FROM action "
                                             "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )

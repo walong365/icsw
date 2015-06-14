@@ -64,6 +64,7 @@ class ExtReturn(object):
 
 class SRProbe(object):
     __slots__ = ["host_con", "__val", "__time"]
+
     def __init__(self, host_con):
         self.host_con = host_con
         self.__val = {

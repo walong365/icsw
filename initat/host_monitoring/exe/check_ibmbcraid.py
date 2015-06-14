@@ -71,7 +71,7 @@ class ctrl_command(object):
     def _interpret(self, in_value):
         if type(in_value) is dict:
             for key, value in in_value.iteritems():
-                if type(value) == type(""):
+                if insinstance(value, basestring):
                     if value.isdigit() and "%d" % (int(value)) == value:
                         in_value[key] = int(value)
                     elif value.lower() == "true":
@@ -80,7 +80,7 @@ class ctrl_command(object):
                         in_value[key] = False
                 else:
                     self._interpret(value)
-        elif type(in_value) == type([]):
+        elif isinstance(in_value, list):
             for value in in_value:
                 self._interpret(value)
         return in_value
@@ -96,7 +96,7 @@ class ctrl_detail(ctrl_command):
     def interpret_list(self, in_list):
         keyvalue_re = re.compile("^\s+(?P<key>.*?):(?P<value>.+)$")
         volume_re = re.compile("^\|\s*(?P<volume>\d+)\s*\|\s+(?P<name>\S+)\s*\|\s+(?P<capacity>\S+)\s*\|\s+(?P<raidlevel>\d+)\s*\|\s+(?P<status>.*)\|$")
-        kv_dict = dict([(cur_re.group("key").strip(), cur_re.group("value").strip()) for cur_re in [keyvalue_re.match(cur_line) for cur_line in in_list] if cur_re])
+        kv_dict = {cur_re.group("key").strip(): cur_re.group("value").strip() for cur_re in [keyvalue_re.match(cur_line) for cur_line in in_list] if cur_re}
         kv_dict["volumes"] = [cur_re.groupdict() for cur_re in [volume_re.match(cur_line) for cur_line in in_list] if cur_re]
         return kv_dict
     

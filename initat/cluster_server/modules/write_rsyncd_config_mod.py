@@ -97,7 +97,6 @@ class write_rsyncd_config(cs_base_class.server_com):
             extra_info = " (root kept)"
         _server_idxs = [global_config["SERVER_IDX"]]
         # check for rsync
-        # call_params.dc.execute("SELECT cs.value, cs.name, c.name AS config_name FROM device_config dc LEFT JOIN new_config c ON dc.new_config=c.new_config_idx INNER JOIN config_str cs ON cs.new_config=c.new_config_idx AND c.name LIKE('%%rsync%%') AND (%s)" % (" OR ".join(["dc.device=%d" % (x) for x in server_idxs])))
         rsync_dict = {}
         # for db_rec in call_params.dc.fetchall():
         #    rsync_dict.setdefault(db_rec["config_name"], {})[db_rec["name"]] = db_rec["value"]

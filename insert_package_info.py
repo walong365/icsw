@@ -29,6 +29,7 @@ import commands
 import pprint
 import time
 
+
 def check_package(image_idx, root_dir, single_package, dc, **args):
     do_chroot = args.get("do_chroot", True)
     is_error, error_str, num_p, packages = (False, "", 0, {})
@@ -299,6 +300,6 @@ def main():
             print "pname %s" % (pack_struct["name"])
         #print packages
   
+
 if __name__ == "__main__":
     main()
-    

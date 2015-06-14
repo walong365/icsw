@@ -23,7 +23,11 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="rrd_collector", description="devices acts as a collector",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="rrd_collector",
+        description="devices acts as a collector",
+        server_config=True,
+        system_config=True,
+    )

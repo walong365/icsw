@@ -52,6 +52,7 @@ TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
 logger = logging.getLogger(__name__)
 
+
 class MemoryProfile(object):
     """
     Collect information on maximum memory usage. Use repeated calls to measure()

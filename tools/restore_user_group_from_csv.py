@@ -10,6 +10,7 @@ django.setup()
 from initat.cluster.backbone.models import group, user
 import csv
 
+
 def main():
     c_group = csv.DictReader(file("group.csv", "r"))
     c_user = csv.DictReader(file("user.csv", "r"))
@@ -45,6 +46,6 @@ def main():
             )
             _u[new_u.login] = new_u
 
+
 if __name__ == "__main__":
     main()
-

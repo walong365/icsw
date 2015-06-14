@@ -23,7 +23,11 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="config_server", description="enables node provisioning features",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="config_server",
+        description="enables node provisioning features",
+        server_config=True,
+        system_config=True,
+    )
