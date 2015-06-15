@@ -51,7 +51,6 @@ from initat.tools import uuid_tools
 import zmq
 
 
-
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
 

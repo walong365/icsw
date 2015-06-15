@@ -207,36 +207,38 @@
                 <tree treeconfig="g_tree"></tree>
             </div>
             <div ng-class="show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-                <h4>{{ graph_list.length }} graphs, {{ graph_list[0].get_tv(graph_list[0].ts_start_mom) }} to {{ graph_list[0].get_tv(graph_list[0].ts_end_mom) }}</h4>
-                <table class="table-condensed">
-                    <tr ng-repeat="gkey in get_graph_keys()">
-                        <td ng-repeat="(dkey, graph) in graph_mat[gkey]" style="vertical-align:top;">
-                            <h4 ng-show="!graph.error">
-                                <span class="label label-default" ng-click="graph.toggle_expand()">
-                                    <span ng-class="graph.get_expand_class()"></span>
-                                    graph #{{ graph.num }}
-                                </span>&nbsp;
-                                <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
-                            </h4>
-                            <h4 ng-show="graph.removed_keys.length">
-                                {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
-                            </h4>
-                            <h4 class="text-danger" ng-show="graph.error">Error loading graph ({{ graph.num }})</h4>
-                            <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
-                                <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"/>
-                            </span>
-                            <div ng-show="graph.active && !graph.error && graph.src">
-                                <icsw-rrd-image-cropped ng-src="{{ graph.src }}" graph="graph">
-                                </icsw-rrd-image-cropped>
-                            </div>
-                            <div ng-show="!graph.src">
-                                <span class="text-warning">no graph created</span>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
+                <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"><h4>ddd</h4></icsw-rrd-graph-list>
             </div>
         </div>
     </div>
 </script>
 
+<script type="text/ng-template" id="icsw.rrd.graph.list.header">
+    <h4>{{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}</h4>
+    <table class="table-condensed">
+        <tr ng-repeat="gkey in get_graph_keys()">
+            <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">
+                <icsw-rrd-graph-list-graph graph="graph"></icsw-rrd-graph-list-graph>
+            </td>
+        </tr>
+    </table>
+</script>
+
+
+<script type="text/ng-template" id="icsw.rrd.graph.list.graph.header">
+    <h4>
+        <span class="label label-default" ng-click="graph.toggle_expand()">
+            <span ng-class="graph.get_expand_class()"></span>
+            graph #{{ graph.num }}
+        </span>&nbsp;
+        <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
+    </h4>
+</script>
+
+<script type="text/ng-template" id="icsw.rrd.graph.list.graph">
+    <div>
+        <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
+            <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"/>
+        </span>
+    </div>
+</script>

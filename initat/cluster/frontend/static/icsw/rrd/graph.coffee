@@ -489,8 +489,6 @@ angular.module(
                             $scope.graph_mat = graph_mat
                             $scope.graph_list = graph_list
                         )
-        $scope.get_graph_keys = () ->
-            return (key for key of $scope.graph_mat)
         $scope.$on("$destroy", () ->
             #console.log "dest"
         )                
@@ -554,7 +552,6 @@ angular.module(
 ).directive("icswRrdImageCropped", () ->
     return {
         restrict: "E"
-        replace: true
         scope: {
             src: "@"
             graph: "="
@@ -598,4 +595,56 @@ angular.module(
             )
             scope.$on("$destroy", clear)
     }
-)
+).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
+    return {
+        restrict: "E"
+        replace: true
+        scope: {
+            graphList: "="
+            graphMatrix: "="
+        }
+        link: (scope, element, attr) ->
+            scope.$watch("graphList", (new_val) ->
+                element.children().remove()
+                if new_val.length
+                    element.append($compile($templateCache.get("icsw.rrd.graph.list.header"))(scope))
+            )
+            scope.get_graph_keys = () ->
+                return (key for key of scope.graphMatrix)
+    }
+]).directive("icswRrdGraphListGraph", ["$templateCache", "$compile", ($templateCache, $compile) ->
+    return {
+        restrict: "E"
+        replace: true
+        scope: {
+            graph: "="
+        }
+        # template: $templateCache.get("icsw.rrd.graph.list.graph")
+        link: (scope, element, attr) ->
+            element.children().remove()
+            _graph = scope.graph
+            if not _graph.error
+                element.append($compile($templateCache.get("icsw.rrd.graph.list.graph.header"))(scope))
+            if _graph.removed_keys.length
+                _rem_keys = _graph.get_removed_keys()
+                element.append(angular.element("<h4>#{_graph.removed_keys.length} keys not shown (zero data) <span class='glyphicon glyphicon-info-sign' title=\"#{_rem_keys}\"></span></h4>"))
+            if _graph.error
+                element.append(angular.element("<h4 class='text-danger'>Error loading graph (#{_graph.num})</h4>"))
+            # element.append($compile($templateCache.get("icsw.rrd.graph.list.graph"))(scope))
+            if not _graph.src
+                element.append(angular.element("<div><span class='text-warning'>no graph created</span></div>"))
+            else
+                if not _graph.error
+                    element.append($compile("<icsw-rrd-image-cropped src=\"#{_graph.src}\" graph='graph'/>")(scope))
+                    scope.$watch("graph.active", (new_val) ->
+                        _v_key = "display"
+                        _v_val = if new_val then "inline" else "none"
+                        element.find("icsw-rrd-image-cropped").css(_v_key, _v_val).next().css(_v_key, _v_val)
+                    )
+                    # todo: show cropped timerange
+            element.on("$destroy", () ->
+                # console.log "destr"
+            )
+    }
+    # console.log "S", $scope.graph
+])

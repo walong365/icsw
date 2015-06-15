@@ -27,13 +27,17 @@ import re
 from initat.tools import server_command
 import time
 
+
 class _general(hm_classes.hm_module):
     pass
 
+
 class rpmlist_command(hm_classes.hm_command):
     info_str = "rpm list"
+
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
     def __call__(self, srv_com, cur_ns):
         if os.path.isfile("/etc/debian_version"):
             is_debian = True
@@ -57,17 +61,18 @@ class rpmlist_command(hm_classes.hm_command):
             self.log(log)
         if not cur_stat:
             srv_com["result"].attrib.update({
-                "reply" : "ok got list in %s" % (logging_tools.get_diff_time_str(e_time - s_time)),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
+                "reply": "ok got list in %s" % (logging_tools.get_diff_time_str(e_time - s_time)),
+                "state": "%d" % (server_command.SRV_REPLY_STATE_OK)
                 })
             srv_com["root_dir"] = rpm_root_dir
             srv_com["format"] = "deb" if is_debian else "rpm"
             srv_com["pkg_list"] = base64.b64encode(marshal.dumps(ret_dict))
         else:
             srv_com["result"].attrib.update({
-                "reply" : "error getting list: %d" % (cur_stat),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)
+                "reply": "error getting list: %d" % (cur_stat),
+                "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR)
                 })
+
     def interpret(self, srv_com, cur_ns):
         r_dict = marshal.loads(base64.b64decode(srv_com["pkg_list"].text))
         root_dir = srv_com["root_dir"].text
@@ -83,7 +88,7 @@ class rpmlist_command(hm_classes.hm_command):
             if in_format == "rpm":
                 for key in keys:
                     for value in r_dict[key]:
-                        if type(value) == type(()):
+                        if type(value) is tuple:
                             if len(value) == 4:
                                 ver, rel, arch, summary = value
                                 size = 0
@@ -117,11 +122,12 @@ class rpmlist_command(hm_classes.hm_command):
                             logging_tools.form_entry_right(ver, header="version"),
                             logging_tools.form_entry(rel, header="release"),
                             logging_tools.form_entry(summary, header="summary"),
-                            ])
+                        ])
                         out_f.add_line((key, d_flag, s_flag, e_flag, ver, rel, summary))
             return limits.nag_STATE_OK, "%s\n%s" % (header_line, str(out_f))
         else:
             return limits.nag_STATE_CRITICAL, "%s, nothing found" % (header_line)
+
 
 def rpmlist_int(rpm_root_dir, re_strs, is_debian):
     if is_debian:
@@ -157,10 +163,10 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
                         else:
                             desired_flag, status_flag, error_flag = flags
                         ret_dict.setdefault(name, []).append({
-                            "flags"   : (desired_flag, status_flag, error_flag),
-                            "version" : ver,
-                            "release" : rel,
-                            "summary" : info})
+                            "flags": (desired_flag, status_flag, error_flag),
+                            "version": ver,
+                            "release": rel,
+                            "summary": info})
                 break
             else:
                 ret_dict = ipl
@@ -204,14 +210,13 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
                         summary = rfp.group("summary")
                         if valid:
                             ret_dict.setdefault(name, []).append({
-                                "version" : ver,
-                                "release" : rel,
-                                "arch"    : arch,
-                                "size"    : size,
-                                "summary" : summary})
+                                "version": ver,
+                                "release": rel,
+                                "arch": arch,
+                                "size": size,
+                                "summary": summary})
                 log_list.append("Found %d packages (%d matches)" % (num_tot, num_match))
                 break
             else:
                 ret_dict = ipl
     return log_list, ret_dict, stat
-

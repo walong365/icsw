@@ -376,12 +376,12 @@ class KpiOperation(object):
         aggregate_historic = 9
         exclude = 10
 
-    def __init__(self, type, operands=None, arguments=None):
+    def __init__(self, operation_type, operands=None, arguments=None):
         if arguments is None:
             arguments = {}
         if operands is None:  # only for initial and possibly specially constructed sets
             operands = []
-        self.type = type
+        self.type = operation_type
         self.operands = operands
         self.arguments = arguments
 
@@ -467,7 +467,7 @@ class KpiSet(object):
         :type origin: KpiOperation | None
         """
         self.objects = objects if objects is not None else []
-        self.origin = origin if origin else KpiOperation(type=KpiOperation.Type.initial)
+        self.origin = origin if origin else KpiOperation(KpiOperation.Type.initial)
 
     """
     @classmethod
@@ -487,13 +487,13 @@ class KpiSet(object):
 
     def _check_value(self, amount, limit_ok, limit_warn, method='at least'):
         if method == 'at least':
-            cmp = lambda x, y: x >= y
+            _cmp = lambda x, y: x >= y
         elif method == 'at most':
-            cmp = lambda x, y: x < y
+            _cmp = lambda x, y: x < y
         else:
             raise ValueError("Invalid comparison method: '{}'. Supported methods are 'at least' or 'at most'.")
 
-        if cmp(amount, limit_ok):
+        if _cmp(amount, limit_ok):
             result = KpiResult.ok
         elif limit_warn is not None and cmp(amount, limit_warn):
             result = KpiResult.warning
@@ -699,6 +699,14 @@ class KpiSet(object):
                         end, kpi_global_end,
                     )
                 )
+
+            if start == end:
+                raise RuntimeError("Same start and end date for get_historic_data(): {}".format(start))
+
+            if start > end:
+                raise RuntimeError("Start date for get_historic_data() is later than end date ({} > {})".format(
+                    start, end
+                ))
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())

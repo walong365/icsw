@@ -7,6 +7,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 from django.db.models import get_apps
 from django.utils.datastructures import SortedDict
 
+
 def sort_dependencies(app_list):
     """Sort a list of app,modellist pairs into a single list of models.
 
@@ -78,6 +79,7 @@ def sort_dependencies(app_list):
         model_dependencies = skipped
     return model_list
 
+
 def main():
     app_dict = SortedDict([(app, None) for app in get_apps()])
     mod_list = sort_dependencies(app_dict.items())
@@ -86,7 +88,7 @@ def main():
             print mod._meta.db_table
     print
     print " ".join([mod._meta.db_table for mod in mod_list if mod._meta.app_label == "backbone"])
-        # print mod._meta.app_label, mod._meta.object_name, mod._meta
+
 
 if __name__ == "__main__":
     main()

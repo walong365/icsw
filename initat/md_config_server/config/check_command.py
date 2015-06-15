@@ -264,5 +264,3 @@ class service_templates(dict):
             )
             act_key = self.__default.pk
         return super(service_templates, self).__getitem__(act_key)
-
-

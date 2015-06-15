@@ -27,9 +27,11 @@ from initat.tools import process_tools
 from initat.tools import server_command
 import sys
 
+
 class aggreg(object):
     def __init__(self):
         pass
+
     def _str_to_int(self, in_str, def_mult):
         if in_str.lower().endswith("m"):
             mult = 1024 * 1024
@@ -44,6 +46,7 @@ class aggreg(object):
             return 0
         else:
             return float(in_str) * mult
+
     def _str_to_float(self, in_str, def_mult):
         if in_str.lower().endswith("m"):
             mult = 1024 * 1024
@@ -58,8 +61,10 @@ class aggreg(object):
             return 0
         else:
             return float(in_str) * mult
+
     def get_perc_graph(self, in_value):
         return ("#" * int(in_value / 5))
+
 
 class sum_aggreg(aggreg):
     def __init__(self, **args):
@@ -69,12 +74,14 @@ class sum_aggreg(aggreg):
         self.__add_str = args.get("postfix", "/s")
         self.__unit_str = args.get("unit", "B")
         self.__float_input = args.get("float_input", False)
+
     def __add__(self, value):
         if self.__float_input:
             self.__values.append(self._str_to_float(value, self.__default_mult))
         else:
             self.__values.append(self._str_to_int(value, self.__default_mult))
         return self
+
     def __str__(self):
         mult = ["k", "M", "G", "T"]
         act_pf = ""
@@ -86,8 +93,10 @@ class sum_aggreg(aggreg):
                                 act_pf,
                                 self.__unit_str,
                                 self.__add_str)
+
     def value(self):
         return sum(self.__values)
+
 
 class max_aggreg(aggreg):
     def __init__(self, **args):
@@ -95,9 +104,11 @@ class max_aggreg(aggreg):
         self.__values = []
         self.__default_mult = args.get("mult", 1)
         self.__add_str = args.get("postfix", "%")
+
     def __add__(self, value):
         self.__values.append(self._str_to_int(value, self.__default_mult))
         return self
+
     def __str__(self):
         if self.__values:
             in_perc = max(self.__values)
@@ -105,8 +116,10 @@ class max_aggreg(aggreg):
             in_perc = 0.
         return "%3d%s" % (in_perc,
                           " %s" % (self.__add_str) if self.__add_str else "")
+
     def value(self):
         return max(self.__values)
+
 
 class res_line(object):
     def __init__(self):
@@ -140,23 +153,27 @@ class res_line(object):
         self["random_seek_cpu"] = max_aggreg(postfix="%")
         self.machine_name = "not set"
         self.size = 0
+
     def __setitem__(self, key, value):
         self.__value_dict[key] = value
+
     def __getitem__(self, key):
-        if self.__value_dict.has_key(key):
+        if key in self.__value_dict:
             return self.__value_dict[key]
         else:
             return "not set"
+
     def add_line(self, line):
-        if type(line) == type([]):
+        if type(line) is list:
             for sub_line in line:
                 self._add_line(sub_line)
         else:
             self._add_line(line)
+
     def _add_line(self, line):
         recs = line.split(",")
         if len(recs) != 27:
-            raise ValueError, "number of records (%d) != 27" % (len(recs))
+            raise ValueError("number of records (%d) != 27" % (len(recs)))
         self.__recs = recs
         self.machine_name = recs.pop(0)
         for key in self.__out_keys:
@@ -164,8 +181,10 @@ class res_line(object):
                 self[key] = sum_aggreg(postfix="") + recs.pop(0)
             else:
                 self[key] += recs.pop(0)
+
     def get_out_keys(self):
         return self.__out_keys
+
 
 def main():
     if len(sys.argv) != 2:
@@ -191,12 +210,12 @@ def main():
                                    "seqin_spd", "seqin_cpu",
                                    "seek_spd", "seek_cpu"])
     out_list.set_format_string("time spent", "s", "")
-    out_list.set_format_string("cout_spd"  , "s", "")
+    out_list.set_format_string("cout_spd", "s", "")
     out_list.set_format_string("seqout_spd", "s", "")
-    out_list.set_format_string("rew_spd"   , "s", "")
-    out_list.set_format_string("cin_spd"   , "s", "")
-    out_list.set_format_string("seqin_spd" , "s", "")
-    out_list.set_format_string("seek_spd"  , "s", "")
+    out_list.set_format_string("rew_spd", "s", "")
+    out_list.set_format_string("cin_spd", "s", "")
+    out_list.set_format_string("seqin_spd", "s", "")
+    out_list.set_format_string("seek_spd", "s", "")
     run_keys = sorted([x for x in file_struct.keys() if type(x) in [type(0), type(0L)]])
     print "Found %s: %s" % (logging_tools.get_plural("run", len(run_keys)),
                             ", ".join([logging_tools.get_plural("thread", file_struct[x]["num_threads"]) for x in run_keys]))
@@ -215,7 +234,7 @@ def main():
             run_obj = res_line()
             for res_thread in range(1, tot_threads + 1):
                 thread_res = run_res[res_thread]
-                if type(thread_res) == type({}):
+                if type(thread_res) is dict:
                     act_res_line = thread_res["output"]
                     run_time = thread_res.get("run_time", 0)
                 else:

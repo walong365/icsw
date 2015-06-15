@@ -100,38 +100,6 @@ class ctrl_type_lsi(ctrl_type):
                                 if "volumes" in ctrl_dict:
                                     vol_dict.setdefault("disks", {})[line.split()[-1].replace("#", "")] = phys_dict
         ccs.srv_com["result:ctrls"] = self._dict
-        return
-        # code mpt-status, not used any more
-        ctrl_re = re.compile(
-            "^(?P<c_name>\S+) vol_id (?P<vol_id>\d+) type (?P<c_type>\S+), (?P<num_discs>\d+) "
-            "phy, (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)"
-        )
-        disk_re = re.compile(
-            "^(?P<c_name>\S+) phy (?P<phy_id>\d+) scsi_id (?P<scsi_id>\d+) (?P<disk_info>.*), "
-            "(?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)$"
-        )
-        to_int = ["num_discs", "vol_id", "phy_id", "scsi_id"]
-        to_float = ["size"]
-        for line in ccs.read().split("\n"):
-            if line.strip():
-                line = " ".join(line.split())
-                for re_type, cur_re in [("c", ctrl_re), ("d", disk_re)]:
-                    cur_m = cur_re.match(line)
-                    if cur_m:
-                        break
-                if cur_m:
-                    cur_dict = cur_m.groupdict()
-                    for key, value in cur_dict.iteritems():
-                        if key in to_int:
-                            cur_dict[key] = int(value)
-                        elif key in to_float:
-                            cur_dict[key] = float(value)
-                    if re_type == "c":
-                        self._dict[cur_dict["c_name"]] = cur_dict
-                        self._dict[cur_dict["c_name"]]["disks"] = []
-                    elif cur_m:
-                        self._dict[cur_dict["c_name"]]["disks"].append(cur_dict)
-        ccs.srv_com["result:ctrls"] = self._dict
 
     def _interpret(self, in_dict, cur_ns):
         if "ctrls" in in_dict and in_dict["ctrls"]:
@@ -181,4 +149,3 @@ class lsi_status_command(hm_classes.hm_command):
 
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("lsi")._interpret(ctrl_dict, cur_ns)
-

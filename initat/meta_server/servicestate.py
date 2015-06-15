@@ -428,19 +428,19 @@ class ServiceState(object):
             ]
 
     def transition_finished(self, trans):
-        id = trans.id
-        self.log("transition {:d} finished".format(id))
+        t_id = trans.id
+        self.log("transition {:d} finished".format(t_id))
         with self.get_cursor(cached=False) as crs:
             crs.execute(
                 "UPDATE action SET runtime=?, finished=1 WHERE idx=?",
                 (
-                    abs(time.time() - trans.init_time), id
+                    abs(time.time() - trans.init_time), t_id
                 ),
             )
             # get service
             name = crs.execute(
                 "SELECT s.name FROM service s, action a WHERE a.service=s.idx AND a.idx=?",
-                (id,),
+                (t_id,),
             ).fetchone()[0]
             if name in self.__transition_lock_dict:
                 del self.__transition_lock_dict[name]
@@ -588,7 +588,7 @@ class ServiceState(object):
                                             created="{:d}".format(int(created)),
                                             proc_info_str=proc_info_str,
                                         ) for state, license_state, created, proc_info_str in state_crsr.execute(
-                                            "SELECT state, license_state, created, proc_info_str FROM state " \
+                                            "SELECT state, license_state, created, proc_info_str FROM state "
                                             "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )
@@ -603,7 +603,7 @@ class ServiceState(object):
                                             finished="{:d}".format(finished),
                                             created="{:d}".format(int(created)),
                                         ) for action, success, runtime, finished, created in state_crsr.execute(
-                                            "SELECT action, success, runtime, finished, created FROM action " \
+                                            "SELECT action, success, runtime, finished, created FROM action "
                                             "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )

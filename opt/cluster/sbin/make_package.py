@@ -32,12 +32,13 @@ import time
 
 
 def check_for_association(dc, p_idx, name, version, release, set_dict):
-    dc.execute("SELECT p.*, p.package_idx, ip.inst_package_idx, ip.last_build, ip.location, ip.package FROM package p, inst_package ip WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release))
+    #  dc.execute("SELECT p.*, p.package_idx, ip.inst_package_idx, ip.last_build, ip.location, ip.package FROM package p, inst_package ip WHERE
+    #  ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release))
     pip_dict = {}
     for stuff in dc.fetchall():
         pip_dict.setdefault(stuff["package_idx"], {})[stuff["inst_package_idx"]] = stuff
     write_entry = True
-    if pip_dict.has_key(p_idx):
+    if p_idx in pip_dict:
         for del_idx in pip_dict[p_idx].keys():
             if set_dict:
                 if len([1 for sf in [pip_dict[p_idx][del_idx][key] == set_dict[key] for key in set_dict.keys() if key not in ["last_build"]] if not sf]) > 0:
@@ -97,7 +98,8 @@ def getinput(prompt=":"):
 
 def list_packages(list_arg, dc):
     all_packs = None
-    sql_str = "SELECT ip.last_build,p.packager,ip.location,ip.last_build,p.name,p.version,p.release,a.architecture,p.size,p.summary FROM inst_package ip, package p, architecture a WHERE ip.package=p.package_idx AND p.architecture=a.architecture_idx"
+    sql_str = ""   # SELECT ip.last_build,p.packager,ip.location,ip.last_build,p.name,p.version,p.release,a.architecture,p.size,p.summary
+    # FROM inst_package ip, package p, architecture a WHERE ip.package=p.package_idx AND p.architecture=a.architecture_idx"
     if "ALL" in list_arg:
         dc.execute(sql_str)
         all_packs = dc.fetchall()
@@ -114,12 +116,24 @@ def list_packages(list_arg, dc):
         out_fm = logging_tools.form_list()
         out_fm.set_header_string(0, ["Name", "Version", "Release", "packager", "pack_date", "arch", "size", "Summary"])
         for pack in all_packs:
-            out_fm.add_line([pack["name"], pack["version"], pack["release"], pack["packager"], time.ctime(pack["last_build"]), pack["architecture"], str(pack["size"]), pack["summary"]])
+            out_fm.add_line(
+                [
+                    pack["name"],
+                    pack["version"],
+                    pack["release"],
+                    pack["packager"],
+                    time.ctime(pack["last_build"]),
+                    pack["architecture"],
+                    str(pack["size"]),
+                    pack["summary"]
+                ]
+            )
         print str(out_fm)
 
 
 def delete_package(dc, name, version, release):
-    sql_str = "SELECT p.* FROM inst_package ip, package p WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release)
+    sql_str = ""  # SELECT p.* FROM inst_package ip, package p WHERE ip.package=p.package_idx AND
+    # p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release)
     dc.execute(sql_str)
     print "Trying to delete %s with name '%s', version '%s', release '%s' ..." % (logging_tools.get_plural("package", dc.rowcount),
                                                                                   name,
@@ -287,6 +301,7 @@ def main():
     if dc:
         dc.release()
     print "done"
+
 
 if __name__ == "__main__":
     main()

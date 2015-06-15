@@ -841,7 +841,6 @@ class icinga_log_reader(threading_tools.process_obj):
 
         return host, (service, service_info), state, state_type, msg
 
-
     def _resolve_host(self, host_spec):
         '''
         @return int: pk of host or None
@@ -935,5 +934,3 @@ class icinga_log_reader(threading_tools.process_obj):
 
     def _parse_timestamp(self, timestamp):
         return datetime.datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
-
-

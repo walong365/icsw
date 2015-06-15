@@ -281,11 +281,13 @@ class RepoTypeRpmZypper(RepoType):
                             self.log("no repository with name '{}' found".format(_name), logging_tools.LOG_LEVEL_ERROR)
                         else:
                             if _pri != cur_repo.priority:
-                                self.log("changing priority of {} from {:d} to {:d}".format(
-                                    cur_repo.name,
-                                    cur_repo.priority,
-                                    _pri,
-                                    ))
+                                self.log(
+                                    "changing priority of {} from {:d} to {:d}".format(
+                                        cur_repo.name,
+                                        cur_repo.priority,
+                                        _pri,
+                                    )
+                                )
                             cur_repo.priority = _pri
                             cur_repo.save()
         self.log("found {}".format(logging_tools.get_plural("new repository", len(new_repos))))
@@ -328,13 +330,17 @@ class RepoTypeRpmZypper(RepoType):
                     version=result.attrib["edition"],
                     package_search=cur_search,
                     copied=False,
-                    package_repo=repo_dict[result.attrib["repository"]])
+                    package_repo=repo_dict[result.attrib["repository"]]
+                )
                 new_sr.save()
             else:
-                self.log("unknown repository '{}' for package '{}'".format(
-                    result.attrib["repository"],
-                    result.attrib["name"],
-                    ), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "unknown repository '{}' for package '{}'".format(
+                        result.attrib["repository"],
+                        result.attrib["name"],
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
 
 
 class SubprocessStruct(object):
@@ -514,6 +520,7 @@ class Client(object):
                 Client.name_set.add(name)
                 Client.lut[uid] = new_client
                 Client.lut[name] = new_client
+                Client.lut[name.split(".")[0]] = new_client
                 Client.srv_process.log("added client {} ({})".format(name, uid))
                 cur_el = Client.xml.xpath(".//package_client[@name='{}']".format(name), smart_strings=False)
                 _rewrite = False
@@ -566,17 +573,20 @@ class Client(object):
                     self.log("cannot interpret version '{}'".format(new_vers))
             else:
                 self.__client_gen = 1
-            self.log("changed version from '{}' to '{}' (generation {:d})".format(
-                self.__version,
-                new_vers,
-                self.__client_gen,
-                ))
+            self.log(
+                "changed version from '{}' to '{}' (generation {:d})".format(
+                    self.__version,
+                    new_vers,
+                    self.__client_gen,
+                )
+            )
             self.__version = new_vers
             self._modify_device_variable(
                 PACKAGE_VERSION_VAR_NAME,
                 "actual version of the client",
                 "s",
-                self.__version)
+                self.__version
+            )
 
     def _expand_var(self, var):
         return var.replace("%{ROOT_IMPORT_DIR}", global_config["ROOT_IMPORT_DIR"])
@@ -677,18 +687,23 @@ class Client(object):
         info_xml = srv_com.xpath(".//result|.//main_result", smart_strings=False)
         if len(info_xml):
             info_xml = info_xml[0]
-            cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
-            cur_pdc.response_type = pdc_xml.attrib["response_type"]
-            self.log("got package_info for {} (type is {})".format(unicode(cur_pdc.package), cur_pdc.response_type))
-            cur_pdc.response_str = etree.tostring(info_xml)  # @UndefinedVariable
-            # print cur_pdc.response_str
-            cur_pdc.interpret_response()
-            cur_pdc.save(
-                update_fields=[
-                    "response_type", "response_str", "installed", "install_time",
-                    "installed_name", "installed_version", "installed_release"
-                ]
-            )
+            _pk = pdc_xml.attrib["pk"]
+            try:
+                cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=_pk))
+            except package_device_connection.DoesNotExist:
+                self.log("pdc with pk={} does not exist".format(_pk), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                cur_pdc.response_type = pdc_xml.attrib["response_type"]
+                self.log("got package_info for {} (type is {})".format(unicode(cur_pdc.package), cur_pdc.response_type))
+                cur_pdc.response_str = etree.tostring(info_xml)  # @UndefinedVariable
+                # print cur_pdc.response_str
+                cur_pdc.interpret_response()
+                cur_pdc.save(
+                    update_fields=[
+                        "response_type", "response_str", "installed", "install_time",
+                        "installed_name", "installed_version", "installed_release"
+                    ]
+                )
         else:
             self.log("got package_info without result", logging_tools.LOG_LEVEL_WARN)
 
@@ -696,6 +711,23 @@ class Client(object):
         s_time = time.time()
         self.__last_contact = s_time
         cur_com = srv_com["command"].text
+        if "result" in srv_com:
+            try:
+                _log_str, _log_level = srv_com.get_log_tuple()
+            except KeyError:
+                self.log(
+                    "some keys missing in result-node ({}): {}".format(
+                        cur_com,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                return None
+            else:
+                if _log_level > logging_tools.LOG_LEVEL_WARN:
+                    # to stop avalance of new_config
+                    self.log("got '{}' for {}".format(_log_str, cur_com), _log_level)
+                    return None
         if "package_client_version" in srv_com:
             self._set_version(srv_com["package_client_version"].text)
         self._modify_device_variable(LAST_CONTACT_VAR_NAME, "last contact of the client", "d", datetime.datetime(*time.localtime()[0:6]))

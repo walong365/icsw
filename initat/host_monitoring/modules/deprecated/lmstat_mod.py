@@ -18,11 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.host_monitoring import limits, hm_classes
 import commands
-from initat.tools import logging_tools
 import re
-import sys
+
+from initat.host_monitoring import limits, hm_classes
+from initat.tools import logging_tools
+
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
@@ -30,8 +31,10 @@ class my_modclass(hm_classes.hm_fileinfo):
                                         "lmstat",
                                         "provides a interface to check the status of flexlm License-Servers",
                                         **args)
+
     def init(self, mode, logger, basedir_name, **args):
         pass
+
 
 class lmstat_command(hm_classes.hmb_command):
     def __init__(self, **args):
@@ -41,6 +44,7 @@ class lmstat_command(hm_classes.hmb_command):
         self.help_str = "returns the status of a given lmstat-command"
         self.short_client_info = "lmstat_bin [LIC_FILE]"
         self.long_client_info = "location of the lmstat or lmutil binary and optional license-file location"
+
     def server_call(self, cm):
         if len(cm) >= 1:
             lmstat_bin = cm[0]
@@ -60,22 +64,25 @@ class lmstat_command(hm_classes.hmb_command):
                 return "ok %s" % (hm_classes.sys_to_net(s_dict))
         else:
             return "error no lmstat or lmutil binary given"
+
     def client_call(self, result, parsed_coms):
         if result.startswith("ok "):
             l_dict = hm_classes.net_to_sys(result[3:])
             feat_list = parse_features(l_dict["attributes"])
-            if l_dict.has_key("server_port") and l_dict.has_key("server_name"):
+            if "server_port" in l_dict and "server_name" in l_dict:
                 # old version
                 s_port, s_name = (l_dict["server_port"],
                                   l_dict["server_name"])
-                return limits.nag_STATE_OK, "ok %s (port %d); %s: %s" % (s_name,
-                                                                         s_port,
-                                                                         logging_tools.get_plural("feature", len(feat_list)),
-                                                                         ", ".join(feat_list))
-            elif l_dict.has_key("servers") and l_dict.has_key("server_status"):
+                return limits.nag_STATE_OK, "ok %s (port %d); %s: %s" % (
+                    s_name,
+                    s_port,
+                    logging_tools.get_plural("feature", len(feat_list)),
+                    ", ".join(feat_list)
+                )
+            elif "servers" in l_dict and "server_status" in l_dict:
                 # num servers
                 num_servers = len(l_dict["servers"])
-                servers_up   = sorted([k for k, v in l_dict["server_status"].iteritems() if v.lower().count("server up")])
+                servers_up = sorted([k for k, v in l_dict["server_status"].iteritems() if v.lower().count("server up")])
                 servers_down = sorted([k for k, v in l_dict["server_status"].iteritems() if k not in servers_up])
                 if servers_down:
                     return limits.nag_STATE_CRITICAL, "error %s down: %s, %s up: %s; %s: %s" % (
@@ -102,10 +109,11 @@ class lmstat_command(hm_classes.hmb_command):
         else:
             return limits.nag_STATE_CRITICAL, "error %s" % (result)
 
+
 def parse_lmstat_out(out):
     stat_re = re.compile("^License server status: (?P<lic_info>\S+).*$")
     users_re = re.compile("^Users of (?P<attribute>\S+): .* of (?P<total>\d+) .* of (?P<used>\d+).*$")
-    r_dict = {"attributes" : {}}
+    r_dict = {"attributes": {}}
     act_mode = "not set"
     for line in [y for y in [x.strip() for x in out.split("\n")] if y]:
         if act_mode == "not set":
@@ -129,6 +137,7 @@ def parse_lmstat_out(out):
                 r_dict["attributes"][attribute] = (total, used)
     return r_dict
 
+
 def parse_features(in_dict):
     a_names = sorted(in_dict.keys())
     a_list = []
@@ -149,7 +158,3 @@ def parse_features(in_dict):
                     a_info = "all %d free" % (total)
         a_list.append("%s (%s)" % (a_name, a_info))
     return a_list
-    
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

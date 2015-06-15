@@ -363,9 +363,10 @@ class RemoteCallMixin(object):
                         rcs.handle(self, src_id, srv_com, **kwargs)
             else:
                 self.log(
-                    "no matching signature found for msg_type {} (command='{}')".format(
+                    "no matching signature found for msg_type {} (command='{}', src_id='{}')".format(
                         msg_type,
                         com_name,
+                        src_id or "N/A",
                     ),
                     logging_tools.LOG_LEVEL_ERROR,
                 )

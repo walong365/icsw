@@ -67,7 +67,8 @@ class server_process(
         self.add_process(RepoProcess("repo"), start=True)
         # close DB connection
         connection.close()
-        self.reconnect_to_clients()
+        # not needed, 0MQ is smart enough to keep the connections alive
+        # self.reconnect_to_clients()
         self.send_to_process("repo", "rescan_repos")
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -80,9 +81,6 @@ class server_process(
 
     def _init_clients(self):
         Client.init(self)
-
-    def _register_client(self, c_uid, srv_com):
-        Client.register(c_uid, srv_com["source"].attrib["host"])
 
     def _re_insert_config(self):
         self.log("re-insert config")
@@ -158,17 +156,20 @@ class server_process(
     def connect_client(self, device, ip):
         _conn_str = "tcp://{}:2003".format(ip)
         self.log("connecting to {}".format(_conn_str))
-        self.main_socket.connect(_conn_str)
+        # not needed and not called (reconnect_clients is commented out)
+        # self.main_socket.connect(_conn_str)
 
     def send_reply(self, t_uid, srv_com):
         send_sock = self.main_socket
         _ok = True
         try:
-            send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
-            send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
+            send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)
+            send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
         except:
             self.log("error sending to {}: {}".format(t_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             _ok = False
+        else:
+            print "done", t_uid
         return _ok
 
     def _send_command(self, command, dev_list=[], **kwargs):
@@ -317,18 +318,23 @@ class server_process(
                 _state = server_command.SRV_REPLY_STATE_ERROR
             else:
                 _state = server_command.SRV_REPLY_STATE_OK
+            _log_str = "sent update to {} ({})".format(
+                logging_tools.get_plural("device", len(valid_devs)),
+                ", ".join(
+                    [
+                        _entry for _entry in [
+                            "{:d} OK".format(len(ok_list)) if ok_list else "",
+                            "{}: {}".format(
+                                logging_tools.get_plural("error", len(error_list)),
+                                logging_tools.reduce_list(error_list),
+                            ) if error_list else "",
+                        ] if _entry.strip()
+                    ]
+                )
+            )
+            self.log(_log_str, server_command.srv_reply_to_log_level(_state))
             srv_com.set_result(
-                "sent update to {} ({})".format(
-                    logging_tools.get_plural("device", len(valid_devs)),
-                    ", ".join(
-                        [
-                            _entry for _entry in [
-                                "{:d} OK".format(len(ok_list)) if ok_list else "",
-                                "{:d} error".format(len(error_list)) if error_list else "",
-                            ] if _entry.strip()
-                        ]
-                    )
-                ),
+                _log_str,
                 _state,
             )
         else:
@@ -337,15 +343,34 @@ class server_process(
             )
         return srv_com
 
-    @RemoteCall(
-        id_filter="^.*:(pclient):.*$",
-    )
-    # received and required commands
+    @RemoteCall(id_filter="^.*:(pclient):.*$")
     def client_command(self, srv_com, **kwargs):
-        cur_com = srv_com["command"].text
+        return self._client_command(srv_com, **kwargs)
+
+    # support old client (without :pclient: postfix)
+    @RemoteCall()
+    def register(self, srv_com, **kwargs):
+        return self._client_command(srv_com, **kwargs)
+
+    @RemoteCall()
+    def get_repo_list(self, srv_com, **kwargs):
+        return self._client_command(srv_com, **kwargs)
+
+    @RemoteCall()
+    def package_info(self, srv_com, **kwargs):
+        return self._client_command(srv_com, **kwargs)
+
+    @RemoteCall()
+    def get_package_list(self, srv_com, **kwargs):
+        return self._client_command(srv_com, **kwargs)
+
+    def _client_command(self, srv_com, **kwargs):
         c_uid = kwargs["src_id"]
+        cur_com = srv_com["command"].text
+        if not c_uid.endswith(":pclient:"):
+            c_uid = "{}:pclient:".format(c_uid)
         if cur_com == "register":
-            self._register_client(c_uid, srv_com)
+            srv_com = Client.register(c_uid, srv_com["source"].attrib["host"])
         else:
             try:
                 cur_client = Client.get(c_uid)
@@ -366,11 +391,6 @@ class server_process(
                         logging_tools.LOG_LEVEL_CRITICAL
                     )
                     srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                try:
-                    zmq_sock.send_unicode(c_uid, zmq.SNDMORE)  # @UndefinedVariable
-                    zmq_sock.send_unicode(unicode(srv_com))
-                except:
-                    self.log("error sending to {}: {}".format(c_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             else:
                 srv_com = cur_client.new_command(srv_com)
         return srv_com

@@ -950,7 +950,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             map_dict = {
                                 "sources": "automap",
                                 "alias": host.comment or host.full_name,
-                                "parent_map": "",
                                 "iconset": "std_big",
                                 "child_layers": 10,
                                 "backend_id": "live_1",
