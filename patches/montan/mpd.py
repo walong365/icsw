@@ -570,7 +570,7 @@ def _do_mpdrun(msg):
             (lo,hi) = ranks
             if currRank >= lo and currRank <= hi:
                 hostSpecForCurrRank = hosts[ranks]
-                break;
+                break
         if hostSpecForCurrRank == '_any_':
             handled_one__any_ = 1
             found = 1

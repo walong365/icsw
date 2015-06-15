@@ -487,13 +487,13 @@ class KpiSet(object):
 
     def _check_value(self, amount, limit_ok, limit_warn, method='at least'):
         if method == 'at least':
-            cmp = lambda x, y: x >= y
+            _cmp = lambda x, y: x >= y
         elif method == 'at most':
-            cmp = lambda x, y: x < y
+            _cmp = lambda x, y: x < y
         else:
             raise ValueError("Invalid comparison method: '{}'. Supported methods are 'at least' or 'at most'.")
 
-        if cmp(amount, limit_ok):
+        if _cmp(amount, limit_ok):
             result = KpiResult.ok
         elif limit_warn is not None and cmp(amount, limit_warn):
             result = KpiResult.warning

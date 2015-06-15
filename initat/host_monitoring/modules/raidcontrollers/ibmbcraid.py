@@ -109,9 +109,12 @@ class ctrl_type_ibmbcraid(ctrl_type):
                 for ctrl_key in [key for key in ctrl_dict.keys() if key.split("_")[1].isdigit()]:
                     cur_dict = ctrl_dict[ctrl_key]
                     # pprint.pprint(cur_dict)
-                    ctrl_f = []
-                    ctrl_f.append("C%d: %s" % (int(ctrl_key.split("_")[1]),
-                                               cur_dict["Current Status"]))
+                    ctrl_f = [
+                        "C%d: %s" % (
+                            int(ctrl_key.split("_")[1]),
+                            cur_dict["Current Status"],
+                        )
+                    ]
                     if "BBU Charging" in cur_dict:
                         if cur_dict["BBU Charging"]:
                             ctrl_f.append("BBU Charging")

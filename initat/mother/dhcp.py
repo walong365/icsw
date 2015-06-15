@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import device
 
 
 class DHCPCommand(object):
-    def __init__(self, name, uuid, ip=None, mac=None, server_ip=None):
+    def __init__(self, name, uuid=None, ip=None, mac=None, server_ip=None):
         self.name = name
         self.uuid = uuid
         self.ip = ip

@@ -23,11 +23,17 @@
 
 from initat.cluster.backbone import factories
 
-def add_fixtures(**kwargs):
-    factories.Config(name="monitor_server", description="sets device as the monitor master server",
-        server_config=True, system_config=True,
-        )
-    factories.Config(name="monitor_slave", description="sets device as a monitor slave (sattelite)",
-        server_config=True, system_config=True,
-        )
 
+def add_fixtures(**kwargs):
+    factories.Config(
+        name="monitor_server",
+        description="sets device as the monitor master server",
+        server_config=True,
+        system_config=True,
+    )
+    factories.Config(
+        name="monitor_slave",
+        description="sets device as a monitor slave (sattelite)",
+        server_config=True,
+        system_config=True,
+    )

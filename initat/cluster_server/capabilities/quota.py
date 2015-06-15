@@ -72,7 +72,7 @@ class quota_line(object):
             in_dict["used"],
             in_dict["soft"],
             in_dict["hard"],
-            in_dict["gracetime"] and " / {:d}" % (in_dict["gracetime"]) or ""
+            in_dict["gracetime"] and " / {:d}".format(in_dict["gracetime"]) or ""
         )
 
     @property

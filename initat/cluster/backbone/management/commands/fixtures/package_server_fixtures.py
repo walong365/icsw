@@ -23,7 +23,11 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="package_server", description="enables packge-server functionalities (RPM/deb distribution)",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="package_server",
+        description="enables packge-server functionalities (RPM/deb distribution)",
+        server_config=True,
+        system_config=True,
+    )

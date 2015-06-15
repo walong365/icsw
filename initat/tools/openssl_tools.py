@@ -159,7 +159,7 @@ class ca_index(OrderedDict):
         if in_dt is None:
             return ""
         else:
-            return datetime.datetime.strftime(in_dt, "%Y%m%d%H%M%SZ")
+            return in_dt.strftime("%Y%m%d%H%M%SZ")
 
     def _parse_rev_cause(self, in_str):
         if in_str.count(","):

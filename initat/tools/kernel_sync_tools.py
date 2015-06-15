@@ -144,7 +144,12 @@ class KernelHelper(object):
         md5s_to_remove = sorted(
             [
                 md5_file for md5_file in [
-                    os.path.normpath(os.path.join(self.path, ".{}_md5".format(os.path.basename(p_name)))) for p_name in files_to_check if not os.path.exists(p_name)
+                    os.path.normpath(
+                        os.path.join(
+                            self.path,
+                            ".{}_md5".format(os.path.basename(p_name))
+                        )
+                    ) for p_name in files_to_check if not os.path.exists(p_name)
                 ] if os.path.exists(md5_file)
             ]
         )

@@ -2,7 +2,9 @@
 
 import sys
 
+
 IGNORE_TABLES = ["config_type"]
+
 
 class handle_insert_line(object):
     def __init__(self, in_line):
@@ -11,8 +13,10 @@ class handle_insert_line(object):
         values = parts[-1][1:-2].split("),(")
         values = "(%s)" % ("),(".join([self.handle(sub_value) for sub_value in values]))
         self.line = "INSERT INTO %s VALUES %s;" % (t_name, values)
+
     def handle(self, sub_value):
         return "_overwrite_handle"
+
 
 class handle_network_network_device_type(handle_insert_line):
     def handle(self, sub_value):
@@ -21,6 +25,7 @@ class handle_network_network_device_type(handle_insert_line):
             sub_parts.pop(-1)
         return ",".join(sub_parts)
 
+
 class handle_user(handle_insert_line):
     def handle(self, sub_value):
         sub_parts = sub_value.split(",")
@@ -28,6 +33,7 @@ class handle_user(handle_insert_line):
             # nt/lm_password missing
             sub_parts = sub_parts[:20] + ["''", "''"] + [sub_parts[20]]
         return ",".join(sub_parts)
+
 
 def main():
     for line in sys.stdin.readlines():
@@ -55,6 +61,6 @@ def main():
         if line is not None:
             print line
 
+
 if __name__ == "__main__":
     main()
-

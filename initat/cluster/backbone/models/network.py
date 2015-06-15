@@ -285,7 +285,6 @@ class net_ip(models.Model):
             return ".".join([self.netdevice.device.name, self.domain_tree_node.full_name])
         else:
             return self.netdevice.device.name
-        return
 
     class Meta:
         db_table = u"netip"

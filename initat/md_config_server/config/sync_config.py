@@ -381,8 +381,15 @@ class sync_config(object):
         _bld = srv_com.builder()
 
         srv_com["file_list"] = _bld.file_list(
-            *[_bld.file(_path, uid="{:d}".format(_uid), gid="{:d}".format(_gid), size="{:d}".format(_size)) for _uid, _gid, _path, _size, _content in _send_list]
-            )
+            *[
+                _bld.file(
+                    _path,
+                    uid="{:d}".format(_uid),
+                    gid="{:d}".format(_gid),
+                    size="{:d}".format(_size)
+                ) for _uid, _gid, _path, _size, _content in _send_list
+            ]
+        )
         srv_com["bulk"] = base64.b64encode(bz2.compress("".join([_parts[-1] for _parts in _send_list])))
         return srv_com
 

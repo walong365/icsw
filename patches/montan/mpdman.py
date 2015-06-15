@@ -253,7 +253,7 @@ def mpdman():
                 gdbdrv = path.join(fullDirName,'mpdgdbdrv.py')
                 if not access(gdbdrv,X_OK):
                     print 'mpdman: cannot execute mpdgdbdrv %s' % gdbdrv
-                    exit(0);
+                    exit(0)
                 clientPgmArgs.insert(0,clientPgm)
                 execvpe(gdbdrv,clientPgmArgs,cli_environ)    # client
             else:

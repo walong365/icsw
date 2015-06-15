@@ -182,7 +182,6 @@ def get_pass(prompt=">"):
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
             print("\nterminating")
             sys.exit(-1)
-            passwd = ""
         else:
             if passwd:
                 break

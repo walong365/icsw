@@ -46,21 +46,25 @@ SCALIX_QUEUES = ["BB",
                  "TEST",
                  "UNIX"]
 
+
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "scalix_monitor",
-                                        "monitors scalix servers",
-                                        **args)
+        hm_classes.hm_fileinfo.__init__(
+            self,
+            "scalix_monitor",
+            "monitors scalix servers",
+            **args
+        )
+
     def init(self, mode, logger, basedir_name, **args):
         if mode == "i":
             self.__exe_dict = {}
-            exe_search = [("omstat"   , ["/opt/scalix/bin/omstat"   ]),
-                          ("omshowu"  , ["/opt/scalix/bin/omshowu"  ]),
-                          ("sxdu"     , ["/opt/scalix/bin/sxdu"     ]),
-                          ("omsetsvc" , ["/opt/scalix/bin/omsetsvc" ]),
+            exe_search = [("omstat", ["/opt/scalix/bin/omstat"]),
+                          ("omshowu", ["/opt/scalix/bin/omshowu"]),
+                          ("sxdu", ["/opt/scalix/bin/sxdu"]),
+                          ("omsetsvc", ["/opt/scalix/bin/omsetsvc"]),
                           ("omshowlvl", ["/opt/scalix/bin/omshowlvl"]),
-                          ("omlimit"  , ["/opt/scalix/bin/omlimit"  ])]
+                          ("omlimit", ["/opt/scalix/bin/omlimit"])]
             for stat_name, search_list in exe_search:
                 self.__exe_dict[stat_name] = None
                 for name in search_list:
@@ -75,8 +79,8 @@ class my_modclass(hm_classes.hm_fileinfo):
                     if act_service:
                         self.__services[act_service["full_name"]] = act_service
                     full_name = " ".join(line.split()[3:])[:-1]
-                    act_service = {"full_name" : full_name,
-                                   "abbrevs"   : []}
+                    act_service = {"full_name": full_name,
+                                   "abbrevs": []}
                 else:
                     if line.startswith("PID"):
                         act_service["pids"] = [int(pid.strip()) for pid in (" ".join(line.strip().split(":")[1:])).split() if pid.strip()]
@@ -88,7 +92,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                         if value.isdigit():
                             value = int(value)
                         act_service[key.strip()] = value.strip()
-                    #print full_name, full_name in self.__services.keys()
+                        # print full_name, full_name in self.__services.keys()
             if act_service:
                 self.__services[act_service["full_name"]] = act_service
             act_name = ""
@@ -97,7 +101,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                     if not line.startswith("\t"):
                         act_name = line.strip()
                     else:
-                        if self.__services.has_key(act_name):
+                        if act_name in self.__services:
                             self.__services[act_name]["abbrevs"].append(line.strip())
             # build lookup-dict
             self.__service_lut = {}
@@ -105,7 +109,8 @@ class my_modclass(hm_classes.hm_fileinfo):
                 self.__service_lut[full_name] = service
                 for abbr in service["abbrevs"]:
                     self.__service_lut[abbr] = service
-            #pprint.pprint(self.__services.keys())
+                    # pprint.pprint(self.__services.keys())
+
     def process_client_args(self, opts, hmb):
         ok, why = (1, "")
         my_lim = limits.limits()
@@ -118,6 +123,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                     if my_lim.set_crit_val(arg) == 0:
                         ok, why = (0, "Can't parse critical value !")
         return ok, why, [my_lim]
+
     def get_queue_stat(self, queue_names):
         com_name = "omstat"
         if self.__exe_dict[com_name]:
@@ -135,6 +141,7 @@ class my_modclass(hm_classes.hm_fileinfo):
             return "ok %s" % (hm_classes.sys_to_net(res_dict))
         else:
             return "error %s command not found" % (com_name)
+
     def get_user_list(self):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
@@ -150,6 +157,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                                                  process_tools.get_except_info())
         else:
             return "error %s command not found" % (com_name)
+
     def get_user_info(self, user_name):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
@@ -159,7 +167,8 @@ class my_modclass(hm_classes.hm_fileinfo):
                 if cstat:
                     return "error %s gave (%d) %s" % (com_name, cstat, result)
                 else:
-                    u_dict = dict([(key.lower().strip().replace(" ", "_"), value.strip()) for key, value in [line.split(":", 1) for line in result.split("\n") if line.count(":")]])
+                    u_dict = dict([(key.lower().strip().replace(" ", "_"), value.strip()) for key, value in
+                                   [line.split(":", 1) for line in result.split("\n") if line.count(":")]])
                     total_size = 0
                     if self.__exe_dict["sxdu"]:
                         try:
@@ -190,6 +199,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                                                  process_tools.get_except_info())
         else:
             return "error %s command not found" % (com_name)
+
     def get_service_info(self, service_name):
         com_name = "omstat"
         if self.__exe_dict[com_name]:
@@ -208,16 +218,17 @@ class my_modclass(hm_classes.hm_fileinfo):
                         start_date = l_p.pop(-1)
                         act_state = l_p.pop(-1)
                         act_name = " ".join(l_p)
-                        act_dict[act_name] = {"name"       : act_name,
-                                              "num_sub"    : num_subs,
-                                              "start_date" : start_date,
-                                              "act_state"  : act_state}
+                        act_dict[act_name] = {"name": act_name,
+                                              "num_sub": num_subs,
+                                              "start_date": start_date,
+                                              "act_state": act_state}
                     if service_name:
                         act_dict = act_dict.get(service_name, {})
                     return "ok %s" % (hm_classes.sys_to_net(act_dict))
             except:
                 return "error calling %s: %s" % (self.__exe_dict[com_name],
                                                  process_tools.get_except_info())
+
 
 class scalix_queue_command(hm_classes.hmb_command):
     def __init__(self, **args):
@@ -226,47 +237,58 @@ class scalix_queue_command(hm_classes.hmb_command):
         self.short_client_info = "-w N1, -c N2"
         self.long_client_info = "sets the warning and critical values for the mailsystem"
         self.short_client_opts = "w:c:"
+
     def server_call(self, cm):
         return self.module_info.get_queue_stat(cm)
+
     def client_call(self, result, parsed_coms):
         lim = parsed_coms[0]
         result = hm_classes.net_to_sys(result[3:])
         return limits.nag_STATE_OK, "OK: %s: %s" % (logging_tools.get_plural("queue", len(result)),
                                                     ", ".join(["%s: %s" % (q_name, result[q_name]) for q_name in sorted(result.keys())]))
 
+
 class scalix_users_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "scalix_users", **args)
         self.help_str = "returns the scalix userlist"
+
     def server_call(self, cm):
         return self.module_info.get_user_list()
+
     def client_call(self, result, parsed_coms):
         u_list = hm_classes.net_to_sys(result[3:])
         return limits.nag_STATE_OK, "OK: %s" % (logging_tools.get_plural("user", len(u_list)))
+
 
 class scalix_userlist_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "scalix_userlist", **args)
         self.help_str = "returns the detailed scalix userlist"
+
     def server_call(self, cm):
         return self.module_info.get_user_list()
+
     def client_call(self, result, parsed_coms):
         u_list = sorted(hm_classes.net_to_sys(result[3:]))
         return limits.nag_STATE_OK, "OK: %s\n%s" % (logging_tools.get_plural("user", len(u_list)),
                                                     "\n".join(u_list))
 
+
 class scalix_userinfo_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "scalix_userinfo", **args)
         self.help_str = "returns scalix userinfo"
+
     def server_call(self, cm):
         return self.module_info.get_user_info(" ".join(cm))
+
     def client_call(self, result, parsed_coms):
         u_dict = hm_classes.net_to_sys(result[3:])
-        #pprint.pprint(u_dict)
+        # pprint.pprint(u_dict)
         ret_state = limits.nag_STATE_OK
         used = u_dict["total_size"]
-        if u_dict.has_key("max_size"):
+        if "max_size" in u_dict:
             max_size = u_dict["max_size"]
             perc_used = 100. * float(used) / float(max_size)
             quota_perc = "%.2f %%" % (perc_used)
@@ -290,15 +312,18 @@ class scalix_userinfo_command(hm_classes.hmb_command):
                                                                used and logging_tools.get_size_str(used, long_version=True).strip() or "not known",
                                                                used_info)
 
+
 class scalix_serviceinfo_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "scalix_serviceinfo", **args)
         self.help_str = "returns scalix serviceinfo"
+
     def server_call(self, cm):
         return self.module_info.get_service_info(" ".join(cm))
+
     def client_call(self, result, parsed_coms):
         s_dict = hm_classes.net_to_sys(result[3:])
-        #pprint.pprint(s_dict)
+        # pprint.pprint(s_dict)
         if s_dict:
             ret_state = limits.nag_STATE_OK
             if s_dict["act_state"].lower() not in ["enabled", "started"]:
@@ -309,6 +334,7 @@ class scalix_serviceinfo_command(hm_classes.hmb_command):
         else:
             ret_state, ret_str = limits.nag_STATE_CRITICAL, "Error no info found"
         return ret_state, ret_str
+
 
 if __name__ == "__main__":
     print "This is a loadable module."

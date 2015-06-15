@@ -78,8 +78,7 @@ def main():
     symbol_tables = []
     files_to_check = []
 
-    description = \
-    """
+    description = """
 Try to create man pages from optparse/argparse output.
 The script checks if argparse/optarse is an imported symbol. If it is
 then the script is executed with --help/-h and the output rendered into

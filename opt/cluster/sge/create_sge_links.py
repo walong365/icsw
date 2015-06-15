@@ -58,54 +58,6 @@ def call_command(com):
     return out.split("\n")
 
 
-def create_blu_links(var_dict):
-    # deprecated, do not use
-    sys.exit(0)
-    t_dirs = dict([(os.path.join(var_dict["SGE_ROOT"], _sp), {}) for _sp in ["bin", "lib", "utilbin"]])
-    all_kvers, all_mach_types = ([], [])
-    for t_dir in t_dirs.keys():
-        for ent in os.listdir(t_dir):
-            if ent.count("-"):
-                k_ver, mach_type = ent.split("-", 1)
-                if k_ver not in all_kvers:
-                    all_kvers.append(k_ver)
-                if mach_type not in all_mach_types:
-                    all_mach_types.append(mach_type)
-                full_dir = os.path.join(t_dir, ent)
-                if os.path.isdir(full_dir):
-                    if os.path.islink(full_dir):
-                        # is_link
-                        t_dirs[t_dir][ent] = "l"
-                    else:
-                        # is_dir
-                        t_dirs[t_dir][ent] = "d"
-        for mach_type in all_mach_types:
-            for k_ver in all_kvers:
-                ent = "{}-{}".format(k_ver, mach_type)
-                if t_dirs[t_dir].get(ent, None) == "d":
-                    # primary dir
-                    t_dirs[t_dir][ent] = "p"
-    all_prim_ents = []
-    for t_dir in t_dirs.keys():
-        os.chdir(t_dir)
-        for prim_ent in [k for k, v in t_dirs[t_dir].iteritems() if v == "p"]:
-            if prim_ent not in all_prim_ents:
-                all_prim_ents.append(prim_ent)
-        for mach_type in all_mach_types:
-            for k_ver in all_kvers:
-                ent = "{}-{}".format(k_ver, mach_type)
-                if not os.path.exists(ent):
-                    prim_ent = [k for k, v in t_dirs[t_dir].iteritems() if v == "p" and k.endswith(mach_type)]
-                    if prim_ent:
-                        prim_ent = prim_ent[0]
-                        print "Linking from {} to {}".format(ent, prim_ent)
-                        os.symlink(prim_ent, ent)
-                    else:
-                        print "No entries found for mach_type {}, skipping".format(mach_type)
-    # primary architecture
-    return all_prim_ents
-
-
 def remove_py_files(var_dict):
     for dir_path, _dir_names, file_names in os.walk(var_dict["SGE_ROOT"]):
         for file_name in file_names:
@@ -206,8 +158,6 @@ def main():
     # show variables
     for key, value in var_dict.iteritems():
         print "{:<12s} : {}".format(key, value)
-    # create bin/lib/utilbin links
-    # all_archs = create_blu_links(var_dict)
     # check for missing dirs
     mis_dirs = [os.path.join(var_dict["SGE_ROOT"], _entry) for _entry in [
         "bin/noarch",

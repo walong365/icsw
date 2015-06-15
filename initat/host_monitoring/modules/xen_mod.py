@@ -20,17 +20,19 @@
 
 import sys
 import commands
-from initat.host_monitoring import limits, hm_classes
 import os
 import os.path
+
+from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools
-from initat.tools import server_command
+
 try:
     import xen_tools
 except:
     xen_tools = None
 
 HOST_KEY = "/tool/host"
+
 
 class _general(hm_classes.hm_module):
     def read_host_name(self, ret_dict, logger):
@@ -48,12 +50,14 @@ class _general(hm_classes.hm_module):
                 break
         if not any_found:
             ret_dict["errors"].append("no xenstore-read cmd found")
+
     def get_host_info(self, ret_dict, logger):
         if xen_tools:
             xen_info = xen_tools.xen_info_object(self.log)
             ret_dict["running_domains"] = [x_obj["name"] for x_obj in xen_info.get_running_domains()]
         else:
             ret_dict["errors"].append("xen_tools not found")
+
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
@@ -61,11 +65,12 @@ class _general(hm_classes.hm_module):
             out = ""
         return out.split("\n")
                     
+
 class xen_type_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        ret_dict = {"xen_bus_found"   : False,
-                    "xen_type"        : "",
-                    "errors"          : []}
+        ret_dict = {"xen_bus_found": False,
+                    "xen_type": "",
+                    "errors": []}
         if os.path.isdir("/sys/bus/xen"):
             # hack
             ret_dict["xen_bus_found"] = True
@@ -83,20 +88,23 @@ class xen_type_command(hm_classes.hm_command):
                 # read host name
                 self.module_info.read_host_name(ret_dict, self.logger)
         srv_com["xen_type"] = ret_dict
+
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["xen_type"], cur_ns)
+
     def interpret_old(self, result, cur_ns):
         r_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(r_dict, cur_ns)
+
     def _interpret(self, r_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
         if r_dict["xen_type"]:
             out_f.append("is a xen-%s" % (r_dict["xen_type"]))
             if r_dict["xen_type"] == "host":
-                if r_dict.has_key("running_domains"):
+                if "running_domains" in r_dict:
                     out_f.append(logging_tools.get_plural("running domain", len(r_dict["running_domains"])))
             elif r_dict["xen_type"] == "guest":
-                if r_dict.has_key("xen_host"):
+                if "xen_host" in r_dict:
                     out_f.append("host is %s" % (r_dict["xen_host"]))
         else:
             out_f.append("host is neither a xen-guest nor a xen-host")
@@ -104,7 +112,3 @@ class xen_type_command(hm_classes.hm_command):
             out_f.extend(r_dict["errors"])
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state, ", ".join(out_f)
-
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

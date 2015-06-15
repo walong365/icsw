@@ -665,7 +665,7 @@ class relay_code(threading_tools.process_pool):
                                 ),
                                 _e.arg_list(" ".join(arg_list)),
                             ]
-                    )
+                        )
                 except:
                     self.log("error parsing {}: {}".format(data, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     srv_com = None
