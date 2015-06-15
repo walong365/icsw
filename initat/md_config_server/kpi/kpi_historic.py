@@ -171,7 +171,11 @@ class TimeLineUtils(list):
             states_accumulator[entry1.state] += time_span.total_seconds()
 
         total_time_span = sum(states_accumulator.itervalues())
-        return {k: v / total_time_span for k, v in states_accumulator.iteritems()}
+        if total_time_span == 0:
+            # avoid div by 0
+            return {}
+        else:
+            return {k: v / total_time_span for k, v in states_accumulator.iteritems()}
 
     @staticmethod
     def merge_state_types(time_line, soft_states_as_hard_states):
