@@ -700,6 +700,14 @@ class KpiSet(object):
                     )
                 )
 
+            if start == end:
+                raise RuntimeError("Same start and end date for get_historic_data(): {}".format(start))
+
+            if start > end:
+                raise RuntimeError("Start date for get_historic_data() is later than end date ({} > {})".format(
+                    start, end
+                ))
+
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())
             for ident in relevant_obj_identifiers:
