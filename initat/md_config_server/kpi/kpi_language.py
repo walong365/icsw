@@ -376,12 +376,12 @@ class KpiOperation(object):
         aggregate_historic = 9
         exclude = 10
 
-    def __init__(self, type, operands=None, arguments=None):
+    def __init__(self, operation_type, operands=None, arguments=None):
         if arguments is None:
             arguments = {}
         if operands is None:  # only for initial and possibly specially constructed sets
             operands = []
-        self.type = type
+        self.type = operation_type
         self.operands = operands
         self.arguments = arguments
 
@@ -467,7 +467,7 @@ class KpiSet(object):
         :type origin: KpiOperation | None
         """
         self.objects = objects if objects is not None else []
-        self.origin = origin if origin else KpiOperation(type=KpiOperation.Type.initial)
+        self.origin = origin if origin else KpiOperation(KpiOperation.Type.initial)
 
     """
     @classmethod
@@ -699,6 +699,14 @@ class KpiSet(object):
                         end, kpi_global_end,
                     )
                 )
+
+            if start == end:
+                raise RuntimeError("Same start and end date for get_historic_data(): {}".format(start))
+
+            if start > end:
+                raise RuntimeError("Start date for get_historic_data() is later than end date ({} > {})".format(
+                    start, end
+                ))
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())
