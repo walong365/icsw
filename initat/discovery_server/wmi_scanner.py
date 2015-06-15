@@ -60,6 +60,29 @@ class WmiDataSource(object):
         ]
 
 
+def compare(result_a, result_b):
+    for model in set(result_a.iterkeys()).union(result_b.iterkeys()):
+        print 'comparing', model
+
+        model_result_a = result_a[model]
+        model_result_b = result_b[model]
+        import pdb; pdb.set_trace()
+
+        #for i in [model_result_a, model_result_b]: print 'i', type(i)
+        key_sets = [frozenset(i) for i in [model_result_a, model_result_b]]
+        common_keys = key_sets[0] & key_sets[1]
+        only_a_keys = key_sets[0] - key_sets[1]
+        only_b_keys = key_sets[1] - key_sets[0]
+
+        # for now:
+        assert not only_a_keys
+        assert not only_b_keys
+
+        for k in common_keys:
+            if model_result_a[k] != model_result_b[k]:
+                print 'difference: ', model_result_a[k], 'vs', model_result_b[k]
+
+
 if __name__ == '__main__':
     client = pymongo.MongoClient('localhost', 27017)
 
@@ -74,11 +97,11 @@ if __name__ == '__main__':
     # print 'all'
     # pprint.pprint(list(t.find()))
     # t.remove()
-    print 'full contents'
     contents = list(t.find())
-    pprint.pprint(contents)
+    # print 'full contents'
+    # pprint.pprint(contents)
 
-    #compare(*contents[0:1])
+    compare(*[a['results'] for a in contents[0:2]])
 
     if False:
         pw = raw_input("pw:")
@@ -91,10 +114,11 @@ if __name__ == '__main__':
         print 'connected'
 
         scan_result = {
-            'scan_date': datetime.datetime.now(tz=pytz.utc)
+            'scan_date': datetime.datetime.now(tz=pytz.utc),
+            'results': {},
         }
         for wmi_data_source in WmiDataSource.get_supported_data_sources():
             print 'querying', wmi_data_source.model
-            scan_result[wmi_data_source.model] = wmic.query(wmi_data_source.get_query())
+            scan_result['results'][wmi_data_source.model] = wmic.query(wmi_data_source.get_query())
 
         t.insert(scan_result)
