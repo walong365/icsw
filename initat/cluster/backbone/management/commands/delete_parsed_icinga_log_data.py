@@ -22,14 +22,15 @@
 """ migrate to configuration catalogs """
 
 from django.core.management.base import BaseCommand
-from initat.cluster.backbone.models.monitoring import mon_icinga_log_last_read,\
+from initat.cluster.backbone.models import mon_icinga_log_last_read,\
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data,\
     mon_icinga_log_raw_host_flapping_data,\
     mon_icinga_log_raw_service_notification_data,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_file,\
     mon_icinga_log_raw_service_flapping_data,\
     mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_service_data,\
-    mon_icinga_log_aggregated_timespan, mon_icinga_log_full_system_dump
+    mon_icinga_log_aggregated_timespan, mon_icinga_log_full_system_dump,\
+    mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 
 
 class Command(BaseCommand):
@@ -47,9 +48,11 @@ class Command(BaseCommand):
         mon_icinga_log_raw_host_flapping_data.objects.all().delete()
         mon_icinga_log_raw_service_notification_data.objects.all().delete()
         mon_icinga_log_raw_host_notification_data.objects.all().delete()
+        mon_icinga_log_raw_service_downtime_data.objects.filter().delete()
+        mon_icinga_log_raw_host_downtime_data.objects.filter().delete()
         mon_icinga_log_file.objects.all().delete()
 
+        mon_icinga_log_aggregated_timespan.objects.all().delete()
         mon_icinga_log_aggregated_host_data.objects.all().delete()
         mon_icinga_log_aggregated_service_data.objects.all().delete()
-        mon_icinga_log_aggregated_timespan.objects.all().delete()
         print "Removed all parsed icinga log data"
