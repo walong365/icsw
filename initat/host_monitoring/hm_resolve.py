@@ -26,10 +26,7 @@ import socket
 import time
 
 from initat.host_monitoring.config import global_config
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import threading_tools
-
+from initat.tools import logging_tools, process_tools, threading_tools
 
 CACHE_TIMEOUT = 10
 
@@ -47,7 +44,7 @@ class cache_entry(object):
             return False
 
 
-class resolve_process(threading_tools.process_obj):
+class ResolveProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # log.startLoggingWithObserver(my_observer, setStdout=False)
