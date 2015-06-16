@@ -111,27 +111,29 @@ class icinga_log_reader(threading_tools.process_obj):
 
     def update(self):
         '''Called periodically. Only method to be called from outside of this class'''
-        self._historic_service_map =\
-            {description.replace(" ", "_").lower(): pk
-             for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
-        self._historic_host_map =\
-            {entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')}
+        if global_config["ENABLE_ICINGA_LOG_PARSING"]:
+            self._historic_service_map =\
+                {description.replace(" ", "_").lower(): pk
+                 for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
+            self._historic_host_map =\
+                {entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')}
 
-        # logs might contain ids which are not present any more.
-        # we discard such data (i.e. ids not present in these sets:)
-        self._valid_service_ids = frozenset(mon_check_command.objects.all().values_list('pk', flat=True))
-        self._valid_host_ids = frozenset(device.objects.all().values_list('pk', flat=True))
+            # logs might contain ids which are not present any more.
+            # we discard such data (i.e. ids not present in these sets:)
+            self._valid_service_ids = frozenset(mon_check_command.objects.all().values_list('pk', flat=True))
+            self._valid_host_ids = frozenset(device.objects.all().values_list('pk', flat=True))
 
-        parse_start_time = time.time()
-        self._update_raw_data()
-        self.log("parsing took {} seconds".format(time.time() - parse_start_time))
+            parse_start_time = time.time()
+            self._update_raw_data()
+            self.log("parsing took {} seconds".format(time.time() - parse_start_time))
 
-        aggr_start_time = time.time()
-        # prof_file_name = "/tmp/prof.out.{}".format(time.time())
-        # self.log("profiling to {}".format(prof_file_name))
-        # import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
-        icinga_log_aggregator(self).update()
-        self.log("aggregation took {} seconds".format(time.time() - aggr_start_time))
+            aggr_start_time = time.time()
+            # prof_file_name = "/tmp/prof.out.{}".format(time.time())
+            # self.log("profiling to {}".format(prof_file_name))
+            # import cProfile
+            # cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
+            icinga_log_aggregator(self).update()
+            self.log("aggregation took {} seconds".format(time.time() - aggr_start_time))
 
     def _update_raw_data(self):
         self.log("checking icinga log")
