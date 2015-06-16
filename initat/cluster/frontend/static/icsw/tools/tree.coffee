@@ -396,52 +396,122 @@ class tree_config
 tree_module = angular.module(
     "icsw.tools.tree",
     []
-).directive("tree", ["$compile", "$templateCache",
+).directive("ntree", ["$compile", "$templateCache", ($compile, $templateCache) ->
+    return {
+        restrict: "E"
+        scope: {
+            treeconfig: "="
+            maxHeight  : "&"
+        }
+        replace: true
+        link: (scope, element, attr) ->
+            scope.$watch("treeconfig", (new_val) ->
+                populate_node = (li_node, node, first, last) ->
+                    _tc = scope.treeconfig
+                    # copy settings from node to li_node
+                    _top_span = angular.element("<span/>")
+                    # main classes
+                    for _class in _tc.get_span_class(node, last)
+                        _top_span.addClass(_class)
+                    # selection box, icons and other stuff
+                    if not node._num_childs
+                        _top_span.append(angular.element("<span class='fanytree-connector'/>"))
+                    _top_span.append(angular.element("<span class='fancytree-expander'/>"))
+                    if _tc.show_select and node._show_select
+                        _top_span.append(angular.element("<span class='fancytree-checkbox' style='margin-left:2px;'/>"))
+                    if _tc.show_icons
+                        _icon_span = angular.element("<span style='width: 16px; margin-left: 0px;'/>")
+                        _icon_span.addClass(_tc.get_icon_class(node))
+                        _top_span.append(_icon_span)
+                    if _tc.show_selection_buttons and node._num_childs
+                        _sel_button = angular.element("<div class='btn-group btn-group-xs'><input type='button' class=\"#{node.select_button_class}\" value=\"#{node.select_button_letter}\"/></div>")
+                        _top_span.append(_sel_button)
+                    if node._depth == 0 and node._num_childs and _tc.show_tree_epxand_buttons
+                        _sel2_button = angular.element("<div class='btn-group btn-group-xs'><input type='button' class=\"#{node.select_button_class}\" value=\"#{node.select_button_letter}\"/></div>")
+                        _top_span.append(_sel2_button)
+                    # name
+                    _a_node = angular.element("<a ng-href='#' class='fancytree-title'/>")
+                    _name_span = angular.element("<span class=\"#{_tc.get_name_class(node)}\" title=\"#{_tc.get_title(node)}\">#{_tc.get_name(node)}</span>")
+                    _a_node.append(_name_span)
+                    _top_span.append(_a_node)
+                    li_node.append(_top_span)
+
+                if new_val
+                    element.children().remove()
+                    _root_el = angular.element($templateCache.get("icsw.tree.root.node"))
+                    if scope.maxHeight?
+                        _root_el.css("max-height", scope.maxHeight() + "px")
+                    element.append(_root_el)
+                    _root_el.append(angular.element("<span>No entries</span>"))
+                    _num_root_nodes = 0
+                    scope.$watch("treeconfig.root_nodes", (r_nodes) ->
+                        if r_nodes.length != _num_root_nodes
+                            if _num_root_nodes
+                                console.log "redraw tree with new number of nodes"
+                            else
+                                _root_el.find("span").remove()
+                            _num_root_nodes = r_nodes.length
+                        if _num_root_nodes
+                            _node_num = 0
+                            for _node in r_nodes
+                                _node_num++
+                                li_node = angular.element("<li/>")
+                                last = if _node_num == _num_root_nodes then true else false
+                                first = if _node_num == 1 then true else false
+                                if last
+                                    li_node.addClass("fanytree-lastsib")
+                                populate_node(li_node, _node, first, last)
+                                _root_el.append(li_node)
+                        console.log _num_root_nodes
+                    )
+                    console.log new_val
+            )
+    }
+]).directive("tree", ["$compile", "$templateCache", ($compile, $templateCache) ->
+    return {
+        restrict : "E"
+        scope    : {
+            treeconfig : "="
+            # true: only one nesting level (device group tree)
+            single     : "="
+            maxHeight  : "&"
+        }
+        replace : true
+        compile: (tElement, tAttr) ->
+            return (scope, iElement, iAttr) ->
+                #console.log scope, iAttr["treeconfig"], tAttr, iAttr
+                #scope.treeconfig = scope.$eval(tAttr["treeconfig"])
+                #console.log scope.treeconfig
+                iElement.append($compile($templateCache.get("tree_root_node"))(scope))
+    }
+]).directive("subtree", ["$compile", "$templateCache",
     ($compile, $templateCache) ->
         return {
             restrict : "E"
             scope    : {
+                tree       : "="
                 treeconfig : "="
-                # true: only one nesting level (device group tree)
                 single     : "="
-                maxHeight  : "&"
             }
             replace : true
             compile: (tElement, tAttr) ->
                 return (scope, iElement, iAttr) ->
-                    #console.log scope, iAttr["treeconfig"], tAttr, iAttr
-                    #scope.treeconfig = scope.$eval(tAttr["treeconfig"])
-                    #console.log scope.treeconfig
-                    iElement.append($compile($templateCache.get("tree_root_node"))(scope))
-        }
-    ]).directive("subtree", ["$compile", "$templateCache",
-        ($compile, $templateCache) ->
-            return {
-                restrict : "E"
-                scope    : {
-                    tree       : "="
-                    treeconfig : "="
-                    single     : "="
-                }
-                replace : true
-                compile: (tElement, tAttr) ->
-                    return (scope, iElement, iAttr) ->
-                        iElement.append($compile(if scope.single then $templateCache.get("tree_subtree_node_single") else $templateCache.get("tree_subtree_node"))(scope))
-                } 
-    ]).directive("subnode", ["$compile", "$templateCache",
-        ($compile, $templateCache) ->
-            return {
-                restrict : "E"
-                scope    : {
-                    entry      : "="
-                    treeconfig : "="
-                }
-                replace : true
-                compile: (tElement, tAttr) ->
-                    return (scope, iElement, iAttr) ->
-                        iElement.append($compile($templateCache.get("tree_subnode"))(scope))
-                } 
-    ])
+                    iElement.append($compile(if scope.single then $templateCache.get("tree_subtree_node_single") else $templateCache.get("tree_subtree_node"))(scope))
+            }
+]).directive("subnode", ["$compile", "$templateCache",
+    ($compile, $templateCache) ->
+        return {
+            restrict : "E"
+            scope    : {
+                entry      : "="
+                treeconfig : "="
+            }
+            replace : true
+            compile: (tElement, tAttr) ->
+                return (scope, iElement, iAttr) ->
+                    iElement.append($compile($templateCache.get("tree_subnode"))(scope))
+            }
+])
 
 root = exports ? this
 root.tree_config = tree_config

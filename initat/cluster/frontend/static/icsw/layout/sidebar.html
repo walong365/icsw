@@ -22,7 +22,8 @@
             </div>
             <tabset>
                 <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
-                    <tree treeconfig="s_tc_devices" single="true"></tree>
+                    <!-- use tree for production or ntree for testing -->
+                    <tree treeconfig="s_tc_devices" single="true" max-height="200"></tree>
                 </tab>
                 <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
                     <tree treeconfig="s_tc_fqdns"></tree>
