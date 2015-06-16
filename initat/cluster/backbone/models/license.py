@@ -27,7 +27,7 @@ import logging
 from lxml import etree
 from dateutil import relativedelta
 
-from django.db.models import signals, Q
+from django.db.models import signals, Q, Count
 from django.db import models, transaction, IntegrityError
 from django.dispatch import receiver
 import enum
@@ -362,19 +362,45 @@ class LicenseUsage(object):
             else:
                 raise RuntimeError("Invalid license parameter type id: {}".format(param_type))
 
+    @classmethod
+    def get_license_usage(cls, license):
+        return {k: v for k, v in cls._get_license_usage_cache()[license].iteritems() if v > 0}
+
     @staticmethod
-    def get_license_usage(license):
-        usage = {
-            LicenseParameterTypeEnum.device:
-                LicenseUsageDeviceService.objects.filter(license=license.name, service=None).count(),
-            LicenseParameterTypeEnum.service:
-                LicenseUsageDeviceService.objects.filter(license=license.name, service__isnull=False).count(),
-            LicenseParameterTypeEnum.user:
-                LicenseUsageUser.objects.filter(license=license.name).count(),
-            LicenseParameterTypeEnum.ext_license:
-                LicenseUsageExtLicense.objects.filter(license=license.name).count(),
-        }
-        return {k: v for k, v in usage.iteritems() if v > 0}
+    @memoize_with_expiry(1)
+    def _get_license_usage_cache():
+        """
+        :return: {lic_enum: {param_type_enum: <usage>}}
+        """
+
+        usage_by_lic = {}
+        for lic in LicenseEnum:
+            usage_by_lic[lic] = {param_type: 0 for param_type in LicenseParameterTypeEnum}
+
+        def _add(lic_str, param_type_enum, usage):
+            try:
+                lic_enum = LicenseEnum[lic_str]
+            except KeyError:
+                # old license type
+                pass
+            else:
+                usage_by_lic[lic_enum][param_type_enum] = usage
+
+        for dev_usage in LicenseUsageDeviceService.objects.filter(service__isnull=True)\
+                .values('license').annotate(usage=Count('pk')):
+            _add(dev_usage['license'], LicenseParameterTypeEnum.device, dev_usage['usage'])
+
+        for serv_usage in LicenseUsageDeviceService.objects.filter(service__isnull=False)\
+                .values('license').annotate(usage=Count('pk')):
+            _add(serv_usage['license'], LicenseParameterTypeEnum.service, serv_usage['usage'])
+
+        for user_usage in LicenseUsageUser.objects.values('license').annotate(usage=Count('pk')):
+            _add(user_usage['license'], LicenseParameterTypeEnum.user, user_usage['usage'])
+
+        for ext_lic_usage in LicenseUsageExtLicense.objects.values('license').annotate(usage=Count('pk')):
+            _add(ext_lic_usage['license'], LicenseParameterTypeEnum.ext_license, ext_lic_usage['usage'])
+
+        return usage_by_lic
 
 
 class _LicenseViolationManager(models.Manager):
