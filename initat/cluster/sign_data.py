@@ -4,12 +4,11 @@
 import argparse
 import base64
 
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
+from lxml import etree  # @UnresolvedImports
+from lxml.builder import E  # @UnresolvedImports
 from M2Crypto import EVP
 
-PRIVATE_KEY = \
-"""
+PRIVATE_KEY = """
 -----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEA4p6JXKFMDbUpe45HhGZs/fBsQQki80YqQzgeRB42f0waKKqT
 oia929RcMil1g4JRmpOu6IAWaKTthuueIKjeB1bnXYZhHKwod4Bmp6cooU3A1i+6
@@ -38,6 +37,7 @@ qqKkd4Z694W+GSryGBf+tUo/mtgoSX8lYRfWTvPEyPiq1aEQveX27G6J/me6OCK5
 RJFfUw9Ll0BI4y0xE+RV9MLkyVKbvn4KdeflTrU0b71GnF2DVji9GQ==
 -----END RSA PRIVATE KEY-----
 """
+
 
 class Signature(object):
     def __init__(self, private_key=PRIVATE_KEY):

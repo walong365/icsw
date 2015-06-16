@@ -126,18 +126,13 @@ class image(models.Model):
         )
         return _kdh
 
-    def __unicode__(self):
-        return "{} (arch {})".format(
-            self.name,
-            unicode(self.architecture))
-
     class CSW_Meta:
         permissions = (
             ("modify_images", "modify images", False),
         )
 
     def __unicode__(self):
-        return "Image {} ({})".format(self.name, self.full_version)
+        return "Image {} ({}, arch={})".format(self.name, self.full_version, unicode(self.architecture))
 
     class Meta:
         db_table = u'image'
@@ -207,9 +202,6 @@ class kernel(models.Model):
             release=self.release,
         )
         return _kdh
-
-    def __unicode__(self):
-        return self.name
 
     class Meta:
         db_table = u'kernel'

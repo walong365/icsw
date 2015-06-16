@@ -23,7 +23,11 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="rrd_server", description="devices acts as a graphing server (via collectd)",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="rrd_server",
+        description="devices acts as a graphing server (via collectd)",
+        server_config=True,
+        system_config=True,
+    )

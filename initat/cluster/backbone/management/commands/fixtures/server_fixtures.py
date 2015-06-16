@@ -67,4 +67,3 @@ def add_fixtures(**kwargs):
         server_config=True,
         system_config=True,
     )
-

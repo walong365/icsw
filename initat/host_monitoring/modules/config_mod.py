@@ -230,7 +230,15 @@ class resync_config_command(object):  # s.hmb_command):
                                     os.chmod(dir_name, int_dir_mode)
                                     os.chown(dir_name, dir_uid, dir_gid)
                                 except OSError:
-                                    self.log(" * some error occured while trying to generate %s (uid %d, gid %d, mode %s): %s" % (dir_name, dir_uid, dir_gid, dir_mode, sys.exc_info()[1]))
+                                    self.log(
+                                        " * some error occured while trying to generate %s (uid %d, gid %d, mode %s): %s" % (
+                                            dir_name,
+                                            dir_uid,
+                                            dir_gid,
+                                            dir_mode,
+                                            sys.exc_info()[1]
+                                        )
+                                    )
                                 else:
                                     self.log(" - generated dir %s (uid %d, gid %d, mode %s)" % (dir_name, dir_uid, dir_gid, dir_mode))
                         if os.path.isfile("%s/config_files_%s" % (temp_dir, prod_net)):
@@ -252,7 +260,15 @@ class resync_config_command(object):  # s.hmb_command):
                                         os.chmod(file_name, int_file_mode)
                                         os.chown(file_name, file_uid, file_gid)
                                     except:
-                                        self.log(" * some error occured while trying to generate %s (uid %d, gid %d, mode %s): %s" % (file_name, file_uid, file_gid, file_mode, sys.exc_info()[1]))
+                                        self.log(
+                                            " * some error occured while trying to generate %s (uid %d, gid %d, mode %s): %s" % (
+                                                file_name,
+                                                file_uid,
+                                                file_gid,
+                                                file_mode,
+                                                sys.exc_info()[1]
+                                            )
+                                        )
                                         error_objs.append(file_name)
                                     else:
                                         self.log(" - generated file %s (uid %d, gid %d, mode %s)" % (file_name, file_uid, file_gid, file_mode))

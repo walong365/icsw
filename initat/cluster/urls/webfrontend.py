@@ -70,7 +70,7 @@ base_patterns = patterns(
     url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
     url("^kpi$", base_views.KpiView.as_view(), name="kpi"),
     url("^GetKpiSourceData$", base_views.GetKpiSourceData.as_view(), name="GetKpiSourceData"),
-    url("^CalculateKpi$", base_views.CalculateKpi.as_view(), name="CalculateKpi"),
+    url("^CalculateKpiPreview$", base_views.CalculateKpiPreview.as_view(), name="CalculateKpiPreview"),
 )
 
 setup_patterns = patterns(

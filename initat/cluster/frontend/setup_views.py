@@ -184,4 +184,3 @@ class rescan_kernels(View):
             log_result=True,
             split_send=False
         )
-

@@ -1314,7 +1314,7 @@ class trunk_info_scheme(snmp_scheme):
                 logging_tools.get_plural("trunk", len(t_array)),
                 ", ".join(t_array))
         else:
-            limits.nag_STATE_OK, "no trunks"
+            return limits.nag_STATE_OK, "no trunks"
 
 
 class apc_rpdu_load_scheme(snmp_scheme):

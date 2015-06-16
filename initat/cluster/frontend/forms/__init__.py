@@ -110,6 +110,10 @@ class device_info_form(ModelForm):
                     filter="{tree_info:$select.search}",
                 ),
                 Field("comment"),
+                Field(
+                    "alias",
+                    wrapper_ng_show="is_device()",
+                ),
                 HTML("""
 <div class='form-group' ng-show="is_device()">
     <label class='control-label col-sm-3'>
@@ -214,7 +218,7 @@ class device_info_form(ModelForm):
     class Meta:
         model = device
         fields = [
-            "name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
+            "name", "comment", "alias", "monitor_checks", "domain_tree_node", "mon_device_templ",
             "enable_perfdata", "flap_detection_enabled", "mon_resolve_name",
             "store_rrd_data",
         ]

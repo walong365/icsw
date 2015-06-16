@@ -23,7 +23,11 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="discovery_server", description="enables network discovery and inventory",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="discovery_server",
+        description="enables network discovery and inventory",
+        server_config=True,
+        system_config=True,
+    )

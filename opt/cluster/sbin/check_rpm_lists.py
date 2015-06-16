@@ -80,12 +80,12 @@ def main():
     keys_2.sort()
     missing_in_1 = [x for x in keys_2 if x not in keys_1]
     missing_in_2 = [x for x in keys_1 if x not in keys_2]
-    for missing_in, host, dir in [(missing_in_1, host_1, dir_1),
-                                  (missing_in_2, host_2, dir_2)]:
+    for missing_in, host, _dir in [(missing_in_1, host_1, dir_1),
+                                   (missing_in_2, host_2, dir_2)]:
         if missing_in:
             print "%s missing on %s (dir %s):" % (logging_tools.get_plural("package", len(missing_in)),
                                                   host,
-                                                  dir)
+                                                  _dir)
             if opt_dict["detailed_list"]:
                 print "\n".join(missing_in)
             else:

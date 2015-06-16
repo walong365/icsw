@@ -140,15 +140,20 @@ class icinga_log_aggregator(object):
             duration_type=duration_type.ID,
         )
 
-        # create from scratch for smallest unit and incrementally for all higher ones
-        if duration_type == duration.Hour:
-            next_last_service_alert_cache =\
-                self._create_timespan_entry_from_raw_data(timespan_db, start_time, end_time, duration_type,
-                                                          next_last_service_alert_cache)
-        else:
-            self._create_timespan_entry_incrementally(timespan_db, start_time, end_time,
-                                                      duration_type, next_last_service_alert_cache)
-            next_last_service_alert_cache = None  # we don't get this here, but also don't need it
+        try:
+            # create from scratch for smallest unit and incrementally for all higher ones
+            if duration_type == duration.Hour:
+                next_last_service_alert_cache =\
+                    self._create_timespan_entry_from_raw_data(timespan_db, start_time, end_time, duration_type,
+                                                              next_last_service_alert_cache)
+            else:
+                self._create_timespan_entry_incrementally(timespan_db, start_time, end_time,
+                                                          duration_type, next_last_service_alert_cache)
+                next_last_service_alert_cache = None  # we don't get this here, but also don't need it
+        except Exception as e:
+            self.log("Exception while creating timespan entry: {}".format(e))
+            timespan_db.delete()
+            raise
         return next_last_service_alert_cache
 
     @staticmethod

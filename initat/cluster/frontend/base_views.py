@@ -247,12 +247,12 @@ class GetKpiSourceData(View):
             request.xml_response['response'] = result['kpi_set']
 
 
-class CalculateKpi(ListAPIView):
+class CalculateKpiPreview(ListAPIView):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     @rest_logging
     def post(self, request):
-        srv_com = server_command.srv_command(command="calculate_kpi")
+        srv_com = server_command.srv_command(command="calculate_kpi_preview")
         srv_com["kpi_serialized"] = request.POST['kpi_serialized']
         srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
         result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False, timeout=120)

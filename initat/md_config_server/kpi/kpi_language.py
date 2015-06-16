@@ -209,7 +209,7 @@ class KpiObject(object):
 
 # all object types:
 
-# rrd_key, rrd_value, host
+# rrd_id, rrd_name rrd_value, host
 # result, host
 # result, host, serv_id, service_info
 # host (historic host)
@@ -244,22 +244,34 @@ class KpiDetailObject(KpiObject):
 
 class KpiRRDObject(KpiObject):
     """Kpi Object with rrd data"""
-    def __init__(self, rrd_key, rrd_value, **kwargs):
-        if rrd_key is None:
-            raise ValueError("rrd_key is None")
+    def __init__(self, rrd_id, rrd_name, rrd_value, **kwargs):
+        if rrd_id is None:
+            raise ValueError("rrd_id is None")
+        if rrd_name is None:
+            raise ValueError("rrd_name is None")
         if rrd_value is None:
             raise ValueError("rrd_value is None")
         super(KpiRRDObject, self).__init__(**kwargs)
-        self.rrd_key = rrd_key
+        self.rrd_id = rrd_id
+        self.rrd_name = rrd_name
         self.rrd_value = rrd_value
 
     def __repr__(self, child_repr=""):
         return super(KpiRRDObject, self).__repr__(child_repr=child_repr +
-                                                  "rrd:{}:{}".format(self.rrd_key, self.rrd_value))
+                                                  "rrd:{}:{}".format(self.rrd_id, self.rrd_value))
+
+    def get_full_object_id_properties(self):
+        return dict(
+            rrd_id=self.rrd_id,
+            rrd_name=self.rrd_name,
+            rrd_value=self.rrd_value,
+            **super(KpiRRDObject, self).get_full_object_id_properties()
+        )
 
     def serialize(self):
         return dict(
-            rrd_key=self.rrd_key,
+            rrd_id=self.rrd_id,
+            rrd_name=self.rrd_name,
             rrd_value=self.rrd_value,
             **super(KpiRRDObject, self).serialize()
         )
@@ -376,12 +388,12 @@ class KpiOperation(object):
         aggregate_historic = 9
         exclude = 10
 
-    def __init__(self, type, operands=None, arguments=None):
+    def __init__(self, operation_type, operands=None, arguments=None):
         if arguments is None:
             arguments = {}
         if operands is None:  # only for initial and possibly specially constructed sets
             operands = []
-        self.type = type
+        self.type = operation_type
         self.operands = operands
         self.arguments = arguments
 
@@ -467,7 +479,7 @@ class KpiSet(object):
         :type origin: KpiOperation | None
         """
         self.objects = objects if objects is not None else []
-        self.origin = origin if origin else KpiOperation(type=KpiOperation.Type.initial)
+        self.origin = origin if origin else KpiOperation(KpiOperation.Type.initial)
 
     """
     @classmethod
@@ -487,13 +499,13 @@ class KpiSet(object):
 
     def _check_value(self, amount, limit_ok, limit_warn, method='at least'):
         if method == 'at least':
-            cmp = lambda x, y: x >= y
+            _cmp = lambda x, y: x >= y
         elif method == 'at most':
-            cmp = lambda x, y: x < y
+            _cmp = lambda x, y: x < y
         else:
             raise ValueError("Invalid comparison method: '{}'. Supported methods are 'at least' or 'at most'.")
 
-        if cmp(amount, limit_ok):
+        if _cmp(amount, limit_ok):
             result = KpiResult.ok
         elif limit_warn is not None and cmp(amount, limit_warn):
             result = KpiResult.warning
@@ -630,11 +642,11 @@ class KpiSet(object):
                               arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
                               operands=[self])
 
-        num = sum(1 for obj in self.result_objects if obj.result >= result)
+        num = sum(1 for obj in self.result_objects if obj.result <= result)
 
-        if num > num_ok:
+        if num >= num_ok:
             return KpiSet.get_singleton_ok(origin=origin)
-        elif num_warn is not None and num > num_warn:
+        elif num_warn is not None and num >= num_warn:
             return KpiSet.get_singleton_warn(origin=origin)
         else:
             return KpiSet.get_singleton_critical(origin=origin)
@@ -700,6 +712,14 @@ class KpiSet(object):
                     )
                 )
 
+            if start == end:
+                raise RuntimeError("Same start and end date for get_historic_data(): {}".format(start))
+
+            if start > end:
+                raise RuntimeError("Start date for get_historic_data() is later than end date ({} > {})".format(
+                    start, end
+                ))
+
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())
             for ident in relevant_obj_identifiers:
@@ -761,7 +781,7 @@ class KpiSet(object):
 
                 # also aggregate state types
                 ratio = sum(v for k, v in aggregated_tl.iteritems()
-                            if k[0] >= result)
+                            if k[0] <= result)
 
                 if discard_planned_downtimes:
                     ratio_planned_down = sum(v for k, v in aggregated_tl.iteritems()
@@ -808,11 +828,10 @@ class KpiSet(object):
         if not self.rrd_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:
+            # construct same RRD-objects but with results
             return KpiSet(
                 objects=[
                     KpiRRDObject(
-                        rrd_key=rrd_obj.rrd_key,
-                        rrd_value=rrd_obj.rrd_value,
                         result=self._check_value(rrd_obj.rrd_value, limit_ok, limit_warn, method),
                         **rrd_obj.get_full_object_id_properties()
                     ) for rrd_obj in self.rrd_objects

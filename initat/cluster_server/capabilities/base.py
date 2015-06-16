@@ -58,6 +58,7 @@ class bg_stuff(object):
 
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
+        return None
 
     def step(self, *args, **kwargs):
         self.server_process.step(*args, **kwargs)

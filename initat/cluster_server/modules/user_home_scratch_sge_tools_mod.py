@@ -302,7 +302,7 @@ class rename_sge_user(cs_base_class.server_com):
                 }
                 user_dict["name"] = user
                 tmp_name = tempfile.mktemp("sge")
-                _tf = file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.iteritems()]))
+                file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.iteritems()]))
                 os.environ["SGE_ROOT"] = sge_root
                 os.environ["SGE_CELL"] = sge_cell
                 commands.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, old_user))

@@ -18,7 +18,7 @@
 
             <ul class="list-group" ng-if="kpi_set.objects.length > 0">
                 <icsw-config-kpi-show-kpi-object
-                        ng-repeat="kpi_obj in kpi_set.objects | orderBy:['host_name', 'service_info', 'check_command', 'rrd_key']"
+                        ng-repeat="kpi_obj in kpi_set.objects | orderBy:['host_name', 'service_info', 'check_command', 'rrd_id']"
                         kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
             </ul>
 
@@ -46,8 +46,8 @@
             Service: {{kpi_obj.check_command}},
         </span>
 
-        <span ng-if="kpi_obj.rrd_key">
-            {{kpi_obj.rrd_key}}: {{kpi_obj.rrd_value}}
+        <span ng-if="kpi_obj.rrd_id">
+            {{kpi_obj.rrd_id}}: {{kpi_obj.rrd_value}}
         </span>
 
         <span ng-if="kpi_obj.result">

@@ -52,10 +52,11 @@ class KpiProcess(threading_tools.process_obj):
         )
         connection.close()
 
-        self.register_timer(self.update, 60 if global_config["DEBUG"] else 300, instant=True)
+        self.register_timer(self.periodic_update, 60 if global_config["DEBUG"] else 300, instant=True)
 
         self.register_func('get_kpi_source_data', self._get_kpi_source_data)
-        self.register_func('calculate_kpi', self._calculate_kpi)
+        self.register_func('calculate_kpi_preview', self._calculate_kpi_preview)
+        self.register_func('calculate_kpi_db', self._calculate_kpi_db)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -82,7 +83,22 @@ class KpiProcess(threading_tools.process_obj):
 
         self.log("Finished KPI source data")
 
-    def update(self):
+    def _calculate_kpi_db(self, srv_com_src, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com_src)
+        kpi_data = KpiData(self.log)
+        kpi_pk = int(srv_com['kpi_pk'].text)
+        kpi_db = Kpi.objects.get(pk=kpi_pk)
+        self._update_single_kpi_result(kpi_data, kpi_db)
+
+    def _update_single_kpi_result(self, kpi_data, kpi_db):
+        try:
+            initial_kpi_set = kpi_data.get_kpi_set_for_kpi(kpi_db)
+            result_str = self._evaluate_kpi(initial_kpi_set, kpi_db)
+        except KpiEvaluationError:
+            result_str = None
+        kpi_db.set_result(result_str, django.utils.timezone.now())
+
+    def periodic_update(self):
         """Recalculate all kpis and save result to database"""
         if License.objects.has_valid_license(LicenseEnum.kpi):
             KpiGlobals.set_context()
@@ -93,12 +109,7 @@ class KpiProcess(threading_tools.process_obj):
             else:
                 # recalculate kpis
                 for kpi_db in Kpi.objects.filter(enabled=True):
-                    try:
-                        initial_kpi_set = kpi_data.get_kpi_set_for_kpi(kpi_db)
-                        result_str = self._evaluate_kpi(initial_kpi_set, kpi_db)
-                    except KpiEvaluationError:
-                        result_str = None
-                    kpi_db.set_result(result_str, django.utils.timezone.now())
+                    self._update_single_kpi_result(kpi_data, kpi_db)
 
                 """
                 # code for exporting kpi results as csv (written for oekotex KPIs June 2015)
@@ -148,8 +159,8 @@ class KpiProcess(threading_tools.process_obj):
                 print 'done'
                 """
 
-    def _calculate_kpi(self, srv_com_src, **kwargs):
-        """Calculate single kpi"""
+    def _calculate_kpi_preview(self, srv_com_src, **kwargs):
+        """Calculate single kpi with data from command and return result without saving"""
         srv_com = server_command.srv_command(source=srv_com_src)
         KpiGlobals.set_context()
 
@@ -199,10 +210,15 @@ class KpiProcess(threading_tools.process_obj):
         }
         eval_locals = {}
         result_str = None
+        # build function such that return works in the kpi function
+        eval_formula = u"def _kpi():\n"
+        # indent
+        eval_formula += u"\n".join(((u"    " + line) for line in kpi_db.formula.split(u"\n"))) + u"\n"
+        eval_formula += u"kpi = _kpi()\n"
         try:
             # KpiGlobals are used for evaluation, but not exposed to kpi user
             KpiGlobals.current_kpi = kpi_db
-            exec (kpi_db.formula, eval_globals, eval_locals)
+            exec (eval_formula, eval_globals, eval_locals)
         except Exception as e:
             self.log(e)
             error_report = [u"Exception while calculating kpi {}: {}".format(kpi_db, e)]
@@ -215,12 +231,16 @@ class KpiProcess(threading_tools.process_obj):
             raise KpiEvaluationError(error_report)
         else:
             if 'kpi' not in eval_locals:
-                msg = "{} does not define the variable `kpi` and therefore has no result.".format(kpi_db)
+                msg = "Internal error evaluating kpis (1)"
                 self.log(msg)
                 raise KpiEvaluationError(msg)
             else:
                 self.log("{} successfully evaluated".format(kpi_db))
                 result = eval_locals['kpi']
+
+                if result is None:
+                    raise KpiEvaluationError("Kpi formula did not return a result.\n" +
+                                             "Please use `return kpi_set`, where kpi_set is your result.")
 
                 if not isinstance(result, KpiSet):
                     raise KpiEvaluationError("Result is not a KpiSet but {}".format(type(result)))

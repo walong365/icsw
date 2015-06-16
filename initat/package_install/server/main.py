@@ -28,8 +28,8 @@ django.setup()
 
 from django.db import connection
 from initat.cluster.backbone.models import LogSource
-from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
-from initat.package_install.server.config import global_config
+from .constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
+from .config import global_config
 from initat.tools import config_tools, configfile, process_tools
 
 from initat.server_version import VERSION_STRING
@@ -51,14 +51,13 @@ def main():
             ("USER", configfile.str_c_var("idpacks", help_string="user to run as [%(default)s]")),
             ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
             ("GROUPS", configfile.array_c_var(["idg"])),
-            ("FORCE", configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
             ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("SERVER_PUB_PORT", configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
             ("NODE_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
             ("DELETE_MISSING_REPOS", configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
-            ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]")),
+            ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]", database=True)),
         ]
     )
     global_config.parse_file()

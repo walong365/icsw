@@ -75,7 +75,7 @@ class new_config_object(object):
     mode = property(_get_mode, _set_mode)
 
     def append(self, what):
-        self +=what
+        self += what
 
     def __iadd__(self, line):
         if isinstance(line, basestring):
@@ -117,7 +117,7 @@ class file_object(new_config_object):
             s_dir = kwargs["dev_dict"]["image"].get("source", None)
             if s_dir:
                 s_content = file("%s/%s" % (s_dir, destination), "r").read()
-                self +=s_content.split("\n")
+                self += s_content.split("\n")
 
     def set_config(self, ref_config):
         self.mode = ref_config.file_mode

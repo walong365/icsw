@@ -37,6 +37,11 @@ try:
 except ImportError:
     SetupParser = None
 
+try:
+    from .device.device_parser import Parser as DeviceParser
+except ImportError:
+    DeviceParser = None
+
 
 class ICSWParser(object):
     def __init__(self):
@@ -50,6 +55,7 @@ class ICSWParser(object):
             LogwatchParser,
             LicenseParser,
             SetupParser,
+            DeviceParser,
         ]:
             if _sp is not None:
                 _sp().link(sub_parser)
