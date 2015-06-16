@@ -805,7 +805,8 @@ class device_com_capabilities(APIView):
 
     @rest_logging
     def get(self, request):
-        _devs = json.loads(request.QUERY_PARAMS.get("devices"))
+        # have default value since in some strange corner cases, request does not contain devices
+        _devs = json.loads(request.QUERY_PARAMS.get("devices", "[]"))
         _devs = device.objects.filter(Q(pk__in=_devs)).prefetch_related("com_capability_list")
         _data = []
         for _dev in _devs:
