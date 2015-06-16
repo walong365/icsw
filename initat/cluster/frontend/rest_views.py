@@ -792,6 +792,7 @@ class device_selection_list(APIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
 
+    @rest_logging
     def get(self, request):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
         return Response(ser.data)
@@ -801,8 +802,10 @@ class device_com_capabilities(APIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
 
+    @rest_logging
     def get(self, request):
-        _devs = json.loads(request.QUERY_PARAMS.get("devices"))
+        # have default value since in some strange corner cases, request does not contain devices
+        _devs = json.loads(request.QUERY_PARAMS.get("devices", "[]"))
         _devs = device.objects.filter(Q(pk__in=_devs)).prefetch_related("com_capability_list")
         _data = []
         for _dev in _devs:

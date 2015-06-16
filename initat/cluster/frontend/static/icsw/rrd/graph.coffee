@@ -435,7 +435,8 @@ angular.module(
                         return []
             )
             $scope.num_mve_sel = $scope.cur_selected.length
-        $scope.use_crop = (graph) ->
+        $scope.$on("cropSet", (event, graph) ->
+            event.stopPropagation()
             if graph.crop_width > 600
                 $scope.from_date_mom = graph.cts_start_mom
                 $scope.to_date_mom = graph.cts_end_mom
@@ -443,6 +444,7 @@ angular.module(
             else
                 _mins = parseInt(graph.crop_width / 60)
                 toaster.pop("warning", "", "selected timeframe is too narrow (#{_mins} < 10 min)")
+        )
         $scope.draw_graph = () =>
             if !$scope.is_drawing
                 $scope.is_drawing = true
@@ -549,52 +551,6 @@ angular.module(
         selection_changed: () =>
             @scope.selection_changed()
 
-).directive("icswRrdImageCropped", () ->
-    return {
-        restrict: "E"
-        scope: {
-            src: "@"
-            graph: "="
-            selected: "&"
-        }
-        link: (scope, element, attr) ->
-            # clear error
-            scope.graph.error = false
-            clear = () ->
-                if scope.img
-                    scope.img.next().remove()
-                    scope.img.remove()
-                    scope.img = undefined
-            scope.$watch("src", (nv) ->
-                clear()
-                if nv
-                    element.after("<img />")
-                    myImg = element.next()
-                    scope.img = myImg
-                    myImg.attr("src", nv)
-                    $(myImg).Jcrop({
-                        trackDocument: true
-                        onSelect: (sel) ->
-                            scope.$apply(() ->
-                                scope.graph.set_crop(sel)
-                            )
-                        onRelease: () ->
-                            scope.$apply(() ->
-                                scope.graph.clear_crop()
-                            )
-                    }, () ->
-                        bounds = this.getBounds()
-                        boundx = bounds[0]
-                        boundy = bounds[1]
-                    )
-                    myImg.bind("error", () ->
-                        scope.$apply(() ->
-                            scope.graph.error = true
-                        )
-                    )
-            )
-            scope.$on("$destroy", clear)
-    }
 ).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict: "E"
@@ -621,6 +577,9 @@ angular.module(
         }
         # template: $templateCache.get("icsw.rrd.graph.list.graph")
         link: (scope, element, attr) ->
+            graph_error = () ->
+                element.children().remove()
+                element.append(angular.element("<h4 class='text-danger'>Error loading graph (#{_graph.num})</h4>"))
             element.children().remove()
             _graph = scope.graph
             if not _graph.error
@@ -629,19 +588,75 @@ angular.module(
                 _rem_keys = _graph.get_removed_keys()
                 element.append(angular.element("<h4>#{_graph.removed_keys.length} keys not shown (zero data) <span class='glyphicon glyphicon-info-sign' title=\"#{_rem_keys}\"></span></h4>"))
             if _graph.error
-                element.append(angular.element("<h4 class='text-danger'>Error loading graph (#{_graph.num})</h4>"))
+                graph_error()
             # element.append($compile($templateCache.get("icsw.rrd.graph.list.graph"))(scope))
             if not _graph.src
                 element.append(angular.element("<div><span class='text-warning'>no graph created</span></div>"))
-            else
-                if not _graph.error
-                    element.append($compile("<icsw-rrd-image-cropped src=\"#{_graph.src}\" graph='graph'/>")(scope))
-                    scope.$watch("graph.active", (new_val) ->
-                        _v_key = "display"
-                        _v_val = if new_val then "inline" else "none"
-                        element.find("icsw-rrd-image-cropped").css(_v_key, _v_val).next().css(_v_key, _v_val)
+            else if not _graph.error
+                _graph.error = false
+                clear = () ->
+                    if scope.img
+                        scope.img.next().remove()
+                        scope.img.remove()
+                        scope.img = undefined
+                clear()
+                if _graph.src
+                    crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
+                    element.after(crop_span)
+                    crop_span.find("input").on("click", () ->
+                        scope.$apply(
+                            scope.$emit("cropSet", _graph)
+                        )
                     )
-                    # todo: show cropped timerange
+                    crop_span.hide()
+                    myImg = angular.element("<img/>")
+                    crop_span.after(myImg)
+                    scope.img = myImg
+                    myImg.attr("src", _graph.src)
+                    $(myImg).Jcrop({
+                        trackDocument: true
+                        onSelect: (sel) ->
+                            scope.$apply(() ->
+                                if not _graph.cropped
+                                    crop_span.show()
+                                _graph.set_crop(sel)
+                                crop_span.find("span").text(
+                                    "cropped timerange: " +
+                                    _graph.get_tv(_graph.cts_start_mom) +
+                                    " to " +
+                                    _graph.get_tv(_graph.cts_end_mom)
+                                )
+                            )
+                        onRelease: () ->
+                            scope.$apply(() ->
+                                if _graph.cropped
+                                    crop_span.hide()
+                                _graph.clear_crop()
+                            )
+                    }, () ->
+                        # not needed ?
+                        bounds = this.getBounds()
+                    )
+                    myImg.bind("error", (event) ->
+                        scope.$apply(() ->
+                            _graph.error = true
+                            graph_error()
+                        )
+                    )
+                scope.$on("$destroy", clear)
+                scope.$watch("graph.active", (new_val) ->
+                    # true means hide and false means show ? strange but it works
+                    if crop_span?
+                        if _graph.cropped
+                            if new_val
+                                crop_span.show()
+                            else
+                                crop_span.hide()
+                        if new_val
+                            myImg.hide()
+                        else
+                            myImg.show()
+                )
             element.on("$destroy", () ->
                 # console.log "destr"
             )
