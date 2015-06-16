@@ -215,6 +215,7 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">
     <h4>{{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}</h4>
+    {{ scope.cropFunc }}
     <table class="table-condensed">
         <tr ng-repeat="gkey in get_graph_keys()">
             <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">
