@@ -209,7 +209,7 @@ class KpiObject(object):
 
 # all object types:
 
-# rrd_key, rrd_value, host
+# rrd_id, rrd_name rrd_value, host
 # result, host
 # result, host, serv_id, service_info
 # host (historic host)
@@ -244,22 +244,34 @@ class KpiDetailObject(KpiObject):
 
 class KpiRRDObject(KpiObject):
     """Kpi Object with rrd data"""
-    def __init__(self, rrd_key, rrd_value, **kwargs):
-        if rrd_key is None:
-            raise ValueError("rrd_key is None")
+    def __init__(self, rrd_id, rrd_name, rrd_value, **kwargs):
+        if rrd_id is None:
+            raise ValueError("rrd_id is None")
+        if rrd_name is None:
+            raise ValueError("rrd_name is None")
         if rrd_value is None:
             raise ValueError("rrd_value is None")
         super(KpiRRDObject, self).__init__(**kwargs)
-        self.rrd_key = rrd_key
+        self.rrd_id = rrd_id
+        self.rrd_name = rrd_name
         self.rrd_value = rrd_value
 
     def __repr__(self, child_repr=""):
         return super(KpiRRDObject, self).__repr__(child_repr=child_repr +
-                                                  "rrd:{}:{}".format(self.rrd_key, self.rrd_value))
+                                                  "rrd:{}:{}".format(self.rrd_id, self.rrd_value))
+
+    def get_full_object_id_properties(self):
+        return dict(
+            rrd_id=self.rrd_id,
+            rrd_name=self.rrd_name,
+            rrd_value=self.rrd_value,
+            **super(KpiRRDObject, self).get_full_object_id_properties()
+        )
 
     def serialize(self):
         return dict(
-            rrd_key=self.rrd_key,
+            rrd_id=self.rrd_id,
+            rrd_name=self.rrd_name,
             rrd_value=self.rrd_value,
             **super(KpiRRDObject, self).serialize()
         )
@@ -816,11 +828,10 @@ class KpiSet(object):
         if not self.rrd_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:
+            # construct same RRD-objects but with results
             return KpiSet(
                 objects=[
                     KpiRRDObject(
-                        rrd_key=rrd_obj.rrd_key,
-                        rrd_value=rrd_obj.rrd_value,
                         result=self._check_value(rrd_obj.rrd_value, limit_ok, limit_warn, method),
                         **rrd_obj.get_full_object_id_properties()
                     ) for rrd_obj in self.rrd_objects

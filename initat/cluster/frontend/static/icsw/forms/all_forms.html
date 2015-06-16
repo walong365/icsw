@@ -1853,7 +1853,9 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 <script type='text/ng-template' id='device.network.scan.form'>
 <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Scan network of settings device {{ _current_dev.full_name }}</h2><fieldset 
  ><legend>Scan address, {{ _current_dev.ip_list.length }} non-local IPs defined</legend><div><ul class="list-group"><li class="list-group-item" ng-repeat="name in _edit_obj.network_type_names">
- {{ name }}: <input ng-repeat="ip in _edit_obj.ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input></li><li class="list-group-item">
+ {{ name }}:
+ <input ng-repeat="ip in _edit_obj.ip_dict[name]"
+ type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input></li><li class="list-group-item">
  IP: <input ng-model="_edit_obj.manual_address"></input></li></ul></div></fieldset><tabset><tab heading='BaseScan' select='set_scan_mode("base")' active='_current_dev.scan_base_active'></tab><tab ng-show='has_com_capability(_edit_obj, "hm")' heading='Hostmonitor' select='set_scan_mode("hm")' active='_current_dev.scan_hm_active'>"
 <fieldset 
  ><legend>Flags</legend><div class="form-group"><div id="div_id_strict_mode"

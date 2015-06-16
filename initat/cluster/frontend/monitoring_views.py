@@ -261,13 +261,12 @@ class get_node_status(View):
                 service_results_filtered = []
                 services_used = collections.defaultdict(lambda: [])
                 for serv_res in json.loads(service_results[0]):
-                    parsed = host_service_id_util.parse_host_service_description(
+                    host_pk, service_pk, _ = host_service_id_util.parse_host_service_description(
                         serv_res['description'],
                         log=logger.error
                     )
                     locked = False
-                    if parsed:
-                        host_pk, service_pk, _ = parsed
+                    if host_pk is not None and service_pk is not None:
 
                         locked = LicenseLockListDeviceService.objects.is_device_service_locked(
                             LicenseEnum.monitoring_dashboard, host_pk, service_pk
