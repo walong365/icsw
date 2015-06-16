@@ -307,6 +307,13 @@ class VE(object):
     def get_value(self):
         return self.value * self.factor
 
+    def get_expanded_info(self):
+        # replace "$2" by 2nd part of key and so on
+        expanded_info = self.info
+        for num, subst in enumerate(self.key.split("."), start=1):
+            expanded_info = expanded_info.replace("${}".format(num), subst)
+        return expanded_info
+
 
 class AGSink(object):
     # aggregate sink, has sub entries for each key

@@ -269,7 +269,8 @@ class KpiData(object):
                             KpiRRDObject(
                                 host_name=host_data[1],
                                 host_pk=host_db.pk,
-                                rrd_key=ve.key,
+                                rrd_id=ve.key,
+                                rrd_name=ve.get_expanded_info(),
                                 rrd_value=ve.get_value(),
                             ) for ve in vector_entries
                         )
