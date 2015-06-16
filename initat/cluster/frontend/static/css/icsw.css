@@ -75,9 +75,12 @@ th.rotate > div > span {
     background: #ffff00 !important;
 }
 
+/*
+// workaround for missing code mirror indention (this bug does not seem to occur currently)  // BM 20150616
 .CodeMirror pre {
     padding-left: 35px !important;
 }
+*/
 
 circle.fixed {
     fill : #ffaaaa ;
