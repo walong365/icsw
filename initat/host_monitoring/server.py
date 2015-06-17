@@ -33,22 +33,19 @@ import time
 import uuid
 from multiprocessing import Queue
 
-from initat.host_monitoring.config import global_config
-from initat.host_monitoring.constants import TIME_FORMAT
-from initat.host_monitoring.long_running_checks import (
-    LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
-)
-from initat.host_monitoring.hm_inotify import inotify_process
-from initat.host_monitoring.hm_direct import socket_process
-from initat.host_monitoring.hm_resolve import resolve_process
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
+from initat.tools import configfile, logging_tools, process_tools, \
+    server_command, threading_tools
+
 from initat.tools import uuid_tools
 import zmq
+
+from .config import global_config
+from .constants import TIME_FORMAT
+from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
+from .hm_inotify import inotify_process
+from .hm_direct import SocketProcess
+from .hm_resolve import ResolveProcess
 
 
 # defaults to 10 seconds
@@ -79,8 +76,8 @@ class server_code(threading_tools.process_pool):
             loop_granularity=IDLE_LOOP_GRANULARITY,
         )
         self.renice(global_config["NICE_LEVEL"])
-        self.add_process(socket_process("socket"), start=True)
-        self.add_process(resolve_process("resolve"), start=True)
+        self.add_process(SocketProcess("socket"), start=True)
+        self.add_process(ResolveProcess("resolve"), start=True)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

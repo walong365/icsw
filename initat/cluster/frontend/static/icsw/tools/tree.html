@@ -1,3 +1,16 @@
+<!-- new templates -->
+
+<script type="text/ng-template" id="icsw.tree.root.node">
+    <ul class="fancytree-container">
+        <!-- <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'fancytree-lastsib' || ''">
+            <subnode entry="entry" treeconfig="treeconfig"></subnode>
+            <subtree ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" single="single" treeconfig="treeconfig"></subtree>
+        </li> -->
+    </ul>
+</script>
+
+<!-- old templates -->
+
 <script type="text/ng-template" id="tree_root_node">
     <ul class="fancytree-container" ng-attr-style="max-height: {{maxHeight()}}px">
         <span ng-show="!treeconfig.root_nodes.length">No entries</span>
