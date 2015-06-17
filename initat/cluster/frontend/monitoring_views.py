@@ -346,7 +346,7 @@ class get_mon_vars(View):
                     )
         mon_special_check_commands = mon_check_command_special.objects.filter(
             Q(mon_check_command__config__device_config__device__in=_dev_pks)
-        ).select_related("mon_check_command__config")
+        )
         for _mc in mon_special_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
             for _key, _value in _mon_info["default_values"].iteritems():
