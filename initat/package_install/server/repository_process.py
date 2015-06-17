@@ -30,7 +30,7 @@ from initat.cluster.backbone.models import package_search
 from initat.tools import logging_tools, server_command, threading_tools
 
 from .config import global_config
-from .structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct
+from .package_install_server_structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct
 
 
 class RepoProcess(threading_tools.process_obj):
