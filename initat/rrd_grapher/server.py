@@ -23,7 +23,7 @@ import json
 
 from django.db import connection
 from initat.rrd_grapher.config import global_config
-from initat.rrd_grapher.struct import DataStore
+from initat.rrd_grapher.rrd_grapher_struct import DataStore
 from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.stale import stale_process
 from initat.tools import cluster_location
