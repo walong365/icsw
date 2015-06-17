@@ -20,7 +20,7 @@
 """ handler structures """
 
 from ..functions import oid_to_str
-from ..struct import ResultNode
+from ..snmp_struct import ResultNode
 from initat.tools import logging_tools
 
 

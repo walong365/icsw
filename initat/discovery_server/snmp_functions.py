@@ -23,7 +23,7 @@ import time
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from initat.snmp.struct import ResultNode, simple_snmp_oid
+from initat.snmp.snmp_struct import ResultNode, simple_snmp_oid
 from initat.snmp.functions import simplify_dict, oid_to_str
 from initat.snmp.sink import SNMPSink
 from initat.snmp.databasemap import Schemes

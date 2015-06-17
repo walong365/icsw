@@ -21,7 +21,7 @@
 
 import time
 from initat.tools import logging_tools, process_tools, server_command
-from initat.snmp.struct import ResultNode
+from initat.snmp.snmp_struct import ResultNode
 from .discovery_struct import ExtCom
 from initat.cluster.backbone.models import ComCapability
 from django.db.models import Q

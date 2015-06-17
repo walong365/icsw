@@ -19,7 +19,7 @@
 #
 """ SNMP base sink """
 
-from ..struct import ResultNode
+from ..snmp_struct import ResultNode
 from ..handler.instances import handlers
 from initat.tools import logging_tools
 from initat.tools import process_tools
