@@ -35,7 +35,7 @@ from initat.tools import threading_tools, config_tools
 from .config import global_config
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
-from .base_functions import BaseScanBatch, BaseScanMixin
+from .ext_com_scan import BaseScanMixin, ScanBatch
 
 
 class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin):
@@ -165,7 +165,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
 
     def _init_subsys(self):
         SNMPBatch.setup(self)
-        BaseScanBatch.setup(self)
+        ScanBatch.setup(self)
 
     def _snmp_basic_scan(self, *args, **kwargs):
         SNMPBatch(server_command.srv_command(source=args[0]))

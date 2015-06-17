@@ -28,16 +28,57 @@ from django.db.models import Q
 from lxml import etree
 
 
-class BaseScanBatch(object):
+class ScanBatch(object):
+    # these are set by setup() and written here to make code analysis happy
+    process = None
+    _base_run_id = None
+    _batch_lut = None
+
     def __init__(self, dev_com, scan_dev):
         self.start_time = time.time()
         self.dev_com = dev_com
         self.device = scan_dev
-        self.id = BaseScanBatch.next_batch_id(self)
+        self.id = self.next_batch_id(self)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__class__.process.log("[base {:d}] {}".format(self.id, what), log_level)
+
+    def finish(self):
+        if self.device.active_scan:
+            self.__class__.process.clear_scan(self.device)
+        self.end_time = time.time()
+        self.log("finished in {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
+        self.__class__.remove_batch(self)
+
+    @classmethod
+    def next_batch_id(cls, bsb):
+        cls._base_run_id += 1
+        cls._batch_lut[cls._base_run_id] = bsb
+        return cls._base_run_id
+
+    @classmethod
+    def setup(cls, proc):
+        cls.process = proc
+        cls._base_run_id = 0
+        cls._batch_lut = {}
+
+    @classmethod
+    def remove_batch(cls, bsb):
+        del cls._batch_lut[bsb.id]
+
+    @classmethod
+    def g_check_ext_com(cls):
+        for item in cls._batch_lut.iteritems():
+            item.check_ext_com()
+
+
+class BaseScanBatch(ScanBatch):
+    def __init__(self, dev_com, scan_dev):
+        super(BaseScanBatch, self).__init__(dev_com, scan_dev)
         if "scan_address" in dev_com.attrib:
             self.device.target_ip = dev_com.attrib["scan_address"]
         else:
-            BaseScanBatch.process.get_route_to_devices([self.device])
+            self.__class__.process.get_route_to_devices([self.device])
         if self.device.target_ip:
             self._ext_com = ExtCom(self.log, self._build_command())
             self._ext_com.run()
@@ -76,9 +117,6 @@ class BaseScanBatch(object):
         self.port_ref_lut = _ref_lut
         self.log("scan_command is {}".format(_com))
         return _com
-
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, result=False):
-        BaseScanBatch.process.log("[base {:d}] {}".format(self.id, what), log_level)
 
     def check_ext_com(self):
         _res = self._ext_com.finished()
@@ -127,46 +165,25 @@ class BaseScanBatch(object):
                     self.log("no comspecs found", logging_tools.LOG_LEVEL_WARN)
             self.finish()
 
-    def finish(self):
-        if self.device.active_scan:
-            BaseScanBatch.process.clear_scan(self.device)
-        self.end_time = time.time()
-        self.log("finished in {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
-        BaseScanBatch.remove_batch(self)
 
-    @staticmethod
-    def next_batch_id(bsb):
-        BaseScanBatch.base_run_id += 1
-        BaseScanBatch.batch_lut[BaseScanBatch.base_run_id] = bsb
-        return BaseScanBatch.base_run_id
+class _ExtComScanMixin(object):
+    def _register_timer(self):
+        if not hasattr(self, "_timer_registered"):
+            self.log("registering base_timer")
+            self._timer_registered = True
+            self.register_timer(self._check_commands, 2)
 
-    @staticmethod
-    def setup(proc):
-        BaseScanBatch.process = proc
-        BaseScanBatch.base_run_id = 0
-        BaseScanBatch.batch_lut = {}
-
-    @staticmethod
-    def remove_batch(bsb):
-        del BaseScanBatch.batch_lut[bsb.id]
-        del bsb
-
-    @staticmethod
-    def g_check_ext_com():
-        _keys = list(BaseScanBatch.batch_lut.keys())
-        [BaseScanBatch.batch_lut[_key].check_ext_com() for _key in _keys]
+    def _check_commands(self):
+        ScanBatch.g_check_ext_com()
 
 
-class BaseScanMixin(object):
+class BaseScanMixin(_ExtComScanMixin):
     def base_scan(self, dev_com, scan_dev):
-        self._register_base_timer()
+        self._register_timer()
         return BaseScanBatch(dev_com, scan_dev).start_result
 
-    def _register_base_timer(self):
-        if not hasattr(self, "_base_timer_registered"):
-            self.log("registering base_timer")
-            self._base_timer_registered = True
-            self.register_timer(self._check_base_commands, 2)
 
-    def _check_base_commands(self):
-        BaseScanBatch.g_check_ext_com()
+class WmiScanMixin(_ExtComScanMixin):
+    def wmi_scan(self, dev_com, scan_dev):
+        self._register_timer()
+        return WmiScanBatch(dev_com, scan_dev).start_result
