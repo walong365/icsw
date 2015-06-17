@@ -25,6 +25,7 @@ import pymongo
 import pprint
 import pytz
 import wmi_client_wrapper
+from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
 
 
 class WmiDataSource(object):
@@ -64,23 +65,27 @@ def compare(result_a, result_b):
     for model in set(result_a.iterkeys()).union(result_b.iterkeys()):
         print 'comparing', model
 
-        model_result_a = result_a[model]
-        model_result_b = result_b[model]
-        import pdb; pdb.set_trace()
+        model_result_list_a = result_a[model]
+        model_result_list_b = result_b[model]
 
-        #for i in [model_result_a, model_result_b]: print 'i', type(i)
-        key_sets = [frozenset(i) for i in [model_result_a, model_result_b]]
-        common_keys = key_sets[0] & key_sets[1]
-        only_a_keys = key_sets[0] - key_sets[1]
-        only_b_keys = key_sets[1] - key_sets[0]
+        if len(model_result_list_a) != len(model_result_list_b):
+            print 'len differs'
 
-        # for now:
-        assert not only_a_keys
-        assert not only_b_keys
+        # print model_result_list_a != model_result_list_b
 
-        for k in common_keys:
-            if model_result_a[k] != model_result_b[k]:
-                print 'difference: ', model_result_a[k], 'vs', model_result_b[k]
+        # TODO id of entries
+
+        for a_entry, b_entry in zip(model_result_list_a, model_result_list_b):
+            if a_entry != b_entry:
+                for key in set(a_entry.iterkeys()).union(b_entry.iterkeys()):
+                    if a_entry.get(key) != b_entry.get(key):
+                        print 'difference in', key, ":", a_entry.get(key), 'vs', b_entry.get(key)
+                # dmp = diff_match_patch()
+                # diffs = dmp.diff_main(unicode(a_entry), unicode(b_entry))
+                # dmp.diff_cleanupSemantic(diffs)
+                # patch = dmp.diff_prettyHtml(diffs)
+                # #print 'pat', patch
+                # print 'diff', diffs
 
 
 if __name__ == '__main__':
@@ -98,13 +103,13 @@ if __name__ == '__main__':
     # pprint.pprint(list(t.find()))
     # t.remove()
     contents = list(t.find())
-    # print 'full contents'
-    # pprint.pprint(contents)
+    print 'full contents'
+    pprint.pprint(contents)
 
-    compare(*[a['results'] for a in contents[0:2]])
+    #compare(*[a['results'] for a in list(reversed(contents))[0:2]])
 
     if False:
-        pw = raw_input("pw:")
+        pw = raw_input("pw: ")
         print 'connecting'
         wmic = wmi_client_wrapper.WmiClientWrapper(
             username="Administrator",
