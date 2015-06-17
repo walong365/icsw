@@ -47,7 +47,7 @@ from .constants import MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
 from .discovery import id_discovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
-from .struct import HostConnection, host_message
+from .host_monitoring_struct import HostConnection, host_message
 from .tools import my_cached_file
 
 from initat.host_monitoring.modules.network_mod import PingSPStruct, ping_command

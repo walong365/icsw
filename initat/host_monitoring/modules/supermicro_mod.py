@@ -21,7 +21,7 @@ from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
-from initat.host_monitoring.struct import ExtReturn
+from initat.host_monitoring.host_monitoring_struct import ExtReturn
 import base64
 import json
 import bz2
