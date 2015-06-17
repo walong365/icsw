@@ -24,7 +24,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
     netdevice_speed, peer_information
-from initat.snmp.struct import ResultNode
+from initat.snmp.snmp_struct import ResultNode
 from initat.tools import config_tools
 from initat.tools import logging_tools
 from initat.tools import net_tools

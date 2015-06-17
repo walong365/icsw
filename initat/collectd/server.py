@@ -39,7 +39,7 @@ from initat.collectd.background import snmp_job, bg_job, ipmi_builder
 from initat.collectd.resize import resize_process
 from initat.collectd.aggregate import aggregate_process
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
-from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
+from initat.collectd.collectd_struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.collectd.dbsync import SyncProcess
 from .rsync import RSyncMixin
 from initat.snmp.process import snmp_process_container

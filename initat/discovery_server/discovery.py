@@ -26,7 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, ComCapability, net_ip
-from initat.snmp.struct import ResultNode
+from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command

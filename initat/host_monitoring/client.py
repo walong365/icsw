@@ -25,7 +25,7 @@
 import difflib
 import os
 
-from initat.host_monitoring.struct import ExtReturn
+from initat.host_monitoring.host_monitoring_struct import ExtReturn
 from initat.tools import net_tools
 from initat.tools import server_command
 

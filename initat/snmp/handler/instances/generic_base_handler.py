@@ -20,7 +20,7 @@
 """ SNMP handler instances """
 
 from ...functions import simplify_dict
-from ...struct import ResultNode
+from ...snmp_struct import ResultNode
 from ..base import SNMPHandler
 try:
     from initat.cluster.backbone.models import DeviceSNMPInfo

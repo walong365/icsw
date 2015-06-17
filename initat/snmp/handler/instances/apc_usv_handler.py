@@ -23,7 +23,7 @@ from lxml.builder import E
 from initat.host_monitoring import limits
 
 from ..base import SNMPHandler
-from ...struct import simple_snmp_oid, MonCheckDefinition, snmp_oid
+from ...snmp_struct import simple_snmp_oid, MonCheckDefinition, snmp_oid
 from ...functions import simplify_dict, flatten_dict
 
 
