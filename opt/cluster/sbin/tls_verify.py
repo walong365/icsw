@@ -115,7 +115,8 @@ def main():
         "openvpn_tls_check",
         "uds:/var/lib/logging-server/py_log",
         zmq=True,
-        context=zmq_context)
+        context=zmq_context
+    )
     # for key in sorted(os.environ):
     #    logger.info("%s: %s" % (key, str(os.environ[key])))
     ret_code = 1
