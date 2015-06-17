@@ -286,6 +286,15 @@ class scan_device_network(View):
                     }
                 )
             srv_com["devices"] = _dev_node
+        elif _sm == "wmi":
+            srv_com = server_command.srv_command(command="wmi_scan")
+            _dev_node = srv_com.builder("device")
+            _dev_node.attrib.update(
+                {
+                    "pk": "{:d}".format(_dev.pk),
+                }
+            )
+            srv_com["devices"] = _dev_node
         else:
             srv_com = None
             request.xml_response.error("invalid scan type {}".format(_sm))

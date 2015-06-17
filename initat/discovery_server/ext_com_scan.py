@@ -166,6 +166,9 @@ class BaseScanBatch(ScanBatch):
             self.finish()
 
 
+class WmiScanBatch(ScanBatch):
+    # TODO
+
 class _ExtComScanMixin(object):
     def _register_timer(self):
         if not hasattr(self, "_timer_registered"):

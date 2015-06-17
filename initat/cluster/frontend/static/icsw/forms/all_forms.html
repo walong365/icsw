@@ -1878,7 +1878,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_remove_not_found" class=""><input class="checkboxinput checkbox" id="id_remove_not_found" name="remove_not_found" ng-model="_edit_obj.remove_not_found" type="checkbox" />
  Remove not found
- </label></div></div></div></fieldset></tab></tabset><div class="form-actions"><input type="button"
+ </label></div></div></div></fieldset></tab><tab ng-show='has_com_capability(_edit_obj, "wmi")' heading='WMI' select='set_scan_mode("wmi")' active='_current_dev.scan_wmi_active'></tab></tabset><div class="form-actions"><input type="button"
  name="scan"
  value="scan"
  class="btn btn btn-sm btn-primary"

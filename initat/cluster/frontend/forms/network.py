@@ -500,6 +500,10 @@ class device_network_scan_form(Form):
             "Flags",
             Field("remove_not_found"),
         ),
+        HTML("""
+</tab>
+<tab ng-show='has_com_capability(_edit_obj, "wmi")' heading='WMI' select='set_scan_mode(\"wmi\")' active='_current_dev.scan_wmi_active'>
+"""),
         HTML("</tab></tabset>"),
         FormActions(
             Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
