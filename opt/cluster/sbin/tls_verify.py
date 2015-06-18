@@ -29,7 +29,7 @@ from initat.tools import logging_tools
 from initat.tools import process_tools
 
 
-class allowed_struct(object):
+class AllowedStruct(object):
     def __init__(self, in_str):
         in_str = in_str.strip()
         parts = in_str.split(None, 1)
@@ -105,7 +105,7 @@ class allowed_struct(object):
 
 
 def parse_line(line):
-    a_struct = allowed_struct(line)
+    a_struct = AllowedStruct(line)
     return (a_struct.key, a_struct)
 
 
@@ -115,7 +115,8 @@ def main():
         "openvpn_tls_check",
         "uds:/var/lib/logging-server/py_log",
         zmq=True,
-        context=zmq_context)
+        context=zmq_context
+    )
     # for key in sorted(os.environ):
     #    logger.info("%s: %s" % (key, str(os.environ[key])))
     ret_code = 1
