@@ -127,7 +127,9 @@ class MVValueEntry(models.Model):
     key = models.CharField(max_length=128, default="")
     # full key for this value, stored for faster reference
     full_key = models.CharField(max_length=128, default="")
-    # we don't store the name which was the last part of key
+    # name, required to look up the correct row in the RRD
+    # (no longer valid: we don't store the name which was the last part of key)
+    name = models.CharField(max_length=64, default="")
     # we also don't store the index because this fields was omitted some time ago (still present in some XMLs)
     # full is also not stored because full is always equal to name
     # sane_name is also ignored because this is handled by collectd to generate filesystem-safe filenames ('/' -> '_sl_')

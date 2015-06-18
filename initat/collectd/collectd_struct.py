@@ -167,7 +167,13 @@ class file_creator(object):
         else:
             self.log("unknown v_type '{}'".format(v_type), logging_tools.LOG_LEVEL_ERROR)
             _rv = []
-        return ["DS:{}:{:d}:{}".format(":".join(_val.split(":")[0:2]), _heartbeat, ":".join(_val.split(":")[2:])) for _val in _rv]
+        return [
+            "DS:{}:{:d}:{}".format(
+                ":".join(_val.split(":")[0:2]),
+                _heartbeat,
+                ":".join(_val.split(":")[2:])
+            ) for _val in _rv
+        ]
 
     def get_rra_spec(self, _step, _heartbeat):
         _rv = []

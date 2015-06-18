@@ -59,7 +59,11 @@ class affinity_struct(object):
     def feed(self, p_dict):
         self.__counter += 1
         cur_time = time.time()
-        proc_keys = set([key for key, value in p_dict.iteritems() if value.is_running() and self.affinity_re.match(value.name())])
+        proc_keys = set(
+            [
+                key for key, value in p_dict.iteritems() if value.is_running() and self.affinity_re.match(value.name())
+            ]
+        )
         used_keys = set(self.dict.keys())
         new_keys = proc_keys - used_keys
         old_keys = used_keys - proc_keys
