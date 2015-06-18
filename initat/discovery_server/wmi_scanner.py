@@ -56,7 +56,7 @@ class WmiDataSource(object):
             WmiDataSource('Win32_NetworkAdapter', ['AdapterType', 'AdapterTypeID', 'Availability', 'Caption',
                                                    'Description', 'DeviceID', 'MACAddress', 'Manufacturer', 'Name',
                                                    'NetConnectionStatus', 'NetEnabled', 'PhysicalAdapter',
-                                                   'ProductName', 'ServiceName', 'Speed', 'Status']),
+                                                   'ProductName', 'ServiceName', 'Speed', 'Status', 'MTU']),
             WmiDataSource('Win32_Product', ['Name', 'Caption', 'Description', 'PackageName', 'Version']),
         ]
 
@@ -104,11 +104,11 @@ if __name__ == '__main__':
     # t.remove()
     contents = list(t.find())
     print 'full contents'
-    pprint.pprint(contents)
+    #pprint.pprint(contents)
 
     #compare(*[a['results'] for a in list(reversed(contents))[0:2]])
 
-    if False:
+    if True:
         pw = raw_input("pw: ")
         print 'connecting'
         wmic = wmi_client_wrapper.WmiClientWrapper(

@@ -6,7 +6,7 @@ from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
 from django.forms import Form, ModelForm, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, ChoiceField, BooleanField
+    ModelMultipleChoiceField, ChoiceField, BooleanField, PasswordInput
 from initat.cluster.backbone.models import network, network_type, network_device_type, \
     netdevice, net_ip, peer_information
 from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
@@ -457,6 +457,9 @@ class device_network_scan_form(Form):
     snmp_version = ChoiceField(choices=[(1, "1"), (2, "2")])
     strict_mode = BooleanField(required=False, label="all netdevices must be recognizable and all existing peers must be conserverd")
     remove_not_found = BooleanField(required=False)
+    wmi_username = CharField(max_length=256, label="Username")
+    wmi_password = CharField(max_length=256, label="Password", widget=PasswordInput)
+    wmi_discard_disabled_interfaces = BooleanField(label="Discard disabled interfaces")
     helper.layout = Layout(
         HTML("<h2>Scan network of settings device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
         Fieldset(
@@ -504,6 +507,12 @@ class device_network_scan_form(Form):
 </tab>
 <tab ng-show='has_com_capability(_edit_obj, "wmi")' heading='WMI' select='set_scan_mode(\"wmi\")' active='_current_dev.scan_wmi_active'>
 """),
+        Fieldset(
+            "Base data",
+            Field("wmi_username"),
+            Field("wmi_password"),
+            Field("wmi_discard_disabled_interfaces"),
+        ),
         HTML("</tab></tabset>"),
         FormActions(
             Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),

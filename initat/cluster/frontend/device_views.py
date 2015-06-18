@@ -292,6 +292,10 @@ class scan_device_network(View):
             _dev_node.attrib.update(
                 {
                     "pk": "{:d}".format(_dev.pk),
+                    "scan_address": _json_dev["scan_address"],
+                    "username": _json_dev["wmi_username"],
+                    "password": _json_dev["wmi_password"],
+                    "discard_disabled_interfaces": "1" if _json_dev["wmi_discard_disabled_interfaces"] else "0",
                 }
             )
             srv_com["devices"] = _dev_node

@@ -369,6 +369,9 @@ angular.module(
             dev.snmp_version = 1
             dev.remove_not_found = false
             dev.strict_mode = true
+            dev.wmi_username = "Administrator"
+            dev.wmi_password = ""
+            dev.wmi_discard_disabled_interfaces = true
             dev.scan_base_active = false
             dev.scan_hm_active = false
             dev.scan_snmp_active = false

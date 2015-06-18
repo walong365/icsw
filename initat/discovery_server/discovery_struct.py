@@ -29,13 +29,15 @@ from initat.tools import logging_tools, process_tools
 class ExtCom(object):
     run_idx = 0
 
-    def __init__(self, log_com, command, debug=False, name=None, detach=False):
+    def __init__(self, log_com, command, debug=False, name=None, detach=False, shell=True):
         ExtCom.run_idx += 1
         self.__name = name
         self.__detach = detach
+        self.__shell = shell
         self.idx = ExtCom.run_idx
         self.command = command
         self.popen = None
+        self.result = None
         self.debug = debug
         self.__log_com = log_com
         self.__stdout_file = tempfile.TemporaryFile()
@@ -58,7 +60,7 @@ class ExtCom(object):
             self.popen = subprocess.Popen(
                 self.command,
                 bufsize=1,
-                shell=True,
+                shell=self.__shell,
                 stdout=self.__stdout_file,
                 stderr=self.__stderr_file,
                 close_fds=True
@@ -67,7 +69,7 @@ class ExtCom(object):
         else:
             self.popen = subprocess.Popen(
                 self.command,
-                shell=True,
+                shell=self.__shell,
                 stdout=self.__stdout_file,
                 stderr=self.__stderr_file,
             )
@@ -86,6 +88,9 @@ class ExtCom(object):
             return ("", "")
 
     def finished(self):
+        """
+        :return: None if not finished, else numeric exit code
+        """
         self.result = self.popen.poll()
         if self.result is not None:
             self.end_time = time.time()
