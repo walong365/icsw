@@ -384,7 +384,7 @@ angular.module(
                 time_range_parameter: 1
                 enabled: true
                 soft_states_as_hard_states: true
-                formula: "kpi = initial_data"
+                formula: "return initial_data"
             }
             show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
         ret.show_modify_kpi_dlg = (scope, kpi) ->
