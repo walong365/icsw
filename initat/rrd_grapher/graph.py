@@ -299,7 +299,7 @@ class GraphVar(object):
         src_cf = "AVERAGE"
         if self.mvs_entry.se_type in ["pde", "mvl"]:
             # pde entry
-            _src_str = "{}:{}:{}".format(self.mvs_entry.file_name, self.mvv_entry.key, src_cf)
+            _src_str = "{}:{}:{}".format(self.mvs_entry.file_name, self.mvv_entry.name or self.mvv_entry.key, src_cf)
         else:
             # machvector entry
             _src_str = "{}:v:{}".format(self.mvs_entry.file_name, src_cf)

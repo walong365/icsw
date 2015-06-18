@@ -127,7 +127,8 @@ class MVValueEntry(models.Model):
     key = models.CharField(max_length=128, default="")
     # full key for this value, stored for faster reference
     full_key = models.CharField(max_length=128, default="")
-    # name, required to look up the correct row in the RRD
+    # name, required to look up the correct row in the RRD in case of perfdata
+    # otherwise this entry is forced to be empty (otherwise we have problems in rrd-grapher)
     # (no longer valid: we don't store the name which was the last part of key)
     name = models.CharField(max_length=64, default="")
     # we also don't store the index because this fields was omitted some time ago (still present in some XMLs)
@@ -136,8 +137,9 @@ class MVValueEntry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MVValueEntry ({}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
+        return u"MVValueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
             self.key or "NONE",
+            ", name={}".format(self.name) if self.name else "",
             self.info,
             self.unit,
             self.base,
