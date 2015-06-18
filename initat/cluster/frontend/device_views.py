@@ -279,7 +279,7 @@ class scan_device_network(View):
                     "pk": "{:d}".format(_dev.pk),
                 }
             )
-            if _json_dev["scan_address"] != "0.0.0.0":
+            if _json_dev["scan_address"] != "":
                 _dev_node.attrib.update(
                     {
                         "scan_address": _json_dev["scan_address"],

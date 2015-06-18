@@ -361,7 +361,7 @@ angular.module(
             network_type_names = _.sortBy(network_type_names)
             dev.ip_dict = ip_dict
             dev.network_type_names = network_type_names
-            dev.manual_address = "0.0.0.0"
+            dev.manual_address = ""
             dev.snmp_community = "public"
             if not dev.com_caps?
                 # init com_caps array if not already set
