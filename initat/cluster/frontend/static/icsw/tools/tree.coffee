@@ -19,6 +19,10 @@
 #
 class tree_node
     constructor: (args) ->
+        # tree node element (li)
+        @_tne = undefined
+        # subtree element
+        @_ste = undefined
         # is selected
         @selected = false
         # is expanded
@@ -406,7 +410,19 @@ tree_module = angular.module(
         replace: true
         link: (scope, element, attr) ->
             scope.$watch("treeconfig", (new_val) ->
-                populate_node = (li_node, node, first, last) ->
+                setup_nodes = (node_list) ->
+                    _node_num = 0
+                    for _node in node_list
+                        _node_num++
+                        last = if _node_num == _num_root_nodes then true else false
+                        first = if _node_num == 1 then true else false
+                        if not _node._tne
+                            populate_node(_node, first, last)
+
+                populate_node = (node, first, last) ->
+                    li_node = angular.element("<li/>")
+                    if last
+                        li_node.addClass("fanytree-lastsib")
                     _tc = scope.treeconfig
                     # copy settings from node to li_node
                     _top_span = angular.element("<span/>")
@@ -416,9 +432,39 @@ tree_module = angular.module(
                     # selection box, icons and other stuff
                     if not node._num_childs
                         _top_span.append(angular.element("<span class='fanytree-connector'/>"))
-                    _top_span.append(angular.element("<span class='fancytree-expander'/>"))
+                    _exp = angular.element("<span class='fancytree-expander'/>")
+                    _exp.on("click", () ->
+                        if node.expand
+                            node.expand = false
+                            node._ste.hide()
+                        else
+                            node.expand = true
+                            if not node._ste
+                                node._ste = angular.element("<ul/>")
+                            setup_nodes(node.children)
+                            for _node in node.children
+                                node._ste.append(_node._tne)
+                            node._ste.show()
+                            node._tne.append(node._ste)
+                        _top_span = node._tne.find("span:first")
+                        _top_span.removeClass()
+                        for _class in _tc.get_span_class(node, last)
+                            _top_span.addClass(_class)
+                    )
+                    _top_span.append(_exp)
                     if _tc.show_select and node._show_select
-                        _top_span.append(angular.element("<span class='fancytree-checkbox' style='margin-left:2px;'/>"))
+                        _sel_span = angular.element("<span class='fancytree-checkbox' style='margin-left:2px;'/>")
+                        _sel_span.on("click", () ->
+                            if _tc.change_select
+                                if not node._show_select
+                                    true
+                                node.selected = !node.selected
+                                _top_span = node._tne.find("span:first")
+                                _top_span.removeClass()
+                                for _class in _tc.get_span_class(node, last)
+                                    _top_span.addClass(_class)
+                        )
+                        _top_span.append(_sel_span)
                     if _tc.show_icons
                         _icon_span = angular.element("<span style='width: 16px; margin-left: 0px;'/>")
                         _icon_span.addClass(_tc.get_icon_class(node))
@@ -435,6 +481,8 @@ tree_module = angular.module(
                     _a_node.append(_name_span)
                     _top_span.append(_a_node)
                     li_node.append(_top_span)
+                    node._tne = li_node
+                    return node._tne
 
                 if new_val
                     element.children().remove()
@@ -450,18 +498,10 @@ tree_module = angular.module(
                                 console.log "redraw tree with new number of nodes"
                             else
                                 _root_el.find("span").remove()
-                            _num_root_nodes = r_nodes.length
-                        if _num_root_nodes
-                            _node_num = 0
+                        setup_nodes(r_nodes)
+                        if r_nodes.length
                             for _node in r_nodes
-                                _node_num++
-                                li_node = angular.element("<li/>")
-                                last = if _node_num == _num_root_nodes then true else false
-                                first = if _node_num == 1 then true else false
-                                if last
-                                    li_node.addClass("fanytree-lastsib")
-                                populate_node(li_node, _node, first, last)
-                                _root_el.append(li_node)
+                                _root_el.append(_node._tne)
                         console.log _num_root_nodes
                     )
                     console.log new_val
