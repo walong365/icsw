@@ -827,17 +827,32 @@ class KpiSet(object):
 
             return KpiSet(objects=objects, origin=origin)
 
-    def evaluate(self):
+    def worst(self):
         """
         Calculate "worst" result, i.e. result is critical
         if at least one is critical or else warn if at least one is warn etc.
         """
-        # TODO: have parameter: method
-        origin = KpiOperation(KpiOperation.Type.evaluate, operands=[self])
+        return self.evaluate(method='worst')
+
+    def best(self):
+        """
+        Calculate "best" result, i.e. result is ok
+        if at least one is ok or else warn if at least one is warn etc.
+        """
+        return self.evaluate(method='best')
+
+    def evaluate(self, method='worst'):
+        # usually called through either worst() or best()
+        if method not in ('worst', 'best'):
+            raise ValueError("method must be either 'worst' or 'best', not {}".format(method))
+        origin = KpiOperation(KpiOperation.Type.evaluate,
+                              arguments={'method': method},
+                              operands=[self])
         if not self.result_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:
-            aggregated_result = max(obj.result for obj in self.result_objects)
+            aggr_fun = max if method == 'worst' else min
+            aggregated_result = aggr_fun(obj.result for obj in self.result_objects)
             return KpiSet([KpiObject(result=aggregated_result)], origin=origin)
 
     def evaluate_rrd(self, limit_ok, limit_warn=None, method='at least'):
