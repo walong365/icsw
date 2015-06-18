@@ -22,7 +22,7 @@
 from initat.tools import logging_tools
 
 from ...functions import reorder_dict
-from ...struct import ResultNode
+from ...snmp_struct import ResultNode
 from ..base import SNMPHandler
 
 try:

@@ -22,7 +22,7 @@
 from initat.tools import ipvx_tools
 
 from ...functions import simplify_dict
-from ...struct import ResultNode, snmp_ip
+from ...snmp_struct import ResultNode, snmp_ip
 from ..base import SNMPHandler
 
 try:

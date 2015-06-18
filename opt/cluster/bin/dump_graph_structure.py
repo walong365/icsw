@@ -38,20 +38,23 @@ import datetime
 import time
 import stat
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 global opts
 
 
 def parse_args():
     global opts
-    _mvs = MachineVector.objects.all().select_related("device")
-    _devs = [_entry.device for _entry in _mvs]
+    _mvs = MachineVector.objects.all().select_related("device", "device__domain_tree_node")
+    _dev_dict = {_mv.device.full_name: (_mv, _mv.device) for _mv in _mvs}
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", default=False, action="store_true", help="enable verbose mode [%(default)s]")
-    parser.add_argument("--device", default="", type=str, choices=[_entry.name for _entry in _devs], help="show only specified device [%(default)s]")
+    parser.add_argument("device", nargs="*", default="ALL", choices=["ALL"] + sorted(_dev_dict.keys()), help="show only specified device [%(default)s]")
     opts = parser.parse_args()
+    if opts.device == "ALL":
+        opts.dev_list = [_dev_dict[_key][1] for _key in sorted(_dev_dict.iterkeys())]
+    else:
+        opts.dev_list = [_dev_dict[_key][1] for _key in opts.device]
 
 
 def show_vector(_dev):
@@ -74,10 +77,7 @@ def show_vector(_dev):
 
 def main():
     parse_args()
-    if opts.device:
-        _dev_list = [device.objects.get(Q(name=opts.device))]
-    else:
-        _dev_list = device.objects.filter(Q(machinevector__pk__gt=0))
+    _dev_list = opts.dev_list
     print(
         "showing {}: {}".format(
             logging_tools.get_plural("device", len(_dev_list)),

@@ -166,21 +166,27 @@ class KpiObject(object):
 
     def get_machine_object_id_properties(self):
         """Returns all properties of the object which are necessary to identify the object"""
+        # TODO: refactor this, see get_machine_object_id_type
         return self.host_pk
 
     class IdType(Enum):
         service = 1
         device = 2
+        rrd = 3
 
     @classmethod
     def get_machine_object_id_type(cls, ident):
         # TODO: refactor this system to something which explicitly says what it represents
+        # for this, get_machine_object_id_properties must be changed
+        # the current system assumes that there are no rrd-objects which are service-objects
         try:
             obj_len = len(ident)
         except TypeError:
             obj_len = None
         if obj_len == 3:
             return cls.IdType.service
+        elif obj_len == 2:
+            return cls.IdType.rrd
         elif isinstance(ident, (int, long)):
             return cls.IdType.device
         else:
@@ -259,6 +265,18 @@ class KpiRRDObject(KpiObject):
     def __repr__(self, child_repr=""):
         return super(KpiRRDObject, self).__repr__(child_repr=child_repr +
                                                   "rrd:{}:{}".format(self.rrd_id, self.rrd_value))
+
+    def matches_id(self, ident):
+        try:
+            return ident[1] == self.rrd_id and super(KpiRRDObject, self).matches_id(ident[0])
+        except TypeError:
+            return False
+
+    def get_machine_object_id_properties(self):
+        return (
+            super(KpiRRDObject, self).get_machine_object_id_properties(),
+            self.rrd_id,
+        )
 
     def get_full_object_id_properties(self):
         return dict(
@@ -741,16 +759,21 @@ class KpiSet(object):
             for ident, time_line in time_lines.iteritems():
                 id_objs = self.get_by_id(ident)
                 if id_objs:
-                    if KpiObject.get_machine_object_id_type(ident) == KpiObject.IdType.service:
+                    obj_id = KpiObject.get_machine_object_id_type(ident)
+                    if obj_id == KpiObject.IdType.service:
                         kpi_klass = KpiServiceTimeLineObject
-                    else:
+                    elif obj_id == KpiObject.IdType.device:
                         kpi_klass = KpiTimeLineObject
-                    objects.append(
-                        kpi_klass(
-                            time_line=time_line,
-                            **id_objs[0].get_full_object_id_properties()
+                    else:
+                        kpi_klass = None  # this does not happen as only service and device objects are added
+
+                    if kpi_klass:
+                        objects.append(
+                            kpi_klass(
+                                time_line=time_line,
+                                **id_objs[0].get_full_object_id_properties()
+                            )
                         )
-                    )
                 else:
                     print ("Historical obj found but no kpi obj: {} {} {}".format(ident))
                     # TODO: logging is broken in this context
@@ -804,17 +827,32 @@ class KpiSet(object):
 
             return KpiSet(objects=objects, origin=origin)
 
-    def evaluate(self):
+    def worst(self):
         """
         Calculate "worst" result, i.e. result is critical
         if at least one is critical or else warn if at least one is warn etc.
         """
-        # TODO: have parameter: method
-        origin = KpiOperation(KpiOperation.Type.evaluate, operands=[self])
+        return self.evaluate(method='worst')
+
+    def best(self):
+        """
+        Calculate "best" result, i.e. result is ok
+        if at least one is ok or else warn if at least one is warn etc.
+        """
+        return self.evaluate(method='best')
+
+    def evaluate(self, method='worst'):
+        # usually called through either worst() or best()
+        if method not in ('worst', 'best'):
+            raise ValueError("method must be either 'worst' or 'best', not {}".format(method))
+        origin = KpiOperation(KpiOperation.Type.evaluate,
+                              arguments={'method': method},
+                              operands=[self])
         if not self.result_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:
-            aggregated_result = max(obj.result for obj in self.result_objects)
+            aggr_fun = max if method == 'worst' else min
+            aggregated_result = aggr_fun(obj.result for obj in self.result_objects)
             return KpiSet([KpiObject(result=aggregated_result)], origin=origin)
 
     def evaluate_rrd(self, limit_ok, limit_warn=None, method='at least'):

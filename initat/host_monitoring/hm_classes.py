@@ -23,8 +23,7 @@ import marshal
 import subprocess
 import time
 
-from initat.tools import logging_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, server_command
 
 
 def net_to_sys(in_val):

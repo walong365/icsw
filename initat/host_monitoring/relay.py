@@ -33,23 +33,24 @@ import resource
 import socket
 import sys
 import time
+from argparse import Namespace
 
 from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring.config import global_config
-from initat.host_monitoring.constants import MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
-from initat.host_monitoring.discovery import id_discovery
-from initat.host_monitoring.hm_direct import socket_process
-from initat.host_monitoring.struct import host_connection, host_message
-from initat.host_monitoring.tools import my_cached_file
 from initat.client_version import VERSION_STRING
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
-from initat.tools import uuid_tools
+from initat.tools import configfile, logging_tools, process_tools, \
+    server_command, threading_tools, uuid_tools
 import zmq
+
+from .config import global_config
+from .constants import MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
+from .discovery import id_discovery
+from .hm_direct import SocketProcess
+from .hm_resolve import ResolveProcess
+from .host_monitoring_struct import HostConnection, host_message
+from .tools import my_cached_file
+
+from initat.host_monitoring.modules.network_mod import PingSPStruct, ping_command
 
 
 class relay_code(threading_tools.process_pool):
@@ -86,11 +87,12 @@ class relay_code(threading_tools.process_pool):
         self.__global_timeout = global_config["TIMEOUT"]
         self._show_config()
         self._get_mon_version()
-        host_connection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
+        HostConnection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
         # init lut
         self.__old_send_lut = {}
         # we need no icmp capability in relaying
-        self.add_process(socket_process("socket", icmp=False), start=True)
+        self.add_process(SocketProcess("socket"), start=True)
+        self.add_process(ResolveProcess("resolve"), start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose, self.__force_resolve)
@@ -103,9 +105,12 @@ class relay_code(threading_tools.process_pool):
         self.register_exception("term_error", self._sigint)
         self.register_exception("hup_error", self._hup_error)
         self.__delayed = []
+        self.__local_pings = {}
+        self.__local_ping = ping_command("ping")
         self.register_timer(self._check_timeout, 2)
         self.__last_master_contact = None
         self.register_func("socket_result", self._socket_result)
+        self.register_func("socket_ping_result", self._socket_ping_result)
         self.version_dict = {}
         self._init_master()
         if self.objgraph:
@@ -187,8 +192,6 @@ class relay_code(threading_tools.process_pool):
                         ),
                         logging_tools.LOG_LEVEL_CRITICAL,
                     )
-        # try:
-        #    resource.setrlimit(resource.RLIMIT_OFILE, 4069)
 
     def _init_master(self):
         self.__master_sync_id = None
@@ -312,12 +315,12 @@ class relay_code(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=4)
         if True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collrelay")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
             msi_block.kill_pids = True
             # msi_block.heartbeat_timeout = 60
             msi_block.save_block()
@@ -341,7 +344,7 @@ class relay_code(threading_tools.process_pool):
             self.__msi_block.save_block()
 
     def _check_timeout(self):
-        host_connection.check_timeout_global(id_discovery)
+        HostConnection.check_timeout_global(id_discovery)
         cur_time = time.time()
         # check nhm timeouts
         del_list = []
@@ -706,7 +709,7 @@ class relay_code(threading_tools.process_pool):
                             # c_state = "T"
                             if c_state is None:
                                 # not needed
-                                # host_connection.delete_hc(srv_com)
+                                # HostConnection.delete_hc(srv_com)
                                 if t_host not in self.__last_tried:
                                     self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
                                 self.__last_tried[t_host] = {
@@ -754,8 +757,10 @@ class relay_code(threading_tools.process_pool):
                         if self.__verbose:
                             self.log("send done")
             else:
-                self.log("some keys missing (host and / or port)",
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "some keys missing (host and / or port)",
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             self.log(
                 "cannot interpret input data '{}' as srv_command".format(data),
@@ -861,29 +866,64 @@ class relay_code(threading_tools.process_pool):
             self.log(" {:2d} {}".format(line_num + 1, line))
 
     def _send_to_client(self, src_id, srv_com, xml_input):
-        # generate new xml from srv_com
-        conn_str = "tcp://{}:{:d}".format(
-            srv_com["host"].text,
-            int(srv_com["port"].text)
-        )
-        if id_discovery.has_mapping(conn_str):
-            id_str = id_discovery.get_mapping(conn_str)
-            cur_hc = host_connection.get_hc_0mq(conn_str, id_str)
-            com_name = srv_com["command"].text
-            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
-            if com_name in self.modules.command_dict:
-                com_struct = self.modules.command_dict[srv_com["command"].text]
-                # handle commandline
-                cur_hc.send(cur_mes, com_struct)
-            else:
-                cur_hc.return_error(cur_mes, "command '{}' not defined on relayer".format(com_name))
-        elif id_discovery.is_pending(conn_str):
-            cur_hc = host_connection.get_hc_0mq(conn_str)
-            com_name = srv_com["command"].text
-            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
-            cur_hc.return_error(cur_mes, "0mq discovery in progress")
+        _host = srv_com["*host"]
+        com_name = srv_com["*command"]
+        if com_name == "ping" and _host in ["127.0.0.1", "localhost"]:
+            self._handle_local_ping(src_id, srv_com)
         else:
-            id_discovery(srv_com, src_id, xml_input)
+            # generate new xml from srv_com
+            conn_str = "tcp://{}:{:d}".format(
+                _host,
+                int(srv_com["*port"])
+            )
+            if id_discovery.has_mapping(conn_str):
+                id_str = id_discovery.get_mapping(conn_str)
+                cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
+                cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+                if com_name in self.modules.command_dict:
+                    com_struct = self.modules.command_dict[srv_com["command"].text]
+                    # handle commandline
+                    cur_hc.send(cur_mes, com_struct)
+                else:
+                    cur_hc.return_error(cur_mes, "command '{}' not defined on relayer".format(com_name))
+            elif id_discovery.is_pending(conn_str):
+                cur_hc = HostConnection.get_hc_0mq(conn_str)
+                com_name = srv_com["command"].text
+                cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+                cur_hc.return_error(cur_mes, "0mq discovery in progress")
+            else:
+                id_discovery(srv_com, src_id, xml_input)
+
+    def _handle_local_ping(self, src_id, srv_com):
+        args = srv_com["*arg_list"].strip().split()
+        cur_ns, _rest = self.__local_ping.handle_commandline(args)
+        _struct = self.__local_ping(srv_com, cur_ns)
+        if _struct is not None:
+            # _args = NameSpace()
+            self.__local_pings[_struct.seq_str] = (_struct, src_id, cur_ns)
+            self.send_to_process(
+                "socket",
+                *_struct.run()
+            )
+        else:
+            self._send_result(
+                src_id,
+                "wrong number of arguments ({:d})".format(len(args)),
+                limits.nag_STATE_CRITICAL
+            )
+
+    def _socket_ping_result(self, src_proc, src_id, *args):
+        ping_id = args[0]
+        _stuff, _src_id, cur_ns = self.__local_pings[ping_id]
+        del self.__local_pings[ping_id]
+        _stuff.process(send_return=False, *args)
+        _ret_state, _ret_str = self.__local_ping.interpret(_stuff.srv_com, cur_ns)
+        self._send_result(
+            _src_id,
+            _ret_str,
+            _ret_state,
+        )
+        del _stuff
 
     def _disconnect(self, conn_str):
         if conn_str in self.__nhm_connections:
@@ -1005,7 +1045,7 @@ class relay_code(threading_tools.process_pool):
             srv_com["host"].text,
             int(srv_com["port"].text)
         )
-        cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
+        cur_hc = HostConnection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
@@ -1020,7 +1060,7 @@ class relay_code(threading_tools.process_pool):
             srv_com["host"].text,
             int(srv_com["port"].text)
         )
-        cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
+        cur_hc = HostConnection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         cur_hc.send(cur_mes, None)
@@ -1060,7 +1100,7 @@ class relay_code(threading_tools.process_pool):
         if self.client_socket is not None:
             self.unregister_poller(self.client_socket, zmq.POLLIN)  # @UndefinedVariable
             self.client_socket.close()
-        host_connection.global_close()
+        HostConnection.global_close()
 
     def _close_io_sockets(self):
         if self.network_socket:

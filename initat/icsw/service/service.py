@@ -480,20 +480,21 @@ class Service(object):
             else:
                 if _cmdline:
                     _cmdline = sum([_part.strip().split() for _part in _cmdline], [])
-                    if _cmdline[0] == _new_title:
-                        # print "+", _cmdline, _new_title
-                        _pid_list.add(_key)
-                    elif _cmdline[0].endswith("python-init"):
-                        # print _cmdline
-                        _icsw_found, _old_found = (any([_part.count("icsw") or _part.count("check_scripts") for _part in _cmdline]), False)
-                        # print "*", _cmdline
-                        for _part in _cmdline:
-                            if any([_part.count(_old_bin) for _old_bin in _old_bins]):
-                                # match
-                                _old_found = True
-                        # print _old_found, _icsw_found
-                        if _old_found and not _icsw_found:
+                    if _cmdline:  # kernel processes such as kthreadd can have an empty command line
+                        if _cmdline[0] == _new_title:
+                            # print "+", _cmdline, _new_title
                             _pid_list.add(_key)
+                        elif _cmdline[0].endswith("python-init"):
+                            # print _cmdline
+                            _icsw_found, _old_found = (any([_part.count("icsw") or _part.count("check_scripts") for _part in _cmdline]), False)
+                            # print "*", _cmdline
+                            for _part in _cmdline:
+                                if any([_part.count(_old_bin) for _old_bin in _old_bins]):
+                                    # match
+                                    _old_found = True
+                            # print _old_found, _icsw_found
+                            if _old_found and not _icsw_found:
+                                _pid_list.add(_key)
         # print "found", _pid_list
         return _pid_list
 

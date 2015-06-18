@@ -25,7 +25,7 @@ import pprint  # @UnusedImport
 import re
 
 from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring.struct import ExtReturn
+from initat.host_monitoring.host_monitoring_struct import ExtReturn
 from initat.tools import logging_tools
 from initat.tools import server_command
 

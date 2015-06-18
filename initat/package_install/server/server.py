@@ -31,7 +31,7 @@ from initat.tools.server_mixins import RemoteCall
 
 from .config import global_config
 from .repository_process import RepoProcess
-from .structs import Client
+from .package_install_server_structs import Client
 
 
 @server_mixins.RemoteCallProcess

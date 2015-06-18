@@ -26,7 +26,7 @@ from lxml.builder import E
 from initat.tools import logging_tools
 
 from ...functions import simplify_dict
-from ...struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs, MonCheckDefinition, snmp_oid
+from ...snmp_struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs, MonCheckDefinition, snmp_oid
 from ..base import SNMPHandler
 
 try:

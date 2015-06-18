@@ -24,7 +24,7 @@
 
 from initat.host_monitoring import limits
 from initat.host_monitoring.constants import MAPPING_FILE_IDS
-from initat.host_monitoring.struct import host_message
+from initat.host_monitoring.host_monitoring_struct import host_message
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools
