@@ -21,6 +21,7 @@
 
 import subprocess
 import time
+import tempfile
 
 from initat.tools import logging_tools, process_tools
 
@@ -37,6 +38,8 @@ class ExtCom(object):
         self.popen = None
         self.debug = debug
         self.__log_com = log_com
+        self.__stdout_file = tempfile.TemporaryFile()
+        self.__stderr_file = tempfile.TemporaryFile()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
@@ -51,12 +54,13 @@ class ExtCom(object):
     def run(self):
         self.start_time = time.time()
         if self.__detach:
+            # this is not very efficient, but Popen just deadlocks if it gets to much output, and that's worse
             self.popen = subprocess.Popen(
                 self.command,
                 bufsize=1,
                 shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=self.__stdout_file,
+                stderr=self.__stderr_file,
                 close_fds=True
             )
             self.log("start with pid {} (detached)".format(self.popen.pid))
@@ -64,19 +68,20 @@ class ExtCom(object):
             self.popen = subprocess.Popen(
                 self.command,
                 shell=True,
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE
+                stdout=self.__stdout_file,
+                stderr=self.__stderr_file,
             )
             if self.debug:
                 self.log("start with pid {}".format(self.popen.pid))
 
     def communicate(self):
         if self.popen:
-            try:
-                return self.popen.communicate()
-            except OSError:
-                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                return ("", "")
+            self.__stdout_file.seek(0)
+            self.__stderr_file.seek(0)
+            return (
+                self.__stdout_file.read(),
+                self.__stderr_file.read(),
+            )
         else:
             return ("", "")
 
