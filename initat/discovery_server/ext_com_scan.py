@@ -349,7 +349,7 @@ class WmiScanBatch(ScanBatch):
                                     gw_found_struct = _gws[0] if _gws else None
 
                                     cur_nw = network.objects.get_or_create_network(
-                                        network_addr=ip_found_struct,
+                                        network_addr=ip_found_struct & netmask_found_struct,
                                         netmask=netmask_found_struct,
                                         gateway=gw_found_struct,
                                         context="WMI",
