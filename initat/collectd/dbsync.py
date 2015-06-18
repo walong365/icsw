@@ -266,6 +266,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMix
             ("unit", entry.get("unit", "")),
             ("v_type", entry.get("v_type")),
             ("info", entry.get("info", "")),
+            ("name", entry.get("name", "")),
             ("full_key", "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")),
         ]
         _changed = False
