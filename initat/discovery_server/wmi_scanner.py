@@ -24,8 +24,11 @@ import datetime
 import pymongo
 import pprint
 import pytz
-import wmi_client_wrapper
-from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
+
+
+
+
+# NOTE: this file only contains test code
 
 
 class WmiDataSource(object):
@@ -111,6 +114,8 @@ if __name__ == '__main__':
     if True:
         pw = raw_input("pw: ")
         print 'connecting'
+
+        import wmi_client_wrapper
         wmic = wmi_client_wrapper.WmiClientWrapper(
             username="Administrator",
             password=pw,

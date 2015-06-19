@@ -1,10 +1,6 @@
 
 <script type="text/ng-template" id="icsw.discovery.overview">
-    <!--
-    <icsw-tools-rest-table target-list="entries" config-service="icswDiscoveryConfigService"
-                           st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                           -->
-    <div st-table="data.devices" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+    <div st-table="data.devices" st-safe-src="selected_dispatch_settings" icsw-tools-table-leak-filtered="entries_filtered">
         <h2>Discovery ({{ entries_filtered.length }} entries)</h2>
         <h3 ng-show="entries.length == 0">Please select devices in the tree to the left.</h3>
         <table class="table table-condensed table-hover" style="width:auto;">
@@ -52,5 +48,6 @@
             </tbody>
         </table>
     </div>
-    </icsw-tools-rest-table>
+    without:
+    {{ selected_devices_without_dispatch_settings }}
 </script>
