@@ -459,7 +459,7 @@ class device_network_scan_form(Form):
     remove_not_found = BooleanField(required=False)
     wmi_username = CharField(max_length=256, label="Username")
     wmi_password = CharField(max_length=256, label="Password", widget=PasswordInput)
-    wmi_discard_disabled_interfaces = BooleanField(label="Discard disabled interfaces")
+    wmi_discard_disabled_interfaces = BooleanField(label="Discard disabled interfaces", required=False)
     helper.layout = Layout(
         HTML("<h2>Scan network of settings device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
         Fieldset(
