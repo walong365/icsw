@@ -29,7 +29,7 @@ else
 
     echo "Generating coverage reports for $DIRS"
     /opt/python-init/bin/coverage erase
-    /opt/python-init/bin/coverage run initat/cluster/manage.py test --keepdb --noinput -v 2 --pattern "$PATTERN" $DIRS --omit "${OMIT}"
+    /opt/python-init/bin/coverage run  --omit "${OMIT}" initat/cluster/manage.py test --keepdb --noinput -v 2 --pattern "$PATTERN" $DIRS
     /opt/python-init/bin/coverage html --omit "${OMIT}"
 
 fi
