@@ -189,8 +189,8 @@ angular.module(
         }
 
 ]).service("icswConfigKpiDialogService",
-    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService",
-    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService) ->
+    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService", "$timeout",
+    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService, $timeout) ->
 
         KPI_DLG_MODE_CREATE = 'create'
         KPI_DLG_MODE_MODIFY = 'modify'
@@ -218,17 +218,32 @@ angular.module(
                 indentUnit : 4
             }
 
+
             update_kpi_data_source = () ->
-                icswCallAjaxService
-                    url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
-                    data:
-                        dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
-                        time_range: JSON.stringify(cur_edit_kpi.time_range)
-                        time_range_parameter: JSON.stringify(cur_edit_kpi.time_range_parameter)
-                    success: (xml) ->
-                        if icswParseXMLResponseService(xml)
-                            res = angular.fromJson($(xml).find("value[name='response']").text())
-                            scope.selected_cats_kpi_set = res
+                # make sure to not query server twice at the same time
+                if update_kpi_data_source.is_running
+                    # only schedule if not already scheduled
+                    if not update_kpi_data_source.is_scheduled
+                        update_kpi_data_source.is_scheduled = true
+                        $timeout(
+                            () ->
+                                update_kpi_data_source.is_scheduled = false
+                                update_kpi_data_source()
+                            400
+                        )
+                else
+                    update_kpi_data_source.is_running = true
+                    icswCallAjaxService
+                        url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
+                        data:
+                            dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
+                            time_range: JSON.stringify(cur_edit_kpi.time_range)
+                            time_range_parameter: JSON.stringify(cur_edit_kpi.time_range_parameter)
+                        success: (xml) ->
+                            update_kpi_data_source.is_running = false
+                            if icswParseXMLResponseService(xml)
+                                res = angular.fromJson($(xml).find("value[name='response']").text())
+                                scope.selected_cats_kpi_set = res
             update_kpi_data_source()
 
             child_scope.on_data_source_tab_selected = () ->
