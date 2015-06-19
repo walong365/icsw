@@ -550,8 +550,11 @@ class KpiSet(object):
         for k, v in parameters.iteritems():
             # match_check_fun is actually 'equality'-testing
             if isinstance(v, basestring):
-                match_re = re.compile(u".*{}.*".format(v))
-                match_check_fun = lambda x: x is not None and match_re.match(x)
+                match_re = re.compile(v)
+
+                def create_matcher(match_re=match_re):  # force closure
+                    return lambda x: x is not None and match_re.search(x)
+                match_check_fun = create_matcher()
             else:
                 match_check_fun = lambda x: x == v
 

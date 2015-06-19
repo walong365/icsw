@@ -83,7 +83,6 @@ setup(
                 "opt/cluster/bin/check_vasp.py",
                 # tools
                 "opt/cluster/bin/get_cpuid.py",
-                "opt/cluster/bin/dump_graph_structure.py",
                 "opt/cluster/bin/user_info.py",
                 "opt/cluster/bin/clog.py",
                 "opt/cluster/bin/load_firmware.sh",
