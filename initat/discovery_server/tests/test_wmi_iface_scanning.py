@@ -54,8 +54,8 @@ class WmiScanning(TestCase):
         # actual parse
         scan_batch.check_ext_com()
 
-    def test_scan_single_device(self):
-        scan_dev = DeviceTestFactory()
+    def test_scan_single_device(self, scan_dev=None):
+        scan_dev = scan_dev or DeviceTestFactory()
         self._do_run(
             scan_dev,
             self.SCAN_OUTPUT_DISCARD_DISABLED_NETWORK_ADAPTER,
@@ -71,8 +71,8 @@ class WmiScanning(TestCase):
         self.assertEqual(len(nips), 1)
         self.assertEqual(nips[0].ip, "192.168.1.43")
 
-    def test_scan_all(self):
-        scan_dev = DeviceTestFactory()
+    def test_scan_all(self, scan_dev=None):
+        scan_dev = scan_dev or DeviceTestFactory()
         self._do_run(
             scan_dev,
             self.SCAN_OUTPUT_ALL_NETWORK_ADAPTER,
@@ -84,3 +84,18 @@ class WmiScanning(TestCase):
 
         nips = net_ip.objects.filter(netdevice=nds[0])
         self.assertEqual(len(nips), 1)
+
+    def test_multiple_scans(self):
+        scan_dev = DeviceTestFactory()
+        self.test_scan_single_device(scan_dev)
+        # first run worked
+
+        # running again should yield same number of net devices and ips
+        self.test_scan_single_device(scan_dev)
+
+        # single dev is contained in run for all, so this should work again
+        self.test_scan_all(scan_dev)
+
+        # same scan again, no changes
+        self.test_scan_all(scan_dev)
+
