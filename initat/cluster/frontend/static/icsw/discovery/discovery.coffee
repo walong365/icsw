@@ -21,12 +21,13 @@ angular.module(
     "icsw.discovery",
     [
     ]
-).directive("icswDiscoveryOverview", ['icswDiscoveryDataService', 'msgbus', (icswDiscoveryDataService, msgbus) ->
+).directive("icswDiscoveryOverview", ['icswDiscoveryDataService', 'icswDiscoveryDialogService', 'msgbus', (icswDiscoveryDataService, icswDiscoveryDialogService, msgbus) ->
     return  {
         restrict: 'EA'
         templateUrl: 'icsw.discovery.overview'
         link: (scope, el, attrs) ->
             scope.data = icswDiscoveryDataService
+            scope.dialog_service = icswDiscoveryDialogService
 
             scope.selected_device_pks = []
             scope.selected_devices = []
@@ -50,7 +51,34 @@ angular.module(
                 scope.new_devsel(args[1])
             )
     }
+]).service("icswDiscoveryDialogService",
+    ["Restangular", "ICSW_URLS", "$rootScope", "$q", "$compile", "$templateCache",
+    (Restangular, ICSW_URLS, $rootScope, $q, $compile, $templateCache) ->
+        CREATE_MODE = 1
+        MODIFY_MODE = 1
 
+        show_dialog = (mode, objs) ->
+            child_scope = $rootScope.$new()
+            child_scope.is_create_mode = mode == CREATE_MODE
+            edit_div = $compile($templateCache.get("icsw.discovery.edit_dialog"))(child_scope)
+            modal = BootstrapDialog.show
+                title: if mode == CREATE_MODE then "Create dispatch setting" else "Edit dispatch setting"
+                message: edit_div
+                draggable: true
+                closable: true
+                closeByBackdrop: false
+                closeByKeyboard: false,
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+            child_scope.modal = modal
+
+        return {
+            show_create_dispatch_setting: () ->
+                show_dialog(CREATE_MODE)
+            show_modify_dispatch_setting: () ->
+                show_dialog(MODIFY_MODE)
+        }
 ]).service("icswDiscoveryDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
     rest_map = {
         dispatch_setting: ICSW_URLS.REST_DISCOVERY_DISPATCH_SETTING_LIST.slice(1)

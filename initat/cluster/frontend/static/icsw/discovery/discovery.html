@@ -1,8 +1,10 @@
 
 <script type="text/ng-template" id="icsw.discovery.overview">
-    <div st-table="data.devices" st-safe-src="selected_dispatch_settings" icsw-tools-table-leak-filtered="entries_filtered">
-        <h2>Discovery ({{ entries_filtered.length }} entries)</h2>
-        <h3 ng-show="entries.length == 0">Please select devices in the tree to the left.</h3>
+    <div st-table="entries" st-safe-src="selected_dispatch_settings" icsw-tools-table-leak-filtered="entries_filtered">
+        <h2>
+            Discovery ({{ entries_filtered.length }} entries)
+            <icsw-tools-button type="create" value="create new" ng-click="dialog_service.show_create_dispatch_setting()"></icsw-tools-button>
+        </h2>
         <table class="table table-condensed table-hover" style="width:auto;">
             <thead>
                 <tr>
@@ -47,7 +49,79 @@
                 </tr>
             </tbody>
         </table>
+        <alert type="warning" ng-show="selected_devices.length == 0">Please select devices in the tree to the left.</alert>
     </div>
-    without:
+    without: TODO: possibly show which selected devices don't have dispatch settings here
     {{ selected_devices_without_dispatch_settings }}
+</script>
+
+<script type="text/ng-template" id="icsw.discovery.edit_dialog">
+
+    <div style="font-size: 12px">  <!-- fix bootstrap dlg font size -->
+
+        <div class="row">
+            <div class="form-group col-md-4">
+                <fieldset>
+                    <legend>Devices</legend>
+                    <ul class="list-group">
+                        <li ng-class="1==1 && 'list-group-item active' || 'list-group-item'"> dev 1</li>
+                        <li ng-class="2==1 && 'list-group-item active' || 'list-group-item'"> dev 1</li>
+                        <li class="list-group-item"><input type="checkbox"/> dev 1</li>
+                    </ul>
+                </fieldset>
+            </div>
+            <div class="col-md-7">
+                <fieldset>
+                    <legend>Scan settings</legend>
+                    <form class="form-horizontal">
+                        <div class="form-group">
+                            <label class="control-label col-sm-3" for="id_scan_type">Scan type</label>
+
+                            <div class="controls col-sm-9">
+
+                                <ui-select ng-model="TODO_MODEL" id="id_scan_type">
+                                    <ui-select-match placeholder="Scan type">{{$select.selected.info}}</ui-select-match>
+                                    <ui-select-choices repeat="">
+                                        <div ng-bind-html='value.info'></div>
+                                    </ui-select-choices>
+                                </ui-select>
+
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label col-sm-3" for="id_interval">Interval</label>
+                            <div class="controls col-sm-9">
+                                <!--
+                                <input type="number" class="form-inline" style="display: inline-block" ng-model="TODO_MODEL_2" id="id_interval">
+                                -->
+                                <input type="number" class="form-control" style="display: inline-block; width: 40%" ng-model="TODO_MODEL_2" id="id_interval">
+
+                                <ui-select ng-model="TODO_MODEL" style="display: inline-block; width: 60%">
+                                    <ui-select-match placeholder="Duration">{{$select.selected.info}}</ui-select-match>
+                                    <ui-select-choices repeat="">
+                                        <div ng-bind-html='value.info'></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label col-sm-3"></label>
+                            <div class="checkbox col-sm-9">
+                                <label>
+                                    <input class="" ng-model="TODO_MODEL_5" type="checkbox"/>
+                                    Enabled
+                                </label>
+                            </div>
+                        </div>
+
+                    </form>
+                </fieldset>
+            </div>
+        </div>
+
+        <icsw-tools-button type="create" ng-if="is_create_mode" ng-click="submit_kpi()"></icsw-tools-button>
+        <icsw-tools-button type="modify" ng-if="!is_create_mode" ng-click="submit_kpi()"></icsw-tools-button>
+
+    </div>
+
 </script>
