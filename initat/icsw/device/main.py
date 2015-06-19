@@ -35,34 +35,6 @@ from initat.tools import logging_tools
 import argparse
 
 
-def main(opt_ns):
-    # resolve devices
-    dev_dict = {
-        _dev.name: _dev for _dev in device.objects.filter(Q(name__in=opt_ns.dev))
-    }
-    _unres = set(opt_ns.dev) - set(dev_dict.keys())
-    print(
-        "{}: {}{}".format(
-            logging_tools.get_plural("device", len(opt_ns.dev)),
-            ", ".join(sorted(opt_ns.dev)),
-            ", unresolvable: {}".format(
-                ", ".join(sorted(list(_unres)))
-            ) if _unres else ""
-        )
-    )
-    for dev_name in sorted(dev_dict.keys()):
-        cur_dev = dev_dict[dev_name]
-        if opt_ns.action == "info":
-            device_info(cur_dev)
-        else:
-            print(
-                "unknown action {} for device {}".format(
-                    opt_ns.action,
-                    unicode(cur_dev),
-                )
-            )
-
-
 def device_info(cur_dev):
     print(u"Information about device '{}' (full name {}, devicegroup {})".format(
         unicode(cur_dev),
@@ -113,3 +85,51 @@ def device_info(cur_dev):
             )
     else:
         print("device has not boot history records")
+
+
+def show_vector(_dev):
+    _mv = _dev.machinevector_set.all().prefetch_related(
+        "mvstructentry_set",
+        "mvstructentry_set__mvvalueentry_set",
+    )[0]
+    print
+    print("showing {} ({:d} structural entries)".format(unicode(_mv), len(_mv.mvstructentry_set.all())))
+    for _struct in _mv.mvstructentry_set.all():
+        _key = _struct.key
+        print(" {:<40s}  + {}".format(_key, unicode(_struct)))
+        for _value in _struct.mvvalueentry_set.all():
+            if _value.key:
+                _fkey = "{}.{}".format(_key, _value.key)
+            else:
+                _fkey = _key
+            print("   {:<40s}   - {}".format(_fkey, unicode(_value)))
+
+
+def main(opt_ns):
+    # resolve devices
+    dev_dict = {
+        _dev.name: _dev for _dev in device.objects.filter(Q(name__in=opt_ns.dev))
+    }
+    _unres = set(opt_ns.dev) - set(dev_dict.keys())
+    print(
+        "{}: {}{}".format(
+            logging_tools.get_plural("device", len(opt_ns.dev)),
+            ", ".join(sorted(opt_ns.dev)),
+            ", unresolvable: {}".format(
+                ", ".join(sorted(list(_unres)))
+            ) if _unres else ""
+        )
+    )
+    for dev_name in sorted(dev_dict.keys()):
+        cur_dev = dev_dict[dev_name]
+        if opt_ns.childcom == "info":
+            device_info(cur_dev)
+        elif opt_ns.childcom == "graphdump":
+            show_vector(cur_dev)
+        else:
+            print(
+                "unknown action {} for device {}".format(
+                    opt_ns.action,
+                    unicode(cur_dev),
+                )
+            )

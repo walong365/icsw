@@ -26,6 +26,7 @@ OFF="\033[m"
 
 rm -rf /usr/local/sbin/check_scripts.py*
 rm -rf ${ICSW_SBIN}/modules/*.pyo
+rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
 
 [ -d /var/log/cluster/sockets/snmprelay ] && rm -rf /var/log/cluster/sockets/snmprelay
 [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
