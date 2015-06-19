@@ -189,8 +189,8 @@ angular.module(
         }
 
 ]).service("icswConfigKpiDialogService",
-    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService",
-    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService) ->
+    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService", "icswConfigKpiVisUtils"
+    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService, icswConfigKpiVisUtils) ->
 
         KPI_DLG_MODE_CREATE = 'create'
         KPI_DLG_MODE_MODIFY = 'modify'
@@ -228,7 +228,7 @@ angular.module(
                     success: (xml) ->
                         if icswParseXMLResponseService(xml)
                             res = angular.fromJson($(xml).find("value[name='response']").text())
-                            scope.selected_cats_kpi_set = res
+                            scope.selected_cats_kpi_set = icswConfigKpiVisUtils.sort_kpi_set(res)
             update_kpi_data_source()
 
             child_scope.on_data_source_tab_selected = () ->

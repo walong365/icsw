@@ -16,11 +16,13 @@
 
             <button class="btn btn-default btn-primary" ng-if="show_close" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
 
-            <ul class="list-group" ng-if="kpi_set.objects.length > 0">
-                <icsw-config-kpi-show-kpi-object
-                        ng-repeat="kpi_obj in kpi_set.objects | orderBy:['host_name', 'service_info', 'check_command', 'rrd_id']"
-                        kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
-            </ul>
+            <div st-table="entries" st-safe-src="kpi_set.objects" ng-if="kpi_set.objects.length > 0">
+                <div icsw-tools-pagination st-items-by-page="50" st-displayed-pages="8"
+                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                <ul class="list-group" >
+                    <icsw-config-kpi-show-kpi-object ng-repeat="kpi_obj in entries" kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
+                </ul>
+            </div>
 
             <div ng-if="kpi_set.objects.length == 0">
                 <alert type="info">No objects</alert>
