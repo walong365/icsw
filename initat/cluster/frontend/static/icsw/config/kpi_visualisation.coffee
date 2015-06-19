@@ -245,8 +245,9 @@ angular.module(
                     $timeout(
                         () ->
                             if scope._mouse_on_node == node
+                                icswConfigKpiVisUtils.sort_kpi_set(node)
                                 scope.kpi_set_to_show = node
-                        100
+                        50
                     )
                     scope._mouse_on_node = node
                 scope.on_mouse_leave = (node) ->
@@ -330,7 +331,7 @@ angular.module(
                 )
 
         }
-]).service("icswConfigKpiVisUtils", () ->
+]).service("icswConfigKpiVisUtils", ["$filter", ($filter) ->
     ret = {
         kpi_obj_to_string: (kpi_obj, verbose) ->
             # verbose is currently not used
@@ -378,6 +379,10 @@ angular.module(
                 return parts.join(",")
 
             return if verbose then kpi_obj_to_string_verbose(kpi_obj) else kpi_obj_to_string_concise(kpi_obj)
+
+        sort_kpi_set: (kpi_set) ->
+            kpi_set.objects = $filter('orderBy')(kpi_set.objects, ['host_name', 'service_info', 'check_command', 'rrd_id'])
+            return kpi_set
     }
 
     contents = Object.keys(ret)
@@ -386,4 +391,4 @@ angular.module(
             scope[c] = ret[c]
 
     return ret
-)
+])
