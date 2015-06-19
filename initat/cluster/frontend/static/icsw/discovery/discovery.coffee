@@ -26,33 +26,17 @@ angular.module(
         restrict: 'EA'
         templateUrl: 'icsw.discovery.overview'
         link: (scope, el, attrs) ->
-            icswDiscoveryDataService.add_to_scope(scope)
+            scope.data = icswDiscoveryDataService
     }
 ]).service("icswDiscoveryDataService", ["Restangular", "ICSW_URLS", "$rootScope", (Restangular, ICSW_URLS, $rootScope) ->
-    dispatch_setting = Restangular.all(ICSW_URLS.REST_DISCOVERY_DISPATCH_SETTING_LIST.slice(1)).getList().$object
-    device = Restangular.all(ICSW_URLS.REST_DEVICE_LIST.slice(1)).getList().$object
-    return {
-        dispatch_setting: dispatch_setting
+    rest_map = {
+        dispatch_setting: ICSW_URLS.REST_DISCOVERY_DISPATCH_SETTING_LIST.slice(1)
+        device: ICSW_URLS.REST_DEVICE_LIST.slice(1)
     }
-    #get_historic_data = (model_name, object_id) ->
-    #    params = {
-    #        model: model_name,
-    #        object_id: object_id,
-    #    }
-    #    return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList(params)
+    data = {}
 
-    #user = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
-    #models_with_history = Restangular.all(ICSW_URLS.SYSTEM_GET_MODELS_WITH_HISTORY.slice(1)).customGET().$object
-    #get_user_by_idx = (idx) -> return _.find(user, (elem) -> return elem.idx == idx)
-
-    #return {
-    #    get_historic_data: get_historic_data
-    #    models_with_history: models_with_history
-    #    user:  user
-    #    get_user_by_idx: get_user_by_idx
-    #    add_to_scope: (scope) ->
-    #        scope.user = user
-    #        scope.models_with_history = models_with_history
-    #        scope.get_user_by_idx = get_user_by_idx
-    #}
+    for k, url of rest_map
+        data[k] = Restangular.all(url).getList().$object
+    return data
 ])
+

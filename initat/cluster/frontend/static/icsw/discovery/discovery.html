@@ -1,5 +1,56 @@
 
 <script type="text/ng-template" id="icsw.discovery.overview">
-    <h2>Discovery</h2>
+    <!--
+    <icsw-tools-rest-table target-list="entries" config-service="icswDiscoveryConfigService"
+                           st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+                           -->
+    <div st-table="data.devices" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+        <h2>Discovery ({{ entries_filtered.length }} entries)</h2>
+        <h3 ng-show="entries.length == 0">Please select devices in the tree to the left.</h3>
+        <table class="table table-condensed table-hover" style="width:auto;">
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="99">
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                             possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="full_name" st-sort-default="true">Device</th>
+                    <th st-sort="" class="center">sel</th>
+                    <th st-sort="">Scan type</th>
+                    <th st-sort="">Scan interval</th>
+                    <th st-sort="">Last scan</th>
+                    <th st-sort="">Scheduled scan</th>
+                    <th st-sort=""></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>dev1</td>
+                    <td class="center">
+                        <input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev, 0)" value="sel"/>
+                    </td>
+                    <td>IPMI</td>
+                    <td>every 2 weeks</td>
+                    <td>1.2.2012 11:11 (successful)</td>
+                    <td>4.4.2014 14:14</td>
 
+                    <td>
+                        <icsw-tools-button type="reload" value="schedule scan now" size="xs"></icsw-tools-button>
+                        <icsw-tools-button type="modify" size="xs"></icsw-tools-button>
+                    </td>
+                </tr>
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>{{ obj.full_name }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    </icsw-tools-rest-table>
 </script>
