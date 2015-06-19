@@ -19,7 +19,6 @@
 #
 """ grapher part of rrd-grapher service """
 
-from lxml import etree  # @UnresolvedImport
 import datetime
 import os
 import re
@@ -32,6 +31,7 @@ import stat
 import math
 import time
 import uuid
+from lxml import etree
 
 from django.conf import settings
 from django.db import connection
@@ -41,14 +41,11 @@ from initat.cluster.backbone.models.license import License, LicenseLockListDevic
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
     MVValueEntry
 from initat.cluster.backbone.available_licenses import LicenseEnum
-from initat.rrd_grapher.config import global_config
 from lxml.builder import E  # @UnresolvedImport
 import dateutil.parser
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import server_mixins
-from initat.tools import threading_tools
+from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
+
+from .config import global_config
 
 FLOAT_FMT = "{:.6f}"
 
@@ -223,21 +220,22 @@ class GraphVar(object):
         return key in self.entry.attrib
 
     def set_draw_result(self, res):
+        # res is a dict {CF: (value, xml result via print)}
         self.draw_result = res
 
     def adjust_max_y(self, max_val):
         _max, _min = (0, 0)
         if self.draw_result and "MAXIMUM" in self.draw_result:
-            if not math.isnan(self.draw_result["MAXIMUM"]):
-                _max = abs(self.draw_result["MAXIMUM"])
+            if not math.isnan(self.draw_result["MAXIMUM"][0]):
+                _max = abs(self.draw_result["MAXIMUM"][0])
         if self.draw_result and "MINIMUM" in self.draw_result:
-            if not math.isnan(self.draw_result["MINIMUM"]):
-                _min = abs(self.draw_result["MINIMUM"])
+            if not math.isnan(self.draw_result["MINIMUM"][0]):
+                _min = abs(self.draw_result["MINIMUM"][0])
         if _max or _min:
             self.set_y_scaling(max_val / max(_max, _min))
 
     def valid_graph_var(self):
-        return True if self.draw_result and "MAXIMUM" in self.draw_result and not math.isnan(self.draw_result.get("MAXIMUM", 0.)) else False
+        return True if self.draw_result and "MAXIMUM" in self.draw_result and not math.isnan(self.draw_result.get("MAXIMUM", [0.])[0]) else False
 
     def get_y_scaling(self):
         if self.y_scaled:
@@ -449,13 +447,16 @@ class GraphVar(object):
                 [
                     "VDEF:{}{}={},{}".format(self.name, rep_name, self.name, cf),
                     # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
-                    # use 3 dots to separate struct from value key, oh boy ...
-                    "PRINT:{}{}:{:d}.{}...{}.{}=%.4lf".format(
+                    # use a simple XML structure to encode various lookup values
+                    "PRINT:{}{}:<value unique_id='{:d}' device='{:d}' mvs_key='{}' mvs_id='{}' mvv_key='{}' mvv_id='{}' cf='{}'>%.4lf</value>".format(
                         self.name,
                         rep_name,
                         unique_id,
+                        self.mvs_entry.machine_vector.device_id,
                         rrd_escape(self.mvs_entry.key),
+                        self.mvs_entry.pk,
                         rrd_escape(self.mvv_entry.key),
+                        self.mvv_entry.pk,
                         cf,
                     ),
                 ]
@@ -602,6 +603,9 @@ class GraphTarget(object):
         return self.vars[key].graph_def(_unique, **kwargs)
 
     def feed_draw_result(self, key, draw_res):
+        # set draw result for
+        # 1) scaling
+        # 2) to get copied into the result XML
         self.vars[key].set_draw_result(draw_res)
 
     def adjust_max_y(self, max_val):
@@ -624,7 +628,7 @@ class GraphTarget(object):
         _total = 0
         for _key in eval_list:
             _var = self.vars[_key]
-            _total += _var.draw_result["MAXIMUM"]
+            _total += _var.draw_result["MAXIMUM"][0]
         _min_fac = max_val / max(_total, 1)
         [self.vars[_key].set_y_scaling(_min_fac) for _key in eval_list]
 
@@ -678,6 +682,40 @@ class GraphTarget(object):
             _xml.attrib["href"] = self.rel_file_loc
             for _key, _value in self.result_dict.iteritems():
                 _xml.attrib[_key] = _value
+            _var_dict = {}
+            for _var in self.vars.itervalues():
+                if _var.draw_result:
+                    for _val, _v_xml in _var.draw_result.itervalues():
+                        if not _v_xml.text.count("nan"):
+                            _mvs_id, _mvv_id = (_v_xml.get("mvs_id"), _v_xml.get("mvv_id"))
+                            _mvs_id = 0 if _mvs_id == "None" else int(_mvs_id)
+                            _mvv_id = 0 if _mvv_id == "None" else int(_mvv_id)
+                            _full_key = "{}{}".format(
+                                _v_xml.get("mvs_key"),
+                                ".{}".format(_v_xml.get("mvv_key")) if _v_xml.get("mvv_key") else "",
+                            )
+                            _var_dict.setdefault(("{:d}.{:d}".format(_mvs_id, _mvv_id), _full_key, int(_v_xml.get("device"))), {})[_v_xml.get("cf")] = _v_xml.text
+            if _var_dict:
+                _xml.append(
+                    E.values(
+                        *[
+                            E.value(
+                                E.cfs(
+                                    *[
+                                        E.cf(
+                                            _cf_value,
+                                            cf=_cf_key,
+                                        ) for _cf_key, _cf_value in _value.iteritems()
+                                    ]
+                                ),
+                                db_key=_key[0],
+                                mv_key=_key[1],
+                                device="{:d}".format(_key[2]),
+                            ) for _key, _value in _var_dict.iteritems()
+                        ]
+                    )
+                )
+            # pprint.pprint(_var_dict)
         return _xml
 
 
@@ -1174,28 +1212,24 @@ class RRDGraph(object):
                                 draw_it = False
                             else:
                                 # compare draw results, add -l / -u when scale_mode is not None
-                                # pprint.pprint(draw_result)
-                                res_dict = {
-                                    value.split("=", 1)[0]: value.split("=", 1)[1] for key, value in draw_result.iteritems() if key.startswith("print[")
-                                }
-                                # reorganize
                                 val_dict = {}
-                                for key, value in res_dict.iteritems():
-                                    _split = key.split(".")
-                                    cf = _split.pop(-1)
+                                # new code
+                                for key, value in draw_result.iteritems():
+                                    if not key.startswith("print["):
+                                        continue
+                                    _xml = etree.fromstring(value)
+                                    _unique_id = int(_xml.get("unique_id"))
+                                    # print etree.tostring(_xml, pretty_print=True)
                                     try:
-                                        value = float(value)
+                                        value = float(_xml.text)
                                     except:
-                                        pass
+                                        value = None
                                     else:
                                         value = None if value == 0.0 else value
-                                    # extract device pk from key
-                                    _unique_id = int(_split.pop(0))
-                                    _sum_key = ".".join(_split)
-                                    _s_key, _v_key = _sum_key.split("...")
+                                    _s_key, _v_key = (_xml.get("mvs_key"), _xml.get("mvv_key"))
                                     if value is not None:
-                                        val_dict.setdefault((_unique_id, (_s_key, _v_key)), {})[cf] = value
-                                # pprint.pprint(val_dict)
+                                        _key = (_unique_id, (_s_key, _v_key))
+                                        val_dict.setdefault(_key, {})[_xml.get("cf")] = (value, _xml)
                                 for key, value in val_dict.iteritems():
                                     _graph_target.feed_draw_result(key, value)
                                 # check if the graphs shall always include y=0
@@ -1265,7 +1299,7 @@ class RRDGraph(object):
         return graph_list
 
 
-class graph_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
+class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

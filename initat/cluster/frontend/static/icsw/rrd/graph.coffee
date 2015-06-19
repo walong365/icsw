@@ -20,6 +20,7 @@
 
 class d_graph
     constructor: (@num, @xml) ->
+        console.log @xml[0]
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -165,10 +166,14 @@ angular.module(
         $scope.show_tree = true
         $scope.g_tree = new icswRRDGraphTreeService($scope)
         $scope.$watch("from_date_mom", (new_val) ->
-            $scope.update_dt() 
+            if $scope.change_dt_to
+                $timeout.cancel($scope.change_dt_to)
+            $scope.change_dt_to = $timeout($scope.update_dt, 2000)
         )
         $scope.$watch("to_date_mom", (new_val) ->
-            $scope.update_dt() 
+            if $scope.change_dt_to
+                $timeout.cancel($scope.change_dt_to)
+            $scope.change_dt_to = $timeout($scope.update_dt, 2000)
         )
         $scope.set_job_mode = (new_jm) ->
             $scope.job_mode = new_jm
@@ -396,6 +401,7 @@ angular.module(
             $scope.mv_dev_pk = dev_pk
             lut = $scope.lut
             for entry in mv
+                console.log entry
                 _struct = $scope._add_structural_entry(entry, lut, root_node)
                 for _sub in entry.mvvs
                     $scope._add_value_entry(_sub, lut, _struct, entry)
@@ -601,6 +607,7 @@ angular.module(
                         scope.img = undefined
                 clear()
                 if _graph.src
+                    console.log _graph
                     crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
                     element.after(crop_span)
                     crop_span.find("input").on("click", () ->
