@@ -35,6 +35,13 @@ class WmiUtils(object):
             """Only use if you are sure that every ',' in the input is a item separator"""
             return self.wmi_list.split(",")
 
+        @classmethod
+        def handle(cls, obj):
+            if isinstance(obj, cls):
+                return obj.try_parse()
+            else:
+                return [obj]  # wmi just returns single objects for list types if there is only one entry
+
     @classmethod
     def parse_wmic_output(cls, output, delimiter="\01"):
         """

@@ -269,12 +269,6 @@ class WmiScanBatch(ScanBatch):
                     outputs[self.NETWORK_ADAPTER_CONFIGURATION_MODEL][0]
                 )
 
-                # from pprint import pprint
-                # print' parsed 1'
-                # pprint(network_adapter_data)
-                # print' parsed 2'
-                # pprint(network_adapter_configuration_data)
-
                 ND_SPEED_LUT = netdevice_speed.build_lut()
                 updated_nds, created_nds, created_ips, existing_ips = [], [], [], []
 
@@ -313,13 +307,13 @@ class WmiScanBatch(ScanBatch):
                             created_nds.append(nd)
 
                         nd.devname = adapter_name
-                        nd.macaddr = adapter['MACAddress']
+                        nd.macaddr = adapter['MACAddress'] or ""  # must not be None
                         nd.mtu = adapter_configuration['MTU']
                         nd.speed = adapter['Speed']
                         nd.netdevice_speed = ND_SPEED_LUT.get(adapter['Speed'], ND_SPEED_LUT.get(0))
                         nd.save()
 
-                        for ip_found in adapter_configuration['IPAddress'].try_parse():
+                        for ip_found in WmiUtils.WmiList.handle(adapter_configuration['IPAddress']):
                             try:
                                 ip_found_struct = ipvx_tools.ipv4(ip_found)
                             except ValueError:
@@ -328,7 +322,7 @@ class WmiScanBatch(ScanBatch):
                             else:
                                 # find ipv4 subnet
                                 netmasks_found = []
-                                for _nm in adapter_configuration["IPSubnet"].try_parse():
+                                for _nm in WmiUtils.WmiList.handle(adapter_configuration["IPSubnet"]):
                                     try:
                                         netmasks_found.append(ipvx_tools.ipv4(_nm))
                                     except ValueError:
@@ -340,7 +334,7 @@ class WmiScanBatch(ScanBatch):
                                     netmask_found_struct = netmasks_found[0]
 
                                     _gws = []
-                                    for _gw in adapter_configuration["DefaultIPGateway"].try_parse():
+                                    for _gw in WmiUtils.WmiList.handle(adapter_configuration["DefaultIPGateway"]):
                                         try:
                                             _gws.append(ipvx_tools.ipv4(_gw))
                                         except ValueError:
