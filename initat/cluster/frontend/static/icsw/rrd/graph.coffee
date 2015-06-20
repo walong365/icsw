@@ -18,9 +18,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+class Sensor
+    constructor: (@xml) ->
+        @mvs_id = parseInt(@xml.attr("db_key").split(".")[0])
+        @mvv_id = parseInt(@xml.attr("db_key").split(".")[1])
+        @device_id = parseInt(@xml.attr("device"))
+        @mv_key = @xml.attr("mv_key")
+        # console.log @
+
 class d_graph
     constructor: (@num, @xml) ->
-        console.log @xml[0]
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -44,6 +51,13 @@ class d_graph
         @removed_keys = []
         for entry in @xml.find("removed_keys removed_key")
             @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
+        # build list of values for which we can createa sensor (== full db_key needed)
+        @num_sensor = 0
+        @sensors = []
+        for gv in @xml.find("graph_values graph_value")
+            if $(gv).attr("db_key").match(/\d+\.\d+/)
+                @num_sensor++
+                @sensors.push(new Sensor($(gv)))
     get_devices: () ->
         dev_names = ($(entry).text() for entry in @xml.find("devices device"))
         return dev_names.join(", ")
@@ -401,7 +415,6 @@ angular.module(
             $scope.mv_dev_pk = dev_pk
             lut = $scope.lut
             for entry in mv
-                console.log entry
                 _struct = $scope._add_structural_entry(entry, lut, root_node)
                 for _sub in entry.mvvs
                     $scope._add_value_entry(_sub, lut, _struct, entry)
@@ -607,7 +620,6 @@ angular.module(
                         scope.img = undefined
                 clear()
                 if _graph.src
-                    console.log _graph
                     crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
                     element.after(crop_span)
                     crop_span.find("input").on("click", () ->

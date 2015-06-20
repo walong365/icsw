@@ -688,18 +688,19 @@ class GraphTarget(object):
                     for _val, _v_xml in _var.draw_result.itervalues():
                         if not _v_xml.text.count("nan"):
                             _mvs_id, _mvv_id = (_v_xml.get("mvs_id"), _v_xml.get("mvv_id"))
-                            _mvs_id = 0 if _mvs_id == "None" else int(_mvs_id)
-                            _mvv_id = 0 if _mvv_id == "None" else int(_mvv_id)
+                            # unset keys will be transformed to the empty string
+                            _mvs_id = "" if _mvs_id == "None" else _mvs_id
+                            _mvv_id = "" if _mvv_id == "None" else _mvv_id
                             _full_key = "{}{}".format(
                                 _v_xml.get("mvs_key"),
                                 ".{}".format(_v_xml.get("mvv_key")) if _v_xml.get("mvv_key") else "",
                             )
-                            _var_dict.setdefault(("{:d}.{:d}".format(_mvs_id, _mvv_id), _full_key, int(_v_xml.get("device"))), {})[_v_xml.get("cf")] = _v_xml.text
+                            _var_dict.setdefault(("{}.{}".format(_mvs_id, _mvv_id), _full_key, int(_v_xml.get("device"))), {})[_v_xml.get("cf")] = _v_xml.text
             if _var_dict:
                 _xml.append(
-                    E.values(
+                    E.graph_values(
                         *[
-                            E.value(
+                            E.graph_value(
                                 E.cfs(
                                     *[
                                         E.cf(
