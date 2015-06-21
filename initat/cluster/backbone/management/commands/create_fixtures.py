@@ -437,35 +437,35 @@ class Command(BaseCommand):
         factories.SensorActionFactory(
             name="mail",
             send_email=True,
-            device_action="none",
+            action="none",
             description="send an EMail"
         )
         factories.SensorActionFactory(
             name="halt (software)",
             description="tries to halt the devices via software",
             send_email=True,
-            device_action="halt",
+            action="halt",
             hard_control=False,
         )
         factories.SensorActionFactory(
             name="reboot (software)",
             description="tries to reboot the devices via software",
             send_email=True,
-            device_action="reboot",
+            action="reboot",
             hard_control=False,
         )
         factories.SensorActionFactory(
             name="halt (hardware)",
             description="tries to halt the devices via IPMI or APCs",
             send_email=True,
-            device_action="halt",
+            action="halt",
             hard_control=True,
         )
         factories.SensorActionFactory(
             name="reboot (hardware)",
             description="tries to reboot the devices via IPMI or APCs",
             send_email=True,
-            device_action="reboot",
+            action="reboot",
             hard_control=True,
         )
 

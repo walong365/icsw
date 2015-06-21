@@ -469,10 +469,10 @@ class SensorActionFactory(factory.django.DjangoModelFactory):
             self.save()
 
     @factory.post_generation
-    def device_action(self, create, extracted, **kwargs):
+    def action(self, create, extracted, **kwargs):
         extracted = extracted or ""
-        if self.device_action != extracted:
-            self.device_action = extracted
+        if self.action != extracted:
+            self.action = extracted
             self.save()
 
     @factory.post_generation
