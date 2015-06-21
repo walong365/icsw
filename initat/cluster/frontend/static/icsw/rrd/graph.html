@@ -243,3 +243,26 @@
         </span>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.rrd.graph.sensor">
+    <div ng-cloack>
+        <accordion close-others="false">
+            <accordion-group ng-repeat="sensor in graph.sensors" is-open="sensor.open">
+                <accordion-heading>
+                    Key: {{ sensor.mv_key }}, device: {{ sensor.device_id }}, #thresholds: {{  sensor.thresholds.length }}
+                    <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sensor.open, 'glyphicon-chevron-right': !sensor.open}"></i>
+                </accordion-heading>
+                Current values: <span ng-repeat="cf in sensor.cf_list">{{ cf }}={{ sensor.cfs[cf] }}, </span><br>
+                <div ng-repeat="threshold in sensor.thresholds">
+                    <icsw-rrd-graph-threshold sensor="sensor" threshold="threshold"></icsw-rrd-graph-threshold>
+                </div>
+            </accordion-group>
+        </accordion>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.rrd.graph.threshold.create">
+    <div>
+        {{ threshold.upper_limit && 'Upper' || 'Lower' }} Threshold at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }}
+    </div>
+</script>

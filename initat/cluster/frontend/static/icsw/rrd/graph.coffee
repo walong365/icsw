@@ -24,7 +24,24 @@ class Sensor
         @mvv_id = parseInt(@xml.attr("db_key").split(".")[1])
         @device_id = parseInt(@xml.attr("device"))
         @mv_key = @xml.attr("mv_key")
-        # console.log @
+        @cfs = {}
+        _value = 0.0
+        for _cf in @xml.find("cfs cf")
+            _cf = $(_cf)
+            @cfs[_cf.attr("cf")] = _cf.text()
+            _value += parseFloat(_cf.text())
+        @cf_list = _.keys(@cfs).sort()
+        _value = _value / @cf_list.length
+        # create default threshold
+        @thresholds = []
+        _new_th = new Threshold(@)
+        _new_th.value = _value
+        @thresholds.push(_new_th)
+
+class Threshold
+    constructor: (@sensor) ->
+        @hysteresis = 1.0
+        @upper_limit = false
 
 class d_graph
     constructor: (@num, @xml) ->
@@ -52,12 +69,15 @@ class d_graph
         for entry in @xml.find("removed_keys removed_key")
             @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
         # build list of values for which we can createa sensor (== full db_key needed)
-        @num_sensor = 0
+        # number of (als possible) sensors
+        @num_sensors = 0
         @sensors = []
         for gv in @xml.find("graph_values graph_value")
             if $(gv).attr("db_key").match(/\d+\.\d+/)
-                @num_sensor++
+                @num_sensors++
                 @sensors.push(new Sensor($(gv)))
+    get_sensor_info: () ->
+        return "#{@num_sensors} sensor sources"
     get_devices: () ->
         dev_names = ($(entry).text() for entry in @xml.find("devices device"))
         return dev_names.join(", ")
@@ -587,7 +607,39 @@ angular.module(
             scope.get_graph_keys = () ->
                 return (key for key of scope.graphMatrix)
     }
-]).directive("icswRrdGraphListGraph", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswRrdGraphThreshold", ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.rrd.graph.threshold.create")
+
+    }
+]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", ($q, $compile, $templateCache) ->
+    return (scope, graph) ->
+        sub_scope = scope.$new()
+        sub_scope.hello = () ->
+            return "hello"
+        sub_scope.graph = graph
+        sens_div = $compile($templateCache.get("icsw.rrd.graph.sensor"))(sub_scope)
+        d = $q.defer()
+        BootstrapDialog.show
+            message: sens_div
+            draggable: true
+            title: "Modify / Create Sensors (" + graph.get_sensor_info() + ")"
+            size: BootstrapDialog.SIZE_WIDE
+            cssClass: "modal-tall"
+            buttons: [
+                {
+                    icon: "glyphicon glyphicon-ok"
+                    label: "OK"
+                    cssClass: "btn-success"
+                    action: (dialog) ->
+                        dialog.close()
+                        sub_scope.$destroy()
+                        d.resolve()
+                },
+            ]
+        return d.promise
+]).directive("icswRrdGraphListGraph", ["$templateCache", "$compile", "icswRrdSensorDialogService", ($templateCache, $compile, icswRrdSensorDialogService) ->
     return {
         restrict: "E"
         replace: true
@@ -621,7 +673,19 @@ angular.module(
                 clear()
                 if _graph.src
                     crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
-                    element.after(crop_span)
+                    if _graph.num_sensors
+                        sens_el = angular.element("<input type='button' class='btn btn-primary btn-xs' value='Sensors'></input>")
+                        sens_el.on("click", () ->
+                            icswRrdSensorDialogService(scope, _graph).then(
+                                () ->
+                                    console.log "done"
+                            )
+                            #console.log "c"
+                        )
+                        element.after(sens_el)
+                        sens_el.after(crop_span)
+                    else
+                        element.after(crop_span)
                     crop_span.find("input").on("click", () ->
                         scope.$apply(
                             scope.$emit("cropSet", _graph)
