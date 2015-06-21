@@ -19,7 +19,7 @@
 #
 
 class Sensor
-    constructor: (@xml) ->
+    constructor: (@graph, @xml) ->
         @mvs_id = parseInt(@xml.attr("db_key").split(".")[0])
         @mvv_id = parseInt(@xml.attr("db_key").split(".")[1])
         @device_id = parseInt(@xml.attr("device"))
@@ -43,8 +43,8 @@ class Threshold
         @hysteresis = 1.0
         @upper_limit = false
 
-class d_graph
-    constructor: (@num, @xml) ->
+class DisplayGraph
+    constructor: (@num, @xml, @sensor_action_list) ->
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -75,7 +75,7 @@ class d_graph
         for gv in @xml.find("graph_values graph_value")
             if $(gv).attr("db_key").match(/\d+\.\d+/)
                 @num_sensors++
-                @sensors.push(new Sensor($(gv)))
+                @sensors.push(new Sensor(@, $(gv)))
     get_sensor_info: () ->
         return "#{@num_sensors} sensor sources"
     get_devices: () ->
@@ -146,7 +146,8 @@ angular.module(
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
         "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+        "icswCachingCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster, icswCachingCall) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
@@ -199,6 +200,9 @@ angular.module(
         $scope.merge_graphs = false
         $scope.show_tree = true
         $scope.g_tree = new icswRRDGraphTreeService($scope)
+        $q.all([icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_SENSOR_ACTION_LIST, {}, [])]).then((data) ->
+            $scope.sensor_action_list = data[0]
+        )
         $scope.$watch("from_date_mom", (new_val) ->
             if $scope.change_dt_to
                 $timeout.cancel($scope.change_dt_to)
@@ -523,7 +527,7 @@ angular.module(
                                 if !(graph_key of graph_mat)
                                     graph_mat[graph_key] = {}
                                 num_graph++
-                                cur_graph = new d_graph(num_graph, graph)
+                                cur_graph = new DisplayGraph(num_graph, graph, $scope.sensor_action_list)
                                 graph_mat[graph_key][dev_key] = cur_graph
                                 graph_list.push(cur_graph)
                         $scope.$apply(

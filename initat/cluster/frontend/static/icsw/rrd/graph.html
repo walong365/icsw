@@ -263,6 +263,13 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.threshold.create">
     <div>
+        {{ threshold.device_action }}
         {{ threshold.upper_limit && 'Upper' || 'Lower' }} Threshold at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }}
+        <ui-select ng-model="threshold.action">
+            <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
+            <ui-select-choices repeat="action in threshold.sensor.graph.sensor_action_list">
+                <div ng-bind-html="action.name"></div>
+            </ui-select-choices>
+        </ui-select>
     </div>
 </script>

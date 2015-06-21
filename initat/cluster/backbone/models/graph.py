@@ -173,7 +173,7 @@ class SensorAction(models.Model):
     name = models.CharField(max_length=64, unique=True)
     description = models.CharField(max_length=256, default="")
     send_email = models.BooleanField(default=False)
-    device_action = models.CharField(
+    action = models.CharField(
         max_length=64,
         default="none",
         choices=[
@@ -197,7 +197,7 @@ class SensorThreshold(models.Model):
     mv_value_entry = models.ForeignKey("MVValueEntry")
     value = models.FloatField(default=0.0)
     hysteresis = models.FloatField(default=0.0)
-    action = models.ForeignKey("SensorAction")
+    sensor_action = models.ForeignKey("SensorAction")
     limit_class = models.CharField(
         max_length=2,
         choices=[
@@ -205,6 +205,8 @@ class SensorThreshold(models.Model):
             ("l", "lower"),
         ]
     )
+    # which users to notify
+    notify_users = models.ManyToManyField("user")
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
