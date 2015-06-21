@@ -210,11 +210,12 @@ class SensorThreshold(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "SensorThreshold [{}, {:.4f}@{:.4f} '{}' for {}, action is {}".format(
+        return "SensorThreshold '{}' [{}, {:.4f}@{:.4f} '{}' for {}, action is {}".format(
+            self.name,
             self.limit_class,
             self.value,
             self.hysteresis,
             self.name,
             unicode(self.mv_value_entry),
-            unicode(self.action),
+            unicode(self.sensor_action),
         )

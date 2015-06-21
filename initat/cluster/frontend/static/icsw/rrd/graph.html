@@ -246,6 +246,7 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">
     <div ng-cloack>
+        {{  hello() }}
         <accordion close-others="false">
             <accordion-group ng-repeat="sensor in graph.sensors" is-open="sensor.open">
                 <accordion-heading>
@@ -256,19 +257,38 @@
                 <div ng-repeat="threshold in sensor.thresholds">
                     <icsw-rrd-graph-threshold sensor="sensor" threshold="threshold"></icsw-rrd-graph-threshold>
                 </div>
+                <icsw-tools-button type="create" size="xs" ng-click="create_new_threshold(sensor)"/>
             </accordion-group>
         </accordion>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.rrd.graph.threshold.create">
+<script type="text/ng-template" id="icsw.rrd.graph.threshold.overview">
     <div>
-        {{ threshold.device_action }}
-        {{ threshold.upper_limit && 'Upper' || 'Lower' }} Threshold at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }}
-        <ui-select ng-model="threshold.action">
+        {{ get_limit_class() }}
+        Threshold at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }}
+        <icsw-tools-button type="modify" size="xs" ng-click="modify_threshold(sensor, threshold)"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_threshold(sensor, threshold)"></icsw-tools-button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.rrd.graph.threshold.modify">
+    <div>
+        Name: <input ng-model="threshold.name"/>
+        <input type="button" class="btn btn-xs btn-success" value="upper" ng-show="threshold.limit_class == 'u'" ng-click="threshold.limit_class = 'l'"></input>
+        <input type="button" class="btn btn-xs btn-primary" value="lower" ng-show="threshold.limit_class == 'l'" ng-click="threshold.limit_class = 'u'"></input>
+        Threshold at <input type="number" step="any" ng-model="threshold.value"/>
+        Hysteresis is <input type="number" step="any" ng-model="threshold.hysteresis"/>
+        <ui-select ng-model="threshold.sensor_action">
             <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
-            <ui-select-choices repeat="action in threshold.sensor.graph.sensor_action_list">
+            <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
                 <div ng-bind-html="action.name"></div>
+            </ui-select-choices>
+        </ui-select>
+        <ui-select multiple ng-model="threshold.notify_users">
+            <ui-select-match placeholder="Pick some notify users...">{{ $item.login }}</ui-select-match>
+            <ui-select-choices repeat="user in sensor.graph.user_list">
+                <div ng-bind-html="user.login"></div>
             </ui-select-choices>
         </ui-select>
     </div>

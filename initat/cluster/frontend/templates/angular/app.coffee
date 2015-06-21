@@ -313,6 +313,8 @@ ics_app = angular.module(
     "REST_SNMP_NETWORK_TYPE_LIST": "{% url 'rest:snmp_network_type_list' %}"
     "REST_SENSOR_ACTION_DETAIL": "{% url 'rest:SensorActionDetail' 1 %}"
     "REST_SENSOR_ACTION_LIST": "{% url 'rest:SensorActionList' %}"
+    "REST_SENSOR_THRESHOLD_DETAIL": "{% url 'rest:SensorThresholdDetail' 1 %}"
+    "REST_SENSOR_THRESHOLD_LIST": "{% url 'rest:SensorThresholdList' %}"
     "REST_STATUS_LIST": "{% url 'rest:status_list' %}"
     "REST_SYS_PARTITION_DETAIL": "{% url 'rest:sys_partition_detail' 1 %}"
     "REST_SYS_PARTITION_LIST": "{% url 'rest:sys_partition_list'%}"
