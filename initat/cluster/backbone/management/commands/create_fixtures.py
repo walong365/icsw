@@ -445,28 +445,28 @@ class Command(BaseCommand):
             description="tries to halt the devices via software",
             send_email=True,
             device_action="halt",
-            hard_action=False,
+            hard_control=False,
         )
         factories.SensorActionFactory(
             name="reboot (software)",
             description="tries to reboot the devices via software",
             send_email=True,
             device_action="reboot",
-            hard_action=False,
+            hard_control=False,
         )
         factories.SensorActionFactory(
             name="halt (hardware)",
             description="tries to halt the devices via IPMI or APCs",
             send_email=True,
             device_action="halt",
-            hard_action=True,
+            hard_control=True,
         )
         factories.SensorActionFactory(
             name="reboot (hardware)",
             description="tries to reboot the devices via IPMI or APCs",
             send_email=True,
             device_action="reboot",
-            hard_action=True,
+            hard_control=True,
         )
 
         # ComCapabilities
