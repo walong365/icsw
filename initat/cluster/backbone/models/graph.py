@@ -172,6 +172,18 @@ class SensorAction(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
     description = models.CharField(max_length=256, default="")
+    send_email = models.BooleanField(default=False)
+    device_action = models.CharField(
+        max_length=64,
+        default="none",
+        choices=[
+            ("none", "do nothing"),
+            ("reboot", "restart device"),
+            ("halt", "halt device"),
+        ]
+    )
+    # action on device via soft- or hardware
+    hard_control = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):

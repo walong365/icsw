@@ -8,7 +8,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     network, netdevice, net_ip, device_config, LogSource, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
-    ComCapability
+    ComCapability, SensorAction
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -446,4 +446,38 @@ class ComCapability(factory.django.DjangoModelFactory):
         extracted = extracted or ""
         if self.name != extracted:
             self.name = extracted
+            self.save()
+
+
+class SensorActionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = SensorAction
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
+    @factory.post_generation
+    def send_email(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.send_email != extracted:
+            self.send_email = extracted
+            self.save()
+
+    @factory.post_generation
+    def device_action(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.device_action != extracted:
+            self.device_action = extracted
+            self.save()
+
+    @factory.post_generation
+    def hard_control(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.hard_control != extracted:
+            self.hard_control = extracted
             self.save()

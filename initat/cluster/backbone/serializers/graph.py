@@ -22,6 +22,7 @@
 """ serializer definitions for Graphs elements """
 
 from initat.cluster.backbone.models import SensorAction, SensorThreshold
+from rest_framework import serializers
 
 __all__ = [
     "SensorActionSerializer",
