@@ -69,6 +69,7 @@ from initat.cluster.backbone.models.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.models.partition import *  # @UnusedWildImport
 from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.models.graph import *  # @UnusedWildImport
+from initat.cluster.backbone.models.selection import *  # @UnusedWildImport
 from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport

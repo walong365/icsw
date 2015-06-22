@@ -74,6 +74,7 @@ class DisplayGraph
             if $(gv).attr("db_key").match(/\d+\.\d+/)
                 @num_sensors++
                 @sensors.push(new Sensor(@, $(gv), sth_dict))
+        @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
     get_sensor_info: () ->
         return "#{@num_sensors} sensor sources"
     get_threshold_info: () ->
@@ -783,6 +784,11 @@ angular.module(
             graph_error = () ->
                 element.children().remove()
                 element.append(angular.element("<h4 class='text-danger'>Error loading graph (#{_graph.num})</h4>"))
+            scope.modify_sensors = () ->
+                icswRrdSensorDialogService(scope, _graph).then(
+                    () ->
+                        # console.log "done"
+                )
             element.children().remove()
             _graph = scope.graph
             if not _graph.error
@@ -805,28 +811,17 @@ angular.module(
                 clear()
                 if _graph.src
                     crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
-                    if _graph.num_sensors
-                        sens_el = angular.element("<input type='button' class='btn btn-primary btn-xs' value='Sensors'></input>")
-                        sens_el.on("click", () ->
-                            icswRrdSensorDialogService(scope, _graph).then(
-                                () ->
-                                    # console.log "done"
-                            )
-                            #console.log "c"
-                        )
-                        element.after(sens_el)
-                        sens_el.after(crop_span)
-                    else
-                        element.after(crop_span)
+                    element.after(crop_span)
                     crop_span.find("input").on("click", () ->
                         scope.$apply(
                             scope.$emit("cropSet", _graph)
                         )
                     )
                     crop_span.hide()
+                    img_div = angular.element("<div/>")
+                    crop_span.after(img_div)
                     myImg = angular.element("<img/>")
-                    crop_span.after(myImg)
-                    scope.img = myImg
+                    img_div.append(myImg)
                     myImg.attr("src", _graph.src)
                     $(myImg).Jcrop({
                         trackDocument: true
@@ -868,9 +863,9 @@ angular.module(
                             else
                                 crop_span.hide()
                         if new_val
-                            myImg.hide()
+                            img_div.show()
                         else
-                            myImg.show()
+                            img_div.hide()
                 )
             element.on("$destroy", () ->
                 # console.log "destr"

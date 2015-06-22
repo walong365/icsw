@@ -70,6 +70,7 @@ from initat.cluster.backbone.serializers.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.partition import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.graph import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.selection import *  # @UnusedWildImport
 
 
 class device_variable_serializer(serializers.ModelSerializer):
