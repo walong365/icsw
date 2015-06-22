@@ -211,6 +211,9 @@ class db_prefetch_mixin(object):
     def _user_related(self):
         return ["group"]
 
+    def _sensorthreshold_prefetch(self):
+        return ["notify_users"]
+
     def _background_job_related(self):
         return ["initiator__domain_tree_node", "user"]
 

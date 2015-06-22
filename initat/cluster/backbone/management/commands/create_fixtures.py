@@ -433,6 +433,42 @@ class Command(BaseCommand):
         factories.WindowManager(name="gnome", description="GNOME", binary="gnome-session")
         factories.WindowManager(name="windowmaker", description="Window Maker", binary="wmaker")
 
+        # SensorAction
+        factories.SensorActionFactory(
+            name="mail",
+            send_email=True,
+            action="none",
+            description="send an EMail"
+        )
+        factories.SensorActionFactory(
+            name="halt (software)",
+            description="tries to halt the devices via software",
+            send_email=True,
+            action="halt",
+            hard_control=False,
+        )
+        factories.SensorActionFactory(
+            name="reboot (software)",
+            description="tries to reboot the devices via software",
+            send_email=True,
+            action="reboot",
+            hard_control=False,
+        )
+        factories.SensorActionFactory(
+            name="halt (hardware)",
+            description="tries to halt the devices via IPMI or APCs",
+            send_email=True,
+            action="halt",
+            hard_control=True,
+        )
+        factories.SensorActionFactory(
+            name="reboot (hardware)",
+            description="tries to reboot the devices via IPMI or APCs",
+            send_email=True,
+            action="reboot",
+            hard_control=True,
+        )
+
         # ComCapabilities
         factories.ComCapability(
             matchcode="hm",

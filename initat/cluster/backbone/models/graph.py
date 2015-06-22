@@ -22,14 +22,13 @@
 """ graph models for NOCTUA, CORVUS and NESTOR """
 
 from django.db import models
-from django.db.models import Q, signals
-from django.dispatch import receiver
-from initat.tools import logging_tools
 
 __all__ = [
     "MachineVector",
     "MVStructEntry",
     "MVValueEntry",
+    "SensorAction",
+    "SensorThreshold",
 ]
 
 
@@ -167,3 +166,56 @@ class MVValueEntry(models.Model):
 
     class Meta:
         ordering = ("key",)
+
+
+class SensorAction(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64, unique=True)
+    description = models.CharField(max_length=256, default="")
+    send_email = models.BooleanField(default=False)
+    action = models.CharField(
+        max_length=64,
+        default="none",
+        choices=[
+            ("none", "do nothing"),
+            ("reboot", "restart device"),
+            ("halt", "halt device"),
+        ]
+    )
+    # action on device via soft- or hardware
+    hard_control = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "SensorAction {}".format(self.name)
+
+
+class SensorThreshold(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name of Threshold
+    name = models.CharField(max_length=64, default="")
+    mv_value_entry = models.ForeignKey("MVValueEntry")
+    value = models.FloatField(default=0.0)
+    hysteresis = models.FloatField(default=0.0)
+    sensor_action = models.ForeignKey("SensorAction")
+    limit_class = models.CharField(
+        max_length=2,
+        choices=[
+            ("u", "upper"),
+            ("l", "lower"),
+        ]
+    )
+    # which users to notify
+    notify_users = models.ManyToManyField("user")
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "SensorThreshold '{}' [{}, {:.4f}@{:.4f} '{}' for {}, action is {}".format(
+            self.name,
+            self.limit_class,
+            self.value,
+            self.hysteresis,
+            self.name,
+            unicode(self.mv_value_entry),
+            unicode(self.sensor_action),
+        )
