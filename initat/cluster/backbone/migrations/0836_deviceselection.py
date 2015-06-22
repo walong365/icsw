@@ -8,7 +8,7 @@ from django.conf import settings
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backbone', '0834_auto_20150621_1232'),
+        ('backbone', '0835_added_wmi_and_discovery_dispatch_models'),
     ]
 
     operations = [
