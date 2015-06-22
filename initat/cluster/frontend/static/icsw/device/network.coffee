@@ -361,7 +361,7 @@ angular.module(
             network_type_names = _.sortBy(network_type_names)
             dev.ip_dict = ip_dict
             dev.network_type_names = network_type_names
-            dev.manual_address = "0.0.0.0"
+            dev.manual_address = ""
             dev.snmp_community = "public"
             if not dev.com_caps?
                 # init com_caps array if not already set
@@ -369,6 +369,9 @@ angular.module(
             dev.snmp_version = 1
             dev.remove_not_found = false
             dev.strict_mode = true
+            dev.wmi_username = "Administrator"
+            dev.wmi_password = ""
+            dev.wmi_discard_disabled_interfaces = true
             dev.scan_base_active = false
             dev.scan_hm_active = false
             dev.scan_snmp_active = false

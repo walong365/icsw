@@ -375,7 +375,6 @@ angular.module(
                 closeByBackdrop: false
                 closeByKeyboard: false,
                 size: BootstrapDialog.SIZE_WIDE
-                type: BootstrapDialog.TYPE_DANGER
                 onshow: (modal) =>
                     height = $(window).height() - 100
                     modal.getModal().find(".modal-body").css("max-height", height)

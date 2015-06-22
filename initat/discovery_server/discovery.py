@@ -35,10 +35,10 @@ from initat.tools import threading_tools, config_tools
 from .config import global_config
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
-from .base_functions import BaseScanBatch, BaseScanMixin
+from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin
 
 
-class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin):
+class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # self.add_process(build_process("build"), start=True)
@@ -48,6 +48,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         self.register_func("snmp_basic_scan", self._snmp_basic_scan)
         self.register_func("snmp_result", self._snmp_result)
         self.register_func("base_scan", self._base_scan)
+        self.register_func("wmi_scan", self._wmi_scan)
         self.__run_idx = 0
         self.__pending_commands = {}
         self._init_subsys()
@@ -65,6 +66,11 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
     def _base_scan(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "base_scan", "base")
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+
+    def _wmi_scan(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        self._iterate(srv_com, "wmi_scan", "base")
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _iterate(self, srv_com, c_name, scan_type):
@@ -165,7 +171,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
 
     def _init_subsys(self):
         SNMPBatch.setup(self)
-        BaseScanBatch.setup(self)
+        ScanBatch.setup(self)
 
     def _snmp_basic_scan(self, *args, **kwargs):
         SNMPBatch(server_command.srv_command(source=args[0]))
