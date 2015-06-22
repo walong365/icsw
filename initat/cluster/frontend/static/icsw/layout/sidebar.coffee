@@ -36,7 +36,7 @@ angular.module(
         ]
         [ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}]
         [ICSW_URLS.REST_CATEGORY_LIST, {}]
-        [ICSW_URLS.REST_DEVICE_SELECTION_LIST, {}]
+        [ICSW_URLS.REST_DEVICE_SELECTION_LIST_OLD, {}]
     ]
     _fetch_dict = {}
     _result = []

@@ -39,7 +39,7 @@ device_module = angular.module(
             {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
             {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
-            {"short" : "device_sel", "url" : ICSW_URLS.REST_DEVICE_SELECTION_LIST}
+            {"short" : "device_sel", "url" : ICSW_URLS.REST_DEVICE_SELECTION_LIST_OLD}
         ]
         $scope.hide_list = [
             # short, full, default

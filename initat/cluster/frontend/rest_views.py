@@ -233,7 +233,8 @@ class db_prefetch_mixin(object):
         return [
             "categories", "config_str_set", "config_int_set", "config_blob_set",
             "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
-            "device_config_set"]
+            "device_config_set"
+        ]
 
     def _cransys_dataset_prefetch(self):
         return ["cransys_job_set", "cransys_job_set__cransys_run_set"]
