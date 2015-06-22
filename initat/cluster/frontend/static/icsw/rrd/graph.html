@@ -246,50 +246,103 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">
     <div ng-cloack>
-        {{  hello() }}
         <accordion close-others="false">
             <accordion-group ng-repeat="sensor in graph.sensors" is-open="sensor.open">
                 <accordion-heading>
-                    Key: {{ sensor.mv_key }}, device: {{ sensor.device_id }}, #thresholds: {{  sensor.thresholds.length }}
+                    Sensor key: {{ sensor.mv_key }}, device: {{ sensor.device_id }}<span ng-show="sensor.thresholds.length">, #thresholds: {{  sensor.thresholds.length }}</span>
                     <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sensor.open, 'glyphicon-chevron-right': !sensor.open}"></i>
                 </accordion-heading>
-                Current values: <span ng-repeat="cf in sensor.cf_list">{{ cf }}={{ sensor.cfs[cf] }}, </span><br>
-                <div ng-repeat="threshold in sensor.thresholds">
-                    <icsw-rrd-graph-threshold sensor="sensor" threshold="threshold"></icsw-rrd-graph-threshold>
+                <div>
+                <table class="table table-striped table-hover">
+                    <tbody>
+                        <tr ng-repeat="threshold in sensor.thresholds" icsw-rrd-graph-threshold sensor="sensor">
+                        </tr>
+                    </tbody>
+                </table>
                 </div>
-                <icsw-tools-button type="create" size="xs" ng-click="create_new_threshold(sensor)"/>
+                <div class="row">
+                    <div class="col-md-12">
+                        Current values: <span ng-repeat="cf in sensor.cf_list">{{ cf }}={{ sensor.cfs[cf] }}, </span>
+                        <span class="pull-right">
+                            <icsw-tools-button type="create" size="xs" ng-click="create_new_threshold(sensor)"/>
+                        </span>
+                    </div>
+                </div>
             </accordion-group>
         </accordion>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.threshold.overview">
-    <div>
-        {{ get_limit_class() }}
-        Threshold at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }}
+    <td>
+        {{ get_limit_class() }} Threshold '{{ threshold.name }}'
+        at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }},
+        action is {{ get_sensor_action_name() }}, {{ threshold.notify_users.length }} Users to notify
+    </td>
+    <td>
         <icsw-tools-button type="modify" size="xs" ng-click="modify_threshold(sensor, threshold)"></icsw-tools-button>
         <icsw-tools-button type="delete" size="xs" ng-click="delete_threshold(sensor, threshold)"></icsw-tools-button>
-    </div>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.threshold.modify">
-    <div>
-        Name: <input ng-model="threshold.name"/>
-        <input type="button" class="btn btn-xs btn-success" value="upper" ng-show="threshold.limit_class == 'u'" ng-click="threshold.limit_class = 'l'"></input>
-        <input type="button" class="btn btn-xs btn-primary" value="lower" ng-show="threshold.limit_class == 'l'" ng-click="threshold.limit_class = 'u'"></input>
-        Threshold at <input type="number" step="any" ng-model="threshold.value"/>
-        Hysteresis is <input type="number" step="any" ng-model="threshold.hysteresis"/>
-        <ui-select ng-model="threshold.sensor_action">
-            <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
-            <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
-                <div ng-bind-html="action.name"></div>
-            </ui-select-choices>
-        </ui-select>
-        <ui-select multiple ng-model="threshold.notify_users">
-            <ui-select-match placeholder="Pick some notify users...">{{ $item.login }}</ui-select-match>
-            <ui-select-choices repeat="user in sensor.graph.user_list">
-                <div ng-bind-html="user.login"></div>
-            </ui-select-choices>
-        </ui-select>
-    </div>
+    <form class="form-horizontal">
+        <h3>Threshold definition</h3>
+        <fieldset>
+            <legend>
+                Base / Communication settings
+            </legend>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Name:</label>
+                <div class="col-md-9 controls">
+                    <input class="form-control" ng-model="threshold.name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Action:</label>
+                <div class="col-md-9 controls">
+                    <ui-select ng-model="threshold.sensor_action">
+                        <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
+                        <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
+                            <div ng-bind-html="action.name"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Users to notify:</label>
+                <div class="col-md-9 controls">
+                    <ui-select multiple ng-model="threshold.notify_users">
+                        <ui-select-match placeholder="Pick some notify users...">{{ $item.login }}</ui-select-match>
+                        <ui-select-choices repeat="user in sensor.graph.user_list">
+                            <div ng-bind-html="user.login"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>
+                Value settings
+            </legend>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Type:</label>
+                <div class="col-md-9 controls">
+                    <input type="button" class="btn btn-xs btn-success form-control" ng-value="get_limit_class()" ng-click="toggle_limit_class()" ></input>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Value:</label>
+                <div class="col-md-9 controls">
+                    <input class="form-control" type="number" step="any" ng-model="threshold.value"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Hysteresis:</label>
+                <div class="col-md-9 controls">
+                    <input class="form-control" type="number" step="any" ng-model="threshold.hysteresis"/>
+                </div>
+            </div>
+        <fieldset>
+    </form>
 </script>

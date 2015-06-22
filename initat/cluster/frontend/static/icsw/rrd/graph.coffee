@@ -38,6 +38,9 @@ class Sensor
             for _entry in sth_dict[@mvv_id]
                 @thresholds.push(_entry)
 
+    get_mean_value: () ->
+        return _.sum(_.values(@cfs))
+
 class DisplayGraph
     constructor: (@num, @xml, @sensor_action_list, @user_list, sth_dict) ->
         @active = true
@@ -73,6 +76,11 @@ class DisplayGraph
                 @sensors.push(new Sensor(@, $(gv), sth_dict))
     get_sensor_info: () ->
         return "#{@num_sensors} sensor sources"
+    get_threshold_info: () ->
+        _num_th = 0
+        for _sensor in @sensors
+            _num_th += _sensor.thresholds.length
+        return "#{_num_th} Thresholds"
     get_devices: () ->
         dev_names = ($(entry).text() for entry in @xml.find("devices device"))
         return dev_names.join(", ")
@@ -635,7 +643,7 @@ angular.module(
     }
 ]).directive("icswRrdGraphThreshold", ["$templateCache", ($templateCache) ->
     return {
-        restrict: "E"
+        restrict: "AE"
         template: $templateCache.get("icsw.rrd.graph.threshold.overview")
         link: (scope, el, attr) ->
             scope.get_limit_class = () ->
@@ -643,12 +651,8 @@ angular.module(
                     return "Upper"
                 else
                     return "Lower"
-
-    }
-]).directive("icswRrdGraphThresholdModify", ["$templateCache", ($templateCache) ->
-    return {
-        restrict: "E"
-        template: $templateCache.get("icsw.rrd.graph.threshold.overview.modify")
+            scope.get_sensor_action_name = () ->
+                return (entry.name for entry in scope.sensor.graph.sensor_action_list when entry.idx == scope.threshold.sensor_action)[0]
 
     }
 ]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
@@ -656,6 +660,16 @@ angular.module(
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
         th_scope.threshold = threshold
+        th_scope.get_limit_class = () ->
+            if th_scope.threshold.limit_class == "u"
+                return "Upper"
+            else
+                return "Lower"
+        th_scope.toggle_limit_class = () ->
+            if th_scope.threshold.limit_class == "u"
+                th_scope.threshold.limit_class = "l"
+            else
+                th_scope.threshold.limit_class = "u"
         thresh_div = $compile($templateCache.get("icsw.rrd.graph.threshold.modify"))(th_scope)
         BootstrapDialog.show
             message: thresh_div
@@ -711,8 +725,6 @@ angular.module(
             ]
     return (scope, graph) ->
         sub_scope = scope.$new()
-        sub_scope.hello = () ->
-            return "hello"
         sub_scope.delete_threshold = (sensor, th) ->
             icswToolsSimpleModalService("Really delete Threshold ?").then(
                 (res) ->
@@ -729,12 +741,12 @@ angular.module(
             th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
         sub_scope.create_new_threshold = (sensor) ->
             threshold = {
-                "name": "New Threshold",
-                "limit_class": "",
-                "value": 10.1,
-                "hysteresis": 1.1,
-                "notify_users": [],
-                "sensor_action": (entry for entry in graph.sensor_action_list when entry.name == "mail")[0],
+                "name": "New Threshold"
+                "limit_class": "u"
+                "value": sensor.get_mean_value()
+                "hysteresis": 1.0
+                "notify_users": []
+                "sensor_action": (entry for entry in graph.sensor_action_list when entry.name == "mail")[0]
             }
             th_dialog(true, sub_scope, sensor, threshold, "Create new threshold")
         sub_scope.graph = graph
@@ -743,7 +755,7 @@ angular.module(
         BootstrapDialog.show
             message: sens_div
             draggable: true
-            title: "Modify / Create Sensors (" + graph.get_sensor_info() + ")"
+            title: "Modify / Create Sensors (" + graph.get_sensor_info() + ", " + graph.get_threshold_info() + ")"
             size: BootstrapDialog.SIZE_WIDE
             closable: false
             cssClass: "modal-tall"
