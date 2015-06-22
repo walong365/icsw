@@ -1,0 +1,103 @@
+# Copyright (C) 2015 Bernhard Mallinger, init.at
+#
+# Send feedback to: <mallinger@init.at>
+#
+# this file is part of discovery-server
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+from django.db import connection
+import pymongo
+
+from initat.cluster.backbone.models import device, ComCapability, net_ip
+from initat.cluster.backbone.routing import srv_type_routing
+from initat.tools import logging_tools, threading_tools, config_tools, process_tools
+
+from .config import global_config
+
+
+class EventLogPollerProcess(threading_tools.process_obj):
+
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"],
+                                                       zmq=True, context=self.zmq_context)
+        connection.close()
+        # self.register_func("wmi_scan", self._wmi_scan)
+
+        self.register_timer(self.periodic_update, 60 * 5 if global_config["DEBUG"] else 60 * 15, instant=True)
+
+        self._init_db()
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+
+    def _init_db(self):
+        self._mongodb_client = pymongo.MongoClient(global_config["MONGODB_HOST"], global_config["MONGODB_PORT"])
+        self._mongodb_database = self._mongodb_client.icsw_event_log
+
+        self._mongodb_database.wmi_event_log.create_index([('$**', 'text')])
+        self._mongodb_database.wmi_event_log.create_index([('device_pk', 'text')])
+
+    def periodic_update(self):
+        self._update_wmi_log()
+        ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
+        print 'ipmi devs', device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)
+
+    def _update_wmi_log(self):
+        wmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.wmi.name)
+        wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
+        print 'wmi devs', wmi_devices
+
+        last_entries_qs = self._mongodb_database.wmi_event_log.aggregate({
+            '$group': {
+                '_id': '$device_pk',
+                'latest_event_id': {'$max': '$event_id'},
+            }
+        })
+        last_entries_lut = {entry['id']: entry['latest_event_id'] for entry in last_entries_qs}
+
+        # self._mongodb_database.wmi_event_log.find_one(sort=[("id", -1)])
+
+        for wmi_dev in wmi_devices:
+            try:
+                ip = self._get_ip_to(wmi_dev)
+            except RuntimeError as e:
+                self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+            else:
+
+                # TODO: get entries up to last_entry or all of them
+                if wmi_dev.pk in last_entries_lut:
+                    last_entries[wmi_pk]
+
+                # select Category, CategoryString, ComputerName, Data, EventCode, EventIdentifier, EventType, InsertionStrings, Logfile, Message, RecordNumber, SourceName, TimeGenerated, TimeWritten, Type, User from Win32_NTLogEvent"
+
+    def _get_ip_to(self, to_dev):
+        from_server_check = config_tools.server_check(device=srv_type_routing().local_device, config=None,
+                                                      server_type="node")
+        to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
+
+        _router = config_tools.router_object(self.log)
+        route = from_server_check.get_route_to_other_device(_router, to_server_check,
+                                                            allow_route_to_other_networks=True,
+                                                            prefer_production_net=True)
+
+        if route:
+            ip = route[0][3][1][0]
+        else:
+            ip_db = net_ip.objects.filter(netdevice__device=to_dev).first()
+            if ip_db:
+                ip = ip_db.ip
+            else:
+                raise RuntimeError("Failed to find IP address of {}".format(to_dev))
+        return ip

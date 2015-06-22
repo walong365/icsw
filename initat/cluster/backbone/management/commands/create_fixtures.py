@@ -25,8 +25,7 @@ from django.db.models import Q
 from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
-from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, \
-    get_related_models
+from initat.cluster.backbone.models import ComCapability as ComCapability_Model
 from lxml import etree  # @UnresolvedImport
 from initat.tools import logging_tools
 import os
@@ -471,25 +470,25 @@ class Command(BaseCommand):
 
         # ComCapabilities
         factories.ComCapability(
-            matchcode="hm",
+            matchcode=ComCapability_Model.MatchCode.hm.name,
             name="host-monitoring",
             info="init.at host-monitoring software",
             port_spec="2001/tcp",
         )
         factories.ComCapability(
-            matchcode="snmp",
+            matchcode=ComCapability_Model.MatchCode.snmp.name,
             name="SNMP",
             info="Simple Network Management Protocol",
             port_spec="161/tcp, 161/udp",
         )
         factories.ComCapability(
-            matchcode="ipmi",
+            matchcode=ComCapability_Model.MatchCode.ipmi.name,
             name="IPMI",
             info="Intelligent Platform Management Interface",
             port_spec="623/udp",
         )
         factories.ComCapability(
-            matchcode="wmi",
+            matchcode=ComCapability_Model.MatchCode.wmi.name,
             name="WMI",
             info="Windows Management Instrumentation",
             port_spec="135/tcp",

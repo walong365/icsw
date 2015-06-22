@@ -35,6 +35,7 @@ from initat.tools.server_mixins import RemoteCall
 
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
+from .event_log_poller import EventLogPollerProcess
 
 
 @server_mixins.RemoteCallProcess
@@ -58,6 +59,7 @@ class server_process(
         self._log_config()
         self.__msi_block = self._init_msi_block()
         self.add_process(DiscoveryProcess("discovery"), start=True)
+        self.add_process(EventLogPollerProcess("event_log_poller"), start=True)
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         # self.add_process(build_process("build"), start=True)

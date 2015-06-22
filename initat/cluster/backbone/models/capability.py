@@ -24,6 +24,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
+from enum import enum
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from collections import defaultdict
@@ -113,7 +114,7 @@ class snmp_scheme_tl_oid(models.Model):
 
 class ComCapability(models.Model):
     idx = models.AutoField(primary_key=True)
-    # matchode, is in most cases name in lowercase
+    # matchode, is in most cases name in lowercase. Use enum below preferably.
     matchcode = models.CharField(max_length=16, unique=True)
     # short name
     name = models.CharField(max_length=16, unique=True)
@@ -122,6 +123,12 @@ class ComCapability(models.Model):
     # port spec
     port_spec = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
+
+    class MatchCode(enum.Enum):
+        hm = 1
+        ipmi = 2
+        snmp = 4
+        wmi = 4
 
     class Meta:
         app_label = "backbone"
