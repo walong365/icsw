@@ -63,8 +63,8 @@
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}">Escalation setup</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank">Icinga</a></li>
-                    <li ng-show="has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')" class="divider"></li>
-                    <li ng-show="has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')"><a href="{{ ICSW_URLS.DISCOVERY_OVERVIEW }}">Discovery</a></li>
+                    <li ng-show="false && has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')" class="divider"></li>
+                    <li ng-show="false && has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')"><a href="{{ ICSW_URLS.DISCOVERY_OVERVIEW }}">Discovery</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_OVERVIEW }}">Monitoring Overview</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_BUILD_INFO }}">Build Info</a></li>
