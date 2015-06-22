@@ -279,12 +279,25 @@ class scan_device_network(View):
                     "pk": "{:d}".format(_dev.pk),
                 }
             )
-            if _json_dev["scan_address"] != "0.0.0.0":
+            if _json_dev["scan_address"] != "":
                 _dev_node.attrib.update(
                     {
                         "scan_address": _json_dev["scan_address"],
                     }
                 )
+            srv_com["devices"] = _dev_node
+        elif _sm == "wmi":
+            srv_com = server_command.srv_command(command="wmi_scan")
+            _dev_node = srv_com.builder("device")
+            _dev_node.attrib.update(
+                {
+                    "pk": "{:d}".format(_dev.pk),
+                    "scan_address": _json_dev["scan_address"],
+                    "username": _json_dev["wmi_username"],
+                    "password": _json_dev["wmi_password"],
+                    "discard_disabled_interfaces": "1" if _json_dev["wmi_discard_disabled_interfaces"] else "0",
+                }
+            )
             srv_com["devices"] = _dev_node
         else:
             srv_com = None

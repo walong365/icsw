@@ -102,6 +102,7 @@ ics_app = angular.module(
         "icsw.config.partition_table",
         "icsw.rms",
         "icsw.history",
+        "icsw.discovery",
         {% for app in ADDITIONAL_ANGULAR_APPS %}
         "{{ app }}",
         {% endfor %}
@@ -156,6 +157,7 @@ ics_app = angular.module(
     "DEVICE_SHOW_CONFIGS": "{% url 'device:show_configs' %}"
     "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
     "DEVICE_VARIABLES": "{% url 'device:variables' %}"
+    "DISCOVERY_OVERVIEW": "{% url 'discovery:overview' %}"
     "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
     "ICSW_LIC_GET_ALL_LICENSES": "{% url 'icsw_lic:get_all_licenses' %}"
     "ICSW_LIC_GET_LICENSE_PACKAGES": "{% url 'icsw_lic:get_license_packages' %}"
@@ -244,6 +246,7 @@ ics_app = angular.module(
     "REST_DEVICE_TREE_DETAIL": "{% url 'rest:device_tree_detail' 1 %}"
     "REST_DEVICE_VARIABLE_DETAIL": "{% url 'rest:device_variable_detail' 1 %}"
     "REST_DEVICE_VARIABLE_LIST": "{% url 'rest:device_variable_list' %}"
+    "REST_DISCOVERY_DISPATCH_SETTING_LIST": "{% url 'rest:DispatchSettingList' %}"
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
     "REST_EXT_LICENSE_LIST": "{% url 'rest:ext_license_list' %}"
