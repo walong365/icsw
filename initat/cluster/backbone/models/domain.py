@@ -328,7 +328,12 @@ class category_tree(object):
         if not category.objects.all().count():
             category(name="", full_name="", comment="top node").save()
         if self.with_ref_count or self.with_refs:
-            _sql = category.objects.all().prefetch_related("device_set", "config_set", "mon_check_command_set")
+            _sql = category.objects.all().prefetch_related(
+                "device_set",
+                "config_set",
+                "mon_check_command_set",
+                "deviceselection_set"
+            )
         else:
             _sql = category.objects.all()
         for cur_node in _sql.order_by("depth"):

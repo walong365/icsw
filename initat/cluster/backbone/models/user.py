@@ -89,7 +89,7 @@ class auth_cache(object):
         self.cache_key = u"auth_{}_{:d}".format(
             auth_obj._meta.object_name,
             auth_obj.pk,
-            )
+        )
         self.__perms, self.__obj_perms = ({}, {})
         if self.auth_obj.__class__.__name__ == "user":
             self.has_all_perms = self.auth_obj.is_superuser
@@ -254,8 +254,8 @@ class csw_permission(models.Model):
 
     def __unicode__(self):
         return u"{} | {} | {} | {}".format(
-            self.content_type.app_label,
-            self.content_type,
+            self.content_type.app_label or "backbone",
+            self.content_type.model,
             self.name,
             "G/O" if self.valid_for_object_level else "G",
         )
