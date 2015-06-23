@@ -207,6 +207,7 @@ class device_serializer(serializers.ModelSerializer):
         _optional_fields = {
             "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
             "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set", "device_mon_location_set",
+            "DeviceSNMPInfo", "snmp_schemes", "com_capability_list",
         }
         for _to_remove in _optional_fields - set(fields):
             # in case we have been subclassed
@@ -274,6 +275,8 @@ class device_serializer(serializers.ModelSerializer):
             "active_scan",
             # cd_device mark
             "is_cd_device",
+            # com capability list
+            "com_capability_list",
         )
         read_only_fields = ("uuid",)
 

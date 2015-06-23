@@ -530,7 +530,7 @@ angular.module(
                 success : (xml) =>
                     if icswParseXMLResponseService(xml)
                         icswDeviceTreeService.fetch("bla").then((data) ->
-                            dev_tree_lut = data[4]
+                            dev_tree_lut = data[2]
                             service_entries = []
                             $(xml).find("value[name='service_result']").each (idx, node) =>
                                 service_entries = service_entries.concat(angular.fromJson($(node).text()))
@@ -726,7 +726,7 @@ angular.module(
             icswDeviceLivestatusDataService.retain($scope.$id, _dev_list)
         ]
         $q.all(wait_list).then((data) ->
-            $scope.dev_tree_lut = data[0][4]
+            $scope.dev_tree_lut = data[0][2]
             $scope.new_data(data[1])
             $scope.$watch(
                 () ->

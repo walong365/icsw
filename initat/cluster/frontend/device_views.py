@@ -25,7 +25,6 @@
 import json
 import logging
 import re
-import pprint
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -33,16 +32,12 @@ from django.http import HttpResponse
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from initat.tools import logging_tools
-from initat.tools import server_command
-from initat.tools import process_tools
-
+from initat.tools import logging_tools, server_command, process_tools
 
 logger = logging.getLogger("cluster.device")
 
@@ -130,7 +125,12 @@ class set_selection(View):
         _post = request.POST
         dev_list = json.loads(_post["angular_sel"])
         devg_list = device_group.objects.filter(Q(device__in=dev_list)).values_list("pk", flat=True)
-        cur_list = ["dev__%d" % (cur_pk) for cur_pk in dev_list] + ["devg__%d" % (cur_pk) for cur_pk in devg_list]
+        cur_list = [
+            "dev__{:d}".format(cur_pk) for cur_pk in dev_list
+        ] + [
+            "devg__{:d}".format(cur_pk) for cur_pk in devg_list
+        ]
+        print "***", cur_list
         request.session["sel_list"] = cur_list
         request.session.save()
 

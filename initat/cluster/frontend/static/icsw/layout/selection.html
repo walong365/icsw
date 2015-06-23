@@ -5,7 +5,7 @@
                 <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"/>
             </div>
             <span class="input-group-btn">
-                <button class="btn btn-success fa fa-chevron-right" title="Use selection" type="button" ng-click="call_devsel_func()" ng-show="devsel_receiver">
+                <button class="btn btn-success fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
                      Apply
                 </button>
                 <button class="btn btn-warning fa fa-remove" title="Clear selection" type="button" ng-click="clear_search()">
@@ -36,9 +36,12 @@
             <tab select="activate_tab('d')" active="tabs['d']">
                 <tab-heading>
                     Device
-                    <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('d')">
-                         Clear
-                    </button>
+                    <span ng-show="selection_dict['d']">
+                        ({{ selection_dict['d'] }})
+                        <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('d')">
+                             Clear
+                        </button>
+                    </span>
                 </tab-heading>
                 <!-- use tree for production or ntree for testing -->
                 <!-- add attribute max-heigth to limit used height -->
@@ -47,18 +50,24 @@
             <tab select="activate_tab('g')" active="tabs['g']">
                 <tab-heading>
                     Group
-                    <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('g')">
-                         Clear
-                    </button>
+                    <span ng-show="selection_dict['g']">
+                        ({{ selection_dict['g'] }})
+                        <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('g')">
+                             Clear
+                        </button>
+                    </span>
                 </tab-heading>
                 <tree treeconfig="tc_groups" single="true"></tree>
             </tab>
             <tab select="activate_tab('c')" active="tabs['c']">
                 <tab-heading>
                     Category
-                    <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('c')">
-                         Clear
-                    </button>
+                    <span ng-show="selection_dict['c']">
+                        ({{ selection_dict['c'] }})
+                        <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('c')">
+                             Clear
+                        </button>
+                    </span>
                 </tab-heading>
                 <tree treeconfig="tc_categories"></tree>
             </tab>
