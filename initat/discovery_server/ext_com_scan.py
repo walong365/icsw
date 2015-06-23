@@ -190,8 +190,6 @@ class BaseScanBatch(ScanBatch):
 class WmiScanBatch(ScanBatch):
     SCAN_TYPE = 'wmi'
 
-    WMIC_BINARY = "/opt/cluster/bin/wmic"
-
     NETWORK_ADAPTER_MODEL = "Win32_NetworkAdapter"
     NETWORK_ADAPTER_CONFIGURATION_MODEL = "Win32_NetworkAdapterConfiguration"
 
@@ -219,26 +217,16 @@ class WmiScanBatch(ScanBatch):
                 _QueryData(['IPAddress', 'IPSubnet', 'MTU', 'Index', 'DefaultIPGateway'], "")
         }
 
-        # NOTE: similar to wmi client wrapper https://pypi.python.org/pypi/wmi-client-wrapper
-        def get_cmd(query_structure):
-            # NOTE: this is an injection vulnerability
-            return (
-                self.__class__.WMIC_BINARY,
-                "--delimiter={}".format("\01"),
-                "--user={username}%{password}".format(
-                    username=self.username,
-                    password=self.password,
-                ),
-                "//{host}".format(host=self.device.target_ip),
-                "SELECT {} FROM {} {}".format(", ".join(query_structure[1].columns),
-                                              query_structure[0],
-                                              query_structure[1].where_clause),
-            )
-
-        self._ext_coms = {}
-
+        from initat.discovery_server.event_log.wmi_event_log_scanner import get_wmic_cmd
         for query_structure in query_structures.iteritems():
-            cmd = get_cmd(query_structure)
+            cmd = get_wmic_cmd(
+                username=self.username,
+                password=self.password,
+                target_ip=self.device.target_ip,
+                columns=query_structure[1].columns,
+                table=query_structure[0],
+                where_clause=query_structure[1].where_clause
+            )
             self.log("starting WMI scan with command: {}".format(cmd))
             ext_com = ExtCom(self.log, cmd, shell=False)  # shell=False since args must not be parsed again
             ext_com.run()

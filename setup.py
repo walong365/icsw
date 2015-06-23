@@ -42,6 +42,7 @@ setup(
         "initat.collectd",
         "initat.collectd.collectd_types",
         "initat.discovery_server",
+        "initat.discovery_server.event_log",
         "initat.logcheck_server",
         "initat.logging_server",
         "initat.md_config_server",

@@ -20,11 +20,13 @@
 from django.db import connection
 import pymongo
 
+from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.routing import srv_type_routing
+from initat.discovery_server.event_log.wmi_event_log_scanner import WmiEventLogScanner
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
 
-from .config import global_config
+from initat.discovery_server.config import global_config
 
 
 class EventLogPollerProcess(threading_tools.process_obj):
@@ -46,8 +48,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self._mongodb_client = pymongo.MongoClient(global_config["MONGODB_HOST"], global_config["MONGODB_PORT"])
         self._mongodb_database = self._mongodb_client.icsw_event_log
 
-        self._mongodb_database.wmi_event_log.create_index([('$**', 'text')])
-        self._mongodb_database.wmi_event_log.create_index([('device_pk', 'text')])
+        self._mongodb_database.wmi_event_log.create_index([('$**', 'text')], name="wmi_log_full_text_index")
+        #self._mongodb_database.wmi_event_log.create_index([('device_pk', 'text')])
 
     def periodic_update(self):
         self._update_wmi_log()
@@ -55,17 +57,18 @@ class EventLogPollerProcess(threading_tools.process_obj):
         print 'ipmi devs', device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)
 
     def _update_wmi_log(self):
+        self.log("updating wmi logs")
         wmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.wmi.name)
         wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
         print 'wmi devs', wmi_devices
 
-        last_entries_qs = self._mongodb_database.wmi_event_log.aggregate({
+        last_entries_qs = self._mongodb_database.wmi_event_log.aggregate([{
             '$group': {
                 '_id': '$device_pk',
                 'latest_event_id': {'$max': '$event_id'},
             }
-        })
-        last_entries_lut = {entry['id']: entry['latest_event_id'] for entry in last_entries_qs}
+        }])
+        last_entries_lut = {entry['_id']: entry['latest_event_id'] for entry in last_entries_qs}
 
         # self._mongodb_database.wmi_event_log.find_one(sort=[("id", -1)])
 
@@ -75,20 +78,26 @@ class EventLogPollerProcess(threading_tools.process_obj):
             except RuntimeError as e:
                 self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
             else:
-
+                self.log("updating wmi logs of {} using {}".format(wmi_dev, ip))
                 # TODO: get entries up to last_entry or all of them
-                if wmi_dev.pk in last_entries_lut:
-                    last_entries[wmi_pk]
+                #if wmi_dev.pk in last_entries_lut:
+                #    last_entries[wmi_pk]
 
-                # select Category, CategoryString, ComputerName, Data, EventCode, EventIdentifier, EventType, InsertionStrings, Logfile, Message, RecordNumber, SourceName, TimeGenerated, TimeWritten, Type, User from Win32_NTLogEvent"
+                try:
+                    scanner = WmiEventLogScanner(target_device=wmi_dev, target_ip=ip, log=self.log)
+                except RuntimeError as e:
+                    self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    scanner.scan()
+
+        self.log("finished updating wmi logs")
 
     def _get_ip_to(self, to_dev):
         from_server_check = config_tools.server_check(device=srv_type_routing().local_device, config=None,
                                                       server_type="node")
         to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
 
-        _router = config_tools.router_object(self.log)
-        route = from_server_check.get_route_to_other_device(_router, to_server_check,
+        route = from_server_check.get_route_to_other_device(self._get_router_obj(), to_server_check,
                                                             allow_route_to_other_networks=True,
                                                             prefer_production_net=True)
 
@@ -101,3 +110,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
             else:
                 raise RuntimeError("Failed to find IP address of {}".format(to_dev))
         return ip
+
+    @memoize_with_expiry(10)
+    def _get_router_obj(self):
+        return config_tools.router_object(self.log)

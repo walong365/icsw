@@ -21,6 +21,8 @@
 
 from django.db import connection
 from django.db.models import Q
+import zmq
+
 from initat.cluster.backbone.models import device
 from initat.snmp.process import snmp_process_container
 from initat.tools import cluster_location
@@ -30,12 +32,10 @@ from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import server_mixins
 from initat.tools import threading_tools
-import zmq
 from initat.tools.server_mixins import RemoteCall
-
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
-from .event_log_poller import EventLogPollerProcess
+from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
 
 
 @server_mixins.RemoteCallProcess
