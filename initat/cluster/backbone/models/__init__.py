@@ -277,10 +277,10 @@ class DeviceVariableManager(models.Manager):
         """Returns variable considering inheritance."""
         var_value = default_val
         try:
-            cur_var = device.parent.device_variable_set.get(Q(name=var_name))
+            cur_var = device.device_variable_set.get(Q(name=var_name))
         except device_variable.DoesNotExist:
             try:
-                cur_var = device.parent.device_group.device.device_variable_set.get(Q(name=var_name))
+                cur_var = device.device_group.device.device_variable_set.get(Q(name=var_name))
             except device_variable.DoesNotExist:
                 try:
                     cur_var = device_variable.objects.get(Q(device__device_group__cluster_device_group=True) &
