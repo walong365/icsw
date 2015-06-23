@@ -58,7 +58,8 @@ angular.module(
     }
 ]).service("icswSelection", ["icswSelectionService", "$q", "icswCallAjaxService", "ICSW_URLS", (icswSelectionService, $q, icswCallAjaxService, ICSW_URLS) ->
     class Selection
-        constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
+        constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel, @db_idx=0) ->
+        update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
         any_selected: () ->
             return if @cat_sel.length + @devg_sel.length + @dev_sel.length + @tot_dev_sel.length then true else false
         any_lazy_selected: () ->
@@ -71,7 +72,7 @@ angular.module(
             @cat_sel = []
             # groups
             for _group in @devg_sel
-                for _gs in icswSelectionService.resolve_device_group(icswSelectionService.resolve_device(_group).device_group).devices
+                for _gs in icswSelectionService.resolve_device_group(_group).devices
                     @dev_sel.push(_gs)
                     @tot_dev_sel.push(_gs)
             @devg_sel = []
@@ -93,7 +94,7 @@ angular.module(
                 return "---"
         resolve_device_groups: () ->
             if @devg_sel.length
-                _list = ((icswSelectionService.resolve_device(_dg).name.substring(8) for _dg in @devg_sel))
+                _list = ((icswSelectionService.resolve_device_group(_dg).name.substring(8) for _dg in @devg_sel))
                 _list.sort()
                 return _list.join(", ")
             else
@@ -177,14 +178,78 @@ angular.module(
         "resolve_device_group": (devg_idx) ->
             return devg_lut[devg_idx]
     }
-]).controller("icswLayoutSelectionController", ["$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus", "icswSelection", "icswActiveSelectionService", "$q", ($scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus, icswSelection, icswActiveSelectionService, $q) ->
+]).service("icswSavedSelectionService", ["Restangular", "$q", "ICSW_URLS", "$window", (Restangular, $q, ICSW_URLS, $window) ->
+    enrich_selection = (entry) ->
+        _created = moment(entry.date)
+        info = [entry.name]
+        entry.changed = false
+        if entry.devices.length
+            info.push("#{entry.devices.length} devs")
+        if entry.device_groups.length
+            info.push("#{entry.device_groups.length} groups")
+        if entry.categories.length
+            info.push("#{entry.categories.length} cats")
+        info = info.join(", ")
+        info = "#{info} (#{_created.format('YYYY-MM-DD HH:mm ZZ')})"
+        entry.info = info
+    sync_selection = (icsw_sel, json_sel) ->
+        _changed = false
+        if _.sum(json_sel.devices) != _.sum(icsw_sel.dev_sel) or json_sel.devices.length != icsw_sel.dev_sel.length
+            _changed = true
+            json_sel.devices = icsw_sel.dev_sel
+        if _.sum(json_sel.device_groups) != _.sum(icsw_sel.devg_sel) or json_sel.device_groups.length != icsw_sel.devg_sel.length
+            _changed = true
+            json_sel.device_groups = icsw_sel.devg_sel
+        if _.sum(json_sel.categories) != _.sum(icsw_sel.cat_sel) or json_sel.categories.length != icsw_sel.cat_sel.length
+            _changed = true
+            json_sel.categories = icsw_sel.cat_sel
+        enrich_selection(json_sel)
+        if _changed
+            json_sel.changed = true
+    load_selections = () ->
+        defer = $q.defer()
+        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList().then((data) ->
+            (enrich_selection(entry) for entry in data)
+            defer.resolve(data)
+        )
+        return defer.promise
+    save_selection = (name, sel) ->
+        defer = $q.defer()
+        _sel = {
+            "name": name
+            "user": $window.CURRENT_USER.idx
+            "devices": sel.dev_sel
+            "categories": sel.cat_sel
+            "device_groups": sel.devg_sel
+        }
+        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).post(_sel).then((data) ->
+            enrich_selection(data)
+            defer.resolve(data)
+        )
+        return defer.promise
+    return {
+        "load_selections": () ->
+            return load_selections()
+        "save_selection": (name, sel) ->
+            return save_selection(name, sel)
+        "sync_selection": (icsw_sel, json_sel) ->
+            sync_selection(icsw_sel, json_sel)
+    }
+]).controller("icswLayoutSelectionController", ["$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus", "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", ($scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus, icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService) ->
     # search settings
     $scope.searchstr = ""
     $scope.search_ok = true
     $scope.is_loading = true
     $scope.active_tab = "d"
     $scope.show_selection = false
+    $scope.saved_selections = []
     $scope.devsel_receivers = icswActiveSelectionService.receivers()
+    # for saved selections
+    $scope.new_sel = {
+        "name": "new selection"
+        # JSON element from server, NOT icswSelection
+        "current": undefined
+    }
     $scope.selection = new icswSelection([], [], [], [])
     # treeconfig for devices
     $scope.tc_devices = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons : false, show_descendants : true})
@@ -236,7 +301,7 @@ angular.module(
             if entry.is_meta_device
                 g_entry = $scope.tc_groups.new_node(
                     {
-                        obj: entry.idx
+                        obj: entry.device_group
                         folder: true
                         _node_type: "g"
                         selected: $scope.selection.device_group_selected(entry.device_group)
@@ -277,7 +342,6 @@ angular.module(
         _tree.clear_selected()
         $scope.search_ok = true
         $scope.selection_changed()
-        # $scope.call_devsel_func()
     $scope.clear_search = () ->
         if $scope.cur_search_to
             $timeout.cancel($scope.cur_search_to)
@@ -378,16 +442,83 @@ angular.module(
             tot_dev_sel.push(_ds)
         for _gs in group_sel_nodes
             devg_sel.push(_gs)
-            for _group_dev in icswSelectionService.resolve_device_group(icswSelectionService.resolve_device(_gs).device_group).devices
+            for _group_dev in icswSelectionService.resolve_device_group(_gs).devices
                 tot_dev_sel.push(_group_dev)
         for _cs in cat_sel_nodes
             for _cat_dev in icswSelectionService.resolve_category(_cs).devices
                 tot_dev_sel.push(_cat_dev)
-        $scope.selection = new icswSelection(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
+        $scope.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
+        if $scope.new_sel.current and $scope.new_sel.current.idx == $scope.selection.db_idx
+            # current selection is in sync with a saved one
+            $scope.synced = true
+            icswSavedSelectionService.sync_selection($scope.selection, $scope.new_sel.current)
+        else
+            $scope.synced = false
     $scope.call_devsel_func = () ->
         $scope.selection.store_as_current()
         icswActiveSelectionService.set_selection($scope.selection)
         $scope.modal.close()
+    $scope.enable_saved_selections = () ->
+        if not $scope.saved_selections.length
+            icswSavedSelectionService.load_selections().then((data) ->
+                $scope.saved_selections = data
+                $scope.selected_selection = undefined
+            )
+    $scope.update_selection = () ->
+        $scope.new_sel.current.put().then((newd) -> console.log newd)
+    $scope.save_selection = () ->
+        _names = (sel.name for sel in $scope.saved_selections)
+        if $scope.new_sel.name in _names
+            if $scope.new_sel.name.match(/.* \d+/)
+                _parts = $scope.new_sel.name.split(" ")
+                _idx = parseInt(_parts.pop())
+                $scope.new_sel.name = _parts.join(" ")
+            else
+                _idx = 1
+            while true
+                _name = $scope.new_sel.name + " #{_idx}"
+                if _name not in _names
+                    break
+                else
+                    _idx++
+            $scope.new_sel.name = _name
+        icswSavedSelectionService.save_selection($scope.new_sel.name, $scope.selection).then((new_sel) ->
+            $scope.saved_selections.splice(0, 0, new_sel)
+            $scope.new_sel.current = new_sel
+        )
+    $scope.use_selection = (new_sel, b) ->
+        $scope.new_sel.current = new_sel
+        $scope.selection = new icswSelection(new_sel.categories, new_sel.device_groups, new_sel.devices, [], new_sel.idx)
+        for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
+            cur_tc.clear_selected()
+        $scope.tc_devices.iter(
+            (entry, bla) ->
+                if entry._node_type == "d"
+                    entry.set_selected($scope.selection.device_selected(entry.obj))
+        )
+        $scope.tc_groups.iter(
+            (entry, bla) ->
+                if entry._node_type == "g"
+                    entry.set_selected($scope.selection.device_group_selected(entry.obj))
+        )
+        $scope.tc_categories.iter(
+            (entry, bla) ->
+                if entry._node_type == "c"
+                    entry.set_selected($scope.selection.category_selected(entry.obj))
+        )
+        # apply new selection
+        for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
+            cur_tc.recalc()
+            cur_tc.show_selected()
+        $scope.selection_changed()
+    $scope.delete_selection = () ->
+        if $scope.new_sel.current
+            del_id = $scope.new_sel.current.idx
+            $scope.new_sel.current.remove().then((del) ->
+                $scope.saved_selections = (entry for entry in $scope.saved_selections when entry.idx != del_id)
+                $scope.new_sel.current = undefined
+            )
+
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
     show_dialog = (scope) ->
         sel_scope = scope.$new()
@@ -456,7 +587,7 @@ angular.module(
                 return _res
             else if t_entry._node_type == "g"
                 _res = entry.name.slice(8)
-                group = icswSelectionService.resolve_device(t_entry.obj)
+                group = icswSelectionService.resolve_device_group(t_entry.obj)
                 if group.devices.length
                     _res = "#{_res} (#{group.devices.length} devices)"
                 return _res
@@ -481,8 +612,8 @@ angular.module(
             else
                 return "dynatree-icon"
         get_dev_entry: (t_entry) =>
-            if t_entry._node_type == "f"
-                return @scope.fqdn_lut[t_entry.obj]
+            if t_entry._node_type == "g"
+                return icswSelectionService.resolve_device_group(t_entry.obj)
             else if t_entry._node_type == "c"
                 return icswSelectionService.resolve_category(t_entry.obj)
             else
