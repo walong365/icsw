@@ -792,6 +792,12 @@ class KpiSet(object):
         :type result: KpiResult
         :param method: 'at least' or 'at most'
         """
+        if ratio_ok > 1.0:
+            raise ValueError("ratio_ok is greater than 1.0: {}. ".format(ratio_ok) +
+                             "Please specify ratio_ok as floating point number between 0.0 and 1.0.")
+        if ratio_warn is not None and ratio_warn > 1.0:
+            raise ValueError("ratio_warn is greater than 1.0: {}. ".format(ratio_warn) +
+                             "Please specify ratio_warn as floating point number between 0.0 and 1.0.")
         origin = KpiOperation(KpiOperation.Type.evaluate_historic,
                               arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': unicode(result),
                                          'method': method},
