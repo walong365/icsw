@@ -64,8 +64,21 @@ class WmiEventLogScanner(object):
         # this class instance manages the currently active phase
         self.current_phase = WmiEventLogScanner.InitialPhase()
 
+    def __unicode__(self):
+        return u"WmiEventLogScanner(dev={}, ip={})".format(self.target_device, self.target_ip)
+
+    __repr__ = __unicode__
+
+    def start(self):
+        # we start on first periodic_check
+        pass
+
     def periodic_check(self):
-        self.current_phase(self)
+        do_continue = self.current_phase(self)
+        if do_continue is None:
+            self.log("phase {} returned None, did you forget to return the continue value?".format(self.current_phase),
+                     logging_tools.LOG_LEVEL_WARN)
+        return do_continue
 
     def _handle_stderr(self, stderr_out, context):
         self.log("wmic command yielded expected errors in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
@@ -95,9 +108,11 @@ class WmiEventLogScanner(object):
             scanner.ext_com.run()
 
             scanner.current_phase = WmiEventLogScanner.FindOutMaximumPhase()
+            return True
 
     class FindOutMaximumPhase(object):
         def __call__(self, scanner):
+            do_continue = True
             if scanner.ext_com.finished() is not None:
                 stdout_out, stderr_out = scanner.ext_com.communicate()
 
@@ -136,10 +151,10 @@ class WmiEventLogScanner(object):
                 if scanner.last_known_record_number is None or maximal_record_number > scanner.last_known_record_number:
                     scanner.current_phase = WmiEventLogScanner.RetrieveEventsPhase(scanner, maximal_record_number)
                 else:
-                    # TODO: bailout
-                    pass
+                    do_continue = False
 
                 # maximal_record_number = 952103
+            return do_continue
 
     class RetrieveEventsPhase(object):
         # PAGINATION_LIMIT = 10000
@@ -156,6 +171,8 @@ class WmiEventLogScanner(object):
             self.retrieve_ext_com = None
 
         def __call__(self, scanner):
+            do_continue = True
+
             com_finished = self.retrieve_ext_com is not None and self.retrieve_ext_com.finished() is not None
             is_initial = self.retrieve_ext_com is None
             if com_finished:
@@ -167,7 +184,9 @@ class WmiEventLogScanner(object):
                     scanner._handle_stderr(stderr_out, "RetrieveEvents")
 
                 if self.retrieve_ext_com.finished() != 0:
-                    raise RuntimeError("RetrieveEvents wmi command failed with code {}".format(self.retrieve_ext_com.finished()))
+                    raise RuntimeError("RetrieveEvents wmi command failed with code {}".format(
+                        self.retrieve_ext_com.finished())
+                    )
 
                 print 'code', self.retrieve_ext_com.finished()
                 _, tmpfilename = tempfile.mkstemp()
@@ -197,6 +216,7 @@ class WmiEventLogScanner(object):
                 # check whether to start next run
                 if self.from_record_number >= self.to_record_number:
                     # TODO: bailout, done
+                    do_continue = False
                 else:
                     # start next run
                     cmd = WmiUtils.get_wmic_cmd(
@@ -215,3 +235,5 @@ class WmiEventLogScanner(object):
                     self.retrieve_ext_com = ExtCom(scanner.log, cmd, debug=True,
                                                    shell=False)  # shell=False since args must not be parsed again
                     self.retrieve_ext_com.run()
+
+            return do_continue
