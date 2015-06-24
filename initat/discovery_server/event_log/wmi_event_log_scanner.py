@@ -176,7 +176,7 @@ class WmiLogEntryWorker(_WmiWorkerBase):
 
             print 'doing big query'
 
-            worker.ext_com = ExtCom(worker.log, cmd, shell=False)  # shell=False since args must not be parsed again
+            worker.ext_com = ExtCom(worker.log, cmd, debug=True, shell=False)  # shell=False since args must not be parsed again
             worker.ext_com.run()
 
             worker.current_phase = WmiLogEntryWorker.FindOutMaximumPhase()
@@ -231,8 +231,7 @@ class WmiLogEntryWorker(_WmiWorkerBase):
             return do_continue
 
     class RetrieveEventsPhase(object):
-        # PAGINATION_LIMIT = 10000
-        PAGINATION_LIMIT = 1000
+        PAGINATION_LIMIT = 10000
 
         def __init__(self, worker, to_record_number):
             # this is increased in the process
