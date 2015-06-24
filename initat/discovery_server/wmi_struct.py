@@ -104,12 +104,11 @@ class WmiUtils(object):
 
         items = []
 
-
         for section in sections:
             # remove the first line because it has the query class
             section = "\n".join(section.split("\n")[1:])
 
-            section = patch_newlines(section)
+            section = cls._patch_newlines(section)
 
             strio = StringIO(section)
 
@@ -120,7 +119,7 @@ class WmiUtils(object):
         return cls._fix_dictionary_output(items)
 
     @classmethod
-    def patch_newlines(cls, section_text):
+    def _patch_newlines(cls, section_text):
         # wmic does not produce valid csv since newlines are contained in text fields
         # (NTLogEvent can contain \n as well as \r\n
         # we fix this by concatenating all lines until the line has as many delimiters as a full entry
