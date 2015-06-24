@@ -514,8 +514,9 @@ class device_network_scan_form(Form):
             Field("wmi_discard_disabled_interfaces"),
         ),
         HTML("</tab></tabset>"),
+        HTML("<alert type=\"warning\" ng-show=\"!_current_dev.manual_address\">Please enter or select an IP address</alert>"),
         FormActions(
-            Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
+            Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()", ng_disabled="!_current_dev.manual_address"),
             Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
         ),
     )
