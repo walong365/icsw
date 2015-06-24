@@ -81,15 +81,32 @@ class EventLogPollerProcess(threading_tools.process_obj):
             if not do_continue:
                 self.jobs_running.remove(job)
 
-        while len(self.jobs_running) < self.__class__.MAX_CONCURRENT_JOBS and self.run_queue:
-            new_job = self.run_queue.popleft()
-            try:
-                new_job.start()
-            except Exception as e:
-                self.log("Error while starting job {}: {}".format(new_job, e))
-                self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+        have_new_job = True
+        while len(self.jobs_running) < self.__class__.MAX_CONCURRENT_JOBS and have_new_job:
+            new_job = self._select_next_job()
+            if new_job is None:
+                have_new_job = False
             else:
-                self.jobs_running.append(new_job)
+                try:
+                    new_job.start()
+                except Exception as e:
+                    self.log("Error while starting job {}: {}".format(new_job, e))
+                    self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("Adding new job: {}".format(new_job))
+                    self.jobs_running.append(new_job)
+
+    def _select_next_job(self):
+        chosen_one = None
+        for job in self.run_queue:  # prefer first
+            # not too many per device
+            if sum(1 for _j in self.jobs_running if job.target_device == _j.target_device) < 2:
+                chosen_one = job
+                break
+
+        if chosen_one is not None:
+            self.run_queue.remove(chosen_one)
+        return chosen_one
 
     def _schedule_wmi_updates(self):
         self.log("updating wmi logs")
@@ -99,11 +116,18 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
         _last_entries_qs = self._mongodb_database.wmi_event_log.aggregate([{
             '$group': {
-                '_id': '$device_pk',
-                'latest_event_id': {'$max': '$event_id'},
+                '_id': {
+                    'device_pk': '$device_pk',
+                    'logfile_name': '$logfile_name',
+                },
+                'latest_record_number': {'$max': '$maximal_record_number'},
             }
         }])
-        last_entries_lut = {entry['_id']: entry['latest_event_id'] for entry in _last_entries_qs}
+        from pprint import pprint ; pprint(list(_last_entries_qs))
+        last_record_numbers_lut = {  # mapping { (device_pk, logfile_name) : latest_record_number }
+            (entry['_id']['device_pk'], entry['_id']['logfile_name']): entry['latest_record_number']
+            for entry in _last_entries_qs
+        }
 
         logfiles_by_device = {entry['device_pk']: entry for entry in
                               self._mongodb_database.wmi_logfile.find()}
@@ -132,13 +156,14 @@ class EventLogPollerProcess(threading_tools.process_obj):
                     self.log("updating wmi logs of {} using {} for logfiles: {}".format(wmi_dev, ip, logfiles))
 
                     for logfile_name in logfiles:
+                        last_known_record_number = last_record_numbers_lut.get((wmi_dev.pk, logfile_name))
                         try:
                             job = WmiLogEntryWorker(log=self.log,
                                                     db=self._mongodb_database,
                                                     logfile_name=logfile_name,
                                                     target_device=wmi_dev,
                                                     target_ip=ip,
-                                                    last_known_record_number=last_entries_lut.get(wmi_dev.pk))
+                                                    last_known_record_number=last_known_record_number)
                         except RuntimeError as e:
                             self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
                         else:

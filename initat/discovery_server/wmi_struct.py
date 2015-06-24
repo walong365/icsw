@@ -163,7 +163,7 @@ class WmiUtils(object):
             ))
 
         print "\n" * 5, 'fixed:'
-        print "\n".join(fixed_lines) + "\n"
+        print "\n".join(fixed_lines).replace(cls.DELIMITER, "<SEP>") + "\n"
 
         return "\n".join(fixed_lines) + "\n"
 

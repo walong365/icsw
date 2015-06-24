@@ -201,7 +201,7 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                 parsed = WmiUtils.parse_wmic_output(stdout_out)
                 if not parsed:
                     # we can't check error code, but we should check this
-                    worker.log("No records found for {}".format(self))
+                    worker.log("No records found for {}".format(worker))
                     do_continue = False
                 else:
                     print 'len', len(parsed)
@@ -274,16 +274,21 @@ class WmiLogEntryWorker(_WmiWorkerBase):
 
                 parsed = WmiUtils.parse_wmic_output(stdout_out)
                 print 'len', len(parsed)
-                if parsed:  # this may be empty for RecordNumber-holes
-                    print 'fst', parsed[0]
-                    for entry in parsed:
-                        if 'RecordNumber' not in entry:
-                            print 'not in 2 ', entry
+                # `parsed` may be empty for RecordNumber-holes
 
-                    maximal_record_number = max(entry.get('RecordNumber', -1) for entry in parsed)
-                    print 'max', maximal_record_number
+                maximal_record_number = self.from_record_number + self.__class__.PAGINATION_LIMIT
 
-                self.from_record_number += self.__class__.PAGINATION_LIMIT
+                db_entry = {
+                    'date': django.utils.timezone.now(),
+                    'maximal_record_number': maximal_record_number,  # this entry may not actually be present
+                    'logfile_name': worker.logfile_name,
+                    'entries': parsed,
+                    'device_pk': worker.target_device.pk,
+                }
+                worker.db.wmi_event_log.insert(db_entry)
+
+                self.from_record_number = maximal_record_number
+
                 self.retrieve_ext_com = None
 
             if com_finished or is_initial:
