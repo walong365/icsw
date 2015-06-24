@@ -17,6 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import collections
+import datetime
+import django.utils.timezone
 
 from django.db import connection
 import pymongo
@@ -24,7 +26,7 @@ import pymongo
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.routing import srv_type_routing
-from initat.discovery_server.event_log.wmi_event_log_scanner import WmiEventLogScanner
+from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryWorker, WmiLogFileWorker
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
 
 from initat.discovery_server.config import global_config
@@ -53,7 +55,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
 
     def _init_db(self):
-        self._mongodb_client = pymongo.MongoClient(global_config["MONGODB_HOST"], global_config["MONGODB_PORT"])
+        self._mongodb_client = pymongo.MongoClient(global_config["MONGODB_HOST"], global_config["MONGODB_PORT"],
+                                                   tz_aware=True)
         self._mongodb_database = self._mongodb_client.icsw_event_log
 
         self._mongodb_database.wmi_event_log.create_index([('$**', 'text')], name="wmi_log_full_text_index")
@@ -102,33 +105,48 @@ class EventLogPollerProcess(threading_tools.process_obj):
         }])
         last_entries_lut = {entry['_id']: entry['latest_event_id'] for entry in _last_entries_qs}
 
-        # self._mongodb_database.wmi_event_log.find_one(sort=[("id", -1)])
+        logfiles_by_device = {entry['device_pk']: entry for entry in
+                              self._mongodb_database.wmi_logfile.find()}
+        logfiles_list_deprecation = django.utils.timezone.now() - datetime.timedelta(seconds=60 * 60 * 12)
 
         for wmi_dev in wmi_devices:
             try:
-                ip = self._get_ip_to(wmi_dev)
+                ip = self._get_ip_to_host(wmi_dev)
             except RuntimeError as e:
                 self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
             else:
+                if wmi_dev.pk not in logfiles_by_device or \
+                        logfiles_by_device[wmi_dev.pk]['date'] < logfiles_list_deprecation:
+                    # need to find the logfiles first
+                    self.log("updating wmi logfiles of {} using {}".format(wmi_dev, ip))
+                    try:
+                        job = WmiLogFileWorker(log=self.log, db=self._mongodb_database, target_device=wmi_dev,
+                                               target_ip=ip)
+                    except RuntimeError as e:
+                        self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.run_queue.append(job)
 
-
-
-                self.log("updating wmi logs of {} using {}".format(wmi_dev, ip))
-                # TODO: get entries up to last_entry or all of them
-                #if wmi_dev.pk in last_entries_lut:
-                #    last_entries[wmi_pk]
-
-                try:
-                    scanner = WmiEventLogScanner(log=self.log, target_device=wmi_dev, target_ip=ip,
-                                                 last_known_record_number=last_entries_lut.get(wmi_dev.pk))
-                except RuntimeError as e:
-                    self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.run_queue.append(scanner)
+                    logfiles = logfiles_by_device[wmi_dev.pk]['logfiles']
+                    self.log("updating wmi logs of {} using {} for logfiles: {}".format(wmi_dev, ip, logfiles))
+
+                    for logfile_name in logfiles:
+                        try:
+                            job = WmiLogEntryWorker(log=self.log,
+                                                    db=self._mongodb_database,
+                                                    logfile_name=logfile_name,
+                                                    target_device=wmi_dev,
+                                                    target_ip=ip,
+                                                    last_known_record_number=last_entries_lut.get(wmi_dev.pk))
+                        except RuntimeError as e:
+                            self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+                        else:
+                            self.run_queue.append(job)
 
         self.log("finished updating wmi logs")
 
-    def _get_ip_to(self, to_dev):
+    def _get_ip_to_host(self, to_dev):
         from_server_check = config_tools.server_check(device=srv_type_routing().local_device, config=None,
                                                       server_type="node")
         to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")

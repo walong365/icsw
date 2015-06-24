@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import tempfile
+import django.utils.timezone
 from initat.tools import logging_tools
 from initat.cluster.backbone.models import device_variable
 from initat.discovery_server.discovery_struct import ExtCom
@@ -25,21 +26,20 @@ from initat.discovery_server.wmi_struct import WmiUtils
 
 __all__ = [
     'get_wmic_cmd',
-    'WmiEventLogScanner',
+    'WmiLogEntryWorker',
 ]
 
 
-class WmiEventLogScanner(object):
+class _WmiWorkerBase(object):
 
     WMI_USERNAME_VARIABLE_NAME = "WMI_USERNAME"
     WMI_PASSWORD_VARIABLE_NAME = "WMI_PASSWORD"
 
-    def __init__(self, log, target_device, target_ip, last_known_record_number=None):
+    def __init__(self, log, db, target_device, target_ip):
+        self.log = log
+        self.db = db
         self.target_device = target_device
         self.target_ip = target_ip
-        self.log = log
-        self.last_known_record_number = last_known_record_number
-        self.current_retrieve_lower_number = None
 
         self.username = device_variable.objects.get_device_variable_value(device=self.target_device,
                                                                           var_name=self.WMI_USERNAME_VARIABLE_NAME)
@@ -60,18 +60,97 @@ class WmiEventLogScanner(object):
                 )
             )
 
-        self.ext_com = None  # always contains currently running command of phase
-        # this class instance manages the currently active phase
-        self.current_phase = WmiEventLogScanner.InitialPhase()
-
-    def __unicode__(self):
-        return u"WmiEventLogScanner(dev={}, ip={})".format(self.target_device, self.target_ip)
-
-    __repr__ = __unicode__
+        self.ext_com = None  # always contains currently running command of phase in case it is shared
 
     def start(self):
         # we start on first periodic_check
         pass
+
+    def _handle_stderr(self, stderr_out, context):
+        self.log("wmic command yielded expected errors in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
+        for line in stderr_out.split("\n"):
+            self.log(line, logging_tools.LOG_LEVEL_ERROR)
+        self.log("end of errors", logging_tools.LOG_LEVEL_ERROR)
+
+
+class WmiLogFileWorker(_WmiWorkerBase):
+
+    def __init__(self, *args, **kwargs):
+        super(WmiLogFileWorker, self).__init__(*args, **kwargs)
+        self.logfile_com = None
+
+    def __unicode__(self):
+        return u"WmiLogFileWorker(dev={}, ip={})".format(self.target_device, self.target_ip)
+
+    __repr__ = __unicode__
+
+    def start(self):
+        cmd = WmiUtils.get_wmic_cmd(
+            username=self.username,
+            password=self.password,
+            target_ip=self.target_ip,
+            columns=["LogfileName"],
+            table="Win32_NTEventlogFile",
+        )
+
+        print 'doing log file scanning'
+
+        self.logfile_com = ExtCom(self.log, cmd, shell=False)  # shell=False since args must not be parsed again
+        self.logfile_com.run()
+
+    def periodic_check(self):
+        do_continue = True
+        if self.logfile_com.finished() is not None:
+            do_continue = False
+            stdout_out, stderr_out = self.logfile_com.communicate()
+
+            if stderr_out:
+                self._handle_stderr(stderr_out, "scanning for wmi log files")
+
+            if self.logfile_com.finished() != 0:
+                raise RuntimeError("Scanning for wmi log files failed with code {}".format(
+                    self.logfile_com.finished())
+                )
+            else:
+                parsed = WmiUtils.parse_wmic_output(stdout_out)
+                logfiles = []
+                for entry in parsed:
+                    if 'LogfileName' not in entry:
+                        self.log("Invalid entry in log file scanning: {}".format(entry), logging_tools.LOG_LEVEL_WARN)
+                    else:
+                        logfiles.append(entry['LogfileName'])
+
+                self.log("Detected {} wmi logfiles for {}".format(len(logfiles), self.target_device))
+
+                self.db.wmi_logfile.insert({
+                    'date': django.utils.timezone.now(),
+                    'logfiles': logfiles,
+                    'device_pk': self.target_device.pk,
+                })
+                print 'feeding db ', {
+                    'date': django.utils.timezone.now(),
+                    'logfiles': logfiles,
+                    'device_pk': self.target_device.pk,
+                }
+
+        return do_continue
+
+
+class WmiLogEntryWorker(_WmiWorkerBase):
+    def __init__(self, log, db, target_device, target_ip, logfile_name, last_known_record_number=None):
+        super(WmiLogEntryWorker, self).__init__(log, db, target_device, target_ip)
+
+        self.logfile_name = logfile_name
+        self.last_known_record_number = last_known_record_number
+        self.current_retrieve_lower_number = None
+
+        # this class instance manages the currently active phase
+        self.current_phase = WmiLogEntryWorker.InitialPhase()
+
+    def __unicode__(self):
+        return u"WmiLogEntryWorker(dev={}, ip={}, logfile={})".format(self.target_device, self.target_ip, self.logfile_name)
+
+    __repr__ = __unicode__
 
     def periodic_check(self):
         do_continue = self.current_phase(self)
@@ -80,23 +159,16 @@ class WmiEventLogScanner(object):
                      logging_tools.LOG_LEVEL_WARN)
         return do_continue
 
-    def _handle_stderr(self, stderr_out, context):
-        self.log("wmic command yielded expected errors in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
-        for line in stderr_out.split("\n"):
-            self.log(line, logging_tools.LOG_LEVEL_ERROR)
-        self.log("end of errors", logging_tools.LOG_LEVEL_ERROR)
-
     class InitialPhase(object):
-        def __call__(self, scanner):
-            if scanner.last_known_record_number is not None:
-                where_clause = "WHERE RecordNumber > {}".format(scanner.last_known_record_number)
-            else:
-                where_clause = ''
+        def __call__(self, worker):
+            where_clause = "WHERE Logfile = '{}'".format(worker.logfile_name)
+            if worker.last_known_record_number is not None:
+                where_clause += "AND RecordNumber > {}".format(worker.last_known_record_number)
 
             cmd = WmiUtils.get_wmic_cmd(
-                username=scanner.username,
-                password=scanner.password,
-                target_ip=scanner.target_ip,
+                username=worker.username,
+                password=worker.password,
+                target_ip=worker.target_ip,
                 columns=["RecordNumber"],
                 table="Win32_NTLogEvent",
                 where_clause=where_clause,
@@ -104,21 +176,21 @@ class WmiEventLogScanner(object):
 
             print 'doing big query'
 
-            scanner.ext_com = ExtCom(scanner.log, cmd, shell=False)  # shell=False since args must not be parsed again
-            scanner.ext_com.run()
+            worker.ext_com = ExtCom(worker.log, cmd, shell=False)  # shell=False since args must not be parsed again
+            worker.ext_com.run()
 
-            scanner.current_phase = WmiEventLogScanner.FindOutMaximumPhase()
+            worker.current_phase = WmiLogEntryWorker.FindOutMaximumPhase()
             return True
 
     class FindOutMaximumPhase(object):
-        def __call__(self, scanner):
+        def __call__(self, worker):
             do_continue = True
-            if scanner.ext_com.finished() is not None:
-                stdout_out, stderr_out = scanner.ext_com.communicate()
+            if worker.ext_com.finished() is not None:
+                stdout_out, stderr_out = worker.ext_com.communicate()
 
                 # here, we expect the exit code to be set to error for large outputs, so we don't check it
                 if stderr_out:
-                    scanner._handle_stderr(stderr_out, "FindOutMaximum")
+                    worker._handle_stderr(stderr_out, "FindOutMaximum")
 
                 print 'stdout len', len(stdout_out)
                 print ' stderr'
@@ -129,48 +201,50 @@ class WmiEventLogScanner(object):
                 parsed = WmiUtils.parse_wmic_output(stdout_out)
                 if not parsed:
                     # we can't check error code, but we should check this
-                    raise RuntimeError("Failed to obtain wmic output in FindOutMaximumPhase")
-
-                print 'len', len(parsed)
-                print 'fst', parsed[0]
-                print 'lst', parsed[-1]
-
-                # the last entry might be invalid since error messages are written to stdout as well
-                # hence 'RecordNumber' may not be present in all entries
-                maximal_record_number = max(entry.get('RecordNumber', -1) for entry in parsed)
-                print 'max', maximal_record_number
-
-                # usually, you get after less then 100k
-                # [wmi/wmic.c:212:main()] ERROR: Retrieve result data.
-                # NTSTATUS: NT code 0x8004106c - NT code 0x8004106c
-
-                scanner.log("last record number for {} is {}, new maximal one is {}".format(
-                    scanner.target_device, scanner.last_known_record_number, maximal_record_number)
-                )
-
-                if scanner.last_known_record_number is None or maximal_record_number > scanner.last_known_record_number:
-                    scanner.current_phase = WmiEventLogScanner.RetrieveEventsPhase(scanner, maximal_record_number)
-                else:
+                    worker.log("No records found for {}".format(self))
                     do_continue = False
+                else:
+                    print 'len', len(parsed)
+                    print 'fst', parsed[0]
+                    print 'lst', parsed[-1]
 
-                # maximal_record_number = 952103
+                    # the last entry might be invalid since error messages are written to stdout as well
+                    # hence 'RecordNumber' may not be present in all entries
+                    maximal_record_number = max(entry.get('RecordNumber', -1) for entry in parsed)
+                    print 'max', maximal_record_number
+
+                    # usually, you get after less then 100k
+                    # [wmi/wmic.c:212:main()] ERROR: Retrieve result data.
+                    # NTSTATUS: NT code 0x8004106c - NT code 0x8004106c
+
+                    worker.log("last record number for {} is {}, new maximal one is {}".format(
+                        worker.target_device, worker.last_known_record_number, maximal_record_number)
+                    )
+
+                    if worker.last_known_record_number is None or \
+                            maximal_record_number > worker.last_known_record_number:
+                        worker.current_phase = WmiLogEntryWorker.RetrieveEventsPhase(worker, maximal_record_number)
+                    else:
+                        do_continue = False
+
+                    # maximal_record_number = 952103
             return do_continue
 
     class RetrieveEventsPhase(object):
         # PAGINATION_LIMIT = 10000
         PAGINATION_LIMIT = 1000
 
-        def __init__(self, scanner, to_record_number):
+        def __init__(self, worker, to_record_number):
             # this is increased in the process
             self.from_record_number =\
-                scanner.last_known_record_number if scanner.last_known_record_number is not None else 0
+                worker.last_known_record_number if worker.last_known_record_number is not None else 0
             # 1 is the first RecordNumber
 
             self.to_record_number = to_record_number
 
             self.retrieve_ext_com = None
 
-        def __call__(self, scanner):
+        def __call__(self, worker):
             do_continue = True
 
             com_finished = self.retrieve_ext_com is not None and self.retrieve_ext_com.finished() is not None
@@ -181,7 +255,7 @@ class WmiEventLogScanner(object):
                 stdout_out, stderr_out = self.retrieve_ext_com.communicate()
 
                 if stderr_out:
-                    scanner._handle_stderr(stderr_out, "RetrieveEvents")
+                    worker._handle_stderr(stderr_out, "RetrieveEvents")
 
                 if self.retrieve_ext_com.finished() != 0:
                     raise RuntimeError("RetrieveEvents wmi command failed with code {}".format(
@@ -215,24 +289,24 @@ class WmiEventLogScanner(object):
             if com_finished or is_initial:
                 # check whether to start next run
                 if self.from_record_number >= self.to_record_number:
-                    # TODO: bailout, done
                     do_continue = False
                 else:
                     # start next run
                     cmd = WmiUtils.get_wmic_cmd(
-                        username=scanner.username,
-                        password=scanner.password,
-                        target_ip=scanner.target_ip,
+                        username=worker.username,
+                        password=worker.password,
+                        target_ip=worker.target_ip,
                         columns=["RecordNumber, Message"],
                         table="Win32_NTLogEvent",
-                        where_clause="WHERE RecordNumber > {} and RecordNumber <= {}".format(
+                        where_clause="WHERE Logfile = '{}' AND RecordNumber > {} and RecordNumber <= {}".format(
+                            worker.logfile_name,
                             self.from_record_number,
                             self.from_record_number + self.__class__.PAGINATION_LIMIT,
                         )
                     )
                     print 'call from ', self.from_record_number
 
-                    self.retrieve_ext_com = ExtCom(scanner.log, cmd, debug=True,
+                    self.retrieve_ext_com = ExtCom(worker.log, cmd, debug=True,
                                                    shell=False)  # shell=False since args must not be parsed again
                     self.retrieve_ext_com.run()
 
