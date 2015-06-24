@@ -217,9 +217,10 @@ class WmiScanBatch(ScanBatch):
                 _QueryData(['IPAddress', 'IPSubnet', 'MTU', 'Index', 'DefaultIPGateway'], "")
         }
 
-        from initat.discovery_server.event_log.wmi_event_log_scanner import get_wmic_cmd
+        self._ext_coms = {}
+
         for query_structure in query_structures.iteritems():
-            cmd = get_wmic_cmd(
+            cmd = WmiUtils.get_wmic_cmd(
                 username=self.username,
                 password=self.password,
                 target_ip=self.device.target_ip,

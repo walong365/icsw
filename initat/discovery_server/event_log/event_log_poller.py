@@ -102,7 +102,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
                                                             prefer_production_net=True)
 
         if route:
-            ip = route[0][3][1][0]
+            ip = route[-1][3][1][0]
         else:
             ip_db = net_ip.objects.filter(netdevice__device=to_dev).first()
             if ip_db:

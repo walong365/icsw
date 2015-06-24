@@ -74,7 +74,7 @@ class ExtCom(object):
                 stderr=self.__stderr_file,
             )
             if self.debug:
-                self.log("start with pid {}".format(self.popen.pid))
+                self.log("start cmd {} with pid {}".format(self.command, self.popen.pid))
 
     def communicate(self):
         if self.popen:
