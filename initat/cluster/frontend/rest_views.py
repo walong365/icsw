@@ -450,7 +450,15 @@ class netdevice_peer_list(viewsets.ViewSet):
                 "device",
                 "device__device_group",
                 "device__domain_tree_node"
-            ).values("pk", "devname", "penalty", "device__name", "device__device_group__name", "routing", "device__domain_tree_node__full_name")
+            ).values(
+                "pk",
+                "devname",
+                "penalty",
+                "routing",
+                "device__name",
+                "device__device_group__name",
+                "device__domain_tree_node__full_name"
+            )
         ]
         # .filter(Q(net_ip__network__network_type__identifier="x") | Q(net_ip__network__network_type__identifier__in=["p", "o", "s", "b"])) \
         _ser = ext_peer_serializer(ext_list, many=True)

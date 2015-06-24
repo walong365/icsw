@@ -250,7 +250,7 @@ angular.module(
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService
 ) ->
     # search settings
-    $scope.searchstr = ""
+    $scope.searchstr = "ddd"
     $scope.search_ok = true
     $scope.is_loading = true
     $scope.active_tab = "d"
@@ -258,10 +258,11 @@ angular.module(
     $scope.saved_selections = []
     $scope.devsel_receivers = icswActiveSelectionService.receivers()
     # for saved selections
-    $scope.new_sel = {
+    $scope.vars = {
         "name": "new selection"
         # JSON element from server, NOT icswSelection
         "current": undefined
+        "search_str": ""
     }
     $scope.selection = new icswSelection([], [], [], [])
     # treeconfig for devices
@@ -358,7 +359,7 @@ angular.module(
     $scope.clear_search = () ->
         if $scope.cur_search_to
             $timeout.cancel($scope.cur_search_to)
-        $scope.searchstr = ""
+        $scope.vars.search_str = ""
         $scope.search_ok = true
     $scope.update_search = () ->
         if $scope.cur_search_to
@@ -366,7 +367,7 @@ angular.module(
         $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
     $scope.set_search_filter = () ->
         try
-            cur_re = new RegExp($scope.searchstr, "gi")
+            cur_re = new RegExp($scope.vars.search_str, "gi")
         catch exc
             cur_re = new RegExp("^$", "gi")
         cur_tree = $scope.get_tc($scope.active_tab)
@@ -380,7 +381,7 @@ angular.module(
                     if _sel
                         num_found++
                 else if entry._node_type == "g"
-                    _sel = if icswSelectionService.resolve_device(entry.obj).full_name.match(cur_re) then true else false
+                    _sel = if icswSelectionService.resolve_device_group(entry.obj).full_name.match(cur_re) then true else false
                     entry.set_selected(_sel)
                     if _sel
                         num_found++
@@ -461,10 +462,10 @@ angular.module(
             for _cat_dev in icswSelectionService.resolve_category(_cs).devices
                 tot_dev_sel.push(_cat_dev)
         $scope.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
-        if $scope.new_sel.current and $scope.new_sel.current.idx == $scope.selection.db_idx
+        if $scope.vars.current and $scope.vars.current.idx == $scope.selection.db_idx
             # current selection is in sync with a saved one
             $scope.synced = true
-            icswSavedSelectionService.sync_selection($scope.selection, $scope.new_sel.current)
+            icswSavedSelectionService.sync_selection($scope.selection, $scope.vars.current)
         else
             $scope.synced = false
     $scope.call_devsel_func = () ->
@@ -478,29 +479,29 @@ angular.module(
                 $scope.selected_selection = undefined
             )
     $scope.update_selection = () ->
-        $scope.new_sel.current.put().then((newd) -> console.log newd)
+        $scope.vars.current.put().then((newd) -> console.log newd)
     $scope.create_selection = () ->
         _names = (sel.name for sel in $scope.saved_selections)
-        if $scope.new_sel.name in _names
-            if $scope.new_sel.name.match(/.* \d+/)
-                _parts = $scope.new_sel.name.split(" ")
+        if $scope.vars.name in _names
+            if $scope.vars.name.match(/.* \d+/)
+                _parts = $scope.vars.name.split(" ")
                 _idx = parseInt(_parts.pop())
-                $scope.new_sel.name = _parts.join(" ")
+                $scope.vars.name = _parts.join(" ")
             else
                 _idx = 1
             while true
-                _name = $scope.new_sel.name + " #{_idx}"
+                _name = $scope.vars.name + " #{_idx}"
                 if _name not in _names
                     break
                 else
                     _idx++
-            $scope.new_sel.name = _name
-        icswSavedSelectionService.save_selection($scope.new_sel.name, $scope.selection).then((new_sel) ->
+            $scope.vars.name = _name
+        icswSavedSelectionService.save_selection($scope.vars.name, $scope.selection).then((new_sel) ->
             $scope.saved_selections.splice(0, 0, new_sel)
-            $scope.new_sel.current = new_sel
+            $scope.vars.current = new_sel
         )
     $scope.use_selection = (new_sel, b) ->
-        $scope.new_sel.current = new_sel
+        $scope.vars.current = new_sel
         $scope.selection = new icswSelection(new_sel.categories, new_sel.device_groups, new_sel.devices, [], new_sel.idx)
         for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
             cur_tc.clear_selected()
@@ -525,13 +526,12 @@ angular.module(
             cur_tc.show_selected()
         $scope.selection_changed()
     $scope.delete_selection = () ->
-        true
-        if $scope.new_sel.current
+        if $scope.vars.current
             icswToolsSimpleModalService("Delete Selection ?").then(() ->
-                del_id = $scope.new_sel.current.idx
-                $scope.new_sel.current.remove().then((del) ->
+                del_id = $scope.vars.current.idx
+                $scope.vars.current.remove().then((del) ->
                     $scope.saved_selections = (entry for entry in $scope.saved_selections when entry.idx != del_id)
-                    $scope.new_sel.current = undefined
+                    $scope.vars.current = undefined
                 )
             )
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
