@@ -261,7 +261,8 @@ angular.module(
                     # to hide set:
                     # scope.kpi_set_to_show = undefined
                     # to show global result
-                    scope.kpi_set_to_show = scope.data
+                    #scope.kpi_set_to_show = scope.data
+                    # do nothing currently
 
                 scope.get_div_height_style = () ->
                     return {'height': scope.div_height}

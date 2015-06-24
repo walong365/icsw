@@ -156,6 +156,7 @@ class KpiObject(object):
             'result': None if self.result is None else unicode(self.result),
             'host_name': self.host_name,
             'host_pk': self.host_pk,
+            'device_category': ", ".join(self.device_category),
         }
 
     def is_service(self):
@@ -336,6 +337,11 @@ class KpiServiceObject(KpiObject):
         return dict(
             service_name=self.check_command,
             service_info=self.service_info,
+            monitoring_category=", ".join(self.monitoring_category),
+            check_command=self.check_command,
+            check_command_description=self.check_command_description,
+            config=self.config,
+            config_description=self.config_description,
             **super(KpiServiceObject, self).serialize()
         )
 
