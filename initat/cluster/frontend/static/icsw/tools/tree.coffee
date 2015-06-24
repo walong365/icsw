@@ -31,8 +31,6 @@ class tree_node
         @folder = false
         # list of children
         @children = []
-        # list of nodes with the same content
-        @linklist = []
         # active flag
         @active = false
         # link to parent
@@ -62,30 +60,17 @@ class tree_node
             return
         change = flag != @selected
         if change
-            if propagate and @linklist.length
-                for other in @linklist
-                    # only change if not already changed
-                    if @config._track_changes
-                        # track changes of linked items
-                        if other._idx not in @config._change_list
-                            @config._change_list.push(other._idx)
-                            other.set_selected(flag, false)
-                    # copy selected flags to nodes on the same level
-                    else
-                        other.set_selected(flag, false)
-            else
-                @selected = flag
-            if not (propagate and @linklist.length)
-                # only update parent selection list if we have changed something in the local node
-                cur_p = @parent
-                diff = if @selected then 1 else -1
-                first = true
-                while cur_p
-                    if first
-                        cur_p._sel_childs += diff
-                        first = false
-                    cur_p._sel_descendants += diff
-                    cur_p = cur_p.parent
+            @selected = flag
+            # only update parent selection list if we have changed something in the local node
+            cur_p = @parent
+            diff = if @selected then 1 else -1
+            first = true
+            while cur_p
+                if first
+                    cur_p._sel_childs += diff
+                    first = false
+                cur_p._sel_descendants += diff
+                cur_p = cur_p.parent
 
             if propagate
                 @notify_child_selection_changed()
@@ -195,6 +180,8 @@ class tree_config
     clear_root_nodes: () =>
         @root_nodes = []
     handle_click: () =>
+        # override
+    handle_dblclick: () =>
         # override
     get_name: () =>
         # override

@@ -222,7 +222,7 @@ angular.module(
                     restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
                     restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
                     restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
-                    restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
+                    restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false, "with_com_info": true}])
                 ]
                 $q.all(wait_list).then((data) ->
                     #form = data[0][0].form

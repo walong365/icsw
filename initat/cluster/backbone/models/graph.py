@@ -207,6 +207,8 @@ class SensorThreshold(models.Model):
     )
     # which users to notify
     notify_users = models.ManyToManyField("user")
+    # device selection
+    device_selection = models.ForeignKey("DeviceSelection", null=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):

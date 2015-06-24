@@ -45,3 +45,6 @@ class DeviceSelection(models.Model):
             self.name,
             unicode(self.user),
         )
+
+    class Meta:
+        ordering = ("-date",)

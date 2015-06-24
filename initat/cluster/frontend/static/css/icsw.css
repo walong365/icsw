@@ -106,10 +106,6 @@ circle.fixed {
 .modal-tall .modal-body {
     overflow-y: auto;
 }
-.modal.modal-left {
-    right:auto;
-    left: 1px;
-}
 
 /* use for striping tables where every odd row is a regular row
 and every even row contains a collapsible row which is hidden by default */

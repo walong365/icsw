@@ -217,6 +217,9 @@ class db_prefetch_mixin(object):
     def _background_job_related(self):
         return ["initiator__domain_tree_node", "user"]
 
+    def _deviceselection_prefetch(self):
+        return ["devices", "device_groups", "categories"]
+
     def _user_prefetch(self):
         return [
             "user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups",
@@ -592,6 +595,8 @@ class device_tree_mixin(object):
         if self.request.QUERY_PARAMS.get("olp", ""):
             ctx["olp"] = self.request.QUERY_PARAMS["olp"]
         _fields = []
+        if self._get_post_boolean("with_com_info", False):
+            _fields.extend(["DeviceSNMPInfo", "snmp_schemes", "com_capability_list"])
         if self._get_post_boolean("with_disk_info", False):
             _fields.extend(["partition_table", "act_partition_table"])
         if self._get_post_boolean("with_network", False):
@@ -723,7 +728,6 @@ class device_tree_list(
                     dev_keys = device.objects.all().values_list("pk", flat=True)
                 else:
                     dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
-            # devg_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("devg_")]
             if ignore_cdg:
                 # ignore cluster device group
                 _q = _q.exclude(Q(device_group__cluster_device_group=True))

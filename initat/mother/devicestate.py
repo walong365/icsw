@@ -145,7 +145,11 @@ class DSDevice(object):
             )
 
     def get_ip_list(self):
-        return self.ip_dict.keys()
+        if self.ip_dict is None:
+            # when no valid routes are found between mother and device
+            return []
+        else:
+            return self.ip_dict.keys()
 
     def get_hoststatus_uuid(self, ip):
         if ip in self.ip_dict:
@@ -428,4 +432,4 @@ class DeviceState(object):
         if pk in self.__devices:
             return self.__devices[pk].get_state()
         else:
-            return CurrentState()
+            return CurrentState(pk)
