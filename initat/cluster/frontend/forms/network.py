@@ -457,8 +457,8 @@ class device_network_scan_form(Form):
     snmp_version = ChoiceField(choices=[(1, "1"), (2, "2")])
     strict_mode = BooleanField(required=False, label="all netdevices must be recognizable and all existing peers must be conserverd")
     remove_not_found = BooleanField(required=False)
-    wmi_username = CharField(max_length=256, label="Username")
-    wmi_password = CharField(max_length=256, label="Password", widget=PasswordInput)
+    wmi_username = CharField(max_length=256, label="Username", required=False)
+    wmi_password = CharField(max_length=256, label="Password", widget=PasswordInput, required=False)
     wmi_discard_disabled_interfaces = BooleanField(label="Ignore disabled interfaces", required=False)
     helper.layout = Layout(
         HTML("<h2>Scan network of settings device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
