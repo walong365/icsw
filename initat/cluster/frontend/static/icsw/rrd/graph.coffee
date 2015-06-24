@@ -42,7 +42,7 @@ class Sensor
         return _.sum(_.values(@cfs))
 
 class DisplayGraph
-    constructor: (@num, @xml, @sensor_action_list, @user_list, sth_dict) ->
+    constructor: (@num, @xml, @sensor_action_list, @user_list, @selection_list, sth_dict) ->
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -149,9 +149,13 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-        "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-        "icswCachingCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster, icswCachingCall) ->
+        "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+        "toaster", "icswCachingCall", "$window", "icswSavedSelectionService",
+    (
+        $scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
+        $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService,
+        toaster, icswCachingCall, $window, icswSavedSelectionService
+    ) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
@@ -208,10 +212,12 @@ angular.module(
             [
                 icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_SENSOR_ACTION_LIST, {}, [])
                 icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_USER_LIST, {}, [])
+                icswSavedSelectionService.load_selections()
             ]
         ).then((data) ->
             $scope.sensor_action_list = data[0]
             $scope.user_list = data[1]
+            $scope.selection_list = data[2]
         )
         $scope.$watch("from_date_mom", (new_val) ->
             if $scope.change_dt_to
@@ -559,7 +565,7 @@ angular.module(
                                 if !(graph_key of graph_mat)
                                     graph_mat[graph_key] = {}
                                 num_graph++
-                                cur_graph = new DisplayGraph(num_graph, graph, $scope.sensor_action_list, $scope.user_list, sth_dict)
+                                cur_graph = new DisplayGraph(num_graph, graph, $scope.sensor_action_list, $scope.user_list, $scope.selection_list, sth_dict)
                                 graph_mat[graph_key][dev_key] = cur_graph
                                 graph_list.push(cur_graph)
                         $scope.graph_mat = graph_mat
@@ -654,6 +660,11 @@ angular.module(
                     return "Lower"
             scope.get_sensor_action_name = () ->
                 return (entry.name for entry in scope.sensor.graph.sensor_action_list when entry.idx == scope.threshold.sensor_action)[0]
+            scope.get_device_selection_info = () ->
+                if scope.threshold.device_selection
+                    return (entry.info for entry in scope.sensor.graph.selection_list when entry.idx == scope.threshold.device_selection)[0]
+                else
+                    return "---"
 
     }
 ]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
@@ -700,6 +711,8 @@ angular.module(
                         _th.sensor = undefined
                         _sensor_action = _th.sensor_action
                         _th.sensor_action = _th.sensor_action.idx
+                        if _th.device_selection
+                            _th.device_selection = _th.device_selection.idx
                         _th.notify_users = (_user.idx for _user in _th.notify_users)
                         if create
                             _th.mv_value_entry = sensor.mvv_id
@@ -734,6 +747,8 @@ angular.module(
             )
         sub_scope.modify_threshold = (sensor, threshold) ->
             threshold.sensor_action = (entry for entry in graph.sensor_action_list when entry.idx == threshold.sensor_action)[0]
+            if threshold.device_selection
+                threshold.device_selection = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
             _users = []
             for _user in graph.user_list
                 if _user.idx in threshold.notify_users
@@ -748,6 +763,7 @@ angular.module(
                 "hysteresis": 1.0
                 "notify_users": []
                 "sensor_action": (entry for entry in graph.sensor_action_list when entry.name == "mail")[0]
+                "device_selection": undefined
             }
             th_dialog(true, sub_scope, sensor, threshold, "Create new threshold")
         sub_scope.graph = graph

@@ -214,7 +214,7 @@ angular.module(
             json_sel.changed = true
     load_selections = () ->
         defer = $q.defer()
-        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList().then((data) ->
+        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList({"user": $window.CURRENT_USER.idx}).then((data) ->
             (enrich_selection(entry) for entry in data)
             defer.resolve(data)
         )

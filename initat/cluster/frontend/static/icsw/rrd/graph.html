@@ -277,8 +277,9 @@
 <script type="text/ng-template" id="icsw.rrd.graph.threshold.overview">
     <td>
         {{ get_limit_class() }} Threshold '{{ threshold.name }}'
-        at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }},
-        action is {{ get_sensor_action_name() }}, {{ threshold.notify_users.length }} Users to notify
+        at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }}<br>
+        action is {{ get_sensor_action_name() }}, {{ threshold.notify_users.length }} Users to notify,
+        Device selection: {{ get_device_selection_info() }}
     </td>
     <td>
         <icsw-tools-button type="modify" size="xs" ng-click="modify_threshold(sensor, threshold)"></icsw-tools-button>
@@ -313,12 +314,37 @@
             <div class="form-group">
                 <label class="col-md-3 control-label">Users to notify:</label>
                 <div class="col-md-9 controls">
-                    <ui-select multiple ng-model="threshold.notify_users">
-                        <ui-select-match placeholder="Pick some notify users...">{{ $item.login }}</ui-select-match>
-                        <ui-select-choices repeat="user in sensor.graph.user_list">
-                            <div ng-bind-html="user.login"></div>
-                        </ui-select-choices>
-                    </ui-select>
+                    <div class="input-group">
+                        <ui-select multiple ng-model="threshold.notify_users">
+                            <ui-select-match placeholder="Pick some notify users...">{{ $item.login }}</ui-select-match>
+                            <ui-select-choices repeat="user in sensor.graph.user_list">
+                                <div ng-bind-html="user.login"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="threshold.notify_users = []" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"></span>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Deviceselection:</label>
+                <div class="col-md-9 controls">
+                    <div class="input-group">
+                        <ui-select ng-model="threshold.device_selection">
+                            <ui-select-match placeholder="Pick a device selection...">{{ $select.selected.info }}</ui-select-match>
+                            <ui-select-choices repeat="sel in sensor.graph.selection_list">
+                                <div ng-bind-html="sel.info"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="threshold.device_selection = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"></span>
+                            </button>
+                        </span>
+                    </div>
                 </div>
             </div>
         </fieldset>
