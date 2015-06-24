@@ -41,6 +41,106 @@ def sys_to_net(in_val):
     return cPickle.dumps(in_val)
 
 
+class CacheObject(object):
+    def __init__(self, key, obj, valid_until):
+        self.key = key
+        self.obj = obj
+        self.valid_until = valid_until
+        # retrieval pending
+        self.retrieve = False
+
+    def is_valid(self):
+        return time.time() < self.valid_until
+
+
+class CacheRetrieveDummy(object):
+    def __init__(self, key):
+        self.key = key
+        self.retrieve = True
+        self.clients = []
+
+    def is_valid(self):
+        return False
+
+    def register_retrieval_client(self, client):
+        self.clients.append(client)
+
+    def resolve_clients(self, obj):
+        for _c in self.clients:
+            _c.resolve_cache(obj)
+        self.clients = []
+
+
+class HMCCache(object):
+    def __init__(self, timeout):
+        self._timeout = timeout
+        self._cache = {}
+
+    def store_object(self, key, obj):
+        cur_time = time.time()
+        if key in self._cache and self._cache[key].retrieve:
+            self._cache[key].resolve_clients(obj)
+        self._cache[key] = CacheObject(key, obj, cur_time + self._timeout)
+
+    def start_retrieval(self, key):
+        if key in self._cache:
+            # key is in cache, flag as retrieval pending
+            self._cache[key].retrieve = True
+        else:
+            # key is not in cache, create dummy object
+            self._cache[key] = CacheRetrieveDummy(key)
+
+    def load_object(self, key):
+        return self._cache[key].obj
+
+    def cache_valid(self, key):
+        if key in self._cache:
+            return self._cache[key].is_valid()
+        else:
+            return False
+
+    def retrieval_pending(self, key):
+        if key in self._cache:
+            return self._cache[key].retrieve
+        else:
+            return False
+
+    def register_retrieval_client(self, key, client):
+        return self._cache[key].register_retrieval_client(client)
+
+
+class HMCCacheMixin(object):
+    class Meta:
+        cache_timeout = 10
+
+    def _cache_init(self):
+        if not hasattr(self, "_HMC"):
+            self._HMC = HMCCache(self.Meta.cache_timeout)
+
+    def start_retrieval(self, key):
+        # to flag start of external object generation
+        self._cache_init()
+        self._HMC.start_retrieval(key)
+
+    def store_object(self, key, obj):
+        self._cache_init()
+        self._HMC.store_object(key, obj)
+
+    def load_object(self, key):
+        return self._HMC.load_object(key)
+
+    def cache_valid(self, key):
+        self._cache_init()
+        # return True if the given key is in the cache and valid
+        return self._HMC.cache_valid(key)
+
+    def retrieval_pending(self, key):
+        return self._HMC.retrieval_pending(key)
+
+    def register_retrieval_client(self, key, client):
+        return self._HMC.register_retrieval_client(key, client)
+
+
 class subprocess_struct(object):
     __slots__ = [
         "srv_com", "command", "command_line", "com_num", "popen", "srv_process",
@@ -160,7 +260,9 @@ class subprocess_struct(object):
             self.srv_com.set_result("default process() call", server_command.SRV_REPLY_STATE_ERROR)
 
     def terminate(self):
-        self.popen.kill()
+        # popen may not be set or None
+        if getattr(self, "popen", None):
+            self.popen.kill()
         if getattr(self, "srv_com"):
             self.srv_com.set_result(
                 "runtime ({}) exceeded".format(logging_tools.get_plural("second", self.Meta.max_runtime)),
