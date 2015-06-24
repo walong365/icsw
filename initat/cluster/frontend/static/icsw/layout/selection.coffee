@@ -78,16 +78,22 @@ angular.module(
             @devg_sel = []
             @tot_dev_sel = _.uniq(@tot_dev_sel)
             @dev_sel = _.uniq(@dev_sel)
+        resolve_dev_name: (dev_idx) ->
+            _dev = icswSelectionService.resolve_device(dev_idx)
+            if _dev.is_meta_device
+                return "[M] " + _dev.full_name.substring(8)
+            else
+                return _dev.full_name
         resolve_devices: () ->
             if @dev_sel.length
-                _list = ((icswSelectionService.resolve_device(_ds).full_name for _ds in @dev_sel))
+                _list = ((@resolve_dev_name(_ds) for _ds in @dev_sel))
                 _list.sort()
                 return _list.join(", ")
             else
                 return "---"
         resolve_total_devices: () ->
             if @tot_dev_sel.length
-                _list = ((icswSelectionService.resolve_device(_ds).full_name for _ds in @tot_dev_sel))
+                _list = ((@resolve_dev_name(_ds) for _ds in @tot_dev_sel))
                 _list.sort()
                 return _list.join(", ")
             else
@@ -190,7 +196,7 @@ angular.module(
         if entry.categories.length
             info.push("#{entry.categories.length} cats")
         info = info.join(", ")
-        info = "#{info} (#{_created.format('YYYY-MM-DD HH:mm ZZ')})"
+        info = "#{info} (#{_created.format('YYYY-MM-DD HH:mm')})"
         entry.info = info
     sync_selection = (icsw_sel, json_sel) ->
         _changed = false
@@ -235,7 +241,14 @@ angular.module(
         "sync_selection": (icsw_sel, json_sel) ->
             sync_selection(icsw_sel, json_sel)
     }
-]).controller("icswLayoutSelectionController", ["$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus", "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", ($scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus, icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService) ->
+]).controller("icswLayoutSelectionController",
+[
+    "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus",
+    "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
+(
+    $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus,
+    icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService
+) ->
     # search settings
     $scope.searchstr = ""
     $scope.search_ok = true
@@ -466,7 +479,7 @@ angular.module(
             )
     $scope.update_selection = () ->
         $scope.new_sel.current.put().then((newd) -> console.log newd)
-    $scope.save_selection = () ->
+    $scope.create_selection = () ->
         _names = (sel.name for sel in $scope.saved_selections)
         if $scope.new_sel.name in _names
             if $scope.new_sel.name.match(/.* \d+/)
@@ -512,13 +525,15 @@ angular.module(
             cur_tc.show_selected()
         $scope.selection_changed()
     $scope.delete_selection = () ->
+        true
         if $scope.new_sel.current
-            del_id = $scope.new_sel.current.idx
-            $scope.new_sel.current.remove().then((del) ->
-                $scope.saved_selections = (entry for entry in $scope.saved_selections when entry.idx != del_id)
-                $scope.new_sel.current = undefined
+            icswToolsSimpleModalService("Delete Selection ?").then(() ->
+                del_id = $scope.new_sel.current.idx
+                $scope.new_sel.current.remove().then((del) ->
+                    $scope.saved_selections = (entry for entry in $scope.saved_selections when entry.idx != del_id)
+                    $scope.new_sel.current = undefined
+                )
             )
-
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
     show_dialog = (scope) ->
         sel_scope = scope.$new()

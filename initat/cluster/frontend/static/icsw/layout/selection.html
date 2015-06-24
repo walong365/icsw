@@ -40,7 +40,7 @@
                         <div class="col-md-10 form-control-static">
                             {{ new_sel.current.info }}
                             <span class="pull-right">
-                                <icsw-tools-button type="submit" size="sm" ng-show="new_sel.current.changed" ng-click="update_selection()"></icsw-tools-button>
+                                <icsw-tools-button type="save" size="sm" ng-show="new_sel.current.changed" ng-click="update_selection()"></icsw-tools-button>
                             </span>
                         </div>
                     </div>
@@ -91,16 +91,6 @@
                     <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
                     <div ng-show="saved_selections.length">
                         <h3 class="text-success">{{ saved_selections.length }} saved selections found</h3>
-                        <div class="form-group" ng-show="new_sel.current.idx">
-                            <label class="col-md-2 control-label">Selected:</label>
-                            <div class="col-md-10 form-control-static">
-                                {{ new_sel.current.info }}
-                                <span class="pull-right">
-                                    <icsw-tools-button type="submit" size="sm" ng-show="new_sel.current.changed" ng-click="update_selection()"></icsw-tools-button>
-                                    <icsw-tools-button type="delete" size="sm" ng-click="delete_selection()"></icsw-tools-button>
-                                </span>
-                            </div>
-                        </div>
                         <div class="form-group">
                             <div class="col-md-12 controls">
                                 <ui-select ng-model="new_sel.current" on-select="use_selection($item, $model)">
@@ -112,13 +102,26 @@
                             </div>
                         </div>
                     </div>
+                    <div class="form-group" ng-show="new_sel.current.idx">
+                        <label class="col-md-2 control-label">Selected:</label>
+                        <div class="col-md-10 form-control-static">
+                            {{ new_sel.current.info }}
+                            <span class="pull-right">
+                                <icsw-tools-button type="save" size="sm" ng-show="new_sel.current.changed" ng-click="update_selection()"></icsw-tools-button>
+                                <button class="btn btn-success btn-sm fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                                     Apply
+                                </button>
+                                <icsw-tools-button type="delete" size="sm" ng-click="delete_selection()"></icsw-tools-button>
+                            </span>
+                        </div>
+                    </div>
                     <div class="form-group">
-                        <label class="col-md-2 control-label">Save as:</label>
+                        <label class="col-md-2 control-label"><span ng-show="new_sel.current.idx">or </span>create:</label>
                         <div class="col-md-8 controls">
                             <input class="form-control" ng-model="new_sel.name" type="text"/>
                         </div>
                         <div class="col-md-2 controls">
-                            <icsw-tools-button type="create" size="sm" ng-click="save_selection()"></icsw-tools-button>
+                            <icsw-tools-button type="create" size="sm" ng-click="create_selection()"></icsw-tools-button>
                         </div>
                     </div>
                 </form>

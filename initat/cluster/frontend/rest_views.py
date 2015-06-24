@@ -217,6 +217,9 @@ class db_prefetch_mixin(object):
     def _background_job_related(self):
         return ["initiator__domain_tree_node", "user"]
 
+    def _deviceselection_prefetch(self):
+        return ["devices", "device_groups", "categories"]
+
     def _user_prefetch(self):
         return [
             "user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups",
