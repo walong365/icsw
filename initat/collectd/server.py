@@ -1066,4 +1066,4 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.log("checking thresholds")
         for _th in SensorThreshold.objects.all():
             _mvv = _th.mv_value_entry
-            print unicode(_mvv.mv_struct_entry.machine_vector.device), unicode(_mvv), _mvv.full_key
+            # print unicode(_mvv.mv_struct_entry.machine_vector.device), unicode(_mvv), _mvv.full_key
