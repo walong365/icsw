@@ -39,7 +39,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVValueEntry
+    MVValueEntry, SensorThreshold
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from lxml.builder import E  # @UnresolvedImport
 import dateutil.parser
@@ -198,6 +198,10 @@ class GraphVar(object):
         # mvs / mvv entry
         self.mvs_entry = mvs_entry
         self.mvv_entry = mvv_entry
+        if self.mvv_entry and self.mvv_entry.pk:
+            self.thresholds = list(self.mvv_entry.sensorthreshold_set.all())
+        else:
+            self.thresholds = []
         # graph key (load.1)
         self.key = key
         # device name
@@ -353,7 +357,9 @@ class GraphVar(object):
                     self.color,
                     (
                         "{{:<{:d}s}}".format(self.max_info_width)
-                    ).format(self.info(timeshift, show_forecast))[:self.max_info_width],
+                    ).format(
+                        self.info(timeshift, show_forecast)
+                    )[:self.max_info_width],
                     ":STACK" if _stacked else "",
                 ),
             )
@@ -472,6 +478,42 @@ class GraphVar(object):
                         ),
                     ]
                 )
+        if self.thresholds:
+            _th_base = "{}th".format(self.name)
+            for _th in self.thresholds:
+                _th_name = "{}{:d}".format(_th_base, _th.idx)
+                c_lines.extend(
+                    [
+                        "CDEF:{}={},{},-,{},ADDNAN".format(
+                            _th_name,
+                            draw_name,
+                            draw_name,
+                            _th.value,
+                        ),
+                        "CDEF:{}l={},{},-".format(
+                            _th_name,
+                            _th_name,
+                            _th.hysteresis / 2,
+                        ),
+                        "CDEF:{}u={},{},+".format(
+                            _th_name,
+                            _th_name,
+                            _th.hysteresis / 2,
+                        ),
+                        "LINE1:{}l#000".format(_th_name),
+                        "AREA:{}#ddd#ff0::STACK".format(_th.hysteresis),
+                        "LINE1:{}l#000".format(_th_name),
+                        "LINE1:{}u#000".format(_th_name),
+                        "LINE3:{}{}:<tt>Threshold '{}' {:.4f}, [{:.4f}, {:.4f}]</tt>\\l".format(
+                            _th_name,
+                            self.color,
+                            _th.name,
+                            _th.value,
+                            _th.value - _th.hysteresis / 2,
+                            _th.value + _th.hysteresis / 2,
+                        ),
+                    ]
+                )
         return c_lines
 
     def get_legend_list(self):
@@ -564,7 +606,11 @@ class GraphTarget(object):
 
     @property
     def dev_id_str(self):
-        return ",".join([dev_id for dev_id, _dev_pk in self.dev_list])
+        return ",".join(
+            [
+                dev_id for dev_id, _dev_pk in self.dev_list
+                ]
+        )
 
     @property
     def rrd_post_args(self):
@@ -744,7 +790,11 @@ class DataSource(object):
         _mvv_list = MVValueEntry.objects.filter(
             Q(full_key__in=_query_keys) &
             Q(mv_struct_entry__machine_vector__device__in=dev_pks)
-        ).select_related("mv_struct_entry")
+        ).select_related(
+            "mv_struct_entry"
+        ).prefetch_related(
+            "sensorthreshold_set"
+        )
         _mvv_dict = {}
         for _mvv in _mvv_list:
             _mvv_dict.setdefault(_mvv.full_key, []).append(_mvv)
@@ -1007,11 +1057,13 @@ class RRDGraph(object):
         timeframe = abs((self.para_dict["end_time_fc"] - self.para_dict["start_time"]).total_seconds())
         graph_size = self.para_dict["size"]
         graph_width, graph_height = [int(value) for value in graph_size.split("x")]
-        self.log("width / height : {:d} x {:d}, timeframe {}".format(
-            graph_width,
-            graph_height,
-            logging_tools.get_diff_time_str(timeframe),
-        ))
+        self.log(
+            "width / height : {:d} x {:d}, timeframe {}".format(
+                graph_width,
+                graph_height,
+                logging_tools.get_diff_time_str(timeframe),
+            )
+        )
         # store for DEF generation
         self.width = graph_width
         self.height = graph_height

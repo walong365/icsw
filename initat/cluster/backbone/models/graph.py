@@ -226,6 +226,13 @@ class SensorThreshold(models.Model):
         )
 
 
+@receiver(signals.pre_save, sender=SensorThreshold)
+def SensorThresholdPreSave(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        _cur_inst.hysteresis = abs(_cur_inst.hysteresis)
+
+
 @receiver(signals.post_save, sender=SensorThreshold)
 def SensorThresholdPostSave(sender, **kwargs):
     if "instance" in kwargs:
