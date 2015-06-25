@@ -78,8 +78,11 @@ class MVStructEntry(models.Model):
     se_type = models.CharField(
         max_length=6,
         choices=[
+            # performance data entry
             ("pde", "pde"),
+            # machine vector list (multi-value)
             ("mvl", "mvl"),
+            # machine vector entry (single value)
             ("mve", "mve"),
         ],
     )
@@ -127,7 +130,7 @@ class MVValueEntry(models.Model):
     # the full key is mv_struct_entry.key + "." + mv_value.key
     # may be empty in case of mve entries (full key is stored in mv_struct_entry)
     key = models.CharField(max_length=128, default="")
-    # rra_index, index in RRA-file (zero in most cases)
+    # rra_index, index in RRA-file (zero in most cases except for PDEs and MVEs
     rra_idx = models.IntegerField(default=0)
     # full key for this value, stored for faster reference
     full_key = models.CharField(max_length=128, default="")
@@ -141,9 +144,9 @@ class MVValueEntry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MVValueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
+        return u"MVVadlueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
             self.key or "NONE",
-            ", name={}@{:d}".format(self.name, self.rra_idx) if self.name else "",
+            ", name={}@{:d}".format(self.name, self.rra_idx) if (self.name or self.rra_idx) else "",
             self.info,
             self.unit,
             self.base,
@@ -162,6 +165,7 @@ class MVValueEntry(models.Model):
             info=self.info,
             key=self.key,
             full_key=self.full_key,
+            rra_idx=self.rra_idx,
             date=self.date
         )
         for _key, _value in mod_dict.iteritems():

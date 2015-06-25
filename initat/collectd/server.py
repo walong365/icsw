@@ -685,17 +685,26 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 raise StopIteration
             else:
                 _xml.attrib["uuid"] = _dev.uuid
-                # store values in host_info (and memcached)
-                # host_uuid is uuid or name
+                if not simple:
+                    # add rra_idx entries for mvls
+                    for _mvl in _xml.findall(".//mvl"):
+                        for _num, _entry in enumerate(_mvl.findall(".//value")):
+                            # set rra_idx and name to ease mapping for sensor thresholds
+                            _entry.attrib["rra_idx"] = "{:d}".format(_num)
+                            _entry.attrib["name"] = _entry.get("key")
+                # create values
                 if simple:
                     # only values
                     _host_info = self._feed_host_info_ov(_dev, _xml)
                 else:
                     _host_info = self._feed_host_info(_dev, _xml)
+                values = _host_info.get_values(_xml, simple)
+                # store values in host_info (and memcached)
+                # host_uuid is uuid or name
                 if not _host_info.store_to_disk:
                     # writing to disk not allowed
                     raise StopIteration
-                values = _host_info.get_values(_xml, simple)
+                # map full keys to multi-valued entries
                 # print "+", values
                 r_data = ("mvector", _host_info, recv_time, values)
                 yield r_data
@@ -719,7 +728,6 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     for pd_vec in mach_values:
                         if pd_vec[2] is not None:
                             self.send_to_process("dbsync", "perfdata", etree.tostring(pd_vec[2]))
-                        # print "*", pd_vec
                         yield ("pdata", pd_vec)
         raise StopIteration
 
@@ -754,11 +762,12 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         return self.__last_sent[h_tuple]
 
     def _handle_perfdata(self, data):
-        pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list = data
+        pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list, key_list = data
         s_time = int(time_recv)
         if self.__rrdcached_socket:
             _tf = _host_info.target_file(pd_tuple, step=5 * 60, v_type=pd_tuple[0])
             if _tf:
+                # print zip(key_list, v_list)
                 cache_lines = [
                     "UPDATE {} {:d}:{}".format(
                         _tf,
@@ -778,6 +787,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             for name, value in values:
                 # name can be none for values with transform problems
                 if name:
+                    # print name, value
                     try:
                         _tf = _host_info.target_file(name)
                     except ValueError:
@@ -1049,11 +1059,11 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         in_com.set_result("got command {}".format(com_text))
 
     def _sync_sensor_threshold(self, in_com):
-        in_com.send_result("ok synced thresholds")
+        in_com.set_result("ok synced thresholds")
         self._check_thresholds()
 
     def _check_thresholds(self):
         self.log("checking thresholds")
         for _th in SensorThreshold.objects.all():
-            print _th.mv_value_entry.full_key, _th.mv_value_entry.name
-
+            _mvv = _th.mv_value_entry
+            print unicode(_mvv.mv_struct_entry.machine_vector.device), unicode(_mvv), _mvv.full_key

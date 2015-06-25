@@ -500,7 +500,8 @@ class GraphVar(object):
                         "LINE3:{}{}".format(_thl_name, self.color),
                         "AREA:{}{}40#ffffe040::STACK".format(
                             _th.upper_value - _th.lower_value,
-                            self.color,
+                            # remove transparency part (if present)
+                            self.color[:7],
                         ),
                         "LINE3:{}{}:<tt>Threshold '{}' [{:.4f}, {:.4f}]</tt>\\l".format(
                             _thu_name,

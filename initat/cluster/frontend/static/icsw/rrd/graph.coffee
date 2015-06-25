@@ -26,20 +26,24 @@ class Sensor
         @mv_key = @xml.attr("mv_key")
         @cfs = {}
         _value = 0.0
+        _num_value = 0
         for _cf in @xml.find("cfs cf")
             _cf = $(_cf)
             @cfs[_cf.attr("cf")] = _cf.text()
-            _value += parseFloat(_cf.text())
+            if _cf.attr("cf") != "TOTAL"
+                _value += parseFloat(_cf.text())
+                _num_value++
         @cf_list = _.keys(@cfs).sort()
-        _value = _value / @cf_list.length
+        if _num_value
+            @mean_value = _value / _num_value
+        else
+            @mean_value = 0.0
         # create default threshold
         @thresholds = []
         if @mvv_id of sth_dict
             for _entry in sth_dict[@mvv_id]
                 @thresholds.push(_entry)
 
-    get_mean_value: () ->
-        return _.sum(_.values(@cfs))
 
 class DisplayGraph
     constructor: (@num, @xml, @sensor_action_list, @user_list, @selection_list, sth_dict) ->
@@ -677,16 +681,22 @@ angular.module(
                     return "---"
 
     }
-]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
+]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout) ->
     th_dialog = (create, cur_scope, sensor, threshold, title) ->
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
         th_scope.threshold = threshold
         th_scope.check_upper_lower = () ->
-            if th_scope.threshold.lower_value > th_scope.threshold.upper_value
-                _val = th_scope.threshold.lower_value
-                th_scope.threshold.lower_value = th_scope.threshold.upper_value
-                th_scope.threshold.upper_value = _val
+            if th_scope.change_cu_to
+                $timeout.cancel(th_scope.change_cu_to)
+            th_scope.change_cu_to = $timeout(
+                () ->
+                    if th_scope.threshold.lower_value > th_scope.threshold.upper_value
+                        _val = th_scope.threshold.lower_value
+                        th_scope.threshold.lower_value = th_scope.threshold.upper_value
+                        th_scope.threshold.upper_value = _val
+                2000
+            )
         thresh_div = $compile($templateCache.get("icsw.rrd.graph.threshold.modify"))(th_scope)
         BootstrapDialog.show
             message: thresh_div
@@ -773,11 +783,12 @@ angular.module(
             threshold.notify_users = _users
             th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
         sub_scope.create_new_threshold = (sensor) ->
+            _mv = sensor.mean_value
             threshold = {
                 "name": "New Threshold"
                 "limit_class": "u"
-                "lower_value": sensor.get_mean_value() - 0.2
-                "upper_value": sensor.get_mean_value() - 0.2
+                "lower_value": _mv - _mv / 10
+                "upper_value": _mv + _mv / 10
                 "lower_mail": true
                 "upper_mail": true
                 "notify_users": []
