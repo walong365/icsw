@@ -128,10 +128,13 @@ class WmiUtils(object):
         fixed_lines = [lines[0]]
         cur_line = ""
         fixing = False
-        for line, next_line in pairwise(lines[1:]):
+        for line, next_line in pairwise(itertools.chain(lines[1:], [None])):
+            # have to add dummy last elem, else last line would never be `line`
+
             if cur_line != "":
-                cur_line += "|"
+                cur_line += "|"  # add this to show where newlines would have been
             cur_line += line
+
             if cur_line.count(cls.DELIMITER) == num_delimiters:
                 # handle newlines in last entry
                 # - in that case, the num_delimiter check says yes, but actually the next line
@@ -139,7 +142,7 @@ class WmiUtils(object):
                 # find out by checking whether the next line has delimiters
                 # - it cannot have them if is the the part of the last entry after a newline
                 # - TODO: if the first line has newlines, that part is appended to the last entry
-                if cls.DELIMITER in next_line:  # next line is valid line
+                if next_line is None or cls.DELIMITER in next_line:  # next line is valid line
                     fixed_lines.append(cur_line)
                     if fixing:
                         fixing = False
@@ -162,8 +165,8 @@ class WmiUtils(object):
                 num_delimiters, cur_line
             ))
 
-        print "\n" * 5, 'fixed:'
-        print "\n".join(fixed_lines).replace(cls.DELIMITER, "<SEP>") + "\n"
+        # print "\n" * 5, 'fixed:'
+        # print "\n".join(fixed_lines).replace(cls.DELIMITER, "<SEP>") + "\n"
 
         return "\n".join(fixed_lines) + "\n"
 
