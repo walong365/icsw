@@ -531,7 +531,7 @@ class KpiSet(object):
 
         if _cmp(amount, limit_ok):
             result = KpiResult.ok
-        elif limit_warn is not None and cmp(amount, limit_warn):
+        elif limit_warn is not None and _cmp(amount, limit_warn):
             result = KpiResult.warning
         else:
             result = KpiResult.critical
