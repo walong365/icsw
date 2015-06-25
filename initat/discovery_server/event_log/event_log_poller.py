@@ -19,6 +19,7 @@
 import collections
 import datetime
 import django.utils.timezone
+import traceback
 
 from django.db import connection
 import pymongo
@@ -44,8 +45,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
         connection.close()
         # self.register_func("wmi_scan", self._wmi_scan)
 
-        self.register_timer(self.periodic_update, 60 * 5 if global_config["DEBUG"] else 60 * 15, instant=True)
-        self.register_timer(self.job_control, 5, instant=True)
+        self.register_timer(self.periodic_update, 60 * 1 if global_config["DEBUG"] else 60 * 15, instant=True)
+        self.register_timer(self.job_control, 2 if global_config["DEBUG"] else 5, instant=True)
 
         self._init_db()
 
@@ -78,9 +79,10 @@ class EventLogPollerProcess(threading_tools.process_obj):
                 self.log("periodic_check on {}".format(job))
                 do_continue = job.periodic_check()
             except Exception as e:
-                self.log("Error while checking job {}: {}".format(job, e))
-                self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+                self.log("Error for checking job {}: {}".format(job, e))
+                self.log(traceback.format_exc())
             if not do_continue:
+                self.log("Job {} finished".format(job))
                 self.jobs_running.remove(job)
 
         have_new_job = True
@@ -93,7 +95,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
                     new_job.start()
                 except Exception as e:
                     self.log("Error while starting job {}: {}".format(new_job, e))
-                    self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(traceback.format_exc())
                 else:
                     self.log("Adding new job: {}".format(new_job))
                     self.jobs_running.append(new_job)
@@ -102,7 +104,13 @@ class EventLogPollerProcess(threading_tools.process_obj):
         chosen_one = None
         for job in self.run_queue:  # prefer first
             # not too many per device
-            if sum(1 for _j in self.jobs_running if job.target_device == _j.target_device) < 2:
+            not_too_many_jobs_on_same_machine =\
+                sum(1 for _j in self.jobs_running if job.target_device == _j.target_device) < 2
+
+            # the last scan job for this log might not have finished yet
+            not_same_job_running = not any(job == _j for _j in self.jobs_running)
+
+            if not_too_many_jobs_on_same_machine and not_same_job_running:
                 chosen_one = job
                 break
 
@@ -111,7 +119,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         return chosen_one
 
     def _schedule_wmi_updates(self):
-        self.log("updating wmi logs")
+        self.log("scheduling new wmi jobs")
         wmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.wmi.name)
         wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
         print 'wmi devs', wmi_devices
@@ -171,7 +179,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
                         else:
                             self.run_queue.append(job)
 
-        self.log("finished updating wmi logs")
+        self.log("finished scheduling new wmi jobs")
 
     def _get_ip_to_host(self, to_dev):
         from_server_check = config_tools.server_check(device=srv_type_routing().local_device, config=None,

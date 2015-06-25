@@ -67,10 +67,15 @@ class _WmiWorkerBase(object):
         pass
 
     def _handle_stderr(self, stderr_out, context):
-        self.log("wmic command yielded expected errors in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
+        self.log("wmic command yielded errors in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
         for line in stderr_out.split("\n"):
             self.log(line, logging_tools.LOG_LEVEL_ERROR)
         self.log("end of errors", logging_tools.LOG_LEVEL_ERROR)
+
+    def __eq__(self, other):
+        if not isinstance(other, _WmiWorkerBase):
+            return False
+        return self.target_device == other.target_device and self.target_ip == other.target_ip
 
 
 class WmiLogFileWorker(_WmiWorkerBase):
@@ -120,13 +125,21 @@ class WmiLogFileWorker(_WmiWorkerBase):
                     else:
                         logfiles.append(entry['LogfileName'])
 
+                # TODO:
+                logfiles = ["Application"]
                 self.log("Detected {} wmi logfiles for {}".format(len(logfiles), self.target_device))
 
-                self.db.wmi_logfile.insert({
-                    'date': django.utils.timezone.now(),
-                    'logfiles': logfiles,
-                    'device_pk': self.target_device.pk,
-                })
+                self.db.wmi_logfile.update_one(
+                    filter={'device_pk': self.target_device.pk},
+                    update={
+                        '$set': {
+                            'device_pk': self.target_device.pk,
+                            'date': django.utils.timezone.now(),
+                            'logfiles': logfiles,
+                        }
+                    },
+                    upsert=True)
+
                 print 'feeding db ', {
                     'date': django.utils.timezone.now(),
                     'logfiles': logfiles,
@@ -134,6 +147,9 @@ class WmiLogFileWorker(_WmiWorkerBase):
                 }
 
         return do_continue
+
+    def __eq__(self, other):
+        return isinstance(other, WmiLogFileWorker) and super(WmiLogFileWorker, self).__eq__(other)
 
 
 class WmiLogEntryWorker(_WmiWorkerBase):
@@ -148,9 +164,17 @@ class WmiLogEntryWorker(_WmiWorkerBase):
         self.current_phase = WmiLogEntryWorker.InitialPhase()
 
     def __unicode__(self):
-        return u"WmiLogEntryWorker(dev={}, ip={}, logfile={})".format(self.target_device, self.target_ip, self.logfile_name)
+        return u"WmiLogEntryWorker(dev={}, ip={}, logfile={})".format(self.target_device,
+                                                                      self.target_ip,
+                                                                      self.logfile_name)
 
     __repr__ = __unicode__
+
+    def __eq__(self, other):
+        if not isinstance(other, WmiLogEntryWorker):
+            return False
+
+        return self.logfile_name == other.logfile_name and super(WmiLogEntryWorker, self).__eq__(other)
 
     def periodic_check(self):
         do_continue = self.current_phase(self)
@@ -173,10 +197,12 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                 table="Win32_NTLogEvent",
                 where_clause=where_clause,
             )
+            worker.log("Querying maximal entry for {} with last known record number {}".format(
+                worker.logfile_name, worker.last_known_record_number)
+            )
 
-            print 'doing big query'
-
-            worker.ext_com = ExtCom(worker.log, cmd, debug=True, shell=False)  # shell=False since args must not be parsed again
+            worker.ext_com = ExtCom(worker.log, cmd, debug=True,
+                                    shell=False)  # shell=False since args must not be parsed again
             worker.ext_com.run()
 
             worker.current_phase = WmiLogEntryWorker.FindOutMaximumPhase()
@@ -223,7 +249,8 @@ class WmiLogEntryWorker(_WmiWorkerBase):
 
                     if worker.last_known_record_number is None or \
                             maximal_record_number > worker.last_known_record_number:
-                        worker.current_phase = WmiLogEntryWorker.RetrieveEventsPhase(worker, maximal_record_number)
+                        worker.current_phase = WmiLogEntryWorker.RetrieveEventsPhase(worker.last_known_record_number,
+                                                                                     maximal_record_number)
                     else:
                         do_continue = False
 
@@ -233,10 +260,9 @@ class WmiLogEntryWorker(_WmiWorkerBase):
     class RetrieveEventsPhase(object):
         PAGINATION_LIMIT = 10000
 
-        def __init__(self, worker, to_record_number):
+        def __init__(self, from_number, to_record_number):
             # this is increased in the process
-            self.from_record_number =\
-                worker.last_known_record_number if worker.last_known_record_number is not None else 0
+            self.from_record_number = from_number if from_number is not None else 0
             # 1 is the first RecordNumber
 
             self.to_record_number = to_record_number
@@ -275,6 +301,13 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                 print 'len', len(parsed)
                 # `parsed` may be empty for RecordNumber-holes
 
+                worker.log("Found {} log entries between {} and {} for {}".format(
+                    len(parsed),
+                    self.from_record_number,
+                    self.from_record_number + self.__class__.PAGINATION_LIMIT,
+                    worker,
+                ))
+
                 maximal_record_number = self.from_record_number + self.__class__.PAGINATION_LIMIT
 
                 db_entry = {
@@ -308,6 +341,11 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                             self.from_record_number + self.__class__.PAGINATION_LIMIT,
                         )
                     )
+                    worker.log("querying entries from {} to {} for {}".format(
+                        self.from_record_number,
+                        self.from_record_number + self.__class__.PAGINATION_LIMIT,
+                        worker,
+                    ))
                     print 'call from ', self.from_record_number
 
                     self.retrieve_ext_com = ExtCom(worker.log, cmd, debug=True,
