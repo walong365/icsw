@@ -76,7 +76,9 @@ device_variable_module = angular.module(
         template : $templateCache.get("icsw.device.variable.table")
         link : (scope, el, attrs) ->
             scope.device = scope.$eval(attrs["device"])
-            scope.filtervalue = scope.$eval(attrs["filtervalue"])
+            scope.$watch(attrs.filtervalue, (new_val) ->
+                scope.filtervalue = new_val
+            )
             scope.edit_mixin = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.edit_mixin.delete_confirm_str = (obj) -> "Really delete variable '#{obj.name}' ?"
             scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
