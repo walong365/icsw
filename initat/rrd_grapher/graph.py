@@ -481,36 +481,33 @@ class GraphVar(object):
         if self.thresholds:
             _th_base = "{}th".format(self.name)
             for _th in self.thresholds:
-                _th_name = "{}{:d}".format(_th_base, _th.idx)
+                _thl_name = "{}{:d}l".format(_th_base, _th.idx)
+                _thu_name = "{}{:d}u".format(_th_base, _th.idx)
                 c_lines.extend(
                     [
                         "CDEF:{}={},{},-,{},ADDNAN".format(
-                            _th_name,
+                            _thl_name,
                             draw_name,
                             draw_name,
-                            _th.value,
+                            _th.lower_value,
                         ),
-                        "CDEF:{}l={},{},-".format(
-                            _th_name,
-                            _th_name,
-                            _th.hysteresis / 2,
+                        "CDEF:{}={},{},-,{},ADDNAN".format(
+                            _thu_name,
+                            draw_name,
+                            draw_name,
+                            _th.upper_value,
                         ),
-                        "CDEF:{}u={},{},+".format(
-                            _th_name,
-                            _th_name,
-                            _th.hysteresis / 2,
+                        "LINE3:{}{}".format(_thl_name, self.color),
+                        "AREA:{}{}40#ffffe040::STACK".format(
+                            _th.upper_value - _th.lower_value,
+                            self.color,
                         ),
-                        "LINE1:{}l#000".format(_th_name),
-                        "AREA:{}#ddd#ff0::STACK".format(_th.hysteresis),
-                        "LINE1:{}l#000".format(_th_name),
-                        "LINE1:{}u#000".format(_th_name),
-                        "LINE3:{}{}:<tt>Threshold '{}' {:.4f}, [{:.4f}, {:.4f}]</tt>\\l".format(
-                            _th_name,
+                        "LINE3:{}{}:<tt>Threshold '{}' [{:.4f}, {:.4f}]</tt>\\l".format(
+                            _thu_name,
                             self.color,
                             _th.name,
-                            _th.value,
-                            _th.value - _th.hysteresis / 2,
-                            _th.value + _th.hysteresis / 2,
+                            _th.lower_value,
+                            _th.upper_value,
                         ),
                     ]
                 )

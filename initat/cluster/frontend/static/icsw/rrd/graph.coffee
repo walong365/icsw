@@ -43,6 +43,9 @@ class Sensor
 
 class DisplayGraph
     constructor: (@num, @xml, @sensor_action_list, @user_list, @selection_list, sth_dict) ->
+        @sensor_action_lut = {}
+        for entry in @sensor_action_list
+            @sensor_action_lut[entry.idx] = entry
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -653,13 +656,20 @@ angular.module(
         restrict: "AE"
         template: $templateCache.get("icsw.rrd.graph.threshold.overview")
         link: (scope, el, attr) ->
-            scope.get_limit_class = () ->
-                if scope.threshold.limit_class == "u"
-                    return "Upper"
+            scope.get_lower_sensor_action_name = () ->
+                if scope.threshold.lower_sensor_action
+                    return scope.sensor.graph.sensor_action_lut[scope.threshold.lower_sensor_action].name
                 else
-                    return "Lower"
-            scope.get_sensor_action_name = () ->
-                return (entry.name for entry in scope.sensor.graph.sensor_action_list when entry.idx == scope.threshold.sensor_action)[0]
+                    return "---"
+            scope.get_upper_sensor_action_name = () ->
+                if scope.threshold.upper_sensor_action
+                    return scope.sensor.graph.sensor_action_lut[scope.threshold.upper_sensor_action].name
+                else
+                    return "---"
+            scope.get_lower_email = () ->
+                return if scope.threshold.lower_mail then "send email" else "no email"
+            scope.get_upper_email = () ->
+                return if scope.threshold.upper_mail then "send email" else "no email"
             scope.get_device_selection_info = () ->
                 if scope.threshold.device_selection
                     return (entry.info for entry in scope.sensor.graph.selection_list when entry.idx == scope.threshold.device_selection)[0]
@@ -672,16 +682,11 @@ angular.module(
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
         th_scope.threshold = threshold
-        th_scope.get_limit_class = () ->
-            if th_scope.threshold.limit_class == "u"
-                return "Upper"
-            else
-                return "Lower"
-        th_scope.toggle_limit_class = () ->
-            if th_scope.threshold.limit_class == "u"
-                th_scope.threshold.limit_class = "l"
-            else
-                th_scope.threshold.limit_class = "u"
+        th_scope.check_upper_lower = () ->
+            if th_scope.threshold.lower_value > th_scope.threshold.upper_value
+                _val = th_scope.threshold.lower_value
+                th_scope.threshold.lower_value = th_scope.threshold.upper_value
+                th_scope.threshold.upper_value = _val
         thresh_div = $compile($templateCache.get("icsw.rrd.graph.threshold.modify"))(th_scope)
         BootstrapDialog.show
             message: thresh_div
@@ -697,7 +702,10 @@ angular.module(
                     cssClass: "btn-warning"
                     action: (dialog) ->
                         _th = th_scope.threshold
-                        _th.sensor_action = _th.sensor_action.idx
+                        if _th.lower_sensor_action
+                            _th.lower_sensor_action = _th.lower_sensor_action.idx
+                        if _th.upper_sensor_action
+                            _th.upper_sensor_action = _th.upper_sensor_action.idx
                         _th.notify_users = (_user.idx for _user in _th.notify_users)
                         dialog.close()
                         th_scope.$destroy()
@@ -709,8 +717,12 @@ angular.module(
                     action: (dialog) ->
                         _th = th_scope.threshold
                         _th.sensor = undefined
-                        _sensor_action = _th.sensor_action
-                        _th.sensor_action = _th.sensor_action.idx
+                        _lower_sensor_action = _th.lower_sensor_action
+                        _upper_sensor_action = _th.upper_sensor_action
+                        if _lower_sensor_action
+                            _th.lower_sensor_action = _lower_sensor_action.idx
+                        if _upper_sensor_action
+                            _th.upper_sensor_action = _upper_sensor_action.idx
                         if _th.device_selection
                             _th.device_selection = _th.device_selection.idx
                         _th.notify_users = (_user.idx for _user in _th.notify_users)
@@ -724,7 +736,8 @@ angular.module(
                                     th_scope.$destroy()
                                 (error) ->
                                     _th.sensor = sensor
-                                    _th.sensor_action = _sensor_action
+                                    _th.lower_sensor_action = _lower_sensor_action
+                                    _th.upper_sensor_action = _upper_sensor_action
                             )
                         else
                             _th.put().then(
@@ -733,7 +746,8 @@ angular.module(
                                     th_scope.$destroy()
                                 (error) ->
                                     _th.sensor = sensor
-                                    _th.sensor_action = _sensor_action
+                                    _th.lower_sensor_action = _lower_sensor_action
+                                    _th.upper_sensor_action = _upper_sensor_action
                             )
                 },
             ]
@@ -746,7 +760,10 @@ angular.module(
                     sensor.thresholds = (entry for entry in sensor.thresholds when entry.idx != th.idx)
             )
         sub_scope.modify_threshold = (sensor, threshold) ->
-            threshold.sensor_action = (entry for entry in graph.sensor_action_list when entry.idx == threshold.sensor_action)[0]
+            if threshold.lower_sensor_action
+                threshold.lower_sensor_action = graph.sensor_action_lut[threshold.lower_sensor_action]
+            if threshold.upper_sensor_action
+                threshold.upper_sensor_action = graph.sensor_action_lut[threshold.upper_sensor_action]
             if threshold.device_selection
                 threshold.device_selection = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
             _users = []
@@ -759,10 +776,13 @@ angular.module(
             threshold = {
                 "name": "New Threshold"
                 "limit_class": "u"
-                "value": sensor.get_mean_value()
-                "hysteresis": 1.0
+                "lower_value": sensor.get_mean_value() - 0.2
+                "upper_value": sensor.get_mean_value() - 0.2
+                "lower_mail": true
+                "upper_mail": true
                 "notify_users": []
-                "sensor_action": (entry for entry in graph.sensor_action_list when entry.name == "mail")[0]
+                "lower_sensor_action": undefined,
+                "upper_sensor_action": undefined,
                 "device_selection": undefined
             }
             th_dialog(true, sub_scope, sensor, threshold, "Create new threshold")
