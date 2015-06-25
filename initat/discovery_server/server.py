@@ -59,7 +59,7 @@ class server_process(
         self._log_config()
         self.__msi_block = self._init_msi_block()
         self.add_process(DiscoveryProcess("discovery"), start=True)
-        self.add_process(EventLogPollerProcess("event_log_poller"), start=True)
+        self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         # self.add_process(build_process("build"), start=True)
@@ -155,8 +155,11 @@ class server_process(
 
     def process_start(self, src_process, src_pid):
         mult = 3
+        fuzzy_ceiling = 0
+        if src_process == EventLogPollerProcess.PROCESS_NAME:
+            fuzzy_ceiling = 5
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        self.__msi_block.add_actual_pid(src_pid, mult=mult)
+        self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=fuzzy_ceiling, process_name=src_process)
         self.__msi_block.save_block()
 
     def _init_msi_block(self):

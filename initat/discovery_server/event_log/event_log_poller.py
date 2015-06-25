@@ -34,6 +34,8 @@ from initat.discovery_server.config import global_config
 
 class EventLogPollerProcess(threading_tools.process_obj):
 
+    PROCESS_NAME = 'event_log_poller'
+
     MAX_CONCURRENT_JOBS = 5
 
     def process_init(self):
