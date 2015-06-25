@@ -22,6 +22,9 @@
 """ graph models for NOCTUA, CORVUS and NESTOR """
 
 from django.db import models
+from django.db.models import signals
+from django.dispatch import receiver
+from initat.cluster.backbone.signals import SensorThresholdChanged
 
 __all__ = [
     "MachineVector",
@@ -208,7 +211,7 @@ class SensorThreshold(models.Model):
     # which users to notify
     notify_users = models.ManyToManyField("user")
     # device selection
-    device_selection = models.ForeignKey("DeviceSelection", null=True)
+    device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -221,3 +224,19 @@ class SensorThreshold(models.Model):
             unicode(self.mv_value_entry),
             unicode(self.sensor_action),
         )
+
+
+@receiver(signals.post_save, sender=SensorThreshold)
+def SensorThresholdPostSave(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        SensorThresholdChanged.send(sender=_cur_inst, sensor_threshold=_cur_inst, cause="SensorThreshold saved")
+
+
+@receiver(signals.post_delete, sender=SensorThreshold)
+def SensorThresholdPostDelete(sender, **kwargs):
+    print "pd"
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        print "send"
+        SensorThresholdChanged.send(sender=_cur_inst, sensor_threshold=_cur_inst, cause="SensorThreshold deleted")

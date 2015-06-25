@@ -34,7 +34,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_object">
-    <li ng-attr-class="list-group-item {{list_group_class}}">
+    <li ng-attr-class="list-group-item {{list_group_class}}" style="cursor: pointer" ng-click="show_details = !show_details">
 
         <span ng-if="kpi_obj.host_name">
             Host: {{kpi_obj.host_name.split(".")[0]}},
@@ -64,13 +64,21 @@
                 <table class="table table-condensed table-hover table-striped" ng-if="pie_data_list">
                     <tbody>
                         <tr ng-repeat="state in pie_data_list">
-                            <td> {{ state.state }}</td>
-                            <td class="text-right"> {{ state.value }}</td>
+                            <td>{{ state.state }}</td>
+                            <td class="text-right">{{ state.value }}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
+        <div ng-if="show_details">
+            <table class="table table-condensed table-striped">
+                <tr ng-repeat="prop in ['result', 'host_name', 'device_category', 'check_command', 'check_command_description', 'config', 'config_description', 'monitoring_category',  'rrd_id', 'rrd_name', 'rrd_value', ]" ng-if="kpi_obj[prop]">
+                    <td>{{prop}}</td>
+                    <td>{{kpi_obj[prop]}}</td>
+                </tr>
+            </table>
+        </div>
     </li>
 </script>

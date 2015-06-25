@@ -1882,22 +1882,24 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ><legend>Base data</legend><div id="div_id_wmi_username"
  class="form-group 
  "
- ><label for="id_wmi_username" class="control-label col-sm-3 requiredField">
- Username<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_username" maxlength="256" name="wmi_username" ng-model="_edit_obj.wmi_username" required="True" type="text" /> </div></div><div id="div_id_wmi_password"
+ ><label for="id_wmi_username" class="control-label col-sm-3">
+ Username
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_username" maxlength="256" name="wmi_username" ng-model="_edit_obj.wmi_username" type="text" /> </div></div><div id="div_id_wmi_password"
  class="form-group 
  "
- ><label for="id_wmi_password" class="control-label col-sm-3 requiredField">
- Password<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_password" maxlength="256" name="wmi_password" ng-model="_edit_obj.wmi_password" required="True" type="password" /> </div></div><div class="form-group"><div id="div_id_wmi_discard_disabled_interfaces"
+ ><label for="id_wmi_password" class="control-label col-sm-3">
+ Password
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_password" maxlength="256" name="wmi_password" ng-model="_edit_obj.wmi_password" type="password" /> </div></div><div class="form-group"><div id="div_id_wmi_discard_disabled_interfaces"
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_wmi_discard_disabled_interfaces" class=""><input class="checkboxinput checkbox" id="id_wmi_discard_disabled_interfaces" name="wmi_discard_disabled_interfaces" ng-model="_edit_obj.wmi_discard_disabled_interfaces" type="checkbox" />
  Ignore disabled interfaces
- </label></div></div></div></fieldset></tab></tabset><div class="form-actions"><input type="button"
+ </label></div></div></div></fieldset></tab></tabset><alert type="warning" ng-show="!_current_dev.manual_address">Please enter or select an IP address</alert><div class="form-actions"><input type="button"
  name="scan"
  value="scan"
  class="btn btn btn-sm btn-primary"
  id="button-id-scan"
- ng-click="fetch_device_network()"
+ ng-click="fetch_device_network()" ng-disabled="!_current_dev.manual_address"
  /> <input type="submit"
  name="cancel"
  value="cancel"

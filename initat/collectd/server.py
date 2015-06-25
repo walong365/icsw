@@ -22,13 +22,9 @@
 
 from lxml import etree
 import os
-import pprint
 import re
 import socket
 import time
-import psutil
-import shutil
-import subprocess
 
 from django.conf import settings
 from django.db import connection
@@ -41,20 +37,13 @@ from initat.collectd.aggregate import aggregate_process
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.collectd_struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.collectd.dbsync import SyncProcess
-from .rsync import RSyncMixin
 from initat.snmp.process import snmp_process_container
 from lxml.builder import E  # @UnresolvedImports
-from initat.tools import cluster_location
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import server_mixins
-from initat.tools import threading_tools
-from initat.tools import uuid_tools
+from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
+    server_command, server_mixins, threading_tools, uuid_tools
 import zmq
 
+from .rsync import RSyncMixin
 
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
@@ -510,8 +499,17 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                             "unknown command {}".format(com_text),
                             server_command.SRV_REPLY_STATE_ERROR
                         )
-                    zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                    zmq_sock.send_unicode(unicode(in_com))
+                    try:
+                        zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
+                        zmq_sock.send_unicode(unicode(in_com))
+                    except:
+                        self.log(
+                            "error sending to {}: {}".format(
+                                in_uuid,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
 
     def _still_active(self, msg):
         # return true if process is not shuting down

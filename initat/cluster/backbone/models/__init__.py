@@ -74,7 +74,7 @@ from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
-    bootsettings_changed, virtual_desktop_user_setting_changed
+    bootsettings_changed, virtual_desktop_user_setting_changed, SensorThresholdChanged
 from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
 import initat.cluster.backbone.models.model_history
 
@@ -141,6 +141,11 @@ def group_changed(*args, **kwargs):
 @receiver(virtual_desktop_user_setting_changed)
 def vdus_changed(*args, **kwargs):
     _insert_bg_job("reload_virtual_desktop_dispatcher", kwargs["cause"], kwargs["vdus"])
+
+
+@receiver(SensorThresholdChanged)
+def sensor_threshold_changed(*args, **kwargs):
+    _insert_bg_job("sync_sensor_threshold", kwargs["cause"], kwargs["sensor_threshold"])
 
 
 @receiver(bootsettings_changed)
