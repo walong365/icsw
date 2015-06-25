@@ -125,8 +125,7 @@ class WmiLogFileWorker(_WmiWorkerBase):
                     else:
                         logfiles.append(entry['LogfileName'])
 
-                # TODO:
-                logfiles = ["Application"]
+                # logfiles = ["Application"]
                 self.log("Detected {} wmi logfiles for {}".format(len(logfiles), self.target_device))
 
                 self.db.wmi_logfile.update_one(
@@ -321,12 +320,18 @@ class WmiLogEntryWorker(_WmiWorkerBase):
 
                 self.from_record_number = maximal_record_number
 
+                worker.log("New maximal record number: {} (maximal to reach: {}) for {}".format(maximal_record_number,
+                                                                                                self.to_record_number,
+                                                                                                worker))
+
                 self.retrieve_ext_com = None
 
             if com_finished or is_initial:
                 # check whether to start next run
                 if self.from_record_number >= self.to_record_number:
                     do_continue = False
+                    worker.log("Reached maximal record number {} (by {}).".format(self.to_record_number,
+                                                                                  self.from_record_number))
                 else:
                     # start next run
                     cmd = WmiUtils.get_wmic_cmd(

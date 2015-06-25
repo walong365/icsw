@@ -66,9 +66,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
         # self._mongodb_database.wmi_event_log.create_index([('device_pk', 'text')])
 
     def periodic_update(self):
-        self._schedule_wmi_updates()
-        # ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
-        # print 'ipmi devs', device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)
+        self._schedule_wmi_jobs()
+        self._schedule_ipmi_jobs()
 
     def job_control(self):
         # called periodically
@@ -118,7 +117,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
             self.run_queue.remove(chosen_one)
         return chosen_one
 
-    def _schedule_wmi_updates(self):
+    def _schedule_wmi_jobs(self):
+        return
         self.log("scheduling new wmi jobs")
         wmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.wmi.name)
         wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
@@ -143,43 +143,58 @@ class EventLogPollerProcess(threading_tools.process_obj):
                               self._mongodb_database.wmi_logfile.find()}
         logfiles_list_deprecation = django.utils.timezone.now() - datetime.timedelta(seconds=60 * 60 * 12)
 
-        for wmi_dev in wmi_devices:
-            try:
-                ip = self._get_ip_to_host(wmi_dev)
-            except RuntimeError as e:
-                self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+        for wmi_dev, ip in self._get_ip_to_multiple_hosts(wmi_devices).iteritems():
+            if wmi_dev.pk not in logfiles_by_device or \
+                    logfiles_by_device[wmi_dev.pk]['date'] < logfiles_list_deprecation:
+                # need to find the logfiles first
+                self.log("updating wmi logfiles of {} using {}".format(wmi_dev, ip))
+                try:
+                    job = WmiLogFileWorker(log=self.log, db=self._mongodb_database, target_device=wmi_dev,
+                                           target_ip=ip)
+                except RuntimeError as e:
+                    self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.run_queue.append(job)
+
             else:
-                if wmi_dev.pk not in logfiles_by_device or \
-                        logfiles_by_device[wmi_dev.pk]['date'] < logfiles_list_deprecation:
-                    # need to find the logfiles first
-                    self.log("updating wmi logfiles of {} using {}".format(wmi_dev, ip))
+                logfiles = logfiles_by_device[wmi_dev.pk]['logfiles']
+                self.log("updating wmi logs of {} using {} for logfiles: {}".format(wmi_dev, ip, logfiles))
+
+                for logfile_name in logfiles:
+                    last_known_record_number = last_record_numbers_lut.get((wmi_dev.pk, logfile_name))
                     try:
-                        job = WmiLogFileWorker(log=self.log, db=self._mongodb_database, target_device=wmi_dev,
-                                               target_ip=ip)
+                        job = WmiLogEntryWorker(log=self.log,
+                                                db=self._mongodb_database,
+                                                logfile_name=logfile_name,
+                                                target_device=wmi_dev,
+                                                target_ip=ip,
+                                                last_known_record_number=last_known_record_number)
                     except RuntimeError as e:
                         self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         self.run_queue.append(job)
 
-                else:
-                    logfiles = logfiles_by_device[wmi_dev.pk]['logfiles']
-                    self.log("updating wmi logs of {} using {} for logfiles: {}".format(wmi_dev, ip, logfiles))
-
-                    for logfile_name in logfiles:
-                        last_known_record_number = last_record_numbers_lut.get((wmi_dev.pk, logfile_name))
-                        try:
-                            job = WmiLogEntryWorker(log=self.log,
-                                                    db=self._mongodb_database,
-                                                    logfile_name=logfile_name,
-                                                    target_device=wmi_dev,
-                                                    target_ip=ip,
-                                                    last_known_record_number=last_known_record_number)
-                        except RuntimeError as e:
-                            self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
-                        else:
-                            self.run_queue.append(job)
-
         self.log("finished scheduling new wmi jobs")
+
+    def _schedule_ipmi_jobs(self):
+        self.log("scheduling new ipmi jobs")
+        ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
+        ipmi_devices = device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)
+        print 'ipmi devs', ipmi_devices
+
+        for ipmi_dev, ip in self._get_ip_to_multiple_hosts(ipmi_devices).iteritems():
+            pass
+        self.log("finished scheduling new ipmi jobs")
+
+    def _get_ip_to_multiple_hosts(self, host_list):
+        ret = {}
+        for dev in host_list:
+            try:
+                ret[dev] = self._get_ip_to_host(dev)
+            except RuntimeError as e:
+                self.log("Failed to get ip to host {}: {}".format(dev, e))
+                self.log(traceback.format_exc())
+        return ret
 
     def _get_ip_to_host(self, to_dev):
         from_server_check = config_tools.server_check(device=srv_type_routing().local_device, config=None,
@@ -203,3 +218,4 @@ class EventLogPollerProcess(threading_tools.process_obj):
     @memoize_with_expiry(10)
     def _get_router_obj(self):
         return config_tools.router_object(self.log)
+
