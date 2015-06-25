@@ -268,6 +268,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMix
             ("info", entry.get("info", "")),
             # only set name for pdes (the attribute names is used differently for other sources)
             ("name", entry.get("name", "") if mvs.se_type == "pde" else ""),
+            ("rra_idx", int(entry.get("rra_idx", "0")) if mvs.se_type == "pde" else 0),
             ("full_key", "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")),
         ]
         _changed = False

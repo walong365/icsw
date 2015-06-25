@@ -1275,11 +1275,16 @@ class RRDGraph(object):
                                     except:
                                         value = None
                                     else:
-                                        value = None if value == 0.0 else value
+                                        pass   # value = None if value == 0.0 else value
                                     _s_key, _v_key = (_xml.get("mvs_key"), _xml.get("mvv_key"))
                                     if value is not None:
                                         _key = (_unique_id, (_s_key, _v_key))
                                         val_dict.setdefault(_key, {})[_xml.get("cf")] = (value, _xml)
+                                # list of empty (all none or 0.0 values) keys
+                                _zero_keys = [key for key, value in val_dict.iteritems() if all([_v[0] in [0.0, None] for _k, _v in value.iteritems()])]
+                                if _zero_keys and self.para_dict["hide_empty"]:
+                                    # remove all-zero structs
+                                    val_dict = {key: value for key, value in val_dict.iteritems() if key not in _zero_keys}
                                 for key, value in val_dict.iteritems():
                                     _graph_target.feed_draw_result(key, value)
                                 # check if the graphs shall always include y=0

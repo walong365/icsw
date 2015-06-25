@@ -127,6 +127,8 @@ class MVValueEntry(models.Model):
     # the full key is mv_struct_entry.key + "." + mv_value.key
     # may be empty in case of mve entries (full key is stored in mv_struct_entry)
     key = models.CharField(max_length=128, default="")
+    # rra_index, index in RRA-file (zero in most cases)
+    rra_idx = models.IntegerField(default=0)
     # full key for this value, stored for faster reference
     full_key = models.CharField(max_length=128, default="")
     # name, required to look up the correct row in the RRD in case of perfdata
@@ -141,7 +143,7 @@ class MVValueEntry(models.Model):
     def __unicode__(self):
         return u"MVValueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
             self.key or "NONE",
-            ", name={}".format(self.name) if self.name else "",
+            ", name={}@{:d}".format(self.name, self.rra_idx) if self.name else "",
             self.info,
             self.unit,
             self.base,

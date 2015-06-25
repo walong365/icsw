@@ -29,7 +29,7 @@ import time
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, snmp_scheme
+from initat.cluster.backbone.models import device, snmp_scheme, SensorThreshold
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.collectd.background import snmp_job, bg_job, ipmi_builder
 from initat.collectd.resize import resize_process
@@ -87,6 +87,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         snmp_job.setup(self)
         self.register_timer(self._check_database, 300, instant=True)
         self.register_timer(self._check_background, 2, instant=True)
+        self.register_timer(self._check_thresholds, 300, instant=True)
         self.__cached_stats, self.__cached_time = (None, time.time())
         self.register_timer(self._check_cached_stats, 30, first_timeout=5)
         self.log("starting processes")
@@ -493,6 +494,8 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     self.log("got command {} from {}".format(com_text, in_uuid))
                     if com_text in ["host_list", "key_list"]:
                         self._handle_hk_command(in_com, com_text)
+                    elif com_text in ["sync_sensor_threshold"]:
+                        self._sync_sensor_threshold(in_com)
                     else:
                         self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
                         in_com.set_result(
@@ -693,6 +696,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     # writing to disk not allowed
                     raise StopIteration
                 values = _host_info.get_values(_xml, simple)
+                # print "+", values
                 r_data = ("mvector", _host_info, recv_time, values)
                 yield r_data
 
@@ -715,6 +719,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     for pd_vec in mach_values:
                         if pd_vec[2] is not None:
                             self.send_to_process("dbsync", "perfdata", etree.tostring(pd_vec[2]))
+                        # print "*", pd_vec
                         yield ("pdata", pd_vec)
         raise StopIteration
 
@@ -1042,3 +1047,13 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 result.append(self.__hosts[cur_uuid].get_key_list(key_filter))
             in_com["result"] = result
         in_com.set_result("got command {}".format(com_text))
+
+    def _sync_sensor_threshold(self, in_com):
+        in_com.send_result("ok synced thresholds")
+        self._check_thresholds()
+
+    def _check_thresholds(self):
+        self.log("checking thresholds")
+        for _th in SensorThreshold.objects.all():
+            print _th.mv_value_entry.full_key, _th.mv_value_entry.name
+
