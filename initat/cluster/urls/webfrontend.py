@@ -172,7 +172,6 @@ monitoring_patterns = patterns(
         name="get_hist_device_line_graph_data"),
     url("^svg_to_png$", monitoring_views.svg_to_png.as_view(), name="svg_to_png"),
     url("^fetch_png/(?P<cache_key>\S+)$", monitoring_views.fetch_png_from_cache.as_view(), name="fetch_png_from_cache"),
-
 )
 
 user_patterns = patterns(
@@ -229,7 +228,8 @@ rrd_patterns = patterns(
 
 discovery_patterns = patterns(
     "initat.cluster.frontend",
-    url(r"^overview$", discovery_views.discovery_overview.as_view(), name="overview"),
+    url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
+    url(r"^EventLog$", discovery_views.EventLog.as_view(), name="EventLog"),
 )
 
 rpl = []

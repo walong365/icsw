@@ -19,17 +19,19 @@
 #
 # -*- coding: utf-8 -*-
 #
-import json
-import itertools
-
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework.response import Response
 from initat.cluster.backbone.render import render_me
 
 
-class discovery_overview(View):
+class DiscoveryOverview(View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return render_me(request, "discovery_overview.html")()
+
+
+class EventLog(View):
+    @method_decorator(login_required)
+    def get(self, request, *args, **kwargs):
+        return render_me(request, "event_log.html")()

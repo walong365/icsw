@@ -103,6 +103,7 @@ ics_app = angular.module(
         "icsw.rms",
         "icsw.history",
         "icsw.discovery",
+        "icsw.discovery.event_log",
         {% for app in ADDITIONAL_ANGULAR_APPS %}
         "{{ app }}",
         {% endfor %}
@@ -157,7 +158,8 @@ ics_app = angular.module(
     "DEVICE_SHOW_CONFIGS": "{% url 'device:show_configs' %}"
     "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
     "DEVICE_VARIABLES": "{% url 'device:variables' %}"
-    "DISCOVERY_OVERVIEW": "{% url 'discovery:overview' %}"
+    "DISCOVERY_OVERVIEW": "{% url 'discovery:Overview' %}"
+    "DISCOVERY_EVENT_LOG": "{% url 'discovery:EventLog' %}"
     "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
     "ICSW_LIC_GET_ALL_LICENSES": "{% url 'icsw_lic:get_all_licenses' %}"
     "ICSW_LIC_GET_LICENSE_PACKAGES": "{% url 'icsw_lic:get_license_packages' %}"
