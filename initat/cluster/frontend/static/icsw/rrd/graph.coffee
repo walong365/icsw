@@ -791,6 +791,8 @@ angular.module(
                 "upper_value": _mv + _mv / 10
                 "lower_mail": true
                 "upper_mail": true
+                "lower_enabled": true
+                "upper_enabled": true
                 "notify_users": []
                 "lower_sensor_action": undefined,
                 "upper_sensor_action": undefined,

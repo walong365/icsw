@@ -211,6 +211,8 @@ class SensorThreshold(models.Model):
     upper_sensor_action = models.ForeignKey("SensorAction", related_name="upper_sensor_action", null=True, blank=True)
     lower_mail = models.BooleanField(default=False)
     upper_mail = models.BooleanField(default=False)
+    lower_enabled = models.BooleanField(default=True)
+    upper_enabled = models.BooleanField(default=True)
     # which users to notify
     notify_users = models.ManyToManyField("user")
     # device selection
@@ -218,12 +220,14 @@ class SensorThreshold(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "SensorThreshold '{}' [{}@{:.4f}, {}@{:.4f}] for {}".format(
+        return "SensorThreshold '{}' [{}@{:.4f}({}), {}@{:.4f}({})] for {}".format(
             self.name,
             unicode(self.lower_sensor_action),
             self.lower_value,
+            "enabled" if self.lower_enabled else "disabled",
             unicode(self.upper_sensor_action),
             self.upper_value,
+            "enabled" if self.upper_enabled else "disabled",
             unicode(self.mv_value_entry),
         )
 
@@ -267,7 +271,6 @@ def SensorThresholdPostSave(sender, **kwargs):
 
 @receiver(signals.post_delete, sender=SensorThreshold)
 def SensorThresholdPostDelete(sender, **kwargs):
-    print "pd"
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         SensorThresholdChanged.send(sender=_cur_inst, sensor_threshold=_cur_inst, cause="SensorThreshold deleted")

@@ -361,14 +361,18 @@
             </div>
             <div class="form-group">
                 <label class="col-md-3 control-label">Send Mail:</label>
-                <div class="col-md-9 controls">
+                <div class="col-md-3 controls">
                     <input type="button" class="btn btn-xs form-control" ng-class="threshold.upper_mail && 'btn-success' || 'btn-default'" ng-value="threshold.upper_mail && 'yes' || 'no'" ng-click="threshold.upper_mail = ! threshold.upper_mail" />
+                </div>
+                <label class="col-md-3 control-label">Enabled:</label>
+                <div class="col-md-3 controls">
+                    <input type="button" class="btn btn-xs form-control" ng-class="threshold.lower_enabled && 'btn-success' || 'btn-default'" ng-value="threshold.lower_enabled && 'yes' || 'no'" ng-click="threshold.upper_enabled = ! threshold.upper_enabled" />
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-md-3 control-label">Value:</label>
                 <div class="col-md-9 controls">
-                    <input class="form-control" type="number" step="0.1" ng-model="threshold.upper_value" ng-change="check_upper_lower()"/>
+                    <input class="form-control" type="number" step="0.1" ng-model="threshold.upper_value" ng-change="check_upper_upper()"/>
                 </div>
             </div>
         <fieldset>
@@ -396,8 +400,12 @@
             </div>
             <div class="form-group">
                 <label class="col-md-3 control-label">Send Mail:</label>
-                <div class="col-md-9 controls">
+                <div class="col-md-3 controls">
                     <input type="button" class="btn btn-xs form-control" ng-class="threshold.lower_mail && 'btn-success' || 'btn-default'" ng-value="threshold.lower_mail && 'yes' || 'no'" ng-click="threshold.lower_mail = ! threshold.lower_mail" />
+                </div>
+                <label class="col-md-3 control-label">Enabled:</label>
+                <div class="col-md-3 controls">
+                    <input type="button" class="btn btn-xs form-control" ng-class="threshold.lower_enabled && 'btn-success' || 'btn-default'" ng-value="threshold.lower_enabled && 'yes' || 'no'" ng-click="threshold.lower_enabled = ! threshold.lower_enabled" />
                 </div>
             </div>
             <div class="form-group">

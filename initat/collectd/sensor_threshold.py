@@ -165,26 +165,30 @@ class Threshold(object):
         _action = getattr(self.th, "{}_sensor_action".format(what))
         _mail = getattr(self.th, "{}_mail".format(what))
         _value = getattr(self.th, "{}_value".format(what))
+        _enabled = getattr(self.th, "{}_enabled".format(what))
         self.log(
-            "trigger {}: action is {}, send_mail is {}".format(
+            "trigger {}: action is {}, send_mail is {}, enabled: {}".format(
                 what,
                 unicode(_action) if _action else "none",
                 _mail,
+                str(_enabled),
             )
         )
         # create actionentry
-        if _action is not None:
+        if _action is not None and _enabled:
             self.log("create SensorThresholdAction entry")
-            SensorThresholdAction.objects.create(
+            new_sta = SensorThresholdAction(
                 sensor_threshold=self.th,
                 sensor_action=_action,
                 action_type=what,
                 mail=_mail,
                 value=_value,
-                notify_users=[_user for _user in _th.notify_users],
                 device_selection=self.th.device_selection,
             )
-        if _mail:
+            new_sta.save()
+            for _user in self.th.notify_users.all():
+                new_sta.notify_users.add(_user)
+        if _mail and _enabled:
             _cluster_id = clusterid.get_cluster_id() or "N/A"
             _from = "{}@{}".format(
                 global_config["FROM_NAME"],

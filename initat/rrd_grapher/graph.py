@@ -24,7 +24,6 @@ import os
 import re
 import rrdtool  # @UnresolvedImport
 import select
-import pprint
 import json
 import socket
 import stat
@@ -39,7 +38,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVValueEntry, SensorThreshold
+    MVValueEntry
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from lxml.builder import E  # @UnresolvedImport
 import dateutil.parser
@@ -199,7 +198,7 @@ class GraphVar(object):
         self.mvs_entry = mvs_entry
         self.mvv_entry = mvv_entry
         if self.mvv_entry and self.mvv_entry.pk:
-            self.thresholds = list(self.mvv_entry.sensorthreshold_set.all())
+            self.thresholds = list(self.mvv_entry.sensorthreshold_set.all().prefetch_related("sensorthresholdaction_set"))
         else:
             self.thresholds = []
         # graph key (load.1)
@@ -512,6 +511,8 @@ class GraphVar(object):
                         ),
                     ]
                 )
+                for _sta in _th.sensorthresholdaction_set.all():
+                    print "*", _sta
         return c_lines
 
     def get_legend_list(self):
