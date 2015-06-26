@@ -27,6 +27,7 @@ import pymongo
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.routing import srv_type_routing
+from initat.discovery_server.event_log.ipmi_event_log_scanner import IpmiLogJob
 from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
 
@@ -71,11 +72,11 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
     def job_control(self):
         # called periodically
-        self.log("Calling job_control")
+        self.log("Calling job_control on jobs: {}".format(self.jobs_running))
         for job in self.jobs_running[:]:
             do_continue = False
             try:
-                self.log("periodic_check on {}".format(job))
+                # self.log("periodic_check on {}".format(job))
                 do_continue = job.periodic_check()
             except Exception as e:
                 self.log("Error for checking job {}: {}".format(job, e))
@@ -101,7 +102,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
     def _select_next_job(self):
         chosen_one = None
-        for job in self.run_queue:  # prefer first
+        for job in self.run_queue:  # prefer first (fifo)
             # not too many per device
             not_too_many_jobs_on_same_machine =\
                 sum(1 for _j in self.jobs_running if job.target_device == _j.target_device) < 2
@@ -132,7 +133,6 @@ class EventLogPollerProcess(threading_tools.process_obj):
                 'latest_record_number': {'$max': '$maximal_record_number'},
             }
         }])
-        from pprint import pprint ; pprint(list(_last_entries_qs))
         last_record_numbers_lut = {  # mapping { (device_pk, logfile_name) : latest_record_number }
             (entry['_id']['device_pk'], entry['_id']['logfile_name']): entry['latest_record_number']
             for entry in _last_entries_qs
@@ -181,12 +181,24 @@ class EventLogPollerProcess(threading_tools.process_obj):
         ipmi_devices = device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)
         print 'ipmi devs', ipmi_devices
 
+        _last_entries_qs = self._mongodb_database.ipmi_event_log.aggregate([{
+            '$group': {
+                '_id': '$device_pk',
+                'latest_record_id': {'$max': '$record_id'},
+            }
+        }])
+        last_record_ids_lut = {  # mapping { device_pk : latest_record_id }
+            entry['_id']: entry['latest_record_id'] for entry in _last_entries_qs
+        }
+
         for ipmi_dev, ip in self._get_ip_to_multiple_hosts(ipmi_devices).iteritems():
             try:
+                print 'ipmi de', ipmi_dev, ipmi_dev.pk, last_record_ids_lut.get(ipmi_dev.pk)
                 job = IpmiLogJob(log=self.log,
                                  db=self._mongodb_database,
                                  target_device=ipmi_dev,
-                                 target_ip=ip)
+                                 target_ip=ip,
+                                 last_known_record_id=last_record_ids_lut.get(ipmi_dev.pk))
 
             except RuntimeError as e:
                 self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
@@ -227,17 +239,3 @@ class EventLogPollerProcess(threading_tools.process_obj):
     @memoize_with_expiry(10)
     def _get_router_obj(self):
         return config_tools.router_object(self.log)
-
-
-class EventLogPollerJobBase(object):
-    def __init__(self, log, db, target_device, target_ip):
-        self.log = log
-        self.db = db
-        self.target_device = target_device
-        self.target_ip = target_ip
-
-    def start(self):
-        pass
-
-    def periodic_check(self):
-        raise NotImplementedError

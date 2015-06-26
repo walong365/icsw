@@ -23,7 +23,7 @@ from initat.cluster.backbone.models import device_variable
 from initat.discovery_server.discovery_struct import ExtCom
 from initat.discovery_server.wmi_struct import WmiUtils
 
-from .event_log_poller import EventLogPollerJobBase
+from .event_log_scanner_base import EventLogPollerJobBase
 
 
 __all__ = [
@@ -44,7 +44,7 @@ class _WmiJobBase(EventLogPollerJobBase):
                                                                           var_name=self.WMI_USERNAME_VARIABLE_NAME)
         if not self.username:
             raise RuntimeError(
-                "For WMI event log scanning, the device {} must have a device variable " +
+                "For WMI event log scanning, the device {} must have a device variable "
                 "called \"{}\" which contains the user name for WMI on this device".format(
                     self.target_device, self.WMI_USERNAME_VARIABLE_NAME
                 )
@@ -53,7 +53,7 @@ class _WmiJobBase(EventLogPollerJobBase):
                                                                           var_name=self.WMI_PASSWORD_VARIABLE_NAME)
         if not self.password:
             raise RuntimeError(
-                "For WMI event log scanning, the device {} must have a device variable " +
+                "For WMI event log scanning, the device {} must have a device variable "
                 "called \"{}\" which contains the user name for WMI on this device".format(
                     self.target_device, self.WMI_PASSWORD_VARIABLE_NAME
                 )
@@ -61,15 +61,10 @@ class _WmiJobBase(EventLogPollerJobBase):
         self.ext_com = None  # always contains currently running command of phase in case it is shared
 
     def _handle_stderr(self, stderr_out, context):
-        self.log("wmic command yielded errors in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
+        self.log("wmic command yielded error output in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
         for line in stderr_out.split("\n"):
             self.log(line, logging_tools.LOG_LEVEL_ERROR)
         self.log("end of errors", logging_tools.LOG_LEVEL_ERROR)
-
-    def __eq__(self, other):
-        if not isinstance(other, _WmiJobBase):
-            return False
-        return self.target_device == other.target_device and self.target_ip == other.target_ip
 
 
 class WmiLogFileJob(_WmiJobBase):
@@ -95,7 +90,8 @@ class WmiLogFileJob(_WmiJobBase):
 
         print 'doing log file scanning'
 
-        self.logfile_com = ExtCom(self.log, cmd, shell=False)  # shell=False since args must not be parsed again
+        self.logfile_com = ExtCom(self.log, cmd, debug=True,
+                                  shell=False)  # shell=False since args must not be parsed again
         self.logfile_com.run()
 
     def periodic_check(self):
@@ -200,10 +196,10 @@ class WmiLogEntryJob(_WmiJobBase):
                                  shell=False)  # shell=False since args must not be parsed again
             job.ext_com.run()
 
-            job.current_phase = WmiLogEntryJob.FindOutMaximumPhase()
+            job.current_phase = WmiLogEntryJob.FindMaximumPhase()
             return True
 
-    class FindOutMaximumPhase(object):
+    class FindMaximumPhase(object):
         def __call__(self, job):
             do_continue = True
             if job.ext_com.finished() is not None:
@@ -211,7 +207,7 @@ class WmiLogEntryJob(_WmiJobBase):
 
                 # here, we expect the exit code to be set to error for large outputs, so we don't check it
                 if stderr_out:
-                    job._handle_stderr(stderr_out, "FindOutMaximum")
+                    job._handle_stderr(stderr_out, "FindMaximum")
 
                 print 'stdout len', len(stdout_out)
                 print ' stderr'
