@@ -33,7 +33,6 @@ __all__ = [
 
 
 class _WmiJobBase(EventLogPollerJobBase):
-class _WmiJobBase(EventLogPollerJobBase):
 
     WMI_USERNAME_VARIABLE_NAME = "WMI_USERNAME"
     WMI_PASSWORD_VARIABLE_NAME = "WMI_PASSWORD"
@@ -232,7 +231,7 @@ class WmiLogEntryJob(_WmiJobBase):
 
                     # the last entry might be invalid since error messages are written to stdout as well
                     # hence 'RecordNumber' may not be present in all entries
-                    maximal_record_number = max(entry.get('RecordNumber', -1) for entry in parsed)
+                    maximal_record_number = max(int(entry.get('RecordNumber', -1)) for entry in parsed)
                     print 'max', maximal_record_number
 
                     # usually, you get after less then 100k
