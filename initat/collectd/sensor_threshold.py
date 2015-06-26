@@ -21,7 +21,7 @@
 """ collectd, threshold checker """
 
 from initat.tools import logging_tools
-from initat.cluster.backbone.models import device, snmp_scheme, SensorThreshold
+from initat.cluster.backbone.models import device, snmp_scheme, SensorThreshold, SensorThresholdAction
 from .config import global_config
 from initat.icsw.service import clusterid
 import time
@@ -164,6 +164,7 @@ class Threshold(object):
         setattr(self, "{}_triggered".format(what), True)
         _action = getattr(self.th, "{}_sensor_action".format(what))
         _mail = getattr(self.th, "{}_mail".format(what))
+        _value = getattr(self.th, "{}_value".format(what))
         self.log(
             "trigger {}: action is {}, send_mail is {}".format(
                 what,
@@ -171,6 +172,18 @@ class Threshold(object):
                 _mail,
             )
         )
+        # create actionentry
+        if _action is not None:
+            self.log("create SensorThresholdAction entry")
+            SensorThresholdAction.objects.create(
+                sensor_threshold=self.th,
+                sensor_action=_action,
+                action_type=what,
+                mail=_mail,
+                value=_value,
+                notify_users=[_user for _user in _th.notify_users],
+                device_selection=self.th.device_selection,
+            )
         if _mail:
             _cluster_id = clusterid.get_cluster_id() or "N/A"
             _from = "{}@{}".format(

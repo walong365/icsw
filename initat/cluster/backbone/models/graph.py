@@ -241,6 +241,7 @@ class SensorThresholdAction(models.Model):
     )
     # copy of current values
     # upper or lower
+    mail = models.BooleanField(default=False)
     value = models.FloatField(default=0.0)
     notify_users = models.ManyToManyField("user")
     device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)

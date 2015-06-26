@@ -785,7 +785,7 @@ angular.module(
         sub_scope.create_new_threshold = (sensor) ->
             _mv = sensor.mean_value
             threshold = {
-                "name": "New Threshold"
+                "name": "Threshold for #{sensor.mv_key}"
                 "limit_class": "u"
                 "lower_value": _mv - _mv / 10
                 "upper_value": _mv + _mv / 10
