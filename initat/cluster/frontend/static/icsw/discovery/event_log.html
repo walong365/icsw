@@ -3,4 +3,11 @@
     <h2>
         Event Log
     </h2>
+    <tabset>
+        <tab ng-repeat="device_pk in device_pks" heading="{{devices_rest[device_pk].full_name}}">
+            <alert type="danger">
+                <strong>TODO</strong>: Query data from mongo via custom django view
+            </alert>
+        </tab>
+    </tabset>
 </script>

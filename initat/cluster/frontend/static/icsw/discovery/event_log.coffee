@@ -21,14 +21,55 @@ angular.module(
     "icsw.discovery.event_log",
     [
     ]
-).directive("icswDiscoveryEventLog", ['msgbus', (msgbus) ->
-    return  {
-        restrict: 'EA'
-        templateUrl: 'icsw.discovery.event_log'
-        link: (scope, el, attrs) ->
+).directive("icswDiscoveryEventLog",
+    ['msgbus', 'icswDiscoveryEventLogDataService', 'Restangular', 'ICSW_URLS',
+     (msgbus, icswDiscoveryEventLogDataService, Restangular, ICSW_URLS) ->
+        return  {
+            restrict: 'EA'
+            templateUrl: 'icsw.discovery.event_log'
+            link: (scope, el, attrs) ->
+                scope.data = icswDiscoveryEventLogDataService
+                scope.devices_rest = {}
+                scope.new_devsel = (sel) ->
+                    scope.device_pks = sel
+
+                    for device_pk in scope.device_pks
+                        do (device_pk) ->
+                            Restangular.one(ICSW_URLS.REST_DEVICE_LIST.slice(1)).get({'idx': device_pk}).then((new_data)->
+                                scope.devices_rest[device_pk] = new_data[0]
+                            )
+        }
+]).service("icswDiscoveryEventLogDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
+    rest_map = {
     }
+    data = {
+        reload_observable: 0
+    }
+
+    # TODO: create general service with this pattern
+
+    promises = []
+    for name, url of rest_map
+        data[name] = []
+
+        defer = $q.defer()
+        promises.push defer.promise
+        do (name, defer) ->
+            Restangular.all(url).getList().then((new_data) ->
+                defer.resolve([name, new_data])
+            )
+
+    $q.all(promises).then((all_new_data) ->
+        for entry in all_new_data
+            [name, new_data] = entry
+            data[name] = new_data
+
+        data.reload_observable += 1
+    )
+
+    return data
 ])
-    
+
 ###
 .directive("icswDiscoveryOverview", ['icswDiscoveryDataService', 'icswDiscoveryDialogService', 'msgbus', (icswDiscoveryDataService, icswDiscoveryDialogService, msgbus) ->
     return  {
