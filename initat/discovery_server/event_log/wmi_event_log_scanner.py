@@ -23,23 +23,23 @@ from initat.cluster.backbone.models import device_variable
 from initat.discovery_server.discovery_struct import ExtCom
 from initat.discovery_server.wmi_struct import WmiUtils
 
+from .event_log_poller import EventLogPollerJobBase
+
 
 __all__ = [
     'get_wmic_cmd',
-    'WmiLogEntryWorker',
+    'WmiLogEntryJob',
 ]
 
 
-class _WmiWorkerBase(object):
+class _WmiJobBase(EventLogPollerJobBase):
+class _WmiJobBase(EventLogPollerJobBase):
 
     WMI_USERNAME_VARIABLE_NAME = "WMI_USERNAME"
     WMI_PASSWORD_VARIABLE_NAME = "WMI_PASSWORD"
 
     def __init__(self, log, db, target_device, target_ip):
-        self.log = log
-        self.db = db
-        self.target_device = target_device
-        self.target_ip = target_ip
+        super(_WmiJobBase, self).__init__(log, db, target_device, target_ip)
 
         self.username = device_variable.objects.get_device_variable_value(device=self.target_device,
                                                                           var_name=self.WMI_USERNAME_VARIABLE_NAME)
@@ -59,12 +59,7 @@ class _WmiWorkerBase(object):
                     self.target_device, self.WMI_PASSWORD_VARIABLE_NAME
                 )
             )
-
         self.ext_com = None  # always contains currently running command of phase in case it is shared
-
-    def start(self):
-        # we start on first periodic_check
-        pass
 
     def _handle_stderr(self, stderr_out, context):
         self.log("wmic command yielded errors in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)
@@ -73,19 +68,20 @@ class _WmiWorkerBase(object):
         self.log("end of errors", logging_tools.LOG_LEVEL_ERROR)
 
     def __eq__(self, other):
-        if not isinstance(other, _WmiWorkerBase):
+        if not isinstance(other, _WmiJobBase):
             return False
         return self.target_device == other.target_device and self.target_ip == other.target_ip
 
 
-class WmiLogFileWorker(_WmiWorkerBase):
+class WmiLogFileJob(_WmiJobBase):
+    """Job to retrieve list of log files from wmi server"""
 
     def __init__(self, *args, **kwargs):
-        super(WmiLogFileWorker, self).__init__(*args, **kwargs)
+        super(WmiLogFileJob, self).__init__(*args, **kwargs)
         self.logfile_com = None
 
     def __unicode__(self):
-        return u"WmiLogFileWorker(dev={}, ip={})".format(self.target_device, self.target_ip)
+        return u"WmiLogFileJob(dev={}, ip={})".format(self.target_device, self.target_ip)
 
     __repr__ = __unicode__
 
@@ -148,32 +144,33 @@ class WmiLogFileWorker(_WmiWorkerBase):
         return do_continue
 
     def __eq__(self, other):
-        return isinstance(other, WmiLogFileWorker) and super(WmiLogFileWorker, self).__eq__(other)
+        return isinstance(other, WmiLogFileJob) and super(WmiLogFileJob, self).__eq__(other)
 
 
-class WmiLogEntryWorker(_WmiWorkerBase):
+class WmiLogEntryJob(_WmiJobBase):
+    """Job to retrieve entries from a single log file from a wmi server"""
     def __init__(self, log, db, target_device, target_ip, logfile_name, last_known_record_number=None):
-        super(WmiLogEntryWorker, self).__init__(log, db, target_device, target_ip)
+        super(WmiLogEntryJob, self).__init__(log, db, target_device, target_ip)
 
         self.logfile_name = logfile_name
         self.last_known_record_number = last_known_record_number
         self.current_retrieve_lower_number = None
 
         # this class instance manages the currently active phase
-        self.current_phase = WmiLogEntryWorker.InitialPhase()
+        self.current_phase = WmiLogEntryJob.InitialPhase()
 
     def __unicode__(self):
-        return u"WmiLogEntryWorker(dev={}, ip={}, logfile={})".format(self.target_device,
-                                                                      self.target_ip,
-                                                                      self.logfile_name)
+        return u"WmiLogEntryJob(dev={}, ip={}, logfile={})".format(self.target_device,
+                                                                   self.target_ip,
+                                                                   self.logfile_name)
 
     __repr__ = __unicode__
 
     def __eq__(self, other):
-        if not isinstance(other, WmiLogEntryWorker):
+        if not isinstance(other, WmiLogEntryJob):
             return False
 
-        return self.logfile_name == other.logfile_name and super(WmiLogEntryWorker, self).__eq__(other)
+        return self.logfile_name == other.logfile_name and super(WmiLogEntryJob, self).__eq__(other)
 
     def periodic_check(self):
         do_continue = self.current_phase(self)
@@ -183,39 +180,39 @@ class WmiLogEntryWorker(_WmiWorkerBase):
         return do_continue
 
     class InitialPhase(object):
-        def __call__(self, worker):
-            where_clause = "WHERE Logfile = '{}'".format(worker.logfile_name)
-            if worker.last_known_record_number is not None:
-                where_clause += "AND RecordNumber > {}".format(worker.last_known_record_number)
+        def __call__(self, job):
+            where_clause = "WHERE Logfile = '{}'".format(job.logfile_name)
+            if job.last_known_record_number is not None:
+                where_clause += "AND RecordNumber > {}".format(job.last_known_record_number)
 
             cmd = WmiUtils.get_wmic_cmd(
-                username=worker.username,
-                password=worker.password,
-                target_ip=worker.target_ip,
+                username=job.username,
+                password=job.password,
+                target_ip=job.target_ip,
                 columns=["RecordNumber"],
                 table="Win32_NTLogEvent",
                 where_clause=where_clause,
             )
-            worker.log("Querying maximal entry for {} with last known record number {}".format(
-                worker.logfile_name, worker.last_known_record_number)
+            job.log("Querying maximal entry for {} with last known record number {}".format(
+                job.logfile_name, job.last_known_record_number)
             )
 
-            worker.ext_com = ExtCom(worker.log, cmd, debug=True,
-                                    shell=False)  # shell=False since args must not be parsed again
-            worker.ext_com.run()
+            job.ext_com = ExtCom(job.log, cmd, debug=True,
+                                 shell=False)  # shell=False since args must not be parsed again
+            job.ext_com.run()
 
-            worker.current_phase = WmiLogEntryWorker.FindOutMaximumPhase()
+            job.current_phase = WmiLogEntryJob.FindOutMaximumPhase()
             return True
 
     class FindOutMaximumPhase(object):
-        def __call__(self, worker):
+        def __call__(self, job):
             do_continue = True
-            if worker.ext_com.finished() is not None:
-                stdout_out, stderr_out = worker.ext_com.communicate()
+            if job.ext_com.finished() is not None:
+                stdout_out, stderr_out = job.ext_com.communicate()
 
                 # here, we expect the exit code to be set to error for large outputs, so we don't check it
                 if stderr_out:
-                    worker._handle_stderr(stderr_out, "FindOutMaximum")
+                    job._handle_stderr(stderr_out, "FindOutMaximum")
 
                 print 'stdout len', len(stdout_out)
                 print ' stderr'
@@ -226,7 +223,7 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                 parsed = WmiUtils.parse_wmic_output(stdout_out)
                 if not parsed:
                     # we can't check error code, but we should check this
-                    worker.log("No records found for {}".format(worker))
+                    job.log("No records found for {}".format(job))
                     do_continue = False
                 else:
                     print 'len', len(parsed)
@@ -242,14 +239,14 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                     # [wmi/wmic.c:212:main()] ERROR: Retrieve result data.
                     # NTSTATUS: NT code 0x8004106c - NT code 0x8004106c
 
-                    worker.log("last record number for {} is {}, new maximal one is {}".format(
-                        worker.target_device, worker.last_known_record_number, maximal_record_number)
+                    job.log("last record number for {} is {}, new maximal one is {}".format(
+                        job.target_device, job.last_known_record_number, maximal_record_number)
                     )
 
-                    if worker.last_known_record_number is None or \
-                            maximal_record_number > worker.last_known_record_number:
-                        worker.current_phase = WmiLogEntryWorker.RetrieveEventsPhase(worker.last_known_record_number,
-                                                                                     maximal_record_number)
+                    if job.last_known_record_number is None or \
+                            maximal_record_number > job.last_known_record_number:
+                        job.current_phase = WmiLogEntryJob.RetrieveEventsPhase(job.last_known_record_number,
+                                                                               maximal_record_number)
                     else:
                         do_continue = False
 
@@ -268,7 +265,7 @@ class WmiLogEntryWorker(_WmiWorkerBase):
 
             self.retrieve_ext_com = None
 
-        def __call__(self, worker):
+        def __call__(self, job):
             do_continue = True
 
             com_finished = self.retrieve_ext_com is not None and self.retrieve_ext_com.finished() is not None
@@ -279,7 +276,7 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                 stdout_out, stderr_out = self.retrieve_ext_com.communicate()
 
                 if stderr_out:
-                    worker._handle_stderr(stderr_out, "RetrieveEvents")
+                    job._handle_stderr(stderr_out, "RetrieveEvents")
 
                 if self.retrieve_ext_com.finished() != 0:
                     raise RuntimeError("RetrieveEvents wmi command failed with code {}".format(
@@ -300,11 +297,11 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                 print 'len', len(parsed)
                 # `parsed` may be empty for RecordNumber-holes
 
-                worker.log("Found {} log entries between {} and {} for {}".format(
+                job.log("Found {} log entries between {} and {} for {}".format(
                     len(parsed),
                     self.from_record_number,
                     self.from_record_number + self.__class__.PAGINATION_LIMIT,
-                    worker,
+                    job,
                 ))
 
                 maximal_record_number = self.from_record_number + self.__class__.PAGINATION_LIMIT
@@ -312,48 +309,52 @@ class WmiLogEntryWorker(_WmiWorkerBase):
                 db_entry = {
                     'date': django.utils.timezone.now(),
                     'maximal_record_number': maximal_record_number,  # this entry may not actually be present
-                    'logfile_name': worker.logfile_name,
+                    'logfile_name': job.logfile_name,
                     'entries': parsed,
-                    'device_pk': worker.target_device.pk,
+                    'device_pk': job.target_device.pk,
                 }
-                worker.db.wmi_event_log.insert(db_entry)
+                job.db.wmi_event_log.insert(db_entry)
 
                 self.from_record_number = maximal_record_number
 
-                worker.log("New maximal record number: {} (maximal to reach: {}) for {}".format(maximal_record_number,
-                                                                                                self.to_record_number,
-                                                                                                worker))
+                job.log("New maximal record number: {} (maximal to reach: {}) for {}".format(maximal_record_number,
+                                                                                             self.to_record_number,
+                                                                                             job))
 
                 self.retrieve_ext_com = None
 
             if com_finished or is_initial:
                 # check whether to start next run
+
+                job.log("cond {}".format(self.from_record_number >= self.to_record_number))
+                job.log("a {} {} b {} {}".format(self.from_record_number, type(self.from_record_number),
+                                                 self.to_record_number, type(self.to_record_number)))
                 if self.from_record_number >= self.to_record_number:
                     do_continue = False
-                    worker.log("Reached maximal record number {} (by {}).".format(self.to_record_number,
-                                                                                  self.from_record_number))
+                    job.log("Reached maximal record number {} (by {}).".format(self.to_record_number,
+                                                                               self.from_record_number))
                 else:
                     # start next run
                     cmd = WmiUtils.get_wmic_cmd(
-                        username=worker.username,
-                        password=worker.password,
-                        target_ip=worker.target_ip,
+                        username=job.username,
+                        password=job.password,
+                        target_ip=job.target_ip,
                         columns=["RecordNumber, Message"],
                         table="Win32_NTLogEvent",
                         where_clause="WHERE Logfile = '{}' AND RecordNumber > {} and RecordNumber <= {}".format(
-                            worker.logfile_name,
+                            job.logfile_name,
                             self.from_record_number,
                             self.from_record_number + self.__class__.PAGINATION_LIMIT,
                         )
                     )
-                    worker.log("querying entries from {} to {} for {}".format(
+                    job.log("querying entries from {} to {} for {}".format(
                         self.from_record_number,
                         self.from_record_number + self.__class__.PAGINATION_LIMIT,
-                        worker,
+                        job,
                     ))
                     print 'call from ', self.from_record_number
 
-                    self.retrieve_ext_com = ExtCom(worker.log, cmd, debug=True,
+                    self.retrieve_ext_com = ExtCom(job.log, cmd, debug=True,
                                                    shell=False)  # shell=False since args must not be parsed again
                     self.retrieve_ext_com.run()
 

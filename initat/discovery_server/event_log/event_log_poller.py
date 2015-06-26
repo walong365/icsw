@@ -27,7 +27,7 @@ import pymongo
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.routing import srv_type_routing
-from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryWorker, WmiLogFileWorker
+from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
 
 from initat.discovery_server.config import global_config
@@ -118,7 +118,6 @@ class EventLogPollerProcess(threading_tools.process_obj):
         return chosen_one
 
     def _schedule_wmi_jobs(self):
-        return
         self.log("scheduling new wmi jobs")
         wmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.wmi.name)
         wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
@@ -149,8 +148,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
                 # need to find the logfiles first
                 self.log("updating wmi logfiles of {} using {}".format(wmi_dev, ip))
                 try:
-                    job = WmiLogFileWorker(log=self.log, db=self._mongodb_database, target_device=wmi_dev,
-                                           target_ip=ip)
+                    job = WmiLogFileJob(log=self.log, db=self._mongodb_database, target_device=wmi_dev,
+                                        target_ip=ip)
                 except RuntimeError as e:
                     self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
                 else:
@@ -163,12 +162,12 @@ class EventLogPollerProcess(threading_tools.process_obj):
                 for logfile_name in logfiles:
                     last_known_record_number = last_record_numbers_lut.get((wmi_dev.pk, logfile_name))
                     try:
-                        job = WmiLogEntryWorker(log=self.log,
-                                                db=self._mongodb_database,
-                                                logfile_name=logfile_name,
-                                                target_device=wmi_dev,
-                                                target_ip=ip,
-                                                last_known_record_number=last_known_record_number)
+                        job = WmiLogEntryJob(log=self.log,
+                                             db=self._mongodb_database,
+                                             logfile_name=logfile_name,
+                                             target_device=wmi_dev,
+                                             target_ip=ip,
+                                             last_known_record_number=last_known_record_number)
                     except RuntimeError as e:
                         self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
                     else:
@@ -183,7 +182,17 @@ class EventLogPollerProcess(threading_tools.process_obj):
         print 'ipmi devs', ipmi_devices
 
         for ipmi_dev, ip in self._get_ip_to_multiple_hosts(ipmi_devices).iteritems():
-            pass
+            try:
+                job = IpmiLogJob(log=self.log,
+                                 db=self._mongodb_database,
+                                 target_device=ipmi_dev,
+                                 target_ip=ip)
+
+            except RuntimeError as e:
+                self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.run_queue.append(job)
+
         self.log("finished scheduling new ipmi jobs")
 
     def _get_ip_to_multiple_hosts(self, host_list):
@@ -219,3 +228,16 @@ class EventLogPollerProcess(threading_tools.process_obj):
     def _get_router_obj(self):
         return config_tools.router_object(self.log)
 
+
+class EventLogPollerJobBase(object):
+    def __init__(self, log, db, target_device, target_ip):
+        self.log = log
+        self.db = db
+        self.target_device = target_device
+        self.target_ip = target_ip
+
+    def start(self):
+        pass
+
+    def periodic_check(self):
+        raise NotImplementedError
