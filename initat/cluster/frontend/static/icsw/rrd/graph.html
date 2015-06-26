@@ -276,10 +276,10 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.threshold.overview">
     <td>
-        {{ get_limit_class() }} Threshold '{{ threshold.name }}'
-        at {{ threshold.value | number: 4 }}, hysteresis is {{ threshold.hysteresis | number: 4 }}<br>
-        action is {{ get_sensor_action_name() }}, {{ threshold.notify_users.length }} Users to notify,
-        Device selection: {{ get_device_selection_info() }}
+        Threshold '{{ threshold.name }}'<br>
+        lower value at {{ threshold.lower_value | number: 4 }}, action is {{ get_lower_sensor_action_name() }}, {{ get_lower_email() }}<br>
+        upper value at {{ threshold.upper_value | number: 4 }}, action is {{ get_upper_sensor_action_name() }}, {{ get_upper_email() }}<br>
+        {{ threshold.notify_users.length }} Users to notify, Device selection: {{ get_device_selection_info() }}
     </td>
     <td>
         <icsw-tools-button type="modify" size="xs" ng-click="modify_threshold(sensor, threshold)"></icsw-tools-button>
@@ -298,17 +298,6 @@
                 <label class="col-md-3 control-label">Name:</label>
                 <div class="col-md-9 controls">
                     <input class="form-control" ng-model="threshold.name"/>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-md-3 control-label">Action:</label>
-                <div class="col-md-9 controls">
-                    <ui-select ng-model="threshold.sensor_action">
-                        <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
-                        <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
-                            <div ng-bind-html="action.name"></div>
-                        </ui-select-choices>
-                    </ui-select>
                 </div>
             </div>
             <div class="form-group">
@@ -350,24 +339,71 @@
         </fieldset>
         <fieldset>
             <legend>
-                Value settings
+                Upper Value settings
             </legend>
             <div class="form-group">
-                <label class="col-md-3 control-label">Type:</label>
+                <label class="col-md-3 control-label">Action:</label>
                 <div class="col-md-9 controls">
-                    <input type="button" class="btn btn-xs btn-success form-control" ng-value="get_limit_class()" ng-click="toggle_limit_class()" ></input>
+                    <div class="input-group">
+                        <ui-select ng-model="threshold.upper_sensor_action">
+                            <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
+                                <div ng-bind-html="action.name"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="threshold.upper_sensor_action = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"></span>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Send Mail:</label>
+                <div class="col-md-9 controls">
+                    <input type="button" class="btn btn-xs form-control" ng-class="threshold.upper_mail && 'btn-success' || 'btn-default'" ng-value="threshold.upper_mail && 'yes' || 'no'" ng-click="threshold.upper_mail = ! threshold.upper_mail" />
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-md-3 control-label">Value:</label>
                 <div class="col-md-9 controls">
-                    <input class="form-control" type="number" step="any" ng-model="threshold.value"/>
+                    <input class="form-control" type="number" step="0.1" ng-model="threshold.upper_value" ng-change="check_upper_lower()"/>
+                </div>
+            </div>
+        <fieldset>
+        <fieldset>
+            <legend>
+                Lower Value settings
+            </legend>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Action:</label>
+                <div class="col-md-9 controls">
+                    <div class="input-group">
+                        <ui-select ng-model="threshold.lower_sensor_action">
+                            <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
+                                <div ng-bind-html="action.name"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="threshold.lower_sensor_action = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"></span>
+                            </button>
+                        </span>
+                    </div>
                 </div>
             </div>
             <div class="form-group">
-                <label class="col-md-3 control-label">Hysteresis:</label>
+                <label class="col-md-3 control-label">Send Mail:</label>
                 <div class="col-md-9 controls">
-                    <input class="form-control" type="number" step="any" ng-model="threshold.hysteresis"/>
+                    <input type="button" class="btn btn-xs form-control" ng-class="threshold.lower_mail && 'btn-success' || 'btn-default'" ng-value="threshold.lower_mail && 'yes' || 'no'" ng-click="threshold.lower_mail = ! threshold.lower_mail" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Value:</label>
+                <div class="col-md-9 controls">
+                    <input class="form-control" type="number" step="0.1" ng-model="threshold.lower_value" ng-change="check_upper_lower()"/>
                 </div>
             </div>
         <fieldset>

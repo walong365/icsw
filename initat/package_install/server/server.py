@@ -168,8 +168,6 @@ class server_process(
         except:
             self.log("error sending to {}: {}".format(t_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             _ok = False
-        else:
-            print "done", t_uid
         return _ok
 
     def _send_command(self, command, dev_list=[], **kwargs):

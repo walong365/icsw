@@ -99,6 +99,26 @@ Centos:
 
 /usr/libexec/openldap/create-certdb.sh
 /usr/libexec/openldap/generate-server-cert.sh -h <HOSTNAME> -a <ALTNAMES>
+
+Centos uses a MozNSS CA cert directory to store the server certificate. There
+are two ways to extract a PEM certificate:
+
+    Local:
+        $ cp -rf /etc/openldap/certs /tmp/cert-dir
+        $ certutil -L -d /tmp/cert-dir
+        ...
+        A_CERTIFICATE_NAME
+        ...
+        $ certutil -L -d /tmp/cert-dir -a -n "A_CERTIFICATE_NAME" > cert.crt
+
+    Remote:
+        $ openssl s_client -showcerts -connect ldap.example.com:636 > s_client.dump
+        <CTRL-C>
+        $ openssl x509 -in s_client.dump -out cert.crt
+
+Testing LDAP TLS connections:
+
+    $ LDAPTLS_CERT=/path/to/cert.crt ldapsearch -ZZ -x -H ldap://ldap.example.com
 """
 
 

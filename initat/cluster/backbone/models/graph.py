@@ -78,8 +78,11 @@ class MVStructEntry(models.Model):
     se_type = models.CharField(
         max_length=6,
         choices=[
+            # performance data entry
             ("pde", "pde"),
+            # machine vector list (multi-value)
             ("mvl", "mvl"),
+            # machine vector entry (single value)
             ("mve", "mve"),
         ],
     )
@@ -127,6 +130,8 @@ class MVValueEntry(models.Model):
     # the full key is mv_struct_entry.key + "." + mv_value.key
     # may be empty in case of mve entries (full key is stored in mv_struct_entry)
     key = models.CharField(max_length=128, default="")
+    # rra_index, index in RRA-file (zero in most cases except for PDEs and MVEs
+    rra_idx = models.IntegerField(default=0)
     # full key for this value, stored for faster reference
     full_key = models.CharField(max_length=128, default="")
     # name, required to look up the correct row in the RRD in case of perfdata
@@ -141,7 +146,7 @@ class MVValueEntry(models.Model):
     def __unicode__(self):
         return u"MVValueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
             self.key or "NONE",
-            ", name={}".format(self.name) if self.name else "",
+            ", name={}@{:d}".format(self.name, self.rra_idx) if (self.name or self.rra_idx) else "",
             self.info,
             self.unit,
             self.base,
@@ -160,6 +165,7 @@ class MVValueEntry(models.Model):
             info=self.info,
             key=self.key,
             full_key=self.full_key,
+            rra_idx=self.rra_idx,
             date=self.date
         )
         for _key, _value in mod_dict.iteritems():
@@ -175,7 +181,6 @@ class SensorAction(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
     description = models.CharField(max_length=256, default="")
-    send_email = models.BooleanField(default=False)
     action = models.CharField(
         max_length=64,
         default="none",
@@ -183,6 +188,7 @@ class SensorAction(models.Model):
             ("none", "do nothing"),
             ("reboot", "restart device"),
             ("halt", "halt device"),
+            ("poweron", "turn on device"),
         ]
     )
     # action on device via soft- or hardware
@@ -198,16 +204,12 @@ class SensorThreshold(models.Model):
     # name of Threshold
     name = models.CharField(max_length=64, default="")
     mv_value_entry = models.ForeignKey("MVValueEntry")
-    value = models.FloatField(default=0.0)
-    hysteresis = models.FloatField(default=0.0)
-    sensor_action = models.ForeignKey("SensorAction")
-    limit_class = models.CharField(
-        max_length=2,
-        choices=[
-            ("u", "upper"),
-            ("l", "lower"),
-        ]
-    )
+    lower_value = models.FloatField(default=0.0)
+    upper_value = models.FloatField(default=0.0)
+    lower_sensor_action = models.ForeignKey("SensorAction", related_name="lower_sensor_action", null=True, blank=True)
+    upper_sensor_action = models.ForeignKey("SensorAction", related_name="upper_sensor_action", null=True, blank=True)
+    lower_mail = models.BooleanField(default=False)
+    upper_mail = models.BooleanField(default=False)
     # which users to notify
     notify_users = models.ManyToManyField("user")
     # device selection
@@ -215,15 +217,24 @@ class SensorThreshold(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "SensorThreshold '{}' [{}, {:.4f}@{:.4f} '{}' for {}, action is {}".format(
+        return "SensorThreshold '{}' [{}@{:.4f}, {}@{:.4f}] for {}".format(
             self.name,
-            self.limit_class,
-            self.value,
-            self.hysteresis,
-            self.name,
+            unicode(self.lower_sensor_action),
+            self.lower_value,
+            unicode(self.upper_sensor_action),
+            self.upper_value,
             unicode(self.mv_value_entry),
-            unicode(self.sensor_action),
         )
+
+
+@receiver(signals.pre_save, sender=SensorThreshold)
+def SensorThresholdPreSave(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        _lower = min(_cur_inst.lower_value, _cur_inst.upper_value)
+        _upper = max(_cur_inst.lower_value, _cur_inst.upper_value)
+        _cur_inst.lower_value = _lower
+        _cur_inst.upper_value = _upper
 
 
 @receiver(signals.post_save, sender=SensorThreshold)
@@ -238,5 +249,4 @@ def SensorThresholdPostDelete(sender, **kwargs):
     print "pd"
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        print "send"
         SensorThresholdChanged.send(sender=_cur_inst, sensor_threshold=_cur_inst, cause="SensorThreshold deleted")

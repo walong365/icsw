@@ -462,13 +462,6 @@ class SensorActionFactory(factory.django.DjangoModelFactory):
             self.save()
 
     @factory.post_generation
-    def send_email(self, create, extracted, **kwargs):
-        extracted = extracted or ""
-        if self.send_email != extracted:
-            self.send_email = extracted
-            self.save()
-
-    @factory.post_generation
     def action(self, create, extracted, **kwargs):
         extracted = extracted or ""
         if self.action != extracted:

@@ -1,5 +1,128 @@
 <script type="text/ng-template" id="icsw.user.index">
     <h2 class="center">Please select a device from the tree on the left side</h2>
+    <div class="col-md-4 col-lg-3 col-xs-12">
+        <div class="panel panel-warning">
+            <div class="panel-heading">
+                Quick links
+            </div>
+            <div class="panel-body">
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <div class="row">
+                            <div class="col-md-6">
+                                Change account settings (password, contact data)
+                            </div>
+                            <div class="col-md-6">
+                                <a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}">Account Info</a>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item" ng-show="has_menu_permission('backbone.user.modify_tree')">
+                        <div class="row">
+                            <div class="col-md-6">
+                                Add a new device
+                            </div>
+                            <div class="col-md-6">
+                                <a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create device</a>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="row">
+                            <div class="col-md-6">
+                                Add a new license
+                            </div>
+                            <div class="col-md-6">
+                                <a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}">Add license</a>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-3 col-xs-12">
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                External links
+            </div>
+            <div class="panel-body">
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <div class="row">
+                            <div class="col-md-6">
+                                Changelog of the current development master
+                            </div>
+                            <div class="col-md-6">
+                                <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >Changelog</a>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="row">
+                            <div class="col-md-6">
+                                Software support forum (register, discuss and ask questions)
+                            </div>
+                            <div class="col-md-6">
+                                <a href="http://www.initat.org/phpBB3/index.php" target="_blank">Forum</a>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="row">
+                            <div class="col-md-6">
+                                Mailing list (subscribe)
+                            </div>
+                            <div class="col-md-6">
+                                <a href="http://www.initat.org/mailman/listinfo" target="_blank">MailMan</a>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 col-xs-12">
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
+            </div>
+            <div class="panel-body">
+                <div ng-controller="icswUserAccountCtrl">
+                    <icsw-user-quota-settings object='edit_obj' type='user'/>
+                    <icsw-user-disk-usage object="edit_obj" type="user"/>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 col-xs-12">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                Virtual desktops
+            </div>
+            <div class="panel-body">
+                <div ng-controller="icswUserAccountCtrl">
+                    <icsw-user-vdu-overview object="edit_obj"></icsw-user-vdu-overview>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 col-xs-12">
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                Job info
+            </div>
+            <div class="panel-body">
+                <div ng-controller="icswUserJobInfoCtrl">
+                    <icsw-user-job-info/>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.user.indexx">
+    <h2 class="center">Please select a device from the tree on the left side</h2>
     <accordion close-others="no">
         <accordion-group is-open="quick_open">
             <accordion-heading>
@@ -53,38 +176,6 @@
                 External links
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': ext_open, 'glyphicon-chevron-right': !ext_open}"></i>
             </accordion-heading>
-            <ul class="list-group">
-                <li class="list-group-item">
-                    <div class="row">
-                        <div class="col-md-4">
-                            Changelog of the current development master
-                        </div>
-                        <div class="col-md-4">
-                            <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >Changelog</a>
-                        </div>
-                    </div>
-                </li>
-                <li class="list-group-item">
-                    <div class="row">
-                        <div class="col-md-4">
-                            Software support forum (register, discuss and ask questions)
-                        </div>
-                        <div class="col-md-4">
-                            <a href="http://www.initat.org/phpBB3/index.php" target="_blank">Forum</a>
-                        </div>
-                    </div>
-                </li>
-                <li class="list-group-item">
-                    <div class="row">
-                        <div class="col-md-4">
-                            Mailing list (subscribe)
-                        </div>
-                        <div class="col-md-4">
-                            <a href="http://www.initat.org/mailman/listinfo" target="_blank">MailMan</a>
-                        </div>
-                    </div>
-                </li>
-            </ul>
         </accordion-group>
         <accordion-group is-open="diskusage_open">
             <accordion-heading>

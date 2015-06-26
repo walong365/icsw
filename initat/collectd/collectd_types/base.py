@@ -57,6 +57,10 @@ class PerfdataObject(object):
             _send_xml = self.build_perfdata_info(_host_info, pd_tuple, v_list)  # mach_values
         else:
             _send_xml = None
+        if not hasattr(self, "_key_list"):
+            if _send_xml is None:
+                _send_xml = self.build_perfdata_info(_host_info, pd_tuple, v_list)  # mach_values
+            self._key_list = ["{}.{}".format(self.pd_name, _el.get("key")) for _el in _send_xml.findall(".//value")]
         # print "****", self.PD_NAME, self.get_type_instance(v_list)
         return [
             # tuple of
@@ -75,6 +79,7 @@ class PerfdataObject(object):
             rsi,
             # list of variables
             v_list,
+            self._key_list,
         ]
 
     def get_type_instance(self, v_list):
@@ -103,6 +108,8 @@ class PerfdataObject(object):
             file_name=host_info.target_file_name(pd_tuple),
         )
         info = self.get_pd_xml_info(v_list)
+        for _idx, _el in enumerate(info):
+            _el.attrib["rra_idx"] = "{:d}".format(_idx)
         if pd_tuple[1]:
             new_com.attrib["type_instance"] = pd_tuple[1]
         new_com.append(info)
