@@ -211,8 +211,14 @@ class db_prefetch_mixin(object):
     def _user_related(self):
         return ["group"]
 
+    def _sensorthreshold_prefetch(self):
+        return ["notify_users"]
+
     def _background_job_related(self):
         return ["initiator__domain_tree_node", "user"]
+
+    def _deviceselection_prefetch(self):
+        return ["devices", "device_groups", "categories"]
 
     def _user_prefetch(self):
         return [
@@ -230,7 +236,8 @@ class db_prefetch_mixin(object):
         return [
             "categories", "config_str_set", "config_int_set", "config_blob_set",
             "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
-            "device_config_set"]
+            "device_config_set"
+        ]
 
     def _cransys_dataset_prefetch(self):
         return ["cransys_job_set", "cransys_job_set__cransys_run_set"]
@@ -443,7 +450,15 @@ class netdevice_peer_list(viewsets.ViewSet):
                 "device",
                 "device__device_group",
                 "device__domain_tree_node"
-            ).values("pk", "devname", "penalty", "device__name", "device__device_group__name", "routing", "device__domain_tree_node__full_name")
+            ).values(
+                "pk",
+                "devname",
+                "penalty",
+                "routing",
+                "device__name",
+                "device__device_group__name",
+                "device__domain_tree_node__full_name"
+            )
         ]
         # .filter(Q(net_ip__network__network_type__identifier="x") | Q(net_ip__network__network_type__identifier__in=["p", "o", "s", "b"])) \
         _ser = ext_peer_serializer(ext_list, many=True)
@@ -589,6 +604,8 @@ class device_tree_mixin(object):
         if self.request.QUERY_PARAMS.get("olp", ""):
             ctx["olp"] = self.request.QUERY_PARAMS["olp"]
         _fields = []
+        if self._get_post_boolean("with_com_info", False):
+            _fields.extend(["DeviceSNMPInfo", "snmp_schemes", "com_capability_list"])
         if self._get_post_boolean("with_disk_info", False):
             _fields.extend(["partition_table", "act_partition_table"])
         if self._get_post_boolean("with_network", False):
@@ -720,7 +737,6 @@ class device_tree_list(
                     dev_keys = device.objects.all().values_list("pk", flat=True)
                 else:
                     dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
-            # devg_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("devg_")]
             if ignore_cdg:
                 # ignore cluster device group
                 _q = _q.exclude(Q(device_group__cluster_device_group=True))

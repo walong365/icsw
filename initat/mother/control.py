@@ -1478,8 +1478,18 @@ class NodeControlProcess(threading_tools.process_obj):
                                 ),
                                 logging_tools.LOG_LEVEL_WARN
                             )
+                            macbootlog(
+                                entry_type=in_dict["key"],
+                                ip_action="NOLOCGREEDY",
+                                macaddr=in_dict["macaddr"].lower()
+                            ).save()
                         else:
-                            self.log("no greedy devices found for MAC-address %s or not responsible" % (in_dict["macaddr"]))
+                            self.log("no greedy devices found for MAC-address {} or not responsible".format(in_dict["macaddr"]))
+                            macbootlog(
+                                entry_type=in_dict["key"],
+                                ip_action="NOGLOBGREEDY",
+                                macaddr=in_dict["macaddr"].lower()
+                            ).save()
                 else:
                     # reject entry because we are unable to answer the DHCP-Request
                     macbootlog.objects.create(

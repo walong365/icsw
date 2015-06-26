@@ -26,7 +26,7 @@ from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, \
-    get_related_models
+    get_related_models, SensorAction
 from lxml import etree  # @UnresolvedImport
 from initat.tools import logging_tools
 import os
@@ -432,6 +432,44 @@ class Command(BaseCommand):
         factories.WindowManager(name="kde", description="KDE", binary="startkde")
         factories.WindowManager(name="gnome", description="GNOME", binary="gnome-session")
         factories.WindowManager(name="windowmaker", description="Window Maker", binary="wmaker")
+
+        # SensorAction
+        # deleted old ones
+        for _name in ["mail"]:
+            try:
+                SensorAction.objects.get(Q(name=_name)).delete()
+            except:
+                pass
+        factories.SensorActionFactory(
+            name="halt (software)",
+            description="tries to halt the devices via software",
+            action="halt",
+            hard_control=False,
+        )
+        factories.SensorActionFactory(
+            name="reboot (software)",
+            description="tries to reboot the devices via software",
+            action="reboot",
+            hard_control=False,
+        )
+        factories.SensorActionFactory(
+            name="halt (hardware)",
+            description="tries to halt the devices via IPMI or APCs",
+            action="halt",
+            hard_control=True,
+        )
+        factories.SensorActionFactory(
+            name="reboot (hardware)",
+            description="tries to reboot the devices via IPMI or APCs",
+            action="reboot",
+            hard_control=True,
+        )
+        factories.SensorActionFactory(
+            name="poweron (hardware)",
+            description="tries to turn on the devices via IPMI or APCs",
+            action="poweron",
+            hard_control=True,
+        )
 
         # ComCapabilities
         factories.ComCapability(

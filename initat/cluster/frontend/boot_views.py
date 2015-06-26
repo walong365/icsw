@@ -53,8 +53,7 @@ class show_boot(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "boot_overview.html", {
-            }
+            request, "boot_overview.html", {}
         )()
 
 
@@ -64,12 +63,18 @@ class get_boot_info_json(View):
     def post(self, request):
         _post = request.POST
         sel_list = _post.getlist("sel_list[]")
-        dev_result = device.objects.filter(Q(pk__in=sel_list)).prefetch_related(
+        dev_result = device.objects.filter(
+            Q(pk__in=sel_list)
+        ).prefetch_related(
             "bootnetdevice__net_ip_set__network__network_device_type",
             "categories",
             "domain_tree_node",
             "kerneldevicehistory_set",
             "imagedevicehistory_set",
+            "snmp_schemes__snmp_scheme_vendor",
+            "com_capability_list",
+            "DeviceSNMPInfo",
+            "snmp_schemes__snmp_scheme_tl_oid_set",
         ).select_related(
             "device_group",
         )
@@ -113,6 +118,7 @@ class get_boot_info_json(View):
             context=ctx,
         ).data
         _resp = JSONRenderer().render(_json)
+        # import pprint
         # pprint.pprint(_json)
         request.xml_response["response"] = _resp
 

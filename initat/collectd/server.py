@@ -22,18 +22,14 @@
 
 from lxml import etree
 import os
-import pprint
 import re
 import socket
 import time
-import psutil
-import shutil
-import subprocess
 
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, snmp_scheme
+from initat.cluster.backbone.models import device, snmp_scheme, SensorThreshold
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.collectd.background import snmp_job, bg_job, ipmi_builder
 from initat.collectd.resize import resize_process
@@ -41,20 +37,13 @@ from initat.collectd.aggregate import aggregate_process
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.collectd_struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.collectd.dbsync import SyncProcess
-from .rsync import RSyncMixin
 from initat.snmp.process import snmp_process_container
 from lxml.builder import E  # @UnresolvedImports
-from initat.tools import cluster_location
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import server_mixins
-from initat.tools import threading_tools
-from initat.tools import uuid_tools
+from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
+    server_command, server_mixins, threading_tools, uuid_tools
 import zmq
 
+from .rsync import RSyncMixin
 
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
@@ -98,6 +87,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         snmp_job.setup(self)
         self.register_timer(self._check_database, 300, instant=True)
         self.register_timer(self._check_background, 2, instant=True)
+        self.register_timer(self._check_thresholds, 300, instant=True)
         self.__cached_stats, self.__cached_time = (None, time.time())
         self.register_timer(self._check_cached_stats, 30, first_timeout=5)
         self.log("starting processes")
@@ -504,14 +494,25 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     self.log("got command {} from {}".format(com_text, in_uuid))
                     if com_text in ["host_list", "key_list"]:
                         self._handle_hk_command(in_com, com_text)
+                    elif com_text in ["sync_sensor_threshold"]:
+                        self._sync_sensor_threshold(in_com)
                     else:
                         self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
                         in_com.set_result(
                             "unknown command {}".format(com_text),
                             server_command.SRV_REPLY_STATE_ERROR
                         )
-                    zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                    zmq_sock.send_unicode(unicode(in_com))
+                    try:
+                        zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
+                        zmq_sock.send_unicode(unicode(in_com))
+                    except:
+                        self.log(
+                            "error sending to {}: {}".format(
+                                in_uuid,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
 
     def _still_active(self, msg):
         # return true if process is not shuting down
@@ -684,17 +685,27 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 raise StopIteration
             else:
                 _xml.attrib["uuid"] = _dev.uuid
-                # store values in host_info (and memcached)
-                # host_uuid is uuid or name
+                if not simple:
+                    # add rra_idx entries for mvls
+                    for _mvl in _xml.findall(".//mvl"):
+                        for _num, _entry in enumerate(_mvl.findall(".//value")):
+                            # set rra_idx and name to ease mapping for sensor thresholds
+                            _entry.attrib["rra_idx"] = "{:d}".format(_num)
+                            _entry.attrib["name"] = _entry.get("key")
+                # create values
                 if simple:
                     # only values
                     _host_info = self._feed_host_info_ov(_dev, _xml)
                 else:
                     _host_info = self._feed_host_info(_dev, _xml)
+                values = _host_info.get_values(_xml, simple)
+                # store values in host_info (and memcached)
+                # host_uuid is uuid or name
                 if not _host_info.store_to_disk:
                     # writing to disk not allowed
                     raise StopIteration
-                values = _host_info.get_values(_xml, simple)
+                # map full keys to multi-valued entries
+                # print "+", values
                 r_data = ("mvector", _host_info, recv_time, values)
                 yield r_data
 
@@ -751,11 +762,12 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         return self.__last_sent[h_tuple]
 
     def _handle_perfdata(self, data):
-        pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list = data
+        pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list, key_list = data
         s_time = int(time_recv)
         if self.__rrdcached_socket:
             _tf = _host_info.target_file(pd_tuple, step=5 * 60, v_type=pd_tuple[0])
             if _tf:
+                # print zip(key_list, v_list)
                 cache_lines = [
                     "UPDATE {} {:d}:{}".format(
                         _tf,
@@ -775,6 +787,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             for name, value in values:
                 # name can be none for values with transform problems
                 if name:
+                    # print name, value
                     try:
                         _tf = _host_info.target_file(name)
                     except ValueError:
@@ -1044,3 +1057,13 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 result.append(self.__hosts[cur_uuid].get_key_list(key_filter))
             in_com["result"] = result
         in_com.set_result("got command {}".format(com_text))
+
+    def _sync_sensor_threshold(self, in_com):
+        in_com.set_result("ok synced thresholds")
+        self._check_thresholds()
+
+    def _check_thresholds(self):
+        self.log("checking thresholds")
+        for _th in SensorThreshold.objects.all():
+            _mvv = _th.mv_value_entry
+            # print unicode(_mvv.mv_struct_entry.machine_vector.device), unicode(_mvv), _mvv.full_key

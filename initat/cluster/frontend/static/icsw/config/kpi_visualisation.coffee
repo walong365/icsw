@@ -89,6 +89,9 @@ angular.module(
                             scope.update_dthree()
 
                 scope.update_dthree = () ->
+                    # show result
+                    icswConfigKpiVisUtils.sort_kpi_set(scope.data)
+                    scope.kpi_set_to_show = scope.data
 
                     _get_max_depth = (node, cur_depth) ->
                         max_depth = cur_depth
@@ -255,7 +258,11 @@ angular.module(
                     scope._mouse_on_node = undefined
                 scope.on_mouse_leave_widget = () ->
                     # when mouse leaves full widget
-                    scope.kpi_set_to_show = undefined
+                    # to hide set:
+                    # scope.kpi_set_to_show = undefined
+                    # to show global result
+                    #scope.kpi_set_to_show = scope.data
+                    # do nothing currently
 
                 scope.get_div_height_style = () ->
                     return {'height': scope.div_height}

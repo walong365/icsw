@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-server
 #
@@ -20,26 +20,26 @@
 
 """ notify mixin for server processes """
 
+import datetime
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import background_job, user, background_job_run, device, \
     cluster_timezone, virtual_desktop_user_setting
 from initat.cluster.backbone.routing import srv_type_routing, get_server_uuid
-from initat.tools import config_tools
-import datetime
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, config_tools, process_tools, server_command
+
 
 # background job command mapping
 BGJ_CM = {
     "sync_users": True,
     "change_bootsetting": True,
-    "reload_virtual_desktop_dispatcher": True
+    "reload_virtual_desktop_dispatcher": True,
+    "sync_sensor_threshold": True,
 }
 
 
-class notify_mixin(object):
+class ServerBackgroundNotifyMixin(object):
     def init_notify_framework(self, global_config):
         self.__gc = global_config
         self.__server_idx = global_config["SERVER_IDX"]
@@ -166,6 +166,29 @@ class notify_mixin(object):
         ]
         self._run_bg_jobs(cur_bg, to_run)
 
+    def _bgjp_sync_sensor_threshold(self, cur_bg):
+        _src_com = server_command.srv_command(source=cur_bg.command_xml)
+        # target command
+        srv_com = server_command.srv_command(command="sync_sensor_threshold")
+        _sc = config_tools.server_check(server_type="rrd_collector")
+        to_run = []
+        if _sc.effective_device:
+            to_run.append(
+                (
+                    background_job_run(
+                        background_job=cur_bg,
+                        server=_sc.effective_device,
+                        command_xml=unicode(srv_com),
+                        start=cluster_timezone.localize(datetime.datetime.now()),
+                    ),
+                    srv_com,
+                    "collectd",
+                )
+            )
+        else:
+            self.log("no valid rrd-collector found", logging_tools.LOG_LEVEL_ERROR)
+        self._run_bg_jobs(cur_bg, to_run)
+
     def _bgjp_change_bootsetting(self, cur_bg):
         _src_com = server_command.srv_command(source=cur_bg.command_xml)
         dev = device.objects.get(Q(pk=int(_src_com.xpath(".//ns:object/@pk")[0])))
@@ -204,17 +227,19 @@ class notify_mixin(object):
             for create_user in create_user_list:
                 srv_com = server_command.srv_command(command="create_user_home")
                 srv_com["server_key:username"] = create_user.login
-                to_run.append((
-                    background_job_run(
-                        background_job=cur_bg,
-                        server=create_user.export.device,
-                        command_xml=unicode(srv_com),
-                        start=cluster_timezone.localize(datetime.datetime.now()),
-                    ),
-                    srv_com,
-                    "server",
-                    #
-                ))
+                to_run.append(
+                    (
+                        background_job_run(
+                            background_job=cur_bg,
+                            server=create_user.export.device,
+                            command_xml=unicode(srv_com),
+                            start=cluster_timezone.localize(datetime.datetime.now()),
+                        ),
+                        srv_com,
+                        "server",
+                        #
+                    )
+                )
         else:
             self.log("no user homes to create", logging_tools.LOG_LEVEL_WARN)
         # check directory sync requests
@@ -226,22 +251,26 @@ class notify_mixin(object):
         ]:
             _sc = config_tools.server_check(server_type=_config)
             if _sc.effective_device:
-                self.log(u"effective device for {} (command {}) is {}".format(
-                    _config,
-                    _command,
-                    unicode(_sc.effective_device),
-                ))
+                self.log(
+                    u"effective device for {} (command {}) is {}".format(
+                        _config,
+                        _command,
+                        unicode(_sc.effective_device),
+                    )
+                )
                 srv_com = server_command.srv_command(command=_command)
-                to_run.append((
-                    background_job_run(
-                        background_job=cur_bg,
-                        server=_sc.effective_device,
-                        command_xml=unicode(srv_com),
-                        start=cluster_timezone.localize(datetime.datetime.now()),
-                    ),
-                    srv_com,
-                    _srv_type,
-                ))
+                to_run.append(
+                    (
+                        background_job_run(
+                            background_job=cur_bg,
+                            server=_sc.effective_device,
+                            command_xml=unicode(srv_com),
+                            start=cluster_timezone.localize(datetime.datetime.now()),
+                        ),
+                        srv_com,
+                        _srv_type,
+                    )
+                )
             else:
                 no_device.append(_command)
         if no_device:

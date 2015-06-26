@@ -21,16 +21,17 @@
 menu_module = angular.module(
     "icsw.layout.menu",
     [
-        "ngSanitize", "ui.bootstrap",
+        "ngSanitize", "ui.bootstrap", "icsw.layout.selection",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service", "initProduct",
-    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service, initProduct) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
+    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
         $scope.SERVICE_TYPES = $window.SERVICE_TYPES
         $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
+        $scope.quicksel = false
         $scope.CURRENT_USER = $window.CURRENT_USER
         if $window.DOC_PAGE
             $scope.HANDBOOK_CHUNKS_PRESENT = $window.HANDBOOK_CHUNKS_PRESENT
@@ -45,6 +46,8 @@ menu_module = angular.module(
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
         $scope.show_time = () ->
+            # set locale
+            moment.locale("en")
             $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
             $timeout($scope.show_time, 1000)
         $scope.update_progress_bar = () ->
@@ -118,6 +121,13 @@ menu_module = angular.module(
                 if $scope.is_authenticated
                     $("body").css("padding-top", parseInt(new_val["height"]) + 1)
         )
+        $scope.device_selection = () ->
+            icswLayoutSelectionDialogService.show_dialog($scope)
+        $scope.device_quicksel = (onoff) ->
+            if onoff != $scope.quicksel
+                $scope.quicksel = onoff
+                if $scope.quicksel
+                    icswLayoutSelectionDialogService.quick_dialog($scope)
 ]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"

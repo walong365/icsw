@@ -18,8 +18,38 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-class d_graph
-    constructor: (@num, @xml) ->
+class Sensor
+    constructor: (@graph, @xml, sth_dict) ->
+        @mvs_id = parseInt(@xml.attr("db_key").split(".")[0])
+        @mvv_id = parseInt(@xml.attr("db_key").split(".")[1])
+        @device_id = parseInt(@xml.attr("device"))
+        @mv_key = @xml.attr("mv_key")
+        @cfs = {}
+        _value = 0.0
+        _num_value = 0
+        for _cf in @xml.find("cfs cf")
+            _cf = $(_cf)
+            @cfs[_cf.attr("cf")] = _cf.text()
+            if _cf.attr("cf") != "TOTAL"
+                _value += parseFloat(_cf.text())
+                _num_value++
+        @cf_list = _.keys(@cfs).sort()
+        if _num_value
+            @mean_value = _value / _num_value
+        else
+            @mean_value = 0.0
+        # create default threshold
+        @thresholds = []
+        if @mvv_id of sth_dict
+            for _entry in sth_dict[@mvv_id]
+                @thresholds.push(_entry)
+
+
+class DisplayGraph
+    constructor: (@num, @xml, @sensor_action_list, @user_list, @selection_list, sth_dict) ->
+        @sensor_action_lut = {}
+        for entry in @sensor_action_list
+            @sensor_action_lut[entry.idx] = entry
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -43,6 +73,22 @@ class d_graph
         @removed_keys = []
         for entry in @xml.find("removed_keys removed_key")
             @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
+        # build list of values for which we can createa sensor (== full db_key needed)
+        # number of (als possible) sensors
+        @num_sensors = 0
+        @sensors = []
+        for gv in @xml.find("graph_values graph_value")
+            if $(gv).attr("db_key").match(/\d+\.\d+/)
+                @num_sensors++
+                @sensors.push(new Sensor(@, $(gv), sth_dict))
+        @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
+    get_sensor_info: () ->
+        return "#{@num_sensors} sensor sources"
+    get_threshold_info: () ->
+        _num_th = 0
+        for _sensor in @sensors
+            _num_th += _sensor.thresholds.length
+        return "#{_num_th} Thresholds"
     get_devices: () ->
         dev_names = ($(entry).text() for entry in @xml.find("devices device"))
         return dev_names.join(", ")
@@ -110,8 +156,13 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-        "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+        "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+        "toaster", "icswCachingCall", "$window", "icswSavedSelectionService",
+    (
+        $scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
+        $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService,
+        toaster, icswCachingCall, $window, icswSavedSelectionService
+    ) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
@@ -164,11 +215,26 @@ angular.module(
         $scope.merge_graphs = false
         $scope.show_tree = true
         $scope.g_tree = new icswRRDGraphTreeService($scope)
+        $q.all(
+            [
+                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_SENSOR_ACTION_LIST, {}, [])
+                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_USER_LIST, {}, [])
+                icswSavedSelectionService.load_selections()
+            ]
+        ).then((data) ->
+            $scope.sensor_action_list = data[0]
+            $scope.user_list = data[1]
+            $scope.selection_list = data[2]
+        )
         $scope.$watch("from_date_mom", (new_val) ->
-            $scope.update_dt() 
+            if $scope.change_dt_to
+                $timeout.cancel($scope.change_dt_to)
+            $scope.change_dt_to = $timeout($scope.update_dt, 2000)
         )
         $scope.$watch("to_date_mom", (new_val) ->
-            $scope.update_dt() 
+            if $scope.change_dt_to
+                $timeout.cancel($scope.change_dt_to)
+            $scope.change_dt_to = $timeout($scope.update_dt, 2000)
         )
         $scope.set_job_mode = (new_jm) ->
             $scope.job_mode = new_jm
@@ -448,6 +514,18 @@ angular.module(
         $scope.draw_graph = () =>
             if !$scope.is_drawing
                 $scope.is_drawing = true
+                rst = $q.defer()
+                Restangular.all(
+                    ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)
+                ).getList(
+                    {
+                        "mv_value_entry__mv_struct_entry__machine_vector__device__in": angular.toJson($scope.devsel_list)
+                    }
+                ).then(
+                    (data) ->
+                        rst.resolve(data)
+                )
+                gfx = $q.defer()
                 icswCallAjaxService
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
@@ -471,6 +549,16 @@ angular.module(
                         "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
                     }
                     success : (xml) =>
+                        gfx.resolve(xml)
+                $q.all([gfx.promise, rst.promise]).then(
+                    (result) ->
+                        xml = result[0]
+                        # reorder sensor threshold entries
+                        sth_dict = {}
+                        for sth in result[1]
+                            if sth.mv_value_entry not of sth_dict
+                                sth_dict[sth.mv_value_entry] = []
+                            sth_dict[sth.mv_value_entry].push(sth)
                         $scope.is_drawing = false
                         graph_list = []
                         # graph matrix
@@ -484,13 +572,12 @@ angular.module(
                                 if !(graph_key of graph_mat)
                                     graph_mat[graph_key] = {}
                                 num_graph++
-                                cur_graph = new d_graph(num_graph, graph)
+                                cur_graph = new DisplayGraph(num_graph, graph, $scope.sensor_action_list, $scope.user_list, $scope.selection_list, sth_dict)
                                 graph_mat[graph_key][dev_key] = cur_graph
                                 graph_list.push(cur_graph)
-                        $scope.$apply(
-                            $scope.graph_mat = graph_mat
-                            $scope.graph_list = graph_list
-                        )
+                        $scope.graph_mat = graph_mat
+                        $scope.graph_list = graph_list
+                )
         $scope.$on("$destroy", () ->
             #console.log "dest"
         )                
@@ -568,7 +655,171 @@ angular.module(
             scope.get_graph_keys = () ->
                 return (key for key of scope.graphMatrix)
     }
-]).directive("icswRrdGraphListGraph", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswRrdGraphThreshold", ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "AE"
+        template: $templateCache.get("icsw.rrd.graph.threshold.overview")
+        link: (scope, el, attr) ->
+            scope.get_lower_sensor_action_name = () ->
+                if scope.threshold.lower_sensor_action
+                    return scope.sensor.graph.sensor_action_lut[scope.threshold.lower_sensor_action].name
+                else
+                    return "---"
+            scope.get_upper_sensor_action_name = () ->
+                if scope.threshold.upper_sensor_action
+                    return scope.sensor.graph.sensor_action_lut[scope.threshold.upper_sensor_action].name
+                else
+                    return "---"
+            scope.get_lower_email = () ->
+                return if scope.threshold.lower_mail then "send email" else "no email"
+            scope.get_upper_email = () ->
+                return if scope.threshold.upper_mail then "send email" else "no email"
+            scope.get_device_selection_info = () ->
+                if scope.threshold.device_selection
+                    return (entry.info for entry in scope.sensor.graph.selection_list when entry.idx == scope.threshold.device_selection)[0]
+                else
+                    return "---"
+
+    }
+]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout) ->
+    th_dialog = (create, cur_scope, sensor, threshold, title) ->
+        th_scope = cur_scope.$new()
+        th_scope.sensor = sensor
+        th_scope.threshold = threshold
+        th_scope.check_upper_lower = () ->
+            if th_scope.change_cu_to
+                $timeout.cancel(th_scope.change_cu_to)
+            th_scope.change_cu_to = $timeout(
+                () ->
+                    if th_scope.threshold.lower_value > th_scope.threshold.upper_value
+                        _val = th_scope.threshold.lower_value
+                        th_scope.threshold.lower_value = th_scope.threshold.upper_value
+                        th_scope.threshold.upper_value = _val
+                2000
+            )
+        thresh_div = $compile($templateCache.get("icsw.rrd.graph.threshold.modify"))(th_scope)
+        BootstrapDialog.show
+            message: thresh_div
+            draggable: true
+            title: title
+            closable: false
+            size: BootstrapDialog.SIZE_WIDE
+            cssClass: "modal-tall"
+            buttons: [
+                {
+                    icon: "glyphicon glyphicon-remove"
+                    label: "Cancel"
+                    cssClass: "btn-warning"
+                    action: (dialog) ->
+                        _th = th_scope.threshold
+                        if _th.lower_sensor_action
+                            _th.lower_sensor_action = _th.lower_sensor_action.idx
+                        if _th.upper_sensor_action
+                            _th.upper_sensor_action = _th.upper_sensor_action.idx
+                        _th.notify_users = (_user.idx for _user in _th.notify_users)
+                        dialog.close()
+                        th_scope.$destroy()
+                },
+                {
+                    icon: "glyphicon glyphicon-ok"
+                    label: "OK"
+                    cssClass: "btn-success"
+                    action: (dialog) ->
+                        _th = th_scope.threshold
+                        _th.sensor = undefined
+                        _lower_sensor_action = _th.lower_sensor_action
+                        _upper_sensor_action = _th.upper_sensor_action
+                        if _lower_sensor_action
+                            _th.lower_sensor_action = _lower_sensor_action.idx
+                        if _upper_sensor_action
+                            _th.upper_sensor_action = _upper_sensor_action.idx
+                        if _th.device_selection
+                            _th.device_selection = _th.device_selection.idx
+                        _th.notify_users = (_user.idx for _user in _th.notify_users)
+                        if create
+                            _th.mv_value_entry = sensor.mvv_id
+                            Restangular.all(ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)).post(_th).then(
+                                (data) ->
+                                    # append new sensor to end of line
+                                    sensor.thresholds.push(data)
+                                    dialog.close()
+                                    th_scope.$destroy()
+                                (error) ->
+                                    _th.sensor = sensor
+                                    _th.lower_sensor_action = _lower_sensor_action
+                                    _th.upper_sensor_action = _upper_sensor_action
+                            )
+                        else
+                            _th.put().then(
+                                (data) ->
+                                    dialog.close()
+                                    th_scope.$destroy()
+                                (error) ->
+                                    _th.sensor = sensor
+                                    _th.lower_sensor_action = _lower_sensor_action
+                                    _th.upper_sensor_action = _upper_sensor_action
+                            )
+                },
+            ]
+    return (scope, graph) ->
+        sub_scope = scope.$new()
+        sub_scope.delete_threshold = (sensor, th) ->
+            icswToolsSimpleModalService("Really delete Threshold ?").then(
+                (res) ->
+                    th.remove()
+                    sensor.thresholds = (entry for entry in sensor.thresholds when entry.idx != th.idx)
+            )
+        sub_scope.modify_threshold = (sensor, threshold) ->
+            if threshold.lower_sensor_action
+                threshold.lower_sensor_action = graph.sensor_action_lut[threshold.lower_sensor_action]
+            if threshold.upper_sensor_action
+                threshold.upper_sensor_action = graph.sensor_action_lut[threshold.upper_sensor_action]
+            if threshold.device_selection
+                threshold.device_selection = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
+            _users = []
+            for _user in graph.user_list
+                if _user.idx in threshold.notify_users
+                    _users.push(_user)
+            threshold.notify_users = _users
+            th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
+        sub_scope.create_new_threshold = (sensor) ->
+            _mv = sensor.mean_value
+            threshold = {
+                "name": "New Threshold"
+                "limit_class": "u"
+                "lower_value": _mv - _mv / 10
+                "upper_value": _mv + _mv / 10
+                "lower_mail": true
+                "upper_mail": true
+                "notify_users": []
+                "lower_sensor_action": undefined,
+                "upper_sensor_action": undefined,
+                "device_selection": undefined
+            }
+            th_dialog(true, sub_scope, sensor, threshold, "Create new threshold")
+        sub_scope.graph = graph
+        sens_div = $compile($templateCache.get("icsw.rrd.graph.sensor"))(sub_scope)
+        d = $q.defer()
+        BootstrapDialog.show
+            message: sens_div
+            draggable: true
+            title: "Modify / Create Sensors (" + graph.get_sensor_info() + ", " + graph.get_threshold_info() + ")"
+            size: BootstrapDialog.SIZE_WIDE
+            closable: false
+            cssClass: "modal-tall"
+            buttons: [
+                {
+                    icon: "glyphicon glyphicon-ok"
+                    label: "OK"
+                    cssClass: "btn-success"
+                    action: (dialog) ->
+                        dialog.close()
+                        sub_scope.$destroy()
+                        d.resolve()
+                },
+            ]
+        return d.promise
+]).directive("icswRrdGraphListGraph", ["$templateCache", "$compile", "icswRrdSensorDialogService", ($templateCache, $compile, icswRrdSensorDialogService) ->
     return {
         restrict: "E"
         replace: true
@@ -580,6 +831,11 @@ angular.module(
             graph_error = () ->
                 element.children().remove()
                 element.append(angular.element("<h4 class='text-danger'>Error loading graph (#{_graph.num})</h4>"))
+            scope.modify_sensors = () ->
+                icswRrdSensorDialogService(scope, _graph).then(
+                    () ->
+                        # console.log "done"
+                )
             element.children().remove()
             _graph = scope.graph
             if not _graph.error
@@ -609,9 +865,10 @@ angular.module(
                         )
                     )
                     crop_span.hide()
+                    img_div = angular.element("<div/>")
+                    crop_span.after(img_div)
                     myImg = angular.element("<img/>")
-                    crop_span.after(myImg)
-                    scope.img = myImg
+                    img_div.append(myImg)
                     myImg.attr("src", _graph.src)
                     $(myImg).Jcrop({
                         trackDocument: true
@@ -653,9 +910,9 @@ angular.module(
                             else
                                 crop_span.hide()
                         if new_val
-                            myImg.hide()
+                            img_div.show()
                         else
-                            myImg.show()
+                            img_div.hide()
                 )
             element.on("$destroy", () ->
                 # console.log "destr"

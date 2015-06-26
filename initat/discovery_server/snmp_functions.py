@@ -30,6 +30,7 @@ from initat.snmp.databasemap import Schemes
 from initat.tools import logging_tools
 from initat.tools import process_tools
 from initat.tools import server_command
+from initat.tools import ipvx_tools
 
 
 class SNMPBatch(object):
@@ -39,6 +40,12 @@ class SNMPBatch(object):
         SNMPBatch.add_batch(self)
         self.init_run(self.srv_com["*command"])
         self.batch_valid = True
+
+        def handle_error(msg):
+            self.log(msg, logging_tools.LOG_LEVEL_ERROR, result=True)
+            self.batch_valid = False
+            self.finish()
+
         try:
             _dev = self.srv_com.xpath(".//ns:devices/ns:device")[0]
             self.device = device.objects.get(Q(pk=_dev.attrib["pk"]))
@@ -52,26 +59,20 @@ class SNMPBatch(object):
                 "strict": True if int(_dev.attrib.get("strict", "0")) else False,
             }
         except:
-            _err_str = "error setting device node: {}".format(process_tools.get_except_info())
-            self.log(_err_str, logging_tools.LOG_LEVEL_ERROR, result=True)
-            self.batch_valid = False
-            self.finish()
+            handle_error("error setting device node: {}".format(process_tools.get_except_info()))
         else:
-            if not SNMPBatch.process.device_is_capable(self.device, "snmp"):
-                self.log(
-                    "device is missing the required ComCapability 'snmp'",
-                    logging_tools.LOG_LEVEL_ERROR,
-                    result=True,
-                )
-                self.batch_valid = False
-                self.finish()
-            elif not SNMPBatch.process.device_is_idle(self.device, "snmp"):
-                self.log("device is locked by scan '{}'".format(self.device.active_scan), logging_tools.LOG_LEVEL_ERROR, result=True)
-                self.batch_valid = False
-                self.finish()
+            try:
+                ipvx_tools.ipv4(self.snmp_address)
+            except ValueError:
+                handle_error("Invalid IP: '{}'".format(self.snmp_address))
             else:
-                self.log("SNMP scan started", result=True)
-                self.start_run()
+                if not SNMPBatch.process.device_is_capable(self.device, "snmp"):
+                    handle_error("device is missing the required ComCapability 'snmp'")
+                elif not SNMPBatch.process.device_is_idle(self.device, "snmp"):
+                    handle_error("device is locked by scan '{}'".format(self.device.active_scan))
+                else:
+                    self.log("SNMP scan started", result=True)
+                    self.start_run()
         self.send_return()
 
     def init_run(self, command):

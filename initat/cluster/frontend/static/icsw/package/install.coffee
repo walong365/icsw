@@ -117,9 +117,8 @@ package_module = angular.module(
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
-        $scope.device_tree_url = ICSW_URLS.REST_DEVICE_TREE_LIST
         wait_list = restDataSource.add_sources([
-            [$scope.device_tree_url, {"ignore_meta_devices" : true}]
+            [ICSW_URLS.REST_DEVICE_TREE_LIST, {"ignore_meta_devices" : true}]
             [ICSW_URLS.REST_IMAGE_LIST, {}]
             [ICSW_URLS.REST_KERNEL_LIST, {}]
         ])
@@ -195,9 +194,9 @@ package_module = angular.module(
                     icswParseXMLResponseService(xml)
         #$scope.load_devices = (url, options) ->
         #    return Restangular.all(url.slice(1)).getList(options)
-        $scope.reload_devices = () ->
+        $scope.reload_devices = (dev_pks) ->
             blockUI.start()
-            restDataSource.reload([$scope.device_tree_url, {"ignore_meta_devices" : true}]).then((data) ->
+            restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"ignore_meta_devices" : true, "pks": angular.toJson(dev_pks)}]).then((data) ->
                 $scope.set_devices(data)
                 blockUI.stop()
             )
@@ -469,7 +468,6 @@ package_module = angular.module(
             if not attrs["devicepk"]?
                 msgbus.emit("devselreceiver")
                 msgbus.receive("devicelist", scope, (name, args) ->
-                    # args is not needed here, fix controller
                     scope.reload_devices(args[1])
                 )
     }

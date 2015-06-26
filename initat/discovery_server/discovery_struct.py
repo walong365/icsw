@@ -21,6 +21,7 @@
 
 import subprocess
 import time
+import tempfile
 
 from initat.tools import logging_tools, process_tools
 
@@ -28,15 +29,19 @@ from initat.tools import logging_tools, process_tools
 class ExtCom(object):
     run_idx = 0
 
-    def __init__(self, log_com, command, debug=False, name=None, detach=False):
+    def __init__(self, log_com, command, debug=False, name=None, detach=False, shell=True):
         ExtCom.run_idx += 1
         self.__name = name
         self.__detach = detach
+        self.__shell = shell
         self.idx = ExtCom.run_idx
         self.command = command
         self.popen = None
+        self.result = None
         self.debug = debug
         self.__log_com = log_com
+        self.__stdout_file = tempfile.TemporaryFile()
+        self.__stderr_file = tempfile.TemporaryFile()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
@@ -51,36 +56,41 @@ class ExtCom(object):
     def run(self):
         self.start_time = time.time()
         if self.__detach:
+            # this is not very efficient, but Popen just deadlocks if it gets to much output, and that's worse
             self.popen = subprocess.Popen(
                 self.command,
                 bufsize=1,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                shell=self.__shell,
+                stdout=self.__stdout_file,
+                stderr=self.__stderr_file,
                 close_fds=True
             )
             self.log("start with pid {} (detached)".format(self.popen.pid))
         else:
             self.popen = subprocess.Popen(
                 self.command,
-                shell=True,
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE
+                shell=self.__shell,
+                stdout=self.__stdout_file,
+                stderr=self.__stderr_file,
             )
             if self.debug:
                 self.log("start with pid {}".format(self.popen.pid))
 
     def communicate(self):
         if self.popen:
-            try:
-                return self.popen.communicate()
-            except OSError:
-                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                return ("", "")
+            self.__stdout_file.seek(0)
+            self.__stderr_file.seek(0)
+            return (
+                self.__stdout_file.read(),
+                self.__stderr_file.read(),
+            )
         else:
             return ("", "")
 
     def finished(self):
+        """
+        :return: None if not finished, else numeric exit code
+        """
         self.result = self.popen.poll()
         if self.result is not None:
             self.end_time = time.time()

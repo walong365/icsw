@@ -5,7 +5,7 @@ from django.conf import settings
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views, doc_views, license_views, model_history_views
+    base_views, setup_views, doc_views, license_views, model_history_views, discovery_views
 from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
@@ -227,6 +227,11 @@ rrd_patterns = patterns(
     url(r"^merge_cd$", rrd_views.merge_cds.as_view(), name="merge_cds"),
 )
 
+discovery_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"^overview$", discovery_views.discovery_overview.as_view(), name="overview"),
+)
+
 rpl = []
 for src_mod, obj_name in rest_views.REST_LIST:
     is_camelcase = obj_name[0].lower() != obj_name[0]
@@ -305,6 +310,7 @@ my_url_patterns = patterns(
     url(r"^dyndoc/", include(dyndoc_patterns, namespace="dyndoc")),
     url(r"^rest/", include(rest_patterns, namespace="rest")),
     url(r"^system/", include(system_patterns, namespace="system")),
+    url(r"^discovery/", include(discovery_patterns, namespace="discovery")),
 )
 
 url_patterns = patterns(

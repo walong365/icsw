@@ -1,8 +1,11 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
     <nav icsw-element-size="navbar_size" class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated" ng-cloack>
         <ul class="nav navbar-nav">
+            <li ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)">
+                <a><span class="fa fa-desktop fa-lg"></span></a>
+            </li>
             <li>
-                <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="glyphicon glyphicon-home" title="Home"></span></a>
+                <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="fa fa-home fa-lg" title="Home"></span></a>
             </li>
             <li ng-show="
                 has_menu_permission('user.modify_tree') || has_menu_permission('user.modify_domain_name_tree') ||
@@ -61,8 +64,10 @@
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_CLUSTER }}">Cluster / Dependency setup</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}">Escalation setup</a></li>
-                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank">Icinga</a></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
+                    <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank">Icinga</a></li>
+                    <li ng-show="false && has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')" class="divider"></li>
+                    <li ng-show="false && has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')"><a href="{{ ICSW_URLS.DISCOVERY_OVERVIEW }}">Discovery</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_OVERVIEW }}">Monitoring Overview</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_BUILD_INFO }}">Build Info</a></li>
