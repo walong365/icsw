@@ -21,12 +21,13 @@
 #
 """ serializer definitions for Graphs elements """
 
-from initat.cluster.backbone.models import SensorAction, SensorThreshold
+from initat.cluster.backbone.models import SensorAction, SensorThreshold, SensorThresholdAction
 from rest_framework import serializers
 
 __all__ = [
     "SensorActionSerializer",
     "SensorThresholdSerializer",
+    "SensorThresholdActionSerializer",
 ]
 
 
@@ -38,3 +39,8 @@ class SensorActionSerializer(serializers.ModelSerializer):
 class SensorThresholdSerializer(serializers.ModelSerializer):
     class Meta:
         model = SensorThreshold
+
+
+class SensorThresholdActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SensorThresholdAction

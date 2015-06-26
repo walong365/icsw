@@ -29,13 +29,14 @@ import time
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, snmp_scheme, SensorThreshold
+from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
+from .sensor_threshold import ThresholdContainer
 from initat.collectd.background import snmp_job, bg_job, ipmi_builder
 from initat.collectd.resize import resize_process
 from initat.collectd.aggregate import aggregate_process
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
-from initat.collectd.collectd_struct import host_info, var_cache, ext_com, host_matcher, file_creator
+from initat.collectd.collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, file_creator
 from initat.collectd.dbsync import SyncProcess
 from initat.snmp.process import snmp_process_container
 from lxml.builder import E  # @UnresolvedImports
@@ -85,9 +86,9 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.__ipmi_list = []
         bg_job.setup(self)
         snmp_job.setup(self)
+        self.tc = ThresholdContainer(self)
         self.register_timer(self._check_database, 300, instant=True)
         self.register_timer(self._check_background, 2, instant=True)
-        self.register_timer(self._check_thresholds, 300, instant=True)
         self.__cached_stats, self.__cached_time = (None, time.time())
         self.register_timer(self._check_cached_stats, 30, first_timeout=5)
         self.log("starting processes")
@@ -117,7 +118,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
 
     def _init_hosts(self):
         # init host and perfdata structs
-        host_info.setup(self.fc)
+        CollectdHostInfo.setup(self.fc)
         self.__hosts = {}
 
     def _log_config(self):
@@ -605,7 +606,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
 
     def _create_host_info(self, _dev):
         if _dev.uuid not in self.__hosts:
-            self.__hosts[_dev.uuid] = host_info(self.log, _dev)
+            self.__hosts[_dev.uuid] = CollectdHostInfo(self.log, _dev)
         return self.__hosts[_dev.uuid]
 
     def _feed_host_info(self, _dev, _xml):
@@ -764,10 +765,12 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
     def _handle_perfdata(self, data):
         pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list, key_list = data
         s_time = int(time_recv)
+        if self.tc.device_has_thresholds(_host_info.device.idx):
+            for name, value in zip(key_list, v_list):
+                self.tc.feed(_host_info.device.idx, name, value, False)
         if self.__rrdcached_socket:
             _tf = _host_info.target_file(pd_tuple, step=5 * 60, v_type=pd_tuple[0])
             if _tf:
-                # print zip(key_list, v_list)
                 cache_lines = [
                     "UPDATE {} {:d}:{}".format(
                         _tf,
@@ -783,11 +786,15 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         # s_time = self.get_time((_host_info.name, "icval"), time_recv)
         s_time = int(time_recv)
         cache_lines = []
-        if self.__rrdcached_socket:
-            for name, value in values:
+        if self.tc.device_has_thresholds(_host_info.device.idx):
+            for name, value, mv_flag in values:
                 # name can be none for values with transform problems
                 if name:
-                    # print name, value
+                    self.tc.feed(_host_info.device.idx, name, value, mv_flag)
+        if self.__rrdcached_socket:
+            for name, value, mv_flag in values:
+                # name can be none for values with transform problems
+                if name:
                     try:
                         _tf = _host_info.target_file(name)
                     except ValueError:
@@ -1059,11 +1066,5 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         in_com.set_result("got command {}".format(com_text))
 
     def _sync_sensor_threshold(self, in_com):
-        in_com.set_result("ok synced thresholds")
-        self._check_thresholds()
-
-    def _check_thresholds(self):
-        self.log("checking thresholds")
-        for _th in SensorThreshold.objects.all():
-            _mvv = _th.mv_value_entry
-            # print unicode(_mvv.mv_struct_entry.machine_vector.device), unicode(_mvv), _mvv.full_key
+        in_com.set_result("ok syncing thresholds")
+        self.tc.sync()

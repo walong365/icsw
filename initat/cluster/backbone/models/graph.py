@@ -32,6 +32,7 @@ __all__ = [
     "MVValueEntry",
     "SensorAction",
     "SensorThreshold",
+    "SensorThresholdAction",
 ]
 
 
@@ -225,6 +226,25 @@ class SensorThreshold(models.Model):
             self.upper_value,
             unicode(self.mv_value_entry),
         )
+
+
+class SensorThresholdAction(models.Model):
+    idx = models.AutoField(primary_key=True)
+    sensor_threshold = models.ForeignKey("SensorThreshold")
+    sensor_action = models.ForeignKey("SensorAction")
+    action_type = models.CharField(
+        max_length=12,
+        choices=[
+            ("lower", "lower"),
+            ("upper", "upper"),
+        ]
+    )
+    # copy of current values
+    # upper or lower
+    value = models.FloatField(default=0.0)
+    notify_users = models.ManyToManyField("user")
+    device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
 
 
 @receiver(signals.pre_save, sender=SensorThreshold)

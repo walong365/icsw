@@ -134,6 +134,9 @@ def main():
                 "MODIFY_RRD_COVERAGE",
                 configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)
             ),
+            ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, autoconf_exclude=True)),
+            ("FROM_NAME", configfile.str_c_var("collectd", help_string="from address for event (threshold) mails [%(default)s]")),
+            ("FROM_ADDRESS", configfile.str_c_var(long_host_name, autoconf_exclude=True)),
             ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
             ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
             ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
