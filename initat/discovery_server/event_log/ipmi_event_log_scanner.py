@@ -223,13 +223,27 @@ class IpmiLogJob(EventLogPollerJobBase):
 
                 section_content[section_type] = section_type_value
 
+            # lines[1:] looks like this:
+            # Entity ID             : 19.1
+            # Sensor Type (Discrete): Power Supply
+            # States Asserted       : Redundancy State
+            #                         [Fully Redundant]
+
+            # we assume that lines with no keys belong to the last entry
+            last_key = None
             for content_line in lines[1:]:
                 if ':' not in content_line:
-                    self.log("Invalid content line in ipmi sel: {}".format(content_line),
-                             logging_tools.LOG_LEVEL_WARN)
+                    if last_key is None:
+                        self.log("Invalid content line in ipmi sel: {}".format(content_line),
+                                 logging_tools.LOG_LEVEL_WARN)
+                    else:
+                        section_content[last_key] = section_content[last_key] + ", " + content_line.strip()
+
                 else:
                     key, value = strip_list_entries(content_line.split(":", 1))
                     section_content[key] = value
+
+                    last_key = key
 
             ret = section_type, section_content
         else:
