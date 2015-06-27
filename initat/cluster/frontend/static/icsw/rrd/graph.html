@@ -304,10 +304,10 @@
                 <label class="col-md-3 control-label">Users to notify:</label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
-                        <ui-select multiple ng-model="threshold.notify_users">
-                            <ui-select-match placeholder="Pick some notify users...">{{ $item.login }}</ui-select-match>
+                        <ui-select multiple ng-model="threshold.notify_users_obj">
+                            <ui-select-match placeholder="Pick some notify users...">{{ $item.login + ' (' + $item.email + ')'}}</ui-select-match>
                             <ui-select-choices repeat="user in sensor.graph.user_list">
-                                <div ng-bind-html="user.login"></div>
+                                <div ng-bind-html="user.login + ' (' + user.email + ')'"></div>
                             </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">
@@ -318,18 +318,18 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group">
-                <label class="col-md-3 control-label">Deviceselection:</label>
+            <div class="form-group" ng-show="sensor.graph.selection_list.length">
+                <label class="col-md-3 control-label">Device selection:</label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
-                        <ui-select ng-model="threshold.device_selection">
+                        <ui-select ng-model="threshold.device_selection_obj">
                             <ui-select-match placeholder="Pick a device selection...">{{ $select.selected.info }}</ui-select-match>
                             <ui-select-choices repeat="sel in sensor.graph.selection_list">
                                 <div ng-bind-html="sel.info"></div>
                             </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">
-                            <button type="button" ng-click="threshold.device_selection = undefined" class="btn btn-default">
+                            <button type="button" ng-click="threshold.device_selection_obj = undefined" class="btn btn-default">
                                 <span class="glyphicon glyphicon-trash"></span>
                             </button>
                         </span>
@@ -345,14 +345,14 @@
                 <label class="col-md-3 control-label">Action:</label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
-                        <ui-select ng-model="threshold.upper_sensor_action">
+                        <ui-select ng-model="threshold.upper_sensor_action_obj">
                             <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
                             <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
                                 <div ng-bind-html="action.name"></div>
                             </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">
-                            <button type="button" ng-click="threshold.upper_sensor_action = undefined" class="btn btn-default">
+                            <button type="button" ng-click="threshold.upper_sensor_action_obj = undefined" class="btn btn-default">
                                 <span class="glyphicon glyphicon-trash"></span>
                             </button>
                         </span>
@@ -375,7 +375,7 @@
                     <input class="form-control" type="number" step="0.1" ng-model="threshold.upper_value" ng-change="check_upper_upper()"/>
                 </div>
             </div>
-        <fieldset>
+        </fieldset>
         <fieldset>
             <legend>
                 Lower Value settings
@@ -384,14 +384,14 @@
                 <label class="col-md-3 control-label">Action:</label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
-                        <ui-select ng-model="threshold.lower_sensor_action">
+                        <ui-select ng-model="threshold.lower_sensor_action_obj">
                             <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
                             <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
                                 <div ng-bind-html="action.name"></div>
                             </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">
-                            <button type="button" ng-click="threshold.lower_sensor_action = undefined" class="btn btn-default">
+                            <button type="button" ng-click="threshold.lower_sensor_action_obj = undefined" class="btn btn-default">
                                 <span class="glyphicon glyphicon-trash"></span>
                             </button>
                         </span>
@@ -414,6 +414,6 @@
                     <input class="form-control" type="number" step="0.1" ng-model="threshold.lower_value" ng-change="check_upper_lower()"/>
                 </div>
             </div>
-        <fieldset>
+        </fieldset>
     </form>
 </script>

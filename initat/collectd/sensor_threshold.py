@@ -20,13 +20,16 @@
 #
 """ collectd, threshold checker """
 
-from initat.tools import logging_tools
-from initat.cluster.backbone.models import device, snmp_scheme, SensorThreshold, SensorThresholdAction
-from .config import global_config
-from initat.icsw.service import clusterid
 import time
-import pprint
+
+from initat.tools import logging_tools
+from initat.cluster.backbone.models import SensorThreshold, \
+    SensorThresholdAction, device
+from django.db.models import Q
+from initat.icsw.service import clusterid
 from django.core.mail import send_mail
+
+from .config import global_config
 
 
 class Threshold(object):
@@ -200,14 +203,65 @@ class Threshold(object):
                 unicode(self.th.name),
                 _cluster_id,
             )
-            send_mail(_subject, "message", _from, ["lang-nevyjel@init.at"])
+            _to_users = [_user for _user in self.th.notify_users.all() if _user.email]
+            # build message
+            _message = [
+                "The {} event {} was triggered by device {}".format(
+                    what,
+                    unicode(self.th),
+                    unicode(device.objects.get(Q(pk=self.dev_idx))),
+                ),
+                "",
+                "lower_threshold: {:.4f}".format(self.th.lower_value),
+                "upper_threshold: {:.4f}".format(self.th.upper_value),
+                "",
+                "threshold value is {:.4f}, {:d} values in cache".format(
+                    _value,
+                    len(self.__values),
+                )
+            ]
+            for _time, _val in self.__values[::-1]:
+                _message.append(
+                    "  - {} :: {:.4f} {}".format(
+                        time.ctime(_time),
+                        _val,
+                        "<" if _val < self.th.lower_value else (
+                            ">" if _val > self.th.upper_value else "="
+                        ),
+                    )
+                )
+            _message.extend(
+                [
+                    "",
+                    "{} to notify:".format(logging_tools.get_plural("user", _to_users))
+                ]
+            )
+            for _user in _to_users:
+                _message.append(u"   {} ({})".format(unicode(_user), _user.email))
+            self.log(
+                "sending email with subject '{}' to {}:".format(
+                    _subject,
+                    logging_tools.get_plural("recipient", len(_to_users)),
+                )
+            )
+            for _user in self.th.notify_users.all():
+                self.log(u"   {} ({})".format(unicode(_user), _user.email))
+            if _to_users:
+                _to_mails = [_user.email for _user in _to_users]
+                send_mail(_subject, "\n".join(_message), _from, _to_mails)
 
 
 class ThresholdContainer(object):
     def __init__(self, proc):
         self.proc = proc
-        self.proc.register_timer(self.sync, 300)
         self.__log_com = proc.log
+        self.enabled = global_config["ENABLE_SENSOR_THRESHOLDS"]
+        # sync thresholds once per hour
+        if self.enabled:
+            self.sync = self._sync_enabled
+        else:
+            self.sync = self._sync_disabled
+        self.proc.register_timer(self.sync, 3600)
         self.log("init")
         self.th_dict = {}
         self.sync()
@@ -215,7 +269,11 @@ class ThresholdContainer(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[TC] {}".format(what), log_level)
 
-    def sync(self):
+    def _sync_disabled(self):
+        self.log("thresholds are globally disabled, not syncing", logging_tools.LOG_LEVEL_WARN)
+        self.dev_dict = {}
+
+    def _sync_enabled(self):
         self.log("syncing thresholds")
         remove_pks = self.th_dict.keys()
         new_pks = set()

@@ -697,7 +697,26 @@ angular.module(
                         th_scope.threshold.upper_value = _val
                 2000
             )
+        th_scope.lookup_action = (idx) ->
+            console.log "la", idx
         thresh_div = $compile($templateCache.get("icsw.rrd.graph.threshold.modify"))(th_scope)
+        threshold_object_to_idx = (th_obj) ->
+            if th_obj.lower_sensor_action_obj
+                th_obj.lower_sensor_action = th_obj.lower_sensor_action_obj.idx
+            else
+                th_obj.lower_sensor_action = undefined
+            if th_obj.upper_sensor_action_obj
+                th_obj.upper_sensor_action = th_obj.upper_sensor_action_obj.idx
+            else
+                th_obj.upper_sensor_action = undefined
+            if th_obj.device_selection_obj
+                th_obj.device_selection = th_obj.device_selection_obj.idx
+            else
+                th_obj.device_selection = undefined
+            if th_obj.notify_users_obj
+                th_obj.notify_users = (_user.idx for _user in th_obj.notify_users_obj)
+            else
+                th_obj.notify_users = []
         BootstrapDialog.show
             message: thresh_div
             draggable: true
@@ -711,12 +730,6 @@ angular.module(
                     label: "Cancel"
                     cssClass: "btn-warning"
                     action: (dialog) ->
-                        _th = th_scope.threshold
-                        if _th.lower_sensor_action
-                            _th.lower_sensor_action = _th.lower_sensor_action.idx
-                        if _th.upper_sensor_action
-                            _th.upper_sensor_action = _th.upper_sensor_action.idx
-                        _th.notify_users = (_user.idx for _user in _th.notify_users)
                         dialog.close()
                         th_scope.$destroy()
                 },
@@ -726,16 +739,8 @@ angular.module(
                     cssClass: "btn-success"
                     action: (dialog) ->
                         _th = th_scope.threshold
+                        threshold_object_to_idx(_th)
                         _th.sensor = undefined
-                        _lower_sensor_action = _th.lower_sensor_action
-                        _upper_sensor_action = _th.upper_sensor_action
-                        if _lower_sensor_action
-                            _th.lower_sensor_action = _lower_sensor_action.idx
-                        if _upper_sensor_action
-                            _th.upper_sensor_action = _upper_sensor_action.idx
-                        if _th.device_selection
-                            _th.device_selection = _th.device_selection.idx
-                        _th.notify_users = (_user.idx for _user in _th.notify_users)
                         if create
                             _th.mv_value_entry = sensor.mvv_id
                             Restangular.all(ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)).post(_th).then(
@@ -746,8 +751,6 @@ angular.module(
                                     th_scope.$destroy()
                                 (error) ->
                                     _th.sensor = sensor
-                                    _th.lower_sensor_action = _lower_sensor_action
-                                    _th.upper_sensor_action = _upper_sensor_action
                             )
                         else
                             _th.put().then(
@@ -756,8 +759,6 @@ angular.module(
                                     th_scope.$destroy()
                                 (error) ->
                                     _th.sensor = sensor
-                                    _th.lower_sensor_action = _lower_sensor_action
-                                    _th.upper_sensor_action = _upper_sensor_action
                             )
                 },
             ]
@@ -771,16 +772,21 @@ angular.module(
             )
         sub_scope.modify_threshold = (sensor, threshold) ->
             if threshold.lower_sensor_action
-                threshold.lower_sensor_action = graph.sensor_action_lut[threshold.lower_sensor_action]
+                threshold.lower_sensor_action_obj = graph.sensor_action_lut[threshold.lower_sensor_action]
+            else
+                threshold.lower_sensor_action_obj = undefined
             if threshold.upper_sensor_action
-                threshold.upper_sensor_action = graph.sensor_action_lut[threshold.upper_sensor_action]
+                threshold.upper_sensor_action_obj = graph.sensor_action_lut[threshold.upper_sensor_action]
+            else
+                threshold.upper_sensor_action_obj = undefined
             if threshold.device_selection
-                threshold.device_selection = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
-            _users = []
-            for _user in graph.user_list
-                if _user.idx in threshold.notify_users
-                    _users.push(_user)
-            threshold.notify_users = _users
+                threshold.device_selection_obj = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
+            else
+                threshold.device_selection_obj = undefined
+            if threshold.notify_users
+                threshold.notify_users_obj = (_user for _user in graph.user_list when _user.idx in threshold.notify_users)
+            else
+                threshold.notify_users_obj = []
             th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
         sub_scope.create_new_threshold = (sensor) ->
             _mv = sensor.mean_value

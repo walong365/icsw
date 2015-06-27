@@ -35,7 +35,8 @@ from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
-    get_change_reset_list, get_related_models, cluster_timezone, duration
+    get_change_reset_list, get_related_models, cluster_timezone, duration, \
+    system_timezone
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt
@@ -187,7 +188,7 @@ def _insert_bg_job(cmd, cause, obj):
         )
         background_job.objects.create(
             command=cmd,
-            cause=u"{} of '{}'".format(cause, unicode(obj)),
+            cause=u"{} of '{}'".format(cause, unicode(obj))[:255],
             state="pre-init",
             initiator=device.objects.get(Q(pk=_local_pk)),
             user=thread_local_middleware().user,

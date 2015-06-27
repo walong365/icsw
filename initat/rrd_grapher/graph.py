@@ -38,12 +38,11 @@ from django.db.models import Q
 from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVValueEntry
+    MVValueEntry, system_timezone
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from lxml.builder import E  # @UnresolvedImport
 import dateutil.parser
 from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
-
 from .config import global_config
 
 FLOAT_FMT = "{:.6f}"
@@ -502,7 +501,7 @@ class GraphVar(object):
                             # remove transparency part (if present)
                             self.color[:7],
                         ),
-                        "LINE3:{}{}:<tt>Threshold '{}' [{:.4f}, {:.4f}]</tt>\\l".format(
+                        "LINE3:{}{}:<tt>{} [{:.4f}, {:.4f}]</tt>\\l".format(
                             _thu_name,
                             self.color,
                             _th.name,
@@ -511,8 +510,36 @@ class GraphVar(object):
                         ),
                     ]
                 )
-                for _sta in _th.sensorthresholdaction_set.all():
-                    print "*", _sta
+                _events = {}
+                for _sta in _th.sensorthresholdaction_set.filter(
+                    # Q(date__gte=cluster_timezone.normalize(self.rrd_graph.para_dict["start_time"])),
+                    # Q(date__lte=cluster_timezone.normalize(self.rrd_graph.para_dict["end_time_fc"])),
+                ):
+                    _loc = cluster_timezone.normalize(_sta.date)
+                    if _loc > self.rrd_graph.para_dict["start_time"] and _loc < self.rrd_graph.para_dict["end_time"]:
+                        _events.setdefault(_sta.action_type, []).append(_sta)
+                        print "t",_sta.date
+                for _event_type in sorted(_events.iterkeys()):
+                    for _event_num, _sta in enumerate(_events[_event_type]):
+                        if not _event_num:
+                            _legend = "<tt>  {}</tt>\\l".format(
+                                logging_tools.get_plural(
+                                    "{} event".format(
+                                        _event_type
+                                    ),
+                                    len(_events[_event_type])
+                                )
+                            )
+                        else:
+                            _legend = ""
+                        c_lines.append(
+                            "VRULE:{:d}{}:{}:dashes={}".format(
+                                int(time.mktime(cluster_timezone.normalize(_sta.date).timetuple())),
+                                self.color,
+                                _legend,
+                                "4,2" if _sta.action_type == "upper" else "1,3"
+                            )
+                        )
         return c_lines
 
     def get_legend_list(self):
