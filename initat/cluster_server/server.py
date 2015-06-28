@@ -26,8 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
-    server_mixins, threading_tools, uuid_tools
-from initat.tools import configfile
+    server_mixins, threading_tools, uuid_tools, configfile
 import initat.cluster_server.modules
 import zmq
 
@@ -35,7 +34,7 @@ from .capabilities import capability_process
 from .backup_process import backup_process
 from .license_checker import LicenseChecker
 from .config import global_config
-from .notify import ServerBackgroundNotifyMixin
+from .bgnotify import ServerBackgroundNotifyMixin
 
 
 class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, server_mixins.NetworkBindMixin, server_mixins.ServerStatusMixin):

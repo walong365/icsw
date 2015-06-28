@@ -22,7 +22,7 @@
 
 import time
 
-from initat.tools import logging_tools
+from initat.tools import logging_tools, process_tools
 from initat.cluster.backbone.models import SensorThreshold, \
     SensorThresholdAction, device
 from django.db.models import Q
@@ -248,7 +248,15 @@ class Threshold(object):
                 self.log(u"   {} ({})".format(unicode(_user), _user.email))
             if _to_users:
                 _to_mails = [_user.email for _user in _to_users]
-                send_mail(_subject, "\n".join(_message), _from, _to_mails)
+                try:
+                    send_mail(_subject, "\n".join(_message), _from, _to_mails)
+                except:
+                    self.log(
+                        "error sending email: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
 
 
 class ThresholdContainer(object):

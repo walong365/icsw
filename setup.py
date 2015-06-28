@@ -40,6 +40,8 @@ setup(
         "initat.cluster_server",
         "initat.cluster_server.capabilities",
         "initat.cluster_server.modules",
+        "initat.cluster_server.bginotify",
+        "initat.cluster_server.bginotify.tasks",
         "initat.collectd",
         "initat.collectd.collectd_types",
         "initat.discovery_server",
