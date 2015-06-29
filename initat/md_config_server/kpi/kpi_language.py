@@ -701,11 +701,11 @@ class KpiSet(object):
 
         return retval
 
-    def historic_or(self):
-        return self.aggregate_historic(method='or')
+    def historic_best(self):
+        return self.aggregate_historic(method='best')
 
-    def historic_and(self):
-        return self.aggregate_historic(method='and')
+    def historic_worst(self):
+        return self.aggregate_historic(method='worst')
 
     def get_historic_data(self, start=None, end=None):
         """
