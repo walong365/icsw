@@ -590,6 +590,8 @@ angular.module(
                 DeviceOverviewService.NewOverview(event, [dev])
             else
                 entry.set_selected(not entry.selected)
+            # need $apply() here, $digest is not enough
+            @scope.$apply()
         get_name: (t_entry) ->
             entry = @get_dev_entry(t_entry)
             if t_entry._node_type == "f"
@@ -641,4 +643,5 @@ angular.module(
                 return icswSelectionService.resolve_device(t_entry.obj)
         selection_changed: () =>
             @scope.selection_changed()
+            @scope.$digest()
 ])
