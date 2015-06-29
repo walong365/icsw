@@ -206,7 +206,7 @@ class device_info_form(ModelForm):
                     Div(
                         HTML(
                             "<icsw-tools-button type=\"modify\" button-type=\"submit\" "
-                            "ng-show=\"acl_modify(_edit_obj, 'backbone.device.change_basic')\"></icsw-tools-modify-button>"
+                            "ng-show=\"acl_modify(_edit_obj, 'backbone.device.change_basic')\"></icsw-tools-button>"
                         ),
                     ),
                     css_class="row",
