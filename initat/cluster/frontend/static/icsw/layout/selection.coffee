@@ -245,9 +245,11 @@ angular.module(
 [
     "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
+    "DeviceOverviewService",
 (
     $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus,
-    icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService
+    icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
+    DeviceOverviewService
 ) ->
     # search settings
     $scope.searchstr = "ddd"
@@ -534,6 +536,11 @@ angular.module(
                     $scope.vars.current = undefined
                 )
             )
+
+    $scope.show_current_selection_in_overlay = () ->
+        devsel_list = $scope.selection.get_devsel_list()
+        selected_devices = (icswSelectionService.resolve_device(_pk) for _pk in devsel_list[0])
+        DeviceOverviewService.NewOverview(event, selected_devices)
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
     show_dialog = (scope) ->
         sel_scope = scope.$new()
@@ -581,7 +588,7 @@ angular.module(
         handle_click: (entry, event) =>
             if entry._node_type == "d"
                 dev = icswSelectionService.resolve_device(entry.obj)
-                DeviceOverviewService.NewOverview(event, dev)
+                DeviceOverviewService.NewOverview(event, [dev])
             else
                 entry.set_selected(not entry.selected)
         get_name: (t_entry) ->

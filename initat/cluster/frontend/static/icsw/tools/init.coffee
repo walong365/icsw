@@ -192,7 +192,7 @@ angular.module(
     return bus
 ]).directive("icswSelMan", ["msgbus", (msgbus) ->
     # selection manager directive
-    # selman=1 ... single device mode (==popup)
+    # selman=1 ... popup mode (show devices defined by attribute)
     # selman=0 ... single or multi device mode, depend on sidebar selection
     return {
         restrict: "A"
@@ -200,14 +200,9 @@ angular.module(
         link: (scope, el, attrs) ->
             if parseInt(attrs.icswSelMan)
                 # console.log "popup actsm", attrs
-                scope.$watch(attrs["devicepk"], (new_val) ->
-                    if new_val
-                        if angular.isArray(new_val)
-                            if new_val.length
-                                scope.new_devsel(new_val)
-                        else
-                            # single device mode, for instance for deviceinfo
-                            scope.new_devsel([new_val])
+                scope.$watch(attrs["devicepklist"], (new_val) ->
+                    if new_val and new_val.length
+                        scope.new_devsel(new_val)
                 )
             else
                 # console.log "actsm", attrs

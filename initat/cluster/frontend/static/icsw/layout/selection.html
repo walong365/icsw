@@ -85,6 +85,13 @@
                         <tree treeconfig="tc_categories"></tree>
                     </tab>
                 </tabset>
+                <span class="pull-right">
+
+                    <button class="btn btn-primary" ng-show="selection.any_selected()" ng-click="show_current_selection_in_overlay()">
+                        <span class="bootstrap-dialog-button-icon glyphicon glyphicon-menu-hamburger"></span>
+                        show in overlay
+                    </button>
+                </span>
             </tab>
             <tab heading="saved selections" select="enable_saved_selections()">
                 <form class="form-horizontal">
