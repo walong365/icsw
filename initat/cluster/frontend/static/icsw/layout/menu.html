@@ -105,8 +105,8 @@
                 <ul class="dropdown-menu">
                     <li><a href="{{ ICSW_URLS.USER_OVERVIEW }}">Overview</a></li>
                     <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}" ng-show="has_valid_license('snapshot')">History</a></li>
-                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}"><span class="glyphicon glyphicon-pencil"></span>&nbsp;License</a></li>
-                    <li ng-show="has_menu_permission('background_job.show_background')"><a href="{{ ICSW_URLS.USER_BACKGROUND_JOB_INFO }}"><span class="glyphicon glyphicon-list"></span>&nbsp;Background Job Info</a></li>
+                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}"><span class="fa fa-pencil fa-sm"></span>&nbsp;License</a></li>
+                    <li ng-show="has_menu_permission('background_job.show_background')"><a href="{{ ICSW_URLS.USER_BACKGROUND_JOB_INFO }}"><span class="fa fa-list fa-sm"></span>&nbsp;Background Job Info</a></li>
                 </ul>
             </li>
 
