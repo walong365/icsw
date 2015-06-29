@@ -636,4 +636,5 @@ angular.module(
                 return icswSelectionService.resolve_device(t_entry.obj)
         selection_changed: () =>
             @scope.selection_changed()
+            @scope.$digest()
 ])
