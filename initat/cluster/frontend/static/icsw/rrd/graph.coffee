@@ -132,6 +132,7 @@ get_node_keys = (node) ->
         "value_key": node._key_pair[1]
         "build_info": if node.build_info? then node.build_info else "",
     }
+
 class pd_timerange
     constructor: (@name, @from, @to) ->
     get_from: (cur_from, cur_to) =>
@@ -336,20 +337,19 @@ angular.module(
                         $scope.num_devices++
                 $scope.g_tree.recalc()
                 $scope.is_loading = false
-                $scope.$apply(
-                    $scope.vector_valid = if $scope.num_struct then true else false
-                    if $scope.vector_valid
-                        $scope.error_string = ""
-                        $scope.num_mve_sel = 0
-                        if $scope.auto_select_re or $scope.cur_selected.length
-                            # recalc tree when an autoselect_re is present
-                            $scope.g_tree.show_selected(false)
-                            $scope.selection_changed()
-                            if $scope.draw_on_init and $scope.num_mve_sel
-                                $scope.draw_graph()
-                    else
-                        $scope.error_string = "No vector found"
-                )
+                $scope.vector_valid = if $scope.num_struct then true else false
+                if $scope.vector_valid
+                    $scope.error_string = ""
+                    $scope.num_mve_sel = 0
+                    if $scope.auto_select_re or $scope.cur_selected.length
+                        # recalc tree when an autoselect_re is present
+                        $scope.g_tree.show_selected(false)
+                        $scope.selection_changed()
+                        if $scope.draw_on_init and $scope.num_mve_sel
+                            $scope.draw_graph()
+                else
+                    $scope.error_string = "No vector found"
+                $scope.$digest()
 
         $scope._add_structural_entry = (entry, lut, parent) =>
             parts = entry.key.split(".")
@@ -635,8 +635,10 @@ angular.module(
             else if entry._node_type == "e"
                 entry.set_selected(!entry.selected)
                 @scope.selection_changed()
+            @scope.$digest()
         selection_changed: () =>
             @scope.selection_changed()
+            @scope.$digest()
 
 ]).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
@@ -868,9 +870,7 @@ angular.module(
                     crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
                     element.after(crop_span)
                     crop_span.find("input").on("click", () ->
-                        scope.$apply(
-                            scope.$emit("cropSet", _graph)
-                        )
+                        scope.$emit("cropSet", _graph)
                     )
                     crop_span.hide()
                     img_div = angular.element("<div/>")
@@ -881,32 +881,29 @@ angular.module(
                     $(myImg).Jcrop({
                         trackDocument: true
                         onSelect: (sel) ->
-                            scope.$apply(() ->
-                                if not _graph.cropped
-                                    crop_span.show()
-                                _graph.set_crop(sel)
-                                crop_span.find("span").text(
-                                    "cropped timerange: " +
-                                    _graph.get_tv(_graph.cts_start_mom) +
-                                    " to " +
-                                    _graph.get_tv(_graph.cts_end_mom)
-                                )
+                            if not _graph.cropped
+                                crop_span.show()
+                            _graph.set_crop(sel)
+                            crop_span.find("span").text(
+                                "cropped timerange: " +
+                                _graph.get_tv(_graph.cts_start_mom) +
+                                " to " +
+                                _graph.get_tv(_graph.cts_end_mom)
                             )
+                            scope.$digest()
                         onRelease: () ->
-                            scope.$apply(() ->
-                                if _graph.cropped
-                                    crop_span.hide()
-                                _graph.clear_crop()
-                            )
+                            if _graph.cropped
+                                crop_span.hide()
+                            _graph.clear_crop()
+                            scope.$digest()
                     }, () ->
                         # not needed ?
                         bounds = this.getBounds()
                     )
                     myImg.bind("error", (event) ->
-                        scope.$apply(() ->
-                            _graph.error = true
-                            graph_error()
-                        )
+                        _graph.error = true
+                        graph_error()
+                        scope.$digest()
                     )
                 scope.$on("$destroy", clear)
                 scope.$watch("graph.active", (new_val) ->
