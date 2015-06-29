@@ -9,7 +9,7 @@
             </li>
 
             <li> <!-- TODO perms -->
-                <a class="dropdown-toggle" data-toggle="dropdown">Device <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">Device <span class="fa fa-hdd-o fa-lg"></span><b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <!-- TODO perms -->
                     <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create new device</a></li>
@@ -30,7 +30,7 @@
             </li>
 
             <li> <!-- TODO perm -->
-                <a class="dropdown-toggle" data-toggle="dropdown">Monitoring <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">Monitoring <span class="fa fa-cog fa-lg"><b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}">Basic setup</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_menu_permission('device.change_monitoring')"><a href="{{ ICSW_URLS.MON_DEVICE_CONFIG }}">Device settings</a></li>
@@ -60,7 +60,7 @@
             </li>
 
             <li> <!-- TODO perm -->
-                <a class="dropdown-toggle" data-toggle="dropdown">Status <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">Status <span class="fa fa-line-chart fa-lg"></span><b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}">Livestatus</a></li>
                     <li><a href="{{ ICSW_URLS.TODO }}">Graph</a></li> <!-- TODO perm -->
@@ -101,11 +101,11 @@
             </li>
 
             <li ng-show="has_menu_permission('group.group_admin')">
-                <a class="dropdown-toggle" data-toggle="dropdown">System setup <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">System setup <span class="fa fa-gears fa-lg"></span><b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li><a href="{{ ICSW_URLS.USER_OVERVIEW }}">Overview</a></li>
-                    <li><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}" ng-show="has_valid_license('snapshot')">History</a></li>
-                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}"><span class="fa fa-pencil fa-sm"></span>&nbsp;License</a></li>
+                    <li><a href="{{ ICSW_URLS.USER_OVERVIEW }}"><span class="fa fa-user fa-sm"></span>&nbsp;User</a></li>
+                    <li ng-show="has_valid_license('snapshot')"><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}"><span class="fa fa-history fa-sm"></span>&nbsp;History</a></li>
+                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}"><span class="fa fa-key fa-sm"></span>&nbsp;License</a></li>
                     <li ng-show="has_menu_permission('background_job.show_background')"><a href="{{ ICSW_URLS.USER_BACKGROUND_JOB_INFO }}"><span class="fa fa-list fa-sm"></span>&nbsp;Background Job Info</a></li>
                 </ul>
             </li>

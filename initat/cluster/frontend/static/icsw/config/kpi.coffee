@@ -360,6 +360,8 @@ angular.module(
                                 child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
                             child_scope.kpi_result.loading = false
 
+                            child_scope.$digest()
+
             # parameters as understood by KpiData.parse_kpi_time_range
             child_scope.kpi_time_ranges = [
                 {id_str: 'none', display_str: 'Only current data'},

@@ -99,7 +99,7 @@ class TimeLineUtils(list):
     def calculate_compound_time_line(method, time_lines):
         """
         Merges all time_lines according to method
-        :param method: "or" or "and"
+        :param method: "best" or "worst"
         """
         # work on copies
         time_lines = [collections.deque(tl) for tl in time_lines]
@@ -133,9 +133,9 @@ class TimeLineUtils(list):
         def add_to_compound_tl(date, current_tl_states, force_add=False):
             # key_fun = lambda state: (state_ordering[state[0]], state_type_ordering[state[1]])
             key_fun = lambda state: (state[0], state_type_ordering[state[1]])
-            if method == 'or':
+            if method == 'best':
                 next_state = min(current_tl_states, key=key_fun)
-            elif method == 'and':
+            elif method == 'worst':
                 next_state = max(current_tl_states, key=key_fun)
             else:
                 raise RuntimeError("Invalid aggregate_historic method: {}".format(method) +
