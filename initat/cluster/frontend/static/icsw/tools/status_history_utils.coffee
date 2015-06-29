@@ -203,7 +203,6 @@ angular.module(
                 formatted_data.push({'state': key, 'value': 0})
 
         for d in formatted_data
-            console.log d['value'], float_format(d['value'])
             d['value'] = float_format(d['value'])
         final_data = _.sortBy(formatted_data, (d) -> return weights[d['state']])
 
