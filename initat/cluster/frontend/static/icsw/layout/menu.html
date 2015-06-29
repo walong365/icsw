@@ -30,7 +30,7 @@
             </li>
 
             <li> <!-- TODO perm -->
-                <a class="dropdown-toggle" data-toggle="dropdown">Monitoring <span class="fa fa-cog fa-lg"><b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">Monitoring <span class="fa fa-gears fa-lg"><b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}">Basic setup</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_menu_permission('device.change_monitoring')"><a href="{{ ICSW_URLS.MON_DEVICE_CONFIG }}">Device settings</a></li>
@@ -79,7 +79,7 @@
                 &&
                 has_any_menu_permission(['device.change_boot', 'package.package_install', 'partition_fs.modify_partitions', 'kernel.modify_kernels', 'image.modify_images'])
                 ">
-                <a class="dropdown-toggle" data-toggle="dropdown">Cluster <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">Cluster <span class="fa fa-cubes fa-lg"></span><b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="SERVICE_TYPES.mother && has_valid_license('netboot') && has_menu_permission('device.change_boot')"><a href="{{ ICSW_URLS.BOOT_SHOW_BOOT }}">Nodeboot</a></li>
                     <li ng-show="SERVICE_TYPES.package && has_valid_license('package_install') && has_menu_permission('package.package_install') && has_valid_license('package_install')"><a href="{{ ICSW_URLS.PACK_REPO_OVERVIEW }}">Package install</a></li>
@@ -92,7 +92,7 @@
             </li>
 
             <li ng-show="has_any_valid_license(['rms', 'ext_license'])">
-                <a class="dropdown-toggle" data-toggle="dropdown">RMS <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">RMS <span class="fa fa-list-ol fa-lg"></span><b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{{ ICSW_URLS.RMS_OVERVIEW }}" ng-show="has_valid_license('rms')">RMS overview</a></li>
                     <li><a href="{{ ICSW_URLS.LIC_OVERVIEW }}" ng-show="false && has_valid_license('ext_license')">License overview</a></li>
@@ -101,7 +101,7 @@
             </li>
 
             <li ng-show="has_menu_permission('group.group_admin')">
-                <a class="dropdown-toggle" data-toggle="dropdown">System setup <span class="fa fa-gears fa-lg"></span><b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">System setup <span class="fa fa-cog fa-sm"></span><b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{{ ICSW_URLS.USER_OVERVIEW }}"><span class="fa fa-user fa-sm"></span>&nbsp;User</a></li>
                     <li ng-show="has_valid_license('snapshot')"><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}"><span class="fa fa-history fa-sm"></span>&nbsp;History</a></li>
