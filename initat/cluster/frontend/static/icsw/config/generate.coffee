@@ -22,8 +22,8 @@ config_gen_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
     ]
-).service("icswConfigConfigTreeService", () ->
-    class config_tree extends tree_config
+).service("icswConfigConfigTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class config_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -67,7 +67,8 @@ config_gen_module = angular.module(
                         @dev_conf.active_content = content.split("\n")
                     else
                         @dev_conf.active_content = []
-).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+            @scope.$digest()
+]).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devsel_list = []
         $scope.result_trees = []

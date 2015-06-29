@@ -17,13 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 device_configuration_module = angular.module(
     "icsw.device.category",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).service("icswDeviceCategoryTreeService", () ->
-    class category_tree extends tree_config
+).service("icswDeviceCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class category_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -32,6 +33,7 @@ device_configuration_module = angular.module(
             @show_descendants = false
             @show_childs = false
         selection_changed: (entry) =>
+            # FIXME, TODO, slow update of the frontend (albeit the backbone already got the request)
             if @scope.multi_device_mode
                 @scope.new_md_selection(entry)
             else
@@ -56,7 +58,7 @@ device_configuration_module = angular.module(
                 return cat.full_name
             else
                 return "TOP"
-).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.device_pks = []

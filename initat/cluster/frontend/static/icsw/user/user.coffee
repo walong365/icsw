@@ -19,60 +19,6 @@
 #
 DT_FORM = "YYYY-MM-DD HH:mm"
 
-class user_tree extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        @show_selection_buttons = false
-        @show_icons = true
-        @show_select = false
-        @show_descendants = true
-        @show_childs = false
-    get_name : (t_entry) ->
-        ug = t_entry.obj
-        if t_entry._node_type == "g"
-            _name = ug.groupname
-            _if = ["gid #{ug.gid}"]
-        else
-            _name = ug.login
-            _if = ["uid #{ug.uid}"]
-        if ! ug.active
-            _if.push("inactive")
-        return "#{_name} (" + _if.join(", ") + ")"
-    handle_click: (entry, event) =>
-        @clear_active()
-        entry.active = true
-        @scope.edit_object(entry.obj, entry._node_type)
-
-
-class diskusage_tree extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        @show_selection_buttons = false
-        @show_icons = true
-        @show_select = false
-        @show_descendants = true
-        @show_childs = false
-    get_name : (t_entry) ->
-        _dir = t_entry.obj
-        _size_total = _dir.size_total
-        _size = _dir.size
-        _size_total_str = @scope.icswTools.get_size_str(_size_total, 1024, "B")
-        if _size_total == _size
-            _info = ["#{_size_total_str} total"]
-        else
-            if _size
-                _size_str = @scope.icswTools.get_size_str(_size, 1024, "B")
-                _info = [
-                    "#{_size_total_str} total",
-                    "#{_size_str} in directory"
-                ]
-            else
-                _info = ["#{_size_total_str} total"]
-        if _dir.num_files_total
-            _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
-        return "#{_dir.name} (" + _info.join(", ") + ")"
-
-
 class screen_size
     constructor: (@x_size, @y_size) ->
         @idx = @constructor._count++   # must be same as index in list
@@ -99,8 +45,61 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster, access_level_service) ->
+).service("icswUserTree", ["icswTreeConfig", (icswTreeConfig) ->
+    class icsw_user_tree extends icswTreeConfig
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = true
+            @show_select = false
+            @show_descendants = true
+            @show_childs = false
+        get_name : (t_entry) ->
+            ug = t_entry.obj
+            if t_entry._node_type == "g"
+                _name = ug.groupname
+                _if = ["gid #{ug.gid}"]
+            else
+                _name = ug.login
+                _if = ["uid #{ug.uid}"]
+            if ! ug.active
+                _if.push("inactive")
+            return "#{_name} (" + _if.join(", ") + ")"
+        handle_click: (entry, event) =>
+            @clear_active()
+            entry.active = true
+            @scope.edit_object(entry.obj, entry._node_type)
+            @scope.$digest()
+]).service("icswDiskUsageTree", ["icswTreeConfig", (icswTreeConfig) ->
+    class icww_disk_usage_tree extends icswTreeConfig
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = true
+            @show_select = false
+            @show_descendants = true
+            @show_childs = false
+        get_name : (t_entry) ->
+            _dir = t_entry.obj
+            _size_total = _dir.size_total
+            _size = _dir.size
+            _size_total_str = @scope.icswTools.get_size_str(_size_total, 1024, "B")
+            if _size_total == _size
+                _info = ["#{_size_total_str} total"]
+            else
+                if _size
+                    _size_str = @scope.icswTools.get_size_str(_size, 1024, "B")
+                    _info = [
+                        "#{_size_total_str} total",
+                        "#{_size_str} in directory"
+                    ]
+                else
+                    _info = ["#{_size_total_str} total"]
+            if _dir.num_files_total
+                _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
+            return "#{_dir.name} (" + _info.join(", ") + ")"
+]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "access_level_service", "icswUserTree",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster, access_level_service, icswUserTree) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -109,7 +108,7 @@ user_module = angular.module(
         ]
         access_level_service.install($scope)
         $scope.obj_perms = {}
-        $scope.tree = new user_tree($scope)
+        $scope.tree = new icswUserTree($scope)
         $scope.filterstr = ""
         # init edit mixins
         $scope.group_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
@@ -707,7 +706,7 @@ user_module = angular.module(
                         )
                 return r_stack
     }
-]).directive("icswUserDiskUsage", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
+]).directive("icswUserDiskUsage", ["$compile", "$templateCache", "icswTools", "icswDiskUsageTree", ($compile, $templateCache, icswTools, icswDiskUsageTree) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.disk.usage")
@@ -744,7 +743,7 @@ user_module = angular.module(
                         if entry.expand
                             _expanded.push(entry.obj.full_name)
                     )
-                scope.du_tree = new diskusage_tree(scope)
+                scope.du_tree = new icswDiskUsageTree(scope)
                 scope.SIZE_LIMIT = 1024 * 1024
                 _tree_lut = {}
                 _rest_list = []
@@ -762,7 +761,12 @@ user_module = angular.module(
                         _ns_list.push(entry.idx)
                         continue
                     nodes_shown++
-                    t_entry = scope.du_tree.new_node({folder:false, obj:entry, expand:entry.full_name in _expanded, always_folder:true})
+                    t_entry = scope.du_tree.new_node(
+                        folder: false
+                        obj: entry
+                        expand: entry.full_name in _expanded
+                        always_folder: true
+                    )
                     _tree_lut[entry.idx] = t_entry
                     if entry.parent_dir
                         _rest_list.push(t_entry)

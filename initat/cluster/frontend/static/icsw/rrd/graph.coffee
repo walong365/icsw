@@ -605,8 +605,8 @@ angular.module(
             scope.draw_on_init = attrs["draw"] ? false
         controller: "icswGraphOverviewCtrl"
     }
-]).service("icswRRDGraphTreeService", () ->
-    class rrd_tree extends tree_config
+]).service("icswRRDGraphTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class rrd_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = true
@@ -638,7 +638,7 @@ angular.module(
         selection_changed: () =>
             @scope.selection_changed()
 
-).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict: "E"
         replace: true
