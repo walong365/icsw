@@ -223,7 +223,13 @@ user_module = angular.module(
             for entry in $scope.group_list
                 # set csw dummy permission list and optimizse object_permission list
                 $scope.init_csw_cache(entry, "group")
-                t_entry = $scope.tree.new_node({folder:true, obj:entry, expand:!entry.parent_group, _node_type:"g"})
+                t_entry = $scope.tree.new_node(
+                    folder: true
+                    obj: entry
+                    expand: !entry.parent_group
+                    _node_type: "g"
+                    always_folder: true
+                )
                 group_lut[entry.idx] = t_entry
                 if entry.parent_group
                     # handle later

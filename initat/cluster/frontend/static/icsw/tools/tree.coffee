@@ -77,6 +77,8 @@ tree_module = angular.module(
             @parent = null
             # link to config
             @config = null
+            # always shown as folder ?
+            @always_folder = false
             for key, value of args
                 @[key] = value
             # idx
@@ -399,22 +401,26 @@ tree_module = angular.module(
                 _top_span.append(_sel2_button)
             # name
             _a_node = angular.element("<a ng-href='#' class='fancytree-title'/>")
-            _name_span = angular.element("<span class=\"#{@get_name_class(node)}\" title=\"#{@get_title(node)}\">#{@get_name(node)}</span>")
+            # binds name and select spand
+            _bind_span = angular.element("<span></span>")
+            _name_span = angular.element("<span></span>")
+            _bind_span.append(_name_span)
+            node._name_span = _name_span
             if @show_childs and !@show_descendants
                 _childs_span = angular.element("<span>(<span>xx</span>)</span>")
                 # _childs_span.hide()
-                _name_span.append(_childs_span)
+                _bind_span.append(_childs_span)
             else
                 _childs_span = undefined
             if !@show_childs and @show_descendants
                 _descendants_span = angular.element("<span><span></span><span></span></span>")
                 _descendants_span.hide()
-                _name_span.append(_descendants_span)
+                _bind_span.append(_descendants_span)
             else
                 _descendants_span = undefined
             node._childs_span = _childs_span
             node._descendants_span = _descendants_span
-            _a_node.append(_name_span)
+            _a_node.append(_bind_span)
             _a_node.bind("click", (event) =>
                 @handle_click(node, event)
             )
@@ -459,6 +465,13 @@ tree_module = angular.module(
                 else
                     _spn.hide()
 
+            _update_name_span = (node) =>
+                _sp = node._name_span
+                _sp.removeClass()
+                _sp.addClass(@get_name_class(node))
+                _sp.attr("title", @get_title(node))
+                _sp.text(@get_name(node))
+
             if node._sel_span
                 _update_sel_span(node)
             if node._sel_button_span
@@ -467,6 +480,9 @@ tree_module = angular.module(
                 _update_childs_span(node)
             if node._descendants_span
                 _update_descendants_span(node)
+            if node._tne
+                # tne has to be present for name_span
+                _update_name_span(node)
 
         _show_active: (entry, keep) =>
             if (true for sub_entry in entry.children when @_show_active(sub_entry, keep)).length
@@ -604,9 +620,9 @@ tree_module = angular.module(
                 r_class.push "fancytree-active"
             if entry.selected
                 r_class.push "fancytree-selected"
-            if entry.children.length or entry.always_folder?
+            if entry.children.length or entry.always_folder
                 r_class.push "fancytree-has-children"
-                if entry.expand
+                if entry.expand and entry.children.length
                     r_class.push "fancytree-expanded"
                     r_class.push "fancytree-ico-ef"
                     if last
@@ -624,4 +640,3 @@ tree_module = angular.module(
                 r_class.push "fancytree-exp-n"
             return r_class
 ])
-
