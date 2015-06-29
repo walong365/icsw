@@ -388,15 +388,9 @@ angular.module(
             else
                 return false
     has_menu_permission = (p_name) ->
-        if angular.isArray(p_name)
-            for p in p_name
-                if has_menu_permission(p)
-                    return true
-            return false
-        else
-            if p_name.split(".").length == 2
-                p_name = "backbone.#{p_name}"
-            return p_name of data.global_permissions or p_name of data.object_permissions
+        if p_name.split(".").length == 2
+            p_name = "backbone.#{p_name}"
+        return p_name of data.global_permissions or p_name of data.object_permissions
     has_valid_license = (license) ->
         if Object.keys(data.license_data).length == 0
             # not loaded yet
@@ -423,6 +417,11 @@ angular.module(
 
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission
+        has_any_menu_permission: (permissions) ->
+            for p in permissions
+                if has_menu_permission(p)
+                    return true
+            return false
 
         has_valid_license: has_valid_license
         has_any_valid_license: (licenses) ->
