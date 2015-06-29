@@ -693,7 +693,16 @@ class device_tree_list(
                 # meta_list, device group selected
                 meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt])
                 # device list, direct selected
-                device_list = Q(pk__in=set(sum([[dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if not dt], [])))
+                device_list = Q(
+                    pk__in=set(
+                        sum(
+                            [
+                                [dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if not dt
+                            ],
+                            []
+                        )
+                    )
+                )
                 _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))

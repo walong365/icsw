@@ -681,44 +681,6 @@ class device(models.Model):
         else:
             return None
 
-    # def get_uptime(self):
-    #    _rs = 0
-    #    if self.mother_xml is not None:
-    #        if int(self.mother_xml.get("ok", "0")):
-    #            now, uptime_ts = (
-    #                cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-    #                self.uptime_timestamp,
-    #            )
-    #            if uptime_ts is not None:
-    #                uptime_timeout = (now - uptime_ts).seconds
-    #            else:
-    #                uptime_timeout = 3600
-    #            if uptime_timeout > 30:
-    #                # too long ago, outdated
-    #                _rs = 0
-    #            else:
-    #                _rs = self.uptime
-    #    return _rs
-
-    # def uptime_valid(self):
-    #    _rs = False
-    #    if self.mother_xml is not None:
-    #        if int(self.mother_xml.get("ok", "0")):
-    #            now, uptime_ts = (
-    #                cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-    #                self.uptime_timestamp,
-    #            )
-    #            if uptime_ts is not None:
-    #                uptime_timeout = (now - uptime_ts).seconds
-    #            else:
-    #                uptime_timeout = 3600
-    #            if uptime_timeout > 30:
-    #                # too long ago, outdated
-    #                _rs = False
-    #            else:
-    #                _rs = True
-    #    return _rs
-
     def latest_contact(self):
         lc_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_server_last_contact"]
         if lc_obj:
