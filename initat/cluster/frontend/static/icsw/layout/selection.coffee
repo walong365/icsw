@@ -153,12 +153,14 @@ angular.module(
             for cat in data[1]
                 cat.devices = []
                 cat_lut[cat.idx] = cat
-            # devices
+            # device groups
             for dev in data[0]
                 if dev.is_meta_device
                     dev.devices = []
                     devg_lut[dev.device_group] = dev
-                else
+            # devices
+            for dev in data[0]
+                if ! dev.is_meta_device
                     devg_lut[dev.device_group].devices.push(dev.idx)
                 dev_lut[dev.idx] = dev
                 if dev.categories
@@ -299,18 +301,9 @@ angular.module(
                 t_cat_lut[entry.parent].add_child(t_entry)
             else
                 $scope.tc_categories.add_root_node(t_entry)
-        # build devices tree
-        cur_dg = undefined
+        # build device group tree and top level of device tree
+        dg_lut = {}
         for entry in data[0]
-            # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
-            t_entry = $scope.tc_devices.new_node(
-                {
-                    obj: entry.idx
-                    folder: entry.is_meta_device
-                    _node_type: "d"
-                    selected: $scope.selection.device_selected(entry.idx)
-                }
-            )
             if entry.is_meta_device
                 g_entry = $scope.tc_groups.new_node(
                     {
@@ -321,10 +314,29 @@ angular.module(
                     }
                 )
                 $scope.tc_groups.add_root_node(g_entry)
-                cur_dg = t_entry
-                $scope.tc_devices.add_root_node(cur_dg)
-            else
-                cur_dg.add_child(t_entry)
+                d_entry = $scope.tc_devices.new_node(
+                    {
+                        obj: entry.idx
+                        folder: true
+                        _node_type: "d"
+                        selected: $scope.selection.device_selected(entry.idx)
+                    }
+                )
+                $scope.tc_devices.add_root_node(d_entry)
+                dg_lut[entry.device_group] = d_entry
+        # build devices tree
+        for entry in data[0]
+            if ! entry.is_meta_device
+                # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
+                d_entry = $scope.tc_devices.new_node(
+                    {
+                        obj: entry.idx
+                        folder: false
+                        _node_type: "d"
+                        selected: $scope.selection.device_selected(entry.idx)
+                    }
+                )
+                dg_lut[entry.device_group].add_child(d_entry)
         $scope.tc_devices.prune(
             (entry) ->
                 return entry._node_type == "d"
@@ -365,6 +377,8 @@ angular.module(
             $timeout.cancel($scope.cur_search_to)
         $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
     $scope.set_search_filter = () ->
+        if $scope.vars.search_str == ""
+            return
         try
             cur_re = new RegExp($scope.vars.search_str, "gi")
         catch exc
