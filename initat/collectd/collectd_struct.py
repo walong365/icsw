@@ -436,7 +436,7 @@ class ext_com(object):
         self.popen.kill()
 
 
-class host_info(object):
+class CollectdHostInfo(object):
     def __init__(self, log_com, _dev):
         self.device = _dev
         self.__log_com = log_com
@@ -463,20 +463,20 @@ class host_info(object):
 
     @staticmethod
     def setup(fc):
-        host_info.entries = {}
-        host_info.fc = fc
+        CollectdHostInfo.entries = {}
+        CollectdHostInfo.fc = fc
 
     @staticmethod
     def host_update(hi):
         cur_time = time.time()
         # delete old entries
-        del_keys = [key for key, value in host_info.entries.iteritems() if abs(value[0] - cur_time) > 15 * 60]
+        del_keys = [key for key, value in CollectdHostInfo.entries.iteritems() if abs(value[0] - cur_time) > 15 * 60]
         if del_keys:
             for del_key in del_keys:
-                del host_info.entries[del_key]
+                del CollectdHostInfo.entries[del_key]
         # set new entry
-        host_info.entries[hi.uuid] = (cur_time, hi.name)
-        mc.set("cc_hc_list", json.dumps(host_info.entries))
+        CollectdHostInfo.entries[hi.uuid] = (cur_time, hi.name)
+        mc.set("cc_hc_list", json.dumps(CollectdHostInfo.entries))
 
     def mc_key(self):
         return "cc_hc_{}".format(self.uuid)
@@ -487,7 +487,7 @@ class host_info(object):
     def target_file(self, name, **kwargs):
         _tf, _exists = self.__target_files[name]
         if not _exists:
-            _created = host_info.fc._create_target_file(_tf, cols=self.__width.get(name, None), **kwargs)
+            _created = CollectdHostInfo.fc._create_target_file(_tf, cols=self.__width.get(name, None), **kwargs)
             if _created:
                 self.__target_files[name] = (_tf, True)
                 return _tf
@@ -502,7 +502,7 @@ class host_info(object):
     def feed_perfdata(self, pd_tuple):
         if pd_tuple not in self.__perfdata_count:
             self.__perfdata_count[pd_tuple] = 1
-            self.__target_files[pd_tuple] = (host_info.fc.get_pd_file_path(self.uuid, pd_tuple), False)
+            self.__target_files[pd_tuple] = (CollectdHostInfo.fc.get_pd_file_path(self.uuid, pd_tuple), False)
         self.__perfdata_count[pd_tuple] -= 1
         if not self.__perfdata_count[pd_tuple]:
             self.__perfdata_count[pd_tuple] = 10
@@ -596,7 +596,7 @@ class host_info(object):
 
     def _store_json_to_memcached(self):
         json_vector = [_value.get_json() for _value in self.__dict.itervalues()]
-        host_info.host_update(self)
+        CollectdHostInfo.host_update(self)
         # set and ignore errors, default timeout is 2 minutes
         mc.set(self.mc_key(), json.dumps(json_vector), self.__mc_timeout)
 
@@ -604,16 +604,18 @@ class host_info(object):
         self.last_update = cur_time
         if key in self.__dict:
             try:
+                # format: key, value, multi-value flag
                 return (
                     self.__dict[key].name,
                     self.__dict[key].transform(value, cur_time),
+                    False,
                 )
             except (ValueError, KeyError):
                 self.log("error transforming {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                return (None, None)
+                return (None, None, False)
         else:
             # key not known, skip
-            return (None, None)
+            return (None, None, False)
 
     def get_values(self, _xml, simple):
         self.stores += 1
@@ -645,7 +647,8 @@ class host_info(object):
                                     )[1]
                                 ) for _val in entry.findall("value")
                             ]
-                        )
+                        ),
+                        True
                     )
                 )
         return values

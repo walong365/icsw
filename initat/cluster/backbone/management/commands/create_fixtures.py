@@ -440,6 +440,12 @@ class Command(BaseCommand):
             except:
                 pass
         factories.SensorActionFactory(
+            name="nothing",
+            description="do nothing (to record events)",
+            action="none",
+            hard_control=False,
+        )
+        factories.SensorActionFactory(
             name="halt (software)",
             description="tries to halt the devices via software",
             action="halt",

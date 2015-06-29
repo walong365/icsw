@@ -23,7 +23,6 @@
 #
 """ shows error recorded in the error file """
 
-import argparse
 import commands
 import datetime
 import os
@@ -112,15 +111,7 @@ class error_rec(object):
         )
 
 
-def main():
-    my_parser = argparse.ArgumentParser()
-    my_parser.add_argument("--stat", default=False, action="store_true", help="show statistis (error per UID, [%(default)s]")
-    my_parser.add_argument("--clear", default=False, action="store_true", help="compress actual error file [%(default)s]")
-    my_parser.add_argument("--noempty", default=False, action="store_true", help="suppress empty error lines [%(default)s]")
-    my_parser.add_argument("-s", dest="index", action="append", help="show index at position [%(default)s]", default=[])
-    my_parser.add_argument("-l", type=int, dest="num", help="show last [%(default)s] error", default=0)
-    # my_parser.add_argument("-f", default=False, action="store_true", help="enable follow mode [%(default)s]")
-    options = my_parser.parse_args()
+def main(options):
     options.overview = True if (not options.stat and not options.index and not options.num) else False
     options.index = [int(cur_idx) for cur_idx in options.index]
     err_file_name = "/var/log/cluster/logging-server/err_py"

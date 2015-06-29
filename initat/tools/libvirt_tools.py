@@ -17,11 +17,11 @@
 #
 
 from lxml import etree  # @UnresolvedImport
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import sys
 import time
+
+from initat.tools import logging_tools, process_tools
 
 try:
     import libvirt  # @UnresolvedImport

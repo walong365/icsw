@@ -21,17 +21,17 @@
 #
 """ helper functions for cluster-backbone-sql models """
 import collections
+import time
+import datetime
+import sys
+import pdb
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import Q
 import pytz
-import time
 import decorator
-import datetime
-import sys
-import pdb
 from initat.tools import logging_tools
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)

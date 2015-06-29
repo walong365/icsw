@@ -579,7 +579,8 @@ class user_manager(models.Manager):
             group=user_group,
             comment="admin created by createsuperuser",
             password=password,
-            is_superuser=True)
+            is_superuser=True
+        )
         return new_admin
 
 

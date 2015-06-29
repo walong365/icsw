@@ -24,22 +24,16 @@
 import os
 import stat
 import time
-import argparse
 
-from initat.meta_server.config import global_config
-from initat.meta_server.servicestate import ServiceState
 from initat.icsw.service import container, transition, instance, service_parser, clusterid
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import mail_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
-from initat.tools import server_mixins
-from initat.tools import inotify_tools
+from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
+    threading_tools, server_mixins, inotify_tools
 import zmq
 from initat.host_monitoring import hm_classes
 from initat.client_version import VERSION_STRING
+
+from .config import global_config
+from .servicestate import ServiceState
 
 
 class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin):
