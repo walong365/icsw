@@ -4,15 +4,7 @@
             <tab-heading>
                 General
             </tab-heading>
-            <div ng-controller="deviceinfo_ctrl">
-                <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" devicepklist="devicepklist">
-                </icsw-simple-device-info>
-                <div ng-show="show_uuid">
-                    <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
-                    <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
-                    <h4>and restart host-monitoring .</h4>
-                </div>
-            </div>
+            <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" devicepklist="devicepklist"></icsw-simple-device-info>
         </tab>
         <tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')" active="category_active">
             <tab-heading>

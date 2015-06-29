@@ -59,7 +59,6 @@ ics_app = angular.module(
         "icsw.tools.tree",
         "icsw.layout.menu",
         "icsw.layout.sidebar",
-        "icsw.network",
         "icsw.tools",
         "icsw.login",
         "icsw.layout.routing",
@@ -150,6 +149,7 @@ ics_app = angular.module(
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
+    "DEVICE_DEVICE_GENERAL": "{% url 'device:DeviceGeneral' %}"
     "DEVICE_GET_DEVICE_LOCATION": "{% url 'device:get_device_location' %}"
     "DEVICE_MANUAL_CONNECTION": "{% url 'device:manual_connection' %}"
     "DEVICE_SCAN_DEVICE_NETWORK": "{% url 'device:scan_device_network' %}"

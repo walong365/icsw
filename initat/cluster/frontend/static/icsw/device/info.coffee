@@ -154,8 +154,6 @@ angular.module(
                     if entry.idx == $scope._edit_obj.mon_ext_host
                         img_url = entry.data_image
             return img_url
-        $scope.toggle_uuid = () ->
-            $scope.show_uuid = !$scope.show_uuid
         $scope.get_full_name = () ->
             if $scope._edit_obj.is_meta_device
                 return $scope._edit_obj.full_name.substr(8)
@@ -177,11 +175,14 @@ angular.module(
 ]).directive("icswSimpleDeviceInfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
     return {
         restrict : "EA"
+        controller: "deviceinfo_ctrl"
         link : (scope, element, attrs) ->
             scope._edit_obj = null
             scope.device_pk = null
             scope.$on("$destroy", () ->
             )
+            scope.toggle_uuid = () ->
+                scope.show_uuid = !scope.show_uuid
             scope.new_devsel = (in_list) ->
                 new_val = in_list[0]
                 scope.device_pk = new_val
@@ -201,6 +202,13 @@ angular.module(
                         scope._edit_obj.name = scope._edit_obj.name.substr(8)
                     element.children().remove()
                     element.append($compile($templateCache.get("device.info.form"))(scope))
+                    element.append($compile("""
+                    <div ng-show="show_uuid">
+                        <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
+                        <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
+                        <h4>and restart host-monitoring .</h4>
+                    </div>
+                    """)(scope))
                 )
             scope.is_device = () ->
                 return not scope._edit_obj.is_meta_device
