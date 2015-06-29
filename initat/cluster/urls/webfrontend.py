@@ -111,6 +111,7 @@ boot_patterns = patterns(
 device_patterns = patterns(
     "initat.cluster.frontend",
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
+    url("^DeviceGeneral$", device_views.DeviceGeneral.as_view(), name="DeviceGeneral"),
     url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^config$", device_views.show_configs.as_view(), name="show_configs"),

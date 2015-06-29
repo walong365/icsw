@@ -42,6 +42,15 @@ from initat.tools import logging_tools, server_command, process_tools
 logger = logging.getLogger("cluster.device")
 
 
+class DeviceGeneral(View):
+    def get(self, request):
+        return render_me(
+            request,
+            "device_general.html",
+            {}
+        )()
+
+
 class device_tree_smart(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_tree"]
 
