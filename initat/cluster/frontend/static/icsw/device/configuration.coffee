@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).service("icswDeviceConfigurationConfigVarTreeService", () ->
-    class device_config_var_tree extends tree_config
+).service("icswDeviceConfigurationConfigVarTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class device_config_var_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -52,7 +52,7 @@ angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
-).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
@@ -76,11 +76,25 @@ angular.module(
                 $scope.devvar_tree.add_root_node(dev_entry)
                 for _xml in dev_xml.find("var_tuple_list").children()
                     _xml = $(_xml)
-                    t_entry = $scope.devvar_tree.new_node({folder : true, obj:{"key" : _xml.attr("key"), "value" : _xml.attr("value")}, _node_type : "c"})
+                    t_entry = $scope.devvar_tree.new_node(
+                        folder: true
+                        obj:
+                            "key": _xml.attr("key")
+                            "value": _xml.attr("value")
+                        _node_type: "c"
+                    )
                     dev_entry.add_child(t_entry)
                     _xml.children().each (idx, _sv) ->
                         _sv = $(_sv)
-                        t_entry.add_child($scope.devvar_tree.new_node({folder : false, obj:{"key" : _sv.attr("key"), "value" : _sv.attr("value")}, _node_type : "v"}))
+                        t_entry.add_child(
+                            $scope.devvar_tree.new_node(
+                                folder: false
+                                obj:
+                                    "key": _sv.attr("key")
+                                    "value": _sv.attr("value")
+                                _node_type: "v"
+                            )
+                        )
             $scope.$digest()
         $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
         $scope.new_filter_set = (new_val) ->

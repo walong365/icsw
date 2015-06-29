@@ -49,7 +49,8 @@ menu_module = angular.module(
             # set locale
             moment.locale("en")
             $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
-            $timeout($scope.show_time, 1000)
+            $scope.$digest()
+            $timeout($scope.show_time, 1000, false)
         $scope.update_progress_bar = () ->
             icswCallAjaxService
                 url     : ICSW_URLS.BASE_GET_GAUGE_INFO
@@ -115,7 +116,7 @@ menu_module = angular.module(
                         # make at least five iterations to catch slow startup of md-config-server
                         $scope.progress_iters = 5
                         $scope.update_progress_bar()
-        $scope.show_time()
+        $timeout($scope.show_time, 1, false)
         $scope.$watch("navbar_size", (new_val) ->
             if new_val
                 if $scope.is_authenticated

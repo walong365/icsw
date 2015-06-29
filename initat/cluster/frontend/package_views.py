@@ -22,6 +22,9 @@
 
 """ package views """
 
+import logging
+import json
+
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -34,16 +37,9 @@ from initat.cluster.backbone.models import package_search, package_search_result
     package_repo
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone.serializers import package_device_connection_serializer
-from initat.cluster.frontend.forms import package_search_form, package_action_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.renderers import JSONRenderer
-from lxml.builder import E  # @UnresolvedImports @UnusedImport
-import logging
-from initat.tools import logging_tools
-from initat.tools import process_tools
-import json
-import pprint
-from initat.tools import server_command
+from initat.tools import logging_tools, process_tools, server_command
 
 logger = logging.getLogger("cluster.package")
 
@@ -207,7 +203,12 @@ class change_package(View):
         # pprint.pprint(c_dict)
         edit_obj = c_dict["edit_obj"]
         changed = 0
-        for cur_pdc in package_device_connection.objects.filter(Q(pk__in=c_dict["pdc_list"])).prefetch_related("kernel_list", "image_list"):
+        for cur_pdc in package_device_connection.objects.filter(
+            Q(pk__in=c_dict["pdc_list"])
+        ).prefetch_related(
+            "kernel_list",
+            "image_list",
+        ):
             change = False
             # flags
             for f_name in ["force_flag", "nodeps_flag"]:
@@ -223,21 +224,21 @@ class change_package(View):
                 cur_pdc.target_state = edit_obj["target_state"]
             # dependencies
             for dep, dep_obj in [("image", image), ("kernel", kernel)]:
-                f_name = "%s_dep" % (dep)
+                f_name = "{}_dep".format(dep)
                 if edit_obj[f_name]:
                     _set = True if int(edit_obj[f_name]) else False
                     if _set != getattr(cur_pdc, f_name):
                         setattr(cur_pdc, f_name, _set)
                         change = True
-                if edit_obj["%s_change" % (dep)]:
-                    l_name = "%s_list" % (dep)
+                if edit_obj["{}_change".format(dep)]:
+                    l_name = "{}_list".format(dep)
                     new_list = dep_obj.objects.filter(Q(pk__in=edit_obj[l_name]))
                     setattr(cur_pdc, l_name, new_list)
                     change = True
             if change:
                 changed += 1
                 cur_pdc.save()
-        request.xml_response.info("%s updated" % (logging_tools.get_plural("PDC", changed)), logger)
+        request.xml_response.info("{} updated".format(logging_tools.get_plural("PDC", changed)), logger)
         srv_com = server_command.srv_command(command="new_config")
         result = contact_server(request, "package", srv_com, timeout=10, log_result=False)
         if result:

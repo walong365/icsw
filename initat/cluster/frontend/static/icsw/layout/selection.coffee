@@ -23,7 +23,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
-        "icsw.device.info", "icsw.layout.sidebar",
+        "icsw.device.info", "icsw.layout.sidebar", "icsw.tools.tree",
     ]
 ).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
     # used by menu.coffee (menu_base)
@@ -252,7 +252,6 @@ angular.module(
     DeviceOverviewService
 ) ->
     # search settings
-    $scope.searchstr = "ddd"
     $scope.search_ok = true
     $scope.is_loading = true
     $scope.active_tab = "d"
@@ -581,8 +580,8 @@ angular.module(
         "show_dialog": show_dialog
         "quick_dialog": quick_dialog
     }
-]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswSelectionService", (DeviceOverviewService, icswSelectionService) ->
-    class selection_tree extends tree_config
+]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswSelectionService", "icswTreeConfig", (DeviceOverviewService, icswSelectionService, icswTreeConfig) ->
+    class selection_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
         handle_click: (entry, event) =>

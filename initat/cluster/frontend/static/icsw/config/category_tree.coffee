@@ -510,8 +510,8 @@ angular.module(
                         blockUI.stop()
             )
         $scope.reload()
-]).service("icswConfigCategoryTreeService", () ->
-    class category_tree_edit extends tree_config
+]).service("icswConfigCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class category_tree_edit extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -546,8 +546,9 @@ angular.module(
                 @scope.edit_obj(cat, event)
             else if cat.depth == 1
                 @scope.create_new(event, cat.full_name.split("/")[1])
+            @scope.$digest()
 
-).directive("icswConfigCategoryTreeMapEnhance", ["$templateCache", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", ($templateCache, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI) ->
+]).directive("icswConfigCategoryTreeMapEnhance", ["$templateCache", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", ($templateCache, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.map.enhance")

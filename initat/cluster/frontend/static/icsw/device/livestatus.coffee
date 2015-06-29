@@ -643,8 +643,8 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
-]).service("icswDeviceLivestatusCategoryTreeService", () ->
-    class category_tree extends tree_config
+]).service("icswDeviceLivestatusCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class category_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             #@show_selection_buttons = false
@@ -660,6 +660,7 @@ angular.module(
                     return []
             )
             @scope.new_cat_selection(sel_list)
+            @scope.$digest()
         get_name : (t_entry) ->
             cat = t_entry.obj
             if cat.depth > 1
@@ -671,7 +672,7 @@ angular.module(
                 return cat.full_name
             else
                 return "TOP"
-).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
+]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
     return {
         restrict : "E"
         template : $templateCache.get("icsw.device.livestatus.serviceinfo")

@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).service("icswDeviceLocationTreeService", () ->
-    class location_tree extends tree_config
+).service("icswDeviceLocationTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class location_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -85,7 +85,9 @@ angular.module(
                 @scope.active_loc_gfx = undefined
                 @scope.gfx_cat = undefined
             @show_active()
-).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+            # important to update frontend
+            @scope.$digest()
+]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.DEBUG = false
