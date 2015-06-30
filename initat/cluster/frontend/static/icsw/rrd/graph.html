@@ -202,6 +202,9 @@
                         <button class="btn btn-warning" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="clear_selection()">
                             <span title="clear selection" class="fa fa-remove"></span>
                         </button>
+                        <button class="btn btn-warning" type="button" ladda="is_drawing" ng-click="select_with_sensor()">
+                            <span title="select all with sensors" class="fa fa-wrench"></span>
+                        </button>
                     </span>
                 </div>
                 <tree treeconfig="g_tree"></tree>

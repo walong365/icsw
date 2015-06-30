@@ -402,6 +402,10 @@ angular.module(
             _a_node = angular.element("<span class='fancytree-title'></span>")
             # binds name and select spand
             _bind_span = angular.element("<span></span>")
+            _ex_span = @add_extra_span(node)
+            node._extra_span = _ex_span
+            if _ex_span
+                _bind_span.append(_ex_span)
             _name_span = angular.element("<span></span>")
             _bind_span.append(_name_span)
             node._name_span = _name_span
@@ -483,6 +487,8 @@ angular.module(
             if node._tne
                 # tne has to be present for name_span
                 _update_name_span(node)
+            if node._extra_span
+                @update_extra_span(node, node._extra_span)
 
         _show_active: (entry, keep) =>
             if (true for sub_entry in entry.children when @_show_active(sub_entry, keep)).length
@@ -639,4 +645,8 @@ angular.module(
                 r_class.push "fancytree-ico-c"
                 r_class.push "fancytree-exp-n"
             return r_class
+
+        add_extra_span: (entry) ->
+            # override
+            return null
 ])

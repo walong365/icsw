@@ -446,6 +446,7 @@ angular.module(
                 cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
             cur_node.build_info = entry.build_info
+            cur_node.num_sensors = entry.num_sensors
             cur_node.folder = false
             cur_node._show_select = true
             cur_node._g_key = g_key
@@ -481,6 +482,16 @@ angular.module(
             $scope.vals.searchstr = ""
             $scope.set_search_filter()
 
+        $scope.select_with_sensor = () =>
+            $scope.g_tree.toggle_tree_state(undefined, -1, false)
+            $scope.g_tree.iter(
+                (entry) ->
+                    if entry._node_type in ["e"]
+                        entry.set_selected(if entry.num_sensors then true else false)
+            )
+            $scope.g_tree.show_selected(false)
+            $scope.selection_changed()
+
         $scope.set_search_filter = () =>
             if $scope.vals.searchstr
                 try
@@ -498,6 +509,7 @@ angular.module(
             )
             $scope.g_tree.show_selected(false)
             $scope.selection_changed()
+
         $scope.selection_changed = () =>
             $scope.cur_selected = $scope.g_tree.get_selected(
                 (entry) ->
@@ -647,6 +659,15 @@ angular.module(
         selection_changed: () =>
             @scope.selection_changed()
             @scope.$digest()
+        add_extra_span: (entry) ->
+            if entry._node_type == "e"
+                return angular.element("<span></span>")
+            else
+                return null
+        update_extra_span: (entry, span) ->
+            span.removeClass()
+            if entry.num_sensors
+                span.addClass("fa fa-wrench")
 
 ]).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
