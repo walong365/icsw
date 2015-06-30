@@ -1,194 +1,199 @@
 <script type="text/ng-template" id="icsw.rrd.graph.overview">
-    <div ng-if="devsel_list.length == 0">
-        <alert type="warning">No device selected</alert>
-    </div>
-    <p class="text-danger">{{ error_string }}</p>
-    <h4 ng-show="vector_valid">
-        <div class="input-group form-inline">
-            <div class="form-group">
-                Vector info:
-                <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
-                <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>,
-            </div>
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="show_tree=!show_tree">
-                        <span class="glyphicon glyphicon-align-left"></span>
-                        tree
-                    </button>
+    <icsw-tools-ensure-device-selection dev-list="devsel_list" list-ready="!devlist_loading" use-blockui="false">
+        <p class="text-danger">{{ error_string }}</p>
+        <h4 ng-show="vector_valid">
+            <div class="input-group form-inline">
+                <div class="form-group">
+                    Vector info:
+                    <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
+                    <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>,
                 </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
-                        <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
-                     </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-zoom-in"></span>
-                            {{ cur_dim }} <span class="caret"></span>
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="show_tree=!show_tree">
+                            <span class="glyphicon glyphicon-align-left"></span>
+                            tree
                         </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                        </ul>
                     </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-time"></span>
-                            timerange <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                        </ul>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
+                            <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+                         </button>
                     </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-dashboard"></span>
-                            timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
-                            <span class="glyphicon glyphicon-tasks"></span>
-                            {{ get_job_mode(job_mode) }}<span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="y-Scale mode">
-                            <span class="glyphicon glyphicon-sort"></span>
-                            {{ scale_mode }}<span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="_sm in scale_modes" ng-click="set_scale_mode(_sm)"><a href="#">{{ _sm }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
-                        <span class="glyphicon glyphicon-step-forward"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
-                        <span class="glyphicon glyphicon-fast-forward"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="hide_empty && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
-                        <span class="glyphicon glyphicon-ban-circle"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="include_zero && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
-                        <span class="glyphicon glyphicon-download"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="show_forecast && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_forecast=!show_forecast" title="show forecast">
-                        <span class="glyphicon glyphicon-eye-open"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="show_values && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_values=!show_values" title="show numeric values">
-                        <span class="glyphicon glyphicon-list"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group" ng-show="!merge_cd">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
-                        <span class="glyphicon glyphicon-off"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group" ng-show="devsel_list.length > 1">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
-                        <span class="glyphicon glyphicon-th"></span>
-                    </button>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_graphs && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_graphs=!merge_graphs" title="merge graphs into one">
-                        <span class="glyphicon glyphicon-edit"></span>
-                    </button>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         from
-                    </span>
-                    <input type="text" class="form-control" ng-model="from_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                 <i class="glyphicon glyphicon-calendar"></i>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-zoom-in"></span>
+                                {{ cur_dim }} <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
                             </ul>
                         </div>
-                    </span>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         to
-                    </span>
-                    <input type="text" class="form-control" ng-model="to_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                 <i class="glyphicon glyphicon-calendar"></i>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-time"></span>
+                                timerange <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
                             </ul>
                         </div>
-<<<<<<< HEAD
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-dashboard"></span>
+                                timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
+                                <span class="glyphicon glyphicon-tasks"></span>
+                                {{ get_job_mode(job_mode) }}<span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="y-Scale mode">
+                                <span class="glyphicon glyphicon-sort"></span>
+                                {{ scale_mode }}<span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="_sm in scale_modes" ng-click="set_scale_mode(_sm)"><a href="#">{{ _sm }}</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
+                            <span class="glyphicon glyphicon-step-forward"></span>
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
+                            <span class="glyphicon glyphicon-fast-forward"></span>
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="hide_empty && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
+                            <span class="glyphicon glyphicon-ban-circle"></span>
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="include_zero && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
+                            <span class="glyphicon glyphicon-download"></span>
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="show_forecast && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_forecast=!show_forecast" title="show forecast">
+                            <span class="glyphicon glyphicon-eye-open"></span>
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="show_values && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_values=!show_values" title="show numeric values">
+                            <span class="glyphicon glyphicon-list"></span>
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group" ng-show="!merge_cd">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
+                            <span class="glyphicon glyphicon-off"></span>
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <div class="form-group" ng-show="devsel_list.length > 1">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
+                            <span class="glyphicon glyphicon-th"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="merge_graphs && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_graphs=!merge_graphs" title="merge graphs into one">
+                            <span class="glyphicon glyphicon-edit"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="input-group">
+                        <span class="input-group-addon">
+                             from
+                        </span>
+                        <input type="text" class="form-control" ng-model="from_date_mom">
+                        </input>
+                        <span class="dropdown-toggle input-group-addon">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                     <i class="glyphicon glyphicon-calendar"></i>
+                                </button>
+                                <ul class="dropdown-menu" role="menu">
+                                    <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                                </ul>
+                            </div>
+                        </span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="input-group">
+                        <span class="input-group-addon">
+                             to
+                        </span>
+                        <input type="text" class="form-control" ng-model="to_date_mom">
+                        </input>
+                        <span class="dropdown-toggle input-group-addon">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                     <i class="glyphicon glyphicon-calendar"></i>
+                                </button>
+                                <ul class="dropdown-menu" role="menu">
+                                    <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                                </ul>
+                            </div>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </h4>
+        <div class="row">
+            <div class="col-md-3" ng-show="show_tree">
+                <div class="input-group">
                     <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vals.searchstr" placeholder="search ..." ng-change="update_search()"/>
                     <span class="input-group-btn">
                         <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()">
@@ -200,32 +205,15 @@
                         <button class="btn btn-warning" type="button" ladda="is_drawing" ng-click="select_with_sensor()">
                             <span title="select all with sensors" class="fa fa-wrench"></span>
                         </button>
-=======
->>>>>>> 70e424828449c54162b08e6ea5cd8aa00f37ac2a
                     </span>
                 </div>
+                <tree treeconfig="g_tree"></tree>
+            </div>
+            <div ng-class="show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
+                <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"><h4>ddd</h4></icsw-rrd-graph-list>
             </div>
         </div>
-    </h4>
-    <div class="row">
-        <div class="col-md-3" ng-show="show_tree">
-            <div class="input-group">
-                <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vals.searchstr" placeholder="search ..." ng-change="update_search()"/>
-                <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()">
-                        <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
-                    </button>
-                    <button class="btn btn-warning" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="clear_selection()">
-                        <span title="clear selection" class="fa fa-remove"></span>
-                    </button>
-                </span>
-            </div>
-            <tree treeconfig="g_tree"></tree>
-        </div>
-        <div ng-class="show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-            <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"><h4>ddd</h4></icsw-rrd-graph-list>
-        </div>
-    </div>
+    </icsw-tools-ensure-device-selection>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">
