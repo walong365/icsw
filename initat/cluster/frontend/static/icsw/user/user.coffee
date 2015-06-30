@@ -341,6 +341,7 @@ user_module = angular.module(
                 $scope.user_edit.edit(obj)
         $scope.$on("icsw.set_password", (event, new_pwd) ->
             $scope._edit_obj.password = new_pwd
+            $scope.$digest()
         )
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
@@ -512,6 +513,7 @@ user_module = angular.module(
         $scope.$on("icsw.set_password", (event, new_pwd) ->
             $scope.edit_obj.password = new_pwd
             $scope.update_account()
+            $scope.$digest()
         )
         $scope.get_perm_app = (perm) ->
             return $scope.csw_permission_lut[perm.csw_permission].content_type.app_label
