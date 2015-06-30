@@ -8,21 +8,20 @@
                 <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
             </li>
 
-            <li> <!-- TODO perms -->
+            <li ng-show="has_any_menu_permission(['user.modify_tree', 'device.change_network', 'user.modify_category_tree',
+                                                  'user.modify_domain_name_tree', 'device.discovery_server', 'device.change_config'])">
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-hdd-o fa-lg"></span> Device</a>
                 <ul class="dropdown-menu">
-                    <!-- TODO perms -->
                     <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}"><span class="fa fa-plus-circle"></span> Create new device</a></li>
                     <li ng-show="has_menu_permission('user.modify_tree')" class="divider"></li>
-                    <li><a href="{{ ICSW_URLS.DEVICE_DEVICE_GENERAL }}"><span class="fa fa-bars"></span> General</a></li>
-                    <li><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}"><span class="fa fa-sitemap"></span> Network</a></li>
+                    <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.DEVICE_DEVICE_GENERAL }}"><span class="fa fa-bars"></span> General</a></li>
+                    <li ng-show="has_menu_permission('device.change_network')"><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}"><span class="fa fa-sitemap"></span> Network</a></li>
                     <!-- TODO: split Configurations into Checks and Capabilities (only in GUI, i.e. provide reasonable views) -->
                     <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}"><span class="fa fa-check-square-o"></span> Configurations</a></li>
                     <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.DEVICE_SHOW_CONFIGS }}"><span class="fa fa-check-square"></span> Device configurations</a></li>
                     <li ng-show="has_menu_permission('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}"><span class="fa fa-code"></span> Device variables</a></li>
                     <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}"><span class="fa fa-table"></span> Category</a></li>
                     <!--
-                    TODO: proper split of category tree with subpages?
                     <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}"><span class="fa fa-globe"></span> Location (TODO: should only location)</a></li>
                     -->
                     <li ng-show="has_menu_permission('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}"><span class="fa fa-plug"></span> Device connections</a></li>
@@ -34,7 +33,7 @@
                 </ul>
             </li>
 
-            <li> <!-- TODO perm -->
+            <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') || has_valid_license('md_config_server')">
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-gears fa-lg"></span> Monitoring</a>
                 <ul class="dropdown-menu">
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}"><span class="fa fa-bars"></span> Basic setup</a></li>
@@ -46,9 +45,9 @@
                     <!--
                     <li><a href="{{ ICSW_URLS.TODO }}"><span class="fa fa-check-square-o"></span> Checks TODO: Device Checks, Checks generally and Check category</a></li>
                     -->
-                    <li><a href="{{ ICSW_URLS.MON_MONITORING_HINTS }}"><span class="fa fa-info"></span> Monitoring hints</a></li>
-                    <li><a href="{{ ICSW_URLS.MON_MONITORING_DISK }}"><span class="fa fa-hdd-o"></span> Disk</a></li>
-                    <li class="divider"></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_MONITORING_HINTS }}"><span class="fa fa-info"></span> Monitoring hints</a></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_MONITORING_DISK }}"><span class="fa fa-hdd-o"></span> Disk</a></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank"><span class="fa fa-share-alt"></span> Icinga</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
                         <ul class="list-group" style="margin-bottom: 10px; margin-top: 5px">
@@ -67,13 +66,15 @@
                 </ul>
             </li>
 
-            <li> <!-- TODO perm -->
+            <li ng-show="has_any_menu_permission(['backbone.device.show_graphs', 'backbone.device.show_status_history']) ||
+                         (has_valid_license('monitoring_dashboard') && has_menu_permission('mon_check_command.show_monitoring_dashboard')) ||
+                         (has_valid_license('kpi') && has_menu_permission('kpi.kpi'))">
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-line-chart fa-lg"></span> Status</a>
                 <ul class="dropdown-menu">
-                    <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}"><span class="fa fa-dot-circle-o fa-sm"></span> Monitoring dashboard</a></li>
+                    <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard') && has_menu_permission('mon_check_command.show_monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}"><span class="fa fa-dot-circle-o fa-sm"></span> Monitoring dashboard</a></li>
                     <li ng-show="has_menu_permission('backbone.device.show_graphs') && has_valid_license('graphing')"><a href="{{ ICSW_URLS.MON_GRAPH }}"><span class="fa fa-line-chart fa-sm"></span> Graph</a></li>
                     <li ng-show="has_menu_permission('backbone.device.show_status_history') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_STATUS_HISTORY }}"><span class="fa fa-pie-chart"></span> Status history</a></li>
-                    <li ng-show="has_menu_permission('user.modify_tree')" class="divider"></li> <!-- TODO perm -->
+                    <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')" class="divider"></li> <!-- TODO perm -->
                     <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')"><a href="{{ ICSW_URLS.BASE_KPI }}"><span class="fa fa-code-fork" ></span> Key performance indicators</a></li>
                     <!--
                         This does not really fit here  // BM 20150629
@@ -108,11 +109,11 @@
                 </ul>
             </li>
 
-            <li ng-show="has_menu_permission('group.group_admin')">
+            <li ng-show="has_menu_permission('group.group_admin') || (has_valid_license('snapshot') && has_menu_permission('user.snapshots')) || CURRENT_USER.is_superuser">
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-cog fa-sm"></span> System setup</a>
                 <ul class="dropdown-menu">
-                    <li><a href="{{ ICSW_URLS.USER_OVERVIEW }}"><span class="fa fa-user fa-sm"></span> User</a></li>
-                    <li ng-show="has_valid_license('snapshot')"><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}"><span class="fa fa-history fa-sm"></span> History</a></li>
+                    <li ng-show="has_menu_permission('group.group_admin')"><a href="{{ ICSW_URLS.USER_OVERVIEW }}"><span class="fa fa-user fa-sm"></span> User</a></li>
+                    <li ng-show="has_valid_license('snapshot') && has_menu_permission('user.snapshots')"><a href="{{ ICSW_URLS.SYSTEM_HISTORY_OVERVIEW }}"><span class="fa fa-history fa-sm"></span> History</a></li>
                     <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}"><span class="fa fa-key fa-sm"></span> License</a></li>
                     <li ng-show="has_menu_permission('background_job.show_background')"><a href="{{ ICSW_URLS.USER_BACKGROUND_JOB_INFO }}"><span class="fa fa-list fa-sm"></span> Background Job Info</a></li>
                 </ul>
