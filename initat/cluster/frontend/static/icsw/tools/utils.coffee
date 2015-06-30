@@ -53,7 +53,10 @@ angular.module(
         template: """
 <div ng-if="listReady == undefined || listReady">
     <div ng-if="devList.length == 0">
+        <!--
         <icsw-tools-button type="select_devices" ng-click="do_select()"></icsw-tools-button>
+        -->
+        <alert type="warning" style="max-width: 500px">No devices selected.</alert>
     </div>
     <div ng-transclude ng-if="devList.length > 0"></div>
 </div>
