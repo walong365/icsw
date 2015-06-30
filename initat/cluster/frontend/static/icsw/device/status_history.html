@@ -82,11 +82,13 @@
         </div>
     </div>
 
-    <tabset>
-        <tab ng-repeat="device in devicepks" heading="{{devices_rest[device].full_name}}" select="enabled_device_lut[device] = device">
-            <icsw-device-status-history-device deviceid="enabled_device_lut[device]"></icsw-device-status-history-device>
-        </tab>
-    </tabset>
+    <icsw-tools-ensure-device-selection dev-list="devicepks" list-ready="devlistReady">
+        <tabset>
+            <tab ng-repeat="device in devicepks" heading="{{devices_rest[device].full_name}}" select="enabled_device_lut[device] = device">
+                <icsw-device-status-history-device deviceid="enabled_device_lut[device]"></icsw-device-status-history-device>
+            </tab>
+        </tabset>
+    </icsw-tools-ensure-device-selection>
 
 </script>
 

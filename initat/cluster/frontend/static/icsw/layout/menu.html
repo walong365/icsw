@@ -63,9 +63,9 @@
             <li> <!-- TODO perm -->
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-line-chart fa-lg"></span> Status</a>
                 <ul class="dropdown-menu">
-                    <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}"><span class="fa fa-dot-circle-o fa-sm"></span> Livestatus</a></li>
-                    <li><a href="{{ ICSW_URLS.TODO }}"><span class="fa fa-line-chart fa-sm"></span> Graph</a></li> <!-- TODO perm -->
-                    <li><a href="{{ ICSW_URLS.TODO }}"><span class="fa fa-pie-chart"></span> Status history</a></li> <!-- TODO perm -->
+                    <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}"><span class="fa fa-dot-circle-o fa-sm"></span> Monitoring dashboard</a></li>
+                    <li ng-show="has_menu_permission('backbone.device.show_graphs') && has_valid_license('graphing')"><a href="{{ ICSW_URLS.MON_GRAPH }}"><span class="fa fa-line-chart fa-sm"></span> Graph</a></li>
+                    <li ng-show="has_menu_permission('backbone.device.show_status_history') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_STATUS_HISTORY }}"><span class="fa fa-pie-chart"></span> Status history</a></li>
                     <li ng-show="has_menu_permission('user.modify_tree')" class="divider"></li> <!-- TODO perm -->
                     <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')"><a href="{{ ICSW_URLS.BASE_KPI }}"><span class="fa fa-code-fork" ></span> Key performance indicators</a></li>
                     <!--

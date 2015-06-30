@@ -64,6 +64,8 @@ angular.module(
             listReady: '='
         }
         link: (scope, el, attrs) ->
+            # only watch if this isn't undefined.
+            # NOTE: you need make to sure that the variable is set before the template is initialized to use this
             if scope.listReady?
                 scope.$watch('listReady', (new_val) ->
                     if !new_val
