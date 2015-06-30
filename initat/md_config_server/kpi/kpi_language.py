@@ -26,6 +26,7 @@ import collections
 import pprint
 
 from collections import defaultdict
+import datetime
 from enum import IntEnum, Enum
 import pytz
 
@@ -720,10 +721,17 @@ class KpiSet(object):
             kpi_global_start, kpi_global_end = KpiGlobals.current_kpi.get_time_range()
 
             # help user by fixing their timezones
-            fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
+            def fix_input(moment):
+                # moment might be date
+                if not isinstance(moment, datetime.datetime):
+                    moment = datetime.datetime(moment.year, moment.month, moment.day)
+                if moment.tzinfo is not None:
+                    return moment
+                else:
+                    return moment.replace(tzinfo=pytz.utc)
 
-            start = fix_tz(start) if start is not None else kpi_global_start
-            end = fix_tz(end) if end is not None else kpi_global_end
+            start = fix_input(start) if start is not None else kpi_global_start
+            end = fix_input(end) if end is not None else kpi_global_end
 
             if start < kpi_global_start:
                 raise RuntimeError(
