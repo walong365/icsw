@@ -186,32 +186,36 @@ angular.module(
             scope.toggle_uuid = () ->
                 scope.show_uuid = !scope.show_uuid
             scope.new_devsel = (in_list) ->
-                new_val = in_list[0]
-                scope.device_pk = new_val
-                wait_list = [
-                    restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
-                    restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
-                    restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
-                    restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false, "with_com_info": true}])
-                ]
-                $q.all(wait_list).then((data) ->
-                    #form = data[0][0].form
-                    scope.domain_tree_node = data[0]
-                    scope.mon_device_templ_list = data[1]
-                    scope.mon_ext_host_list = data[2]
-                    scope._edit_obj = data[3][0]
-                    if scope._edit_obj.is_meta_device
-                        scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                if in_list.length > 0
+                    new_val = in_list[0]
+                    scope.device_pk = new_val
+                    wait_list = [
+                        restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
+                        restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
+                        restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
+                        restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false, "with_com_info": true}])
+                    ]
+                    $q.all(wait_list).then((data) ->
+                        #form = data[0][0].form
+                        scope.domain_tree_node = data[0]
+                        scope.mon_device_templ_list = data[1]
+                        scope.mon_ext_host_list = data[2]
+                        scope._edit_obj = data[3][0]
+                        if scope._edit_obj.is_meta_device
+                            scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                        element.children().remove()
+                        element.append($compile($templateCache.get("device.info.form"))(scope))
+                        element.append($compile("""
+                        <div ng-show="show_uuid">
+                            <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
+                            <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
+                            <h4>and restart host-monitoring .</h4>
+                        </div>
+                        """)(scope))
+                    )
+                else
                     element.children().remove()
-                    element.append($compile($templateCache.get("device.info.form"))(scope))
-                    element.append($compile("""
-                    <div ng-show="show_uuid">
-                        <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
-                        <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
-                        <h4>and restart host-monitoring .</h4>
-                    </div>
-                    """)(scope))
-                )
+                    element.append($compile('<h2>Details</h2><alert type="warning" style="max-width: 500px">No devices selected.</alert>')(scope))
             scope.is_device = () ->
                 return not scope._edit_obj.is_meta_device
             scope.get_monitoring_hint_info = () ->
