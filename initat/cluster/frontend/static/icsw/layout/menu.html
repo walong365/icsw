@@ -39,8 +39,8 @@
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}"><span class="fa fa-bolt"></span> Escalation setup</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li><a href="{{ ICSW_URLS.TODO }}"><span class="fa fa-check-square-o"></span> Checks TODO: Device Checks, Checks generally and Check category</a></li>
-                    <li><a href="{{ ICSW_URLS.MON_MONITORING_HINTS }}">Monitoring hints</a></li>
-                    <li><a href="{{ ICSW_URLS.MON_MONITORING_DISK }}">Disk</a></li>
+                    <li><a href="{{ ICSW_URLS.MON_MONITORING_HINTS }}"><span class="fa fa-info"></span> Monitoring hints</a></li>
+                    <li><a href="{{ ICSW_URLS.MON_MONITORING_DISK }}"><span class="fa fa-hdd-o"></span> Disk</a></li>
                     <li class="divider"></li>
                     <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank"><span class="fa fa-share-alt"></span> Icinga</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
@@ -159,11 +159,11 @@
                 </p>
             </li>
             <li>
-                <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-sign-out fa-lg"></span>Session</a>
+                <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-sign-out fa-lg"></span> Session</a>
                 <ul class="dropdown-menu">
-                    <li><a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}"><span class="fa fa-info-circle"></span>Account Info</a></li>
-                    <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="fa fa-wrench"></span>Admin</a></li>
-                    <li><a href="{{ ICSW_URLS.SESSION_LOGOUT }}"><span class="fa fa-sign-out "></span>Logout</a></li>
+                    <li><a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}"><span class="fa fa-info-circle"></span> Account Info</a></li>
+                    <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="fa fa-wrench"></span> Admin</a></li>
+                    <li><a href="{{ ICSW_URLS.SESSION_LOGOUT }}"><span class="fa fa-sign-out "></span> Logout</a></li>
                 </ul>
             </li>
             <li>
