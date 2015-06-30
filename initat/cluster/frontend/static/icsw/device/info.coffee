@@ -64,7 +64,11 @@ angular.module(
 ).run(["$templateCache", ($templateCache) ->
     $templateCache.put(
         "DeviceOverviewTemplate",
-        "<deviceoverview devicepklist='devicepklist'></deviceoverview>"
+        """
+<div style=\"font-size: 12px">
+    <deviceoverview devicepklist='devicepklist'></deviceoverview>
+</div>
+"""
     )
 ]).service("DeviceOverviewSettings", [() ->
     # default value

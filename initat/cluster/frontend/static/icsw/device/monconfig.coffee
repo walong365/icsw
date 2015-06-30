@@ -103,40 +103,45 @@ angular.module(
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = (mode) ->
-            $scope.reload_pending = true
-            $scope.cur_xhr = icswCallAjaxService
-                url  : ICSW_URLS.MON_GET_NODE_CONFIG
-                data : {
-                    "pk_list" : angular.toJson($scope.devsel_list)
-                    "mode"    : mode
-                },
-                success : (xml) =>
-                    if icswParseXMLResponseService(xml)
-                        mc_tables = []
-                        $(xml).find("config > *").each (idx, node) =>
-                            new_table = new mc_table($(node), paginatorSettings)
-                            mc_tables.push(new_table)
-                        $scope.$apply(
-                            $scope.mc_tables = mc_tables
-                        )
-                        restDataSource.reset()
-                        wait_list = restDataSource.add_sources([
-                            [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
-                        ])
-                        $q.all(wait_list).then((data) ->
-                            $scope.devices = []
-                            $scope.device_lut = {}
-                            for entry in data[0]
-                                entry.expanded = true
-                                $scope.devices.push(entry)
-                                $scope.device_lut[entry.idx] = entry
-                            $scope.reload_pending = false
-                        )
-                    else
-                        $scope.$apply(
-                            $scope.mc_tables = []
-                            $scope.reload_pending = false
-                        )
+            _reset_entries = () ->
+                $scope.mc_tables = []
+                $scope.reload_pending = false
+            if $scope.devsel_list.length == 0
+                _reset_entries()
+            else
+                $scope.reload_pending = true
+                $scope.cur_xhr = icswCallAjaxService
+                    url  : ICSW_URLS.MON_GET_NODE_CONFIG
+                    data : {
+                        "pk_list" : angular.toJson($scope.devsel_list)
+                        "mode"    : mode
+                    },
+                    success : (xml) =>
+                        if icswParseXMLResponseService(xml)
+                            mc_tables = []
+                            $(xml).find("config > *").each (idx, node) =>
+                                new_table = new mc_table($(node), paginatorSettings)
+                                mc_tables.push(new_table)
+                            $scope.$apply(
+                                $scope.mc_tables = mc_tables
+                            )
+                            restDataSource.reset()
+                            wait_list = restDataSource.add_sources([
+                                [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
+                            ])
+                            $q.all(wait_list).then((data) ->
+                                $scope.devices = []
+                                $scope.device_lut = {}
+                                for entry in data[0]
+                                    entry.expanded = true
+                                    $scope.devices.push(entry)
+                                    $scope.device_lut[entry.idx] = entry
+                                $scope.reload_pending = false
+                            )
+                        else
+                            $scope.$apply(
+                                _reset_entries()
+                            )
         $scope.get_tr_class = (obj) ->
             if obj.is_meta_device
                 return "success"

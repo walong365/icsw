@@ -39,7 +39,7 @@
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}"><span class="fa fa-bolt"></span> Escalation setup</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li><a href="{{ ICSW_URLS.TODO }}"><span class="fa fa-check-square-o"></span> Checks TODO: Device Checks, Checks generally and Check category</a></li>
-                    <li><a href="{{ ICSW_URLS.TODO }}">Monitoring hints TODO: include Disk</a></li>
+                    <li><a href="{{ ICSW_URLS.MON_MONITORING_HINTS }}">Monitoring hints TODO: include Disk</a></li>
                     <li class="divider"></li>
                     <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank"><span class="fa fa-share-alt"></span> Icinga</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
