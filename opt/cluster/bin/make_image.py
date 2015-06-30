@@ -180,8 +180,16 @@ class build_process(threading_tools.process_obj):
         if global_config["COMPRESSION_OPTION"]:
             if global_config["COMPRESSION"] == "xz":
                 comp_opt = "export XZ_OPT='{}'".format(global_config["COMPRESSION_OPTION"])
-        self._call(
-            "cd {} ; {} tar -c{}f {} --preserve-permissions {} {}".format(
+        if global_config["COMPRESSION"] == "bz2":
+            # no direct compression, use external program
+            _com = "cd {} ; tar -cf {} --use-compress-prog=/opt/cluster/bin/pbzip2 --preserve-permissions {} {}".format(
+                system_dir,
+                t_file,
+                " ".join(file_list) if not _dir_mode else target_dir,
+                " ".join(link_list) if not _dir_mode else "",
+            )
+        else:
+            _com = "cd {} ; {} tar -c{}f {} --preserve-permissions {} {}".format(
                 system_dir,
                 "{};".format(comp_opt) if comp_opt else "",
                 c_flag,
@@ -189,7 +197,7 @@ class build_process(threading_tools.process_obj):
                 " ".join(file_list) if not _dir_mode else target_dir,
                 " ".join(link_list) if not _dir_mode else "",
             )
-        )
+        self._call(_com)
         new_size = os.stat(t_file)[stat.ST_SIZE]
         self.log(
             "target size is {} (from 100 % to {:.2f} %)".format(
