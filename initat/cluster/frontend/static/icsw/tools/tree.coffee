@@ -17,7 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-tree_module = angular.module(
+
+angular.module(
     "icsw.tools.tree",
     []
 ).directive("tree", ["$compile", "$templateCache", ($compile, $templateCache) ->
@@ -342,12 +343,10 @@ tree_module = angular.module(
                 li_node.addClass("fanytree-lastsib")
             # copy settings from node to li_node
             _top_span = angular.element("<span/>")
-            # main classes
+            # main classes now handled in update_node
             for _class in @get_span_class(node, last)
                 _top_span.addClass(_class)
             # selection box, icons and other stuff
-            if not node._num_childs
-                _top_span.append(angular.element("<span class='fanytree-connector'/>"))
             _exp = angular.element("<span class='fancytree-expander'/>")
             _exp.on("click", () =>
                 if node.expand
@@ -400,7 +399,7 @@ tree_module = angular.module(
                 _sel2_button.append(_expand_collapse_button)
                 _top_span.append(_sel2_button)
             # name
-            _a_node = angular.element("<a ng-href='#' class='fancytree-title'/>")
+            _a_node = angular.element("<span class='fancytree-title'></span>")
             # binds name and select spand
             _bind_span = angular.element("<span></span>")
             _name_span = angular.element("<span></span>")
@@ -426,6 +425,7 @@ tree_module = angular.module(
             )
             _top_span.append(_a_node)
             li_node.append(_top_span)
+            node._top_span = _top_span
             node._tne = li_node
             @update_node(node)
             return node._tne
@@ -439,8 +439,8 @@ tree_module = angular.module(
                 node._sel_button_span.find("input:first").removeClass()
                 node._sel_button_span.find("input:first").addClass(node.select_button_class)
 
-            _update_sel_span = (node) =>
-                _top_span = node._tne.find("span:first")
+            _update_top_span = (node) =>
+                _top_span = node._top_span
                 _top_span.removeClass()
                 for _class in @get_span_class(node, node._last)
                     _top_span.addClass(_class)
@@ -472,8 +472,8 @@ tree_module = angular.module(
                 _sp.attr("title", @get_title(node))
                 _sp.text(@get_name(node))
 
-            if node._sel_span
-                _update_sel_span(node)
+            if node._top_span
+                _update_top_span(node)
             if node._sel_button_span
                 _update_sel_button_span(node)
             if node._childs_span
