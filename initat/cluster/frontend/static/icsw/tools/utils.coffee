@@ -62,11 +62,12 @@ angular.module(
         scope: {
             devList: '='
             listReady: '='
+            useBlockui: '&'
         }
         link: (scope, el, attrs) ->
             # only watch if this isn't undefined.
             # NOTE: you need make to sure that the variable is set before the template is initialized to use this
-            if scope.listReady?
+            if scope.listReady? && scope.useBlockui()
                 scope.$watch('listReady', (new_val) ->
                     if !new_val
                         blockUI.start()
@@ -77,5 +78,4 @@ angular.module(
             scope.do_select = () ->
                 icswLayoutSelectionDialogService.quick_dialog(scope)
     }
-
 ])

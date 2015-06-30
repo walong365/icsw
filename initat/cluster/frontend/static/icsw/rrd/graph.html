@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw.rrd.graph.overview">
-    <div>
+    <icsw-tools-ensure-device-selection dev-list="devsel_list" list-ready="!devlist_loading" use-blockui="false">
         <p class="text-danger">{{ error_string }}</p>
         <h4 ng-show="vector_valid">
             <div class="input-group form-inline">
@@ -210,7 +210,7 @@
                 <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"><h4>ddd</h4></icsw-rrd-graph-list>
             </div>
         </div>
-    </div>
+    </icsw-tools-ensure-device-selection>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">

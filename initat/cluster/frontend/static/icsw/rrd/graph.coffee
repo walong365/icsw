@@ -192,6 +192,7 @@ angular.module(
         $scope.cur_dim = $scope.all_dims[1]
         $scope.error_string = ""
         $scope.searchstr = ""
+        $scope.devlist_loading = true
         $scope.is_loading = true
         $scope.is_drawing = false
         $scope.cur_selected = []
@@ -287,6 +288,7 @@ angular.module(
             $scope.cur_dim = cur_dim
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             # clear graphs
+            $scope.devlist_loading = false
             $scope.graph_list = []
             $scope.devsel_list = _dev_sel
             $scope.reload()
