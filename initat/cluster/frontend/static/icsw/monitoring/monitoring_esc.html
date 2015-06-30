@@ -7,7 +7,7 @@
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceEscalationService">
                 <h2>Service escalation templates ({{entries.length}} entries),
                     <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
                                        ng-click="create($event)"></icsw-tools-button>
                 </h2>
                 <table st-table="entries_displayed" st-safe-src="entries"
@@ -59,7 +59,7 @@
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceEscalationService">
                 <h2>Device escalation templates ({{entries.length}} entries),
                     <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" tooltip="{{config_service.get_data_incomplete_error()}}"
+                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
                                        ng-click="create($event)"></icsw-tools-button>
                 </h2>
                 <table st-table="entries_displayed" st-safe-src="entries"

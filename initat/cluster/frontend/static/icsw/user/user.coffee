@@ -223,7 +223,13 @@ user_module = angular.module(
             for entry in $scope.group_list
                 # set csw dummy permission list and optimizse object_permission list
                 $scope.init_csw_cache(entry, "group")
-                t_entry = $scope.tree.new_node({folder:true, obj:entry, expand:!entry.parent_group, _node_type:"g"})
+                t_entry = $scope.tree.new_node(
+                    folder: true
+                    obj: entry
+                    expand: !entry.parent_group
+                    _node_type: "g"
+                    always_folder: true
+                )
                 group_lut[entry.idx] = t_entry
                 if entry.parent_group
                     # handle later
@@ -314,10 +320,10 @@ user_module = angular.module(
                 catch exc
                     cur_re = new RegExp("^$", "gi")
             $scope.tree.iter(
-               (entry, cur_re) ->
-                   cmp_name = if entry._node_type == "g" then entry.obj.groupname else entry.obj.login
-                   entry.set_selected(if cmp_name.match(cur_re) then true else false)
-               cur_re
+                (entry, cur_re) ->
+                    cmp_name = if entry._node_type == "g" then entry.obj.groupname else entry.obj.login
+                    entry.set_selected(if cmp_name.match(cur_re) then true else false)
+                cur_re
             )
             $scope.tree.show_selected(false)
         $scope.create_group = () ->
@@ -344,13 +350,13 @@ user_module = angular.module(
                 url     : ICSW_URLS.USER_CHANGE_OBJECT_PERMISSION
                 data    :
                     # group or user
-                    "auth_type" : $scope._edit_mode
-                    "auth_pk"   : $scope._edit_obj.idx
-                    "model_label" : perm.content_type.model
-                    "obj_idx" : $scope._edit_obj.object
-                    "csw_idx" : $scope._edit_obj.permission
-                    "set"     : 1
-                    "level"   : $scope._edit_obj.permission_level
+                    "auth_type": $scope._edit_mode
+                    "auth_pk": $scope._edit_obj.idx
+                    "model_label": perm.content_type.model
+                    "obj_idx": $scope._edit_obj.object
+                    "csw_idx": $scope._edit_obj.permission
+                    "set": 1
+                    "level": $scope._edit_obj.permission_level
                 success : (xml) =>
                     if icswParseXMLResponseService(xml)
                         if $(xml).find("value[name='new_obj']").length
