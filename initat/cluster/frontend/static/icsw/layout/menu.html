@@ -17,13 +17,13 @@
                     <li><a href="{{ ICSW_URLS.DEVICE_DEVICE_GENERAL }}"><span class="fa fa-bars"></span> General</a></li>
                     <li><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}"><span class="fa fa-sitemap"></span> Network</a></li>
                     <li><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}"><span class="fa fa-check-square-o"></span> Configuration (TODO: should be capability)</a></li>
-                    <li ng-show="has_menu_permission('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}">Device variables</a></li>
+                    <li ng-show="has_menu_permission('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}"><span class="fa fa-code"></span> Device variables</a></li>
                     <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}">Category (TODO: should only device)</a></li>
-                    <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}">Location (TODO: should only location)</a></li>
+                    <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}"><span class="fa fa-globe"></span> Location (TODO: should only location)</a></li>
                     <li ng-show="has_menu_permission('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}">Device connections</a></li>
                     <li ng-show="has_any_menu_permission(['user.modify_tree', 'user.modify_domain_name_tree'])" class="divider"></li>
-                    <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.DEVICE_TREE_SMART }}">Device tree</a></li>
-                    <li ng-show="has_menu_permission('user.modify_domain_name_tree')"><a href="{{ ICSW_URLS.NETWORK_DOMAIN_NAME_TREE }}">Domain name tree</a></li>
+                    <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.DEVICE_TREE_SMART }}"><span class="fa fa-list"></span> Device tree</a></li>
+                    <li ng-show="has_menu_permission('user.modify_domain_name_tree')"><a href="{{ ICSW_URLS.NETWORK_DOMAIN_NAME_TREE }}"><span class="fa fa-list-alt"></span> Domain name tree</a></li>
                     <li ng-show="false && has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')" class="divider"></li>
                     <li ng-show="false && has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')"><a href="{{ ICSW_URLS.DISCOVERY_OVERVIEW }}">Discovery</a></li>
                 </ul>
@@ -32,16 +32,16 @@
             <li> <!-- TODO perm -->
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-gears fa-lg"></span> Monitoring</a>
                 <ul class="dropdown-menu">
-                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}">Basic setup</a></li>
-                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_menu_permission('device.change_monitoring')"><a href="{{ ICSW_URLS.MON_DEVICE_CONFIG }}">Device settings</a></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP }}"><span class="fa fa-bars"></span> Basic setup</a></li>
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_menu_permission('device.change_monitoring')"><a href="{{ ICSW_URLS.MON_DEVICE_CONFIG }}"><span class="fa fa-laptop"></span> Device settings</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_CLUSTER }}">Cluster / Dependency setup</a></li>
-                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}">Escalation setup</a></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_CLUSTER }}"><span class="fa fa-chain"></span> Cluster / Dependency setup</a></li>
+                    <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}"><span class="fa fa-bolt"></span> Escalation setup</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li><a href="{{ ICSW_URLS.TODO }}"><span class="fa fa-check-square-o"></span> Checks TODO: Device Checks, Checks generally and Check category</a></li>
                     <li><a href="{{ ICSW_URLS.TODO }}">Monitoring hints TODO: include Disk</a></li>
                     <li class="divider"></li>
-                    <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank">Icinga</a></li>
+                    <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank"><span class="fa fa-share-alt"></span> Icinga</a></li>
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
                         <ul class="list-group" style="margin-bottom: 10px; margin-top: 5px">
                             <li class="list-group-item">
