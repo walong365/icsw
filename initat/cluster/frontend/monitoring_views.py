@@ -323,6 +323,22 @@ class livestatus(View):
         )()
 
 
+class StatusHistory(permission_required_mixin, View):
+    def get(self, request):
+        return render_me(
+            request, "monitoring_status_history.html", {
+            }
+        )()
+
+
+class Graph(permission_required_mixin, View):
+    def get(self, request):
+        return render_me(
+            request, "monitoring_graph.html", {
+            }
+        )()
+
+
 class overview(View):
     @method_decorator(login_required)
     def get(self, request):
