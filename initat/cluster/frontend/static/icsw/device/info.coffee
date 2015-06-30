@@ -86,15 +86,10 @@ angular.module(
                 scope.current_subscope = undefined
                 scope.pk_list = {
                     "general": []
-                    "category": []
-                    "location": []
                     "network": []
                     "config": []
-                    "partinfo": []
-                    "variables": []
                     "status_history": []
                     "livestatus": []
-                    "monconfig": []
                     "graphing": []
                 }
                 for key of scope.pk_list
@@ -137,9 +132,9 @@ angular.module(
                         scope.current_subscope = new_scope
                 scope.activate = (name) ->
                     DeviceOverviewSettings.set_mode(name)
-                    if name in ["category", "location", "network", "partinfo", "status_history", "livestatus", "monconfig"]
+                    if name in ["network", "status_history", "livestatus"]
                         scope.pk_list[name] = scope.dev_pk_nmd_list
-                    else if name in ["config", "variables", "graphing"]
+                    else if name in ["config", "graphing"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
 ]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "toaster",
