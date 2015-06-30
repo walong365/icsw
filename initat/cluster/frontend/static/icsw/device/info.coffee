@@ -45,6 +45,8 @@ angular.module(
 
                     sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
                     sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist if !dev.is_meta_device)
+                    if !sub_scope.dev_pk_nmd_list?
+                        sub_scope.dev_pk_nmd_list = []
                     sub_scope.devicepklist = sub_scope.dev_pk_list
                     sub_scope.popupmode = 1
 
