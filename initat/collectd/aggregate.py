@@ -297,7 +297,7 @@ class AGTopLevelStruct(object):
 
 
 class VE(object):
-    # vector entry
+    # vector entry (duplicated in md_config_server.kpi.kpi_data)
     def __init__(self, *args):
         self.format, self.key, self.info, self.unit, self.v_type, self.value, self.base, self.factor = args
 
