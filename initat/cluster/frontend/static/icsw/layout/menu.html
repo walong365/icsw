@@ -16,7 +16,9 @@
                     <li ng-show="has_menu_permission('user.modify_tree')" class="divider"></li>
                     <li><a href="{{ ICSW_URLS.DEVICE_DEVICE_GENERAL }}"><span class="fa fa-bars"></span> General</a></li>
                     <li><a href="{{ ICSW_URLS.NETWORK_DEVICE_NETWORK }}"><span class="fa fa-sitemap"></span> Network</a></li>
-                    <li><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}"><span class="fa fa-check-square-o"></span> Configuration (TODO: should be capability)</a></li>
+                    <!-- TODO: split Configurations into Checks and Capabilities (only in GUI, i.e. provide reasonable views) -->
+                    <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}"><span class="fa fa-check-square-o"></span> Configurations</a></li>
+                    <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.DEVICE_SHOW_CONFIGS }}"><span class="fa fa-check-square"></span> Device configurations</a></li>
                     <li ng-show="has_menu_permission('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}"><span class="fa fa-code"></span> Device variables</a></li>
                     <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}"><span class="fa fa-table"></span> Category</a></li>
                     <!--
@@ -41,7 +43,9 @@
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_CLUSTER }}"><span class="fa fa-chain"></span> Cluster / Dependency setup</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_SETUP_ESCALATION }}"><span class="fa fa-bolt"></span> Escalation setup</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
+                    <!--
                     <li><a href="{{ ICSW_URLS.TODO }}"><span class="fa fa-check-square-o"></span> Checks TODO: Device Checks, Checks generally and Check category</a></li>
+                    -->
                     <li><a href="{{ ICSW_URLS.MON_MONITORING_HINTS }}"><span class="fa fa-info"></span> Monitoring hints</a></li>
                     <li><a href="{{ ICSW_URLS.MON_MONITORING_DISK }}"><span class="fa fa-hdd-o"></span> Disk</a></li>
                     <li class="divider"></li>
