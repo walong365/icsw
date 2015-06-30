@@ -60,7 +60,7 @@ angular.module(
 """
         transclude: true
         scope: {
-            devList: '&'
+            devList: '='
             listReady: '='
         }
         link: (scope, el, attrs) ->
