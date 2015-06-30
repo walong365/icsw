@@ -23,7 +23,7 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.core import serializers
-from django.db.models.signals import pre_delete, post_delete
+from django.db.models.signals import post_delete
 from django.utils.encoding import force_text
 import reversion
 from initat.cluster.backbone.middleware import thread_local_middleware
