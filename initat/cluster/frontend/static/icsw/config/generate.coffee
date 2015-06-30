@@ -95,8 +95,9 @@ config_gen_module = angular.module(
                 success : (xml) =>
                     blockUI.stop()
                     cur_list = []
-                    if icswParseXMLResponseService(xml)
-                        _json = angular.fromJson($(xml).find("value[name='result']").text())
+                    result = $(xml).find("value[name='result']").text()
+                    if icswParseXMLResponseService(xml) && result
+                        _json = angular.fromJson(result)
                         for cur_dev in _json["devices"]
                             new_tree = new icswConfigConfigTreeService($scope)
                             new_conf = {
