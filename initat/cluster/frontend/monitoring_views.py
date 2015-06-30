@@ -127,6 +127,16 @@ class MonitoringHints(permission_required_mixin, View):
         )()
 
 
+class MonitoringDisk(permission_required_mixin, View):
+    all_required_permissions = ["backbone.device.change_disk"]
+
+    def get(self, request):
+        return render_me(
+            request, "monitoring_disk.html", {
+            }
+        )()
+
+
 class create_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

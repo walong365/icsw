@@ -192,6 +192,7 @@ ics_app = angular.module(
     "MON_GET_MON_VARS": "{% url 'mon:get_mon_vars' %}"
     "MON_GET_NODE_CONFIG": "{% url 'mon:get_node_config' %}"
     "MON_GET_NODE_STATUS": "{% url 'mon:get_node_status' %}"
+    "MON_MONITORING_DISK": "{% url 'mon:MonitoringDisk' %}"
     "MON_MONITORING_HINTS": "{% url 'mon:MonitoringHints' %}"
     "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"
     "MON_OVERVIEW": "{% url 'mon:overview' %}"
