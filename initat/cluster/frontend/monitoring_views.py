@@ -117,6 +117,16 @@ class device_config(permission_required_mixin, View):
         )()
 
 
+class MonitoringHints(permission_required_mixin, View):
+    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
+
+    def get(self, request):
+        return render_me(
+            request, "monitoring_hints.html", {
+            }
+        )()
+
+
 class create_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
