@@ -1,52 +1,54 @@
 <script type="text/ng-template" id="icsw.device.partition.overview">
-    <h4>Disk info for {{ devsel_list.length }} devices</h4>
-    <tabset>
-        <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
-            <div ng-show="dev.act_partition_table">
-                <h4>
-                    Partition table '{{ dev.act_partition_table.name}}',
-                    <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
-                    <input type="button" class="btn btn-sm btn-danger" value="clear" ng-click="clear(dev.idx)" ng-show="dev.act_partition_table"></input>
-                    <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
-                </h4>
-                <table class="table table-condensed table-hover table-bordered" style="width:auto;">
-                    <tbody>
-                        <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
-                            <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
-                            <th>Size</th>
-                            <th>warn</th>
-                            <th>crit</th>
-                        </tr>
-                        <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
-                            <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
-                            <td>{{ part.mountpoint }}</td>
-                            <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
-                            <td class="text-center">{{ part.warn_threshold }} %</td>
-                            <td class="text-center">{{ part.crit_threshold }} %</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2">Logical Volumes</th>
-                            <th>Size</th>
-                            <th>warn</th>
-                            <th>crit</th>
-                        </tr>
-                        <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
-                            <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
-                            <td>{{ lvm.mountpoint }}</td>
-                            <td class="text-right">{{ lvm.size | get_size:1:1000 }}</td>
-                            <td class="text-center">{{ lvm.warn_threshold }} %</td>
-                            <td class="text-center">{{ lvm.crit_threshold }} %</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div ng-show="!dev.act_partition_table">
-                <h4>
-                    <span class="text-danger">No partition table defined</span>, 
-                    <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
-                    <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
-                </h4>
-            </div>
-        </tab> 
-    </tabset>
+    <h2>Disk info for {{ devsel_list.length }} devices</h2>
+    <icsw-tools-ensure-device-selection dev-list="devsel_list">
+        <tabset>
+            <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
+                <div ng-show="dev.act_partition_table">
+                    <h4>
+                        Partition table '{{ dev.act_partition_table.name}}',
+                        <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                        <input type="button" class="btn btn-sm btn-danger" value="clear" ng-click="clear(dev.idx)" ng-show="dev.act_partition_table"></input>
+                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
+                    </h4>
+                    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+                        <tbody>
+                            <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
+                                <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
+                                <th>Size</th>
+                                <th>warn</th>
+                                <th>crit</th>
+                            </tr>
+                            <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
+                                <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
+                                <td>{{ part.mountpoint }}</td>
+                                <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+                                <td class="text-center">{{ part.warn_threshold }} %</td>
+                                <td class="text-center">{{ part.crit_threshold }} %</td>
+                            </tr>
+                            <tr>
+                                <th colspan="2">Logical Volumes</th>
+                                <th>Size</th>
+                                <th>warn</th>
+                                <th>crit</th>
+                            </tr>
+                            <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
+                                <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
+                                <td>{{ lvm.mountpoint }}</td>
+                                <td class="text-right">{{ lvm.size | get_size:1:1000 }}</td>
+                                <td class="text-center">{{ lvm.warn_threshold }} %</td>
+                                <td class="text-center">{{ lvm.crit_threshold }} %</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div ng-show="!dev.act_partition_table">
+                    <h4>
+                        <span class="text-danger">No partition table defined</span>,
+                        <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
+                    </h4>
+                </div>
+            </tab>
+        </tabset>
+    </icsw-tools-ensure-device-selection>
 </script>

@@ -151,6 +151,7 @@ monitoring_patterns = patterns(
     url("^extsetupc$", monitoring_views.setup_cluster.as_view(), name="setup_cluster"),
     url("^extsetupe$", monitoring_views.setup_escalation.as_view(), name="setup_escalation"),
     url("^MonitoringHints$", monitoring_views.MonitoringHints.as_view(), name="MonitoringHints"),
+    url("^MonitoringDisk$", monitoring_views.MonitoringDisk.as_view(), name="MonitoringDisk"),
     url("^xml/dev_config$", monitoring_views.device_config.as_view(), name="device_config"),
     url("^to_icinga$", monitoring_views.call_icinga.as_view(), name="call_icinga"),
     url("^xml/read_part$", monitoring_views.fetch_partition.as_view(), name="fetch_partition"),
