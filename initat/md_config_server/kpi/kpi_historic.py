@@ -145,6 +145,12 @@ class TimeLineUtils(list):
                 # only add entries on state change or if otherwise necessary
                 compound_time_line.append(TimeLineEntry(date, next_state))
 
+        if any(tl_a[0].date != tl_b[0].date for (tl_a, tl_b) in pairwise(time_lines)):
+            raise RuntimeError("All time lines must have the same start time for historic operations.")
+
+        if any(tl_a[-1].date != tl_b[-1].date for (tl_a, tl_b) in pairwise(time_lines)):
+            raise RuntimeError("All time lines must have the same end time for historic operations.")
+
         current_tl_states = [tl[0].state for tl in time_lines]
         add_to_compound_tl(time_lines[0][0].date, current_tl_states)
         future_date = django.utils.timezone.now()
