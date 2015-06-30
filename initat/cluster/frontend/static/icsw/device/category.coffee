@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-device_configuration_module = angular.module(
+angular.module(
     "icsw.device.category",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
@@ -121,7 +121,8 @@ device_configuration_module = angular.module(
                             $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
                         else
                             $scope.sel_dict[cat.idx] = []
-                        reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
+                        # FIXME, TODO
+                        # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
                     )
         $scope.new_selection = (sel_list) =>
             # only for single-device mode
@@ -135,7 +136,8 @@ device_configuration_module = angular.module(
                 success : (xml) =>
                     icswParseXMLResponseService(xml)
                     # selectively reload sidebar tree
-                    reload_sidebar_tree([$scope.devices[0].idx])
+                    # FIXME, TODO
+                    # reload_sidebar_tree([$scope.devices[0].idx])
 ]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"

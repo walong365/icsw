@@ -163,7 +163,8 @@ angular.module(
                     icswParseXMLResponseService(xml)
                     $scope.$apply(
                         $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
-                        reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
+                        # FIXME, TODO
+                        # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
                     )
         $scope.new_selection = (sel_list) =>
             icswCallAjaxService
@@ -178,8 +179,9 @@ angular.module(
                     # selectively reload sidebar tree
                     $scope.$apply(
                         $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
-                        reload_sidebar_tree([$scope.devices[0].idx])
-                   )
+                        # FIXME, TODO
+                        # reload_sidebar_tree([$scope.devices[0].idx])
+                    )
         $scope.update_monloc_count = () ->
             _gfx_lut = {}
             for _loc_gfx in $scope.location_gfxs

@@ -168,7 +168,8 @@ angular.module(
                         if $scope._edit_obj.is_meta_device
                             $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
                         # selectively reload sidebar tree
-                        reload_sidebar_tree([$scope._edit_obj.idx])
+                        # FIXME, TODO
+                        # reload_sidebar_tree([$scope._edit_obj.idx])
                     )
             else
                 toaster.pop("warning", "form validation problem", "", 0)

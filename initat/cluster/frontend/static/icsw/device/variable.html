@@ -77,34 +77,37 @@
 <script type="text/ng-template" id="icsw.device.variable.overview">
     <h2>
         Device variables ({{ entries.length }} devices),
-        <icsw-tools-button type="create" value="create new" title="create a new variable for all shown devices" ng-click="create_for_all($event)" size="sm"/>
+        <icsw-tools-button type="create" value="create new" title="create a new variable for all shown devices" ng-click="create_for_all($event)" size="sm"></icsw-tools-button>
     </h2>
-    <div class="row">
-        <div class="col-sm-5 form-inline">
-            <div class="form-group">
-                <input class="form-control" ng-model="var_filter" placeholder="filter"/>
-            </div>,
-            <div class="form-group">
-                <input
-                    type="button"
-                    ng-class="get_hide_class()"
-                    ng-click="pagSettings.conf.filter_settings.hide_empty = !pagSettings.conf.filter_settings.hide_empty"
-                    value="hide empty"
-                />
+
+    <icsw-tools-ensure-device-selection dev-list="entries" list-ready="dataLoaded">
+        <div class="row">
+            <div class="col-sm-5 form-inline">
+                <div class="form-group">
+                    <input class="form-control" ng-model="var_filter" placeholder="filter"/>
+                </div>,
+                <div class="form-group">
+                    <input
+                        type="button"
+                        ng-class="get_hide_class()"
+                        ng-click="pagSettings.conf.filter_settings.hide_empty = !pagSettings.conf.filter_settings.hide_empty"
+                        value="hide empty"
+                    />
+                </div>
             </div>
         </div>
-    </div>
 
-    <table class="table table-condensed table-hover" style="width:auto;">
-        <thead icsw-device-variable-head></thead>
-        <tbody>
-            <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-            <tr icsw-device-variable-row ng-repeat-start="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
-            <tr ng-repeat-end ng-if="obj.expanded">
-                <td colspan="9">
-                    <icsw-device-variable-table device="obj" filtervalue="var_filter"></icsw-device-variable-table>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+        <table class="table table-condensed table-hover" style="width:auto;">
+            <thead icsw-device-variable-head></thead>
+            <tbody>
+                <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                <tr icsw-device-variable-row ng-repeat-start="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
+                <tr ng-repeat-end ng-if="obj.expanded">
+                    <td colspan="9">
+                        <icsw-device-variable-table device="obj" filtervalue="var_filter"></icsw-device-variable-table>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </icsw-tools-ensure-device-selection>
 </script>

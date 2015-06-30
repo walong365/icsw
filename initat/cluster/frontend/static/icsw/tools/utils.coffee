@@ -48,4 +48,32 @@ angular.module(
                 )
             )
     }
+]).directive('icswToolsEnsureDeviceSelection', ["icswLayoutSelectionDialogService", "blockUI", (icswLayoutSelectionDialogService, blockUI) ->
+    return {
+        template: """
+<div ng-if="listReady == undefined || listReady">
+    <div ng-if="devList.length == 0">
+        <icsw-tools-button type="select_devices" ng-click="do_select()"></icsw-tools-button>
+    </div>
+    <div ng-transclude ng-if="devList.length > 0"></div>
+</div>
+"""
+        transclude: true
+        scope: {
+            devList: '&'
+            listReady: '='
+        }
+        link: (scope, el, attrs) ->
+            if scope.listReady?
+                scope.$watch('listReady', (new_val) ->
+                    if !new_val
+                        blockUI.start()
+                    else
+                        blockUI.stop()
+                )
+
+            scope.do_select = () ->
+                icswLayoutSelectionDialogService.quick_dialog(scope)
+    }
+
 ])
