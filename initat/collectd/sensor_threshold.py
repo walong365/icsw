@@ -186,6 +186,7 @@ class Threshold(object):
                 action_type=what,
                 mail=_mail,
                 value=_value,
+                create_user=self.th.create_user,
                 device_selection=self.th.device_selection,
             )
             new_sta.save()
@@ -233,11 +234,35 @@ class Threshold(object):
             _message.extend(
                 [
                     "",
+                    "creating user was {}".format(unicode(self.th.create_user) if self.th.create_user_id else "---")
+                ]
+            )
+            _message.extend(
+                [
+                    "",
                     "{} to notify:".format(logging_tools.get_plural("user", _to_users))
                 ]
             )
             for _user in _to_users:
                 _message.append(u"   {} ({})".format(unicode(_user), _user.email))
+            if self.th.device_selection:
+                _devs = self.th.device_selection.resolve()
+                _message.extend(
+                    [
+                        "",
+                        "{} to operate on:".format(logging_tools.get_plural("device", len(_devs)))
+                    ] + [
+                        "    {}".format(unicode(_dev)) for _dev in _devs
+                    ]
+                )
+            else:
+                _devs = []
+                _message.extend(
+                    [
+                        "",
+                        "no devices to operate on (no device selection)",
+                    ]
+                )
             self.log(
                 "sending email with subject '{}' to {}:".format(
                     _subject,

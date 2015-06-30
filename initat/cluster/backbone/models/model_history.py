@@ -67,8 +67,13 @@ class icsw_deletion_record(models.Model):
             except:
                 object_repr = "object"
 
-        record = icsw_deletion_record(user=acting_user, object_id_int=instance.pk, content_type=content_type,
-                                      serialized_data=serialized_data, object_repr=object_repr)
+        record = icsw_deletion_record(
+            user=acting_user,
+            object_id_int=instance.pk,
+            content_type=content_type,
+            serialized_data=serialized_data,
+            object_repr=object_repr
+        )
         record.save()
 
 

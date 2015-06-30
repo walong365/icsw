@@ -17,4 +17,4 @@
 #
 """ cluster-server, background inotify import script """
 
-from .process import ServerBackgroundNotifyMixin
+pass

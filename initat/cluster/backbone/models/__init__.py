@@ -31,6 +31,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
+from initat.tools.bgnotify.create import create_bg_job
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -176,26 +177,7 @@ def _insert_bg_job(cmd, cause, obj):
             _local_pk = 0
     # we need local_pk and a valid user (so we have to be called via webfrontend)
     if _local_pk and thread_local_middleware().user and isinstance(thread_local_middleware().user, user):
-        srv_com = server_command.srv_command(
-            command=cmd,
-        )
-        _bld = srv_com.builder()
-        srv_com["object"] = _bld.object(
-            unicode(obj),
-            model=obj._meta.model_name,
-            app=obj._meta.app_label,
-            pk="{:d}".format(obj.pk)
-        )
-        background_job.objects.create(
-            command=cmd,
-            cause=u"{} of '{}'".format(cause, unicode(obj))[:255],
-            state="pre-init",
-            initiator=device.objects.get(Q(pk=_local_pk)),
-            user=thread_local_middleware().user,
-            command_xml=unicode(srv_com),
-            # valid for 4 hours
-            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)),  # 3600 * 4)),
-        )
+        create_bg_job(_local_pk, thread_local_middleware().user, cmd, cause, obj)
         # init if not already done
         if not hasattr(_thread_local, "num_bg_jobs"):
             _thread_local.num_bg_jobs = 1

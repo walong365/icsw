@@ -50,6 +50,9 @@ class DisplayGraph
         @sensor_action_lut = {}
         for entry in @sensor_action_list
             @sensor_action_lut[entry.idx] = entry
+        @user_lut = {}
+        for entry in @user_list
+            @user_lut[entry.idx] = entry
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -191,7 +194,8 @@ angular.module(
         $scope.from_date_mom = moment().subtract(1, "days")
         $scope.cur_dim = $scope.all_dims[1]
         $scope.error_string = ""
-        $scope.searchstr = ""
+        $scope.vals =
+            searchstr: ""
         $scope.devlist_loading = true
         $scope.is_loading = true
         $scope.is_drawing = false
@@ -474,13 +478,13 @@ angular.module(
             $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
 
         $scope.clear_selection = () =>
-            $scope.searchstr = ""
+            $scope.vals.searchstr = ""
             $scope.set_search_filter()
 
         $scope.set_search_filter = () =>
-            if $scope.searchstr
+            if $scope.vals.searchstr
                 try
-                    cur_re = new RegExp($scope.searchstr, "gi")
+                    cur_re = new RegExp($scope.vals.searchstr, "gi")
                 catch
                     cur_re = new RegExp("^$", "gi")
             else
@@ -560,6 +564,8 @@ angular.module(
                         for sth in result[1]
                             if sth.mv_value_entry not of sth_dict
                                 sth_dict[sth.mv_value_entry] = []
+                            if not sth.create_user
+                                sth.create_user = $window.CURRENT_USER.idx
                             sth_dict[sth.mv_value_entry].push(sth)
                         $scope.is_drawing = false
                         graph_list = []
@@ -674,6 +680,11 @@ angular.module(
                     return scope.sensor.graph.sensor_action_lut[scope.threshold.upper_sensor_action].name
                 else
                     return "---"
+            scope.resolve_user = () ->
+                if scope.threshold.create_user
+                    return scope.sensor.graph.user_lut[scope.threshold.create_user].login
+                else
+                    return "---"
             scope.get_lower_email = () ->
                 return if scope.threshold.lower_mail then "send email" else "no email"
             scope.get_upper_email = () ->
@@ -685,7 +696,7 @@ angular.module(
                     return "---"
 
     }
-]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout) ->
+]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", "$window", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout, $window) ->
     th_dialog = (create, cur_scope, sensor, threshold, title) ->
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
@@ -721,6 +732,10 @@ angular.module(
                 th_obj.notify_users = (_user.idx for _user in th_obj.notify_users_obj)
             else
                 th_obj.notify_users = []
+            if th_obj.create_user_obj
+                th_obj.create_user = th_obj.create_user_obj.idx
+            else
+                th_obj.create_user = undefined
         BootstrapDialog.show
             message: thresh_div
             draggable: true
@@ -791,12 +806,16 @@ angular.module(
                 threshold.notify_users_obj = (_user for _user in graph.user_list when _user.idx in threshold.notify_users)
             else
                 threshold.notify_users_obj = []
+            if threshold.create_user
+                threshold.create_user_obj = graph.user_lut[threshold.create_user]
+            else
+                threshold.create_user_obj = undefined
             th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
         sub_scope.create_new_threshold = (sensor) ->
+            console.log $window.CURRENT_USER
             _mv = sensor.mean_value
             threshold = {
                 "name": "Threshold for #{sensor.mv_key}"
-                "limit_class": "u"
                 "lower_value": _mv - _mv / 10
                 "upper_value": _mv + _mv / 10
                 "lower_mail": true
@@ -804,6 +823,7 @@ angular.module(
                 "lower_enabled": true
                 "upper_enabled": true
                 "notify_users": []
+                "create_user": $window.CURRENT_USER.idx
                 "lower_sensor_action": undefined,
                 "upper_sensor_action": undefined,
                 "device_selection": undefined

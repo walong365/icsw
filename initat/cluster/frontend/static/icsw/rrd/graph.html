@@ -194,7 +194,7 @@
         <div class="row">
             <div class="col-md-3" ng-show="show_tree">
                 <div class="input-group">
-                    <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"/>
+                    <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vals.searchstr" placeholder="search ..." ng-change="update_search()"/>
                     <span class="input-group-btn">
                         <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()">
                             <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
@@ -276,7 +276,7 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.threshold.overview">
     <td>
-        Threshold '{{ threshold.name }}'<br>
+        Threshold '{{ threshold.name }}' created by {{ resolve_user() }}<br>
         lower value at {{ threshold.lower_value | number: 4 }}, action is {{ get_lower_sensor_action_name() }}, {{ get_lower_email() }}<br>
         upper value at {{ threshold.upper_value | number: 4 }}, action is {{ get_upper_sensor_action_name() }}, {{ get_upper_email() }}<br>
         {{ threshold.notify_users.length }} Users to notify, Device selection: {{ get_device_selection_info() }}
@@ -301,6 +301,19 @@
                 </div>
             </div>
             <div class="form-group">
+                <label class="col-md-3 control-label">Created by:</label>
+                <div class="col-md-9 controls">
+                    <div class="input-group">
+                        <ui-select ng-model="threshold.create_user_obj">
+                            <ui-select-match placeholder="Pick a user ...">{{ $select.selected.login + ' (' + $select.selected.email + ')'}}</ui-select-match>
+                            <ui-select-choices repeat="user in sensor.graph.user_list">
+                                <div ng-bind-html="user.login + ' (' + user.email + ')'"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
                 <label class="col-md-3 control-label">Users to notify:</label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
@@ -311,7 +324,7 @@
                             </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">
-                            <button type="button" ng-click="threshold.notify_users = []" class="btn btn-default">
+                            <button type="button" ng-click="threshold.notify_users_obj = []" class="btn btn-default">
                                 <span class="glyphicon glyphicon-trash"></span>
                             </button>
                         </span>

@@ -518,7 +518,6 @@ class GraphVar(object):
                     _loc = cluster_timezone.normalize(_sta.date)
                     if _loc > self.rrd_graph.para_dict["start_time"] and _loc < self.rrd_graph.para_dict["end_time"]:
                         _events.setdefault(_sta.action_type, []).append(_sta)
-                        print "t",_sta.date
                 for _event_type in sorted(_events.iterkeys()):
                     for _event_num, _sta in enumerate(_events[_event_type]):
                         if not _event_num:
