@@ -172,6 +172,7 @@ device_variable_module = angular.module(
                     $scope._edit_obj.val_str = _mon_var.value
         $scope.var_filter = ""
         $scope.entries = []
+        $scope.dataLoaded = false
         $scope.pagSettings = paginatorSettings.get_paginator("dv_base", $scope)
         $scope.pagSettings.conf.filter_mode = "func"
         $scope.valid_var_types = [
@@ -198,6 +199,7 @@ device_variable_module = angular.module(
             ]
             $q.all(wait_list).then((data) ->
                 entries = data[0]
+                $scope.dataLoaded = true
                 $scope.base_edit.create_list = entries
                 # all entries (including parent meta devices and CDG)
                 $scope.cdg = (entry for entry in entries when entry.is_cluster_device_group)[0]
