@@ -799,8 +799,12 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     # ldconfig call
     ld_stat, _out = commands.getstatusoutput("chroot {} /sbin/ldconfig".format(temp_dir))
     if ld_stat:
-        print "Error calling /sbin/ldconfig"
-        sev_dict["E"] += 1
+        ld_stat, _out = commands.getstatusoutput("chroot {} /usr/sbin/ldconfig".format(temp_dir))
+        if ld_stat:
+            print "Error calling {/usr}/sbin/ldconfig: {}".format(_out)
+            sev_dict["E"] += 1
+        else:
+            os.unlink("{}/usr/sbin/ldconfig".format(temp_dir))
     else:
         os.unlink("{}/sbin/ldconfig".format(temp_dir))
     # check size (not really needed, therefore commented out)
@@ -1574,6 +1578,7 @@ def main_normal():
         for linuxrc_name in LINUXRC_NAMES:
             # stage1 stuff
             stage1_dest = "/%s/%s" % (stage_dirs[0], linuxrc_name)
+            # TODO; check for missing /bin (Centos 7 onwards), FIXME
             shutil.copy2("/%s/stage1" % (my_args.stage_source_dir), stage1_dest)
             os.chmod(stage1_dest, 0744)
             os.chown(stage1_dest, 0, 0)

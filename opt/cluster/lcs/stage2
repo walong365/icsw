@@ -758,6 +758,9 @@ generate_devicefiles
 # init /etc/hosts for hoststatus
 echo -e "127.0.0.1 localhost\n" > /etc/hosts
 
+echo -e "starting rpcbind"
+/sbin/rpcbind -w
+
 echo -e "${GREEN}setting status and starting hoststatus${OFF}"
 set_hoststat ${BM_MESG}
 hoststatus_zmq &
@@ -1287,6 +1290,7 @@ umount /conf
 [ "$SYSLOG_BIN" != "0" ] && killall $SYSLOG_BIN
 # kill klogd when running
 [ -x /sbin/klogd ] && killall klogd
+killall rpcbind
 umount /sys
 umount /proc
 
