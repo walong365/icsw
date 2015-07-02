@@ -1155,7 +1155,11 @@ elif [ "$do_mount" = "1" ] ; then
                 if [ "$basen" != "$dirperm_file" ] ; then
                     set_hoststat -q "${UNP_MESG} $basen"
                     echo -e "Unpacking $basen ($(ls -sh $file | cut -d'/' -f1 | tr -d " "))"
-                    (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
+                    if [ "${tar_flags}" = "-xjf" ] ; then
+                        (/opt/cluster/bin/pbzip2 -dc $file | tar xf - ) 2>&1 | grep -v "s in the future"
+                    else
+                        (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
+                    fi
                 fi
             done
             set_hoststat "${FIX_MESG}"
