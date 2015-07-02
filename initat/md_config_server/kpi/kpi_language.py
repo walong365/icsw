@@ -524,18 +524,28 @@ class KpiSet(object):
 
     def _check_value(self, amount, limit_ok, limit_warn, method='at least'):
         if method == 'at least':
-            _cmp = lambda x, y: x >= y
+            if limit_warn is not None and limit_ok < limit_warn:
+                raise RuntimeError("With at least comparisons, limit_ok must be greater than or equal to limit_warn")
+
+            if amount >= limit_ok:
+                result = KpiResult.ok
+            elif limit_warn is not None and amount >= limit_warn:
+                result = KpiResult.warning
+            else:
+                result = KpiResult.critical
         elif method == 'at most':
-            _cmp = lambda x, y: x < y
+            if limit_warn is not None and limit_ok > limit_warn:
+                raise RuntimeError("With at least comparisons, limit_ok must be lesser than or equal to limit_warn")
+
+            if amount <= limit_ok:
+                result = KpiResult.ok
+            elif limit_warn is not None and amount <= limit_warn:
+                result = KpiResult.warning
+            else:
+                result = KpiResult.critical
         else:
             raise ValueError("Invalid comparison method: '{}'. Supported methods are 'at least' or 'at most'.")
 
-        if _cmp(amount, limit_ok):
-            result = KpiResult.ok
-        elif limit_warn is not None and _cmp(amount, limit_warn):
-            result = KpiResult.warning
-        else:
-            result = KpiResult.critical
         return result
 
     def _filter_impl(self, parameters, positive):
