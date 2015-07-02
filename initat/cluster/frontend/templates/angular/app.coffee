@@ -121,6 +121,7 @@ ics_app = angular.module(
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_ADD_DELETE_REQUEST": "{% url 'base:add_delete_request' %}"
     "BASE_CALCULATE_KPI_PREVIEW": "{% url 'base:CalculateKpiPreview' %}"
+    "BASE_CATEGORY_CONTENTS": "{% url 'base:CategoryContents' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
     "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"

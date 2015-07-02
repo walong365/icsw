@@ -659,4 +659,17 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree")
     }
+]).directive("icswConfigCategoryContentsViewer", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+    return {
+        restrict: "EA"
+        templateUrl: "icsw.config.category.contents_viewer"
+        scope:
+            categoryObject: '='
+        link : (scope, elements, attrs) ->
+            scope.$watch('categoryObject', () ->
+                Restangular.all(ICSW_URLS.BASE_CATEGORY_CONTENTS.slice(1)).getList({category_pk: scope.categoryObject.idx}).then((new_data) ->
+                    scope.new_data = new_data
+                )
+            )
+    }
 ])

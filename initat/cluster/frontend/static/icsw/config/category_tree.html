@@ -134,12 +134,6 @@
         Category tree ({{entries.length}} entries)
     </h2>
     <tabset>
-        <tab heading="Locations" select="activate_map()">
-            <h3>Map view, {{ locations.length }} locations</h3>
-            <icsw-config-category-location-edit preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-location-edit>
-            <hr ng-show="preview_gfx"/>
-            <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-tree-map-enhance>
-        </tab>
         <tab heading="Categories">
             <h3>Actions:
                 <icsw-tools-button type="create" value="create new" ng-click="create_new($event, '')" size="sm"></icsw-tools-button>
@@ -172,7 +166,18 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="col-sm-6">
+                    <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
+                        <icsw-config-category-contents-viewer category-object="_edit_obj"></icsw-config-category-contents-viewer>
+                    </div>
+                </div>
             </div>
+        </tab>
+        <tab heading="Locations" select="activate_map()">
+            <h3>Map view, {{ locations.length }} locations</h3>
+            <icsw-config-category-location-edit preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-location-edit>
+            <hr ng-show="preview_gfx"/>
+            <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-tree-map-enhance>
         </tab>
     </tabset>
 </script>
@@ -258,6 +263,21 @@
         </div>
         <div class="col-md-12 panel-body">
             <image ng-src="{{ preview_gfx.image_url }}" ng-attr-style="{{ img_style }}"></image>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.contents_viewer">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            Contents of {{categoryObject.full_name}}
+        </div>
+        <div class="panel-body">
+            <ul class="list-group">
+                <li class="list-group-item" ng-repeat="entry in new_data">
+                    {{entry}}
+                </li>
+            </ul>
         </div>
     </div>
 </script>

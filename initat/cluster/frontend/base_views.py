@@ -13,16 +13,16 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx, DeleteRequest
+    category_tree, location_gfx, DeleteRequest, device, config, mon_check_command
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImport
-import initat.cluster.backbone.models
 import json
 import PIL
 import logging
@@ -221,6 +221,20 @@ class change_category(View):
                 )
             )
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
+
+
+class CategoryContents(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        cat_db = category.objects.get(pk=request.GET['category_pk'])
+        devs = device.objects.filter(categories=cat_db)
+        mccs = mon_check_command.objects.filter(categories=cat_db)
+
+        return Response(
+            [dev.full_name for dev in devs] +
+            [mcc.name for mcc in mccs]
+        )
 
 
 class KpiView(View):
