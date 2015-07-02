@@ -289,17 +289,7 @@ class angular_modal_mixin
             @close_modal()
             return @_prom.resolve(@scope._edit_obj)
 
-reload_sidebar_tree = (pk_list) ->
-    sidebar_div = $("div[id='icsw.sidebar'] > div[id='sidebar-wrapper']")
-    # sidebar found ?
-    if sidebar_div.length
-        scope = angular.element(sidebar_div[0]).scope()
-        scope.$apply(() ->
-            scope.reload(pk_list)
-        )
-
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin
-root.reload_sidebar_tree = reload_sidebar_tree
 

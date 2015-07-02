@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,10 +19,10 @@
 #
 """ basic structures """
 
-from initat.host_monitoring import limits
-from initat.tools import ipvx_tools
-from initat.tools import server_command
 import time
+
+from initat.host_monitoring import limits
+from initat.tools import ipvx_tools, server_command
 
 
 class ResultNode(object):

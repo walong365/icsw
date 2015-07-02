@@ -265,7 +265,7 @@ class config_control(object):
                 dir_key = "EXPORT"
             vs_struct.fetch_config_vars()
             if dir_key in vs_struct:
-                _kernel_source_path = "%s/kernels/" % (vs_struct[dir_key])
+                _kernel_source_path = os.path.join(vs_struct[dir_key], "kernels")
                 return "ok {} {} {:d} {:d} {} {} {}".format(
                     self.device.new_state.status,
                     prod_net.identifier.replace(" ", "_"),

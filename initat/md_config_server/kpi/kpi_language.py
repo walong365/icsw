@@ -26,6 +26,7 @@ import collections
 import pprint
 
 from collections import defaultdict
+import datetime
 from enum import IntEnum, Enum
 import pytz
 
@@ -523,18 +524,28 @@ class KpiSet(object):
 
     def _check_value(self, amount, limit_ok, limit_warn, method='at least'):
         if method == 'at least':
-            _cmp = lambda x, y: x >= y
+            if limit_warn is not None and limit_ok < limit_warn:
+                raise RuntimeError("With at least comparisons, limit_ok must be greater than or equal to limit_warn")
+
+            if amount >= limit_ok:
+                result = KpiResult.ok
+            elif limit_warn is not None and amount >= limit_warn:
+                result = KpiResult.warning
+            else:
+                result = KpiResult.critical
         elif method == 'at most':
-            _cmp = lambda x, y: x < y
+            if limit_warn is not None and limit_ok > limit_warn:
+                raise RuntimeError("With at least comparisons, limit_ok must be lesser than or equal to limit_warn")
+
+            if amount <= limit_ok:
+                result = KpiResult.ok
+            elif limit_warn is not None and amount <= limit_warn:
+                result = KpiResult.warning
+            else:
+                result = KpiResult.critical
         else:
             raise ValueError("Invalid comparison method: '{}'. Supported methods are 'at least' or 'at most'.")
 
-        if _cmp(amount, limit_ok):
-            result = KpiResult.ok
-        elif limit_warn is not None and _cmp(amount, limit_warn):
-            result = KpiResult.warning
-        else:
-            result = KpiResult.critical
         return result
 
     def _filter_impl(self, parameters, positive):
@@ -701,11 +712,11 @@ class KpiSet(object):
 
         return retval
 
-    def historic_or(self):
-        return self.aggregate_historic(method='or')
+    def historic_best(self):
+        return self.aggregate_historic(method='best')
 
-    def historic_and(self):
-        return self.aggregate_historic(method='and')
+    def historic_worst(self):
+        return self.aggregate_historic(method='worst')
 
     def get_historic_data(self, start=None, end=None):
         """
@@ -720,10 +731,17 @@ class KpiSet(object):
             kpi_global_start, kpi_global_end = KpiGlobals.current_kpi.get_time_range()
 
             # help user by fixing their timezones
-            fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
+            def fix_input(moment):
+                # moment might be date
+                if not isinstance(moment, datetime.datetime):
+                    moment = datetime.datetime(moment.year, moment.month, moment.day)
+                if moment.tzinfo is not None:
+                    return moment
+                else:
+                    return moment.replace(tzinfo=pytz.utc)
 
-            start = fix_tz(start) if start is not None else kpi_global_start
-            end = fix_tz(end) if end is not None else kpi_global_end
+            start = fix_input(start) if start is not None else kpi_global_start
+            end = fix_input(end) if end is not None else kpi_global_end
 
             if start < kpi_global_start:
                 raise RuntimeError(

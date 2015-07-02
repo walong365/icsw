@@ -56,7 +56,13 @@ GREEN="\033[32m"
 YELLOW="\033[33m"
 OFF="\033[m"
 
-[ ! -f /bin/sh ] && ln -s /bin/bash /bin/sh
+if [ ! -f /bin/sh ] ; then
+    if [ -x /usr/bin/bash ] ; then
+        ln -s /usr/bin/bash /bin/sh
+    else
+        ln -s /bin/bash /bin/sh
+    fi
+fi
 
 basedir="new"
 
@@ -81,7 +87,27 @@ cp -a /sbin/reboot /sbin/reboot.old
 rm /sbin/reboot
 echo "#!/bin/bash" > /sbin/reboot
 echo "/sbin/reboot.old -f " >> /sbin/reboot
-chmod +x /sbin/reboot
+chmod +x /sbin/v
+
+# create links for Centos
+if [ -x /sbin/mount.nfs ] ; then
+    # mount.nfs is a valid binary, ok
+    true
+elif [ -L /sbin/mount.nfs ] ; then
+    # mount.nfs is a link, ok
+    true
+else
+    if [ -x /usr/bin/mount.nfs ] ; then
+        # create link
+        ln -s /usr/bin/mount.nfs /sbin/mount.nfs
+    elif [ -x /usr/sbin/mount.nfs ] ; then
+        # create link
+        ln -s /usr/sbin/mount.nfs /sbin/mount.nfs
+    elif [ -x /bin/mount.nfs ] ; then
+        # create link
+        ln -s /bin/mount.nfs /sbin/mount.nfs
+    fi
+fi
 
 function start_shell() {
     echo "Starting /bin/bash" | logger -s
@@ -89,6 +115,7 @@ function start_shell() {
     alias > /root/.bashrc
     chmod 0540 /etc/shadow
     echo $motherserver > /root/.rhosts
+    # TODO, FIXME; adopt for newer Centos installations
     /bin/bash  2>&1
 }
 
@@ -500,7 +527,7 @@ function install_kernel() {
         if [ -f /kernel/modules.tar.bz2 ] ; then
             # create a local copy
             cp -a /kernel/modules.tar.bz2 /$basedir/.icswinfo/
-            tar xjf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
+            tar xjhf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
         else
             echo -e "${YELLOW}No modules.tar.bz2 file found for actual kernel${OFF}"
         fi
@@ -720,7 +747,7 @@ function mount_it() {
     iter=1
     while true ; do
         logger -s "trying: mount from ${src} (opt ${opts})"
-        mount ${opts} ${src} ${dst} && { 
+        mount ${opts} ${src} ${dst} && {
             break ; 
         } || {
             mc=$?;
@@ -758,6 +785,9 @@ generate_devicefiles
 # init /etc/hosts for hoststatus
 echo -e "127.0.0.1 localhost\n" > /etc/hosts
 
+echo -e "starting rpcbind"
+/sbin/rpcbind -w
+
 echo -e "${GREEN}setting status and starting hoststatus${OFF}"
 set_hoststat ${BM_MESG}
 hoststatus_zmq &
@@ -787,14 +817,15 @@ elif [ -x /sbin/syslogd ] ; then
     echo -e "*.*\t@logserver\n" > /etc/syslog.conf
     echo -e "starting syslogd"
     /sbin/syslogd &
-elif [ -x /sbin/rsyslogd ] ; then
+elif [ -x /sbin/rsyslogd -o -x /usr/sbin/rsyslogd ] ; then
     SYSLOG_BIN=rsyslogd
     echo -e "\$ModLoad imuxsock.so" > /etc/rsyslog.conf
     echo -e "\$ModLoad imklog.so" >> /etc/rsyslog.conf
     echo -e "\$ModLoad imudp.so" >> /etc/rsyslog.conf
     echo -e "*.*\t@logserver:514\n" >> /etc/rsyslog.conf
     echo -e "starting rsyslogd"
-    /sbin/rsyslogd -f /etc/rsyslog.conf &
+    [ -x /sbin/rsyslogd ] && /sbin/rsyslogd -f /etc/rsyslog.conf &
+    [ -x /usr/sbin/rsyslogd ] && /usr/sbin/rsyslogd -f /etc/rsyslog.conf &
 else
     SYSLOG_BIN=0
 fi
@@ -1287,6 +1318,7 @@ umount /conf
 [ "$SYSLOG_BIN" != "0" ] && killall $SYSLOG_BIN
 # kill klogd when running
 [ -x /sbin/klogd ] && killall klogd
+killall rpcbind
 umount /sys
 umount /proc
 

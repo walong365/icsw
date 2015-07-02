@@ -59,7 +59,6 @@ ics_app = angular.module(
         "icsw.tools.tree",
         "icsw.layout.menu",
         "icsw.layout.sidebar",
-        "icsw.network",
         "icsw.tools",
         "icsw.login",
         "icsw.layout.routing",
@@ -150,6 +149,7 @@ ics_app = angular.module(
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
+    "DEVICE_DEVICE_GENERAL": "{% url 'device:DeviceGeneral' %}"
     "DEVICE_GET_DEVICE_LOCATION": "{% url 'device:get_device_location' %}"
     "DEVICE_MANUAL_CONNECTION": "{% url 'device:manual_connection' %}"
     "DEVICE_SCAN_DEVICE_NETWORK": "{% url 'device:scan_device_network' %}"
@@ -192,12 +192,16 @@ ics_app = angular.module(
     "MON_GET_MON_VARS": "{% url 'mon:get_mon_vars' %}"
     "MON_GET_NODE_CONFIG": "{% url 'mon:get_node_config' %}"
     "MON_GET_NODE_STATUS": "{% url 'mon:get_node_status' %}"
+    "MON_GRAPH": "{% url 'mon:Graph' %}"
+    "MON_MONITORING_DISK": "{% url 'mon:MonitoringDisk' %}"
+    "MON_MONITORING_HINTS": "{% url 'mon:MonitoringHints' %}"
     "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"
     "MON_OVERVIEW": "{% url 'mon:overview' %}"
     "MON_RESOLVE_NAME": "{% url 'mon:resolve_name' %}"
     "MON_SETUP_CLUSTER": "{% url 'mon:setup_cluster' %}"
     "MON_SETUP_ESCALATION": "{% url 'mon:setup_escalation' %}"
     "MON_SETUP": "{% url 'mon:setup' %}"
+    "MON_STATUS_HISTORY": "{% url 'mon:StatusHistory' %}"
     "MON_SVG_TO_PNG": "{% url 'mon:svg_to_png' %}"
     "MON_USE_PARTITION": "{% url 'mon:use_partition' %}"
     "NETWORK_COPY_NETWORK": "{% url 'network:copy_network' %}"

@@ -49,6 +49,10 @@ else
     echo_opt="-e"
 fi
 
+[ ! -d /bin ] && mkdir /bin
+
+[ -f /usr/bin/bash ] && ln -s /usr/bin/bash /bin/bash
+
 start_shell () {
     alias > /.bashrc
     [ ! -d /proc ] && mkdir /proc
@@ -575,10 +579,17 @@ fi
 mkdir -p /stage2/etc/sysconfig/cluster
 cp -a /etc/sysconfig/cluster/.cluster_device_uuid /stage2/etc/sysconfig/cluster
 
+if [ ! -x /stage2/bin/bash ] ; then
+    if [ ! -d /stage2/bin ] ; then
+        ln -s /usr/bin /stage2/bin
+    fi
+    # [ -f /stage2/usr/bin/bash ] && ln -s /usr/bin/bash /stage2/bin/bash
+fi
+
 chroot /stage2 /linuxrc
 
 [ ! -f /stage2/success ] && {
-    err_exit "chroot problem" ;
+    err_exit "chroot problem $(chroot /stage2 /linuxrc 2>&1)" ;
 }
 
 rpart=`cat /stage2/tmp/mother | cut -d " " -f 1`

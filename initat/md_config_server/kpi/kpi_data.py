@@ -27,12 +27,10 @@ from initat.cluster.backbone.models.license import LicenseUsageDeviceService, Li
 
 import memcache
 import operator
-import initat.collectd
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 from initat.tools import logging_tools
 # noinspection PyUnresolvedReferences
 import pprint
-import initat.collectd.aggregate
 
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
 from initat.md_config_server.common import live_socket
@@ -263,7 +261,7 @@ class KpiData(object):
                     if host_mc is not None:
                         values_list = json.loads(host_mc)
 
-                        vector_entries = (initat.collectd.aggregate.VE(*val) for val in values_list)
+                        vector_entries = (VE(*val) for val in values_list)
 
                         host_rrd_data[host_db.pk] = list(
                             KpiRRDObject(
@@ -350,3 +348,22 @@ class KpiData(object):
 
         # self.log("got host check results: {}".format(ret))
         return ret
+
+
+class VE(object):
+    # vector entry (duplicated in collectd.aggregate)
+    def __init__(self, *args):
+        self.format, self.key, self.info, self.unit, self.v_type, self.value, self.base, self.factor = args
+
+    def __repr__(self):
+        return u"ve {}".format(self.key)
+
+    def get_value(self):
+        return self.value * self.factor
+
+    def get_expanded_info(self):
+        # replace "$2" by 2nd part of key and so on
+        expanded_info = self.info
+        for num, subst in enumerate(self.key.split("."), start=1):
+            expanded_info = expanded_info.replace("${}".format(num), subst)
+        return expanded_info

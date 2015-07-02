@@ -596,7 +596,8 @@ class user_manager(models.Manager):
             group=user_group,
             comment="admin created by createsuperuser",
             password=password,
-            is_superuser=True)
+            is_superuser=True
+        )
         return new_admin
 
 
@@ -796,6 +797,7 @@ class user(models.Model):
             ("modify_domain_name_tree", "modify domain name tree", False),
             ("modify_category_tree", "modify category tree", False),
             ("rms_operator", "change RMS settings", True),
+            ("snapshots", "Show database history (snapshots)", False),
         )
         # foreign keys to ignore
         fk_ignore_list = [

@@ -424,6 +424,7 @@ class mon_check_command(models.Model):
     class CSW_Meta:
         permissions = (
             ("setup_monitoring", "Change monitoring settings", False),
+            ("show_monitoring_dashboard", "Show monitoring dashboard", False),
         )
         fk_ignore_list = [
             "mon_icinga_log_raw_service_alert_data",

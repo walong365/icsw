@@ -21,6 +21,7 @@
 
 from ...functions import simplify_dict
 from ...snmp_struct import ResultNode, snmp_ip
+from initat.tools import process_tools, logging_tools
 from ..base import SNMPHandler
 
 try:
@@ -42,7 +43,20 @@ class handler(SNMPHandler):
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
         # ip dict
-        _ip_dict = {key: snmp_ip(value) for key, value in simplify_dict(result_dict["1.3.6.1.2.1.4.20"], (1,)).iteritems()}
+        _ip_dict = {}
+        for key, value in simplify_dict(result_dict["1.3.6.1.2.1.4.20"], (1,)).iteritems():
+            try:
+                _ip = snmp_ip(value)
+            except:
+                self.log(
+                    "error interpreting {} as IP: {}".format(
+                        str(value),
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR,
+                )
+            else:
+                _ip_dict[key] = _ip
         if dev.domain_tree_node_id:
             _tln = dev.domain_tree_node
         else:

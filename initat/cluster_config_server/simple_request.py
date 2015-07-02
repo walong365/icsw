@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,10 +20,8 @@
 """ cluster-config-server, simple request structure """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import config, config_str, device_variable
-from initat.tools import config_tools
-from initat.tools import logging_tools
-from initat.tools import server_command
+from initat.cluster.backbone.models import config, config_str, device_variable, net_ip
+from initat.tools import config_tools, logging_tools, server_command
 
 
 # copy from md-config-server
@@ -70,12 +68,23 @@ class simple_request(object):
     def __init__(self, cc, zmq_id, node_text):
         self.cc = cc
         self.zmq_id = zmq_id
-        if zmq_id.count(":") == 2:
-            src_ip = zmq_id.split(":")[-1]
-            if not src_ip:
-                src_ip = None
+        _base_query = net_ip.objects.filter(
+            Q(netdevice__device=self.cc.device)
+        )
+        if self.zmq_id.count("-boot"):
+            # only boot net
+            _base_query = _base_query.filter(Q(network__network_type__identifier="b"))
         else:
-            src_ip = None
+            # only production net
+            _base_query = _base_query.filter(Q(network__network_type__identifier="p"))
+        src_ip = _base_query.values_list("ip", flat=True)[0]
+
+        # if zmq_id.count(":") == 2:
+        #    src_ip = zmq_id.split(":")[-1]
+        #    if not src_ip:
+        #        src_ip = None
+        # else:
+        #    src_ip = None
         self.src_ip = src_ip
         self.node_text = node_text
         self.command = node_text.strip().split()[0]
@@ -89,7 +98,8 @@ class simple_request(object):
         dev_sc = config_tools.server_check(
             short_host_name=self.cc.device.name,
             server_type="node",
-            fetch_network_info=True)
+            fetch_network_info=True
+        )
         bs_list = []
         for cur_conf in conf_list:
             srv_routing = cur_conf.get_route_to_other_device(
@@ -150,12 +160,14 @@ class simple_request(object):
             valid_server_struct = config_tools.server_check(
                 server_type="mother_server",
                 short_host_name=valid_server_struct.short_host_name,
-                fetch_network_info=True)
+                fetch_network_info=True
+            )
         if valid_server_struct:
             dev_sc = config_tools.server_check(
                 short_host_name=self.cc.device.name,
                 server_type="node",
-                fetch_network_info=True)
+                fetch_network_info=True
+            )
             # check if there is a route between us and server
             srv_routing = valid_server_struct.get_route_to_other_device(
                 self.cc.router_obj,

@@ -84,7 +84,7 @@ stage1_file_dict = {
         "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
         "lsmod", "depmod", "insmod", "mkfs.ext2", "date", "xml",
         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
-        "killall", "seq", "hoststatus_zmq", "chown", "ldconfig", "which",
+        "killall", "seq", "hoststatus_zmq", "chown", "ldconfig", "which", "ln",
         "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee",
     ]
 }
@@ -799,8 +799,12 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     # ldconfig call
     ld_stat, _out = commands.getstatusoutput("chroot {} /sbin/ldconfig".format(temp_dir))
     if ld_stat:
-        print "Error calling /sbin/ldconfig"
-        sev_dict["E"] += 1
+        ld_stat, _out = commands.getstatusoutput("chroot {} /usr/sbin/ldconfig".format(temp_dir))
+        if ld_stat:
+            print "Error calling {/usr}/sbin/ldconfig: {}".format(_out)
+            sev_dict["E"] += 1
+        else:
+            os.unlink("{}/usr/sbin/ldconfig".format(temp_dir))
     else:
         os.unlink("{}/sbin/ldconfig".format(temp_dir))
     # check size (not really needed, therefore commented out)
@@ -1179,6 +1183,15 @@ class arg_parser(argparse.ArgumentParser):
             sys.exit(0)
         cur_args.modules = [entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]
         return cur_args
+
+
+def copy_stage_file(src_dir, stage_name, stage_dest):
+    src_file = os.path.join(src_dir, stage_name)
+    content = file(src_file, "r").read()
+    if os.path.isfile("/usr/bin/bash"):
+        # rewrite shebang
+        content = "\n".join(["#!/usr/bin/bash"] + content.split("\n")[1:])
+    file(stage_dest, "w").write(content)
 
 
 def main_normal():
@@ -1574,12 +1587,12 @@ def main_normal():
         for linuxrc_name in LINUXRC_NAMES:
             # stage1 stuff
             stage1_dest = "/%s/%s" % (stage_dirs[0], linuxrc_name)
-            shutil.copy2("/%s/stage1" % (my_args.stage_source_dir), stage1_dest)
+            copy_stage_file(my_args.stage_source_dir, "stage1", stage1_dest)
             os.chmod(stage1_dest, 0744)
             os.chown(stage1_dest, 0, 0)
             # stagelocal stuff
             stageloc_dest = "/%s/%s" % (stage_dirs[2], linuxrc_name)
-            shutil.copy2("/%s/stagelocal" % (my_args.stage_source_dir), stageloc_dest)
+            copy_stage_file(my_args.stage_source_dir, "stagelocal", stageloc_dest)
             os.chmod(stageloc_dest, 0744)
             os.chown(stageloc_dest, 0, 0)
         # add kernel-modules to stage1 / stageloc

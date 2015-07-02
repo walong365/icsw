@@ -117,6 +117,26 @@ class device_config(permission_required_mixin, View):
         )()
 
 
+class MonitoringHints(permission_required_mixin, View):
+    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
+
+    def get(self, request):
+        return render_me(
+            request, "monitoring_hints.html", {
+            }
+        )()
+
+
+class MonitoringDisk(permission_required_mixin, View):
+    all_required_permissions = ["backbone.device.change_disk"]
+
+    def get(self, request):
+        return render_me(
+            request, "monitoring_disk.html", {
+            }
+        )()
+
+
 class create_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -300,6 +320,22 @@ class livestatus(View):
         return render_me(
             request, "monitoring_livestatus.html", {
                 }
+        )()
+
+
+class StatusHistory(permission_required_mixin, View):
+    def get(self, request):
+        return render_me(
+            request, "monitoring_status_history.html", {
+            }
+        )()
+
+
+class Graph(permission_required_mixin, View):
+    def get(self, request):
+        return render_me(
+            request, "monitoring_graph.html", {
+            }
         )()
 
 

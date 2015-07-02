@@ -222,6 +222,8 @@ class hc_command(object):
             ip_list = netdevice.objects.get(Q(pk=all_paths[0][2])).net_ip_set.all().values_list("ip", flat=True)
             if ip_list:
                 com_ip = ip_list[0]
+        else:
+            self.log("no paths found", logging_tools.LOG_LEVEL_WARN)
         return com_ip
 
     def snmp_finished(self, *args):

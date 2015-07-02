@@ -245,10 +245,10 @@ class RemoteAsyncHelper(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__inst.log("[RAH] {}".format(what), log_level)
 
-    def register(self, rcs, src_id, srv_com, zmq_sock):
+    def register(self, rcs, src_id, srv_com, zmq_sock, msg_type):
         self.__async_id += 1
         srv_com["async_helper_id"] = self.__async_id
-        self.__lut[self.__async_id] = (rcs.func_name, src_id, zmq_sock, time.time())
+        self.__lut[self.__async_id] = (rcs.func_name, src_id, zmq_sock, msg_type, time.time())
 
     def result(self, srv_com):
         if "async_helper_id" not in srv_com:
@@ -268,7 +268,7 @@ class RemoteAsyncHelper(object):
                 )
                 return None, None, None, None
             else:
-                func_name, src_id, zmq_sock, s_time = self.__lut[async_id]
+                func_name, src_id, zmq_sock, msg_type, s_time = self.__lut[async_id]
                 e_time = time.time()
                 del self.__lut[async_id]
                 del srv_com["async_helper_id"]
@@ -279,7 +279,7 @@ class RemoteAsyncHelper(object):
                 )
                 if zmq_sock is None:
                     self.log(_log_str)
-                return zmq_sock, src_id, srv_com, _log_str
+                return zmq_sock, src_id, srv_com, msg_type, _log_str
 
 
 def RemoteCallProcess(klass):
@@ -340,9 +340,6 @@ class RemoteCallMixin(object):
             com_name = com_name.replace("-", "_")  # can't have '-' in python method names
             # if msg_type in msg_lut:
             if com_name in msg_lut.get(msg_type, {}):
-                if msg_type == RemoteCallMessageType.xml:
-                    # set source
-                    srv_com.update_source()
                 rcs = msg_lut[msg_type][com_name]
                 if rcs.sync:
                     if msg_type == RemoteCallMessageType.flat:
@@ -351,12 +348,12 @@ class RemoteCallMixin(object):
                         result = rcs.handle(self, src_id, srv_com, **kwargs)
                     if com_type == "router" and result is not None:
                         # send reply
-                        self._send_remote_call_reply(zmq_sock, src_id, result)
+                        self._send_remote_call_reply(zmq_sock, src_id, result, msg_type)
                 else:
                     if rcs.send_async_return:
                         if not hasattr(self, "remote_async_helper"):
                             self.install_remote_call_handlers()
-                        self.remote_async_helper.register(rcs, src_id, srv_com, zmq_sock)
+                        self.remote_async_helper.register(rcs, src_id, srv_com, zmq_sock, msg_type)
                     if msg_type == RemoteCallMessageType.flat:
                         rcs.handle(self, src_id, data)
                     else:
@@ -379,7 +376,7 @@ class RemoteCallMixin(object):
                             server_command.SRV_REPLY_STATE_ERROR
                         )
                         _reply = srv_com
-                    self._send_remote_call_reply(zmq_sock, src_id, _reply)
+                    self._send_remote_call_reply(zmq_sock, src_id, _reply, msg_type)
         else:
             self.log(
                 "unable to handle message type '{}' (# of data frames: {:d})".format(
@@ -394,7 +391,7 @@ class RemoteCallMixin(object):
                     "no remote_calls with com_type == 'router' defined",
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
-                self._send_remote_call_reply(zmq_sock, in_data[0], _reply)
+                self._send_remote_call_reply(zmq_sock, in_data[0], _reply, msg_type)
 
     def install_remote_call_handlers(self):
         if not hasattr(self, "remote_async_helper"):
@@ -404,8 +401,11 @@ class RemoteCallMixin(object):
             # callback to forget async helper entry
             self.register_func("remote_call_async_done", self.remote_call_async_done)
 
-    def _send_remote_call_reply(self, zmq_sock, src_id, reply, add_log=None):
+    def _send_remote_call_reply(self, zmq_sock, src_id, reply, msg_type, add_log=None):
         add_log = " ({})".format(add_log) if add_log is not None else ""
+        if msg_type == RemoteCallMessageType.xml:
+            # set source
+            reply.update_source()
         # send return
         _send_str = unicode(reply)
         try:
@@ -433,9 +433,9 @@ class RemoteCallMixin(object):
     def remote_call_async_result(self, *args, **kwargs):
         _src_proc, _src_pid, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
-        _sock, _src_id, _reply, _log_str = self.remote_async_helper.result(srv_com)
+        _sock, _src_id, _reply, _msg_type, _log_str = self.remote_async_helper.result(srv_com)
         if _sock is not None:
-            self._send_remote_call_reply(_sock, _src_id, _reply, _log_str)
+            self._send_remote_call_reply(_sock, _src_id, _reply, _msg_type, _log_str)
 
     def remote_call_async_done(self, *args, **kwargs):
         _src_proc, _src_pid, srv_com = args

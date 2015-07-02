@@ -394,7 +394,7 @@ class Command(BaseCommand):
         factories.NetworkDeviceType(identifier="ib", name_re="^ib\d+$", description="infiniband devices", mac_bytes=20)
         factories.NetworkDeviceType(identifier="bridge", name_re="^.*bridge.*$", description="generic bridge", mac_bytes=6)
         factories.NetworkDeviceType(identifier="vlan", name_re="^vlan\d+$", description="VLAN device", mac_bytes=6)
-        factories.NetworkDeviceType(identifier="en", name_re="^(em|en)(s|p)\d*(s\d+)*(u\d+)*$", description="Ethernet new scheme", mac_bytes=6)
+        factories.NetworkDeviceType(identifier="en", name_re="^(em|en)(s|p|o)\d*(s\d+)*(u\d+)*$", description="Ethernet new scheme", mac_bytes=6)
         factories.NetworkDeviceType(identifier="wl", name_re="^wl(p\d+)*(s\d+)*$", description="WLAN devices", mac_bytes=6)
         factories.NetworkDeviceType(identifier="other", name_re="^.*$", description="other interfaces (from SNMP)", mac_bytes=6, for_matching=False)
         # network types
@@ -440,6 +440,12 @@ class Command(BaseCommand):
                 SensorAction.objects.get(Q(name=_name)).delete()
             except:
                 pass
+        factories.SensorActionFactory(
+            name="nothing",
+            description="do nothing (to record events)",
+            action="none",
+            hard_control=False,
+        )
         factories.SensorActionFactory(
             name="halt (software)",
             description="tries to halt the devices via software",

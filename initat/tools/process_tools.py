@@ -41,13 +41,26 @@ from lxml import etree  # @UnresolvedImports
 import grp
 import pwd
 
-from initat.tools import logging_tools
+import six
+from initat.tools import logging_tools, uuid_tools
 import psutil
-from initat.tools import uuid_tools
 import zmq
 from lxml.builder import E  # @UnresolvedImports
 
 RUN_DIR = "/var/run"
+
+
+def safe_unicode(obj):
+    """Return the unicode/text representation of `obj` without throwing UnicodeDecodeError
+
+    Returned value is only a *representation*, not necessarily identical.
+    """
+    if type(obj) not in (six.text_type, six.binary_type):
+        obj = six.text_type(obj)
+    if type(obj) is six.text_type:
+        return obj
+    else:
+        return obj.decode(errors='ignore')
 
 
 def compress_struct(input):
@@ -109,13 +122,15 @@ def get_except_info(exc_info=None, **kwargs):
     # print frame.f_lineno, frame.f_code.co_name
     _exc_list = exc_info[1]
     exc_name = _exc_list.__class__.__name__
-    if exc_name == "ValidationError":
+    if exc_name in ["ValidationError"]:
         # special handling of Django ValidationErrors
         _exc_list = ", ".join(_exc_list.messages)
+    elif exc_name in ["IntegrityError"]:
+        _exc_list = _exc_list.message
     return u"{} ({}{})".format(
-        unicode(exc_info[0]),
-        unicode(_exc_list),
-        ", {}".format(", ".join(frame_info)) if frame_info else ""
+        safe_unicode(exc_info[0]),
+        safe_unicode(_exc_list),
+        u", {}".format(u", ".join(frame_info)) if frame_info else ""
     )
 
 

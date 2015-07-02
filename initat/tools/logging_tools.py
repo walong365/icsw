@@ -1165,7 +1165,10 @@ def list_to_struct(in_list, **kwargs):
         return [("", in_list)]
     # find longest common prefix
     _len = 0
-    _min_len = min([len(_v) for _v in in_list])
+    if in_list:
+        _min_len = min([len(_v) for _v in in_list])
+    else:
+        _min_len = 0
     if not _min_len:
         return [("", in_list)]
     while True:

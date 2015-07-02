@@ -62,7 +62,7 @@ angular.module(
                 scope.create_new_kpi = () ->
                     icswConfigKpiDialogService.show_create_kpi_dlg(scope)
     }
-]).directive("icswConfigKpiDevMonSelection", ['icswConfigKpiDataService', (icswConfigKpiDataService) ->
+]).directive("icswConfigKpiDevMonSelection", ['icswConfigKpiDataService', 'icswTreeConfig', (icswConfigKpiDataService, icswTreeConfig) ->
     return {
         restrict : "E"
         templateUrl: "icsw.config.kpi.dev_mon_selection"
@@ -76,7 +76,7 @@ angular.module(
                         scope.cur_edit_kpi.available_monitoring_categories.push(tup[1])
                 scope._rebuild_tree()
 
-            class base_tree_config extends tree_config
+            class base_tree_config extends icswTreeConfig
                 constructor: (@scope, args) ->
                     super(args)
                     @show_selection_buttons = false
@@ -94,8 +94,12 @@ angular.module(
                         r_info = "TOP"
                     return r_info
                 handle_click: (entry, event) =>
-                    return  # TODO: also select?
+                    @toggle_checkbox_node(entry)
+                    @_toggle_kpi_cat_entry(entry)
+                    @update_node(entry)
                 selection_changed: (entry) =>
+                    @_toggle_kpi_cat_entry(entry)
+                _toggle_kpi_cat_entry: (entry) =>
                     # update selection in model
                     if entry.selected
                         # entry might already be contained if gui information is not present
@@ -103,6 +107,7 @@ angular.module(
                             @get_category_list().push(entry.obj.idx)
                     else
                         _.remove(@get_category_list(), (rem_item) -> return rem_item == entry.obj.idx)
+                    @scope.$digest()
 
             class device_category_tree_config extends base_tree_config
                 get_category_list: () ->
@@ -111,8 +116,8 @@ angular.module(
                 get_category_list: () ->
                     return scope.cur_edit_kpi.available_monitoring_categories
 
-            scope.device_category_tree = new device_category_tree_config()
-            scope.monitoring_category_tree = new monitoring_category_tree_config()
+            scope.device_category_tree = new device_category_tree_config(scope)
+            scope.monitoring_category_tree = new monitoring_category_tree_config(scope)
 
             scope.$watch(
                 () -> icswConfigKpiDataService.category.length
@@ -121,7 +126,7 @@ angular.module(
 
             scope._rebuild_tree = () ->
                 scope.device_category_tree.clear_root_nodes()
-                scope.monitoring_category_tree = new monitoring_category_tree_config()
+                scope.monitoring_category_tree = new monitoring_category_tree_config(scope)
                 roots = []
                 lut = {}
                 for entry in icswConfigKpiDataService.category
@@ -355,6 +360,8 @@ angular.module(
                                 child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
                             child_scope.kpi_result.loading = false
 
+                            child_scope.$digest()
+
             # parameters as understood by KpiData.parse_kpi_time_range
             child_scope.kpi_time_ranges = [
                 {id_str: 'none', display_str: 'Only current data'},
@@ -375,6 +382,7 @@ angular.module(
                 closeByBackdrop: false
                 closeByKeyboard: false,
                 size: BootstrapDialog.SIZE_WIDE
+                cssClass: 'modal-tall'
                 onshow: (modal) =>
                     height = $(window).height() - 100
                     modal.getModal().find(".modal-body").css("max-height", height)
@@ -398,7 +406,7 @@ angular.module(
                 time_range_parameter: 1
                 enabled: true
                 soft_states_as_hard_states: true
-                formula: "return initial_data"
+                formula: "return initial_data\n\n\n\n\n\n\n\n\n\n"  # stupid workaround for CodeMirror indention bug
             }
             show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
         ret.show_modify_kpi_dlg = (scope, kpi) ->

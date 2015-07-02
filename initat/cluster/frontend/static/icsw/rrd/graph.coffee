@@ -50,6 +50,9 @@ class DisplayGraph
         @sensor_action_lut = {}
         for entry in @sensor_action_list
             @sensor_action_lut[entry.idx] = entry
+        @user_lut = {}
+        for entry in @user_list
+            @user_lut[entry.idx] = entry
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -132,6 +135,7 @@ get_node_keys = (node) ->
         "value_key": node._key_pair[1]
         "build_info": if node.build_info? then node.build_info else "",
     }
+
 class pd_timerange
     constructor: (@name, @from, @to) ->
     get_from: (cur_from, cur_to) =>
@@ -190,7 +194,9 @@ angular.module(
         $scope.from_date_mom = moment().subtract(1, "days")
         $scope.cur_dim = $scope.all_dims[1]
         $scope.error_string = ""
-        $scope.searchstr = ""
+        $scope.vals =
+            searchstr: ""
+        $scope.devlist_loading = true
         $scope.is_loading = true
         $scope.is_drawing = false
         $scope.cur_selected = []
@@ -286,6 +292,7 @@ angular.module(
             $scope.cur_dim = cur_dim
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             # clear graphs
+            $scope.devlist_loading = false
             $scope.graph_list = []
             $scope.devsel_list = _dev_sel
             $scope.reload()
@@ -336,20 +343,19 @@ angular.module(
                         $scope.num_devices++
                 $scope.g_tree.recalc()
                 $scope.is_loading = false
-                $scope.$apply(
-                    $scope.vector_valid = if $scope.num_struct then true else false
-                    if $scope.vector_valid
-                        $scope.error_string = ""
-                        $scope.num_mve_sel = 0
-                        if $scope.auto_select_re or $scope.cur_selected.length
-                            # recalc tree when an autoselect_re is present
-                            $scope.g_tree.show_selected(false)
-                            $scope.selection_changed()
-                            if $scope.draw_on_init and $scope.num_mve_sel
-                                $scope.draw_graph()
-                    else
-                        $scope.error_string = "No vector found"
-                )
+                $scope.vector_valid = if $scope.num_struct then true else false
+                if $scope.vector_valid
+                    $scope.error_string = ""
+                    $scope.num_mve_sel = 0
+                    if $scope.auto_select_re or $scope.cur_selected.length
+                        # recalc tree when an autoselect_re is present
+                        $scope.g_tree.show_selected(false)
+                        $scope.selection_changed()
+                        if $scope.draw_on_init and $scope.num_mve_sel
+                            $scope.draw_graph()
+                else
+                    $scope.error_string = "No vector found"
+                $scope.$digest()
 
         $scope._add_structural_entry = (entry, lut, parent) =>
             parts = entry.key.split(".")
@@ -440,6 +446,7 @@ angular.module(
                 cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
             cur_node.build_info = entry.build_info
+            cur_node.num_sensors = entry.num_sensors
             cur_node.folder = false
             cur_node._show_select = true
             cur_node._g_key = g_key
@@ -472,13 +479,23 @@ angular.module(
             $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
 
         $scope.clear_selection = () =>
-            $scope.searchstr = ""
+            $scope.vals.searchstr = ""
             $scope.set_search_filter()
 
+        $scope.select_with_sensor = () =>
+            $scope.g_tree.toggle_tree_state(undefined, -1, false)
+            $scope.g_tree.iter(
+                (entry) ->
+                    if entry._node_type in ["e"]
+                        entry.set_selected(if entry.num_sensors then true else false)
+            )
+            $scope.g_tree.show_selected(false)
+            $scope.selection_changed()
+
         $scope.set_search_filter = () =>
-            if $scope.searchstr
+            if $scope.vals.searchstr
                 try
-                    cur_re = new RegExp($scope.searchstr, "gi")
+                    cur_re = new RegExp($scope.vals.searchstr, "gi")
                 catch
                     cur_re = new RegExp("^$", "gi")
             else
@@ -492,6 +509,7 @@ angular.module(
             )
             $scope.g_tree.show_selected(false)
             $scope.selection_changed()
+
         $scope.selection_changed = () =>
             $scope.cur_selected = $scope.g_tree.get_selected(
                 (entry) ->
@@ -558,6 +576,8 @@ angular.module(
                         for sth in result[1]
                             if sth.mv_value_entry not of sth_dict
                                 sth_dict[sth.mv_value_entry] = []
+                            if not sth.create_user
+                                sth.create_user = $window.CURRENT_USER.idx
                             sth_dict[sth.mv_value_entry].push(sth)
                         $scope.is_drawing = false
                         graph_list = []
@@ -605,8 +625,8 @@ angular.module(
             scope.draw_on_init = attrs["draw"] ? false
         controller: "icswGraphOverviewCtrl"
     }
-]).service("icswRRDGraphTreeService", () ->
-    class rrd_tree extends tree_config
+]).service("icswRRDGraphTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class rrd_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = true
@@ -635,10 +655,21 @@ angular.module(
             else if entry._node_type == "e"
                 entry.set_selected(!entry.selected)
                 @scope.selection_changed()
+            @scope.$digest()
         selection_changed: () =>
             @scope.selection_changed()
+            @scope.$digest()
+        add_extra_span: (entry) ->
+            if entry._node_type == "e"
+                return angular.element("<span></span>")
+            else
+                return null
+        update_extra_span: (entry, span) ->
+            span.removeClass()
+            if entry.num_sensors
+                span.addClass("fa fa-wrench")
 
-).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict: "E"
         replace: true
@@ -670,6 +701,11 @@ angular.module(
                     return scope.sensor.graph.sensor_action_lut[scope.threshold.upper_sensor_action].name
                 else
                     return "---"
+            scope.resolve_user = () ->
+                if scope.threshold.create_user
+                    return scope.sensor.graph.user_lut[scope.threshold.create_user].login
+                else
+                    return "---"
             scope.get_lower_email = () ->
                 return if scope.threshold.lower_mail then "send email" else "no email"
             scope.get_upper_email = () ->
@@ -681,7 +717,7 @@ angular.module(
                     return "---"
 
     }
-]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout) ->
+]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", "$window", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout, $window) ->
     th_dialog = (create, cur_scope, sensor, threshold, title) ->
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
@@ -697,7 +733,30 @@ angular.module(
                         th_scope.threshold.upper_value = _val
                 2000
             )
+        th_scope.lookup_action = (idx) ->
+            console.log "la", idx
         thresh_div = $compile($templateCache.get("icsw.rrd.graph.threshold.modify"))(th_scope)
+        threshold_object_to_idx = (th_obj) ->
+            if th_obj.lower_sensor_action_obj
+                th_obj.lower_sensor_action = th_obj.lower_sensor_action_obj.idx
+            else
+                th_obj.lower_sensor_action = undefined
+            if th_obj.upper_sensor_action_obj
+                th_obj.upper_sensor_action = th_obj.upper_sensor_action_obj.idx
+            else
+                th_obj.upper_sensor_action = undefined
+            if th_obj.device_selection_obj
+                th_obj.device_selection = th_obj.device_selection_obj.idx
+            else
+                th_obj.device_selection = undefined
+            if th_obj.notify_users_obj
+                th_obj.notify_users = (_user.idx for _user in th_obj.notify_users_obj)
+            else
+                th_obj.notify_users = []
+            if th_obj.create_user_obj
+                th_obj.create_user = th_obj.create_user_obj.idx
+            else
+                th_obj.create_user = undefined
         BootstrapDialog.show
             message: thresh_div
             draggable: true
@@ -711,12 +770,6 @@ angular.module(
                     label: "Cancel"
                     cssClass: "btn-warning"
                     action: (dialog) ->
-                        _th = th_scope.threshold
-                        if _th.lower_sensor_action
-                            _th.lower_sensor_action = _th.lower_sensor_action.idx
-                        if _th.upper_sensor_action
-                            _th.upper_sensor_action = _th.upper_sensor_action.idx
-                        _th.notify_users = (_user.idx for _user in _th.notify_users)
                         dialog.close()
                         th_scope.$destroy()
                 },
@@ -726,16 +779,8 @@ angular.module(
                     cssClass: "btn-success"
                     action: (dialog) ->
                         _th = th_scope.threshold
+                        threshold_object_to_idx(_th)
                         _th.sensor = undefined
-                        _lower_sensor_action = _th.lower_sensor_action
-                        _upper_sensor_action = _th.upper_sensor_action
-                        if _lower_sensor_action
-                            _th.lower_sensor_action = _lower_sensor_action.idx
-                        if _upper_sensor_action
-                            _th.upper_sensor_action = _upper_sensor_action.idx
-                        if _th.device_selection
-                            _th.device_selection = _th.device_selection.idx
-                        _th.notify_users = (_user.idx for _user in _th.notify_users)
                         if create
                             _th.mv_value_entry = sensor.mvv_id
                             Restangular.all(ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)).post(_th).then(
@@ -746,8 +791,6 @@ angular.module(
                                     th_scope.$destroy()
                                 (error) ->
                                     _th.sensor = sensor
-                                    _th.lower_sensor_action = _lower_sensor_action
-                                    _th.upper_sensor_action = _upper_sensor_action
                             )
                         else
                             _th.put().then(
@@ -756,8 +799,6 @@ angular.module(
                                     th_scope.$destroy()
                                 (error) ->
                                     _th.sensor = sensor
-                                    _th.lower_sensor_action = _lower_sensor_action
-                                    _th.upper_sensor_action = _upper_sensor_action
                             )
                 },
             ]
@@ -771,27 +812,39 @@ angular.module(
             )
         sub_scope.modify_threshold = (sensor, threshold) ->
             if threshold.lower_sensor_action
-                threshold.lower_sensor_action = graph.sensor_action_lut[threshold.lower_sensor_action]
+                threshold.lower_sensor_action_obj = graph.sensor_action_lut[threshold.lower_sensor_action]
+            else
+                threshold.lower_sensor_action_obj = undefined
             if threshold.upper_sensor_action
-                threshold.upper_sensor_action = graph.sensor_action_lut[threshold.upper_sensor_action]
+                threshold.upper_sensor_action_obj = graph.sensor_action_lut[threshold.upper_sensor_action]
+            else
+                threshold.upper_sensor_action_obj = undefined
             if threshold.device_selection
-                threshold.device_selection = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
-            _users = []
-            for _user in graph.user_list
-                if _user.idx in threshold.notify_users
-                    _users.push(_user)
-            threshold.notify_users = _users
+                threshold.device_selection_obj = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
+            else
+                threshold.device_selection_obj = undefined
+            if threshold.notify_users
+                threshold.notify_users_obj = (_user for _user in graph.user_list when _user.idx in threshold.notify_users)
+            else
+                threshold.notify_users_obj = []
+            if threshold.create_user
+                threshold.create_user_obj = graph.user_lut[threshold.create_user]
+            else
+                threshold.create_user_obj = undefined
             th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
         sub_scope.create_new_threshold = (sensor) ->
+            console.log $window.CURRENT_USER
             _mv = sensor.mean_value
             threshold = {
-                "name": "New Threshold"
-                "limit_class": "u"
+                "name": "Threshold for #{sensor.mv_key}"
                 "lower_value": _mv - _mv / 10
                 "upper_value": _mv + _mv / 10
                 "lower_mail": true
                 "upper_mail": true
+                "lower_enabled": true
+                "upper_enabled": true
                 "notify_users": []
+                "create_user": $window.CURRENT_USER.idx
                 "lower_sensor_action": undefined,
                 "upper_sensor_action": undefined,
                 "device_selection": undefined
@@ -860,9 +913,7 @@ angular.module(
                     crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
                     element.after(crop_span)
                     crop_span.find("input").on("click", () ->
-                        scope.$apply(
-                            scope.$emit("cropSet", _graph)
-                        )
+                        scope.$emit("cropSet", _graph)
                     )
                     crop_span.hide()
                     img_div = angular.element("<div/>")
@@ -873,32 +924,29 @@ angular.module(
                     $(myImg).Jcrop({
                         trackDocument: true
                         onSelect: (sel) ->
-                            scope.$apply(() ->
-                                if not _graph.cropped
-                                    crop_span.show()
-                                _graph.set_crop(sel)
-                                crop_span.find("span").text(
-                                    "cropped timerange: " +
-                                    _graph.get_tv(_graph.cts_start_mom) +
-                                    " to " +
-                                    _graph.get_tv(_graph.cts_end_mom)
-                                )
+                            if not _graph.cropped
+                                crop_span.show()
+                            _graph.set_crop(sel)
+                            crop_span.find("span").text(
+                                "cropped timerange: " +
+                                _graph.get_tv(_graph.cts_start_mom) +
+                                " to " +
+                                _graph.get_tv(_graph.cts_end_mom)
                             )
+                            scope.$digest()
                         onRelease: () ->
-                            scope.$apply(() ->
-                                if _graph.cropped
-                                    crop_span.hide()
-                                _graph.clear_crop()
-                            )
+                            if _graph.cropped
+                                crop_span.hide()
+                            _graph.clear_crop()
+                            scope.$digest()
                     }, () ->
                         # not needed ?
                         bounds = this.getBounds()
                     )
                     myImg.bind("error", (event) ->
-                        scope.$apply(() ->
-                            _graph.error = true
-                            graph_error()
-                        )
+                        _graph.error = true
+                        graph_error()
+                        scope.$digest()
                     )
                 scope.$on("$destroy", clear)
                 scope.$watch("graph.active", (new_val) ->

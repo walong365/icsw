@@ -322,7 +322,11 @@ class get_device_ip(View):
     def post(self, request):
         _post = request.POST
         to_dev_pk = int(_post["device"])
-        to_dev = device.objects.get(Q(pk=to_dev_pk))
+        to_dev = device.objects.prefetch_related(
+            "netdevice_set__net_ip_set__network__network_type"
+        ).get(
+            Q(pk=to_dev_pk)
+        )
 
         # from-device is where virtual desktop client config is set
         server_by_type = config_tools.server_check(server_type="virtual_desktop_client")

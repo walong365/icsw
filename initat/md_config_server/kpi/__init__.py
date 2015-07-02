@@ -100,7 +100,8 @@ class KpiProcess(threading_tools.process_obj):
 
     def periodic_update(self):
         """Recalculate all kpis and save result to database"""
-        if License.objects.has_valid_license(LicenseEnum.kpi):
+        enabled_kpis = Kpi.objects.filter(enabled=True)
+        if License.objects.has_valid_license(LicenseEnum.kpi) and enabled_kpis.exists():
             KpiGlobals.set_context()
             try:
                 kpi_data = KpiData(self.log)
@@ -108,7 +109,7 @@ class KpiProcess(threading_tools.process_obj):
                 self.log("Exception when gathering kpi data: {}".format(process_tools.get_except_info()))
             else:
                 # recalculate kpis
-                for kpi_db in Kpi.objects.filter(enabled=True):
+                for kpi_db in enabled_kpis:
                     self._update_single_kpi_result(kpi_data, kpi_db)
 
                 """

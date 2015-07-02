@@ -106,8 +106,8 @@ angular.module(
             if $scope.cur_edit
                 $scope.cur_edit.close_modal()
         $scope.reload()
-]).service("icswConfigDomainNameTreeService", () ->
-    class domain_name_tree extends tree_config
+]).service("icswConfigDomainNameTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class domain_name_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -127,7 +127,8 @@ angular.module(
             dtn = entry.obj
             if dtn.parent
                 @scope.edit_obj(dtn, event)
-).directive("icswConfigDomainNameTreeHead", ["$templateCache", ($templateCache) ->
+            @scope.$digest()
+]).directive("icswConfigDomainNameTreeHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.domain.name.tree.head")

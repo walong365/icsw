@@ -1,5 +1,4 @@
 <script type="text/ng-template" id="icsw.user.index">
-    <h2 class="center">Please select a device from the tree on the left side</h2>
     <div class="col-md-4 col-lg-3 col-xs-12">
         <div class="panel panel-warning">
             <div class="panel-heading">
@@ -54,7 +53,7 @@
                                 Changelog of the current development master
                             </div>
                             <div class="col-md-6">
-                                <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >Changelog</a>
+                                <a href="http://www.initat.org/hpc_monitoring/changelogs/" target="_blank" >Changelog</a>
                             </div>
                         </div>
                     </li>
@@ -82,15 +81,15 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6 col-lg-3 col-xs-12">
+    <div class="col-md-9 col-lg-6 col-xs-12">
         <div class="panel panel-success">
             <div class="panel-heading">
                 Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
             </div>
             <div class="panel-body">
                 <div ng-controller="icswUserAccountCtrl">
-                    <icsw-user-quota-settings object='edit_obj' type='user'/>
-                    <icsw-user-disk-usage object="edit_obj" type="user"/>
+                    <icsw-user-quota-settings object='edit_obj' type='user'></icsw-user-quota-settings>
+                    <icsw-user-disk-usage object="edit_obj" type="user"></icsw-user-disk-usage>
                 </div>
             </div>
         </div>
@@ -114,7 +113,7 @@
             </div>
             <div class="panel-body">
                 <div ng-controller="icswUserJobInfoCtrl">
-                    <icsw-user-job-info/>
+                    <icsw-user-job-info></icsw-user-job-info>
                 </div>
             </div>
         </div>
