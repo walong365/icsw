@@ -7,7 +7,19 @@
 {% block content %}
 
 <div ng-controller="icswConfigCategoryTreeCtrl">
-    <icsw-config-category-tree></icsw-config-category-tree>
+    <icsw-config-category-tree mode="device"></icsw-config-category-tree>
+</div>
+
+<div ng-controller="icswConfigCategoryTreeCtrl">
+    <icsw-config-category-tree mode="mon"></icsw-config-category-tree>
+</div>
+
+<div ng-controller="icswConfigCategoryTreeCtrl">
+    <icsw-config-category-tree mode="config"></icsw-config-category-tree>
+</div>
+
+<div ng-controller="icswConfigCategoryTreeCtrl">
+    <icsw-config-category-tree mode="location"></icsw-config-category-tree>
 </div>
 
 {% endblock %}

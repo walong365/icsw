@@ -26,8 +26,8 @@
     <td><span ng-show="is_location(obj)">{{ obj.longitude }}</span></td>
     <td><span ng-show="is_location(obj)">{{ obj.locked && 'locked' || 'unlocked' }}</span></td>
     <td><span ng-show="is_location(obj)">{{ obj.physical && 'physical' || 'structural' }}</span></td>
-    <td><icsw-tools-button type="modify" size="xs" ng-click="edit_obj(obj, $event)" ng-show="obj.depth > 1"/></td>
-    <td><icsw-tools-button type="delete" size="xs" ng-click="delete_obj(obj)" ng-show="obj.depth > 1"/></td>
+    <td><icsw-tools-button type="modify" size="xs" ng-click="edit_obj(obj, $event)" ng-show="obj.depth > 1"></icsw-tools-button></td>
+    <td><icsw-tools-button type="delete" size="xs" ng-click="delete_obj(obj)" ng-show="obj.depth > 1"></icsw-tools-button></td>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree.google.map">
@@ -131,7 +131,7 @@
 
 <script type="text/ng-template" id="icsw.config.category.tree">
     <h2>
-        Category tree ({{entries.length}} entries)
+        {{mode_display | capitalize}} categories ({{entries.length}} entries)
     </h2>
     <tabset>
         <tab heading="Categories">
@@ -156,7 +156,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-sm-8">
+                <div class="col-sm-8" ng-if="mode == 'location'">
                     <h3>Table view</h3>
                     <table class="table table-condensed table-hover" style="width:auto;">
                         <thead icsw-config-category-tree-head></thead>

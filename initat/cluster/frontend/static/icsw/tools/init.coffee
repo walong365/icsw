@@ -946,4 +946,8 @@ angular.module(
             mom = moment()
             console.log("creating element: ", attrs.icswLogDomCreation, scope.$index, mom.format(), mom.milliseconds())
     }
-])
+]).filter('capitalize', () ->
+    return (input, all) ->
+        if (!!input)
+            return input.replace(/([^\W_]+[^\s-]*) */g, (txt) -> return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
+)

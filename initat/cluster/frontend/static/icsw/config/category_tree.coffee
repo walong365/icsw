@@ -405,9 +405,16 @@ angular.module(
             # receiver for global changes from map
             $scope.reload()
         )
+        $scope.is_mode_entry = (entry) ->
+            # contains top node
+            return entry.depth < 1 or entry.full_name.split("/")[1] == $scope.mode
         $scope.reload = () ->
             icswConfigCategoryTreeFetchService.fetch($scope.$id, null).then((data) ->
+                # (for historic reasons, different category types are still mixed elsewhere here)
                 $scope.entries = data[0]
+                # these contain only the ones which are relevant to this view
+                $scope.mode_entries = (entry for entry in $scope.entries.plain() when $scope.is_mode_entry(entry))
+
                 for entry in $scope.entries
                     entry.open = false
                 $scope.dml_list = data[2]
@@ -445,7 +452,8 @@ angular.module(
             # check location gfx refs
             cat_lut = {}
             $scope.cat.clear_root_nodes()
-            for entry in $scope.entries
+            # only use mode_entries (for historic reasons, different category types are still mixed elsewhere here)
+            for entry in $scope.mode_entries
                 t_entry = $scope.cat.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.immutable})
                 cat_lut[entry.idx] = t_entry
                 if entry.parent
@@ -658,6 +666,10 @@ angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree")
+        link : (scope, element, attrs) ->
+            scope.mode = attrs.mode
+            scope.mode_display = if scope.mode == 'mon' then 'monitoring' else scope.mode
+            console.assert(scope.mode in ['mon', 'config', 'device', 'location'], "invalid mode in category tree")
     }
 ]).directive("icswConfigCategoryContentsViewer", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     return {

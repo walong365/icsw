@@ -12,6 +12,7 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from initat.cluster.backbone.models.domain import device_mon_location
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from initat.cluster.frontend.rest_views import rest_logging
@@ -228,13 +229,37 @@ class CategoryContents(ListAPIView):
     @rest_logging
     def list(self, request, *args, **kwargs):
         cat_db = category.objects.get(pk=request.GET['category_pk'])
-        devs = device.objects.filter(categories=cat_db)
-        mccs = mon_check_command.objects.filter(categories=cat_db)
+        contents = []
 
-        return Response(
-            [dev.full_name for dev in devs] +
-            [mcc.name for mcc in mccs]
-        )
+        for dev in device.objects.filter(categories=cat_db):
+            contents.append({
+                "pk": dev.pk,
+                "name": dev.full_name,
+                "type": "device",
+            })
+
+        for mcc in mon_check_command.objects.filter(categories=cat_db):
+            contents.append({
+                "pk": mcc.pk,
+                "name": mcc.full_name,
+                "type": "mon_check_command",
+            })
+
+        for conf in config.objects.filter(categories=cat_db):
+            contents.append({
+                "pk": conf.pk,
+                "name": conf.name,
+                "type": "config",
+            })
+
+        for loc_dev in device.objects.filter(device_mon_location__location=cat_db):
+            contents.append({
+                "pk": loc_dev.pk,
+                "name": loc_dev.name,
+                "type": "location_device",
+            })
+
+        return Response(contents)
 
 
 class KpiView(View):
