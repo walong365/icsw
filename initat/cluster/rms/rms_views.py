@@ -381,12 +381,12 @@ class get_file_content(View):
                             # return some first lines and mostly last lines such that in total,
                             # we transfer about $magic_limit
 
-                            # also include first 20 lines
+                            # also include first 200 lines
                             # this is needed for some people to identify the job
-                            # (20 is an arbitrary number)
+                            # (200 is an arbitrary number. there is relevant information from ansys around line 135)
 
                             lines = text.split("\n")
-                            first_lines, last_lines = (lines[:20], lines[21:])
+                            first_lines, last_lines = (lines[:200], lines[201:])
                             new_text = u""
                             while len(new_text) < magic_limit and last_lines:
                                 new_text = last_lines.pop() + u"\n" + new_text
