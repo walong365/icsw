@@ -148,6 +148,12 @@ angular.module(
                 $scope.update_monloc_count()
                 $scope.loc_tree.show_selected(false)
             )
+        $scope.is_any_location_defined = () ->
+            if ! $scope.loc_tree_lut
+                return true  # assume that they will arrive
+            else
+                return Object.keys($scope.loc_tree_lut).length > 1
+
         $scope.new_md_selection = (entry) ->
             # for multi-device selection
             cat = entry.obj

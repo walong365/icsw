@@ -32,7 +32,7 @@
 
 <script type="text/ng-template" id="icsw.config.category.tree">
     <h2>
-        {{mode_display | capitalize}} categories ({{entries.length}} entries)
+        {{mode_display | capitalize}} categories ({{mode_entries.length}} <ng-pluralize count="mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
     </h2>
     <h3>Actions:
         <icsw-tools-button type="create" value="create new" ng-click="create_new($event, '')" size="sm"></icsw-tools-button>
@@ -60,8 +60,8 @@
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead icsw-config-category-tree-head></thead>
                 <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-                    <tr icsw-config-category-tree-row ng-repeat="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
+                    <tr><td colspan="9" paginator entries="mode_entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                    <tr icsw-config-category-tree-row ng-repeat="obj in mode_entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
                 </tbody>
             </table>
         </div>

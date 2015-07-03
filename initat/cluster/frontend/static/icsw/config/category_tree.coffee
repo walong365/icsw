@@ -51,6 +51,7 @@ angular.module(
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
+        $scope.mode_entries = []
         # mixins
         # edit mixin for cateogries
         $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "cat")
