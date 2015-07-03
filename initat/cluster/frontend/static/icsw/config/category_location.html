@@ -61,7 +61,11 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.edit">
-    <div class="row">
+    <alert type="warning" style="max-width: 500px" ng-if="locations.length == 0">
+        Please create locations in the tab 'Available locations'.
+    </alert>
+
+    <div class="row" ng-if="locations.length > 0">
         <div class="col-md-6">
             <icsw-config-category-tree-google-map locations="locations"></icsw-config-category-tree-google-map>
         </div>

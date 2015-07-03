@@ -87,18 +87,26 @@ angular.module(
             @show_active()
             # important to update frontend
             @scope.$digest()
-]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus",
+    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
         access_level_service.install($scope)
         $scope.DEBUG = false
         $scope.loc_tree = new icswDeviceLocationTreeService($scope, {})
         $scope.device_pks = []
+        $scope.device_list_ready = false
         # category with gfx 
         $scope.gfx_cat = undefined
         $scope.active_loc_gfx = undefined
+
+        msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
+            $scope.reload()
+        )
         $scope.new_devsel = (pk_list) ->
             $scope.device_pks = pk_list
+            $scope.device_list_ready = true
             $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
+            $scope.reload()
+        $scope.reload = () ->
             wait_list = [
                 restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_mon_locations": true, "pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
