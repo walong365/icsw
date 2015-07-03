@@ -58,14 +58,19 @@ angular.module(
                 return cat.full_name
             else
                 return "TOP"
-]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
         access_level_service.install($scope)
         $scope.device_pks = []
         $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})
         $scope.new_devsel = (pk_list) ->
             $scope.device_pks = pk_list
             $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
+            $scope.reload()
+        msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
+            $scope.reload()
+        )
+        $scope.reload = () ->
             wait_list = [
                 restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
