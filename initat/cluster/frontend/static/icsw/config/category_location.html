@@ -1,0 +1,83 @@
+
+<script type="text/ng-template" id="icsw.config.category.location.list.edit">
+    <accordion close-others="no">
+        <accordion-group ng-repeat="loc in locations" is-open="loc.open">
+            <accordion-heading>
+                <icsw-tools-button type="create" value="add locGfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
+                <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+                <button
+                    class="btn btn-sm"
+                    ng-class="loc.locked && 'fa fa-lock btn-success' || 'fa fa-unlock btn-warning'"
+                    ng-ng-value="loc.locked && 'unlock' || 'lock'"
+                    title="{{ loc.locked && 'location is locked' || 'location is unlocked' }}"
+                    ng-click="toggle_lock($event, loc)"
+                />
+                &nbsp;
+                <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+                <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
+                <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>, {{ loc.dev_pks.length }} devices
+                <span class="pull-right" ng-show="loc.location_gfxs.length">
+                    <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': loc.open, 'glyphicon-chevron-right': !loc.open}"></i>
+                </span>
+            </accordion-heading>
+            <ul ng-show="loc.location_gfxs.length" class="list-group">
+                <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
+                    <div class="btn-group">
+                        <icsw-tools-button type="modify" size="xs" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></icsw-tools-button>
+                        <icsw-tools-button type="display" size="xs" ng-class="preview_gfx.idx != loc_gfx.idx && 'btn-primary' || ''" ng-show="loc_gfx.image_stored" value="preview and enhance" ng-click="show_preview(loc_gfx)"></icsw-tools-button>
+                    </div>
+                    {{ loc_gfx.name }}
+                    <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+                    <span ng-show="loc_gfx.image_stored">
+                        , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+                        <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                        <ng-pluralize count="loc_gfx.dev_pks.length" when="{'0': ', no devices', '1': 'one device', 'other':'{} devices'}"/>
+                    </span>
+                    <span class="pull-right">
+                        <div class="btn-group" ng-show="loc_gfx.dev_pks.length == 0">
+                            <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"/>
+                        </div>
+                    </span>
+                </li>
+            </ul>
+        </accordion-group>
+    </accordion>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.list.show">
+    <h3 ng-show="!locations.length">No locations</h3>
+    <ul class="list-group">
+        <li class="list-group-item" ng-repeat-start="loc in locations">
+            <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+            <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+            <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+            {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span> ({{ loc.dev_pks.length }})
+        </li>
+        <li ng-repeat-end class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
+            - {{ loc_gfx.name }} ({{ loc_gfx.dev_pks.length }})
+        </li>
+    </ul>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.edit">
+    <div class="row">
+        <div class="col-md-6">
+            <icsw-config-category-tree-google-map locations="locations"></icsw-config-category-tree-google-map>
+        </div>
+        <div class="col-md-6">
+            <icsw-config-category-location-list-edit></icsw-config-category-location-list-edit>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.show">
+    <div class="row">
+        <div class="col-md-6">
+            <icsw-config-category-tree-google-map locations="locations"></icsw-config-category-tree-google-map>
+        </div>
+        <div class="col-md-6">
+            <icsw-config-category-location-list-show></icsw-config-category-location-list-show>
+        </div>
+    </div>
+</script>

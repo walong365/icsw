@@ -241,7 +241,7 @@ class CategoryContents(ListAPIView):
         for mcc in mon_check_command.objects.filter(categories=cat_db):
             contents.append({
                 "pk": mcc.pk,
-                "name": mcc.full_name,
+                "name": mcc.name,
                 "type": "mon_check_command",
             })
 

@@ -75,6 +75,7 @@ ics_app = angular.module(
         "icsw.device.info",
         "icsw.device.tree",
         "icsw.config.category_tree",
+        "icsw.config.category_location",
         "icsw.config.domain_name_tree",
         "icsw.device.network",
         "icsw.device.configuration",
