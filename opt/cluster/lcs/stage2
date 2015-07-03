@@ -496,10 +496,10 @@ function install_kernel() {
     inst=`echo $conf_str | cut -d " " -f 3`
     kernel_server=`echo $conf_str | cut -d " " -f 4`
     full_newkernel=`echo $conf_str | cut -d " " -f 5`
-    new_version=`echo $conf_str | cut -d " " -f 6`
-    new_release=`echo $conf_str | cut -d " " -f 7`
+    newkernel=`echo $conf_str | cut -d " " -f 6`
+    new_version=`echo $conf_str | cut -d " " -f 7`
+    new_release=`echo $conf_str | cut -d " " -f 8`
     newkernel_dir=$(dirname $full_newkernel)
-    newkernel=$(basename $full_newkernel)
     send_info "got kernel $newkernel (inst=$inst, dir $newkernel_dir, version $new_version, release $new_release) after $num request(s)"
     mkdir /kernel
     mount_it "kernel" ${kernel_server}:${newkernel_dir}/${newkernel} /kernel "${RO_MOUNTOPTS}"

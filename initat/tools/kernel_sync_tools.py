@@ -32,8 +32,7 @@ import time
 
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, kernel_build, device, cluster_timezone
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 KNOWN_INITRD_FLAVOURS = ["lo", "cpio", "cramfs"]
 
@@ -59,13 +58,13 @@ class KernelHelper(object):
     ]
 
     def __init__(self, name, root_dir, log_func, config, **kwargs):
-        # meassure the lifetime
+        # meassure runtime
         self.__start_time = time.time()
         self.__db_idx = 0
         self.__local_master_server = kwargs.get("master_server", None)
         self.name = name
         try:
-            self.__db_kernel = kernel.objects.get(Q(name=name))
+            self.__db_kernel = kernel.objects.get(Q(display_name=name))
         except kernel.DoesNotExist:
             self.__db_kernel = None
         self.name = name
@@ -115,7 +114,7 @@ class KernelHelper(object):
         # init db-Fields
         self.__checks = []
         self.__values = {
-            "name": self.name,
+            "display_name": self.name,
             "path": self.path,
             "initrd_built": None,
             "module_list": "",
@@ -436,9 +435,30 @@ class KernelHelper(object):
                 self.log("set master_server to local_master (was: 0)")
                 self.__db_kernel.save()
 
+    def check_name(self):
+        self.__checks.append("name")
+        lib_dir = os.path.join(self.path, "lib", "modules")
+        if os.path.isdir(lib_dir):
+            _entry = os.listdir(lib_dir)
+            if len(_entry) != 1:
+                self.log(
+                    "need one entry in lib/modules subdir, found {:d}: {}".format(
+                        len(_entry),
+                        ", ".join(sorted(_entry))
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                _name = ""
+            else:
+                _name = _entry[0]
+        else:
+            self.log("no lib_dir {} found".format(lib_dir), logging_tools.LOG_LEVEL_ERROR)
+            _name = ""
+        self._update_kernel(name=_name)
+
     def check_comment(self):
         self.__checks.append("comment")
-        comment_file = os.path.join(self.root_dir, ".comment")
+        comment_file = os.path.join(self.path, ".comment")
         if os.path.isfile(comment_file):
             try:
                 comment = " ".join(
@@ -466,7 +486,7 @@ class KernelHelper(object):
         else:
             config_name = self.name[len(kernel_version) + 1:]
         build_mach = ""
-        version_file = os.path.join(self.root_dir, ".version")
+        version_file = os.path.join(self.path, ".version")
         if os.path.isfile(version_file):
             try:
                 version_dict = {
@@ -556,6 +576,7 @@ class KernelHelper(object):
     def check_kernel_dir(self):
         # if not in database read values from disk
         self.log("Checking directory {} ...".format(self.path))
+        self.check_name()
         self.check_unset_master()
         self.check_comment()
         self.check_xen()

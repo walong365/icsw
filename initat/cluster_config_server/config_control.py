@@ -438,10 +438,13 @@ class config_control(object):
                             inst = 1
                     if inst:
                         dev_kernel.create_history_entry(self.dbh)
-                    return "ok {:d} {} {}/{} {} {}".format(
+                    return "ok {:d} {} {} {} {} {}".format(
                         inst,
                         s_req.server_ip,
-                        kernel_source_path,
+                        os.path.join(
+                            kernel_source_path,
+                            dev_kernel.display_name,
+                        ),
                         dev_kernel.name,
                         dev_kernel.version,
                         dev_kernel.release,
@@ -452,6 +455,7 @@ class config_control(object):
             return "error no kernel set"
 
     def _handle_get_kernel_name(self, s_req):
+        # returns display name
         dev_kernel = self.device.new_kernel
         if dev_kernel:
             vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "kernel_server"])
@@ -461,7 +465,7 @@ class config_control(object):
                 # add NEW as dummy string (because get_kernel_name is called from stage1)
                 return "ok NEW {} {}".format(
                     s_req.server_ip,
-                    dev_kernel.name
+                    dev_kernel.display_name
                 )
         else:
             return "error no kernel set"

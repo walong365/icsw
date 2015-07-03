@@ -214,7 +214,7 @@ class kernel(models.Model):
         return "{:d}.{:d}".format(self.version, self.release)
 
     def __unicode__(self):
-        return "Kernel {} ({})".format(self.name, self.full_version)
+        return "Kernel {} (is {}, {})".format(self.display_name, self.name, self.full_version)
 
     class CSW_Meta:
         permissions = (
