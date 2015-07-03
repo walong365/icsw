@@ -1,6 +1,8 @@
 <script type="text/ng-template" id="icsw.device.category.overview">
-    <h3>Categories for {{ device_pks.length }} devices</h3>
-    <tree treeconfig="cat_tree"></tree>
+    <h3>Categories for {{ device_pks.length }} <ng-pluralize count="device_pks.length" when="{'1': 'device', 'other': 'devices'}"></ng-pluralize></h3>
+    <icsw-tools-ensure-device-selection dev-list="device_pks" list-ready="device_list_ready">
+        <tree treeconfig="cat_tree"></tree>
+    </icsw-tools-ensure-device-selection>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree.head">cat_head.html">

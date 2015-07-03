@@ -62,6 +62,7 @@ angular.module(
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
         access_level_service.install($scope)
         $scope.device_pks = []
+        $scope.device_list_ready = false
         $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})
         $scope.new_devsel = (pk_list) ->
             $scope.device_pks = pk_list
@@ -77,6 +78,7 @@ angular.module(
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = data[1]
+                $scope.device_list_ready = true
                 $scope.num_devices = $scope.devices.length
                 $scope.cat_tree.change_select = true
                 for dev in $scope.devices
