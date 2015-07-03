@@ -81,7 +81,7 @@ class prune_category_tree(permission_required_mixin, View):
 
     @method_decorator(xml_wrapper)
     def post(self, request):
-        category_tree().prune(request.POST['mode'])
+        category_tree().prune(mode=request.POST['mode'])
         request.xml_response.info("tree pruned")
 
 
