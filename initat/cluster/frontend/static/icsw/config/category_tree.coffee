@@ -40,18 +40,6 @@ angular.module(
         "fetch": (id, pk_list) ->
             return _fetch(id, pk_list)
     }
-]).service("icswConfigCategoryTreeMapService", [() ->
-    _map = null
-    _map_id = 0
-    return {
-        "map_set": () ->
-            return _map_id
-        "get_map": () ->
-            return _map
-        "set_map": (map) ->
-            _map_id++
-            _map = map
-    }
 ]).controller("icswConfigCategoryTreeCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
     "$q", "$modal", "access_level_service", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService", "msgbus",
@@ -185,6 +173,8 @@ angular.module(
                 blockUI.start()
                 icswCallAjaxService
                     url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
+                    data:
+                        mode : $scope.mode
                     success : (xml) ->
                         icswParseXMLResponseService(xml)
                         $scope.reload()
@@ -228,86 +218,6 @@ angular.module(
             else if cat.depth == 1
                 @scope.create_new(event, cat.full_name.split("/")[1])
             @scope.$digest()
-
-]).directive("icswConfigCategoryTreeMapEnhance", ["$templateCache", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", ($templateCache, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.category.tree.map.enhance")
-        scope: {
-            preview_gfx: "=previewGfx"
-            preview_close: "=previewClose"
-        }
-        link: (scope, element, attrs) ->
-            scope.display_size = (ds) ->
-                scope.display_style = ds
-                if ds == "scaled"
-                    scope.img_style = "width:100%;"
-                else
-                    scope.img_style = ""
-            scope.display_size("scaled")
-            scope.$watch(
-                attrs["previewGfx"]
-                (new_val) ->
-                    scope.preview_gfx = new_val
-            )
-            scope.close_preview = () ->
-                if attrs["previewClose"]
-                    scope.preview_close()
-            scope.rotate = (degrees) ->
-                scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "rotate"
-                        "degrees" : degrees
-                     }
-                )
-            scope.resize = (factor) ->
-                scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "resize"
-                        "factor": factor
-                     }
-                )
-            scope.brightness = (factor) ->
-                scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "brightness"
-                        "factor" : factor
-                     }
-                )
-            scope.sharpen = (factor) ->
-                scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "sharpen"
-                        "factor" : factor
-                     }
-                )
-            scope.restore = () ->
-                scope.modify_image("restore")
-            scope.undo = (obj) ->
-                scope.modify_image("undo")
-            scope.modify_image = (data) ->
-                # scope.show_preview(obj)
-                if angular.isString(data)
-                    data = {"id" : scope.preview_gfx.idx, "mode": data}
-                blockUI.start()
-                icswCallAjaxService
-                    url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
-                    data: data
-                    success: (xml) ->
-                        blockUI.stop()
-                        if icswParseXMLResponseService(xml)
-                            scope.$apply(() ->
-                                scope.preview_gfx.image_url = $(xml).find("value[name='image_url']").text()
-                                scope.preview_gfx.icon_url = $(xml).find("value[name='icon_url']").text()
-                                scope.preview_gfx.width = parseInt($(xml).find("value[name='width']").text())
-                                scope.preview_gfx.height = parseInt($(xml).find("value[name='height']").text())
-                            )
-
-    }
 
 ]).directive("icswConfigCategoryTreeHead", ["$templateCache", ($templateCache) ->
     return {

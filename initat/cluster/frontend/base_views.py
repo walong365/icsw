@@ -52,14 +52,26 @@ class get_gauge_info(View):
         request.xml_response["response"] = gauge_info
 
 
-class get_category_tree(permission_required_mixin, View):
+class DeviceLocation(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_category_tree"]
 
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
             request,
-            "category_tree.html",
+            "device_location.html",
+            {}
+        )()
+
+
+class DeviceCategory(permission_required_mixin, View):
+    all_required_permissions = ["backbone.user.modify_category_tree"]
+
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request,
+            "device_category.html",
             {}
         )()
 
@@ -69,7 +81,7 @@ class prune_category_tree(permission_required_mixin, View):
 
     @method_decorator(xml_wrapper)
     def post(self, request):
-        category_tree().prune()
+        category_tree().prune(request.POST['mode'])
         request.xml_response.info("tree pruned")
 
 

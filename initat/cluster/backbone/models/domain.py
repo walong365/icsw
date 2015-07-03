@@ -323,6 +323,7 @@ class category_tree(object):
     def __init__(self, **kwargs):
         self.with_ref_count = kwargs.get("with_ref_count", False)
         self.with_refs = kwargs.get("with_res", False)
+        mode = kwargs.get("mode")
         self.__node_dict = {}
         self.__category_lut = {}
         if not category.objects.all().count():
@@ -336,6 +337,10 @@ class category_tree(object):
             )
         else:
             _sql = category.objects.all()
+
+        if mode is not None:
+            _sql = _sql.filter(full_name__startswith="/{}".format(mode))
+
         for cur_node in _sql.order_by("depth"):
             # if self.with_device_count or self.with_devices:
             #    cur_node.device_count = cur_node.device_set.count() + cur_node.config_set.count() + cur_node.mon_check_command_set.count()
@@ -423,7 +428,7 @@ class category_tree(object):
     def keys(self):
         return self.__node_dict.keys()
 
-    def prune(self):
+    def prune(self, mode):
         # removes all unreferenced nodes
         removed = True
         while removed:

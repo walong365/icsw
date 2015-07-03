@@ -81,3 +81,104 @@
         </div>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.config.category.tree.map.enhance">
+    <div class="row panel panel-default" ng-show="preview_gfx">
+        <div class="col-md-12 panel-heading">
+            <h3>Modify and enhance '{{ preview_gfx.name }}', size is {{ preview_gfx.width }} x {{ preview_gfx.height }}</h3>
+            <div class="btn-group">
+                <button type="button" class="btn btn-warning" title="Close" ng-click="close_preview()">close</button>
+            </div>
+            Display:
+            <div class="btn-group">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                    {{ display_style }} <span class="caret"/>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a ng-click="display_size('scaled')">Scaled</a></li>
+                    <li><a ng-click="display_size('original')">Original</a></li>
+                </ul>
+            </div>
+            Rotate:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-success'" ng-click="rotate(90)" title="rotate left">
+                    <span class="fa fa-rotate-left"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-success'" ng-click="rotate(-90)" title="rotate right">
+                    <span class="fa fa-rotate-right"></span>
+                </button>
+            </div>
+            Size:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-default'" ng-click="resize(1.125)" title="increase size">
+                    <span class="glyphicon glyphicon-upload"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-default'" ng-click="resize(0.875)" title="decrease size">
+                    <span class="glyphicon glyphicon-download"></span>
+                </button>
+            </div>
+            Brightness:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-default'" ng-click="brightness(1.25)" title="increase brightness">
+                    <span class="glyphicon glyphicon-upload"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-default'" ng-click="brightness(0.75)" title="decrease brightness">
+                    <span class="glyphicon glyphicon-download"></span>
+                </button>
+            </div>
+            Sharpen:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-warning'" ng-click="sharpen(1.25)" title="sharpen image">
+                    <span class="glyphicon glyphicon-zoom-in"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-warning'" ng-click="sharpen(0.75)" title="unsharpen image">
+                    <span class="glyphicon glyphicon-zoom-out"></span>
+                </button>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                    Filter<span class="caret"/>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a ng-click="modify_image('af_emboss')">Emboss</a></li>
+                    <li><a ng-click="modify_image('af_contour')">Contour</a></li>
+                    <li><a ng-click="modify_image('af_detail')">Detail</a></li>
+                    <li><a ng-click="modify_image('af_edge_enhance')">Edge enhance</a></li>
+                    <li><a ng-click="modify_image('af_edge_enhance_more')">Edge enhance (more)</a></li>
+                    <li><a ng-click="modify_image('af_find_edges')">Find edges</a></li>
+                    <li><a ng-click="modify_image('af_smooth')">Smooth</a></li>
+                    <li><a ng-click="modify_image('af_smooth_more')">Smooth more</a></li>
+                    <li><a ng-click="modify_image('af_sharpen')">Sharpen</a></li>
+                </ul>
+            </div>
+            Undo / reset:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-warning'" ng-click="undo()" title="undo last step">
+                    <span class="glyphicon glyphicon-repeat"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-danger'" ng-click="restore()" title="restore original image">
+                    <span class="glyphicon glyphicon-off"></span>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-12 panel-body">
+            <image ng-src="{{ preview_gfx.image_url }}" ng-attr-style="{{ img_style }}"></image>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree.google.map">
+    <div id="map_canvas">
+        <ui-gmap-google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
+            <ui-gmap-marker
+                    ng-repeat="marker in marker_list"
+                    idKey="marker.key"
+                    coords="marker"
+                    options="marker.options"
+                    events="event_dict"
+                    icon="marker.icon"
+                    >
+            </ui-gmap-marker>
+        </ui-gmap-google-map>
+    </div>
+</script>

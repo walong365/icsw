@@ -20,10 +20,8 @@
                     <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.CONFIG_SHOW_CONFIGS }}"><span class="fa fa-check-square-o fa_icsw"></span> Configurations</a></li>
                     <li ng-show="has_menu_permission('device.change_config')"><a href="{{ ICSW_URLS.DEVICE_SHOW_CONFIGS }}"><span class="fa fa-check-square fa_icsw"></span> Device configurations</a></li>
                     <li ng-show="has_menu_permission('device.change_variables')"><a href="{{ ICSW_URLS.DEVICE_VARIABLES }}"><span class="fa fa-code fa_icsw"></span> Device variables</a></li>
-                    <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}"><span class="fa fa-table fa_icsw"></span> Category</a></li>
-                    <!--
-                    <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_CATEGORY_TREE }}"><span class="fa fa-globe"></span> Location (TODO: should only location)</a></li>
-                    -->
+                    <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_DEVICE_CATEGORY }}"><span class="fa fa-table fa_icsw"></span> Device category</a></li>
+                    <li ng-show="has_menu_permission('user.modify_category_tree')"><a href="{{ ICSW_URLS.BASE_DEVICE_LOCATION }}"><span class="fa fa-map-marker fa_icsw"></span> Device location</a></li>
                     <li ng-show="has_menu_permission('device.change_connection')"><a href="{{ ICSW_URLS.DEVICE_CONNECTIONS }}"><span class="fa fa-plug fa_icsw"></span> Device connections</a></li>
                     <li ng-show="has_any_menu_permission(['user.modify_tree', 'user.modify_domain_name_tree'])" class="divider"></li>
                     <li ng-show="has_menu_permission('user.modify_tree')"><a href="{{ ICSW_URLS.DEVICE_TREE_SMART }}"><span class="fa fa-list fa_icsw"></span> Device tree</a></li>

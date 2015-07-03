@@ -1,6 +1,6 @@
 <script type="text/ng-template" id="icsw.config.overview">
     <tabset>
-        <tab heading="configurations">
+        <tab heading="Configurations">
             <icsw-config-config-table></icsw-config-config-table>
             <div class="row panel panel-default">
                 <div class="col-md-4">
@@ -13,11 +13,21 @@
                     <input type="button" ng-show="uploader.queue.length "class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input>
                 </div>
             </div>
+
+            <icsw-config-generate-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-config-generate-config>
         </tab>
-        <tab heading="catalogs">
+        <tab heading="Categories">
+            <div ng-controller="icswConfigCategoryTreeCtrl">
+                <icsw-config-category-tree mode="config"></icsw-config-category-tree>
+            </div>
+            <div ng-controller="icswConfigCategoryTreeCtrl">
+                <icsw-config-category-tree mode="mon"></icsw-config-category-tree>
+            </div>
+        </tab>
+        <tab heading="Catalogs">
             <icsw-config-catalog-table></icsw-config-catalog-table>
         </tab>
-        <tab heading="uploads ({{ cached_uploads.length }})" ng-show="cached_uploads.length">
+        <tab heading="Uploads ({{ cached_uploads.length }})" ng-show="cached_uploads.length">
             <form class="form-inline">
                 Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="catalog" ng-options="value.idx as value.name for value in config_catalogs"></select>
             </form>
