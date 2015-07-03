@@ -176,7 +176,8 @@ class tree_node_g(object):
             dest_type=self.content_node.c_type,
             source=self.content_node.source,
             binary=self.content_node.binary,
-            content=_c)
+            content=_c
+        )
         cur_wc.save()
         node_list.append((cur_tn, cur_wc))
         if self.is_dir:
@@ -427,27 +428,31 @@ class build_container(object):
                 sys.stdout, sys.stderr = (stdout_c, stderr_c)
                 self.__touched_objects, self.__touched_links, self.__deleted_files = ([], [], [])
                 try:
-                    ret_code = eval(code_obj, {}, {
-                        # old version
-                        "dev_dict": conf_dict,
-                        # new version
-                        "conf_dict": conf_dict,
-                        "router_obj": self.router_obj,
-                        "config": self,
-                        "dir_object": dir_object,
-                        "delete_object": delete_object,
-                        "copy_object": copy_object,
-                        "link_object": link_object,
-                        "file_object": file_object,
-                        "do_ssh": do_ssh,
-                        "do_etc_hosts": do_etc_hosts,
-                        "do_hosts_equiv": do_hosts_equiv,
-                        "do_nets": do_nets,
-                        "do_routes": do_routes,
-                        "do_fstab": do_fstab,
-                        "do_uuid": do_uuid,
-                        "partition_setup": partition_setup,
-                    })
+                    ret_code = eval(
+                        code_obj,
+                        {},
+                        {
+                            # old version
+                            "dev_dict": conf_dict,
+                            # new version
+                            "conf_dict": conf_dict,
+                            "router_obj": self.router_obj,
+                            "config": self,
+                            "dir_object": dir_object,
+                            "delete_object": delete_object,
+                            "copy_object": copy_object,
+                            "link_object": link_object,
+                            "file_object": file_object,
+                            "do_ssh": do_ssh,
+                            "do_etc_hosts": do_etc_hosts,
+                            "do_hosts_equiv": do_hosts_equiv,
+                            "do_nets": do_nets,
+                            "do_routes": do_routes,
+                            "do_fstab": do_fstab,
+                            "do_uuid": do_uuid,
+                            "partition_setup": partition_setup,
+                        }
+                    )
                 except:
                     exc_info = process_tools.exception_info()
                     conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))

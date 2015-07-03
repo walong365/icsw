@@ -496,10 +496,10 @@ function install_kernel() {
     inst=`echo $conf_str | cut -d " " -f 3`
     kernel_server=`echo $conf_str | cut -d " " -f 4`
     full_newkernel=`echo $conf_str | cut -d " " -f 5`
-    new_version=`echo $conf_str | cut -d " " -f 6`
-    new_release=`echo $conf_str | cut -d " " -f 7`
+    newkernel=`echo $conf_str | cut -d " " -f 6`
+    new_version=`echo $conf_str | cut -d " " -f 7`
+    new_release=`echo $conf_str | cut -d " " -f 8`
     newkernel_dir=$(dirname $full_newkernel)
-    newkernel=$(basename $full_newkernel)
     send_info "got kernel $newkernel (inst=$inst, dir $newkernel_dir, version $new_version, release $new_release) after $num request(s)"
     mkdir /kernel
     mount_it "kernel" ${kernel_server}:${newkernel_dir}/${newkernel} /kernel "${RO_MOUNTOPTS}"
@@ -1155,7 +1155,11 @@ elif [ "$do_mount" = "1" ] ; then
                 if [ "$basen" != "$dirperm_file" ] ; then
                     set_hoststat -q "${UNP_MESG} $basen"
                     echo -e "Unpacking $basen ($(ls -sh $file | cut -d'/' -f1 | tr -d " "))"
-                    (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
+                    if [ "${tar_flags}" = "-xjf" ] ; then
+                        (/opt/cluster/bin/pbzip2 -dc $file | tar xf - ) 2>&1 | grep -v "s in the future"
+                    else
+                        (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
+                    fi
                 fi
             done
             set_hoststat "${FIX_MESG}"

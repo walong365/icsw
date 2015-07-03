@@ -378,12 +378,21 @@ class get_file_content(View):
                         magic_limit = 350000
                         if int(_post.get("is_ie", "0")) and text and len(text) > magic_limit:
                             request.xml_response.info("file is too large, truncating beginning")
-                            # return last lines such that in total, we transfer about $magic_limit
+                            # return some first lines and mostly last lines such that in total,
+                            # we transfer about $magic_limit
+
+                            # also include first 20 lines
+                            # this is needed for some people to identify the job
+                            # (20 is an arbitrary number)
+
                             lines = text.split("\n")
+                            first_lines, last_lines = (lines[:20], lines[21:])
                             new_text = u""
-                            while len(new_text) < magic_limit and lines:
-                                new_text = lines.pop() + u"\n" + new_text
-                            text = u"[truncated]\n" + new_text
+                            while len(new_text) < magic_limit and last_lines:
+                                new_text = last_lines.pop() + u"\n" + new_text
+
+                            cut_marker = u"\n\n[cut off output since file is too large]\n\n"
+                            text = u"\n".join(first_lines) + cut_marker + new_text
 
                         _resp_list.append(
                             E.file_info(

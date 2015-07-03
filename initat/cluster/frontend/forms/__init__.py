@@ -367,6 +367,7 @@ class kernel_form(ModelForm):
         HTML("<h2>Kernel details</h2>"),
         Fieldset(
             "Base data",
+            Field("display_name", readonly=True),
             Field("name", readonly=True),
             Field("comment", rows=5),
             Field("target_module_list", rows=3),
@@ -449,7 +450,7 @@ class kernel_form(ModelForm):
     class Meta:
         model = kernel
         fields = [
-            "name", "comment", "enabled",
+            "name", "comment", "enabled", "display_name",
             "module_list", "target_module_list"
         ]
 

@@ -433,7 +433,11 @@
 </script>
 <script type='text/ng-template' id='kernel.form'>
 <form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Kernel details</h2><fieldset 
- ><legend>Base data</legend><div id="div_id_name"
+ ><legend>Base data</legend><div id="div_id_display_name"
+ class="form-group 
+ "
+ ><label for="id_display_name" class="control-label col-sm-3 requiredField">
+ Display name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_display_name" maxlength="128" name="display_name" ng-model="edit_obj.display_name" readonly="True" required="True" type="text" /> </div></div><div id="div_id_name"
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
