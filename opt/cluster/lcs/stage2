@@ -541,16 +541,16 @@ function install_kernel() {
         gen_initrd=1
         initrd_cause="modules differ"
     fi
-    if [ $gen_initrd -eq 1 ] ; then
+    #if [ $gen_initrd -eq 1 ] ; then
     # create inital ramdisk
-        send_info "${GENERATE_INITRD} for $newkernel ($newkversion), $initrd_cause, modules $*"
-        echo "$*" > /$basedir/boot/.mods
-    #if [ -f /$basedir/etc/redhat-release ] ; then
-    #    chroot /$basedir mkinitrd -v -f --with "$*" /boot/initrd $newkernel
-    #else 
-    #    chroot /$basedir mkinitrd -i initrd -k vmlinuz -m "$*"
+    #    send_info "${GENERATE_INITRD} for $newkernel ($newkversion), $initrd_cause, modules $*"
+    #    echo "$*" > /$basedir/boot/.mods
+    # #if [ -f /$basedir/etc/redhat-release ] ; then
+    # #    chroot /$basedir mkinitrd -v -f --with "$*" /boot/initrd $newkernel
+    # #else
+    # #    chroot /$basedir mkinitrd -i initrd -k vmlinuz -m "$*"
+    # #fi
     #fi
-    fi
     get_conf_str "new_kernel_ok"
     send_info "done. umounting kernel $newkernel"
     umount /kernel
@@ -794,7 +794,7 @@ echo -e "127.0.0.1 localhost\n" > /etc/hosts
 echo -e "starting rpcbind"
 /sbin/rpcbind -w
 
-dev_short_name=$(get_conf_str 'get_device_short_name' | cut -d " " -f 2)
+dev_short_name=$(get_conf_str 'get_device_short_name' | cut -d " " -f 3)
 
 echo -e "${GREEN}device short name is ${dev_short_name}, setting status and starting hoststatus${OFF}"
 set_hoststat ${BM_MESG}
@@ -1297,27 +1297,27 @@ elif [ "$do_mount" = "1" ] ; then
     if [ "$we_are_clean" = "0" ] ; then
         install_kernel $initrd_mods
         if [ "$(get_conf_str 'modify_bootloader')" = "yes" ] ; then
-        echo -e "Modifying bootloader ..."
-    # grub call
-        if [ -x /$basedir/sbin/grub -o -x /$basedir/usr/sbin/grub ] ; then
-        install_grub $fdev $rpart
-    # lilo call
-        elif [ -x /$basedir/sbin/lilo -o -x /$basedir/usr/sbin/lilo ] ; then
-        install_lilo $fdev $rpart
+            echo -e "Modifying bootloader ..."
+        # grub call
+            if [ -x /$basedir/sbin/grub -o -x /$basedir/usr/sbin/grub ] ; then
+                install_grub $fdev $rpart
+        # lilo call
+            elif [ -x /$basedir/sbin/lilo -o -x /$basedir/usr/sbin/lilo ] ; then
+                install_lilo $fdev $rpart
+            else
+                echo -e "Neither grub nor lilo found"
+            fi
         else
-        echo -e "Neither grub nor lilo found"
-        fi
-        else
-        echo -e "No modification of bootloader requested"
+            echo -e "No modification of bootloader requested"
         fi
     fi
 # unmount partitions
     echo -e "Unmounting partitions $umounts"
     for m in $umounts ; do umount $m ; done
     if [ "$we_are_clean" = "1" ] ; then
-    ACT_MSG="${JT_CLEAN}"
+        ACT_MSG="${JT_CLEAN}"
     else
-    ACT_MSG="${JT_NORMAL} in ${prod_net} net"
+        ACT_MSG="${JT_NORMAL} in ${prod_net} net"
     fi
     echo $rpart $rparttype ${ACT_MSG} > /tmp/mother
 
