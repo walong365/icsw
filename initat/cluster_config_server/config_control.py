@@ -44,6 +44,7 @@ class config_control(object):
         self.__com_dict = {
             "get_kernel": self._handle_get_kernel,
             "get_kernel_name": self._handle_get_kernel_name,
+            "get_device_short_name": self._handle_get_device_short_name,
             "get_syslog_server": self._handle_get_syslog_server,
             "get_package_server": self._handle_get_package_server,
             "create_boot_entry": self._handle_create_boot_entry,
@@ -469,6 +470,10 @@ class config_control(object):
                 )
         else:
             return "error no kernel set"
+
+    def _handle_get_device_short_name(self, s_req):
+        # returns display name
+        return "ok {}".format(self.device.name)
 
     def close(self):
         if self.__log_template is not None:

@@ -502,7 +502,7 @@ function install_kernel() {
     newkernel_dir=$(dirname $full_newkernel)
     send_info "got kernel $newkernel (inst=$inst, dir $newkernel_dir, version $new_version, release $new_release) after $num request(s)"
     mkdir /kernel
-    mount_it "kernel" ${kernel_server}:${newkernel_dir}/${newkernel} /kernel "${RO_MOUNTOPTS}"
+    mount_it "kernel" ${kernel_server}:${full_newkernel} /kernel "${RO_MOUNTOPTS}"
     newkversion="$new_version.$new_release"
     gen_initrd=0
     if [ "$inst" == "1" ] ; then
@@ -646,6 +646,12 @@ function mount_partitions () {
             [ ! -d "$mp" ] && { mkdir -p "$mp" || err_exit "cannot create mountpoint '$mp' (code=$?)" ; }
             echo "mount -t $typ $opt $dev $mp" >&2
             mount -t $typ $opt $dev $mp
+            touch ${mp}/.icsw_testfile
+            if [ ! -f ${mp}/.icsw_testfile ] ; then
+                err_exit "cannot create .icsw_testfile in ${mp} (type ${typ}, dev ${dev})"
+            else
+                rm ${mp}/.icsw_testfile
+            fi
 # || { err_exit "cannot mount $dev type $typ to $mp (code=$?)" ; }
             echo -n "$mp "
         done
@@ -788,11 +794,13 @@ echo -e "127.0.0.1 localhost\n" > /etc/hosts
 echo -e "starting rpcbind"
 /sbin/rpcbind -w
 
-echo -e "${GREEN}setting status and starting hoststatus${OFF}"
+dev_short_name=$(get_conf_str 'get_device_short_name' | cut -d " " -f 2)
+
+echo -e "${GREEN}device short name is ${dev_short_name}, setting status and starting hoststatus${OFF}"
 set_hoststat ${BM_MESG}
 hoststatus_zmq &
 
-hostname bootsystem
+hostname ${dev_short_name}
 
 echo -e "${GREEN}Logging stuff${OFF}"
 set_hoststat ${START_SYSLOG}
@@ -1107,7 +1115,14 @@ elif [ "$do_mount" = "1" ] ; then
         set_hoststat ${MP_MESG}
         rm -rf /$basedir/*
         cd /$basedir
-        
+
+        # check general writability
+        touch .testfile
+        if [ ! -f .testfile ] ; then
+            err_exit "cannot create .testfile in root directory"
+        else
+            rm -f .testfile
+        fi
         [ ! -d sys  ] && mkdir sys
         [ ! -d proc ] && mkdir proc
         [ ! -d tmp  ] && mkdir tmp
