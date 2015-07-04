@@ -19,6 +19,17 @@
 #
 
 """ rms-server, accounting process """
+"""
+
+Notes regarding qacct: we use (in most cases) accounting_summary=False
+in the PE-config (so we get one line per PE-Slave), hence we use the
+'-m'-switch for qacct calls
+
+"""
+
+import datetime
+import os
+import time
 
 from django.db import connection
 from django.db.models import Q
@@ -26,20 +37,7 @@ from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
     rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
-from lxml import etree  # @UnresolvedImport @UnusedImport
-import commands
-import datetime
-import os
-import pprint  # @UnusedImport
-import time
-try:
-    from initat.tools import logging_tools
-    from initat.tools import server_command
-    from initat.tools import threading_tools
-except:
-    import logging_tools
-    import server_command
-    import threading_tools
+from initat.tools import logging_tools, server_command, threading_tools
 
 _OBJ_DICT = {
     "rms_queue": rms_queue,
@@ -175,9 +173,9 @@ class accounting_process(threading_tools.process_obj):
         if args:
             _data = args[0]
             if "job_id" in _data:
-                self._call_qacct("-j", "{:d}".format(_data["job_id"]))
+                self._call_qacct("-m", "-j", "{:d}".format(_data["job_id"]))
             elif "start_time" in _data:
-                self._call_qacct("-b", _data["start_time"], "-j")
+                self._call_qacct("-m", "-b", _data["start_time"], "-j")
             else:
                 self.log(
                     "cannot parse args / kwargs: {}, {}".format(
@@ -195,23 +193,23 @@ class accounting_process(threading_tools.process_obj):
                 self.__full_scan_done = True
                 self.log("no jobs in database, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._enable_cache()
-                self._call_qacct("-j")
+                self._call_qacct("-m", "-j")
                 self._disable_cache(log=True)
             elif global_config["FORCE_SCAN"] and not self.__full_scan_done:
                 self.__full_scan_done = True
                 self.log("full scan forced, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._enable_cache()
-                self._call_qacct("-j")
+                self._call_qacct("-m", "-j")
                 self._disable_cache(log=True)
             elif len(_mis_dict) > 1000:
                 self._log_missing(_mis_dict)
                 self._enable_cache()
-                self._call_qacct("-j")
+                self._call_qacct("-m", "-j")
                 self._disable_cache(log=True)
             else:
                 self._log_missing(_mis_dict)
                 for _id in sorted(_mis_dict.iterkeys()):
-                    self._call_qacct("-j", "{}".format(_id), mult=len(_mis_dict[_id]))
+                    self._call_qacct("-m", "-j", "{}".format(_id), mult=len(_mis_dict[_id]))
                 self._log_stats()
         if self.__jobs_added:
             self.log("added {}".format(logging_tools.get_plural("job", self.__jobs_added)))

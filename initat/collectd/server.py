@@ -413,7 +413,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         def _cast_snmp_version(_vers):
             if type(_vers) in [int, long]:
                 return _vers
-            elif _vers.idigit():
+            elif _vers.isdigit():
                 return int(_vers)
             else:
                 return {"2c": 2}.get(_vers, 1)
