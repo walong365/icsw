@@ -410,6 +410,13 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         return _reachable
 
     def _get_snmp_hosts(self, _router):
+        def _cast_snmp_version(_vers):
+            if type(_vers) in [int, long]:
+                return _vers
+            elif _vers.idigit():
+                return int(_vers)
+            else:
+                return {"2c": 2}.get(_vers, 1)
         # var cache
         _vc = var_cache(
             device.all_enabled.get(
@@ -443,7 +450,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     full_name="{}".format(cur_dev.full_name),
                     uuid="{}".format(cur_dev.uuid),
                     ip="{}".format(_ip),
-                    snmp_version="{:d}".format(_vars["SNMP_VERSION"]),
+                    snmp_version="{:d}".format(_cast_snmp_version(_vars["SNMP_VERSION"])),
                     snmp_read_community=_vars["SNMP_READ_COMMUNITY"],
                 ) for cur_dev, _ip, _vars in _reachable
             ]

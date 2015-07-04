@@ -434,7 +434,7 @@ def do_etc_hosts(conf):
         for cur_ip in cur_nd.net_ip_set.all():
             if cur_ip.ip not in ips_used:
                 # copy penalty value
-                cur_ip.value = penalty
+                cur_ip.value = penalty + cur_ip.penalty
                 ips_used.add(cur_ip.ip)
                 # also check network identifiers ? FIXME
                 all_ips.append((cur_nd, cur_ip))
@@ -469,7 +469,12 @@ def do_etc_hosts(conf):
         for line in act_list:
             max_len = [max(max_len[entry], len(line[entry])) for entry in range(len(max_len))]
         form_str = " ".join(["%%-%ds" % (part) for part in max_len])
-        new_co += ["# penalty %d" % (p_value), ""] + [form_str % (tuple(entry)) for entry in act_list] + [""]
+        new_co += [
+            "# penalty {:d}".format(p_value),
+            ""
+        ] + [
+            form_str % (tuple(entry)) for entry in act_list
+        ] + [""]
 
 
 def do_hosts_equiv(conf):
