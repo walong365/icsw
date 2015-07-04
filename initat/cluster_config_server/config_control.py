@@ -317,7 +317,8 @@ class config_control(object):
             kernel_dir = os.path.join(
                 global_config["TFTP_DIR"],
                 "kernels",
-                kernel_name)
+                kernel_name
+            )
             dep_h = module_dependency_tools.dependency_handler(kernel_dir, log_com=self.log)
             in_parts = s_req.data.split()
             if len(in_parts):
@@ -338,8 +339,13 @@ class config_control(object):
                     if self.device.partition_table:
                         disc_mods = partition.objects.filter(
                             Q(partition_disc__partition_table=self.device.partition_table)
-                        ).values_list("partition_fs__kernel_module", flat=True)
+                        ).values_list(
+                            "partition_fs__kernel_module", flat=True
+                        )
                         disc_mods = [_entry for _entry in list(set(sum([cur_part.strip().split() for cur_part in disc_mods], []))) if _entry]
+                        if "ext3" in disc_mods:
+                            # also add ext4 because newer Centos-Kernels support ext3 only through the ext4 mod
+                            disc_mods.append("ext4")
                         self.log(
                             "adding {}: {}".format(
                                 logging_tools.get_plural("disc mod", len(disc_mods)),
