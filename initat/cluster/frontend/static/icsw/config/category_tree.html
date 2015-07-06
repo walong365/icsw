@@ -2,6 +2,10 @@
     <h3>Categories for {{ device_pks.length }} <ng-pluralize count="device_pks.length" when="{'1': 'device', 'other': 'devices'}"></ng-pluralize></h3>
     <icsw-tools-ensure-device-selection dev-list="device_pks" list-ready="device_list_ready">
         <tree treeconfig="cat_tree"></tree>
+        <div style="height: 10px"></div>
+        <icsw-config-category-contents-viewer
+                                              category-name="selected_category.full_name" category-pk="selected_category.idx">
+        </icsw-config-category-contents-viewer>
     </icsw-tools-ensure-device-selection>
 </script>
 
@@ -69,21 +73,50 @@
         </div>
         <div class="col-sm-6">
             <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
-                <icsw-config-category-contents-viewer category-object="_edit_obj"></icsw-config-category-contents-viewer>
+                <icsw-config-category-contents-viewer category-name="_edit_obj.full_name" category-pk="_edit_obj.idx"></icsw-config-category-contents-viewer>
             </div>
         </div>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.contents_viewer">
-    <div class="panel panel-default">
+    <div class="panel panel-default" ng-if="enabled">
         <div class="panel-heading">
-            Contents of {{categoryObject.full_name}}
+            Contents of category {{categoryName}}
         </div>
         <div class="panel-body">
+            <alert type="ok" ng-if="enabled && data_ready && category_contents.length == 0">
+                This category is empty.
+            </alert>
+            <table st-table="entries" st-safe-src="category_contents" class="table table-condensed table-striped"
+                   style="width: auto" ng-show="entries.length > 0">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <!-- NOTE: this assumes homogenous category contents -->
+                        <th ng-repeat="(k, v) in entries[0].properties" st-sort="{{'properties.' + k}}">
+                            {{k | capitalize}}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="entry in entries">
+                        <td ng-repeat="v in entry.properties">
+                            {{v}}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
             <ul class="list-group">
                 <li class="list-group-item" ng-repeat="entry in new_data">
-                    {{entry}}
+                    <div class="list-group-item-heading">
+                        {{entry.name}}
+                    </div>
                 </li>
             </ul>
         </div>

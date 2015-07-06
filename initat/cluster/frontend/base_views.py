@@ -243,31 +243,42 @@ class CategoryContents(ListAPIView):
         cat_db = category.objects.get(pk=request.GET['category_pk'])
         contents = []
 
-        for dev in device.objects.filter(categories=cat_db):
+        # NOTE: gui currently assumes homogenous category contents, i.e. at most one of the following types:
+
+        for dev in device.objects.filter(categories=cat_db).select_related('device_group'):
             contents.append({
                 "pk": dev.pk,
-                "name": dev.full_name,
+                'properties': {
+                    "name": dev.full_name,
+                    "group": dev.device_group.name,
+                },
                 "type": "device",
             })
 
         for mcc in mon_check_command.objects.filter(categories=cat_db):
             contents.append({
                 "pk": mcc.pk,
-                "name": mcc.name,
+                'properties': {
+                    "Check command": mcc.name
+                },
                 "type": "mon_check_command",
             })
 
         for conf in config.objects.filter(categories=cat_db):
             contents.append({
                 "pk": conf.pk,
-                "name": conf.name,
+                'properties': {
+                    "Config": conf.name,
+                },
                 "type": "config",
             })
 
         for loc_dev in device.objects.filter(device_mon_location__location=cat_db):
             contents.append({
                 "pk": loc_dev.pk,
-                "name": loc_dev.name,
+                'properties': {
+                    "Location": loc_dev.name,
+                },
                 "type": "location_device",
             })
 

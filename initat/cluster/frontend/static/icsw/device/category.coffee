@@ -58,6 +58,9 @@ angular.module(
                 return cat.full_name
             else
                 return "TOP"
+        handle_click: (entry, event) =>
+            @scope.selected_category = entry.obj
+            @scope.$digest()
 ]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
         access_level_service.install($scope)

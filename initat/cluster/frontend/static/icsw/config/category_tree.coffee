@@ -260,12 +260,17 @@ angular.module(
         restrict: "EA"
         templateUrl: "icsw.config.category.contents_viewer"
         scope:
-            categoryObject: '='
+            categoryPk: '='
+            categoryName: '='
         link : (scope, elements, attrs) ->
-            scope.$watch('categoryObject', () ->
-                Restangular.all(ICSW_URLS.BASE_CATEGORY_CONTENTS.slice(1)).getList({category_pk: scope.categoryObject.idx}).then((new_data) ->
-                    scope.new_data = new_data
-                )
+            scope.$watch('categoryPk', () ->
+                scope.enabled = scope.categoryPk?
+                if scope.enabled
+                    scope.data_ready = false
+                    Restangular.all(ICSW_URLS.BASE_CATEGORY_CONTENTS.slice(1)).getList({category_pk: scope.categoryPk}).then((new_data) ->
+                        scope.data_ready = true
+                        scope.category_contents = new_data
+                    )
             )
     }
 ])
