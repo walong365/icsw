@@ -14,10 +14,17 @@
                         </button>
                     </span>
                 </div>
-                <div class="input-group">
+                <span class="input-group">
                     <icsw-tools-button type="display" size="sm" value="show selection" ng-show="selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
                     <icsw-tools-button type="modify" size="sm" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
-                </div>
+                </span>
+                <span class="input-group pull-right">
+                    <button class="btn btn-primary" ng-show="selection.any_selected()"
+                            ng-click="show_current_selection_in_overlay()">
+                        <span class="bootstrap-dialog-button-icon glyphicon glyphicon-menu-hamburger"></span>
+                        show in overlay
+                    </button>
+                </span>
                 <small>
                     <ul class="list-group" ng-show="show_selection && selection.any_selected()">
                         <li class="list-group-item" ng-show="selection.devg_sel.length">
@@ -85,13 +92,6 @@
                         <tree treeconfig="tc_categories"></tree>
                     </tab>
                 </tabset>
-                <span class="pull-right">
-
-                    <button class="btn btn-primary" ng-show="selection.any_selected()" ng-click="show_current_selection_in_overlay()">
-                        <span class="bootstrap-dialog-button-icon glyphicon glyphicon-menu-hamburger"></span>
-                        show in overlay
-                    </button>
-                </span>
             </tab>
             <tab heading="saved selections" select="enable_saved_selections()">
                 <form class="form-horizontal">
