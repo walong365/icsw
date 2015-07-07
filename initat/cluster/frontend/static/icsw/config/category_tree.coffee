@@ -63,10 +63,7 @@ angular.module(
         $scope.edit_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
         $scope.edit_mixin.edit_template = "category.form"
         $scope.form = {}
-        msgbus.receive("icsw.config.locations.changed.map", $scope, () ->
-            # receiver for global changes from map
-            $scope.reload()
-        )
+        # receiver for global changes from map
         $scope.is_mode_entry = (entry) ->
             # contains top node
             return entry.depth < 1 or entry.full_name.split("/")[1] == $scope.mode
@@ -84,6 +81,7 @@ angular.module(
                 $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_cat()
         )
+        msgbus.receive(msgbus.event_types.CATEGORY_CHANGED, $scope, $scope.reload)
         $scope.edit_obj = (cat, event) ->
             $scope.create_mode = false
             $scope.cat.clear_active()
@@ -102,6 +100,7 @@ angular.module(
                 else
                     $scope.reload()
                 msgbus.emit("icsw.config.locations.changed.tree")
+                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
             )
         $scope.delete_obj = (obj) ->
             $scope.edit_mixin.delete_obj(obj).then((data) ->
@@ -109,6 +108,7 @@ angular.module(
                     $scope.rebuild_cat()
                     $scope.cat.clear_active()
                     msgbus.emit("icsw.config.locations.changed.tree")
+                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
             )
         $scope.rebuild_cat = () ->
             # check location gfx refs
@@ -141,6 +141,7 @@ angular.module(
             $scope.edit_mixin.create($event).then((data) ->
                 $scope.reload()
                 msgbus.emit("icsw.config.locations.changed.tree")
+                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
             )
         $scope.get_valid_parents = (obj) ->
             # called from form code
@@ -179,6 +180,7 @@ angular.module(
                     success : (xml) ->
                         icswParseXMLResponseService(xml)
                         $scope.reload()
+                        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
                         blockUI.stop()
             )
         $scope.reload()
@@ -255,7 +257,7 @@ angular.module(
             scope.mode_display = if scope.mode == 'mon' then 'monitoring' else scope.mode
             console.assert(scope.mode in ['mon', 'config', 'device', 'location'], "invalid mode in category tree")
     }
-]).directive("icswConfigCategoryContentsViewer", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+]).directive("icswConfigCategoryContentsViewer", ["Restangular", "ICSW_URLS", "msgbus", (Restangular, ICSW_URLS, msgbus) ->
     return {
         restrict: "EA"
         templateUrl: "icsw.config.category.contents_viewer"
@@ -263,14 +265,15 @@ angular.module(
             categoryPk: '='
             categoryName: '='
         link : (scope, elements, attrs) ->
-            scope.$watch('categoryPk', () ->
+            update = () ->
+                scope.data_ready = false
                 scope.enabled = scope.categoryPk?
                 if scope.enabled
-                    scope.data_ready = false
                     Restangular.all(ICSW_URLS.BASE_CATEGORY_CONTENTS.slice(1)).getList({category_pk: scope.categoryPk}).then((new_data) ->
                         scope.data_ready = true
                         scope.category_contents = new_data
                     )
-            )
+            msgbus.receive(msgbus.event_types.CATEGORY_CHANGED, scope, update)
+            scope.$watch('categoryPk', update)
     }
 ])

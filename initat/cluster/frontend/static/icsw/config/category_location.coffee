@@ -221,7 +221,7 @@ angular.module(
             if $event
                 $event.stopPropagation()
                 $event.preventDefault()
-            msgbus.emit("icsw.config.locations.changed.map")
+            msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
         $scope.close_modal = () ->
             if $scope.cur_edit
                 $scope.cur_edit.close_modal()

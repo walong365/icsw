@@ -23,7 +23,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).service("icswDeviceCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+).service("icswDeviceCategoryTreeService", ["icswTreeConfig", "msgbus", (icswTreeConfig, msgbus) ->
     class category_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -133,6 +133,8 @@ angular.module(
                             $scope.sel_dict[cat.idx] = []
                         # FIXME, TODO
                         # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
+
+                        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
                     )
         $scope.new_selection = (sel_list) =>
             # only for single-device mode
@@ -145,6 +147,7 @@ angular.module(
                     "cur_sel"  : angular.toJson(sel_list)
                 success : (xml) =>
                     icswParseXMLResponseService(xml)
+                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
                     # selectively reload sidebar tree
                     # FIXME, TODO
                     # reload_sidebar_tree([$scope.devices[0].idx])

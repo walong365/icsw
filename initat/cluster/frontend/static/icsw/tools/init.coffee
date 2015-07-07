@@ -189,6 +189,11 @@ angular.module(
     bus.receive = (msg, scope, func) ->
         unbind = $rootScope.$on(msg, func)
         scope.$on("$destroy", unbind)
+
+    # this can be used to improve typo safety:
+    bus.event_types = {
+        CATEGORY_CHANGED: "icsw.tools.msg_bus.1"  # called when any category (membership or category itself) is changed
+    }
     return bus
 ]).directive("icswSelMan", ["msgbus", (msgbus) ->
     # selection manager directive

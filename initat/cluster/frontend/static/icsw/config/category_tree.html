@@ -3,8 +3,7 @@
     <icsw-tools-ensure-device-selection dev-list="device_pks" list-ready="device_list_ready">
         <tree treeconfig="cat_tree"></tree>
         <div style="height: 10px"></div>
-        <icsw-config-category-contents-viewer
-                                              category-name="selected_category.full_name" category-pk="selected_category.idx">
+        <icsw-config-category-contents-viewer category-name="selected_category.full_name" category-pk="selected_category.idx">
         </icsw-config-category-contents-viewer>
     </icsw-tools-ensure-device-selection>
 </script>
@@ -99,7 +98,7 @@
                     </tr>
                     <tr>
                         <!-- NOTE: this assumes homogenous category contents -->
-                        <th ng-repeat="(k, v) in entries[0].properties" st-sort="{{'properties.' + k}}">
+                        <th ng-repeat="(k, v) in entries[0].properties" st-sort="properties['{{k}}']">
                             {{k | capitalize}}
                         </th>
                     </tr>

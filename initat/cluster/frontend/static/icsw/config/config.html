@@ -326,9 +326,9 @@
                 <td>{{ obj.event_handler_enabled }}</td>
                 <td>{{ get_num_cats(obj) }}</td>
                 <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"/>
-                <td><icsw-tools-button type="modify" value="modify" ng-click="edit_mon(config, obj, $event)" size="xs"/></td>
+                <td><icsw-tools-button type="modify" value="modify" ng-click="edit_mon(config, obj, $event)" size="xs"></icsw-tools-button></td>
                 <td><input type="button" class="btn btn-warning btn-xs" ng-click="copy_mon(config, obj, $event)" value="duplicate"/></td>
-                <td><icsw-tools-button type="delete" value="delete" ng-click="delete_mon(config, obj)" size="xs"/></td>
+                <td><icsw-tools-button type="delete" value="delete" ng-click="delete_mon(config, obj)" size="xs"></icsw-tools-button></td>
             </tr>
         </tbody>
     </table>
