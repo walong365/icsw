@@ -301,14 +301,31 @@ class WmiLogEntryJob(_WmiJobBase):
 
                 maximal_record_number = self.from_record_number + self.__class__.PAGINATION_LIMIT
 
-                db_entry = {
-                    'date': django.utils.timezone.now(),
-                    'maximal_record_number': maximal_record_number,  # this entry may not actually be present
-                    'logfile_name': job.logfile_name,
-                    'entries': parsed,
-                    'device_pk': job.target_device.pk,
-                }
-                job.db.wmi_event_log.insert(db_entry)
+                db_entries = []
+                date_now = django.utils.timezone.now()
+                for log_entry in parsed:
+                    db_entries.append({
+                        'date': date_now,
+                        'logfile_name': job.logfile_name,
+                        'entry': log_entry,
+                        'device_pk': job.target_device.pk,
+                    })
+                job.db.wmi_event_log.insert_many(db_entries)
+
+                job.db.wmi_logfile_maximal_record_number.update_one(
+                    filter={
+                        'device_pk': job.target_device.pk,
+                        'logfile_name': job.logfile_name,
+                    },
+                    update={
+                        '$set': {
+                            'device_pk': job.target_device.pk,
+                            'date': date_now,
+                            'maximal_record_number': maximal_record_number,  # this entry may not actually be present
+                        }
+                    },
+                    upsert=True,
+                )
 
                 self.from_record_number = maximal_record_number
 

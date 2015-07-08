@@ -185,12 +185,12 @@ class IpmiLogJob(EventLogPollerJobBase):
 
                 # sections are separated by empty lines (usually without whitespace in between, but handle anyway)
                 sections_raw = re.compile("\n[ \t]*\n").split(stdout_out)
-                sections_db_data = {}
+                sections_db_data = []
                 for sec in sections_raw:
                     if sec:  # there might be an empty last entry
                         parsed = job._parse_section(sec)
                         if parsed:
-                            sections_db_data[parsed[0]] = parsed[1]
+                            sections_db_data.append(parsed)
 
                 db_entry = {
                     'parse_date': django.utils.timezone.now(),
@@ -209,8 +209,8 @@ class IpmiLogJob(EventLogPollerJobBase):
         ret = None
         if lines:
             section_content = {}
-            section_type = "unknown"
 
+            # parse first line of section
             if lines[0].startswith(" ") or ':' not in lines[0]:
                 self.log("Section in ipmi sel does not have header: {}".format(lines[0]),
                          logging_tools.LOG_LEVEL_WARN)
@@ -222,6 +222,9 @@ class IpmiLogJob(EventLogPollerJobBase):
                 # Sensor ID              : Ambient Temp (0x32)
 
                 section_content[section_type] = section_type_value
+                section_content["__icsw_ipmi_section_type"] = section_type
+
+            # parse regular entries
 
             # lines[1:] looks like this:
             # Entity ID             : 19.1
@@ -245,7 +248,7 @@ class IpmiLogJob(EventLogPollerJobBase):
 
                     last_key = key
 
-            ret = section_type, section_content
+            ret = section_content
         else:
             self.log("Empty section in ipmi sel: {}".format(section_string),
                      logging_tools.LOG_LEVEL_WARN)

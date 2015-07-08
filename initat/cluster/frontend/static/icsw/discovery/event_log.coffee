@@ -38,6 +38,13 @@ angular.module(
                             Restangular.one(ICSW_URLS.REST_DEVICE_LIST.slice(1)).get({'idx': device_pk}).then((new_data)->
                                 scope.devices_rest[device_pk] = new_data[0]
                             )
+
+                    scope.get_event_log(scope.device_pks)
+
+                scope.get_event_log = (device_pks) ->
+                    Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).get(device_pks: JSON.stringify(device_pks)).then((new_data)->
+                        console.log 'got', new_data
+                    )
         }
 ]).service("icswDiscoveryEventLogDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
     rest_map = {

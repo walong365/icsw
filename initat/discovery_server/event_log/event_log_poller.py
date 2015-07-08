@@ -27,6 +27,7 @@ import pymongo
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.routing import srv_type_routing
+from initat.cluster.frontend.discovery_views import MongoDbInterface
 from initat.discovery_server.event_log.ipmi_event_log_scanner import IpmiLogJob
 from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
@@ -59,9 +60,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
 
     def _init_db(self):
-        self._mongodb_client = pymongo.MongoClient(global_config["MONGODB_HOST"], global_config["MONGODB_PORT"],
-                                                   tz_aware=True)
-        self._mongodb_database = self._mongodb_client.icsw_event_log
+        self._mongodb_database = MongoDbInterface().event_log_db
 
         self._mongodb_database.wmi_event_log.create_index([('$**', 'text')], name="wmi_log_full_text_index")
         # self._mongodb_database.wmi_event_log.create_index([('device_pk', 'text')])
@@ -124,17 +123,9 @@ class EventLogPollerProcess(threading_tools.process_obj):
         wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
         print 'wmi devs', wmi_devices
 
-        _last_entries_qs = self._mongodb_database.wmi_event_log.aggregate([{
-            '$group': {
-                '_id': {
-                    'device_pk': '$device_pk',
-                    'logfile_name': '$logfile_name',
-                },
-                'latest_record_number': {'$max': '$maximal_record_number'},
-            }
-        }])
+        _last_entries_qs = self._mongodb_database.wmi_logfile_maximal_record_numbers.find()
         last_record_numbers_lut = {  # mapping { (device_pk, logfile_name) : latest_record_number }
-            (entry['_id']['device_pk'], entry['_id']['logfile_name']): entry['latest_record_number']
+            (entry['device_pk'], entry['logfile_name']): entry['latest_record_number']
             for entry in _last_entries_qs
         }
 

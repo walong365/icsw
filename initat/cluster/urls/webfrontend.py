@@ -236,7 +236,8 @@ rrd_patterns = patterns(
 discovery_patterns = patterns(
     "initat.cluster.frontend",
     url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
-    url(r"^EventLog$", discovery_views.EventLog.as_view(), name="EventLog"),
+    url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
+    url(r"^GetEventLog$", discovery_views.GetEventLog.as_view(), name="GetEventLog"),
 )
 
 rpl = []
