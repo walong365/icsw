@@ -108,6 +108,7 @@ class snmp_job(object):
         self.uuid = kwargs.get("uuid", "")
         self.max_runtime = kwargs.get("max_runtime", 45)
         self.run_every = kwargs.get("run_every", 30)
+        self.snmp_read_timeout = kwargs.get("snmp_read_timeout", 10)
         self.counter = 0
         self.last_start = None
         # batch id we are currently waiting for
@@ -176,7 +177,7 @@ class snmp_job(object):
                 self.snmp_read_community,
                 self.waiting_for,
                 True,
-                10,
+                self.snmp_read_timeout,
                 *fetch_list
             )
 

@@ -22,7 +22,7 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     echo "done"
 
     echo -ne "compiling forms ..."
-    ${MANAGE} collectstatic render_all_forms > /dev/null
+    ${MANAGE} render_all_forms > /dev/null
     echo "done"
 
     if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
