@@ -21,6 +21,7 @@
 import collections
 
 import time
+import traceback
 from django.db.models import Q
 from lxml import etree
 
@@ -29,6 +30,7 @@ from initat.snmp.snmp_struct import ResultNode
 from .discovery_struct import ExtCom
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
 from initat.tools import logging_tools, ipvx_tools
+from django.core.exceptions import ValidationError
 
 
 class ScanBatch(object):
@@ -274,13 +276,13 @@ class WmiScanBatch(ScanBatch):
 
                 # iterate by adapter since only adapters are filtered
                 for adapter in network_adapter_data:
-                    adapter_index = adapter['Index']
+                    adapter_index = int(adapter['Index'])
                     adapter_name = adapter['Name']
                     # corresponding adapter and adapter_configuration have same index according to some sources
                     # http://blogs.technet.com/b/heyscriptingguy/archive/2011/10/07/use-powershell-to-identify-your-real-network-adapter.aspx
                     # http://blogs.technet.com/b/heyscriptingguy/archive/2005/06/14/how-can-i-associate-a-network-connection-with-an-ip-address.aspx
                     adapter_configuration = next(c for c in network_adapter_configuration_data
-                                                 if c['Index'] == adapter_index)
+                                                 if int(c['Index']) == adapter_index)
 
                     device_netdevices = netdevice.objects.filter(device=self.device)
 
@@ -309,8 +311,8 @@ class WmiScanBatch(ScanBatch):
                         nd.devname = adapter_name
                         nd.macaddr = adapter['MACAddress'] or ""  # must not be None
                         nd.mtu = adapter_configuration['MTU']
-                        nd.speed = adapter['Speed']
-                        nd.netdevice_speed = ND_SPEED_LUT.get(adapter['Speed'], ND_SPEED_LUT.get(0))
+                        nd.speed = int(adapter['Speed'])
+                        nd.netdevice_speed = ND_SPEED_LUT.get(int(adapter['Speed']), ND_SPEED_LUT.get(0))
                         nd.save()
 
                         for ip_found in WmiUtils.WmiList.handle(adapter_configuration['IPAddress']):
@@ -353,13 +355,20 @@ class WmiScanBatch(ScanBatch):
                                         nip = net_ip.objects.get(netdevice=nd, ip=ip_found)
                                         existing_ips.append(nip)
                                     except net_ip.DoesNotExist:
-                                        nip = net_ip(
-                                            netdevice=nd,
-                                            ip=ip_found,
-                                            network=cur_nw,
-                                        )
-                                        nip.save()
-                                        created_ips.append(nip)
+                                        try:
+                                            nip = net_ip(
+                                                netdevice=nd,
+                                                ip=ip_found,
+                                                network=cur_nw,
+                                            )
+                                            nip.save()
+                                            created_ips.append(nip)
+                                        except ValidationError as e:
+                                            self.log(
+                                                "Failed to create ip {} for netdevice {}: {}".format(ip_found, nd, e),
+                                                logging_tools.LOG_LEVEL_ERROR
+                                            )
+                                            self.log(traceback.format_exc(e))
 
                 self.log("Created {}, updated {}, created {}, found {}".format(
                     logging_tools.get_plural("net device", len(created_ips)),
