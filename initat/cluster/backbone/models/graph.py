@@ -215,6 +215,8 @@ class SensorThreshold(models.Model):
     upper_enabled = models.BooleanField(default=True)
     # which users to notify
     notify_users = models.ManyToManyField("user")
+    # creating user
+    create_user = models.ForeignKey("user", null=True, blank=True, related_name="sensor_threshold_create_user")
     # device selection
     device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -248,6 +250,7 @@ class SensorThresholdAction(models.Model):
     mail = models.BooleanField(default=False)
     value = models.FloatField(default=0.0)
     notify_users = models.ManyToManyField("user")
+    create_user = models.ForeignKey("user", null=True, blank=True, related_name="sensor_threshold_action_create_user")
     device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 

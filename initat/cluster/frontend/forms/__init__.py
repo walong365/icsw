@@ -206,7 +206,7 @@ class device_info_form(ModelForm):
                     Div(
                         HTML(
                             "<icsw-tools-button type=\"modify\" button-type=\"submit\" "
-                            "ng-show=\"acl_modify(_edit_obj, 'backbone.device.change_basic')\"></icsw-tools-modify-button>"
+                            "ng-show=\"acl_modify(_edit_obj, 'backbone.device.change_basic')\"></icsw-tools-button>"
                         ),
                     ),
                     css_class="row",
@@ -367,6 +367,7 @@ class kernel_form(ModelForm):
         HTML("<h2>Kernel details</h2>"),
         Fieldset(
             "Base data",
+            Field("display_name", readonly=True),
             Field("name", readonly=True),
             Field("comment", rows=5),
             Field("target_module_list", rows=3),
@@ -449,7 +450,7 @@ class kernel_form(ModelForm):
     class Meta:
         model = kernel
         fields = [
-            "name", "comment", "enabled",
+            "name", "comment", "enabled", "display_name",
             "module_list", "target_module_list"
         ]
 

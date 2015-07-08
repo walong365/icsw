@@ -22,20 +22,18 @@
 
 """ setup views """
 
+import logging
+import os
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import partition_table, image, architecture
-from initat.cluster.frontend.forms import kernel_form, image_form, partition_table_form, \
-    partition_form, partition_disc_form, partition_sys_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.render import render_me
 from lxml.builder import E  # @UnresolvedImport
-import logging
-import os
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import process_tools, server_command
 
 logger = logging.getLogger("cluster.setup")
 
@@ -138,7 +136,7 @@ class use_image(View):
                     request.xml_response.error(
                         "no architecture-attribute found in image",
                         logger
-                        )
+                    )
                 else:
                     try:
                         img_arch = architecture.objects.get(Q(architecture=img_xml.attrib["arch"]))
@@ -160,8 +158,9 @@ class use_image(View):
                         new_img.save()
                     except:
                         request.xml_response.error(
-                            "cannot create image: %s" % (process_tools.get_except_info()),
-                            logger)
+                            "cannot create image: {}".format(process_tools.get_except_info()),
+                            logger
+                        )
                     else:
                         request.xml_response.info("image taken", logger)
             else:

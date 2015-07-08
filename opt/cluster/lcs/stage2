@@ -56,7 +56,13 @@ GREEN="\033[32m"
 YELLOW="\033[33m"
 OFF="\033[m"
 
-[ ! -f /bin/sh ] && ln -s /bin/bash /bin/sh
+if [ ! -f /bin/sh ] ; then
+    if [ -x /usr/bin/bash ] ; then
+        ln -s /usr/bin/bash /bin/sh
+    else
+        ln -s /bin/bash /bin/sh
+    fi
+fi
 
 basedir="new"
 
@@ -81,7 +87,27 @@ cp -a /sbin/reboot /sbin/reboot.old
 rm /sbin/reboot
 echo "#!/bin/bash" > /sbin/reboot
 echo "/sbin/reboot.old -f " >> /sbin/reboot
-chmod +x /sbin/reboot
+chmod +x /sbin/v
+
+# create links for Centos
+if [ -x /sbin/mount.nfs ] ; then
+    # mount.nfs is a valid binary, ok
+    true
+elif [ -L /sbin/mount.nfs ] ; then
+    # mount.nfs is a link, ok
+    true
+else
+    if [ -x /usr/bin/mount.nfs ] ; then
+        # create link
+        ln -s /usr/bin/mount.nfs /sbin/mount.nfs
+    elif [ -x /usr/sbin/mount.nfs ] ; then
+        # create link
+        ln -s /usr/sbin/mount.nfs /sbin/mount.nfs
+    elif [ -x /bin/mount.nfs ] ; then
+        # create link
+        ln -s /bin/mount.nfs /sbin/mount.nfs
+    fi
+fi
 
 function start_shell() {
     echo "Starting /bin/bash" | logger -s
@@ -89,6 +115,7 @@ function start_shell() {
     alias > /root/.bashrc
     chmod 0540 /etc/shadow
     echo $motherserver > /root/.rhosts
+    # TODO, FIXME; adopt for newer Centos installations
     /bin/bash  2>&1
 }
 
@@ -469,13 +496,13 @@ function install_kernel() {
     inst=`echo $conf_str | cut -d " " -f 3`
     kernel_server=`echo $conf_str | cut -d " " -f 4`
     full_newkernel=`echo $conf_str | cut -d " " -f 5`
-    new_version=`echo $conf_str | cut -d " " -f 6`
-    new_release=`echo $conf_str | cut -d " " -f 7`
+    newkernel=`echo $conf_str | cut -d " " -f 6`
+    new_version=`echo $conf_str | cut -d " " -f 7`
+    new_release=`echo $conf_str | cut -d " " -f 8`
     newkernel_dir=$(dirname $full_newkernel)
-    newkernel=$(basename $full_newkernel)
     send_info "got kernel $newkernel (inst=$inst, dir $newkernel_dir, version $new_version, release $new_release) after $num request(s)"
     mkdir /kernel
-    mount_it "kernel" ${kernel_server}:${newkernel_dir}/${newkernel} /kernel "${RO_MOUNTOPTS}"
+    mount_it "kernel" ${kernel_server}:${full_newkernel} /kernel "${RO_MOUNTOPTS}"
     newkversion="$new_version.$new_release"
     gen_initrd=0
     if [ "$inst" == "1" ] ; then
@@ -500,7 +527,7 @@ function install_kernel() {
         if [ -f /kernel/modules.tar.bz2 ] ; then
             # create a local copy
             cp -a /kernel/modules.tar.bz2 /$basedir/.icswinfo/
-            tar xjf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
+            tar xjhf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
         else
             echo -e "${YELLOW}No modules.tar.bz2 file found for actual kernel${OFF}"
         fi
@@ -514,16 +541,16 @@ function install_kernel() {
         gen_initrd=1
         initrd_cause="modules differ"
     fi
-    if [ $gen_initrd -eq 1 ] ; then
+    #if [ $gen_initrd -eq 1 ] ; then
     # create inital ramdisk
-        send_info "${GENERATE_INITRD} for $newkernel ($newkversion), $initrd_cause, modules $*"
-        echo "$*" > /$basedir/boot/.mods
-    #if [ -f /$basedir/etc/redhat-release ] ; then
-    #    chroot /$basedir mkinitrd -v -f --with "$*" /boot/initrd $newkernel
-    #else 
-    #    chroot /$basedir mkinitrd -i initrd -k vmlinuz -m "$*"
+    #    send_info "${GENERATE_INITRD} for $newkernel ($newkversion), $initrd_cause, modules $*"
+    #    echo "$*" > /$basedir/boot/.mods
+    # #if [ -f /$basedir/etc/redhat-release ] ; then
+    # #    chroot /$basedir mkinitrd -v -f --with "$*" /boot/initrd $newkernel
+    # #else
+    # #    chroot /$basedir mkinitrd -i initrd -k vmlinuz -m "$*"
+    # #fi
     #fi
-    fi
     get_conf_str "new_kernel_ok"
     send_info "done. umounting kernel $newkernel"
     umount /kernel
@@ -619,6 +646,12 @@ function mount_partitions () {
             [ ! -d "$mp" ] && { mkdir -p "$mp" || err_exit "cannot create mountpoint '$mp' (code=$?)" ; }
             echo "mount -t $typ $opt $dev $mp" >&2
             mount -t $typ $opt $dev $mp
+            touch ${mp}/.icsw_testfile
+            if [ ! -f ${mp}/.icsw_testfile ] ; then
+                err_exit "cannot create .icsw_testfile in ${mp} (type ${typ}, dev ${dev})"
+            else
+                rm ${mp}/.icsw_testfile
+            fi
 # || { err_exit "cannot mount $dev type $typ to $mp (code=$?)" ; }
             echo -n "$mp "
         done
@@ -720,7 +753,7 @@ function mount_it() {
     iter=1
     while true ; do
         logger -s "trying: mount from ${src} (opt ${opts})"
-        mount ${opts} ${src} ${dst} && { 
+        mount ${opts} ${src} ${dst} && {
             break ; 
         } || {
             mc=$?;
@@ -758,11 +791,16 @@ generate_devicefiles
 # init /etc/hosts for hoststatus
 echo -e "127.0.0.1 localhost\n" > /etc/hosts
 
-echo -e "${GREEN}setting status and starting hoststatus${OFF}"
+echo -e "starting rpcbind"
+/sbin/rpcbind -w
+
+dev_short_name=$(get_conf_str 'get_device_short_name' | cut -d " " -f 3)
+
+echo -e "${GREEN}device short name is ${dev_short_name}, setting status and starting hoststatus${OFF}"
 set_hoststat ${BM_MESG}
 hoststatus_zmq &
 
-hostname bootsystem
+hostname ${dev_short_name}
 
 echo -e "${GREEN}Logging stuff${OFF}"
 set_hoststat ${START_SYSLOG}
@@ -787,14 +825,15 @@ elif [ -x /sbin/syslogd ] ; then
     echo -e "*.*\t@logserver\n" > /etc/syslog.conf
     echo -e "starting syslogd"
     /sbin/syslogd &
-elif [ -x /sbin/rsyslogd ] ; then
+elif [ -x /sbin/rsyslogd -o -x /usr/sbin/rsyslogd ] ; then
     SYSLOG_BIN=rsyslogd
     echo -e "\$ModLoad imuxsock.so" > /etc/rsyslog.conf
     echo -e "\$ModLoad imklog.so" >> /etc/rsyslog.conf
     echo -e "\$ModLoad imudp.so" >> /etc/rsyslog.conf
     echo -e "*.*\t@logserver:514\n" >> /etc/rsyslog.conf
     echo -e "starting rsyslogd"
-    /sbin/rsyslogd -f /etc/rsyslog.conf &
+    [ -x /sbin/rsyslogd ] && /sbin/rsyslogd -f /etc/rsyslog.conf &
+    [ -x /usr/sbin/rsyslogd ] && /usr/sbin/rsyslogd -f /etc/rsyslog.conf &
 else
     SYSLOG_BIN=0
 fi
@@ -1076,7 +1115,14 @@ elif [ "$do_mount" = "1" ] ; then
         set_hoststat ${MP_MESG}
         rm -rf /$basedir/*
         cd /$basedir
-        
+
+        # check general writability
+        touch .testfile
+        if [ ! -f .testfile ] ; then
+            err_exit "cannot create .testfile in root directory"
+        else
+            rm -f .testfile
+        fi
         [ ! -d sys  ] && mkdir sys
         [ ! -d proc ] && mkdir proc
         [ ! -d tmp  ] && mkdir tmp
@@ -1124,7 +1170,11 @@ elif [ "$do_mount" = "1" ] ; then
                 if [ "$basen" != "$dirperm_file" ] ; then
                     set_hoststat -q "${UNP_MESG} $basen"
                     echo -e "Unpacking $basen ($(ls -sh $file | cut -d'/' -f1 | tr -d " "))"
-                    (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
+                    if [ "${tar_flags}" = "-xjf" ] ; then
+                        (/opt/cluster/bin/pbzip2 -dc $file | tar xf - ) 2>&1 | grep -v "s in the future"
+                    else
+                        (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
+                    fi
                 fi
             done
             set_hoststat "${FIX_MESG}"
@@ -1247,27 +1297,27 @@ elif [ "$do_mount" = "1" ] ; then
     if [ "$we_are_clean" = "0" ] ; then
         install_kernel $initrd_mods
         if [ "$(get_conf_str 'modify_bootloader')" = "yes" ] ; then
-        echo -e "Modifying bootloader ..."
-    # grub call
-        if [ -x /$basedir/sbin/grub -o -x /$basedir/usr/sbin/grub ] ; then
-        install_grub $fdev $rpart
-    # lilo call
-        elif [ -x /$basedir/sbin/lilo -o -x /$basedir/usr/sbin/lilo ] ; then
-        install_lilo $fdev $rpart
+            echo -e "Modifying bootloader ..."
+        # grub call
+            if [ -x /$basedir/sbin/grub -o -x /$basedir/usr/sbin/grub ] ; then
+                install_grub $fdev $rpart
+        # lilo call
+            elif [ -x /$basedir/sbin/lilo -o -x /$basedir/usr/sbin/lilo ] ; then
+                install_lilo $fdev $rpart
+            else
+                echo -e "Neither grub nor lilo found"
+            fi
         else
-        echo -e "Neither grub nor lilo found"
-        fi
-        else
-        echo -e "No modification of bootloader requested"
+            echo -e "No modification of bootloader requested"
         fi
     fi
 # unmount partitions
     echo -e "Unmounting partitions $umounts"
     for m in $umounts ; do umount $m ; done
     if [ "$we_are_clean" = "1" ] ; then
-    ACT_MSG="${JT_CLEAN}"
+        ACT_MSG="${JT_CLEAN}"
     else
-    ACT_MSG="${JT_NORMAL} in ${prod_net} net"
+        ACT_MSG="${JT_NORMAL} in ${prod_net} net"
     fi
     echo $rpart $rparttype ${ACT_MSG} > /tmp/mother
 
@@ -1287,6 +1337,7 @@ umount /conf
 [ "$SYSLOG_BIN" != "0" ] && killall $SYSLOG_BIN
 # kill klogd when running
 [ -x /sbin/klogd ] && killall klogd
+killall rpcbind
 umount /sys
 umount /proc
 

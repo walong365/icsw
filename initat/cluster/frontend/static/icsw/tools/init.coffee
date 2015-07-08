@@ -189,10 +189,15 @@ angular.module(
     bus.receive = (msg, scope, func) ->
         unbind = $rootScope.$on(msg, func)
         scope.$on("$destroy", unbind)
+
+    # this can be used to improve typo safety:
+    bus.event_types = {
+        CATEGORY_CHANGED: "icsw.tools.msg_bus.1"  # called when any category (membership or category itself) is changed
+    }
     return bus
 ]).directive("icswSelMan", ["msgbus", (msgbus) ->
     # selection manager directive
-    # selman=1 ... single device mode (==popup)
+    # selman=1 ... popup mode (show devices defined by attribute)
     # selman=0 ... single or multi device mode, depend on sidebar selection
     return {
         restrict: "A"
@@ -200,14 +205,9 @@ angular.module(
         link: (scope, el, attrs) ->
             if parseInt(attrs.icswSelMan)
                 # console.log "popup actsm", attrs
-                scope.$watch(attrs["devicepk"], (new_val) ->
-                    if new_val
-                        if angular.isArray(new_val)
-                            if new_val.length
-                                scope.new_devsel(new_val)
-                        else
-                            # single device mode, for instance for deviceinfo
-                            scope.new_devsel([new_val])
+                scope.$watch(attrs["devicepklist"], (new_val) ->
+                    if new_val and new_val.length
+                        scope.new_devsel(new_val)
                 )
             else
                 # console.log "actsm", attrs
@@ -393,15 +393,9 @@ angular.module(
             else
                 return false
     has_menu_permission = (p_name) ->
-        if angular.isArray(p_name)
-            for p in p_name
-                if has_menu_permission(p)
-                    return true
-            return false
-        else
-            if p_name.split(".").length == 2
-                p_name = "backbone.#{p_name}"
-            return p_name of data.global_permissions or p_name of data.object_permissions
+        if p_name.split(".").length == 2
+            p_name = "backbone.#{p_name}"
+        return p_name of data.global_permissions or p_name of data.object_permissions
     has_valid_license = (license) ->
         if Object.keys(data.license_data).length == 0
             # not loaded yet
@@ -428,6 +422,11 @@ angular.module(
 
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission
+        has_any_menu_permission: (permissions) ->
+            for p in permissions
+                if has_menu_permission(p)
+                    return true
+            return false
 
         has_valid_license: has_valid_license
         has_any_valid_license: (licenses) ->
@@ -952,4 +951,8 @@ angular.module(
             mom = moment()
             console.log("creating element: ", attrs.icswLogDomCreation, scope.$index, mom.format(), mom.milliseconds())
     }
-])
+]).filter('capitalize', () ->
+    return (input, all) ->
+        if (!!input)
+            return input.replace(/([^\W_]+[^\s-]*) */g, (txt) -> return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
+)

@@ -25,36 +25,6 @@ angular.module(
 ).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window", "msgbus", "access_level_service", "ICSW_URLS",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window, msgbus, access_level_service, ICSW_URLS) ->
         access_level_service.install($scope)
-        $scope.show = false
-        $scope.permissions = undefined
-        $scope.devicepk = undefined
-        msgbus.emit("devselreceiver", "icswDeviceInfoOverviewCtrl")
-        msgbus.receive("devicelist", $scope, (name, args) ->
-            $scope.dev_pk_list = args[0]
-            $scope.dev_pk_nmd_list = args[1]
-            $scope.devg_pk_list = args[2]
-            $scope.dev_pk_md_list = args[3]
-            # console.log args
-            $scope.addon_devices = []
-            if $scope.dev_pk_list.length
-                $scope.show = true
-                $scope.fetch_info()
-            else
-                $scope.show = false
-        )
-        $scope.fetch_info = () ->
-            wait_list = [
-                Restangular.one(ICSW_URLS.REST_DEVICE_DETAIL.slice(1).slice(0, -2), $scope.dev_pk_list[0]).get()
-                Restangular.one(ICSW_URLS.REST_MIN_ACCESS_LEVELS.slice(1)).get( {"obj_type": "device", "obj_list": angular.toJson($scope.dev_pk_list)})
-            ]
-            # access levels needed ?
-            $q.all(wait_list).then((data) ->
-                $scope.show_div(data[0], data[1])
-            )
-        $scope.show_div = (json, access_json) ->
-            $scope.devicepk = json.idx
-            $scope.permissions = access_json
-            $scope.show = true
 ]).service(
     "DeviceOverviewService",
     [
@@ -66,21 +36,20 @@ angular.module(
                         msgbus.emit("devicelist", [[dev.idx], [], [], [dev.idx]])
                     else
                         msgbus.emit("devicelist", [[dev.idx], [dev.idx], [], []])
-                "NewOverview" : (event, dev) ->
+                "NewOverview" : (event, devicelist) ->
                     # dev can also be a structure from a devicemap (where only name and id/idx are defined)
                     # create new modal for device
                     # device object with access_levels
                     sub_scope = $rootScope.$new()
                     access_level_service.install(sub_scope)
-                    dev_idx = dev.idx
-                    sub_scope.devicepk = dev_idx
-                    if dev.is_meta_device
-                        sub_scope.dev_pk_list = [dev_idx]
+
+                    sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
+                    sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist if !dev.is_meta_device)
+                    if !sub_scope.dev_pk_nmd_list?
                         sub_scope.dev_pk_nmd_list = []
-                    else
-                        sub_scope.dev_pk_list = [dev_idx]
-                        sub_scope.dev_pk_nmd_list = [dev_idx]
-                    sub_scope.singledevicemode = 1
+                    sub_scope.devicepklist = sub_scope.dev_pk_list
+                    sub_scope.popupmode = 1
+
                     my_mixin = new angular_modal_mixin(
                         sub_scope,
                         $templateCache,
@@ -90,14 +59,18 @@ angular.module(
                     )
                     my_mixin.cssClass = "modal-wide"
                     my_mixin.template = "DeviceOverviewTemplate"
-                    my_mixin.edit(null, dev_idx)
+                    my_mixin.edit(null, devicelist[0])
                     # todo: destroy sub_scope
             }
     ]
 ).run(["$templateCache", ($templateCache) ->
     $templateCache.put(
         "DeviceOverviewTemplate",
-        "<deviceoverview devicepk='devicepk'></deviceoverview>"
+        """
+<div style=\"font-size: 12px">
+    <deviceoverview devicepklist='devicepklist'></deviceoverview>
+</div>
+"""
     )
 ]).service("DeviceOverviewSettings", [() ->
     # default value
@@ -114,20 +87,15 @@ angular.module(
         replace: true
         compile: (element, attrs) ->
             return (scope, iElement, iAttrs) ->
-                if attrs["singledevicemode"]?
-                    scope.singledevicemode = parseInt(attrs["singledevicemode"])
+                if attrs["popupmode"]?
+                    scope.popupmode = parseInt(attrs["popupmode"])
                 scope.current_subscope = undefined
                 scope.pk_list = {
                     "general": []
-                    "category": []
-                    "location": []
                     "network": []
                     "config": []
-                    "partinfo": []
-                    "variables": []
                     "status_history": []
                     "livestatus": []
-                    "monconfig": []
                     "graphing": []
                 }
                 for key of scope.pk_list
@@ -135,10 +103,10 @@ angular.module(
                 if DeviceOverviewSettings.get_mode()
                     _mode = DeviceOverviewSettings.get_mode()
                     scope["#{_mode}_active"] = true
-                if scope.singledevicemode
-                    scope.$watch(attrs["devicepk"], (new_val) ->
+                if scope.popupmode
+                    scope.$watch(attrs["devicepklist"], (new_val) ->
                         if new_val
-                            scope.devicepk = new_val
+                            scope.devicepk = new_val[0]
                             scope.new_device_sel()
                     )
                 else
@@ -170,9 +138,9 @@ angular.module(
                         scope.current_subscope = new_scope
                 scope.activate = (name) ->
                     DeviceOverviewSettings.set_mode(name)
-                    if name in ["category", "location", "network", "partinfo", "status_history", "livestatus", "monconfig"]
+                    if name in ["network", "status_history", "livestatus", "category"]
                         scope.pk_list[name] = scope.dev_pk_nmd_list
-                    else if name in ["config", "variables", "graphing"]
+                    else if name in ["config", "graphing"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
 ]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "toaster",
@@ -187,8 +155,6 @@ angular.module(
                     if entry.idx == $scope._edit_obj.mon_ext_host
                         img_url = entry.data_image
             return img_url
-        $scope.toggle_uuid = () ->
-            $scope.show_uuid = !$scope.show_uuid
         $scope.get_full_name = () ->
             if $scope._edit_obj.is_meta_device
                 return $scope._edit_obj.full_name.substr(8)
@@ -203,38 +169,53 @@ angular.module(
                         if $scope._edit_obj.is_meta_device
                             $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
                         # selectively reload sidebar tree
-                        reload_sidebar_tree([$scope._edit_obj.idx])
+                        # FIXME, TODO
+                        # reload_sidebar_tree([$scope._edit_obj.idx])
                     )
             else
                 toaster.pop("warning", "form validation problem", "", 0)
 ]).directive("icswSimpleDeviceInfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
     return {
         restrict : "EA"
+        controller: "deviceinfo_ctrl"
         link : (scope, element, attrs) ->
             scope._edit_obj = null
             scope.device_pk = null
             scope.$on("$destroy", () ->
             )
+            scope.toggle_uuid = () ->
+                scope.show_uuid = !scope.show_uuid
             scope.new_devsel = (in_list) ->
-                new_val = in_list[0]
-                scope.device_pk = new_val
-                wait_list = [
-                    restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
-                    restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
-                    restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
-                    restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false, "with_com_info": true}])
-                ]
-                $q.all(wait_list).then((data) ->
-                    #form = data[0][0].form
-                    scope.domain_tree_node = data[0]
-                    scope.mon_device_templ_list = data[1]
-                    scope.mon_ext_host_list = data[2]
-                    scope._edit_obj = data[3][0]
-                    if scope._edit_obj.is_meta_device
-                        scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                if in_list.length > 0
+                    new_val = in_list[0]
+                    scope.device_pk = new_val
+                    wait_list = [
+                        restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
+                        restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
+                        restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
+                        restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false, "with_com_info": true}])
+                    ]
+                    $q.all(wait_list).then((data) ->
+                        #form = data[0][0].form
+                        scope.domain_tree_node = data[0]
+                        scope.mon_device_templ_list = data[1]
+                        scope.mon_ext_host_list = data[2]
+                        scope._edit_obj = data[3][0]
+                        if scope._edit_obj.is_meta_device
+                            scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                        element.children().remove()
+                        element.append($compile($templateCache.get("device.info.form"))(scope))
+                        element.append($compile("""
+                        <div ng-show="show_uuid">
+                            <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
+                            <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
+                            <h4>and restart host-monitoring .</h4>
+                        </div>
+                        """)(scope))
+                    )
+                else
                     element.children().remove()
-                    element.append($compile($templateCache.get("device.info.form"))(scope))
-                )
+                    element.append($compile('<h2>Details</h2><alert type="warning" style="max-width: 500px">No devices selected.</alert>')(scope))
             scope.is_device = () ->
                 return not scope._edit_obj.is_meta_device
             scope.get_monitoring_hint_info = () ->

@@ -109,4 +109,3 @@ angular.module(
 
     return data
 ])
-

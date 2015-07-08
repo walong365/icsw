@@ -130,7 +130,7 @@ class server_process(
         for c_name in Client.name_set:
             cur_c = Client.get(c_name)
             if cur_c is None:
-                self.log("no client found for '%s'" % (c_name), logging_tools.LOG_LEVEL_ERROR)
+                self.log("no client found for '{}'".format(c_name), logging_tools.LOG_LEVEL_ERROR)
             else:
                 cur_c.close()
         process_tools.delete_pid(self.__pid_name)
@@ -299,9 +299,10 @@ class server_process(
             valid_uuids = [uuid for uuid in full_uuids if uuid in Client.uuid_set]
             valid_devs = [Client.get(uuid).name for uuid in valid_uuids]
             self.log(
-                "{} requested, {} found".format(
+                "{} requested, {} found: {}".format(
                     logging_tools.get_plural("device", len(com_uuids)),
-                    logging_tools.get_plural("device", len(valid_devs))
+                    logging_tools.get_plural("device", len(valid_devs)),
+                    logging_tools.reduce_list(valid_devs) or "---",
                 )
             )
         for cur_uuid in com_uuids:

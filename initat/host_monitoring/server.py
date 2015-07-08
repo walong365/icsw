@@ -43,7 +43,7 @@ import zmq
 from .config import global_config
 from .constants import TIME_FORMAT
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
-from .hm_inotify import inotify_process
+from .hm_inotify import HMInotifyProcess
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
 
@@ -98,7 +98,7 @@ class server_code(threading_tools.process_pool):
         self.register_func("register_callback", self._register_callback)
         self.register_func("callback_result", self._callback_result)
         if not global_config["NO_INOTIFY"]:
-            self.add_process(inotify_process("inotify", busy_loop=True, kill_myself=True), start=True)
+            self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self._show_config()
         self.__debug = global_config["DEBUG"]
         if self.objgraph:

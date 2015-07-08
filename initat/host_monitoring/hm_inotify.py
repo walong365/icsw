@@ -28,16 +28,12 @@ import stat
 import time
 
 from initat.host_monitoring.config import global_config
-from initat.tools import inotify_tools
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
-from initat.tools import uuid_tools
+from initat.tools import inotify_tools, logging_tools, process_tools, server_command, \
+    threading_tools, uuid_tools
 import zmq
 
 
-class file_watcher(object):
+class HMFileWatcher(object):
     global_id = 1
 
     def __init__(self, process_obj, **kwargs):
@@ -49,13 +45,15 @@ class file_watcher(object):
         # exit flag
         self.__exit_flag = False
         # check for valid id, target_server and target_port
-        self.fw_id = "fw{}".format(file_watcher.global_id)  # args.get("id", "")
+        self.fw_id = "fw{}".format(HMFileWatcher.global_id)  # args.get("id", "")
         self.send_id = kwargs["send_id"]
-        file_watcher.global_id += 1
+        HMFileWatcher.global_id += 1
         # files and dirs
         self.__act_files, self.__act_dirs = (set([]), [])
         self.__new_files = []
         self.__use_inotify = "poll" not in kwargs
+        # simple filter, for instance to check for loop output in OUTCAR
+        self.line_filter = kwargs.get("line_filter", "").lower()
         # if not self.fw_id:
         #    raise ValueError, "ID not given or empty ID"
         if self.mode == "content":
@@ -204,7 +202,9 @@ class file_watcher(object):
                         self.log(
                             "removing {}: {}".format(
                                 logging_tools.get_plural("directory", len(old_dirs)),
-                                ", ".join(old_dirs)))
+                                ", ".join(old_dirs)
+                            )
+                        )
                         for del_dir in old_dirs:
                             self.__act_dirs.remove(del_dir)
                             self.__process.inotify_watcher.remove_watcher(self.fw_id, del_dir)
@@ -354,11 +354,18 @@ class file_watcher(object):
         else:
             if self.__verbose:
                 self.log("checking content of {}".format(f_name))
+            if self.line_filter:
+                if self.__verbose:
+                    self.log("applying line_filter '{}'".format(self.line_filter))
+                new_content = "\n".join([_line for _line in new_content.split("\n") if _line.lower().count(self.line_filter)])
             if new_content != self.content.get(f_name, ""):
-                self.log("content of {} has changed (old: {}, new: {})".format(
-                    f_name,
-                    logging_tools.get_plural("byte", len(self.content.get(f_name, ""))),
-                    logging_tools.get_plural("byte", len(new_content))))
+                self.log(
+                    "content of {} has changed (old: {}, new: {})".format(
+                        f_name,
+                        logging_tools.get_plural("byte", len(self.content.get(f_name, ""))),
+                        logging_tools.get_plural("byte", len(new_content))
+                    )
+                )
                 self.__content_update = time.time()
                 self.content[f_name] = new_content
                 if self.target_port:
@@ -399,7 +406,7 @@ class file_watcher(object):
                             send_com)
 
 
-class inotify_process(threading_tools.process_obj):
+class HMInotifyProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], context=self.zmq_context)
         self.__watcher = inotify_tools.InotifyWatcher()
@@ -487,8 +494,16 @@ class inotify_process(threading_tools.process_obj):
         args = {key.replace("-", "_"): value for key, value in args.iteritems()}
         found_keys = set(args.keys())
         needed_keys = {
-            "register_file_watch": set(["send_id", "mode", "target_server", "target_port", "dir", "match"]),
-            "unregister_file_watch": set(["id"]),
+            "register_file_watch": set(
+                [
+                    "send_id", "mode", "target_server", "target_port", "dir", "match"
+                ]
+            ),
+            "unregister_file_watch": set(
+                [
+                    "id"
+                ]
+            ),
         }.get(in_com, set())
         if needed_keys & found_keys == needed_keys:
             # set default return value
@@ -515,7 +530,7 @@ class inotify_process(threading_tools.process_obj):
         self.send_pool_message("callback_result", src_id, unicode(srv_com))
 
     def _register_file_watch(self, cur_com, kwargs):
-        new_fw = file_watcher(self, **kwargs)
+        new_fw = HMFileWatcher(self, **kwargs)
         self.__file_watcher_dict[new_fw.fw_id] = new_fw
         cur_com.set_result(
             "{}".format(new_fw.fw_id)
@@ -531,7 +546,7 @@ class inotify_process(threading_tools.process_obj):
                     "ok removed ID {}".format(fw_id),
                 )
             else:
-                self.log("cannot remove file_watcher entry with id {} (present: {})".format(
+                self.log("cannot remove HMFileWatcher entry with id {} (present: {})".format(
                     fw_id,
                     self.__file_watcher_dict and ", ".join(self.__file_watcher_dict.keys()) or "none"), logging_tools.LOG_LEVEL_ERROR)
                 cur_com.set_result(

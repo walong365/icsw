@@ -108,6 +108,7 @@ class snmp_job(object):
         self.uuid = kwargs.get("uuid", "")
         self.max_runtime = kwargs.get("max_runtime", 45)
         self.run_every = kwargs.get("run_every", 30)
+        self.snmp_read_timeout = kwargs.get("snmp_read_timeout", 10)
         self.counter = 0
         self.last_start = None
         # batch id we are currently waiting for
@@ -150,7 +151,7 @@ class snmp_job(object):
             _old_pks = set([_val.pk for _val in self.snmp_schemes])
             if _new_pks != _old_pks:
                 self.snmp_schemes = attr_value
-                self._init_scheme_object()
+                self._init_snmp_handlers()
         else:
             if getattr(self, attr_name) != attr_value:
                 self.log(
@@ -176,7 +177,7 @@ class snmp_job(object):
                 self.snmp_read_community,
                 self.waiting_for,
                 True,
-                10,
+                self.snmp_read_timeout,
                 *fetch_list
             )
 

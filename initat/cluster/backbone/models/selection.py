@@ -22,6 +22,8 @@
 """ selection models for NOCTUA, CORVUS and NESTOR """
 
 from django.db import models
+from django.db.models import Q
+
 
 __all__ = [
     "DeviceSelection",
@@ -39,6 +41,22 @@ class DeviceSelection(models.Model):
     # lazy categories
     categories = models.ManyToManyField("category")
     date = models.DateTimeField(auto_now_add=True)
+
+    def resolve(self):
+        # return a list of all effectively selectded devices
+        return list(
+            self.devices.all()
+        ) + sum(
+            [
+                list(_dev_group.device_group.filter(Q(is_meta_device=False))) for _dev_group in self.device_groups.all()
+            ],
+            []
+        ) + sum(
+            [
+                list(_cat.device_set.filter(Q(is_metadevice=False))) for _cat in self.categories.all()
+            ],
+            []
+        )
 
     def __unicode__(self):
         return u"Selection '{}' for user {}".format(

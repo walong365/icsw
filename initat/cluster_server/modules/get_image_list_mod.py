@@ -18,12 +18,12 @@
 
 """ checks image directories for valid images """
 
-from initat.cluster_server.config import global_config
-import cs_base_class
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
-from initat.tools import server_command
+
+from initat.cluster_server.config import global_config
+from initat.tools import logging_tools, process_tools, server_command
+
+import cs_base_class
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 
@@ -73,7 +73,9 @@ class get_image_list(cs_base_class.server_com):
                 cur_inst.srv_com["result"] = image_list
                 for image_name, sys_dict in valid_sys.iteritems():
                     sys_dict["bitcount"] = "{:d}".format(sys_dict["bitcount"])
-                    image_list.append(cur_inst.srv_com.builder("image", image_name, **sys_dict))
+                    image_list.append(
+                        cur_inst.srv_com.builder("image", image_name, **sys_dict)
+                    )
         else:
             cur_inst.srv_com.set_result(
                 "error image-source-dir '{}' not found".format(source_dir),

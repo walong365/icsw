@@ -256,7 +256,11 @@ class DataStore(object):
 
     def vector_struct(self):
         _struct = []
-        for mvs in MVStructEntry.objects.filter(Q(machine_vector=self.mv)).prefetch_related("mvvalueentry_set"):
+        for mvs in MVStructEntry.objects.filter(
+            Q(machine_vector=self.mv)
+        ).prefetch_related(
+            "mvvalueentry_set__sensorthreshold_set"
+        ):
             mvv_list = []
             for mvv in mvs.mvvalueentry_set.all():
                 if not mvv.full_key:
@@ -269,6 +273,7 @@ class DataStore(object):
                         "info": mvv.info,
                         "key": mvv.key,
                         "build_info": "",
+                        "num_sensors": mvv.sensorthreshold_set.all().count()
                     }
                 )
             _struct.append(

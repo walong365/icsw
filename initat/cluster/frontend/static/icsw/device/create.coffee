@@ -17,7 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-create_module = angular.module(
+
+angular.module(
     "icsw.device.create",
     [
         "ngSanitize", "ui.bootstrap", "restangular"
@@ -118,7 +119,8 @@ create_module = angular.module(
                 }
                 success : (xml) =>
                     icswParseXMLResponseService(xml)
-                    reload_sidebar_tree()
+                    # FIXME, TODO
+                    # reload_sidebar_tree()
                     blockUI.stop()
                     $scope.reload()
         $scope.reload()

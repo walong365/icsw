@@ -42,6 +42,15 @@ from initat.tools import logging_tools, server_command, process_tools
 logger = logging.getLogger("cluster.device")
 
 
+class DeviceGeneral(View):
+    def get(self, request):
+        return render_me(
+            request,
+            "device_general.html",
+            {}
+        )()
+
+
 class device_tree_smart(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_tree"]
 
@@ -183,7 +192,7 @@ class manual_connection(View):
             Q(snmp_schemes__power_control=True)
         )
         # print cd_devices
-        non_cd_devices = device.all_real_enabled()
+        non_cd_devices = device.all_real_enabled.all()
         logger.info("cd / non-cd devices: {:d} / {:d}".format(cd_devices.count(), non_cd_devices.count()))
         # iterate over non-cd-device
         # pprint.pprint(re_dict)

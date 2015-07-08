@@ -23,7 +23,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
-        "icsw.device.info", "icsw.layout.sidebar",
+        "icsw.device.info", "icsw.layout.sidebar", "icsw.tools.tree",
     ]
 ).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
     # used by menu.coffee (menu_base)
@@ -153,12 +153,14 @@ angular.module(
             for cat in data[1]
                 cat.devices = []
                 cat_lut[cat.idx] = cat
-            # devices
+            # device groups
             for dev in data[0]
                 if dev.is_meta_device
                     dev.devices = []
                     devg_lut[dev.device_group] = dev
-                else
+            # devices
+            for dev in data[0]
+                if ! dev.is_meta_device
                     devg_lut[dev.device_group].devices.push(dev.idx)
                 dev_lut[dev.idx] = dev
                 if dev.categories
@@ -245,12 +247,13 @@ angular.module(
 [
     "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
+    "DeviceOverviewService",
 (
     $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus,
-    icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService
+    icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
+    DeviceOverviewService
 ) ->
     # search settings
-    $scope.searchstr = "ddd"
     $scope.search_ok = true
     $scope.is_loading = true
     $scope.active_tab = "d"
@@ -300,18 +303,9 @@ angular.module(
                 t_cat_lut[entry.parent].add_child(t_entry)
             else
                 $scope.tc_categories.add_root_node(t_entry)
-        # build devices tree
-        cur_dg = undefined
+        # build device group tree and top level of device tree
+        dg_lut = {}
         for entry in data[0]
-            # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
-            t_entry = $scope.tc_devices.new_node(
-                {
-                    obj: entry.idx
-                    folder: entry.is_meta_device
-                    _node_type: "d"
-                    selected: $scope.selection.device_selected(entry.idx)
-                }
-            )
             if entry.is_meta_device
                 g_entry = $scope.tc_groups.new_node(
                     {
@@ -322,10 +316,29 @@ angular.module(
                     }
                 )
                 $scope.tc_groups.add_root_node(g_entry)
-                cur_dg = t_entry
-                $scope.tc_devices.add_root_node(cur_dg)
-            else
-                cur_dg.add_child(t_entry)
+                d_entry = $scope.tc_devices.new_node(
+                    {
+                        obj: entry.idx
+                        folder: true
+                        _node_type: "d"
+                        selected: $scope.selection.device_selected(entry.idx)
+                    }
+                )
+                $scope.tc_devices.add_root_node(d_entry)
+                dg_lut[entry.device_group] = d_entry
+        # build devices tree
+        for entry in data[0]
+            if ! entry.is_meta_device
+                # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
+                d_entry = $scope.tc_devices.new_node(
+                    {
+                        obj: entry.idx
+                        folder: false
+                        _node_type: "d"
+                        selected: $scope.selection.device_selected(entry.idx)
+                    }
+                )
+                dg_lut[entry.device_group].add_child(d_entry)
         $scope.tc_devices.prune(
             (entry) ->
                 return entry._node_type == "d"
@@ -366,6 +379,8 @@ angular.module(
             $timeout.cancel($scope.cur_search_to)
         $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
     $scope.set_search_filter = () ->
+        if $scope.vars.search_str == ""
+            return
         try
             cur_re = new RegExp($scope.vars.search_str, "gi")
         catch exc
@@ -534,6 +549,11 @@ angular.module(
                     $scope.vars.current = undefined
                 )
             )
+
+    $scope.show_current_selection_in_overlay = () ->
+        devsel_list = $scope.selection.get_devsel_list()
+        selected_devices = (icswSelectionService.resolve_device(_pk) for _pk in devsel_list[0])
+        DeviceOverviewService.NewOverview(event, selected_devices)
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
     show_dialog = (scope) ->
         sel_scope = scope.$new()
@@ -574,16 +594,18 @@ angular.module(
         "show_dialog": show_dialog
         "quick_dialog": quick_dialog
     }
-]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswSelectionService", (DeviceOverviewService, icswSelectionService) ->
-    class selection_tree extends tree_config
+]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswSelectionService", "icswTreeConfig", (DeviceOverviewService, icswSelectionService, icswTreeConfig) ->
+    class selection_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
         handle_click: (entry, event) =>
             if entry._node_type == "d"
                 dev = icswSelectionService.resolve_device(entry.obj)
-                DeviceOverviewService.NewOverview(event, dev)
+                DeviceOverviewService.NewOverview(event, [dev])
             else
                 entry.set_selected(not entry.selected)
+            # need $apply() here, $digest is not enough
+            @scope.$apply()
         get_name: (t_entry) ->
             entry = @get_dev_entry(t_entry)
             if t_entry._node_type == "f"
@@ -635,4 +657,5 @@ angular.module(
                 return icswSelectionService.resolve_device(t_entry.obj)
         selection_changed: () =>
             @scope.selection_changed()
+            @scope.$digest()
 ])

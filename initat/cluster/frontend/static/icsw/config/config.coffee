@@ -22,8 +22,8 @@ config_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
-).service("icswConfigMonCategoryTreeService", () ->
-    class cat_tree extends tree_config
+).service("icswConfigMonCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class cat_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -45,8 +45,9 @@ config_module = angular.module(
                     return []
             )
             @scope.new_selection(sel_list)
-).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService) ->
+            @scope.$digest()
+]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
@@ -121,7 +122,8 @@ config_module = angular.module(
         $scope.config_edit.modify_rest_url = ICSW_URLS.REST_CONFIG_DETAIL.slice(1).slice(0, -2)
         $scope.config_edit.create_list = $scope.entries
         $scope.config_edit.new_object_at_tail = false
-        $scope.config_edit.change_signal = "icsw.new_config"
+        config_change_signal = "icsw.new_config"
+        $scope.config_edit.change_signal = config_change_signal
         $scope.config_edit.new_object = (scope) ->
             new_obj = {
                 "name" : "new config", "description" : "", "priority" : 0, "mon_check_command_set" : [], "config_script_set" : [],
@@ -130,6 +132,12 @@ config_module = angular.module(
                 "config_catalog" : (entry.idx for entry in scope.config_catalogs)[0]
             }
             return new_obj
+
+        msgbus.receive(config_change_signal, $scope, () ->
+            # for all config changes, we have to assume that some category has been assigned
+            msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
+        )
+
         # catalog edit
         $scope.catalog_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.catalog_edit.create_template = "config.catalog.form"
@@ -203,6 +211,11 @@ config_module = angular.module(
                         entry.var_lut[vh.var_name] = vh
                 $scope.reload_upload()
             )
+        $scope.reload_categories = () ->
+            restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}]).then((new_data) ->
+                $scope.categories = new_data
+            )
+        msgbus.receive(msgbus.event_types.CATEGORY_CHANGED, $scope, $scope.reload_categories)
         $scope.reload_upload = () ->
             icswCallAjaxService
                 url     : ICSW_URLS.CONFIG_GET_CACHED_UPLOADS
@@ -527,6 +540,7 @@ config_module = angular.module(
                 if res
                     $scope.unselect_object(_mon)
                     $scope.filter_conf(config, $scope)
+                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # have to assume that some cat has changed
             )
         $scope.edit_mon = (config, obj, event) ->
             $scope.mon_edit.create_list = config.mon_check_command_set
@@ -536,6 +550,7 @@ config_module = angular.module(
                 (mod_obj) ->
                     if mod_obj != false
                         $scope.filter_conf(config, $scope)
+                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # have to assume that some cat has changed
             )
         $scope.get_mon_command_line = (obj) ->
             if obj.mon_check_command_special
@@ -552,6 +567,7 @@ config_module = angular.module(
                     if icswParseXMLResponseService(xml)
                         new_moncc = angular.fromJson($(xml).find("value[name='mon_cc']").text())
                         config.mon_check_command_set.push(new_moncc)
+                        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # have to assume that some cat has changed
                         $scope.$apply(() ->
                             $scope._set_fields(config)
                         )
@@ -581,7 +597,8 @@ config_module = angular.module(
                 (new_obj) ->
                     if new_obj != false
                         $scope.filter_conf(config, $scope)
-            ) 
+                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # have to assume that some cat has changed
+            )
         $scope.get_event_handler = (ev_idx) ->
             if ev_idx
                 # not fast but working
@@ -714,7 +731,7 @@ config_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.config.mon.table")
     }
-]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigMonCategoryTreeService", ($templateCache, icswConfigMonCategoryTreeService) ->
+]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigMonCategoryTreeService", "msgbus", ($templateCache, icswConfigMonCategoryTreeService, msgbus) ->
     return {
         restrict : "EA"
         template : "<tree treeconfig='cat_tree'></tree>"
@@ -722,27 +739,32 @@ config_module = angular.module(
             # start at -1 because we dont count the Top level category
             scope.num_cats = -1
             scope.cat_tree = new icswConfigMonCategoryTreeService(scope)
-            cat_tree_lut = {}
-            if attrs["mode"] == "conf"
-                sel_cat = scope._edit_obj.categories
-                top_cat_re = new RegExp(/^\/config/)
-            else if attrs["mode"] == "mon"
-                # mon
-                sel_cat = scope._edit_obj.categories
-                top_cat_re = new RegExp(/^\/mon/)
-            for entry in scope.categories
-                if entry.full_name.match(top_cat_re)
-                    scope.num_cats++
-                    t_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_cat})
-                    cat_tree_lut[entry.idx] = t_entry
-                    if entry.parent and entry.parent of cat_tree_lut
-                        cat_tree_lut[entry.parent].add_child(t_entry)
-                    else
-                        # hide selection from root nodes
-                        t_entry._show_select = false
-                        scope.cat_tree.add_root_node(t_entry)
-            scope.cat_tree_lut = cat_tree_lut
-            scope.cat_tree.show_selected(true)
+            update = () ->
+                scope.cat_tree.clear_root_nodes()
+                cat_tree_lut = {}
+                if attrs["mode"] == "conf"
+                    sel_cat = scope._edit_obj.categories
+                    top_cat_re = new RegExp(/^\/config/)
+                else if attrs["mode"] == "mon"
+                    # mon
+                    sel_cat = scope._edit_obj.categories
+                    top_cat_re = new RegExp(/^\/mon/)
+                for entry in scope.categories
+                    if entry.full_name.match(top_cat_re)
+                        scope.num_cats++
+                        t_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_cat})
+                        cat_tree_lut[entry.idx] = t_entry
+                        if entry.parent and entry.parent of cat_tree_lut
+                            cat_tree_lut[entry.parent].add_child(t_entry)
+                        else
+                            # hide selection from root nodes
+                            t_entry._show_select = false
+                            scope.cat_tree.add_root_node(t_entry)
+
+                scope.cat_tree_lut = cat_tree_lut
+                scope.cat_tree.show_selected(true)
+            update()
+            msgbus.receive(msgbus.event_types.CATEGORY_CHANGED, scope, update)
             scope.new_selection = (new_sel) ->
                 scope._edit_obj.categories = new_sel
     }

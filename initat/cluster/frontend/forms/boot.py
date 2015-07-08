@@ -127,7 +127,7 @@ class boot_single_form(Form):
             Field(
                 "new_kernel",
                 repeat="value.idx as value in kernels",
-                display="name",
+                display="display_name",
                 placeholder="kernel",
                 filter="{name:$select.search}",
                 wrapper_ng_show="bo_enabled['k']",
@@ -264,7 +264,7 @@ class boot_many_form(Form):
                     "new_kernel",
                     {
                         "repeat": "value.idx as value in kernels",
-                        "display": "name",
+                        "display": "display_name",
                         "placeholder": "kernel",
                         "filter": "{name:$select.search}",
                     },

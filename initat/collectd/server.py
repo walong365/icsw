@@ -31,25 +31,26 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
-from .sensor_threshold import ThresholdContainer
-from initat.collectd.background import snmp_job, bg_job, ipmi_builder
-from initat.collectd.resize import resize_process
-from initat.collectd.aggregate import aggregate_process
-from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
-from initat.collectd.collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, file_creator
-from initat.collectd.dbsync import SyncProcess
 from initat.snmp.process import snmp_process_container
 from lxml.builder import E  # @UnresolvedImports
 from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, uuid_tools
 import zmq
+from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 
+from .sensor_threshold import ThresholdContainer
+from .background import snmp_job, bg_job, ipmi_builder
+from .resize import resize_process
+from .aggregate import aggregate_process
+from .config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
+from .collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, file_creator
+from .dbsync import SyncProcess
 from .rsync import RSyncMixin
 
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin, RSyncMixin):
+class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin, RSyncMixin, ServerBackgroundNotifyMixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -97,6 +98,12 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.add_process(aggregate_process("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
         connection.close()
+        self.init_notify_framework(global_config)
+
+    # needed for background-notify mixin
+    @property
+    def log_template(self):
+        return self.__log_template
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
@@ -403,11 +410,23 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         return _reachable
 
     def _get_snmp_hosts(self, _router):
+        def _cast_snmp_version(_vers):
+            if type(_vers) in [int, long]:
+                return _vers
+            elif _vers.isdigit():
+                return int(_vers)
+            else:
+                return {"2c": 2}.get(_vers, 1)
         # var cache
         _vc = var_cache(
             device.all_enabled.get(
                 Q(device_group__cluster_device_group=True)
-            ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public"}
+            ),
+            {
+                "SNMP_VERSION": 1,
+                "SNMP_READ_COMMUNITY": "public",
+                "SNMP_READ_TIMEOUT": 10,
+            }
         )
         snmp_hosts = device.all_enabled.exclude(
             Q(snmp_schemes=None)
@@ -436,8 +455,9 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     full_name="{}".format(cur_dev.full_name),
                     uuid="{}".format(cur_dev.uuid),
                     ip="{}".format(_ip),
-                    snmp_version="{:d}".format(_vars["SNMP_VERSION"]),
+                    snmp_version="{:d}".format(_cast_snmp_version(_vars["SNMP_VERSION"])),
                     snmp_read_community=_vars["SNMP_READ_COMMUNITY"],
+                    snmp_read_timeout=_vars["SNMP_READ_TIMEOUT"],
                 ) for cur_dev, _ip, _vars in _reachable
             ]
         )
@@ -491,29 +511,38 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 except:
                     self.log("error decoding command {}: {}".format(in_xml, process_tools.get_except_info), logging_tools.LOG_LEVEL_ERROR)
                 else:
+                    _send_result = True
                     com_text = in_com["command"].text
                     self.log("got command {} from {}".format(com_text, in_uuid))
                     if com_text in ["host_list", "key_list"]:
                         self._handle_hk_command(in_com, com_text)
                     elif com_text in ["sync_sensor_threshold"]:
                         self._sync_sensor_threshold(in_com)
+                    # background notify glue
+                    elif com_text in ["wf_notify"]:
+                        _send_result = False
+                        self.bg_check_notify()
+                    elif self.bg_notify_waiting_for_job(in_com):
+                        self.bg_notify_handle_result(in_com)
+                        _send_result = False
                     else:
                         self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
                         in_com.set_result(
                             "unknown command {}".format(com_text),
                             server_command.SRV_REPLY_STATE_ERROR
                         )
-                    try:
-                        zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                        zmq_sock.send_unicode(unicode(in_com))
-                    except:
-                        self.log(
-                            "error sending to {}: {}".format(
-                                in_uuid,
-                                process_tools.get_except_info()
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
+                    if _send_result:
+                        try:
+                            zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
+                            zmq_sock.send_unicode(unicode(in_com))
+                        except:
+                            self.log(
+                                "error sending to {}: {}".format(
+                                    in_uuid,
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
 
     def _still_active(self, msg):
         # return true if process is not shuting down
@@ -986,6 +1015,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                         _dev.get("snmp_read_community"),
                         device_name=_dev.get("full_name"),
                         uuid=_dev.get("uuid"),
+                        snmp_read_timeout=int(_dev.get("snmp_read_timeout", "10")),
                     )
             for same_id in _same_list:
                 _dev = _id_dict[same_id]
@@ -1004,10 +1034,16 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                         ("snmp_schemes", _schemes),
                         ("snmp_version", int(_dev.get("snmp_version"))),
                         ("snmp_read_community", _dev.get("snmp_read_community")),
+                        ("snmp_read_timeout", int(_dev.get("snmp_read_timeout", "10"))),
                     ]:
                         _job.update_attribute(attr_name, attr_value)
         else:
-            self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "got server_command with unknown command {}".format(
+                    com_text
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _check_background(self):
         bg_job.check_jobs(start=self.__snmp_running)
