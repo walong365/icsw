@@ -410,11 +410,23 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         return _reachable
 
     def _get_snmp_hosts(self, _router):
+        def _cast_snmp_version(_vers):
+            if type(_vers) in [int, long]:
+                return _vers
+            elif _vers.isdigit():
+                return int(_vers)
+            else:
+                return {"2c": 2}.get(_vers, 1)
         # var cache
         _vc = var_cache(
             device.all_enabled.get(
                 Q(device_group__cluster_device_group=True)
-            ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public"}
+            ),
+            {
+                "SNMP_VERSION": 1,
+                "SNMP_READ_COMMUNITY": "public",
+                "SNMP_READ_TIMEOUT": 10,
+            }
         )
         snmp_hosts = device.all_enabled.exclude(
             Q(snmp_schemes=None)
@@ -443,8 +455,9 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     full_name="{}".format(cur_dev.full_name),
                     uuid="{}".format(cur_dev.uuid),
                     ip="{}".format(_ip),
-                    snmp_version="{:d}".format(_vars["SNMP_VERSION"]),
+                    snmp_version="{:d}".format(_cast_snmp_version(_vars["SNMP_VERSION"])),
                     snmp_read_community=_vars["SNMP_READ_COMMUNITY"],
+                    snmp_read_timeout=_vars["SNMP_READ_TIMEOUT"],
                 ) for cur_dev, _ip, _vars in _reachable
             ]
         )
@@ -1002,6 +1015,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                         _dev.get("snmp_read_community"),
                         device_name=_dev.get("full_name"),
                         uuid=_dev.get("uuid"),
+                        snmp_read_timeout=int(_dev.get("snmp_read_timeout", "10")),
                     )
             for same_id in _same_list:
                 _dev = _id_dict[same_id]
@@ -1020,10 +1034,16 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                         ("snmp_schemes", _schemes),
                         ("snmp_version", int(_dev.get("snmp_version"))),
                         ("snmp_read_community", _dev.get("snmp_read_community")),
+                        ("snmp_read_timeout", int(_dev.get("snmp_read_timeout", "10"))),
                     ]:
                         _job.update_attribute(attr_name, attr_value)
         else:
-            self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "got server_command with unknown command {}".format(
+                    com_text
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _check_background(self):
         bg_job.check_jobs(start=self.__snmp_running)

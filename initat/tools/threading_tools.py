@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 import traceback
+import six
 import setproctitle
 
 from initat.tools import io_stream_helper
@@ -92,10 +93,23 @@ class hup_error(my_error):
 
 
 # to avoid import loops
+def safe_unicode(obj):
+    """Return the unicode/text representation of `obj` without throwing UnicodeDecodeError
+
+    Returned value is only a *representation*, not necessarily identical.
+    """
+    if type(obj) not in (six.text_type, six.binary_type):
+        obj = six.text_type(obj)
+    if type(obj) is six.text_type:
+        return obj
+    else:
+        return obj.decode(errors='ignore')
+
+
 def get_except_info():
     return u"{} ({})".format(
-        str(sys.exc_info()[0]),
-        str(sys.exc_info()[1])
+        safe_unicode(sys.exc_info()[0]),
+        safe_unicode(sys.exc_info()[1])
     )
 
 

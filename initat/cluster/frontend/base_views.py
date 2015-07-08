@@ -12,17 +12,18 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from initat.cluster.backbone.models.domain import device_mon_location
 from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import server_command
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx, DeleteRequest
+    category_tree, location_gfx, DeleteRequest, device, config, mon_check_command
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImport
-import initat.cluster.backbone.models
 import json
 import PIL
 import logging
@@ -51,14 +52,26 @@ class get_gauge_info(View):
         request.xml_response["response"] = gauge_info
 
 
-class get_category_tree(permission_required_mixin, View):
+class DeviceLocation(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_category_tree"]
 
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
             request,
-            "category_tree.html",
+            "device_location.html",
+            {}
+        )()
+
+
+class DeviceCategory(permission_required_mixin, View):
+    all_required_permissions = ["backbone.user.modify_category_tree"]
+
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request,
+            "device_category.html",
             {}
         )()
 
@@ -68,7 +81,7 @@ class prune_category_tree(permission_required_mixin, View):
 
     @method_decorator(xml_wrapper)
     def post(self, request):
-        category_tree().prune()
+        category_tree().prune(mode=request.POST['mode'])
         request.xml_response.info("tree pruned")
 
 
@@ -221,6 +234,55 @@ class change_category(View):
                 )
             )
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
+
+
+class CategoryContents(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        cat_db = category.objects.get(pk=request.GET['category_pk'])
+        contents = []
+
+        # NOTE: gui currently assumes homogenous category contents, i.e. at most one of the following types:
+
+        for dev in device.objects.filter(categories=cat_db).select_related('device_group'):
+            contents.append({
+                "pk": dev.pk,
+                'properties': {
+                    "name": dev.full_name,
+                    "group": dev.device_group.name,
+                },
+                "type": "device",
+            })
+
+        for mcc in mon_check_command.objects.filter(categories=cat_db):
+            contents.append({
+                "pk": mcc.pk,
+                'properties': {
+                    "Check command": mcc.name
+                },
+                "type": "mon_check_command",
+            })
+
+        for conf in config.objects.filter(categories=cat_db):
+            contents.append({
+                "pk": conf.pk,
+                'properties': {
+                    "Config": conf.name,
+                },
+                "type": "config",
+            })
+
+        for loc_dev in device.objects.filter(device_mon_location__location=cat_db):
+            contents.append({
+                "pk": loc_dev.pk,
+                'properties': {
+                    "Location": loc_dev.name,
+                },
+                "type": "location_device",
+            })
+
+        return Response(contents)
 
 
 class KpiView(View):

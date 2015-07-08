@@ -44,6 +44,7 @@ class config_control(object):
         self.__com_dict = {
             "get_kernel": self._handle_get_kernel,
             "get_kernel_name": self._handle_get_kernel_name,
+            "get_device_short_name": self._handle_get_device_short_name,
             "get_syslog_server": self._handle_get_syslog_server,
             "get_package_server": self._handle_get_package_server,
             "create_boot_entry": self._handle_create_boot_entry,
@@ -316,7 +317,8 @@ class config_control(object):
             kernel_dir = os.path.join(
                 global_config["TFTP_DIR"],
                 "kernels",
-                kernel_name)
+                kernel_name
+            )
             dep_h = module_dependency_tools.dependency_handler(kernel_dir, log_com=self.log)
             in_parts = s_req.data.split()
             if len(in_parts):
@@ -337,8 +339,13 @@ class config_control(object):
                     if self.device.partition_table:
                         disc_mods = partition.objects.filter(
                             Q(partition_disc__partition_table=self.device.partition_table)
-                        ).values_list("partition_fs__kernel_module", flat=True)
+                        ).values_list(
+                            "partition_fs__kernel_module", flat=True
+                        )
                         disc_mods = [_entry for _entry in list(set(sum([cur_part.strip().split() for cur_part in disc_mods], []))) if _entry]
+                        if "ext3" in disc_mods:
+                            # also add ext4 because newer Centos-Kernels support ext3 only through the ext4 mod
+                            disc_mods.append("ext4")
                         self.log(
                             "adding {}: {}".format(
                                 logging_tools.get_plural("disc mod", len(disc_mods)),
@@ -438,10 +445,13 @@ class config_control(object):
                             inst = 1
                     if inst:
                         dev_kernel.create_history_entry(self.dbh)
-                    return "ok {:d} {} {}/{} {} {}".format(
+                    return "ok {:d} {} {} {} {} {}".format(
                         inst,
                         s_req.server_ip,
-                        kernel_source_path,
+                        os.path.join(
+                            kernel_source_path,
+                            dev_kernel.display_name,
+                        ),
                         dev_kernel.name,
                         dev_kernel.version,
                         dev_kernel.release,
@@ -452,6 +462,7 @@ class config_control(object):
             return "error no kernel set"
 
     def _handle_get_kernel_name(self, s_req):
+        # returns display name
         dev_kernel = self.device.new_kernel
         if dev_kernel:
             vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "kernel_server"])
@@ -461,10 +472,14 @@ class config_control(object):
                 # add NEW as dummy string (because get_kernel_name is called from stage1)
                 return "ok NEW {} {}".format(
                     s_req.server_ip,
-                    dev_kernel.name
+                    dev_kernel.display_name
                 )
         else:
             return "error no kernel set"
+
+    def _handle_get_device_short_name(self, s_req):
+        # returns display name
+        return "ok {}".format(self.device.name)
 
     def close(self):
         if self.__log_template is not None:

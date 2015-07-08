@@ -19,6 +19,7 @@
 
 import datetime
 import time
+import zmq
 
 from django.db import connection
 from django.db.models import Q

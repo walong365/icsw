@@ -75,6 +75,7 @@ ics_app = angular.module(
         "icsw.device.info",
         "icsw.device.tree",
         "icsw.config.category_tree",
+        "icsw.config.category_location",
         "icsw.config.domain_name_tree",
         "icsw.device.network",
         "icsw.device.configuration",
@@ -121,10 +122,12 @@ ics_app = angular.module(
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_ADD_DELETE_REQUEST": "{% url 'base:add_delete_request' %}"
     "BASE_CALCULATE_KPI_PREVIEW": "{% url 'base:CalculateKpiPreview' %}"
-    "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
+    "BASE_CATEGORY_CONTENTS": "{% url 'base:CategoryContents' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
     "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"
     "BASE_CHECK_DELETION_STATUS": "{% url 'base:check_deletion_status' %}"
+    "BASE_DEVICE_CATEGORY": "{% url 'base:DeviceCategory' %}"
+    "BASE_DEVICE_LOCATION": "{% url 'base:DeviceLocation' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
     "BASE_GET_KPI_SOURCE_DATA": "{% url 'base:GetKpiSourceData' %}"
     "BASE_KPI": "{% url 'base:kpi' %}"

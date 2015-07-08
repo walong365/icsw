@@ -1,6 +1,7 @@
 <script type="text/ng-template" id="icsw.kernel.head">
     <tr>
-        <th>Name</th>   
+        <th>Display Name</th>
+        <th>Name</th>
         <th>Version</th>
         <th>Comment</th>
         <th>Enabled</th>
@@ -12,6 +13,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.kernel.row">
+    <td>{{ obj.display_name }}</td>
     <td>{{ obj.name }}</td>
     <td>{{ obj.kernel_version  }}</td>
     <td>{{ obj.comment }}</td>

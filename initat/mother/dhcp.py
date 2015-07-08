@@ -173,10 +173,16 @@ class DHCPSyncer(object):
         self._enqueue(_transfer)
 
     def _enqueue(self, in_list):
-        _coms = self._omshell_base()
+        # max length is 4096, reduce a little
+        _MAX_LEN = 3500
         # process commands in in_list
         _actions, _create, _delete = (0, 0, 0)
+        _cur_com = self._omshell_base()
+        _coms = [_cur_com]
         for _com in in_list:
+            if len("\"n".join(_cur_com)) > _MAX_LEN:
+                _cur_com = self._omshell_base()
+                _coms.append(_cur_com)
             _state = self.__state[_com.name]
             if _state.present:
                 if _com.ip:
@@ -185,10 +191,10 @@ class DHCPSyncer(object):
                         pass
                     else:
                         # alter
-                        _coms.extend(
+                        _cur_com.extend(
                             self._delete_record(_com)
                         )
-                        _coms.extend(
+                        _cur_com.extend(
                             self._create_record(_com)
                         )
                         _delete += 1
@@ -196,14 +202,14 @@ class DHCPSyncer(object):
                         _actions += 1
                 else:
                     # delete
-                    _coms.extend(
+                    _cur_com.extend(
                         self._delete_record(_com)
                     )
                     _delete += 1
                     _actions += 1
             else:
                 if _com.ip:
-                    _coms.extend(
+                    _cur_com.extend(
                         self._create_record(_com)
                     )
                     _create += 1
@@ -213,14 +219,16 @@ class DHCPSyncer(object):
                     pass
         if _actions:
             self.log(
-                "{} resulted in {} ({}, {})".format(
+                "{} resulted in {} ({}, {}), {}".format(
                     logging_tools.get_plural("input command", len(in_list)),
                     logging_tools.get_plural("action", _actions),
                     logging_tools.get_plural("create record", _create),
                     logging_tools.get_plural("delete record", _delete),
+                    logging_tools.get_plural("DHCP batch", len(_coms)),
                 )
             )
-            self._do_omshell("write", _coms)
+            for _com in _coms:
+                self._do_omshell("write", _com)
 
     def _create_record(self, dhcp_com):
         om_array = []
@@ -279,17 +287,26 @@ class DHCPSyncer(object):
         ]
 
     def _query_devices(self, name_list):
-        _coms = self._omshell_base()
+        _MAX_LEN = 3500
+        # process commands in in_list
+        _cur_com = self._omshell_base()
+        _coms = [_cur_com]
         for _dev in name_list:
-            _coms.extend(
+            if len("\"n".join(_cur_com)) > _MAX_LEN:
+                _cur_com.append("")
+                _cur_com = self._omshell_base()
+                _coms.append(_cur_com)
+            _cur_com.extend(
                 [
                     "new host",
                     "set name = \"{}\"".format(_dev),
                     "open",
                 ]
             )
-        _coms.append("")
-        self._do_omshell("query", _coms)
+        _cur_com.append("")
+        self.log("query result in {}".format(logging_tools.get_plural("DHCP batch", len(_coms))))
+        for _com in _coms:
+            self._do_omshell("query", _com)
 
     def _do_omshell(self, com_name, com_lines):
         if not self.__pending:

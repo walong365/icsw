@@ -1,0 +1,21 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}Device category{% endblock %}
+
+{% block content %}
+
+<tabset>
+    <tab heading="Device categories">
+        <icsw-device-category-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
+        </icsw-device-category-overview>
+    </tab>
+    <tab heading="Available categories">
+        <div ng-controller="icswConfigCategoryTreeCtrl">
+            <icsw-config-category-tree mode="device"></icsw-config-category-tree>
+        </div>
+    </tab>
+</tabset>
+
+{% endblock %}

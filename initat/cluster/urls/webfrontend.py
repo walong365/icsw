@@ -56,7 +56,8 @@ lic_patterns = patterns(
 base_patterns = patterns(
     "initat.cluster.setup",
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
-    url("^get_cat_tree$", base_views.get_category_tree.as_view(), name="category_tree"),
+    url("^DeviceCategory$", base_views.DeviceCategory.as_view(), name="DeviceCategory"),
+    url("^DeviceLocation$", base_views.DeviceLocation.as_view(), name="DeviceLocation"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
         name="location_gfx_icon"),
@@ -64,6 +65,7 @@ base_patterns = patterns(
         name="location_gfx_image"),
     url("^modify_loc_gfx$", base_views.modify_location_gfx.as_view(), name="modify_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
+    url("^CategoryContents", base_views.CategoryContents.as_view(), name="CategoryContents"),
     url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
     url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
     url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
