@@ -398,7 +398,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.total">
-    <tabset>
+    <tabset icsw-tools-add-acl-functions>
         <tab heading="Device settings">
             <icsw-device-network-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d" show-copy-button="1"></icsw-device-network-overview>
         </tab>
@@ -422,7 +422,7 @@
                         </select>, mode:
                     </div>
                     <div class="form-group">
-                        <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="fetch_data()"/>
+                        <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="fetch_data()"></icsw-tools-button>
                     </div>
                     <div class="form-group">
                         ,
@@ -434,10 +434,10 @@
                 <icsw-device-network-graph ls-filter="ls_filter"></icsw-device-network-graph>
             </div>
         </tab>
-        <tab heading="Clusters" ng-show="acl_read(null, 'backbone.network.show_clusters') && true || false" ng-controller="icswDeviceNetworkClusterCtrl">
-            <div>
+        <tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')">
+            <div ng-controller="icswDeviceNetworkClusterCtrl">
                 <h3>
-                    Network clusters ({{ clusters.length }}), <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"/>
+                    Network clusters ({{ clusters.length }}), <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
                 </h3>
                 <table class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
