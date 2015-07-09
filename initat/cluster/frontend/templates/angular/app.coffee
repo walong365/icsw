@@ -163,6 +163,7 @@ ics_app = angular.module(
     "DEVICE_VARIABLES": "{% url 'device:variables' %}"
     "DISCOVERY_EVENT_LOG_OVERVIEW": "{% url 'discovery:EventLogOverview' %}"
     "DISCOVERY_GET_EVENT_LOG": "{% url 'discovery:GetEventLog' %}"
+    "DISCOVERY_GET_EVENT_LOG_DEVICE_INFO": "{% url 'discovery:GetEventLogDeviceInfo' %}"
     "DISCOVERY_OVERVIEW": "{% url 'discovery:Overview' %}"
     "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
     "ICSW_LIC_GET_ALL_LICENSES": "{% url 'icsw_lic:get_all_licenses' %}"

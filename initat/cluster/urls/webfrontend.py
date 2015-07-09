@@ -238,6 +238,7 @@ discovery_patterns = patterns(
     url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
     url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
     url(r"^GetEventLog$", discovery_views.GetEventLog.as_view(), name="GetEventLog"),
+    url(r"^GetEventLogDeviceInfo$", discovery_views.GetEventLogDeviceInfo.as_view(), name="GetEventLogDeviceInfo"),
 )
 
 rpl = []

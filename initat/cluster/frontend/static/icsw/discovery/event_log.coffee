@@ -29,40 +29,92 @@ angular.module(
             templateUrl: 'icsw.discovery.event_log'
             link: (scope, el, attrs) ->
                 scope.data = icswDiscoveryEventLogDataService
+
+                scope.set_active = (device_pk) ->
+                    device_pk = parseInt(device_pk)
+                    #scope.entries = []
+                    scope.cur_device_pk = device_pk
+                    #if scope.last_table_state?
+                    #    scope.last_table_state.pagination.start = 0
+                    #    scope.last_table_state.search = {}
+                    #    scope.last_table_state.sort = {}
+                    # TODO: only call on first load
+                    scope.server_pagination_pipe[scope.cur_device_pk]()
+
                 scope.devices_rest = {}
+                scope.device_pks_ordered = []
+                scope.device_mode = {}
+
+                scope._last_table_state = {}
+                scope.server_pagination_pipe = {}  # pipe functions
+
                 scope.new_devsel = (sel) ->
                     scope.device_pks = sel
 
+                    Restangular.one(ICSW_URLS.DISCOVERY_GET_EVENT_LOG_DEVICE_INFO.slice(1)).get({device_pks: JSON.stringify(scope.device_pks)}).then((new_data)->
+                        scope.devices_rest = new_data
+                        disabled_devs = []
+                        enabled_devs = []
+
+                        for pk, dev_entry of scope.devices_rest.plain()
+                            if dev_entry.capabilities.length > 0
+                                desc = dev_entry.capabilities.join(", ")
+                                enabled_devs.push(pk)
+                                scope.device_mode[pk] = dev_entry.capabilities[0]
+                            else
+                                desc = "N/A"
+                                disabled_devs.push(pk)
+                            dev_entry.capabilities_description = desc
+
+                        scope.device_pks_ordered = enabled_devs.concat(disabled_devs)
+                    )
+
+                    # need pipe functions for each tab since they must remember the table state
+                    # in order to be able to get updated
                     for device_pk in scope.device_pks
                         do (device_pk) ->
-                            Restangular.one(ICSW_URLS.REST_DEVICE_LIST.slice(1)).get({'idx': device_pk}).then((new_data)->
-                                scope.devices_rest[device_pk] = new_data[0]
-                            )
+                            scope.server_pagination_pipe[device_pk] = (table_state) ->
+                                if scope.cur_device_pk?
+                                    console.log 'called w ts', table_state
+                                    if !table_state?
+                                        table_state = scope._last_table_state[device_pk]
+                                    scope._last_table_state[device_pk] = table_state
+                                    console.log 'got ok', device_pk, 'table state', table_state
+                                    if table_state?
+                                        pagination = table_state.pagination
+                                        scope.entries.is_loading = true
 
-                scope.get_event_log_promise = (skip, limit, logfile_name) ->
+                                        promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, {})
+                                        if promise
+                                            do (table_state) ->
+                                                promise.then(([total_num, keys, new_data]) ->
+                                                    console.log 'result here'
+                                                    scope.entries = new_data
+                                                    scope.entries.keys = keys
+                                                    scope.entries.total_num = total_num
+                                                    scope.entries.is_loading = false
+
+                                                    table_state.pagination.numberOfPages = Math.ceil(total_num / pagination.number)
+                                                )
+
+                scope._last_query_parameters = undefined
+                scope.get_event_log_promise = (device_pk, skip, limit, mode_query_parameters) ->
                     query_params = {
-                        device_pks: JSON.stringify(scope.device_pks)
-                        logfile_name: logfile_name
+                        device_pks: JSON.stringify([parseInt(device_pk)])
+                        mode_query_parameters: mode_query_parameters
+                        mode: scope.device_mode[device_pk]
                         pagination_skip: skip
                         pagination_limit: limit
                     }
-                    return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params)
+                    if !_.isEqual(scope._last_query_parameters, query_params)
+                        scope._last_query_parameters = query_params
+                        return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params)
+                    else
+                        return null
+
                 scope.entries = []
                 scope.entries.is_loading = false
 
-                scope.server_pagination_pipe = (table_state) ->
-                    console.log 'got table state', table_state
-                    pagination = table_state.pagination
-                    scope.entries.is_loading = true
-
-                    scope.get_event_log_promise(pagination.start, pagination.number).then(([total_num, keys, new_data]) ->
-                        scope.entries = new_data
-                        scope.entries.keys = keys
-                        scope.entries.total_num = total_num
-                        scope.entries.is_loading = false
-
-                        table_state.pagination.numberOfPages = Math.ceil(total_num / pagination.number)
-                    )
 
         }
 ]).service("icswDiscoveryEventLogDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->

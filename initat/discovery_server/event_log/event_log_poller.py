@@ -170,7 +170,6 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.log("finished scheduling new wmi jobs")
 
     def _schedule_ipmi_jobs(self):
-        return
         self.log("scheduling new ipmi jobs")
         ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
         ipmi_devices = device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)

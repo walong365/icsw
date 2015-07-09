@@ -189,6 +189,7 @@ class WmiLogEntryJob(_WmiJobBase):
         return do_continue
 
     class InitialPhase(object):
+        # start retrieving maximum number
         def __call__(self, job):
             where_clause = "WHERE Logfile = '{}'".format(job.logfile_name)
             if job.last_known_record_number is not None:
@@ -214,6 +215,7 @@ class WmiLogEntryJob(_WmiJobBase):
             return True
 
     class FindMaximumPhase(object):
+        # wait until job has returned maximum record number
         def __call__(self, job):
             do_continue = True
             if job.ext_com.finished() is not None:
@@ -269,6 +271,8 @@ class WmiLogEntryJob(_WmiJobBase):
 
     class RetrieveEventsPhase(object):
         PAGINATION_LIMIT = 10000
+
+        # start retrieval jobs and handle output until all entries have been retrieved
 
         def __init__(self, from_number, to_record_number):
             # this is increased in the process

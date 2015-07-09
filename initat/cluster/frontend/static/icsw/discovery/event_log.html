@@ -4,8 +4,20 @@
         Event Log
     </h2>
     <tabset>
-        <tab ng-repeat="device_pk in device_pks" heading="{{devices_rest[device_pk].full_name}}">
-            <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe" st-table="entries">
+        <tab ng-repeat="device_pk in device_pks_ordered"
+                heading="{{devices_rest[device_pk].name}} ({{devices_rest[device_pk].capabilities_description}})"
+                select="set_active(device_pk)"
+                disable="devices_rest[device_pk].capabilities.length == 0"
+                >
+            <div class="form-inline" style="margin-top: 5px">
+                <label>
+                    Type:
+                </label> <select class="form-control input-sm" ng-model="device_mode[device_pk]" ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
+            </div>
+            <alert type="danger">
+                <strong>TODO</strong>: search / filter
+            </alert>
+            <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
                 <thead>
                     <tr>
                         <td colspan="99">
@@ -26,9 +38,11 @@
                         </td>
                     </tr>
                 </tbody>
-                <tbody ng-show="entries.isLoading">
+                <tbody ng-show="entries.is_loading">
                     <tr>
-                        <td colspan="99" class="text-center">Loading ... </td>
+                        <td colspan="99" class="text-center">
+                            <i class="fa fa-4x fa-spinner fa-pulse"></i>
+                        </td>
                     </tr>
                 </tbody>
             </table>

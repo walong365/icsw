@@ -27,6 +27,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+import itertools
+from rest_framework.response import Response
+from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 import pymongo
 from rest_framework.generics import ListAPIView
@@ -61,32 +64,93 @@ class EventLogOverview(View):
         return render_me(request, "event_log.html")()
 
 
+class GetEventLogDeviceInfo(View):
+    @method_decorator(login_required)
+    def get(self, request, *args, **kwargs):
+        device_pks = json.loads(request.GET['device_pks'])
+        ret = {}
+        mongo = MongoDbInterface()
+
+        _wmi_res = mongo.event_log_db.wmi_event_log.aggregate([{
+            '$group': {
+                '_id': {
+                    'device_pk': '$device_pk',
+                }
+            }
+        }])
+        devices_with_wmi = {entry['_id']['device_pk'] for entry in _wmi_res}
+
+        _ipmi_res = mongo.event_log_db.ipmi_event_log.aggregate([{
+            '$group': {
+                '_id': {
+                    'device_pk': '$device_pk',
+                }
+            }
+        }])
+        devices_with_ipmi = {entry['_id']['device_pk'] for entry in _ipmi_res}
+
+        for entry in device.objects.filter(pk__in=device_pks):
+            capabilities = []
+            if entry.pk in devices_with_ipmi:
+                capabilities.append("ipmi")
+            if entry.pk in devices_with_wmi:
+                capabilities.append("wmi")
+            ret[entry.pk] = {
+                'name': entry.full_name,
+                'capabilities': capabilities,
+            }
+
+        return HttpResponse(json.dumps(ret), content_type='application/json')
+
+
 class GetEventLog(ListAPIView):
 
-    def _get_ipmi_event_log(self, device_pks):
-        db = MongoDbInterface()
-        entries = db.event_log_db.ipmi_event_log.find({'device_pk': {'$in': device_pks}})
-        print 'IPMI'
-        pprint.pprint(list(entries))
+    def _get_ipmi_event_log(self, device_pks, pagination_skip, pagination_limit):
+        mongo = MongoDbInterface()
+        projection_obj = {
+            'sections': 1,
+        }
+        entries = mongo.event_log_db.ipmi_event_log.find(
+            {'device_pk': {'$in': device_pks}},
+            projection_obj,
+        )
+        total_num = entries.count()
+        entries.sort([('record_id', pymongo.DESCENDING)])
+
+        if pagination_skip is not None:
+            entries.skip(pagination_skip)
+        if pagination_limit is not None:
+            entries.limit(pagination_limit)
+        result = [entry['sections'] for entry in entries]  # exhaust cursor
+        keys = set()
+        # merge ipmi sections
+        result_merged = []
+        for entry in result:
+            entry_merged = {}
+            for section in entry:
+                keys.update(section.iterkeys())
+                entry_merged.update(section)
+            result_merged.append(entry_merged)
+        return total_num, keys, result_merged
 
     def _get_wmi_event_log(self, device_pks, logfile_name=None, pagination_skip=None, pagination_limit=None):
-        db = MongoDbInterface()
+        mongo = MongoDbInterface()
         query_obj = {
             'device_pk': {'$in': device_pks},
         }
         if logfile_name is not None:
             query_obj['logfile_name'] = logfile_name
         projection_obj = {
-            'entry': 1
+            'entry': 1,
         }
-        entries = db.event_log_db.wmi_event_log.find(query_obj, projection_obj)
+        entries = mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj)
         total_num = entries.count()
         entries.sort([('time_generated', pymongo.DESCENDING)])
         if pagination_skip is not None:
             entries.skip(pagination_skip)
         if pagination_limit is not None:
             entries.limit(pagination_limit)
-        result = [entry['entry'] for entry in entries]
+        result = [entry['entry'] for entry in entries]  # exhaust cursor
         keys = set()
         for entry in result:
             keys.update(entry.iterkeys())
@@ -94,15 +158,25 @@ class GetEventLog(ListAPIView):
 
     @method_decorator(login_required)
     def list(self, request, *args, **kwargs):
+        # NOTE: currently, this list always contains one entry
         device_pks = json.loads(request.GET['device_pks'])
         logfile_name = request.GET.get('logfile_name')
         int_or_none = lambda x: int(x) if x is not None else x
         pagination_skip = int_or_none(request.GET.get('pagination_skip'))
         pagination_limit = int_or_none(request.GET.get('pagination_limit'))
 
-        # self._get_ipmi_event_log(device_pks)
-        wmi_res_total_num, wmi_keys, wmi_res =\
-            self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit)
+        mode_query_parameters = json.loads(request.GET['mode_query_parameters'])
 
-        return HttpResponse(bson.json_util.dumps([wmi_res_total_num, wmi_keys, wmi_res]),
+        mode = request.GET['mode']
+
+        if mode == 'wmi':
+            total_num, keys, entries =\
+                self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit)
+        elif mode == 'ipmi':
+            total_num, keys, entries =\
+                self._get_ipmi_event_log(device_pks, pagination_skip, pagination_limit)
+        else:
+            raise AssertionError("Invalid mode: {} ".format(mode))
+
+        return HttpResponse(bson.json_util.dumps([total_num, keys, entries]),
                             content_type="application/json")
