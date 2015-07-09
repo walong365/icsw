@@ -63,7 +63,10 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self._mongodb_database = MongoDbInterface().event_log_db
 
         self._mongodb_database.wmi_event_log.create_index([('$**', 'text')], name="wmi_log_full_text_index")
-        # self._mongodb_database.wmi_event_log.create_index([('device_pk', 'text')])
+        self._mongodb_database.wmi_event_log.create_index('device_pk', name='device_pk_index')
+        self._mongodb_database.wmi_event_log.create_index('logfile_name', name='logfile_name_index')
+        self._mongodb_database.wmi_event_log.create_index('record_number', name='record_number_index')
+        self._mongodb_database.wmi_event_log.create_index('time_generated', name='time_generated_index')
 
     def periodic_update(self):
         self._schedule_wmi_jobs()
@@ -167,6 +170,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.log("finished scheduling new wmi jobs")
 
     def _schedule_ipmi_jobs(self):
+        return
         self.log("scheduling new ipmi jobs")
         ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
         ipmi_devices = device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)

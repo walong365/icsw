@@ -8,6 +8,22 @@
             <alert type="danger">
                 <strong>TODO</strong>: Query data from mongo via custom django view
             </alert>
+
+            <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe" st-table="entries">
+                <thead>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="entry in entries">
+                        <td>
+                            {{entry}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-center" st-pagination="" st-items-by-page="10" colspan="4">
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </tab>
     </tabset>
 </script>

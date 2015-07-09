@@ -143,21 +143,35 @@ class WmiLogFileJob(_WmiJobBase):
 
 
 class WmiLogEntryJob(_WmiJobBase):
-    """Job to retrieve entries from a single log file from a wmi server"""
+    """Job to retrieve entries from a single log file from a wmi server.
+
+    This is a hard task since the wmi server stops sending data if it feels it has sent too much.
+    We keep track of the last RecordNumber, which is unique in combination with logfile_name and device_pk
+    (It identifies an entry in a logfile_name of a device).
+
+    Retrieval works by logfile.
+    First, we find out the maximum entry (by querying all entries and assuming that the latest ones are returned first).
+    Then we retrieve the single entries in small batches.
+
+    If too many queries a sent, the wmi server reaches some kind of quota and refuses to answer for a few minutes.
+    """
     def __init__(self, log, db, target_device, target_ip, logfile_name, last_known_record_number=None):
         super(WmiLogEntryJob, self).__init__(log, db, target_device, target_ip)
 
         self.logfile_name = logfile_name
         self.last_known_record_number = last_known_record_number
-        self.current_retrieve_lower_number = None
 
         # this class instance manages the currently active phase
         self.current_phase = WmiLogEntryJob.InitialPhase()
 
     def __unicode__(self):
-        return u"WmiLogEntryJob(dev={}, ip={}, logfile={})".format(self.target_device,
-                                                                   self.target_ip,
-                                                                   self.logfile_name)
+        return u"WmiLogEntryJob(dev={}, ip={}, logfile={}, rec_num={}, phase={})".format(
+            self.target_device,
+            self.target_ip,
+            self.logfile_name,
+            self.last_known_record_number,
+            self.current_phase.__class__,
+        )
 
     __repr__ = __unicode__
 
@@ -227,7 +241,12 @@ class WmiLogEntryJob(_WmiJobBase):
 
                     # the last entry might be invalid since error messages are written to stdout as well
                     # hence 'RecordNumber' may not be present in all entries
-                    maximal_record_number = max(int(entry.get('RecordNumber', -1)) for entry in parsed)
+                    def try_extract_record_number(entry):
+                        try:
+                            return int(entry.get('RecordNumber', -1))
+                        except ValueError:
+                            return -1
+                    maximal_record_number = max(try_extract_record_number(entry) for entry in parsed)
                     print 'max', maximal_record_number
 
                     # usually, you get after less then 100k
@@ -260,6 +279,9 @@ class WmiLogEntryJob(_WmiJobBase):
 
             self.retrieve_ext_com = None
 
+        def get_next_upper_limit(self, lower_limit):
+            return min(lower_limit + self.__class__.PAGINATION_LIMIT, self.to_record_number)
+
         def __call__(self, job):
             do_continue = True
 
@@ -288,28 +310,38 @@ class WmiLogEntryJob(_WmiJobBase):
                 import pprint
                 pprint.pprint(stderr_out)
 
-                parsed = WmiUtils.parse_wmic_output(stdout_out)
+                parsed = WmiUtils.parse_wmic_output(stdout_out, try_handle_lists=True)
                 print 'len', len(parsed)
                 # `parsed` may be empty for RecordNumber-holes
 
                 job.log("Found {} log entries between {} and {} for {}".format(
                     len(parsed),
                     self.from_record_number,
-                    self.from_record_number + self.__class__.PAGINATION_LIMIT,
+                    self.get_next_upper_limit(self.from_record_number),
                     job,
                 ))
 
-                maximal_record_number = self.from_record_number + self.__class__.PAGINATION_LIMIT
+                maximal_record_number = self.get_next_upper_limit(self.from_record_number)
 
                 db_entries = []
                 date_now = django.utils.timezone.now()
                 for log_entry in parsed:
-                    db_entries.append({
-                        'date': date_now,
-                        'logfile_name': job.logfile_name,
-                        'entry': log_entry,
-                        'device_pk': job.target_device.pk,
-                    })
+                    record_number = log_entry.get('RecordNumber')
+                    if record_number is None:
+                        job.log("Warning: WMI log entry without record number, ignoring:", logging_tools.LOG_LEVEL_WARN)
+                        job.log("{}".format(log_entry))
+                    time_generated = log_entry.get('TimeGenerated')
+                    if time_generated is None:
+                        job.log("Warning: WMI log entry without TimeGenerated, ignoring:", logging_tools.LOG_LEVEL_WARN)
+                        job.log("{}".format(log_entry))
+                    else:
+                        db_entries.append({
+                            'time_generated': time_generated,
+                            'logfile_name': job.logfile_name,
+                            'entry': log_entry,
+                            'record_number': record_number,
+                            'device_pk': job.target_device.pk,
+                        })
                 job.db.wmi_event_log.insert_many(db_entries)
 
                 job.db.wmi_logfile_maximal_record_number.update_one(
@@ -351,17 +383,20 @@ class WmiLogEntryJob(_WmiJobBase):
                         username=job.username,
                         password=job.password,
                         target_ip=job.target_ip,
-                        columns=["RecordNumber, Message"],
+                        columns=["RecordNumber, Message, Category, CategoryString, ComputerName, EventCode, " +
+                                 "EventIdentifier, InsertionStrings, SourceName, TimeGenerated, TimeWritten,  " +
+                                 "Type, User"],
                         table="Win32_NTLogEvent",
                         where_clause="WHERE Logfile = '{}' AND RecordNumber > {} and RecordNumber <= {}".format(
                             job.logfile_name,
                             self.from_record_number,
-                            self.from_record_number + self.__class__.PAGINATION_LIMIT,
+                            self.get_next_upper_limit(self.from_record_number),
                         )
                     )
+                    print 'start run', " ".join(cmd)
                     job.log("querying entries from {} to {} for {}".format(
                         self.from_record_number,
-                        self.from_record_number + self.__class__.PAGINATION_LIMIT,
+                        self.get_next_upper_limit(self.from_record_number),
                         job,
                     ))
                     print 'call from ', self.from_record_number

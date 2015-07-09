@@ -73,10 +73,11 @@ class WmiUtils(object):
                 return [obj]  # wmi just returns single objects for list types if there is only one entry
 
     @classmethod
-    def parse_wmic_output(cls, output):
+    def parse_wmic_output(cls, output, try_handle_lists=False):
         """
         Parses output from the wmic command and returns json.
-        NOTE: Does not parse lists properly, so we return WmiList which you have to parse yourself, see above
+        NOTE: Does not parse lists properly, so we by default return WmiList which you have to parse yourself, see above
+        @param try_handle_lists: try to parse lists
         """
         # remove newlines and whitespace from the beginning and end
         output = output.strip()
@@ -116,7 +117,7 @@ class WmiUtils(object):
             items.extend(moredata)
 
         # walk the dictionaries!
-        return cls._fix_dictionary_output(items)
+        return cls._fix_dictionary_output(items, try_handle_lists=try_handle_lists)
 
     @classmethod
     def _patch_newlines(cls, section_text):
@@ -171,7 +172,7 @@ class WmiUtils(object):
         return "\n".join(fixed_lines) + "\n"
 
     @classmethod
-    def _fix_dictionary_output(cls, incoming):
+    def _fix_dictionary_output(cls, incoming, try_handle_lists):
         """
         The dictionary doesn't exactly match the traditional python-wmi output.
         For example, there's "True" instead of True. Integer values are also
@@ -190,7 +191,7 @@ class WmiUtils(object):
             output = []
 
             for each in incoming:
-                output.append(cls._fix_dictionary_output(each))
+                output.append(cls._fix_dictionary_output(each, try_handle_lists))
 
         elif isinstance(incoming, dict):
             output = dict()
@@ -203,11 +204,14 @@ class WmiUtils(object):
                 elif value == "False":
                     output[key] = False
                 elif isinstance(value, str) and len(value) > 1 and value[0] == "(" and value[-1] == ")":
-                    output[key] = WmiUtils.WmiList(value[1:-1])
+                    val = WmiUtils.WmiList(value[1:-1])
+                    if try_handle_lists:
+                        val = val.try_parse()
+                    output[key] = val
                 elif isinstance(value, str):
                     output[key] = value
                 elif isinstance(value, dict):
-                    output[key] = cls._fix_dictionary_output(value)
+                    output[key] = cls._fix_dictionary_output(value, try_handle_lists)
         else:
             raise RuntimeError("Invalid type in _fix_dictionary_output: {} ({})".format(type(incoming), incoming))
 

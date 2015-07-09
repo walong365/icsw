@@ -21,8 +21,10 @@
 #
 import json
 import pprint
+import bson.json_util
 
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.response import Response
@@ -67,18 +69,33 @@ class GetEventLog(ListAPIView):
         print 'IPMI'
         pprint.pprint(list(entries))
 
-    def _get_wmi_event_log(self, device_pks):
+    def _get_wmi_event_log(self, device_pks, logfile_name=None, pagination_skip=None, pagination_limit=None):
         db = MongoDbInterface()
-        entries = db.event_log_db.wmi_event_log.find({'device_pk': {'$in': device_pks}})
-        print 'WMI'
-        pprint.pprint(list(entries))
+        query_obj = {
+            'device_pk': {'$in': device_pks},
+        }
+        if logfile_name is not None:
+            query_obj['logfile_name'] = logfile_name
+        entries = db.event_log_db.wmi_event_log.find(query_obj)
+        entries.sort([('time_generated', pymongo.DESCENDING)])
+        if pagination_skip is not None:
+            entries.skip(pagination_skip)
+        if pagination_limit is not None:
+            entries.limit(pagination_limit)
+        return list(entries)
 
     @method_decorator(login_required)
     def list(self, request, *args, **kwargs):
         device_pks = json.loads(request.GET['device_pks'])
-        #self._get_ipmi_event_log(device_pks)
-        self._get_wmi_event_log(device_pks)
+        logfile_name = request.GET['logfile_name']
+        int_or_none = lambda x: int(x) if x is not None else x
+        pagination_skip = int_or_none(request.GET.get('pagination_skip'))
+        pagination_limit = int_or_none(request.GET.get('pagination_limit'))
 
-        return Response([])
+        # self._get_ipmi_event_log(device_pks)
+        wmi_res = self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit)
+
+        return HttpResponse(bson.json_util.dumps(wmi_res), content_type="application/json")
+        # return Response(serializer.data)
 
 

@@ -42,9 +42,17 @@ angular.module(
                     scope.get_event_log(scope.device_pks)
 
                 scope.get_event_log = (device_pks) ->
-                    Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).get(device_pks: JSON.stringify(device_pks)).then((new_data)->
+                    query_params = {
+                        device_pks: JSON.stringify(device_pks)
+                        logfile_name: 'Windows PowerShell'
+                        pagination_skip: 2
+                        pagination_limit: 5
+                    }
+                    Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params).then((new_data)->
                         console.log 'got', new_data
                     )
+                scope.smart_table_pipe = () ->
+                    return 33
         }
 ]).service("icswDiscoveryEventLogDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
     rest_map = {
