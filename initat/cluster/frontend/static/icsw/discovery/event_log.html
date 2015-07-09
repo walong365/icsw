@@ -5,22 +5,30 @@
     </h2>
     <tabset>
         <tab ng-repeat="device_pk in device_pks" heading="{{devices_rest[device_pk].full_name}}">
-            <alert type="danger">
-                <strong>TODO</strong>: Query data from mongo via custom django view
-            </alert>
-
             <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe" st-table="entries">
                 <thead>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="entry in entries">
-                        <td>
-                            {{entry}}
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="text-center" st-pagination="" st-items-by-page="10" colspan="4">
+                    <tr ng-if="entries.keys && !entries.is_loading">
+                        <th ng-repeat="key in entries.keys">
+                            {{key}}
+                        </th>
+                    </tr>
+
+                </thead>
+                <tbody ng-if="!entries.is_loading">
+                    <tr ng-repeat="entry in entries">
+                        <td ng-repeat="key in entries.keys">
+                            {{entry[key]}}
                         </td>
+                    </tr>
+                </tbody>
+                <tbody ng-show="entries.isLoading">
+                    <tr>
+                        <td colspan="99" class="text-center">Loading ... </td>
                     </tr>
                 </tbody>
             </table>

@@ -39,6 +39,7 @@ class WmiUtils(object):
 
     WMIC_BINARY = "/opt/cluster/bin/wmic"
     DELIMITER = "\01"
+    DELIMITER_NEWLINE = "\02"
 
     @classmethod
     def get_wmic_cmd(cls, username, password, target_ip, columns, table, where_clause=""):
@@ -133,7 +134,7 @@ class WmiUtils(object):
             # have to add dummy last elem, else last line would never be `line`
 
             if cur_line != "":
-                cur_line += "|"  # add this to show where newlines would have been
+                cur_line += cls.DELIMITER_NEWLINE  # add this to show where newlines would have been
             cur_line += line
 
             if cur_line.count(cls.DELIMITER) == num_delimiters:
@@ -172,6 +173,10 @@ class WmiUtils(object):
         return "\n".join(fixed_lines) + "\n"
 
     @classmethod
+    def _reinsert_newlines(cls, s):
+        return s.replace(cls.DELIMITER_NEWLINE, "\n")
+
+    @classmethod
     def _fix_dictionary_output(cls, incoming, try_handle_lists):
         """
         The dictionary doesn't exactly match the traditional python-wmi output.
@@ -204,12 +209,12 @@ class WmiUtils(object):
                 elif value == "False":
                     output[key] = False
                 elif isinstance(value, str) and len(value) > 1 and value[0] == "(" and value[-1] == ")":
-                    val = WmiUtils.WmiList(value[1:-1])
+                    val = WmiUtils.WmiList(cls._reinsert_newlines(value[1:-1]))
                     if try_handle_lists:
                         val = val.try_parse()
                     output[key] = val
                 elif isinstance(value, str):
-                    output[key] = value
+                    output[key] = cls._reinsert_newlines(value)
                 elif isinstance(value, dict):
                     output[key] = cls._fix_dictionary_output(value, try_handle_lists)
         else:

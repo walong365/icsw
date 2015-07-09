@@ -39,20 +39,31 @@ angular.module(
                                 scope.devices_rest[device_pk] = new_data[0]
                             )
 
-                    scope.get_event_log(scope.device_pks)
-
-                scope.get_event_log = (device_pks) ->
+                scope.get_event_log_promise = (skip, limit, logfile_name) ->
                     query_params = {
-                        device_pks: JSON.stringify(device_pks)
-                        logfile_name: 'Windows PowerShell'
-                        pagination_skip: 2
-                        pagination_limit: 5
+                        device_pks: JSON.stringify(scope.device_pks)
+                        logfile_name: logfile_name
+                        pagination_skip: skip
+                        pagination_limit: limit
                     }
-                    Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params).then((new_data)->
-                        console.log 'got', new_data
+                    return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params)
+                scope.entries = []
+                scope.entries.is_loading = false
+
+                scope.server_pagination_pipe = (table_state) ->
+                    console.log 'got table state', table_state
+                    pagination = table_state.pagination
+                    scope.entries.is_loading = true
+
+                    scope.get_event_log_promise(pagination.start, pagination.number).then(([total_num, keys, new_data]) ->
+                        scope.entries = new_data
+                        scope.entries.keys = keys
+                        scope.entries.total_num = total_num
+                        scope.entries.is_loading = false
+
+                        table_state.pagination.numberOfPages = Math.ceil(total_num / pagination.number)
                     )
-                scope.smart_table_pipe = () ->
-                    return 33
+
         }
 ]).service("icswDiscoveryEventLogDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
     rest_map = {

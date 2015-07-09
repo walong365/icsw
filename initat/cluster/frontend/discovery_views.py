@@ -27,7 +27,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework.response import Response
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 import pymongo
 from rest_framework.generics import ListAPIView
@@ -48,6 +47,7 @@ class MongoDbInterface(object):
         event_log_db = client.icsw_event_log
 
         return client, event_log_db
+
 
 class DiscoveryOverview(View):
     @method_decorator(login_required)
@@ -76,26 +76,33 @@ class GetEventLog(ListAPIView):
         }
         if logfile_name is not None:
             query_obj['logfile_name'] = logfile_name
-        entries = db.event_log_db.wmi_event_log.find(query_obj)
+        projection_obj = {
+            'entry': 1
+        }
+        entries = db.event_log_db.wmi_event_log.find(query_obj, projection_obj)
+        total_num = entries.count()
         entries.sort([('time_generated', pymongo.DESCENDING)])
         if pagination_skip is not None:
             entries.skip(pagination_skip)
         if pagination_limit is not None:
             entries.limit(pagination_limit)
-        return list(entries)
+        result = [entry['entry'] for entry in entries]
+        keys = set()
+        for entry in result:
+            keys.update(entry.iterkeys())
+        return total_num, keys, result
 
     @method_decorator(login_required)
     def list(self, request, *args, **kwargs):
         device_pks = json.loads(request.GET['device_pks'])
-        logfile_name = request.GET['logfile_name']
+        logfile_name = request.GET.get('logfile_name')
         int_or_none = lambda x: int(x) if x is not None else x
         pagination_skip = int_or_none(request.GET.get('pagination_skip'))
         pagination_limit = int_or_none(request.GET.get('pagination_limit'))
 
         # self._get_ipmi_event_log(device_pks)
-        wmi_res = self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit)
+        wmi_res_total_num, wmi_keys, wmi_res =\
+            self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit)
 
-        return HttpResponse(bson.json_util.dumps(wmi_res), content_type="application/json")
-        # return Response(serializer.data)
-
-
+        return HttpResponse(bson.json_util.dumps([wmi_res_total_num, wmi_keys, wmi_res]),
+                            content_type="application/json")
