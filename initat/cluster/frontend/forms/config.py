@@ -28,50 +28,40 @@ class config_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "cur_edit.modify(this)"
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify()"
     helper.layout = Layout(
-        HTML("<h2>Configuration '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<h2>Configuration '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
         Fieldset(
             "Basic settings",
             Field(
                 "name",
                 wrapper_class="ng-class:form_error('name')",
-                typeahead="hint for hint in get_config_hints() | filter:$viewValue",
-                typeahead_on_select="config_selected_vt($item, $model, $label)",
+                typeahead="hint for hint in get_all_config_hint_names() | filter:$viewValue",
+                typeahead_on_select="config_selected_vt($item, $model, $label, edit_obj)",
                 typeahead_min_length=1,
             ),
             Field("description"),
-            # also commented out in config table
-            # Field(
-            #    "parent_config",
-            #    repeat="value.idx as value in this.get_valid_parents()",
-            #    placeholder="select parent config",
-            #    display="name",
-            #    null=True,
-            #    filter="{name:$select.search}",
-            #    wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config",
-            # ),
         ),
         HTML(
-            "<div ng-bind-html='show_config_help()'></div>",
+            "<div ng-bind-html='show_config_help(edit_obj)'></div>",
         ),
         Fieldset(
             "other settings",
             Field("enabled"),
             Field("priority"),
-            Field("server_config", wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.parent_config"),
+            Field("server_config", wrapper_ng_show="!edit_obj.system_config"),
         ),
         Fieldset(
             "Categories",
             Field(
                 "config_catalog",
-                repeat="value.idx as value in this.config_catalogs",
+                repeat="value.idx as value in get_all_catalogs()",
                 placeholder="select config catalog",
                 display="name",
                 filter="{name:$select.search}",
             ),
-            HTML("<div icsw-config-category-choice edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
+            HTML("<div icsw-config-category-choice edit_obj='{% verbatim %}{{edit_obj }}{% endverbatim %}' mode='conf'></div>"),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -81,11 +71,10 @@ class config_form(ModelForm):
     class Meta:
         model = config
         fields = (
-            "name", "description", "enabled", "priority",  # "parent_config",
+            "name", "description", "enabled", "priority",
             "config_catalog", "server_config",
         )
         widgets = {
-            "parent_config": ui_select_widget(),
             "config_catalog": ui_select_widget(),
         }
 
@@ -97,10 +86,10 @@ class config_catalog_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "cur_edit.modify(this)"
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify()"
     helper.layout = Layout(
-        HTML("<h2>Config catalog '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<h2>Config catalog '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')"),

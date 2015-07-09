@@ -162,6 +162,21 @@ angular.module(
                         options = if scope.config_service.rest_options? then scope.config_service.rest_options else {}
                         scope.rest.getList(options).then(scope.data_received)
 
+                if scope.config_service.load_promise?
+                    _list_name = attrs.targetList
+                    if not scope[_list_name]?
+                        scope[_list_name] = []
+                    scope.config_service.load_promise.then(
+                        (new_data) ->
+                            # start watch to check for length changes
+                            scope.$watch(
+                                () -> new_data.length
+                                (new_d) ->
+                                    if new_d
+                                        scope.data_received(new_data)
+                            )
+                    )
+
                 if scope.rest?
                     # NOTE: watching on restangular does not work. if $object gets filled up, there is NO call.
                     # therefore we watch on the length, which works. this also gets called on reload because of the
@@ -173,8 +188,8 @@ angular.module(
                             if scope.config_service.after_reload
                                 scope.config_service.after_reload(scope)
                     )
-
-                $parse(attrs.targetList).assign(scope, scope.rest)
+                    # is this correct ? changed identation, please check @BM
+                    $parse(attrs.targetList).assign(scope, scope.rest)
 
                 # interface functions to use in directive body
                 scope.edit = (event, obj) ->
@@ -212,12 +227,19 @@ angular.module(
                 scope.modify = () ->
                     if not scope.form.$invalid
                         if scope.create_mode
-                            scope.rest.post(scope.new_obj).then((new_data) ->
-                                scope.rest.push(new_data)
-                                scope.close_modal()
-                                if scope.config_service.object_created
-                                    scope.config_service.object_created(scope.new_obj, new_data, scope)
-                            )
+                            if scope.rest?
+                                scope.rest.post(scope.new_obj).then((new_data) ->
+                                    scope.rest.push(new_data)
+                                    scope.close_modal()
+                                    if scope.config_service.object_created
+                                        scope.config_service.object_created(scope.new_obj, new_data, scope)
+                                )
+                            if scope.config_service.save_defer?
+                                scope.config_service.save_defer(scope.new_obj).then((new_data) ->
+                                    scope.close_modal()
+                                    if scope.config_service.object_created
+                                        scope.config_service.object_created(scope.new_obj, new_data, scope)
+                                )
                         else
                             scope.edit_obj.put().then(
                                 (data) ->

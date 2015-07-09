@@ -1,38 +1,38 @@
 
 <script type='text/ng-template' id='config.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Configuration '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Configuration '{{ edit_obj.name }}'</h2><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_hints() | filter:$viewValue" typeahead-min-length="1" typeahead-on-select="config_selected_vt($item, $model, $label)" /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" typeahead="hint for hint in get_all_config_hint_names() | filter:$viewValue" typeahead-min-length="1" typeahead-on-select="config_selected_vt($item, $model, $label, edit_obj)" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3">
  Description
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div></fieldset><div ng-bind-html='show_config_help()'></div><fieldset 
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="edit_obj.description" type="text" /> </div></div></fieldset><div ng-bind-html='show_config_help(edit_obj)'></div><fieldset 
  ><legend>other settings</legend><div class="form-group"><div id="div_id_enabled"
  class="checkbox
  "
- ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="_edit_obj.enabled" type="checkbox" />
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox" />
  Enabled
  </label></div></div></div><div id="div_id_priority"
  class="form-group 
  "
  ><label for="id_priority" class="control-label col-sm-3 requiredField">
- Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="_edit_obj.priority" required="True" type="number" value="0" /> </div></div><div class="form-group"><div id="div_id_server_config"
+ Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0" /> </div></div><div class="form-group"><div id="div_id_server_config"
  class="checkbox
  "
- ng_show="!_edit_obj.system_config &amp;&amp; !_edit_obj.parent_config"
- ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_server_config" class=""><input class="checkboxinput checkbox" id="id_server_config" name="server_config" ng-model="_edit_obj.server_config" type="checkbox" />
+ ng_show="!edit_obj.system_config"
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_server_config" class=""><input class="checkboxinput checkbox" id="id_server_config" name="server_config" ng-model="edit_obj.server_config" type="checkbox" />
  Server config
  </label></div></div></div></fieldset><fieldset 
  ><legend>Categories</legend><div id="div_id_config_catalog"
  class="form-group 
  "
  ><label for="id_config_catalog" class="control-label col-sm-3 requiredField">
- Config catalog<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.config_catalog' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='select config catalog'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in this.config_catalogs| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div icsw-config-category-choice edit_obj='{{_edit_obj }}' mode='conf'></div></fieldset><div class="form-actions"><input type="submit"
+ Config catalog<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.config_catalog' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='select config catalog'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_all_catalogs()| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div icsw-config-category-choice edit_obj='{{edit_obj }}' mode='conf'></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -171,23 +171,23 @@
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.catalog.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Config catalog '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Config catalog '{{ edit_obj.name }}'</h2><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="254" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_author"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="254" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_author"
  class="form-group 
  "
  ><label for="id_author" class="control-label col-sm-3">
  Author
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_author" maxlength="256" name="author" ng-model="_edit_obj.author" type="text" /> </div></div><div id="div_id_url"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_author" maxlength="256" name="author" ng-model="edit_obj.author" type="text" /> </div></div><div id="div_id_url"
  class="form-group 
  "
  ><label for="id_url" class="control-label col-sm-3">
  Url
- </label><div class="controls col-sm-7"><input class="urlinput form-control" id="id_url" maxlength="256" name="url" ng-model="_edit_obj.url" type="url" /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><input class="urlinput form-control" id="id_url" maxlength="256" name="url" ng-model="edit_obj.url" type="url" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"

@@ -13,7 +13,6 @@
                     <input type="button" ng-show="uploader.queue.length "class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input>
                 </div>
             </div>
-
             <icsw-config-generate-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-config-generate-config>
         </tab>
         <tab heading="Monitoring categories">
@@ -40,59 +39,59 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.catalog.table">
-    <h2>{{ config_catalogs.length }} catalogs, <icsw-tools-button type="create" value="create new catalog" ng-click="catalog_edit.create($event)" size="sm"/></h2>
-    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
-        <thead>
-            <tr>
-                <th>name</th>
-                <th>URL</th>
-                <th>Author</th>
-                <th>Version</th>
-                <th>#configs<th>
-                <th colspan="2">action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="catalog in config_catalogs">
-                <td>{{ catalog.name }}</td>
-                <td>{{ catalog.url }}</td>
-                <td>{{ catalog.author }}</td>
-                <td>{{ catalog.version }}</td>
-                <td>{{ get_num_configs(catalog) }}</td>
-                <td><icsw-tools-button type="modify" value="modify" ng-click="edit_catalog(catalog, $event)" size="xs"/></td>
-                <td><icsw-tools-button type="delete" value="delete" ng-show="get_num_configs(catalog) == 0" ng-click="delete_catalog(catalog)" size="xs"/></td>
-            </tr>
-        </tbody>
-    </table>
+    <icsw-tools-rest-table target-list="config_catalogs" config-service="icswConfigCatalogListService">
+        <h2>{{ config_catalogs.length }} catalogs,
+            <icsw-tools-button type="create" value="create new catalog" ng-click="create($event)" size="sm"></icsw-tools-button>
+        </h2>
+        <table st-table="entries_displayed" st-safe-src="config_catalogs"
+               class="table table-hover table-condensed table-striped" style="width:auto;">
+            <thead>
+                <tr>
+                    <th st-sort="name">name</th>
+                    <th st-sort="url">URL</th>
+                    <th st-sort="author">Author</th>
+                    <th>Version</th>
+                    <th>#configs<th>
+                    <th colspan="2">action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="catalog in entries_displayed">
+                    <td>{{ catalog.name }}</td>
+                    <td>{{ catalog.url }}</td>
+                    <td>{{ catalog.author }}</td>
+                    <td>{{ catalog.version }}</td>
+                    <td>{{ get_num_configs(catalog) }}</td>
+                    <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, catalog)" size="xs"/></td>
+                    <td><icsw-tools-button type="delete" value="delete" ng-show="get_num_configs(catalog) == 0" ng-click="delete(catalog)" size="xs"/></td>
+                </tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
 </script>
 
 <script type="text/ng-template" id="icsw.config.config.table">
-    <h2>{{ entries.length }} configurations, shown: {{ pagSettings.conf.filtered_len }},
-        <icsw-tools-button type="create" value="create new config" ng-click="config_edit.create($event)" size="sm"/>
-        </input>
-        <span ng-show="selected_objects.length">
-        , {{ selected_objects.length }} selected,
-        <div class="btn-group btn-sm">
-            <input type="button" class="btn btn-sm btn-primary" value="clear selection" ng-click="unselect_objects()"/>
-            <input type="button" class="btn btn-sm btn-warning" value="modify selected" ng-click="modify_selected_objects()"/>
-            <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"/>
-        </div>
-        </span>
-    </h2>
-    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
-        <thead>
-            <tr>
-                <td colspan="14">
-                    <div class="row" style="width:900px;">
+    <icsw-tools-rest-table target-list="configs" config-service="icswConfigListService">
+        <table st-table="configs_displayed" st-safe-src="configs"
+               class="table table-hover table-condensed table-striped" style="width:auto;">
+            <h2>{{ configs.length }} configurations <!-- , shown: {{ configs_displayed.length }},-->
+                <icsw-tools-button type="create" value="create new config" ng-click="create($event)" size="sm"></icsw-tools-button>
+            </h2>
+            <thead>
+                <tr>
+                    <td colspan="99">
                         <div class="col-sm-4">
                             <div class="input-group">
-                                <input ng-model="pagSettings.conf.filter_settings.filter_str" class="form-control" placeholder="filter">
+                                <input st-search="search_str" class="form-control" placeholder="filter">
                                 </input>
                                 <span class="input-group-btn">
                                     <button class="btn btn-warning" type="button" ng-click="clear_filter()"><span title="clear filter" class="fa fa-remove"> Clear</span></button>
                                 </span>
                             </div>
                         </div>
+                        <div icsw-tools-pagination st-items-by-page="15" st-displayed-pages="11"
+                             possible-items-by-page="15,30,100,200" class="col-sm-3"></div>
+                        <!-- not working, fixe ... -->
                         <div class="col-sm-3">
                             <div class="input-group btn-group">
                                 <input type="button" ng-class="get_filter_class('name')" value="name" ng-click="change_filter_setting('name')"/>
@@ -101,77 +100,66 @@
                                 <input type="button" ng-class="get_filter_class('mon')" value="mon" ng-click="change_filter_setting('mon')"/>
                             </div>
                         </div>
-                        <div class="col-sm-5" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="func" paginator-epp="15,30,100,200" paginator_filter_func="filter_conf">
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="name">Name</th>
+                    <th st-sort="priority">Pri</th>
+                    <th>Flags</th>
+                    <th>Catalog</th>
+                    <th>enabled</th>
+                    <th>Description</th>
+                    <th>var</th>
+                    <th>script</th>
+                    <th>mon</th>
+                    <th>cats</th>
+                    <th colspan="3">action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="config in configs_displayed" ng-class="get_config_row_class(config)">
+                    <td>
+                        <span ng-show="config_has_info(config)" class="pull-right">
+                            <span class="glyphicon glyphicon-info-sign" title="{{ get_config_help_text(config) }}">
+                            </span>
+                        </span>
+                        {{ config.name }}
+                    </td>
+                    <td class="text-right">{{ config.priority }}</td>
+                    <td class="text-center">
+                        <div class="btn-group btn-group-xs">
+                            <!-- tooltips not working right now -->
+                            <input type="button" class="btn disabled" ng-class="config.server_config && 'btn-success'" value="S" data-toggle="tooltip" title="is server config"/>
+                            <input type="button" class="btn disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"/>
                         </div>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <th>Name</th>
-                <th>Pri</th>
-                <th>Flags</th>
-                <th>Catalog</th>
-                <th>enabled</th>
-                <th>Description</th>
-                <!--
-                see comment below
-                <th>parent</th>
-                -->
-                <th>var</th>
-                <th>script</th>
-                <th>mon</th>
-                <th>cats</th>
-                <th colspan="3">action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat-start="config in pagSettings.filtered_list.slice(pagSettings.conf.start_idx, pagSettings.conf.end_idx + 1)" ng-class="get_config_row_class(config)">
+                    </td>
+                    <td>{{ get_config_catalog_name(config) }}</td>
+                    <td class="text-center">{{ config.enabled | yesno1 }}</td>
+                    <td>{{ config.description }}</td>
+                    <td class="text-center">
+                        <span ng-class="get_label_class(config, 'var')" ng-click="toggle_expand(config, 'var')">
+                            <span ng_class="get_expand_class(config, 'var')">
+                            </span>
+                            {{ config.var_num }}
+                        </span>&nbsp;
+                    </td>
+                    <td class="text-center">
+                        <span ng-class="get_label_class(config, 'script')" ng-click="toggle_expand(config, 'script')">
+                            <span ng_class="get_expand_class(config, 'script')">
+                            </span>
+                            {{ config.script_num }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-class="get_label_class(config, 'mon')" ng-click="toggle_expand(config, 'mon')">
+                            <span ng_class="get_expand_class(config, 'mon')">
+                            </span>
+                            {{ config.mon_num }}
+                        </span>
+                    </td>
+                    <td class="text-center">{{ get_num_cats(config) }}</td>
                 <td>
-                    <span ng-show="config_has_info(config)" class="pull-right">
-                        <span class="glyphicon glyphicon-info-sign" title="{{ get_config_help_text(config) }}">
-                        </span>
-                    </span>
-                    {{ config.name }}
-                </td>
-                <td class="text-right">{{ config.priority }}</td>
-                <td class="text-center">
-                    <div class="btn-group btn-group-xs">
-                        <!-- tooltips not working right now -->
-                        <input type="button" class="btn disabled" ng-class="config.server_config && 'btn-success'" value="S" data-toggle="tooltip" title="is server config"/>
-                        <input type="button" class="btn disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"/>
-                    </div>
-                </td>
-                <td>{{ config.config_catalog | array_lookup:config_catalogs:'name':'-' }}</td>
-                <td class="text-center">{{ config.enabled | yesno1 }}</td>
-                <td>{{ config.description }}</td>
-                <!--
-                parent config isn't really used and is a bad feature (quote AL) -- BM Feb 2015
-                <td>{{ show_parent_config(config) }}</td>
-                -->
-                <td class="text-center">
-                    <span ng-class="get_label_class(config, 'var')" ng-click="toggle_expand(config, 'var')">
-                        <span ng_class="get_expand_class(config, 'var')">
-                        </span>
-                        {{ config.var_num }}
-                    </span>&nbsp;
-                </td>
-                <td class="text-center">
-                    <span ng-class="get_label_class(config, 'script')" ng-click="toggle_expand(config, 'script')">
-                        <span ng_class="get_expand_class(config, 'script')">
-                        </span>
-                        {{ config.script_num }}
-                    </span>
-                </td>
-                <td class="text-center">
-                    <span ng-class="get_label_class(config, 'mon')" ng-click="toggle_expand(config, 'mon')">
-                        <span ng_class="get_expand_class(config, 'mon')">
-                        </span>
-                        {{ config.mon_num }}
-                    </span>
-                </td>
-                <td class="text-center">{{ get_num_cats(config) }}</td>
-                <td>
-                    <icsw-tools-button type="modify" value="modify" ng-click="config_edit.edit(config, $event)" size="xs"/>
+                    <icsw-tools-button type="modify" value="modify" ng-click="edit($event, config)" size="xs"/>
                 </td>
                 <td>
                     <div class="input-group-btn">
@@ -196,9 +184,41 @@
                         refs: {{ config.usecount }}
                     </span>
                     <span ng-if="!config.usecount">
-                        <icsw-tools-button type="delete" value="delete" ng-click="config_edit.delete_obj(config)" size="xs"/>
+                        <icsw-tools-button type="delete" value="delete" ng-click="delete(config)" size="xs"/>
                     </span>
                 </td>
+                </tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
+    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+        <thead>
+            <tr>
+                <td colspan="14">
+                    <div class="row" style="width:900px;">
+                        <div class="col-sm-4">
+                            <div class="input-group">
+                                <input ng-model="pagSettings.conf.filter_settings.filter_str" class="form-control" placeholder="filter">
+                                </input>
+                                <span class="input-group-btn">
+                                    <button class="btn btn-warning" type="button" ng-click="clear_filter()"><span title="clear filter" class="fa fa-remove"> Clear</span></button>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="input-group btn-group">
+                                <input type="button" ng-class="get_filter_class('name')" value="name" ng-click="change_filter_setting('name')"/>
+                                <input type="button" ng-class="get_filter_class('script')" value="script" ng-click="change_filter_setting('script')"/>
+                                <input type="button" ng-class="get_filter_class('var')" value="var" ng-click="change_filter_setting('var')"/>
+                                <input type="button" ng-class="get_filter_class('mon')" value="mon" ng-click="change_filter_setting('mon')"/>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat-start="config in pagSettings.filtered_list.slice(pagSettings.conf.start_idx, pagSettings.conf.end_idx + 1)" ng-class="get_config_row_class(config)">
             </tr>
             <tr ng-show="config.var_expanded">
                 <td colspan="14">

@@ -77,9 +77,6 @@ class config(models.Model):
     server_config = models.BooleanField(default=False)
     # system config, not user generated
     system_config = models.BooleanField(default=False)
-    # config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
-    # can not be used for server configs
-    parent_config = models.ForeignKey("config", null=True, blank=True)
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
@@ -122,8 +119,6 @@ def config_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         cur_inst.description = cur_inst.description or ""
         _check_empty_string(cur_inst, "name")
-        if cur_inst.server_config:
-            cur_inst.parent_config = None
         # priority
         _check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
 
@@ -177,16 +172,6 @@ def config_post_save(sender, **kwargs):
             for _cvs in var_add_list + script_add_list:
                 _cvs.config = cur_inst
                 _cvs.save()
-        parent_list = []
-        cur_parent = cur_inst
-        while True:
-            if cur_parent.pk in parent_list:
-                raise ValidationError("Loop in config parent setup detected")
-            parent_list.append(cur_parent.pk)
-            if cur_parent.parent_config_id:
-                cur_parent = cur_parent.parent_config
-            else:
-                break
         if not cur_inst.config_catalog_id:
             if not config_catalog.objects.all().count():
                 config_catalog.create_local_catalog()
