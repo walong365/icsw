@@ -48,7 +48,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         # self.register_func("wmi_scan", self._wmi_scan)
 
         self.register_timer(self.periodic_update, 60 * 1 if global_config["DEBUG"] else 60 * 15, instant=True)
-        self.register_timer(self.job_control, 2 if global_config["DEBUG"] else 5, instant=True)
+        self.register_timer(self.job_control, 1 if global_config["DEBUG"] else 4, instant=True)
 
         self._init_db()
 
@@ -190,7 +190,6 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
         for ipmi_dev, ip in self._get_ip_to_multiple_hosts(ipmi_devices).iteritems():
             try:
-                print 'ipmi de', ipmi_dev, ipmi_dev.pk, last_record_ids_lut.get(ipmi_dev.pk)
                 job = IpmiLogJob(log=self.log,
                                  db=self._mongodb_database,
                                  target_device=ipmi_dev,

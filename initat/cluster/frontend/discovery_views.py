@@ -111,6 +111,7 @@ class GetEventLog(ListAPIView):
         mongo = MongoDbInterface()
         projection_obj = {
             'sections': 1,
+            'keys_ordered': 1,
         }
         query_obj = {
             'device_pk': {'$in': device_pks},
@@ -129,8 +130,14 @@ class GetEventLog(ListAPIView):
             entries.skip(pagination_skip)
         if pagination_limit is not None:
             entries.limit(pagination_limit)
-        result = [entry['sections'] for entry in entries]  # exhaust cursor
+
+        result = []
         entry_keys = collections.OrderedDict()  # we only use it as set
+        for entry in entries:  # exhaust cursor
+            result.append(entry['sections'])
+            for k in entry['keys_ordered']:
+                if k != '__icsw_ipmi_section_type':
+                    entry_keys[k] = None
         # merge ipmi sections
         result_merged = []
         for entry in result:
@@ -138,7 +145,6 @@ class GetEventLog(ListAPIView):
             for section in entry:
                 # filter internal fields
                 entry_merged.update({k: v for k, v in section.iteritems() if k != '__icsw_ipmi_section_type'})
-            entry_keys.update({k: None for k in entry_merged.iterkeys()})
             result_merged.append(entry_merged)
         return total_num, entry_keys.keys(), result_merged
 

@@ -347,6 +347,16 @@ class WmiLogEntryJob(_WmiJobBase):
                             'device_pk': job.target_device.pk,
                         })
 
+                # DEBUG check
+                for entry in db_entries:
+
+                    if list(job.db.wmi_event_log.find({
+                        'logfile_name': entry['logfile_name'],
+                        'record_number': entry["record_number"],
+                        'device_pk': entry["device_pk"],
+                    })):
+                        raise RuntimeError("DUPLICATE WMI for " + unicode(entry))
+
                 if db_entries:
                     # must not feed empty list to mongo
                     job.db.wmi_event_log.insert_many(db_entries)

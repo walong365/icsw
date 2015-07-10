@@ -19,6 +19,7 @@
 import re
 import collections
 import django.utils.timezone
+import itertools
 
 from initat.tools import logging_tools, process_tools
 from initat.cluster.backbone.models import device_variable
@@ -199,12 +200,17 @@ class IpmiLogJob(EventLogPollerJobBase):
                         if parsed:
                             sections_db_data.append(parsed)
 
+                keys_ordered = list(itertools.chain.from_iterable(sec.iterkeys() for sec in sections_db_data))
                 db_entry = {
                     'parse_date': django.utils.timezone.now(),
                     'record_id': self.current_record_id,
+                    'keys_ordered': keys_ordered,
                     'sections': sections_db_data,
                     'device_pk': job.target_device.pk,
                 }
+                # DEBUG check
+                if list(job.db.ipmi_event_log.find({'record_id': self.current_record_id, 'device_pk': job.target_device.pk})):
+                    raise RuntimeError("DUPLICATES FOR " + unicode(db_entry))
                 job.db.ipmi_event_log.insert(db_entry)
                 job.log("feeding db: {}".format(db_entry))
 
@@ -212,7 +218,7 @@ class IpmiLogJob(EventLogPollerJobBase):
 
     def _parse_section(self, section_string):
         lines = section_string.split("\n")
-        print 'parsing', section_string, '\nlines', lines
+        # print 'parsing', section_string, '\nlines', lines
         ret = None
         if lines:
             # keep the order at least for now (json will not obey it in general)
