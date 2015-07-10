@@ -346,7 +346,10 @@ class WmiLogEntryJob(_WmiJobBase):
                             'record_number': record_number,
                             'device_pk': job.target_device.pk,
                         })
-                job.db.wmi_event_log.insert_many(db_entries)
+
+                if db_entries:
+                    # must not feed empty list to mongo
+                    job.db.wmi_event_log.insert_many(db_entries)
 
                 job.db.wmi_logfile_maximal_record_number.update_one(
                     filter={
