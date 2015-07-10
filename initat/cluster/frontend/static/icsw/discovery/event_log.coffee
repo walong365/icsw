@@ -48,25 +48,41 @@ angular.module(
                 scope._last_table_state = {}
                 scope.server_pagination_pipe = {}  # pipe functions
 
+                scope.device_list_ready = false
+
                 scope.new_devsel = (sel) ->
                     scope.device_pks = sel
 
+                    scope.device_tab_active = {}
+
                     Restangular.one(ICSW_URLS.DISCOVERY_GET_EVENT_LOG_DEVICE_INFO.slice(1)).get({device_pks: JSON.stringify(scope.device_pks)}).then((new_data)->
+                        scope.device_list_ready = true
                         scope.devices_rest = new_data
                         disabled_devs = []
                         enabled_devs = []
 
+                        has_device_with_logs = false
+                        first_dev_pk_with_logs = undefined
                         for pk, dev_entry of scope.devices_rest.plain()
                             if dev_entry.capabilities.length > 0
                                 desc = dev_entry.capabilities.join(", ")
                                 enabled_devs.push(pk)
                                 scope.device_mode[pk] = dev_entry.capabilities[0]
+                                has_device_with_logs = true
+                                first_dev_pk_with_logs = first_dev_pk_with_logs || pk
                             else
                                 desc = "N/A"
                                 disabled_devs.push(pk)
                             dev_entry.capabilities_description = desc
 
                         scope.device_pks_ordered = enabled_devs.concat(disabled_devs)
+
+                        scope.no_device_with_logs_selected = !has_device_with_logs
+                        if scope.no_device_with_logs_selected
+                            scope.device_tab_active['no_device_tab'] = true
+                        else
+                            scope.device_tab_active[first_dev_pk_with_logs] = true
+
                     )
 
                     # need pipe functions for each tab since they must remember the table state
