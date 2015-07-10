@@ -22,41 +22,57 @@ angular.module(
     [
     ]
 ).directive("icswDiscoveryEventLog",
-    ['msgbus', 'icswDiscoveryEventLogDataService', 'Restangular', 'ICSW_URLS',
-     (msgbus, icswDiscoveryEventLogDataService, Restangular, ICSW_URLS) ->
+    ['msgbus', 'icswDiscoveryEventLogDataService', 'Restangular', 'ICSW_URLS', '$timeout'
+     (msgbus, icswDiscoveryEventLogDataService, Restangular, ICSW_URLS, $timeout) ->
         return  {
             restrict: 'EA'
             templateUrl: 'icsw.discovery.event_log'
             link: (scope, el, attrs) ->
                 scope.data = icswDiscoveryEventLogDataService
 
+                reload_current_tab = () ->
+                    console.log 'reload', scope.mode_query_parameters
+                    if scope.cur_device_pk?
+                        scope.server_pagination_pipe[scope.cur_device_pk]()
+
                 scope.set_active = (device_pk) ->
-                    device_pk = parseInt(device_pk)
-                    #scope.entries = []
-                    scope.cur_device_pk = device_pk
-                    #if scope.last_table_state?
-                    #    scope.last_table_state.pagination.start = 0
-                    #    scope.last_table_state.search = {}
-                    #    scope.last_table_state.sort = {}
-                    # TODO: only call on first load
-                    scope.server_pagination_pipe[scope.cur_device_pk]()
+                    scope.cur_device_pk = parseInt(device_pk)
+                    reload_current_tab()
 
                 scope.devices_rest = {}
                 scope.device_pks_ordered = []
+                scope.device_list_ready = false
+
+                # current mode for each device, e.g. {4: 'ipmi', 55: 'wmi'}
                 scope.device_mode = {}
 
+                # show hide column in output
                 scope.show_column = {}
 
-                scope._last_table_state = {}
-                scope.server_pagination_pipe = {}  # pipe functions
+                # need to remember last table state by device tab to be able to call pipe() again
+                _last_table_state = {}
 
-                scope.device_list_ready = false
+                scope.mode_query_parameters = {}
+                _schedule_reload_timeout_promise = undefined
+                query_parameter_changed = () ->
+                    if _schedule_reload_timeout_promise?
+                        $timeout.cancel(_schedule_reload_timeout_promise)
+
+                    init_reload = () ->
+                        if _last_table_state[scope.cur_device_pk]?
+                            _last_table_state[scope.cur_device_pk].pagination.start = 0
+                        reload_current_tab()
+
+                    _schedule_reload_timeout_promise = $timeout(init_reload, 350)
+
+                scope.$watch('mode_query_parameters', query_parameter_changed, true)
 
                 scope.new_devsel = (sel) ->
                     scope.device_pks = sel
 
                     scope.device_tab_active = {}
 
+                    # find data related to devices
                     Restangular.one(ICSW_URLS.DISCOVERY_GET_EVENT_LOG_DEVICE_INFO.slice(1)).get({device_pks: JSON.stringify(scope.device_pks)}).then((new_data)->
                         scope.device_list_ready = true
                         scope.devices_rest = new_data
@@ -86,35 +102,41 @@ angular.module(
                             scope.device_tab_active[first_dev_pk_with_logs] = true
                     )
 
-                    # need pipe functions for each tab since they must remember the table state
-                    # in order to be able to get updated
-                    for device_pk in scope.device_pks
-                        do (device_pk) ->
-                            scope.server_pagination_pipe[device_pk] = (table_state) ->
-                                if scope.cur_device_pk?
-                                    console.log 'called w ts', table_state
-                                    if !table_state?
-                                        table_state = scope._last_table_state[device_pk]
-                                    scope._last_table_state[device_pk] = table_state
-                                    console.log 'got ok', device_pk, 'table state', table_state
-                                    if table_state?
-                                        pagination = table_state.pagination
-                                        scope.entries.is_loading = true
+                    # pipe() function for each tab
+                    scope.server_pagination_pipe = {}
 
-                                        promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, {})
-                                        if promise
-                                            do (table_state) ->
-                                                promise.then(([total_num, keys, new_data]) ->
-                                                    console.log 'result here'
-                                                    scope.entries = new_data
-                                                    scope.entries.keys = keys
-                                                    scope.entries.total_num = total_num
-                                                    scope.entries.is_loading = false
 
-                                                    table_state.pagination.numberOfPages = Math.ceil(total_num / pagination.number)
-                                                )
+                    do (_last_table_state) ->
+                        # need pipe functions for each tab since they must remember the table state
+                        # in order to be able to get updated
+                        for device_pk in scope.device_pks
+                            do (device_pk) ->
+                                scope.server_pagination_pipe[device_pk] = (table_state) ->
+                                    if scope.cur_device_pk?
+                                        console.log 'called w ts', table_state
+                                        if !table_state?
+                                            table_state = _last_table_state[device_pk]
+                                        _last_table_state[device_pk] = table_state
+                                        console.log 'got ok', device_pk, 'table state', table_state
+                                        if table_state?
+                                            pagination = table_state.pagination
+                                            scope.entries.is_loading = true
 
-                scope._last_query_parameters = undefined
+                                            promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, scope.mode_query_parameters)
+                                            if promise
+                                                do (table_state) ->
+                                                    promise.then(([total_num, keys, new_data]) ->
+                                                        console.log 'result here'
+                                                        scope.entries = new_data
+                                                        scope.entries.keys = keys
+                                                        scope.entries.total_num = total_num
+                                                        scope.entries.is_loading = false
+
+                                                        table_state.pagination.numberOfPages = Math.ceil(total_num / pagination.number)
+                                                    )
+
+                # actually contact server
+                _last_query_parameters = undefined
                 scope.get_event_log_promise = (device_pk, skip, limit, mode_query_parameters) ->
                     query_params = {
                         device_pks: JSON.stringify([parseInt(device_pk)])
@@ -123,8 +145,8 @@ angular.module(
                         pagination_skip: skip
                         pagination_limit: limit
                     }
-                    if !_.isEqual(scope._last_query_parameters, query_params)
-                        scope._last_query_parameters = query_params
+                    if !_.isEqual(_last_query_parameters, query_params)
+                        _last_query_parameters = angular.copy(query_params)
                         console.log 'really doing query'
                         return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params)
                     else

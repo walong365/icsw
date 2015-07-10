@@ -30,6 +30,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 import itertools
 from rest_framework.response import Response
+import time
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 import pymongo
@@ -106,17 +107,23 @@ class GetEventLogDeviceInfo(View):
 
 class GetEventLog(ListAPIView):
 
-    def _get_ipmi_event_log(self, device_pks, pagination_skip, pagination_limit):
+    def _get_ipmi_event_log(self, device_pks, pagination_skip, pagination_limit, filter_str=None):
         mongo = MongoDbInterface()
         projection_obj = {
             'sections': 1,
         }
+        query_obj = {
+            'device_pk': {'$in': device_pks},
+        }
+        if filter_str is not None and filter_str:  # "" means no search as well
+            query_obj["$text"] = {'$search': filter_str}
+        sort_obj = [('record_id', pymongo.DESCENDING)]
         entries = mongo.event_log_db.ipmi_event_log.find(
-            {'device_pk': {'$in': device_pks}},
+            query_obj,
             projection_obj,
+            sort=sort_obj,
         )
         total_num = entries.count()
-        entries.sort([('record_id', pymongo.DESCENDING)])
 
         if pagination_skip is not None:
             entries.skip(pagination_skip)
@@ -135,19 +142,24 @@ class GetEventLog(ListAPIView):
             result_merged.append(entry_merged)
         return total_num, entry_keys.keys(), result_merged
 
-    def _get_wmi_event_log(self, device_pks, logfile_name=None, pagination_skip=None, pagination_limit=None):
+    def _get_wmi_event_log(self, device_pks, logfile_name=None, pagination_skip=None, pagination_limit=None,
+                           filter_str=None):
         mongo = MongoDbInterface()
         query_obj = {
             'device_pk': {'$in': device_pks},
         }
         if logfile_name is not None:
             query_obj['logfile_name'] = logfile_name
+        if filter_str is not None:
+            query_obj["$text"] = {'$search': filter_str}
+
         projection_obj = {
             'entry': 1,
         }
-        entries = mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj)
+        sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
+        entries = mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj, sort=sort_obj)
         total_num = entries.count()
-        entries.sort([('time_generated', pymongo.DESCENDING)])
+        # entries.sort(
         if pagination_skip is not None:
             entries.skip(pagination_skip)
         if pagination_limit is not None:
@@ -172,11 +184,15 @@ class GetEventLog(ListAPIView):
         mode = request.GET['mode']
 
         if mode == 'wmi':
+            # a = time.time()
             total_num, keys, entries =\
-                self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit)
+                self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit,
+                                        **mode_query_parameters)
+            # print 'took', time.time() - a
+
         elif mode == 'ipmi':
             total_num, keys, entries =\
-                self._get_ipmi_event_log(device_pks, pagination_skip, pagination_limit)
+                self._get_ipmi_event_log(device_pks, pagination_skip, pagination_limit, **mode_query_parameters)
         else:
             raise AssertionError("Invalid mode: {} ".format(mode))
 

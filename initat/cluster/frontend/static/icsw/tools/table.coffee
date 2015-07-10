@@ -295,17 +295,29 @@ Show/Hide columns: <div class="btn-group btn-group-xs">
                 #       set this attribute if you know what you are doing, or else create the object yourself in your scope
                 scope.show_column = {}
 
+
+            set_new_columns = (new_columns) ->
+                for k in Object.keys(scope.show_column)
+                    if k not in new_columns
+                        delete scope.show_column[k]
+
+                scope.columns = new_columns
+                for col in scope.columns
+                    scope.show_column[col] = true
+
+            scope.$watch(
+                () -> attrs.columnsList
+                (new_val) ->
+                    if new_val? && new_val
+                        set_new_columns(JSON.parse(new_val))
+            )
+
             scope.$watch(
                 () -> attrs.columns  # watch on attribute doesn't work
-                () ->
-                    new_columns = attrs.columns.split(' ')
-                    for k in Object.keys(scope.show_column)
-                        if k not in new_columns
-                            delete scope.show_column[k]
+                (new_val) ->
+                    if new_val?
+                        set_new_columns(new_val.split(' '))
 
-                    scope.columns = new_columns
-                    for col in scope.columns
-                        scope.show_column[col] = true
             )
      }
 )
