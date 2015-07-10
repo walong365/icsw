@@ -28,7 +28,7 @@
                 </select>
             </span>
             <span ng-if="numPages > 1">, </span>
-            <span ng-if="numPages < 6">
+            <span ng-if="numPages < 6 && !noNumberOfElements">
                 {{'showing entries' | translate}}
                 <span ng-if="table_controller.getFilteredCollection().length == 0">0</span>
                 <span ng-if="table_controller.getFilteredCollection().length > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>

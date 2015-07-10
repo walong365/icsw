@@ -193,7 +193,7 @@ class WmiLogEntryJob(_WmiJobBase):
         def __call__(self, job):
             where_clause = "WHERE Logfile = '{}'".format(job.logfile_name)
             if job.last_known_record_number is not None:
-                where_clause += "AND RecordNumber > {}".format(job.last_known_record_number)
+                where_clause += "AND RecordNumber >= {}".format(job.last_known_record_number)
 
             cmd = WmiUtils.get_wmic_cmd(
                 username=job.username,

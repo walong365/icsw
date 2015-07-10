@@ -22,6 +22,7 @@
 import json
 import pprint
 import bson.json_util
+import collections
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -122,16 +123,17 @@ class GetEventLog(ListAPIView):
         if pagination_limit is not None:
             entries.limit(pagination_limit)
         result = [entry['sections'] for entry in entries]  # exhaust cursor
-        keys = set()
+        entry_keys = collections.OrderedDict()  # we only use it as set
         # merge ipmi sections
         result_merged = []
         for entry in result:
             entry_merged = {}
             for section in entry:
-                keys.update(section.iterkeys())
-                entry_merged.update(section)
+                # filter internal fields
+                entry_merged.update({k: v for k, v in section.iteritems() if k != '__icsw_ipmi_section_type'})
+            entry_keys.update({k: None for k in entry_merged.iterkeys()})
             result_merged.append(entry_merged)
-        return total_num, keys, result_merged
+        return total_num, entry_keys.keys(), result_merged
 
     def _get_wmi_event_log(self, device_pks, logfile_name=None, pagination_skip=None, pagination_limit=None):
         mongo = MongoDbInterface()

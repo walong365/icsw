@@ -68,6 +68,9 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self._mongodb_database.wmi_event_log.create_index('record_number', name='record_number_index')
         self._mongodb_database.wmi_event_log.create_index('time_generated', name='time_generated_index')
 
+        self._mongodb_database.ipmi_event_log.create_index([('$**', 'text')], name="ipmi_log_full_text_index")
+        self._mongodb_database.ipmi_event_log.create_index([('$**', 'text')], name="ipmi_log_full_text_index")
+
     def periodic_update(self):
         self._schedule_wmi_jobs()
         self._schedule_ipmi_jobs()

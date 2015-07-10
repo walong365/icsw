@@ -50,12 +50,14 @@ angular.module(
         scope: {
             stItemsByPage: '=?',
             stDisplayedPages: '=?'
+            noNumberOfElements: '=?'
         },
         template: $templateCache.get("icsw.tools.paginator")
         link: (scope, element, attrs, ctrl) ->
 
             scope.stItemsByPage = scope.stItemsByPage or 10
             scope.stDisplayedPages = scope.stDisplayedPages or 5
+            scope.noNumberOfElements = scope.noNumberOfElements or false
             scope.Math = Math;
             # this is not nice but only needed for a minor thing (see template above)
             # the problem is that we can't access the scope of the outer directive as the st-table directive overwrites the scope

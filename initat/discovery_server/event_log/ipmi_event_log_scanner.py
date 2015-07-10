@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import re
+import collections
 import django.utils.timezone
 
 from initat.tools import logging_tools, process_tools
@@ -66,7 +67,7 @@ class IpmiLogJob(EventLogPollerJobBase):
         self.current_phase = self.FindMaximumPhase()
 
     def __unicode__(self):
-        return u"IpmiLogJob((dev={}, ip={})".format(self.target_device, self.target_ip)
+        return u"IpmiLogJob((dev={}, ip={}, phase={})".format(self.target_device, self.target_ip, self.current_phase)
 
     __repr__ = __unicode__
 
@@ -146,6 +147,12 @@ class IpmiLogJob(EventLogPollerJobBase):
 
             return do_continue
 
+        def __unicode(self):
+            return u"RetrieveEvents(cur_record_id={}, max_record_id={})".format(self.current_record_id,
+                                                                                self.max_record_id)
+
+        __repr__ = __unicode
+
         def start_next_job(self, job):
             cmd = (
                 process_tools.find_file("ipmitool"),
@@ -208,7 +215,8 @@ class IpmiLogJob(EventLogPollerJobBase):
         print 'parsing', section_string, '\nlines', lines
         ret = None
         if lines:
-            section_content = {}
+            # keep the order at least for now (json will not obey it in general)
+            section_content = collections.OrderedDict()
 
             # parse first line of section
             if lines[0].startswith(" ") or ':' not in lines[0]:
