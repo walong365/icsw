@@ -279,18 +279,33 @@ angular.module(
                     )
         }
 ]).directive('icswToolsShowHideColumns', () ->
-     return {
-         restrict: 'EA'
-         template: """
+    return {
+        restrict: 'EA'
+        template: """
 Show/Hide columns: <div class="btn-group btn-group-xs">
     <input type="button" ng-repeat="entry in columns" ng-attr-title="show/hide columns {{entry}}" ng-value="entry"
         ng-class="show_column[entry] && 'btn btn-success' || 'btn'" ng-click="show_column[entry] = ! show_column[entry]"></input>
 </div>
 """
-         link: (scope, element, attrs) ->
-             scope.columns = attrs.columns.split(' ')
-             scope.show_column = {}
-             for col in scope.columns
-                scope.show_column[col] = true
+        scope: false
+        link: (scope, element, attrs) ->
+            scope.a = attrs
+            if attrs.createShowColumn
+                # NOTE: this object can easily end up in the wrong scope
+                #       set this attribute if you know what you are doing, or else create the object yourself in your scope
+                scope.show_column = {}
+
+            scope.$watch(
+                () -> attrs.columns  # watch on attribute doesn't work
+                () ->
+                    new_columns = attrs.columns.split(' ')
+                    for k in Object.keys(scope.show_column)
+                        if k not in new_columns
+                            delete scope.show_column[k]
+
+                    scope.columns = new_columns
+                    for col in scope.columns
+                        scope.show_column[col] = true
+            )
      }
 )

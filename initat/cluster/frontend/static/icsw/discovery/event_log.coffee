@@ -45,6 +45,8 @@ angular.module(
                 scope.device_pks_ordered = []
                 scope.device_mode = {}
 
+                scope.show_column = {}
+
                 scope._last_table_state = {}
                 scope.server_pagination_pipe = {}  # pipe functions
 
@@ -82,7 +84,6 @@ angular.module(
                             scope.device_tab_active['no_device_tab'] = true
                         else
                             scope.device_tab_active[first_dev_pk_with_logs] = true
-
                     )
 
                     # need pipe functions for each tab since they must remember the table state
@@ -124,8 +125,10 @@ angular.module(
                     }
                     if !_.isEqual(scope._last_query_parameters, query_params)
                         scope._last_query_parameters = query_params
+                        console.log 'really doing query'
                         return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params)
                     else
+                        console.log 'no query, disregarding'
                         return null
 
                 scope.entries = []

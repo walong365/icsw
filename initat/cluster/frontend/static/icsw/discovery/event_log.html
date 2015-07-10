@@ -17,12 +17,14 @@
                     select="set_active(device_pk)"
                     disable="devices_rest[device_pk].capabilities.length == 0"
                     >
-                <div class="form-inline" style="margin-top: 5px">
-                    <label>
-                        Type:
-                    </label> <select class="form-control input-sm" ng-model="device_mode[device_pk]" ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
-                </div>
-                <div class="row" style="max-width: 900px">
+                <div class="row" style="max-width: 900px; margin-top: 5px;">
+                    <div class="col-sm-2">
+                        <div class="form-inline" >
+                            <label>
+                                Type:&nbsp;
+                            </label> <select class="form-control input-sm" ng-model="device_mode[device_pk]" ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
+                        </div>
+                    </div>
                     <div class="col-sm-4">
                         <div class="input-group">
                             <input ng-model="filter_settings.filter_str" class="form-control" placeholder="filter"/>
@@ -35,13 +37,19 @@
 
                 <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
                     <thead>
+
+                        <tr ng-show="entries.keys && !entries.is_loading">
+                            <td colspan="99">
+                                <icsw-tools-show-hide-columns columns="{{entries.keys.join(' ')}}"></icsw-tools-show-hide-columns>
+                            </td>
+                        </tr>
                         <tr>
                             <td colspan="99">
                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500" no-number-of-elements="true"></div>
                             </td>
                         </tr>
-                        <tr ng-if="entries.keys && !entries.is_loading">
-                            <th ng-repeat="key in entries.keys">
+                        <tr>
+                            <th ng-repeat="key in entries.keys" ng-if="show_column[key]">
                                 {{key}}
                             </th>
                         </tr>
@@ -49,7 +57,7 @@
                     </thead>
                     <tbody ng-if="!entries.is_loading">
                         <tr ng-repeat="entry in entries">
-                            <td ng-repeat="key in entries.keys">
+                            <td ng-repeat="key in entries.keys" ng-if="show_column[key]">
                                 {{entry[key]}}
                             </td>
                         </tr>
