@@ -1,6 +1,6 @@
 
 <script type='text/ng-template' id='config.form'>
-<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Configuration '{{ edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Configuration '{{ edit_obj.name }}'</h2><tabset><tab heading='Basic setup'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
@@ -27,12 +27,12 @@
  ng_show="!edit_obj.system_config"
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_server_config" class=""><input class="checkboxinput checkbox" id="id_server_config" name="server_config" ng-model="edit_obj.server_config" type="checkbox" />
  Server config
- </label></div></div></div></fieldset><fieldset 
- ><legend>Categories</legend><div id="div_id_config_catalog"
+ </label></div></div></div><div id="div_id_config_catalog"
  class="form-group 
  "
  ><label for="id_config_catalog" class="control-label col-sm-3 requiredField">
- Config catalog<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.config_catalog' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='select config catalog'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_all_catalogs()| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div icsw-config-category-choice edit_obj='{{edit_obj }}' mode='conf'></div></fieldset><div class="form-actions"><input type="submit"
+ Config catalog<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.config_catalog' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='select config catalog'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_all_catalogs()| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset></tab><tab heading='Categories'><fieldset 
+ ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{edit_obj }}' mode='conf'></div></fieldset></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2385,7 +2385,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ng_show="!edit_obj.mon_check_command_special &amp;&amp; edit_obj.is_active"
  ><label for="id_command_line" class="control-label col-sm-2 requiredField">
- Command line<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_command_line" maxlength="765" name="command_line" ng-model="edit_obj.command_line" required="True" type="text" /> </div></div><div class='form-group' ng-show="edit_obj.mon_check_command_special"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item">{{ get_mccs_info(edit_obj) }}</li><li class="list-group-item">{{ get_mccs_cmdline(edit_obj) }}</li></ul></div></div><div class='form-group' ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active"><label class='control-label col-sm-2'>Tools</label><div class='controls col-sm-9'><div class="form-inline"><input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'></input>
+ Command line<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_command_line" maxlength="765" name="command_line" ng-model="edit_obj.command_line" required="True" type="text" /> </div></div><div class='form-group' ng-show="edit_obj.mon_check_command_special"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item">{{ get_mccs_info(edit_obj) }}</li><li class="list-group-item">{{ get_mccs_cmdline(edit_obj) }}</li></ul></div></div><div class='form-group' ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active"><label class='control-label col-sm-2'>Tools</label><div class='controls col-sm-9'><div class="form-inline"><input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument(edit_obj)' ng-value='"add argument"'></input>
  name:
  <input type='text' class="form-control input-sm" title="default value" ng-model="edit_obj.arg_name"></input>
  value:

@@ -1243,7 +1243,7 @@ class mon_check_command_form(ModelForm):
     <label class='control-label col-sm-2'>Tools</label>
     <div class='controls col-sm-9'>
         <div class="form-inline">
-        <input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'>
+        <input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument(edit_obj)' ng-value='"add argument"'>
         </input>
         name:
         <input type='text' class="form-control input-sm" title="default value" ng-model="edit_obj.arg_name"></input>

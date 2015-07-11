@@ -32,6 +32,7 @@ class config_form(ModelForm):
     helper.ng_submit = "modify()"
     helper.layout = Layout(
         HTML("<h2>Configuration '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<tabset><tab heading='Basic setup'>"),
         Fieldset(
             "Basic settings",
             Field(
@@ -51,9 +52,6 @@ class config_form(ModelForm):
             Field("enabled"),
             Field("priority"),
             Field("server_config", wrapper_ng_show="!edit_obj.system_config"),
-        ),
-        Fieldset(
-            "Categories",
             Field(
                 "config_catalog",
                 repeat="value.idx as value in get_all_catalogs()",
@@ -61,8 +59,13 @@ class config_form(ModelForm):
                 display="name",
                 filter="{name:$select.search}",
             ),
+        ),
+        HTML("</tab><tab heading='Categories'>"),
+        Fieldset(
+            "Categories",
             HTML("<div icsw-config-category-choice edit_obj='{% verbatim %}{{edit_obj }}{% endverbatim %}' mode='conf'></div>"),
         ),
+        HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         ),
