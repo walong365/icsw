@@ -127,9 +127,6 @@ angular.module(
 
                 scope.many_delete = scope.config_service.many_delete
 
-                if scope.config_service.init_fn?
-                    scope.config_service.init_fn(scope)
-
                 scope.data_received = (new_data) ->
                     list = $parse(attrs.targetList)(scope)
                     # behold, the recommended javascript implementation of list.clear():
@@ -143,6 +140,9 @@ angular.module(
 
                     # NOTE: this also makes the watch below work, see below before changing this
 
+
+                if scope.config_service.init_fn?
+                    scope.config_service.init_fn(scope)
 
                 if scope.config_service.rest_url?
                     scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
@@ -207,7 +207,11 @@ angular.module(
                     if scope.fn and scope.fn.create_or_edit
                         scope.fn.create_or_edit(scope, scope.create_mode, obj)
                     if scope.config_service.use_modal
-                        scope.edit_div = $compile($templateCache.get(scope.config_service.edit_template))(scope)
+                        if typeof(scope.config_service.edit_template) == "function"
+                            _templ = scope.config_service.edit_template(obj)
+                        else
+                            _templ = scope.config_service.edit_template
+                        scope.edit_div = $compile($templateCache.get(_templ))(scope)
                         scope.my_modal = BootstrapDialog.show
                             message: scope.edit_div
                             draggable: true
@@ -255,10 +259,13 @@ angular.module(
                     # temporary fix, FIXME
                     # scope.form should never be undefined
                     if scope.form?
-                        if scope.form[field_name].$valid
-                            return ""
+                        if scope.form[field_name]?
+                            if scope.form[field_name].$valid
+                                return ""
+                            else
+                                return "has-error"
                         else
-                            return "has-error"
+                            return ""
                     else
                         return ""
                 scope.hide_modal = () ->

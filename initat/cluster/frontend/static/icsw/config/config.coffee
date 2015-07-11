@@ -123,6 +123,34 @@ config_module = angular.module(
                     _d.resolve(new_obj)
             )
             return _d.promise
+        "create_var": (config, v_type, new_var) ->
+            _d = $q.defer()
+            rest_url = {
+                "str" : ICSW_URLS.REST_CONFIG_STR_LIST
+                "int" : ICSW_URLS.REST_CONFIG_INT_LIST
+                "bool" : ICSW_URLS.REST_CONFIG_BOOL_LIST
+             }[v_type].slice(1)
+            new_var.config = config.idx
+            Restangular.all(rest_url).post(new_var).then(
+                (new_var) ->
+                    config["config_#{v_type}_set"].push(new_var)
+                    _d.resolve(new_var)
+                () ->
+                    _d.reject()
+            )
+            return _d.promise
+        "create_script": (config, new_script) ->
+            _d = $q.defer()
+            rest_url = ICSW_URLS.REST_CONFIG_SCRIPT_LIST.slice(1)
+            new_script.config = config.idx
+            Restangular.all(rest_url).post(new_script).then(
+                (new_script) ->
+                    config["config_script_set"].push(new_script)
+                    _d.resolve(new_script)
+                () ->
+                    _d.reject()
+            )
+            return _d.promise
     }
 ]).service("icswConfigHintService", ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", (icswConfigRestService, $q, icswTools, ICSW_URLS) ->
     _def = icswConfigRestService.fetch("icsw_config_catalog_list_service")
@@ -137,9 +165,9 @@ config_module = angular.module(
             config_hints[entry.config_name] = entry
             if not entry.exact_match
                 soft_config_hints.push(entry)
-            #entry.var_lut = {}
-            #for vh in entry.config_var_hint_set
-            #    entry.var_lut[vh.var_name] = vh
+            entry.var_lut = {}
+            for vh in entry.config_var_hint_set
+                entry.var_lut[vh.var_name] = vh
     )
     # config hint resolvers
     # configs found (positive cache)
@@ -186,6 +214,25 @@ config_module = angular.module(
                 return _resolved_config_hints[config.name].help_text_short or "no short help"
             else
                 return ""
+        "var_has_info": (config, c_var) ->
+            if config.name of _resolved_config_hints
+                return c_var.name of _resolved_config_hints[config.name].var_lut
+            else
+                return false
+        "show_config_var_help": (config, c_var) ->
+            if config.name of config_hints
+                ch = config_hints[config.name]
+                if c_var.name of ch.var_lut
+                    return ch.var_lut[c_var.name].help_text_html or ""
+                else
+                    return ""
+            else
+                return ""
+        "get_config_var_hints": (config) ->
+            if config and config.name of config_hints
+                return (entry for entry of config_hints[config.name].var_lut)
+            else
+                return []
     }
 ]).service('icswConfigCatalogListService', ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", "$window", (icswConfigRestService, $q, icswTools, ICSW_URLS, $window) ->
     _def = icswConfigRestService.fetch("icsw_config_catalog_list_service")
@@ -255,7 +302,7 @@ config_module = angular.module(
             s = config.name
         else
             s = ""
-        # TODO, not finished
+        # TODO, not finished<
         if _filter_settings.script
             for scr in config.config_script_set
                 s = "#{s} #{scr.name} #{scr.description}"
@@ -288,6 +335,8 @@ config_module = angular.module(
                 "config_catalog" : (entry.idx for entry in _catalogs)[0]
             }
             return new_obj
+        update_config: (config) ->
+            create_extra_fields(config)
         init_fn: (scope) ->
             scope.get_config_catalog_name = (conf) ->
                 _cats = (entry for entry in _catalogs when entry.idx == conf.config_catalog)
@@ -313,7 +362,7 @@ config_module = angular.module(
                 else if num
                     return "label label-primary"
                 else
-                    return "label label-default"
+                    return ""
             scope.get_expand_class = (config, _type) ->
                 if config["#{_type}_num"]
                     if config["#{_type}_expanded"]
@@ -333,17 +382,17 @@ config_module = angular.module(
                 return _catalogs
             scope.get_filter_class = (name) ->
                 if _filter_settings[name]
-                    return "btn btn-sm btn-success"
+                    return "btn btn-xs btn-success"
                 else
-                    return "btn btn-sm"
+                    return "btn btn-xs"
             scope.change_filter_setting = (name) ->
                 _filter_settings[name] = ! _filter_settings[name]
                 if not _.some(_filter_settings)
                     _filter_settings["name"] = true
                 update_filter_field()
     }
-]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
+]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigVarListService", "icswConfigRestService", "icswConfigListService", "icswConfigHintService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigVarListService, icswConfigRestService, icswConfigListService, icswConfigHintService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
@@ -372,23 +421,6 @@ config_module = angular.module(
         $scope.$on("icsw.reload_all", () ->
             $scope.reload()
         )
-        $scope.pagSettings.conf.filter_settings = {
-            "filter_str" : ""
-            "filter_name" : true
-            "filter_script" : false
-            "filter_var" : false
-            "filter_mon" : false
-        }
-        $scope.editorOptions = {
-            lineWrapping : false
-            lineNumbers: true
-            mode: 
-                name : "python"
-                version : 2
-            matchBrackets: true
-            styleActiveLine: true
-            indentUnit : 4
-        }
         $scope.pagSettings.conf.filter_changed = (ps) ->
             cf = $scope.pagSettings.conf.filter_settings
             f_val = cf.filter_str 
@@ -403,13 +435,6 @@ config_module = angular.module(
                 cf.filter_name = true
         $scope.entries = []
         # config edit
-        # $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
-        # $scope.config_edit.create_template = "config.form"
-        # $scope.config_edit.edit_template = "config.form"
-        # $scope.config_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_LIST.slice(1))
-        # $scope.config_edit.modify_rest_url = ICSW_URLS.REST_CONFIG_DETAIL.slice(1).slice(0, -2)
-        # $scope.config_edit.create_list = $scope.entries
-        # $scope.config_edit.new_object_at_tail = false
         config_change_signal = "icsw.new_config"
         # $scope.config_edit.change_signal = config_change_signal
         msgbus.receive(config_change_signal, $scope, () ->
@@ -417,17 +442,6 @@ config_module = angular.module(
             msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
         )
 
-        $scope.var_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
-        $scope.var_edit.use_promise = true
-        $scope.var_edit.new_object_at_tail = false
-        $scope.script_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
-        $scope.script_edit.create_template = "config.script.form"
-        $scope.script_edit.edit_template = "config.script.form"
-        $scope.script_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_SCRIPT_LIST.slice(1))
-        $scope.script_edit.modify_rest_url = ICSW_URLS.REST_CONFIG_SCRIPT_DETAIL.slice(1).slice(0, -2)
-        $scope.script_edit.use_promise = true
-        $scope.script_edit.new_object_at_tail = false
-        $scope.script_edit.min_width = "1000px"
         $scope.mon_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.mon_edit.create_template = "mon.check.command.form"
         $scope.mon_edit.edit_template = "mon.check.command.form"
@@ -452,7 +466,6 @@ config_module = angular.module(
                 ($scope._set_fields(entry, true) for entry in data[0])
                 $scope.entries = data[0]
                 $scope.mccs_list = data[5]
-                $scope.mccs_lut = icswTools.build_lut(data[5])
                 $scope.check_commands = data[6]
                 # catalog for uploads, TODO, FIXME
                 # $scope.catalog = $scope.config_catalogs[0].idx
@@ -582,162 +595,90 @@ config_module = angular.module(
                 # set description
                 if not $scope._edit_obj.description
                     $scope._edit_obj.description = $scope.config_hints[item].config_description
-        $scope.get_config_var_hints = (config) ->
-            if config and config.name of $scope.config_hints
-                return (entry for entry of $scope.config_hints[config.name].var_lut)
-            else
-                return []
-        $scope.var_has_info = (config, cvar) ->
-            if config.name of $scope.resolved_config_hints
-                return cvar.name of $scope.resolved_config_hints[config.name].var_lut
-            else
-                return false
-        $scope.get_var_help_text = (config, cvar) ->
-            if $scope.var_has_info(config, cvar)
-                return $scope.resolved_config_hints[config.name].var_lut[cvar.name].help_text_short or "no short help"
-            else
-                return ""
-        $scope.show_config_var_help = () ->
-            if $scope._edit_obj.config and $scope._config.name of $scope.config_hints
-                ch = $scope.config_hints[$scope._config.name]
-                if $scope._edit_obj.name of ch.var_lut
-                    return ch.var_lut[$scope._edit_obj.name].help_text_html or ""
-                else
-                    return ""
-            else
-                return ""
-        $scope.get_num_cats = (config) ->
-            return if config.categories.length then "#{config.categories.length}" else "-"
-        $scope.get_valid_parents = () ->
-            return (entry for entry in $scope.entries when entry.enabled)
         $scope.$on("icsw.new_config", (args) ->
             $scope.pagSettings.set_entries($scope.entries)
         )
-        $scope.get_config_vars = (config) ->
-            r_val = []
-            for v_type in ["str", "int", "bool", "blob"]
-                for entry in config["config_#{v_type}_set"]
-                    entry.v_type = v_type
-                    r_val.push(entry)
-            r_val.sort((_a, _b) ->
-                if _a.name > _b.name
-                    return 1
-                else if _a.name < _b.name
-                    return -1
-                else
-                    return 0 
-            )
-            return r_val
-        $scope.delete_var = (config, _var) ->
-            v_type = _var.v_type
-            $scope.var_edit.delete_list = config["config_#{v_type}_set"]
-            $scope.var_edit.modify_rest_url = {
-                "str" : ICSW_URLS.REST_CONFIG_STR_DETAIL
-                "int" : ICSW_URLS.REST_CONFIG_INT_DETAIL
-                "bool" : ICSW_URLS.REST_CONFIG_BOOL_DETAIL
-                "blob" : ICSW_URLS.REST_CONFIG_BLOB_DETAIL
-            }[v_type].slice(1).slice(0, -2)
-            $scope.var_edit.delete_obj(_var).then((res) ->
-                if res
-                    $scope.unselect_object(_var)
-                    $scope.filter_conf(config, $scope)
-            )
-        $scope.edit_var = (config, obj, event) ->
-            v_type = obj.v_type
-            $scope._config = config
-            if ! obj.description
-                obj.description = "descr"
-            $scope.var_edit.edit_template = "config.#{v_type}.form"
-            $scope.var_edit.modify_rest_url = {
-                "str" : ICSW_URLS.REST_CONFIG_STR_DETAIL
-                "int" : ICSW_URLS.REST_CONFIG_INT_DETAIL
-                "bool" : ICSW_URLS.REST_CONFIG_BOOL_DETAIL
-            }[v_type].slice(1).slice(0, -2)
-            $scope.var_edit.create_list = config["config_#{v_type}_set"]
-            $scope.var_edit.edit(obj, event).then(
-                (mod_obj) ->
-                    if mod_obj != false
-                        $scope.filter_conf(config, $scope)
-            )
+
         $scope.create_var = (config, v_type, event) ->
-            $scope._config = config
-            $scope.var_edit.create_template = "config.#{v_type}.form"
-            $scope.var_edit.create_rest_url = Restangular.all({
-                "str" : ICSW_URLS.REST_CONFIG_STR_LIST
-                "int" : ICSW_URLS.REST_CONFIG_INT_LIST
-                "bool" : ICSW_URLS.REST_CONFIG_BOOL_LIST
-            }[v_type].slice(1))
-            $scope.var_edit.create_list = config["config_#{v_type}_set"]
-            $scope.var_edit.new_object = (scope) ->
-                return {
-                    "config" : config.idx
-                    "name" : "new #{v_type} var"
-                    "description" : "new variable (type #{v_type})"
-                    "value" : {"str" : "", "int" : 0, "bool" : 1}[v_type]
-                }
-            $scope.var_edit.create(event).then(
-                (new_obj) ->
-                    if new_obj != false
-                        $scope.filter_conf(config, $scope)
-            ) 
-        $scope.delete_script = (config, _script) ->
-            $scope.script_edit.delete_list = config.config_script_set
-            $scope.script_edit.delete_obj(_script).then((res) ->
-                if res
-                    $scope.unselect_object(_script)
-                    $scope.filter_conf(config, $scope)
-            )
-        $scope.edit_script = (config, obj, event) ->
-            $scope.script_edit.create_list = config.config_script_set
-            obj.edit_value = obj.value
-            $scope.$watch(
-                () -> 
-                    return obj.edit_value
-                (new_val) ->
-                    if typeof(new_val) == "string" and new_val.length
-                        obj.value = new_val
-            )
-            $scope.script_edit.edit(obj, event).then(
-                (mod_obj) ->
-                    if mod_obj != false
-                        $scope.filter_conf(config, $scope)
-            )
-        $scope.on_script_revert = (get_change_list) ->
-            # script is called edit_value in edit_obj
-            rename = (key) -> return if key == "value" then "edit_value" else key
-            # apply all changes in order of their initial application (i.e. all diffs)
-            for changes in get_change_list()
-                if changes.full_dump
-                    # we get full obj, on initial, created, deleted
-                    for k, v of changes.full_dump
-                        $scope._edit_obj[rename(k)] = v
-                else
-                    # we get a dict {new_data: dat, ...} for each key
-                    for k, v of changes
-                        $scope._edit_obj[rename(k)] = v.new_data
+            sub_scope = $scope.$new()
+            _templ = "config.#{v_type}.form"
+            sub_scope.config = config
+            sub_scope.modify = () ->
+                icswConfigRestService.create_var(config, v_type, sub_scope.edit_obj).then(
+                    (new_var) ->
+                        icswConfigListService.update_config(config)
+                        sub_scope.modal.close()
+                )
+            sub_scope.show_config_var_help = () ->
+                return icswConfigHintService.show_config_var_help(sub_scope.config, sub_scope.edit_obj)
+            sub_scope.get_config_var_hints = () ->
+                return icswConfigHintService.get_config_var_hints(sub_scope.config)
+            sub_scope.edit_obj = {
+                "config" : config.idx
+                "name" : "new #{v_type} var"
+                "description" : "new variable (type #{v_type})"
+                "value" : {"str" : "", "int" : 0, "bool" : 1}[v_type]
+            }
+            edit_div = $compile($templateCache.get(_templ))(sub_scope)
+            my_modal = BootstrapDialog.show
+                message: edit_div
+                draggable: true
+                title: "Create new #{v_type} variable"
+                size: BootstrapDialog.SIZE_WIDE
+                closable: true
+                closeByBackdrop: false
+                cssClass: "modal-tall"
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+                onhide: (modal) =>
+                    sub_scope.$destroy()
+            sub_scope.modal = my_modal
+
         $scope.create_script = (config, event) ->
-            $scope.script_edit.create_list = config.config_script_set
-            $scope.script_edit.new_object = (scope) ->
-                return {
-                    "config"   : config.idx
-                    "name"     : "new script"
-                    "priority" : 0
-                    "enabled"  : true
-                    "description" : "new config script"
-                    "edit_value"  : "# config script (" + moment().format() + ")\n#\n"
-                }
-            $scope.$watch(
-                () -> 
-                    return $scope._edit_obj.edit_value
-                (new_val) ->
-                    if typeof(new_val) == "string" and new_val.length
-                        $scope._edit_obj.value = new_val
-            )
-            $scope.script_edit.create(event).then(
-                (new_obj) ->
-                    if new_obj != false
-                        $scope.filter_conf(config, $scope)
-            ) 
+            sub_scope = $scope.$new()
+            _templ = "config.script.form"
+            sub_scope.config = config
+            sub_scope.edit_obj = {
+                "config"   : config.idx
+                "name"     : "new script"
+                "priority" : 0
+                "enabled"  : true
+                "description" : "new config script"
+                "edit_value"  : "# config script (" + moment().format() + ")\n#\n"
+            }
+            sub_scope.editorOptions = {
+                lineWrapping : false
+                lineNumbers: true
+                mode:
+                    name : "python"
+                    version : 2
+                matchBrackets: true
+                styleActiveLine: true
+                indentUnit : 4
+            }
+            sub_scope.modify = () ->
+                icswConfigRestService.create_script(config, sub_scope.edit_obj).then(
+                    (new_script) ->
+                        icswConfigListService.update_config(config)
+                        sub_scope.modal.close()
+                )
+            edit_div = $compile($templateCache.get(_templ))(sub_scope)
+            my_modal = BootstrapDialog.show
+                message: edit_div
+                draggable: true
+                title: "Create new script"
+                size: BootstrapDialog.SIZE_WIDE
+                closable: true
+                closeByBackdrop: false
+                cssClass: "modal-tall"
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+                onhide: (modal) =>
+                    sub_scope.$destroy()
+            sub_scope.modal = my_modal
+
         $scope.delete_mon = (config, _mon) ->
             $scope.mon_edit.delete_list = config.mon_check_command_set
             $scope.mon_edit.delete_obj(_mon).then((res) ->
@@ -757,11 +698,6 @@ config_module = angular.module(
                         $scope.filter_conf(config, $scope)
                     msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # have to assume that some cat has changed
             )
-        $scope.get_mon_command_line = (obj) ->
-            if obj.mon_check_command_special
-                return $scope.mccs_lut[obj.mon_check_command_special].command_line
-            else
-                return obj.command_line 
         $scope.copy_mon = (config, obj, event) ->
             icswCallAjaxService
                 url     : ICSW_URLS.CONFIG_COPY_MON
@@ -824,35 +760,6 @@ config_module = angular.module(
         $scope.download_selected = () ->
             hash = angular.toJson((entry.idx for entry in $scope.pagSettings.filtered_list))
             window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
-        $scope.get_mccs_already_used_warning = (edit_obj) ->
-            cur_mccs = edit_obj.mon_check_command_special
-            warning = ""
-            if cur_mccs?
-                problem_list = []
-                for config in $scope.entries
-                    for mcc in config.mon_check_command_set
-                        if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
-                            problem_list.push(mcc.name)
-                if problem_list.length
-                    warning += ""
-                    warning += "This special check command is already used in " + problem_list.join(",") + "."
-                    warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
-            return warning
-        $scope.get_mccs_info = () ->
-            cur_mccs = $scope._edit_obj.mon_check_command_special
-            if cur_mccs
-                return $scope.mccs_lut[cur_mccs].description
-            else
-                return ""
-        $scope.get_mccs_cmdline = () ->
-            cur_mccs = $scope._edit_obj.mon_check_command_special
-            if cur_mccs
-                if $scope.mccs_lut[cur_mccs].is_active
-                    return $scope.mccs_lut[cur_mccs].command_line
-                else
-                    return "passive check"
-            else
-                return ""
         $scope.add_argument = () ->
             cur_cl = $scope._edit_obj.command_line
             max_argn = 0
@@ -862,33 +769,6 @@ config_module = angular.module(
                     max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
             max_argn++
             $scope._edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{$scope._edit_obj.arg_name.toUpperCase()}:#{$scope._edit_obj.arg_value}}"
-        $scope.get_moncc_info = () ->
-            cur_cl = $scope._edit_obj.command_line
-            complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
-            if cur_cl
-                simple_list = []
-                default_list = []
-                complex_list = []
-                while cur_m = complex_re.exec(cur_cl)
-                    if cur_m[4]
-                        # simple $ARG##$
-                        simple_list.push([parseInt(cur_m[4])])
-                    else if cur_m[3]
-                        # complex ${ARG##:NAME:DEFAULT}
-                        complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
-                    else
-                        # form with default #{ARG##:DEFAULT}
-                        default_list.push([parseInt(cur_m[1]), cur_m[2]])
-                info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
-                for entry in simple_list
-                    info_field.push("simple argument $ARG#{entry[0]}$")
-                for entry in default_list
-                    info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
-                for entry in complex_list
-                    info_field.push("argument $ARG#{entry[0]}$ from DeviceVar '#{entry[1]}' (default value #{entry[2]})")
-                return info_field
-            else
-                return ["no args parsed"]
         $scope.reload()
 ]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
     return {
@@ -906,10 +786,65 @@ config_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.config.config.table")
     }
+]).directive("icswConfigLine", ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.config.line")
+    }
+]).service('icswConfigVarListService', ["icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
+    return {
+        delete_confirm_str: (obj) ->
+            return "Really delete var '#{obj.name}' ?"
+        edit_template: (obj) -> return "config.#{obj.v_type}.form"
+        save_defer: (new_obj) ->
+        init_fn: (scope) ->
+            config = scope.config
+            r_val = []
+            for v_type in ["str", "int", "bool", "blob"]
+                for entry in config["config_#{v_type}_set"]
+                    entry.v_type = v_type
+                    r_val.push(entry)
+                    Restangular.restangularizeElement(
+                        null
+                        entry
+                        {
+                            "str" : ICSW_URLS.REST_CONFIG_STR_DETAIL
+                            "int" : ICSW_URLS.REST_CONFIG_INT_DETAIL
+                            "bool" : ICSW_URLS.REST_CONFIG_BOOL_DETAIL
+                            "blob" : ICSW_URLS.REST_CONFIG_BLOB_DETAIL
+                        }[v_type].slice(1).slice(0, -2)
+                    )
+            r_val.sort((_a, _b) ->
+                if _a.name > _b.name
+                    return 1
+                else if _a.name < _b.name
+                    return -1
+                else
+                    return 0
+            )
+            scope.vars = []
+            scope.data_received(r_val)
+            scope.select = (obj) ->
+                obj._selected = !obj._selected
+            scope.var_has_info = (config, cvar) ->
+                return icswConfigHintService.var_has_info(config, cvar)
+            scope.get_var_help_text = (config, cvar) ->
+                return icswConfigHintService.show_config_var_help(config, cvar)
+            scope.get_config_var_hints = (config) ->
+                return icswConfigHintService.get_config_var_hints(config)
+        post_delete: (scope, obj) ->
+            # remove from config_var list
+            _list_name = "config_#{obj.v_type}_set"
+            config = scope.config
+            config[_list_name] = (entry for entry in config[_list_name] when entry.idx != obj.idx)
+            icswConfigListService.update_config(config)
+    }
 ]).directive("icswConfigVarTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.var.table")
+        scope:
+            config: "="
         link : (scope, el, attrs) ->
             scope.get_value = (obj) ->
                 if obj.v_type == "bool"
@@ -917,10 +852,155 @@ config_module = angular.module(
                 else
                     return obj.value
     }
+]).service('icswConfigScriptListService', ["icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
+    return {
+        delete_confirm_str: (obj) ->
+            return "Really delete script '#{obj.name}' ?"
+        edit_template: "config.script.form"
+        save_defer: (new_obj) ->
+        init_fn: (scope) ->
+            scope.scripts = []
+            for entry in scope.config.config_script_set
+                Restangular.restangularizeElement(
+                    null
+                    entry
+                    ICSW_URLS.REST_CONFIG_SCRIPT_DETAIL.slice(1).slice(0, -2)
+                )
+            scope.data_received(scope.config.config_script_set)
+            scope.select = (obj) ->
+                obj._selected = !obj._selected
+            scope.editorOptions = {
+                lineWrapping : false
+                lineNumbers: true
+                mode:
+                    name : "python"
+                    version : 2
+                matchBrackets: true
+                styleActiveLine: true
+                indentUnit : 4
+            }
+            scope.on_script_revert = (obj, get_change_list) ->
+                # script is called edit_value in edit_obj
+                rename = (key) ->
+                    return if key == "value" then "value" else key
+                # apply all changes in order of their initial application (i.e. all diffs)
+                for changes in get_change_list()
+                    if changes.full_dump
+                        # we get full obj, on initial, created, deleted
+                        for k, v of changes.full_dump
+                            obj[rename(k)] = v
+                    else
+                        # we get a dict {new_data: dat, ...} for each key
+                        for k, v of changes
+                            obj[rename(k)] = v.new_data
+        post_delete: (scope, obj) ->
+            # remove from config_script list
+            _list_name = "config_script_set"
+            config = scope.config
+            config[_list_name] = (entry for entry in config[_list_name] when entry.idx != obj.idx)
+            icswConfigListService.update_config(config)
+    }
 ]).directive("icswConfigScriptTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.script.table")
+        scope:
+            config: "="
+        link : (scope, el, attrs) ->
+    }
+]).service('icswConfigMonCheckCommandListService', ["icswConfigRestService", "icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigRestService, icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
+    _def = icswConfigRestService.fetch("icsw_config_mcc_list_service")
+    _configs = []
+    _categories = []
+    mccs_lut = {}
+    _def.then((data) ->
+        _configs = data[0]
+        _categories = data[2]
+        mccs_lut = icswTools.build_lut(data[5])
+    )
+    return {
+        delete_confirm_str: (obj) ->
+            return "Really delete MonCheckCommand '#{obj.name}' ?"
+        edit_template: "mon.check.command.form"
+        save_defer: (new_obj) ->
+        init_fn: (scope) ->
+            scope.monccs = []
+            for entry in scope.config.mon_check_command_set
+                Restangular.restangularizeElement(
+                    null
+                    entry
+                    ICSW_URLS.REST_MON_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2)
+                )
+            scope.data_received(scope.config.mon_check_command_set)
+            scope.select = (obj) ->
+                obj._selected = !obj._selected
+            scope.get_mccs_already_used_warning = (edit_obj) ->
+                cur_mccs = edit_obj.mon_check_command_special
+                warning = ""
+                if cur_mccs?
+                    problem_list = []
+                    for config in _configs
+                        for mcc in config.mon_check_command_set
+                            if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
+                                problem_list.push(mcc.name)
+                    if problem_list.length
+                        warning += ""
+                        warning += "This special check command is already used in " + problem_list.join(",") + "."
+                        warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
+                return warning
+            scope.get_mccs_info = (edit_obj) ->
+                cur_mccs = edit_obj.mon_check_command_special
+                if cur_mccs
+                    return mccs_lut[cur_mccs].description
+                else
+                    return ""
+            scope.get_mon_command_line = (obj) ->
+                if obj.mon_check_command_special
+                    return mccs_lut[obj.mon_check_command_special].command_line
+                else
+                    return obj.command_line
+            scope.get_mccs_cmdline = (edit_obj) ->
+                cur_mccs = edit_obj.mon_check_command_special
+                if cur_mccs
+                    if mccs_lut[cur_mccs].is_active
+                        return mccs_lut[cur_mccs].command_line
+                    else
+                        return "passive check"
+                else
+                    return ""
+            scope.get_moncc_info = (edit_obj) ->
+                cur_cl = edit_obj.command_line
+                complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
+                if cur_cl
+                    simple_list = []
+                    default_list = []
+                    complex_list = []
+                    while cur_m = complex_re.exec(cur_cl)
+                        if cur_m[4]
+                            # simple $ARG##$
+                            simple_list.push([parseInt(cur_m[4])])
+                        else if cur_m[3]
+                            # complex ${ARG##:NAME:DEFAULT}
+                            complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
+                        else
+                            # form with default #{ARG##:DEFAULT}
+                            default_list.push([parseInt(cur_m[1]), cur_m[2]])
+                    info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
+                    for entry in simple_list
+                        info_field.push("simple argument $ARG#{entry[0]}$")
+                    for entry in default_list
+                        info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
+                    for entry in complex_list
+                        info_field.push("argument $ARG#{entry[0]}$ from DeviceVar '#{entry[1]}' (default value #{entry[2]})")
+                    return info_field
+                else
+                    return ["no args parsed"]
+        post_delete: (scope, obj) ->
+            # remove from config_script list
+            _list_name = "mon_check_command_set"
+            config = scope.config
+            config[_list_name] = (entry for entry in config[_list_name] when entry.idx != obj.idx)
+            icswConfigListService.update_config(config)
     }
 ]).directive("icswConfigMonTable", ["$templateCache", ($templateCache) ->
     return {

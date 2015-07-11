@@ -113,14 +113,14 @@ class config_str_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "cur_edit.modify(this)"
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify()"
     helper.layout = Layout(
-        HTML("<h2>String var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<h2>String var '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
         HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
-            Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
+            Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints() | filter:$viewValue"),
             Field("description"),
             Field("value"),
         ),
@@ -129,7 +129,7 @@ class config_str_form(ModelForm):
         ),
         HTML("</tab><tab heading='History'>"),
         HTML("<icsw-history-model-history style='config' model=\"'config_str'\""
-             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+             "object-id='{% verbatim %}edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
         HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -148,10 +148,10 @@ class config_int_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "cur_edit.modify(this)"
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify()"
     helper.layout = Layout(
-        HTML("<h2>Integer var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<h2>Integer var '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
         HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
@@ -164,7 +164,7 @@ class config_int_form(ModelForm):
         ),
         HTML("</tab><tab heading='History'>"),
         HTML("<icsw-history-model-history style='config' model=\"'config_int'\""
-             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+             "object-id='{% verbatim %}edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
         HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -183,10 +183,10 @@ class config_bool_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "cur_edit.modify(this)"
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify()"
     helper.layout = Layout(
-        HTML("<h2>Bool var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<h2>Bool var '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
         HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
@@ -197,8 +197,8 @@ class config_bool_form(ModelForm):
     <label class='control-label col-sm-3'>Value</label>
     <div class='controls col-sm-7'>
         <input type='button'
-            ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
-            ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'>
+            ng-class='edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
+            ng-click='edit_obj.value = 1 - edit_obj.value' ng-value='edit_obj.value && "true" || "false"'>
         </input>
     </div>
 </div>
@@ -210,7 +210,7 @@ class config_bool_form(ModelForm):
         ),
         HTML("</tab><tab heading='History'>"),
         HTML("<icsw-history-model-history style='config' model=\"'config_bool'\""
-             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+             "object-id='{% verbatim %}edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
         HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -229,10 +229,10 @@ class config_script_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-9'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "cur_edit.modify(this)"
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify()"
     helper.layout = Layout(
-        HTML("<h2>Config script '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<h2>Config script '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
         HTML("<tabset><tab heading='Settings'>"),
         Fieldset(
             "Basic settings",
@@ -241,7 +241,7 @@ class config_script_form(ModelForm):
         ),
         Fieldset(
             "Script",
-            HTML("<textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea>"),  # Field("value"),
+            HTML("<textarea ui-codemirror='editorOptions' ng-model='edit_obj.value'></textarea>"),  # Field("value"),
         ),
         Fieldset(
             "Flags",
@@ -259,9 +259,9 @@ class config_script_form(ModelForm):
             ),
         ),
         HTML("</tab><tab heading='History'>"),
-        HTML("<icsw-history-model-history on-revert='on_script_revert(get_change_list)'"
+        HTML("<icsw-history-model-history on-revert='on_script_revert(edit_obj, get_change_list)'"
              "style='config' model=\"'config_script'\""
-             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+             "object-id='{% verbatim %}edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
         HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
