@@ -63,7 +63,7 @@ class config_form(ModelForm):
         HTML("</tab><tab heading='Categories'>"),
         Fieldset(
             "Categories",
-            HTML("<div icsw-config-category-choice edit_obj='{% verbatim %}{{edit_obj }}{% endverbatim %}' mode='conf'></div>"),
+            HTML("<div icsw-config-category-choice edit-obj='edit_obj' mode='conf'></div>"),
         ),
         HTML("</tab></tabset>"),
         FormActions(

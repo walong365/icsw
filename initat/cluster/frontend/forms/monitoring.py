@@ -1209,7 +1209,7 @@ class mon_check_command_form(ModelForm):
             Field("description"),
             Field(
                 "mon_check_command_special",
-                repeat="value.idx as value in mccs_list",
+                repeat="value.idx as value in get_mccs_list()",
                 display="info",
                 placeholder="please select a special command",
                 filter="{name:$select.search}",
@@ -1318,11 +1318,11 @@ class mon_check_command_form(ModelForm):
                 css_class="row",
             ),
         ),
-        HTML("</tab><tab heading='Categories ({% verbatim %}{{ num_cats }}{% endverbatim %})' ng-show='num_cats'>"),
+        HTML("</tab><tab heading='Categories'>"),
         Fieldset(
             "Categories",
             HTML("""
-<div icsw-config-category-choice edit_obj='{% verbatim %}{{ edit_obj }}{% endverbatim %}' mode='mon'>
+<div icsw-config-category-choice edit-obj='edit_obj' mode='mon'>
 </div>
             """),
         ),

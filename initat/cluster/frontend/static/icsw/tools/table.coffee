@@ -128,6 +128,10 @@ angular.module(
                 scope.many_delete = scope.config_service.many_delete
 
                 scope.data_received = (new_data) ->
+                    _list_name = attrs.targetList
+                    if not scope[_list_name]?
+                        # init list if not defined
+                        scope[_list_name] = []
                     list = $parse(attrs.targetList)(scope)
                     # behold, the recommended javascript implementation of list.clear():
                     list.length = 0
@@ -165,6 +169,7 @@ angular.module(
                 if scope.config_service.load_promise?
                     _list_name = attrs.targetList
                     if not scope[_list_name]?
+                        # init list if not defined
                         scope[_list_name] = []
                     scope.config_service.load_promise.then(
                         (new_data) ->

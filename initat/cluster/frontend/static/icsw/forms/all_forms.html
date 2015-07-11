@@ -32,7 +32,7 @@
  "
  ><label for="id_config_catalog" class="control-label col-sm-3 requiredField">
  Config catalog<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.config_catalog' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='select config catalog'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_all_catalogs()| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset></tab><tab heading='Categories'><fieldset 
- ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{edit_obj }}' mode='conf'></div></fieldset></tab></tabset><div class="form-actions"><input type="submit"
+ ><legend>Categories</legend><div icsw-config-category-choice edit-obj='edit_obj' mode='conf'></div></fieldset></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2378,7 +2378,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="edit_obj.is_active"
  ><label for="id_mon_check_command_special" class="control-label col-sm-2">
  Mon check command special
- </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='edit_obj.mon_check_command_special' ng-disabled='false'><ui-select-match placeholder='please select a special command'>{{$select.selected.info}}</ui-select-match><ui-select-choices repeat='value.idx as value in mccs_list| props_filter:{name:$select.search}'><div ng-bind-html='value.info | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="edit_obj.mon_check_command_special = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div><div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning(edit_obj)"><span class="glyphicon glyphicon-exclamation-sign"></span>
+ </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='edit_obj.mon_check_command_special' ng-disabled='false'><ui-select-match placeholder='please select a special command'>{{$select.selected.info}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_mccs_list()| props_filter:{name:$select.search}'><div ng-bind-html='value.info | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="edit_obj.mon_check_command_special = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div><div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning(edit_obj)"><span class="glyphicon glyphicon-exclamation-sign"></span>
  {{ get_mccs_already_used_warning(edit_obj) }}
  </div><div id="div_id_command_line"
  class="form-group 
@@ -2434,8 +2434,8 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="edit_obj.event_handler == undefined"
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_event_handler" class=""><input class="checkboxinput checkbox" id="id_is_event_handler" name="is_event_handler" ng-model="edit_obj.is_event_handler" type="checkbox" />
  Is event handler
- </label></div></div></div></div></div></fieldset></tab><tab heading='Categories ({{ num_cats }})' ng-show='num_cats'><fieldset 
- ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{ edit_obj }}' mode='mon'></div></fieldset></tab><tab heading='History'><icsw-history-model-history style='config' model="'mon_check_command'"object-id='edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
+ </label></div></div></div></div></div></fieldset></tab><tab heading='Categories'><fieldset 
+ ><legend>Categories</legend><div icsw-config-category-choice edit-obj='edit_obj' mode='mon'></div></fieldset></tab><tab heading='History'><icsw-history-model-history style='config' model="'mon_check_command'"object-id='edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"

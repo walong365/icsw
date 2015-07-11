@@ -412,10 +412,10 @@ config_module = angular.module(
                     _filter_settings["name"] = true
                 update_filter_field()
     }
-]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigVarListService", "icswConfigRestService", "icswConfigListService", "icswConfigHintService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigVarListService, icswConfigRestService, icswConfigListService, icswConfigHintService) ->
+]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigVarListService", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigVarListService, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
-        $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
+        # $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
         $scope.cached_uploads = []
         $scope.catalog = 0
@@ -487,32 +487,6 @@ config_module = angular.module(
                     $scope.$apply(() ->
                         $scope.cached_uploads = angular.fromJson(json)
                     )
-        $scope.filter_conf = (entry, scope) ->
-            show = false
-            scope._set_fields(entry)
-            cf = scope.pagSettings.conf.filter_settings
-            f_re = scope.filter_re
-            if cf.filter_name
-                if entry.name.match(f_re) or entry.description.match(f_re)
-                    show = true
-            if cf.filter_script
-                entry.script_sel = (true for _scr in entry.config_script_set when _scr.name.match(f_re) or _scr.description.match(f_re) or _scr.value.match(f_re)).length
-                if entry.script_sel
-                    show = true
-            if cf.filter_mon
-                entry.mon_sel = (true for _mon in entry.mon_check_command_set when _mon.name.match(f_re) or _mon.command_line.match(f_re) or _mon.description.match(f_re)).length
-                if entry.mon_sel
-                    show = true
-            if cf.filter_var
-                for var_type in ["str", "int", "bool", "blob"]
-                    sub_set = entry["config_#{var_type}_set"]
-                    entry.var_sel += (true for _var in sub_set when _var.name.match(f_re) or _var.description.match(f_re) or String(_var.value).match(f_re)).length
-                if entry.var_sel
-                    show = true
-            return show
-        $scope.clear_filter = () ->
-            $scope.pagSettings.conf.filter_settings.filter_str = ""
-
         $scope.delete_selected_objects = () ->
             if confirm("really delete #{$scope.selected_objects.length} objects ?")
                 blockUI.start()
@@ -564,14 +538,6 @@ config_module = angular.module(
             cur_pat = new RegExp(_array, "i")
             console.log cur_pat, _input
             return cur_pat.test(_input)
-        $scope.config_selected_vt = (item, model, label) ->
-            if item of $scope.config_hints
-                # set description
-                if not $scope._edit_obj.description
-                    $scope._edit_obj.description = $scope.config_hints[item].config_description
-        $scope.$on("icsw.new_config", (args) ->
-            $scope.pagSettings.set_entries($scope.entries)
-        )
 
         $scope.create_var = (config, v_type, event) ->
             sub_scope = $scope.$new()
@@ -676,6 +642,7 @@ config_module = angular.module(
                 "arg_name" : "argument"
                 "arg_value" : "80"
             }
+            angular.extend(sub_scope, icswConfigMonCheckCommandHelpService)
             sub_scope.modify = () ->
                 icswConfigRestService.create_mon_check_command(config, sub_scope.edit_obj).then(
                     (new_moncc) ->
@@ -698,20 +665,6 @@ config_module = angular.module(
                     sub_scope.$destroy()
             sub_scope.modal = my_modal
 
-        $scope.copy_mon = (config, obj, event) ->
-            icswCallAjaxService
-                url     : ICSW_URLS.CONFIG_COPY_MON
-                data    :
-                    "config" : config.idx
-                    "mon"    : obj.idx
-                success : (xml) =>
-                    if icswParseXMLResponseService(xml)
-                        new_moncc = angular.fromJson($(xml).find("value[name='mon_cc']").text())
-                        config.mon_check_command_set.push(new_moncc)
-                        # msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # have to assume that some cat has changed
-                        $scope.$apply(() ->
-                            $scope._set_fields(config)
-                        )
         $scope.download_selected = () ->
             hash = angular.toJson((entry.idx for entry in $scope.pagSettings.filtered_list))
             window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
@@ -854,23 +807,124 @@ config_module = angular.module(
             config: "="
         link : (scope, el, attrs) ->
     }
-]).service('icswConfigMonCheckCommandListService', ["icswConfigRestService", "icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigRestService, icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
-    _def = icswConfigRestService.fetch("icsw_config_mcc_list_service")
+]).service('icswConfigMonCheckCommandHelpService', ["icswConfigRestService", "icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigRestService, icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
+    _def = icswConfigRestService.fetch("icsw_config_mcc_help_service")
     _configs = []
     _categories = []
     mccs_lut = {}
+    mccs_list = []
     _def.then((data) ->
         _configs = data[0]
         _categories = data[2]
-        mccs_lut = icswTools.build_lut(data[5])
+        mccs_list = data[5]
+        mccs_lut = icswTools.build_lut(mccs_list)
     )
+    return {
+        "get_mccs_already_used_warning": (edit_obj) ->
+            cur_mccs = edit_obj.mon_check_command_special
+            warning = ""
+            if cur_mccs?
+                problem_list = []
+                for config in _configs
+                    for mcc in config.mon_check_command_set
+                        if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
+                            problem_list.push(mcc.name)
+                if problem_list.length
+                    warning += ""
+                    warning += "This special check command is already used in " + problem_list.join(",") + "."
+                    warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
+            return warning
+        "get_mccs_list": () ->
+            return mccs_list
+        "get_mccs_info": (edit_obj) ->
+            cur_mccs = edit_obj.mon_check_command_special
+            if cur_mccs
+                return mccs_lut[cur_mccs].description
+            else
+                return ""
+        "get_mccs_cmdline": (edit_obj) ->
+            cur_mccs = edit_obj.mon_check_command_special
+            if cur_mccs
+                if mccs_lut[cur_mccs].is_active
+                    return mccs_lut[cur_mccs].command_line
+                else
+                    return "passive check"
+            else
+                return ""
+        "get_mon_command_line": (obj) ->
+            if obj.mon_check_command_special
+                return mccs_lut[obj.mon_check_command_special].command_line
+            else
+                return obj.command_line
+        "get_moncc_info": (edit_obj) ->
+            cur_cl = edit_obj.command_line
+            complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
+            if cur_cl
+                simple_list = []
+                default_list = []
+                complex_list = []
+                while cur_m = complex_re.exec(cur_cl)
+                    if cur_m[4]
+                        # simple $ARG##$
+                        simple_list.push([parseInt(cur_m[4])])
+                    else if cur_m[3]
+                        # complex ${ARG##:NAME:DEFAULT}
+                        complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
+                    else
+                        # form with default #{ARG##:DEFAULT}
+                        default_list.push([parseInt(cur_m[1]), cur_m[2]])
+                info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
+                for entry in simple_list
+                    info_field.push("simple argument $ARG#{entry[0]}$")
+                for entry in default_list
+                    info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
+                for entry in complex_list
+                    info_field.push("argument $ARG#{entry[0]}$ from DeviceVar '#{entry[1]}' (default value #{entry[2]})")
+                return info_field
+            else
+                return ["no args parsed"]
+        "add_argument": (edit_obj) ->
+            cur_cl = edit_obj.command_line
+            max_argn = 0
+            match_list = cur_cl.match(/arg(\d+)/ig)
+            if match_list?
+                for cur_match in match_list
+                    max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
+            max_argn++
+            if edit_obj.arg_name?
+                if edit_obj.arg_value?
+                    edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}:#{edit_obj.arg_value}}"
+                else
+                    edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}}"
+            else
+                edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}}"
+        "get_event_handler": (ev_idx) ->
+            if ev_idx
+                # not fast but working
+                ev_config = (entry for entry in _configs when ev_idx in (mcc.idx for mcc in entry.mon_check_command_set))
+                if ev_config.length
+                    return (entry for entry in ev_config[0].mon_check_command_set when entry.idx == ev_idx)[0].name
+                else
+                    return "???"
+            else
+                return "---"
+        "get_event_handlers": (edit_obj) ->
+            ev_handlers = []
+            for entry in _configs
+                for cc in entry.mon_check_command_set
+                    if cc.is_event_handler and cc.idx != edit_obj.idx
+                        ev_handlers.push(cc)
+            return ev_handlers
+    }
+]).service('icswConfigMonCheckCommandListService', ["icswSimpleAjaxCall", "icswConfigMonCheckCommandHelpService", "icswConfigListService", "icswTools", "icswConfigHintService", "Restangular", "ICSW_URLS", (icswSimpleAjaxCall, icswConfigMonCheckCommandHelpService, icswConfigListService, icswTools, icswConfigHintService, Restangular, ICSW_URLS) ->
     return {
         delete_confirm_str: (obj) ->
             return "Really delete MonCheckCommand '#{obj.name}' ?"
         edit_template: "mon.check.command.form"
         save_defer: (new_obj) ->
         init_fn: (scope) ->
-            scope.monccs = []
+            angular.extend(scope, icswConfigMonCheckCommandHelpService)
+            # Restangularize all elements
             for entry in scope.config.mon_check_command_set
                 Restangular.restangularizeElement(
                     null
@@ -880,99 +934,24 @@ config_module = angular.module(
             scope.data_received(scope.config.mon_check_command_set)
             scope.select = (obj) ->
                 obj._selected = !obj._selected
-            scope.get_mccs_already_used_warning = (edit_obj) ->
-                cur_mccs = edit_obj.mon_check_command_special
-                warning = ""
-                if cur_mccs?
-                    problem_list = []
-                    for config in _configs
-                        for mcc in config.mon_check_command_set
-                            if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
-                                problem_list.push(mcc.name)
-                    if problem_list.length
-                        warning += ""
-                        warning += "This special check command is already used in " + problem_list.join(",") + "."
-                        warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
-                return warning
-            scope.get_mccs_info = (edit_obj) ->
-                cur_mccs = edit_obj.mon_check_command_special
-                if cur_mccs
-                    return mccs_lut[cur_mccs].description
-                else
-                    return ""
-            scope.get_mon_command_line = (obj) ->
-                if obj.mon_check_command_special
-                    return mccs_lut[obj.mon_check_command_special].command_line
-                else
-                    return obj.command_line
-            scope.get_mccs_cmdline = (edit_obj) ->
-                cur_mccs = edit_obj.mon_check_command_special
-                if cur_mccs
-                    if mccs_lut[cur_mccs].is_active
-                        return mccs_lut[cur_mccs].command_line
-                    else
-                        return "passive check"
-                else
-                    return ""
-            scope.get_moncc_info = (edit_obj) ->
-                cur_cl = edit_obj.command_line
-                complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
-                if cur_cl
-                    simple_list = []
-                    default_list = []
-                    complex_list = []
-                    while cur_m = complex_re.exec(cur_cl)
-                        if cur_m[4]
-                            # simple $ARG##$
-                            simple_list.push([parseInt(cur_m[4])])
-                        else if cur_m[3]
-                            # complex ${ARG##:NAME:DEFAULT}
-                            complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
-                        else
-                            # form with default #{ARG##:DEFAULT}
-                            default_list.push([parseInt(cur_m[1]), cur_m[2]])
-                    info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
-                    for entry in simple_list
-                        info_field.push("simple argument $ARG#{entry[0]}$")
-                    for entry in default_list
-                        info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
-                    for entry in complex_list
-                        info_field.push("argument $ARG#{entry[0]}$ from DeviceVar '#{entry[1]}' (default value #{entry[2]})")
-                    return info_field
-                else
-                    return ["no args parsed"]
-            scope.add_argument = (edit_obj) ->
-                cur_cl = edit_obj.command_line
-                max_argn = 0
-                match_list = cur_cl.match(/arg(\d+)/ig)
-                if match_list?
-                    for cur_match in match_list
-                        max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
-                max_argn++
-                if edit_obj.arg_name?
-                    if edit_obj.arg_value?
-                        edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}:#{edit_obj.arg_value}}"
-                    else
-                        edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}}"
-                else
-                    edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}}"
-            scope.get_event_handler = (ev_idx) ->
-                if ev_idx
-                    # not fast but working
-                    ev_config = (entry for entry in _configs when ev_idx in (mcc.idx for mcc in entry.mon_check_command_set))
-                    if ev_config.length
-                        return (entry for entry in ev_config[0].mon_check_command_set when entry.idx == ev_idx)[0].name
-                    else
-                        return "???"
-                else
-                    return "---"
-            scope.get_event_handlers = (edit_obj) ->
-                ev_handlers = []
-                for entry in _configs
-                    for cc in entry.mon_check_command_set
-                        if cc.is_event_handler and cc.idx != edit_obj.idx
-                            ev_handlers.push(cc)
-                return ev_handlers
+            scope.duplicate = (config, obj, event) ->
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.CONFIG_COPY_MON
+                        data:
+                            "config": config.idx
+                            "mon": obj.idx
+                    }
+                ).then((xml) ->
+                    new_moncc = angular.fromJson($(xml).find("value[name='mon_cc']").text())
+                    config.mon_check_command_set.push(new_moncc)
+                    Restangular.restangularizeElement(
+                        null
+                        new_moncc
+                        ICSW_URLS.REST_MON_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2)
+                    )
+                    icswConfigListService.update_config(config)
+                )
         post_delete: (scope, obj) ->
             # remove from config_script list
             _list_name = "mon_check_command_set"
@@ -985,28 +964,35 @@ config_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.config.mon.table")
     }
-]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigMonCategoryTreeService", "msgbus", ($templateCache, icswConfigMonCategoryTreeService, msgbus) ->
+]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigMonCategoryTreeService", "icswConfigRestService", "$q", ($templateCache, icswConfigMonCategoryTreeService, icswConfigRestService, $q) ->
     return {
         restrict : "EA"
         template : "<tree treeconfig='cat_tree'></tree>"
+        scope:
+            editObj: "="
         link : (scope, el, attrs) ->
             # start at -1 because we dont count the Top level category
             scope.num_cats = -1
             scope.cat_tree = new icswConfigMonCategoryTreeService(scope)
-            update = () ->
+            update = (cats) ->
                 scope.cat_tree.clear_root_nodes()
                 cat_tree_lut = {}
                 if attrs["mode"] == "conf"
-                    sel_cat = scope.edit_obj.categories
+                    sel_cat = scope.editObj.categories
                     top_cat_re = new RegExp(/^\/config/)
                 else if attrs["mode"] == "mon"
                     # mon
-                    sel_cat = scope.edit_obj.categories
+                    sel_cat = scope.editObj.categories
                     top_cat_re = new RegExp(/^\/mon/)
-                for entry in scope.categories
+                for entry in cats
                     if entry.full_name.match(top_cat_re)
                         scope.num_cats++
-                        t_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_cat})
+                        t_entry = scope.cat_tree.new_node(
+                            folder: false
+                            obj: entry
+                            expand: entry.depth < 2
+                            selected: entry.idx in sel_cat
+                        )
                         cat_tree_lut[entry.idx] = t_entry
                         if entry.parent and entry.parent of cat_tree_lut
                             cat_tree_lut[entry.parent].add_child(t_entry)
@@ -1017,9 +1003,13 @@ config_module = angular.module(
 
                 scope.cat_tree_lut = cat_tree_lut
                 scope.cat_tree.show_selected(true)
-            update()
+            _def = icswConfigRestService.fetch("icsw_config_cat_choice")
+            _def.then((data) ->
+                cats = data[2]
+                update(cats)
+            )
             scope.new_selection = (new_sel) ->
-                scope.edit_obj.categories = new_sel
+                scope.editObj.categories = new_sel
                 scope.$digest()
     }
 ]).directive("icswConfigUploadInfo", ["$templateCache", ($templateCache) ->

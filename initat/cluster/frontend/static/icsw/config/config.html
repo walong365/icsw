@@ -73,7 +73,7 @@
 <script type="text/ng-template" id="icsw.config.config.table">
     <icsw-tools-rest-table target-list="configs" config-service="icswConfigListService">
         <table st-table="configs_displayed" st-safe-src="configs"
-               class="table table-hover table-condensed table-striped" style="width:auto;">
+               class="table table-hover table-condensed table-striped" style="width:100%;">
             <h2>{{ configs.length }} configurations <!-- , shown: {{ configs_displayed.length }},-->
                 <icsw-tools-button type="create" value="create new config" ng-click="create($event)" size="sm"></icsw-tools-button>
             </h2>
@@ -81,13 +81,16 @@
                 <tr>
                     <td colspan="99">
                         <div class="row">
-                            <div class="col-sm-5">
+                            <div class="col-sm-6">
                                 <div class="input-group">
                                     <input st-search="search_str" class="form-control" placeholder="filter">
                                     </input>
-                                    <span class="input-group-btn">
-                                        <button class="btn btn-warning" type="button" ng-click="clear_filter()"><span title="clear filter" class="fa fa-remove"> Clear</span></button>
-                                    </span>
+                                    <div class="btn-group">
+                                        <input type="button" ng-class="get_filter_class('name')" value="name" ng-click="change_filter_setting('name')"/>
+                                        <input type="button" ng-class="get_filter_class('script')" value="script" ng-click="change_filter_setting('script')"/>
+                                        <input type="button" ng-class="get_filter_class('var')" value="var" ng-click="change_filter_setting('var')"/>
+                                        <input type="button" ng-class="get_filter_class('mon')" value="mon" ng-click="change_filter_setting('mon')"/>
+                                    </div>
                                 </div>
                             </div>
                             <div
@@ -95,16 +98,8 @@
                                 st-items-by-page="15"
                                 st-displayed-pages="11"
                                 possible-items-by-page="15,30,100,200"
-                                class="col-sm-4"
+                                class="col-sm-6"
                             ></div>
-                            <div class="col-sm-3">
-                                <div class="input-group btn-group">
-                                    <input type="button" ng-class="get_filter_class('name')" value="name" ng-click="change_filter_setting('name')"/>
-                                    <input type="button" ng-class="get_filter_class('script')" value="script" ng-click="change_filter_setting('script')"/>
-                                    <input type="button" ng-class="get_filter_class('var')" value="var" ng-click="change_filter_setting('var')"/>
-                                    <input type="button" ng-class="get_filter_class('mon')" value="mon" ng-click="change_filter_setting('mon')"/>
-                                </div>
-                            </div>
                         </div>
                     </td>
                 </tr>
@@ -388,7 +383,7 @@
                     <td>{{ get_num_cats(obj) }}</td>
                     <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"/>
                     <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                    <td><input type="button" class="btn btn-warning btn-xs" ng-click="copy_mon(config, obj, $event)" value="duplicate"/></td>
+                    <td><input type="button" class="btn btn-warning btn-xs" ng-click="duplicate(config, obj, $event)" value="duplicate"/></td>
                     <td><icsw-tools-button type="delete" value="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
                 </tr>
             </tbody>

@@ -656,6 +656,7 @@ class copy_mon(View):
         logger.info("duplicate mon_check_command '{}' ({:d})".format(unicode(mon_source), mon_source.pk))
         _json = mon_check_command_serializer(mon_source).data
         _json["date"] = _json["date"].isoformat()
+        request.xml_response.log(logging_tools.LOG_LEVEL_OK, "duplicated MonCheckCommand")
         request.xml_response["mon_cc"] = json.dumps(_json)
 
 
