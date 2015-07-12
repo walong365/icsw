@@ -600,6 +600,7 @@ class handle_cached_config(View):
                     added += 1
                     _ent.object.name = conf["name"]
                     _ent.object.save()
+                    request.xml_response["new_pk"] = "{:d}".format(_ent.object.pk)
                     request.xml_response.info("create new config {} ({:d}) in config catalog {}".format(unicode(_ent.object), sub_added, unicode(ccat)))
             else:
                 request.xml_response.error("cannot create config object: {}".format(unicode(_ent.errors)), logger=logger)

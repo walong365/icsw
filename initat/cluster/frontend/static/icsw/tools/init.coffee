@@ -359,7 +359,7 @@ angular.module(
                 _def.resolve(res)
             else
                 if icswParseXMLResponseService(res)
-                    _def.resolve(xml)
+                    _def.resolve(res)
                 else
                     _def.reject()
         icswCallAjaxService(in_dict)

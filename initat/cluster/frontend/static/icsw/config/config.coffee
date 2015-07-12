@@ -46,6 +46,44 @@ config_module = angular.module(
             )
             @scope.new_selection(sel_list)
             @scope.$digest()
+]).service("icswCachedConfigRestService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswSimpleAjaxCall", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswSimpleAjaxCall) ->
+    cached_uploads = undefined
+    # number of cached uploads
+    num_cached_uploads = 0
+    load_data = (client) ->
+        if client
+            _defer = $q.defer()
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.CONFIG_GET_CACHED_UPLOADS
+                dataType: "json"
+            }
+        ).then((json) ->
+            _data = angular.fromJson(json)
+            if cached_uploads is undefined
+                cached_uploads = _data
+            else
+                cached_uploads.length = 0
+                for entry in _data
+                    cached_uploads.push(entry)
+            num_cached_uploads = cached_uploads.length
+            if client
+                _defer.resolve(cached_uploads)
+        )
+        if client
+           return _defer.promise
+    trigger_reload = () ->
+        load_data(null)
+    return {
+        "trigger_reload": () ->
+            trigger_reload()
+        "load": (client) ->
+            return load_data(client)
+        "set_num_cached_uploads": (num) ->
+            num_cached_uploads = num
+        "get_num_cached_uploads": () ->
+            return num_cached_uploads
+    }
 ]).service("icswConfigRestService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools) ->
     rest_map = [
         [
@@ -71,29 +109,44 @@ config_module = angular.module(
         ]
     ]
     _fetch_dict = {}
-    _result = []
+    _result = undefined
     # load called
     load_called = false
     load_data = (client) ->
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
+        if client
+            _defer = $q.defer()
         $q.all(_wait_list).then((data) ->
-            _result = data
-            _defer.resolve(_result)
+            if _result is undefined
+                _result = data
+            else
+                for _zip in _.zip(_result, data)
+                    _old = _zip[0]
+                    _new = _zip[1]
+                    _old.length = 0
+                    # also the code below does not work if we execute it immediately, but this works:
+                    for entry in _new
+                        _old.push(entry)
+            if client
+                _defer.resolve(_result)
             for client of _fetch_dict
                 # resolve clients
                 _fetch_dict[client].resolve(_result)
             # reset fetch_dict
             _fetch_dict = {}
         )
-        return _defer
+        if client
+            return _defer
+    trigger_reload = () ->
+        # this code works in principle but is not recommended because we will overwrite all local settings
+        load_data(null)
     fetch_data = (client) ->
         if client not of _fetch_dict
             # register client
             _defer = $q.defer()
             _fetch_dict[client] = _defer
-        if _result.length
+        if _result? and _result.length
             # resolve immediately
             _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
@@ -103,6 +156,8 @@ config_module = angular.module(
         "load": (client) ->
             # loads from server
             return load_data(client).promise
+        "trigger_reload": () ->
+            trigger_reload()
         "get_num_selected_configs": () ->
             return num_selected_configs
         "get_selected_configs": () ->
@@ -115,6 +170,19 @@ config_module = angular.module(
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
+        "load_single_config": (pk) ->
+            _d = $q.defer()
+            Restangular.all(rest_map[0][0].slice(1)).get(pk).then(
+                (new_obj) ->
+                    _result[0].push(new_obj)
+                    _d.resolve(new_obj)
+            )
+            return _d.promise
+        "delete_config" : (conf) ->
+            # delete config from local rest data
+            _.remove(_result[0], (obj) ->
+                return obj.idx == conf.idx
+            )
         "create_catalog": (new_cat) ->
             _d = $q.defer()
             Restangular.all(rest_map[3][0].slice(1)).post(new_cat).then(
@@ -342,6 +410,9 @@ config_module = angular.module(
         "var" : false
         "mon" : false
     }
+    enrich_config = (config) ->
+        create_extra_fields(config)
+        update_filter_field_config(config)
     return {
         edit_template: "config.form"
         load_promise: _config.promise
@@ -349,11 +420,12 @@ config_module = angular.module(
             _cd = $q.defer()
             icswConfigRestService.create_config(new_obj).then(
                 (new_conf) ->
-                    create_extra_fields(new_conf)
-                    update_filter_field_config(entry)
+                    enrich_config(new_conf)
                     _cd.resolve(new_conf)
             )
             return _cd.promise
+        enrich_config: (new_conf) ->
+            enrich_config(new_conf)
         delete_confirm_str: (obj) ->
             return "Really delete config '#{obj.name}' ?"
         new_object: () ->
@@ -366,6 +438,8 @@ config_module = angular.module(
             return new_obj
         update_config: (config) ->
             create_extra_fields(config)
+        post_delete: (scope, obj) ->
+            icswConfigRestService.delete_config(obj)
         init_fn: (scope) ->
             scope.$watch("selected_configs", (new_val) ->
                 icswConfigRestService.set_num_selected_configs(new_val)
@@ -425,9 +499,26 @@ config_module = angular.module(
                     _filter_settings["name"] = true
                 update_filter_field()
     }
-]).directive("icswConfigUploader", ["$templateCache", "icswConfigRestService", ($templateCache, icswConfigRestService) ->
-]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigVarListService", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigVarListService, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall) ->
+]).directive("icswConfigUploader", ["$templateCache", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", ($templateCache, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall) ->
+    return {
+        restrict: "E"
+        scope: {}
+        template: $templateCache.get("icsw.config.upload")
+        replace: true
+        link: (scope, el, attr) ->
+            scope.cached_uploads = []
+            icswCachedConfigRestService.load(scope.$id).then((data) ->
+                scope.cached_uploads = data
+            )
+            scope.config_catalogs = []
+            scope.use_catalog = 0
+            icswConfigRestService.fetch(scope.$id).then((data) ->
+                scope.config_catalogs = data[3]
+                scope.use_catalog = scope.config_catalogs[0].idx
+            )
+    }
+]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall", "icswCachedConfigRestService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall, icswCachedConfigRestService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         # $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_configs = 0
@@ -441,8 +532,13 @@ config_module = angular.module(
             window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
 
         $scope.selected_objects = []
-        $scope.cached_uploads = []
-        $scope.catalog = 0
+        $scope.num_cached_uploads = 0
+        $scope.$watch(
+            () ->
+                icswCachedConfigRestService.get_num_cached_uploads()
+            (new_val) ->
+                $scope.num_cached_uploads = new_val
+        )
         $scope.uploader = new FileUploader(
             scope : $scope
             url : ICSW_URLS.CONFIG_UPLOAD_CONFIG
@@ -453,65 +549,15 @@ config_module = angular.module(
             ]
             removeAfterUpload : true
         )
-        $scope.upload_list = []
         $scope.uploader.onBeforeUploadItem = () ->
             blockUI.start()
+            return null
         $scope.uploader.onCompleteAll = () ->
             blockUI.stop()
             $scope.uploader.clearQueue()
-            $scope.reload_upload()
-        $scope.$on("icsw.reload_upload", () ->
-            $scope.reload_upload()
-        )
-        $scope.$on("icsw.reload_all", () ->
-            $scope.reload()
-        )
-        $scope.entries = []
-        $scope.reload = () ->
-            wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_CONFIG_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_CONFIG_CATALOG_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_CONFIG_HINT_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_MON_CHECK_COMMAND_SPECIAL_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_MON_CHECK_COMMAND_LIST, {}]),
-            ]
-            $q.all(wait_list).then((data) ->
-                # $scope.mon_service_templ = data[1]
-                # $scope.categories = data[2]
-                # ($scope._set_fields(entry, true) for entry in data[0])
-                # $scope.entries = data[0]
-                # $scope.mccs_list = data[5]
-                # $scope.check_commands = data[6]
-                # catalog for uploads, TODO, FIXME
-                # $scope.catalog = $scope.config_catalogs[0].idx
-                # $scope.config_edit.create_list = $scope.entries
-                # $scope.config_edit.delete_list = $scope.entries
-                # $scope.config_hints = {}
-                # $scope.soft_config_hints = []
-                # configs found (positive cache)
-                # $scope.resolved_config_hints = {}
-                # configs not found (negative cache)
-                # $scope.no_config_hints = {}
-                #for entry in data[4]
-                #    $scope.config_hints[entry.config_name] = entry
-                #    if not entry.exact_match
-                #        $scope.soft_config_hints.push(entry)
-                #    entry.var_lut = {}
-                #    for vh in entry.config_var_hint_set
-                #        entry.var_lut[vh.var_name] = vh
-                $scope.reload_upload()
-            )
-        $scope.reload_upload = () ->
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.CONFIG_GET_CACHED_UPLOADS
-                    dataType: "json"
-                }
-            ).then((json) ->
-                $scope.cached_uploads = angular.fromJson(json)
-            )
+            # trigger reload
+            icswCachedConfigRestService.trigger_reload()
+            return null
         $scope.delete_selected_objects = () ->
             if confirm("really delete #{$scope.selected_objects.length} objects ?")
                 blockUI.start()
@@ -556,6 +602,7 @@ config_module = angular.module(
             else
                 obj._selected = true
                 $scope.selected_objects.push(obj)
+
         # hint functions
         $scope.re_compare = (_array, _input) ->
             console.log _array, _input, $scope.config_hints[_array].exact_match
@@ -690,7 +737,6 @@ config_module = angular.module(
                     sub_scope.$destroy()
             sub_scope.modal = my_modal
 
-        $scope.reload()
 ]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
@@ -716,6 +762,7 @@ config_module = angular.module(
         template: $templateCache.get("icsw.config.line")
     }
 ]).service('icswConfigVarListService', ["icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
+    # do NOT use local vars here because this is a service
     return {
         delete_confirm_str: (obj) ->
             return "Really delete var '#{obj.name}' ?"
@@ -1046,7 +1093,7 @@ config_module = angular.module(
         }
         replace : true
     }
-]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($templateCache, $compile, $modal, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "blockUI", "$modal", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswConfigRestService", "icswCachedConfigRestService", "icswSimpleAjaxCall", "icswConfigListService", ($templateCache, $compile, blockUI, $modal, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswConfigRestService, icswCachedConfigRestService, icswSimpleAjaxCall, icswConfigListService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.cached.upload")
@@ -1074,31 +1121,45 @@ config_module = angular.module(
                 else
                     return 0
             scope.take_config = () ->
-                # $.blockUI
-                icswCallAjaxService
-                    url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
-                    data    : {
-                        "upload_key" : scope.upload.upload_key
-                        "name"       : scope.config.name
-                        "catalog"    : scope.catalog
-                        "mode"       : "take"
+                blockUI.start()
+                icswSimpleAjaxCall(
+                    {
+                        url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
+                        data    : {
+                            "upload_key" : scope.upload.upload_key
+                            "name"       : scope.config.name
+                            "catalog"    : scope.catalog
+                            "mode"       : "take"
+                        }
                     }
-                    success : (xml) ->
-                        # $.unblockUI
-                        icswParseXMLResponseService(xml)
-                        scope.$emit("icsw.reload_all")
+                ).then(
+                    (xml) ->
+                        blockUI.stop()
+                        icswCachedConfigRestService.trigger_reload()
+                        icswConfigRestService.load_single_config($(xml).find("value[name='new_pk']").text()).then(
+                            (new_conf) ->
+                                icswConfigListService.enrich_config(new_conf)
+                        )
+                    (error) ->
+                        blockUI.stop()
+                )
             scope.delete_config = () ->
-                # $.blockUI
-                icswCallAjaxService
-                    url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
-                    data    : {
-                        "upload_key" : scope.upload.upload_key
-                        "name"       : scope.config.name
-                        "mode"       : "delete"
+                blockUI.start()
+                icswSimpleAjaxCall(
+                    {
+                        url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
+                        data    : {
+                            "upload_key" : scope.upload.upload_key
+                            "name"       : scope.config.name
+                            "mode"       : "delete"
+                        }
                     }
-                    success : (xml) ->
-                        # $.unblockUI
-                        icswParseXMLResponseService(xml)
-                        scope.$emit("icsw.reload_upload")
+                ).then(
+                    (xml) ->
+                        blockUI.stop()
+                        icswCachedConfigRestService.trigger_reload()
+                    (error) ->
+                        blockUI.stop()
+                )
     }
 ])

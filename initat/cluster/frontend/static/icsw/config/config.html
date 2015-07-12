@@ -28,14 +28,20 @@
         <tab heading="Catalogs">
             <icsw-config-catalog-table></icsw-config-catalog-table>
         </tab>
-        <tab heading="Uploads ({{ cached_uploads.length }})" ng-show="cached_uploads.length">
-            <form class="form-inline">
-                Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="catalog" ng-options="value.idx as value.name for value in config_catalogs"></select>
-            </form>
-            <icsw-config-upload-info ng-repeat="entry in cached_uploads" upload="entry" catalog="catalog">
-            </icsw-config-upload-info>
+        <tab heading="Uploads ({{ num_cached_uploads }})" ng-show="num_cached_uploads">
+            <icsw-config-uploader></icsw-config-uploader>
         </tab>
     </tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.config.upload">
+    <div>
+        <form class="form-inline">
+            Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="use_catalog" ng-options="value.idx as value.name for value in config_catalogs"></select>
+        </form>
+        <icsw-config-upload-info ng-repeat="entry in cached_uploads" upload="entry" catalog="use_catalog">
+        </icsw-config-upload-info>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.catalog.table">
