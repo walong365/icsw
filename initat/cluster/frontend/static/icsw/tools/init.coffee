@@ -354,11 +354,14 @@ angular.module(
 ]).service("icswSimpleAjaxCall", ["icswCallAjaxService", "icswParseXMLResponseService", "$q", (icswCallAjaxService, icswParseXMLResponseService, $q) ->
     return (in_dict) ->
         _def = $q.defer()
-        in_dict.success = (xml) =>
-            if icswParseXMLResponseService(xml)
-                _def.resolve(xml)
+        in_dict.success = (res) =>
+            if in_dict.dataType == "json"
+                _def.resolve(res)
             else
-                _def.reject()
+                if icswParseXMLResponseService(res)
+                    _def.resolve(xml)
+                else
+                    _def.reject()
         icswCallAjaxService(in_dict)
 
         return _def.promise

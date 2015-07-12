@@ -97,10 +97,18 @@ config_module = angular.module(
             # resolve immediately
             _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
+    # number of selected configs
+    num_selected_configs = 0
     return {
         "load": (client) ->
             # loads from server
             return load_data(client).promise
+        "get_num_selected_configs": () ->
+            return num_selected_configs
+        "get_selected_configs": () ->
+            return (entry for entry in _result[0] when entry.isSelected)
+        "set_num_selected_configs": (num) ->
+            num_selected_configs = num
         "fetch": (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
@@ -313,7 +321,7 @@ config_module = angular.module(
         s = []
         if _filter_settings.name
             s.push(config.name)
-        # TODO, not finished
+        # TODO, to be improved
         if _filter_settings.script
             for scr in config.config_script_set
                 for attr_name in ["name", "description"]
@@ -359,12 +367,17 @@ config_module = angular.module(
         update_config: (config) ->
             create_extra_fields(config)
         init_fn: (scope) ->
+            scope.$watch("selected_configs", (new_val) ->
+                icswConfigRestService.set_num_selected_configs(new_val)
+            )
             scope.get_config_catalog_name = (conf) ->
                 _cats = (entry for entry in _catalogs when entry.idx == conf.config_catalog)
                 if _cats.length
                     return _cats[0].name
                 else
                     return "???"
+            scope.select = (obj) ->
+                obj.isSelected = !obj.isSelected
             scope.get_all_config_hint_names = () ->
                 return icswConfigHintService.get_all_config_hint_names()
             scope.show_config_help = (obj) ->
@@ -412,10 +425,21 @@ config_module = angular.module(
                     _filter_settings["name"] = true
                 update_filter_field()
     }
-]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigVarListService", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigVarListService, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService) ->
+]).directive("icswConfigUploader", ["$templateCache", "icswConfigRestService", ($templateCache, icswConfigRestService) ->
+]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigVarListService", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigVarListService, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         # $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
+        $scope.selected_configs = 0
+        $scope.$watch(
+            icswConfigRestService.get_num_selected_configs
+            (new_val) ->
+                $scope.selected_configs = new_val
+        )
+        $scope.download_selected = () ->
+            hash = angular.toJson((entry.idx for entry in icswConfigRestService.get_selected_configs()))
+            window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
+
         $scope.selected_objects = []
         $scope.cached_uploads = []
         $scope.catalog = 0
@@ -480,13 +504,14 @@ config_module = angular.module(
                 $scope.reload_upload()
             )
         $scope.reload_upload = () ->
-            icswCallAjaxService
-                url     : ICSW_URLS.CONFIG_GET_CACHED_UPLOADS
-                dataType : "json"
-                success : (json) ->
-                    $scope.$apply(() ->
-                        $scope.cached_uploads = angular.fromJson(json)
-                    )
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.CONFIG_GET_CACHED_UPLOADS
+                    dataType: "json"
+                }
+            ).then((json) ->
+                $scope.cached_uploads = angular.fromJson(json)
+            )
         $scope.delete_selected_objects = () ->
             if confirm("really delete #{$scope.selected_objects.length} objects ?")
                 blockUI.start()
@@ -665,9 +690,6 @@ config_module = angular.module(
                     sub_scope.$destroy()
             sub_scope.modal = my_modal
 
-        $scope.download_selected = () ->
-            hash = angular.toJson((entry.idx for entry in $scope.pagSettings.filtered_list))
-            window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
         $scope.reload()
 ]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
     return {
@@ -684,6 +706,9 @@ config_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.config.table")
+        link: (scope, el, attr) ->
+            scope.select = (obj) ->
+                obj.isSelected = !obj.isSelected
     }
 ]).directive("icswConfigLine", ["$templateCache", ($templateCache) ->
     return {
@@ -724,7 +749,7 @@ config_module = angular.module(
             scope.vars = []
             scope.data_received(r_val)
             scope.select = (obj) ->
-                obj._selected = !obj._selected
+                obj.isSelected = !obj.isSelected
             scope.var_has_info = (config, cvar) ->
                 return icswConfigHintService.var_has_info(config, cvar)
             scope.get_var_help_text = (config, cvar) ->
@@ -767,7 +792,7 @@ config_module = angular.module(
                 )
             scope.data_received(scope.config.config_script_set)
             scope.select = (obj) ->
-                obj._selected = !obj._selected
+                obj.isSelected = !obj.isSelected
             scope.editorOptions = {
                 lineWrapping : false
                 lineNumbers: true
@@ -805,7 +830,6 @@ config_module = angular.module(
         template : $templateCache.get("icsw.config.script.table")
         scope:
             config: "="
-        link : (scope, el, attrs) ->
     }
 ]).service('icswConfigMonCheckCommandHelpService', ["icswConfigRestService", "icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigRestService, icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
     _def = icswConfigRestService.fetch("icsw_config_mcc_help_service")
@@ -933,7 +957,7 @@ config_module = angular.module(
                 )
             scope.data_received(scope.config.mon_check_command_set)
             scope.select = (obj) ->
-                obj._selected = !obj._selected
+                obj.isSelected = !obj.isSelected
             scope.duplicate = (config, obj, event) ->
                 icswSimpleAjaxCall(
                     {

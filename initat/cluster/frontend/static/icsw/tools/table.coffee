@@ -43,6 +43,16 @@ angular.module(
                 (new_val) -> $parse(attrs.icswToolsTableLeakFiltered).assign(scope, new_val)
             )
     }
+]).directive('icswToolsTableNumSelected', ["$parse", ($parse) ->
+    return {
+        restrict: 'EA'
+        require: '^stTable',
+        link: (scope, element, attrs, ctrl) ->
+            scope.$watch(
+                ctrl.getNumberOfSelectedEntries
+                (new_val) -> $parse(attrs.icswToolsTableNumSelected).assign(scope, new_val)
+            )
+    }
 ]).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
     return {
         restrict: 'EA',

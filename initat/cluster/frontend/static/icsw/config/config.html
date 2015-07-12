@@ -4,7 +4,7 @@
             <icsw-config-config-table></icsw-config-config-table>
             <div class="row panel panel-default">
                 <div class="col-md-4">
-                    <icsw-tools-button type="download" value="download selected configs" ng-show="pagSettings.conf.filtered_len > 0" ng-click="download_selected()" size="sm"/>
+                    <icsw-tools-button type="download" value="download selected configs" ng-show="selected_configs" ng-click="download_selected()" size="sm"/>
                 </div>
                 <div class="col-md-4">
                     <input type="file" nv-file-select="" class="form-control" uploader="uploader"></input>
@@ -72,9 +72,10 @@
 
 <script type="text/ng-template" id="icsw.config.config.table">
     <icsw-tools-rest-table target-list="configs" config-service="icswConfigListService">
-        <table st-table="configs_displayed" st-safe-src="configs"
+        <table st-table="configs_displayed" st-safe-src="configs" icsw-tools-table-leak-filtered="filtered"
+               icsw-tools-table-num-selected="selected_configs"
                class="table table-hover table-condensed table-striped" style="width:100%;">
-            <h2>{{ configs.length }} configurations <!-- , shown: {{ configs_displayed.length }},-->
+            <h2>{{ configs.length }} configurations, {{ filtered.length }} shown, {{ selected_configs }} selected
                 <icsw-tools-button type="create" value="create new config" ng-click="create($event)" size="sm"></icsw-tools-button>
             </h2>
             <thead>
@@ -114,11 +115,11 @@
                     <th class="text-center">script</th>
                     <th class="text-center">mon</th>
                     <th>cats</th>
-                    <th colspan="3">action</th>
+                    <th colspan="4">action</th>
                 </tr>
             </thead>
             <tbody>
-                <tr icsw-config-line ng-repeat-start="config in configs_displayed" ng-class="get_config_row_class(config)">
+                <tr st-select-row icsw-config-line ng-repeat-start="config in configs_displayed" ng-class="get_config_row_class(config)">
                 </tr>
                 <tr ng-if="config.var_expanded">
                     <td colspan="14">
@@ -182,6 +183,9 @@
     </td>
     <td class="text-center">{{ get_num_cats(config) }}</td>
     <td>
+        <input type="button" ng-class="config.isSelected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(config)"/>
+    </td>
+    <td>
         <icsw-tools-button type="modify" value="modify" ng-click="edit($event, config)" size="xs"/>
     </td>
     <td>
@@ -243,7 +247,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="obj in vars_displayed">
+                <tr st-select-row ng-repeat="obj in vars_displayed">
                     <td>
                         <span ng-show="var_has_info(config, obj)" class="pull-right">
                             <span class="glyphicon glyphicon-info-sign" title="{{ get_var_help_text(config, obj) }}">
@@ -254,7 +258,7 @@
                     <td>{{ get_value(obj) }}</td>
                     <td>{{ obj.description }}</td>
                     <td class="text-center">{{ obj.v_type }}</td>
-                    <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(obj)"/>
+                    <td><input type="button" ng-class="obj.isSelected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(obj)"/>
                     <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, obj)" size="xs"/></td>
                     <td><icsw-tools-button type="delete" value="delete" ng-click="delete(obj)" size="xs"/></td>
                 </tr>
@@ -297,7 +301,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="obj in scripts_displayed">
+                <tr st-select-row ng-repeat="obj in scripts_displayed">
                     <td>{{ obj.name }}</td>
                     <td style="font-family:monospace; width:480px;">
                         <textarea ng-model="obj.value" class="form-control input-sm" rows="5" readonly>
@@ -306,7 +310,7 @@
                     <td>{{ obj.description }}</td>
                     <td>{{ obj.priority }}</td>
                     <td>{{ obj.enabled | yesno1 }}</td>
-                    <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(obj)"/>
+                    <td><input type="button" ng-class="obj.isSelected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(obj)"/>
                     <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, obj)" size="xs"/></td>
                     <td><icsw-tools-button type="delete" value="delete" ng-click="delete(obj)" size="xs"/></td>
                 </tr>
@@ -356,7 +360,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="obj in monccs_displayed">
+                <tr st-select-row ng-repeat="obj in monccs_displayed">
                     <td>{{ obj.name }}</td>
                     <td>{{ obj.mon_service_templ | array_lookup:mon_service_templ:'name':'-' }}</td>
                     <td>{{ obj.description }}</td>
@@ -381,7 +385,7 @@
                     <td>{{ get_event_handler(obj.event_handler) }}</td>
                     <td>{{ obj.event_handler_enabled }}</td>
                     <td>{{ get_num_cats(obj) }}</td>
-                    <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"/>
+                    <td><input type="button" ng-class="obj.isSelected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(obj)"/>
                     <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
                     <td><input type="button" class="btn btn-warning btn-xs" ng-click="duplicate(config, obj, $event)" value="duplicate"/></td>
                     <td><icsw-tools-button type="delete" value="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
