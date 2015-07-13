@@ -504,16 +504,12 @@ class SimpleService(Service):
     def _check(self, result, act_proc_dict):
         init_script_name = self.init_script_name
         if os.path.isfile(init_script_name):
-            act_pids = []
-            for _proc in psutil.process_iter():
-                try:
-                    if _proc.is_running() and _proc.name() == self.attrib["process_name"]:
-                        act_pids.append(_proc.pid)
-                except psutil.NoSuchProcess:
-                    pass
-            if act_pids:
+            if os.getuid() != 0:
+                self.log("Need root permissions to reliably obtain status information.",
+                         logging_tools.LOG_LEVEL_WARN)
+            (_status, _output) = process_tools.getstatusoutput("{} status".format(init_script_name))
+            if _status == 0:
                 act_state, act_str = (SERVICE_OK, "running")
-                self._add_pids(result, act_pids)
             else:
                 act_state, act_str = (SERVICE_DEAD, "not running")
         else:
