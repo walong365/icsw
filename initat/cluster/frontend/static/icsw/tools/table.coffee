@@ -43,6 +43,16 @@ angular.module(
                 (new_val) -> $parse(attrs.icswToolsTableLeakFiltered).assign(scope, new_val)
             )
     }
+]).directive('icswToolsTableNumSelected', ["$parse", ($parse) ->
+    return {
+        restrict: 'EA'
+        require: '^stTable',
+        link: (scope, element, attrs, ctrl) ->
+            scope.$watch(
+                ctrl.getNumberOfSelectedEntries
+                (new_val) -> $parse(attrs.icswToolsTableNumSelected).assign(scope, new_val)
+            )
+    }
 ]).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
     return {
         restrict: 'EA',
@@ -129,10 +139,11 @@ angular.module(
 
                 scope.many_delete = scope.config_service.many_delete
 
-                if scope.config_service.init_fn?
-                    scope.config_service.init_fn(scope)
-
                 scope.data_received = (new_data) ->
+                    _list_name = attrs.targetList
+                    if not scope[_list_name]?
+                        # init list if not defined
+                        scope[_list_name] = []
                     list = $parse(attrs.targetList)(scope)
                     # behold, the recommended javascript implementation of list.clear():
                     list.length = 0
@@ -145,6 +156,9 @@ angular.module(
 
                     # NOTE: this also makes the watch below work, see below before changing this
 
+
+                if scope.config_service.init_fn?
+                    scope.config_service.init_fn(scope)
 
                 if scope.config_service.rest_url?
                     scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
@@ -164,6 +178,22 @@ angular.module(
                         options = if scope.config_service.rest_options? then scope.config_service.rest_options else {}
                         scope.rest.getList(options).then(scope.data_received)
 
+                if scope.config_service.load_promise?
+                    _list_name = attrs.targetList
+                    if not scope[_list_name]?
+                        # init list if not defined
+                        scope[_list_name] = []
+                    scope.config_service.load_promise.then(
+                        (new_data) ->
+                            # start watch to check for length changes
+                            scope.$watch(
+                                () -> new_data.length
+                                (new_d) ->
+                                    if new_d
+                                        scope.data_received(new_data)
+                            )
+                    )
+
                 if scope.rest?
                     # NOTE: watching on restangular does not work. if $object gets filled up, there is NO call.
                     # therefore we watch on the length, which works. this also gets called on reload because of the
@@ -175,8 +205,8 @@ angular.module(
                             if scope.config_service.after_reload
                                 scope.config_service.after_reload(scope)
                     )
-
-                $parse(attrs.targetList).assign(scope, scope.rest)
+                    # is this correct ? changed identation, please check @BM
+                    $parse(attrs.targetList).assign(scope, scope.rest)
 
                 # interface functions to use in directive body
                 scope.edit = (event, obj) ->
@@ -194,7 +224,11 @@ angular.module(
                     if scope.fn and scope.fn.create_or_edit
                         scope.fn.create_or_edit(scope, scope.create_mode, obj)
                     if scope.config_service.use_modal
-                        scope.edit_div = $compile($templateCache.get(scope.config_service.edit_template))(scope)
+                        if typeof(scope.config_service.edit_template) == "function"
+                            _templ = scope.config_service.edit_template(obj)
+                        else
+                            _templ = scope.config_service.edit_template
+                        scope.edit_div = $compile($templateCache.get(_templ))(scope)
                         scope.my_modal = BootstrapDialog.show
                             message: scope.edit_div
                             draggable: true
@@ -214,12 +248,19 @@ angular.module(
                 scope.modify = () ->
                     if not scope.form.$invalid
                         if scope.create_mode
-                            scope.rest.post(scope.new_obj).then((new_data) ->
-                                scope.rest.push(new_data)
-                                scope.close_modal()
-                                if scope.config_service.object_created
-                                    scope.config_service.object_created(scope.new_obj, new_data, scope)
-                            )
+                            if scope.rest?
+                                scope.rest.post(scope.new_obj).then((new_data) ->
+                                    scope.rest.push(new_data)
+                                    scope.close_modal()
+                                    if scope.config_service.object_created
+                                        scope.config_service.object_created(scope.new_obj, new_data, scope)
+                                )
+                            if scope.config_service.save_defer?
+                                scope.config_service.save_defer(scope.new_obj).then((new_data) ->
+                                    scope.close_modal()
+                                    if scope.config_service.object_created
+                                        scope.config_service.object_created(scope.new_obj, new_data, scope)
+                                )
                         else
                             scope.edit_obj.put().then(
                                 (data) ->
@@ -235,10 +276,13 @@ angular.module(
                     # temporary fix, FIXME
                     # scope.form should never be undefined
                     if scope.form?
-                        if scope.form[field_name].$valid
-                            return ""
+                        if scope.form[field_name]?
+                            if scope.form[field_name].$valid
+                                return ""
+                            else
+                                return "has-error"
                         else
-                            return "has-error"
+                            return ""
                     else
                         return ""
                 scope.hide_modal = () ->

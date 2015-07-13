@@ -600,6 +600,7 @@ class handle_cached_config(View):
                     added += 1
                     _ent.object.name = conf["name"]
                     _ent.object.save()
+                    request.xml_response["new_pk"] = "{:d}".format(_ent.object.pk)
                     request.xml_response.info("create new config {} ({:d}) in config catalog {}".format(unicode(_ent.object), sub_added, unicode(ccat)))
             else:
                 request.xml_response.error("cannot create config object: {}".format(unicode(_ent.errors)), logger=logger)
@@ -656,6 +657,7 @@ class copy_mon(View):
         logger.info("duplicate mon_check_command '{}' ({:d})".format(unicode(mon_source), mon_source.pk))
         _json = mon_check_command_serializer(mon_source).data
         _json["date"] = _json["date"].isoformat()
+        request.xml_response.log(logging_tools.LOG_LEVEL_OK, "duplicated MonCheckCommand")
         request.xml_response["mon_cc"] = json.dumps(_json)
 
 

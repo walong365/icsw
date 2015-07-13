@@ -351,6 +351,20 @@ angular.module(
         #    console.log "s", in_dict["success"]
         cur_xhr = $.ajax(in_dict)
         return cur_xhr
+]).service("icswSimpleAjaxCall", ["icswCallAjaxService", "icswParseXMLResponseService", "$q", (icswCallAjaxService, icswParseXMLResponseService, $q) ->
+    return (in_dict) ->
+        _def = $q.defer()
+        in_dict.success = (res) =>
+            if in_dict.dataType == "json"
+                _def.resolve(res)
+            else
+                if icswParseXMLResponseService(res)
+                    _def.resolve(res)
+                else
+                    _def.reject()
+        icswCallAjaxService(in_dict)
+
+        return _def.promise
 ]).service("access_level_service", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     data = {}
     reload = () ->
