@@ -18,8 +18,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import re
 import collections
+import datetime
+import traceback
 import django.utils.timezone
 import itertools
+import pytz
 
 from initat.tools import logging_tools, process_tools
 from initat.cluster.backbone.models import device_variable
@@ -41,6 +44,8 @@ class IpmiLogJob(EventLogPollerJobBase):
 
     IPMI_USERNAME_VARIABLE_NAME = "IPMI_USERNAME"
     IPMI_PASSWORD_VARIABLE_NAME = "IPMI_PASSWORD"
+
+    IPMITOOL_DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
 
     def __init__(self, log, db, target_device, target_ip, last_known_record_id):
         super(IpmiLogJob, self).__init__(log, db, target_device, target_ip)
@@ -72,6 +77,11 @@ class IpmiLogJob(EventLogPollerJobBase):
 
     __repr__ = __unicode__
 
+    @classmethod
+    def _parse_ipmi_datetime_string(cls, datetime_string):
+        return datetime.datetime.strptime(datetime_string.strip(),
+                                          cls.IPMITOOL_DATE_FORMAT).replace(tzinfo=pytz.UTC)
+
     def start(self):
         pass
 
@@ -84,6 +94,8 @@ class IpmiLogJob(EventLogPollerJobBase):
             self.ext_com = None
 
         def __call__(self, job):
+            do_continue = True
+
             if self.ext_com is None:
                 # initial call, start the job
                 cmd = (
@@ -106,7 +118,7 @@ class IpmiLogJob(EventLogPollerJobBase):
                     stdout_out, stderr_out = self.ext_com.communicate()
 
                     if stderr_out:
-                        job._handle_stderr(stderr_out, "finding out maximum ipmi sel record id")
+                        job._handle_stderr(stderr_out, "finding out maximum ipmi sel record id for {}".format(job))
 
                     if exit_code != 0:
                         raise RuntimeError(
@@ -122,19 +134,79 @@ class IpmiLogJob(EventLogPollerJobBase):
 
                     max_record_id = max(record_ids_int)
 
-                    job.log("Gathering records from {} to {} for {}".format(
-                        job.last_known_record_id, max_record_id, job
+                    if job.last_known_record_id == max_record_id:
+                        job.log("Maximal record id same as last known one ({}), we are done".format(max_record_id))
+                        do_continue = False
+                    else:
+                        job.log("Need to gather records from {} to {} for {}".format(
+                            job.last_known_record_id, max_record_id, job
+                        ))
+                        job.current_phase = IpmiLogJob.RetrieveTime(job.last_known_record_id, max_record_id)
+
+            return do_continue  # do_continue
+
+    class RetrieveTime(object):
+        """Retrieve ipmi time to be able to correct times of events"""
+        def __init__(self, last_known_record_id, max_record_id):
+            self.last_known_record_id = last_known_record_id
+            self.max_record_id = max_record_id
+            self.ext_com = None
+
+        def __call__(self, job):
+            if self.ext_com is None:
+                # initial call, start the job
+                cmd = (
+                    process_tools.find_file("ipmitool"),
+                    "-H", job.target_ip,
+                    "-U", job.username,
+                    "-P", job.password,
+                    "sel",
+                    "time",
+                    "get",
+                )
+                self.ext_com = ExtCom(job.log, cmd, shell=False,
+                                      debug=True)  # shell=False since args must not be parsed again
+                self.ext_com.run()
+            else:
+                exit_code = self.ext_com.finished()
+
+                if exit_code is not None:
+                    stdout_out, stderr_out = self.ext_com.communicate()
+
+                    if stderr_out:
+                        job._handle_stderr(stderr_out, "ipmi sel time get {}".format(job))
+
+                    if exit_code != 0:
+                        raise RuntimeError(
+                            "IpmiLogJob RetrieveTime ipmitool command failed with code {}".format(exit_code)
+                        )
+
+                    try:
+                        device_time = job._parse_ipmi_datetime_string(stdout_out)
+                    except ValueError as e:
+                        job.log("Failed to parse time of job {}: {}".format(job, e), logging_tools.LOG_LEVEL_ERROR)
+                        job.log(traceback.format_exc(), logging_tools.LOG_LEVEL_ERROR)
+                        job.log("Assuming that device has local time")
+                        device_time = django.utils.timezone.now()
+
+                    device_time_diff = django.utils.timezone.now() - device_time
+
+                    job.log("Local time is {}, i.e. diff {}, for {}".format(
+                        device_time, device_time_diff, job,
                     ))
-                    job.current_phase = IpmiLogJob.RetrieveEvents(job.last_known_record_id, max_record_id)
+
+                    job.current_phase = IpmiLogJob.RetrieveEvents(job.last_known_record_id, self.max_record_id,
+                                                                  device_time_diff=device_time_diff)
 
             return True  # do_continue
 
     class RetrieveEvents(object):
-        def __init__(self, last_known_record_id, max_record_id):
+        def __init__(self, last_known_record_id, max_record_id, device_time_diff):
             self.ext_com = None
             self.max_record_id = max_record_id
             self.current_record_id = last_known_record_id + 1 if last_known_record_id is not None else 1
             # 1 is first record id
+            self.device_time_diff = device_time_diff
 
         def __call__(self, job):
             if self.ext_com is not None:
@@ -194,11 +266,25 @@ class IpmiLogJob(EventLogPollerJobBase):
                 # sections are separated by empty lines (usually without whitespace in between, but handle anyway)
                 sections_raw = re.compile("\n[ \t]*\n").split(stdout_out)
                 sections_db_data = []
+                timestamp = None
                 for sec in sections_raw:
                     if sec:  # there might be an empty last entry
                         parsed = job._parse_section(sec)
                         if parsed:
                             sections_db_data.append(parsed)
+
+                            raw_timestamp = parsed.get('Timestamp')  # only present in one section
+                            if raw_timestamp is not None:
+                                try:
+                                    timestamp_device_time = job._parse_ipmi_datetime_string(raw_timestamp)
+                                except ValueError:
+                                    job.log("Unparsable time stamp in ipmi entry: {}".format(raw_timestamp))
+                                    job.log(traceback.format_exc())
+                                else:
+                                    timestamp = timestamp_device_time + self.device_time_diff
+
+                if timestamp is not None:
+                    sections_db_data = [{'Timestamp Local': unicode(timestamp)}] + sections_db_data
 
                 keys_ordered = list(itertools.chain.from_iterable(sec.iterkeys() for sec in sections_db_data))
                 db_entry = {
