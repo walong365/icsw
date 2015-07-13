@@ -183,7 +183,7 @@
             <file value="/opt/nagvis4icinga/share/server/core/defined/global.php" user="idnagios" group="idg"/>
         </access-rights>
     </instance>
-    <instance name="mongodb-init" check_type="simple" pid_file_name="mongodb-init.pid" any_threads_ok="1" runs_on="system">
+    <instance name="mongodb-init" check_type="simple" pid_file_name="mongodb-init/mongodb-init.pid" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
