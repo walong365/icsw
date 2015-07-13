@@ -571,6 +571,7 @@ config_module = angular.module(
             (new_val) ->
                 $scope.num_cached_uploads = new_val
         )
+
         $scope.delete_selected_objects = () ->
             if confirm("really delete #{$scope.selected_objects.length} objects ?")
                 blockUI.start()

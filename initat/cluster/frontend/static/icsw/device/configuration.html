@@ -9,7 +9,7 @@
     <td>{{ get_name(obj) }}</td>
     <td>{{ obj.device_group_name }}</td>
     <td>{{ obj.comment }}</td>
-    <td>local: {{ obj.local_selected.length }}<span ng-show="!obj.is_meta_device">, meta: {{ meta_devices[devg_md_lut[obj.device_group]].local_selected.length }}</span></td>
+    <td>local: {{ obj.local_selected.length }}<span ng-show="!obj.is_meta_device">, meta: {{ obj.num_meta_selected }}</span></td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.configuration.table">
@@ -30,13 +30,8 @@
 <script type="text/ng-template" id="icsw.device.configuration.row">
    <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
    <td class="text-center">{{ dev.local_selected.length }}</td>
-   <td class="text-center"><span ng-show="!dev.is_meta_device">{{ meta_devices[devg_md_lut[dev.device_group]].local_selected.length }}</span></td>
-   <td ng-repeat="conf in active_configs" class="text-center" ng-class="get_td_class(dev, conf.idx, true)" ng-click="click(dev, conf.idx)">
-        <div ng-show="show_config(dev, conf.idx)">
-           <span ng-class="get_config_class_icon(dev, conf.idx, true)"></span>
-        </div>
-        <span ng-show="!show_config(dev, conf.idx) && config_exists(conf.idx)"><span class="glyphicon glyphicon-remove-sign"></span></span>
-   </td>
+   <td class="text-center"><span ng-show="!dev.is_meta_device">{{ dev.num_meta_selected }}</span></td>
+   <td icsw-device-configuration-row-data device="dev" configs="active_configs"></td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.configuration.overview">
@@ -88,7 +83,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                     <tr icsw-device-configuration-row icsw-device-configuration-helper ng-repeat="dev in devices"></tr>
+                     <tr icsw-device-configuration-row ng-repeat="dev in devices"></tr>
                 </tbody>
             </table>
         </accordion-group>
@@ -97,7 +92,7 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': list_mode, 'glyphicon-chevron-right': !list_mode}"></i>
                 List mode
             </accordion-heading>
-            <table class="table table-condensed table-hover" style="width:auto;">
+            <table class="table table-condensed table-hover" ng-if="list_mode" style="width:auto;">
                 <thead>
                     <tr>
                         <th></th>
@@ -111,7 +106,7 @@
                     <tr icsw-device-configuration-simple-row ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
                     <tr ng-repeat-end ng-if="obj.expanded">
                         <td colspan="9">
-                            <icsw-device-configuration-table icsw-device-configuration-helper></icsw-device-configuration-table>
+                            <icsw-device-configuration-table></icsw-device-configuration-table>
                         </td>
                     </tr>
                 </tbody>
