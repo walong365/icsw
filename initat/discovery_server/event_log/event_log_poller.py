@@ -48,12 +48,12 @@ class EventLogPollerProcess(threading_tools.process_obj):
         # self.register_func("wmi_scan", self._wmi_scan)
 
         self.register_timer(self.periodic_update, 60 * 1 if global_config["DEBUG"] else 60 * 15, instant=True)
-        self.register_timer(self.job_control, 1 if global_config["DEBUG"] else 4, instant=True)
+        self.register_timer(self.job_control, 1 if global_config["DEBUG"] else 3, instant=True)
 
         self._init_db()
 
         # jobs are added here then processed sequentially
-        self.run_queue = collections.deque()
+        self._run_queue = collections.deque()
         self.jobs_running = []
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -77,15 +77,15 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
     def job_control(self):
         # called periodically
-        self.log("Calling job_control on jobs: {}".format(self.jobs_running))
+        # self.log("Calling job_control on jobs: {}".format(self.jobs_running))
         for job in self.jobs_running[:]:
             do_continue = False
             try:
                 # self.log("periodic_check on {}".format(job))
                 do_continue = job.periodic_check()
             except Exception as e:
-                self.log("Error for checking job {}: {}".format(job, e))
-                self.log(traceback.format_exc())
+                self.log("Error for checking job {}: {}".format(job, e), logging_tools.LOG_LEVEL_ERROR)
+                self.log(traceback.format_exc(), logging_tools.LOG_LEVEL_ERROR)
             if not do_continue:
                 self.log("Job {} finished".format(job))
                 self.jobs_running.remove(job)
@@ -99,29 +99,32 @@ class EventLogPollerProcess(threading_tools.process_obj):
                 try:
                     new_job.start()
                 except Exception as e:
-                    self.log("Error while starting job {}: {}".format(new_job, e))
-                    self.log(traceback.format_exc())
+                    self.log("Error while starting job {}: {}".format(new_job, e), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(traceback.format_exc(), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("Adding new job: {}".format(new_job))
                     self.jobs_running.append(new_job)
 
     def _select_next_job(self):
         chosen_one = None
-        for job in self.run_queue:  # prefer first (fifo)
+        for job in self._run_queue:  # prefer first (fifo)
             # not too many per device
             not_too_many_jobs_on_same_machine =\
                 sum(1 for _j in self.jobs_running if job.target_device == _j.target_device) < 2
 
             # the last scan job for this log might not have finished yet
-            not_same_job_running = not any(job == _j for _j in self.jobs_running)
+            not_same_job_running = not self._is_job_already_running(job)
 
             if not_too_many_jobs_on_same_machine and not_same_job_running:
                 chosen_one = job
                 break
 
         if chosen_one is not None:
-            self.run_queue.remove(chosen_one)
+            self._run_queue.remove(chosen_one)
         return chosen_one
+
+    def _is_job_already_running(self, job):
+        return any(job == _j for _j in self.jobs_running)
 
     def _schedule_wmi_jobs(self):
         self.log("scheduling new wmi jobs")
@@ -129,9 +132,9 @@ class EventLogPollerProcess(threading_tools.process_obj):
         wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
         print 'wmi devs', wmi_devices
 
-        _last_entries_qs = self._mongodb_database.wmi_logfile_maximal_record_numbers.find()
+        _last_entries_qs = self._mongodb_database.wmi_logfile_maximal_record_number.find()
         last_record_numbers_lut = {  # mapping { (device_pk, logfile_name) : latest_record_number }
-            (entry['device_pk'], entry['logfile_name']): entry['latest_record_number']
+            (entry['device_pk'], entry['logfile_name']): entry['maximal_record_number']
             for entry in _last_entries_qs
         }
 
@@ -139,6 +142,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
                               self._mongodb_database.wmi_logfile.find()}
         logfiles_list_deprecation = django.utils.timezone.now() - datetime.timedelta(seconds=60 * 60 * 12)
 
+        # we sometimes run jobs to find new logfiles, regular scans only retrieve entries for known logfiles
         for wmi_dev, ip in self._get_ip_to_multiple_hosts(wmi_devices).iteritems():
             if wmi_dev.pk not in logfiles_by_device or \
                     logfiles_by_device[wmi_dev.pk]['date'] < logfiles_list_deprecation:
@@ -150,7 +154,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
                 except RuntimeError as e:
                     self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.run_queue.append(job)
+                    if not self._is_job_already_running(job):
+                        self._run_queue.append(job)
 
             else:
                 logfiles = logfiles_by_device[wmi_dev.pk]['logfiles']
@@ -168,7 +173,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
                     except RuntimeError as e:
                         self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        self.run_queue.append(job)
+                        if not self._is_job_already_running(job):
+                            self._run_queue.append(job)
 
         self.log("finished scheduling new wmi jobs")
 
@@ -199,7 +205,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
             except RuntimeError as e:
                 self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.run_queue.append(job)
+                if not self._is_job_already_running(job):
+                    self._run_queue.append(job)
 
         self.log("finished scheduling new ipmi jobs")
 

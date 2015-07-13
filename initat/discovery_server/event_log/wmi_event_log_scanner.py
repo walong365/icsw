@@ -101,7 +101,7 @@ class WmiLogFileJob(_WmiJobBase):
             stdout_out, stderr_out = self.logfile_com.communicate()
 
             if stderr_out:
-                self._handle_stderr(stderr_out, "scanning for wmi log files")
+                self._handle_stderr(stderr_out, "scanning for wmi log files for {}".format(self))
 
             if self.logfile_com.finished() != 0:
                 raise RuntimeError("Scanning for wmi log files failed with code {}".format(
@@ -204,7 +204,7 @@ class WmiLogEntryJob(_WmiJobBase):
                 where_clause=where_clause,
             )
             job.log("Querying maximal entry for {} with last known record number {}".format(
-                job.logfile_name, job.last_known_record_number)
+                job, job.last_known_record_number)
             )
 
             job.ext_com = ExtCom(job.log, cmd, debug=True,
@@ -223,7 +223,7 @@ class WmiLogEntryJob(_WmiJobBase):
 
                 # here, we expect the exit code to be set to error for large outputs, so we don't check it
                 if stderr_out:
-                    job._handle_stderr(stderr_out, "FindMaximum")
+                    job._handle_stderr(stderr_out, "FindMaximum for {}".format(job))
 
                 print 'stdout len', len(stdout_out)
                 print ' stderr'
@@ -255,8 +255,8 @@ class WmiLogEntryJob(_WmiJobBase):
                     # [wmi/wmic.c:212:main()] ERROR: Retrieve result data.
                     # NTSTATUS: NT code 0x8004106c - NT code 0x8004106c
 
-                    job.log("last record number for {} is {}, new maximal one is {}".format(
-                        job.target_device, job.last_known_record_number, maximal_record_number)
+                    job.log("Last record number for {} is {}, new maximal one is {}".format(
+                        job, job.last_known_record_number, maximal_record_number)
                     )
 
                     if job.last_known_record_number is None or \
@@ -297,7 +297,7 @@ class WmiLogEntryJob(_WmiJobBase):
                 stdout_out, stderr_out = self.retrieve_ext_com.communicate()
 
                 if stderr_out:
-                    job._handle_stderr(stderr_out, "RetrieveEvents")
+                    job._handle_stderr(stderr_out, "RetrieveEvents for {}".format(job))
 
                 if self.retrieve_ext_com.finished() != 0:
                     raise RuntimeError("RetrieveEvents wmi command failed with code {}".format(

@@ -31,7 +31,7 @@ angular.module(
                 scope.data = icswDiscoveryEventLogDataService
 
                 reload_current_tab = () ->
-                    console.log 'reload', scope.mode_query_parameters
+                    console.log 'reload', scope.tab_query_parameters
                     if scope.cur_device_pk?
                         scope.server_pagination_pipe[scope.cur_device_pk]()
 
@@ -52,7 +52,9 @@ angular.module(
                 # need to remember last table state by device tab to be able to call pipe() again
                 _last_table_state = {}
 
-                scope.mode_query_parameters = {}
+                # misc query parameters which partly depend on mode, hence are not general for all queries
+                scope.tab_query_parameters = {}
+
                 _schedule_reload_timeout_promise = undefined
                 query_parameter_changed = () ->
                     if _schedule_reload_timeout_promise?
@@ -65,7 +67,7 @@ angular.module(
 
                     _schedule_reload_timeout_promise = $timeout(init_reload, 350)
 
-                scope.$watch('mode_query_parameters', query_parameter_changed, true)
+                scope.$watch('tab_query_parameters', query_parameter_changed, true)
 
                 scope.new_devsel = (sel) ->
                     scope.device_pks = sel
@@ -122,7 +124,11 @@ angular.module(
                                             pagination = table_state.pagination
                                             scope.entries.is_loading = true
 
-                                            promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, scope.mode_query_parameters)
+                                            query_parameters = scope.tab_query_parameters[scope.cur_device_pk]
+                                            if !query_parameters?
+                                                query_parameters = {}
+
+                                            promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, query_parameters)
                                             if promise
                                                 do (table_state) ->
                                                     promise.then(([total_num, keys, new_data]) ->
@@ -137,10 +143,10 @@ angular.module(
 
                 # actually contact server
                 _last_query_parameters = undefined
-                scope.get_event_log_promise = (device_pk, skip, limit, mode_query_parameters) ->
+                scope.get_event_log_promise = (device_pk, skip, limit, query_parameters) ->
                     query_params = {
                         device_pks: JSON.stringify([parseInt(device_pk)])
-                        mode_query_parameters: mode_query_parameters
+                        query_parameters: query_parameters
                         mode: scope.device_mode[device_pk]
                         pagination_skip: skip
                         pagination_limit: limit

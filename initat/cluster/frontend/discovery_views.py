@@ -156,7 +156,8 @@ class GetEventLog(ListAPIView):
         }
         if logfile_name is not None:
             query_obj['logfile_name'] = logfile_name
-        if filter_str is not None:
+        if filter_str is not None and filter_str:  # "" means no search as well
+            print 'doing search', filter_str
             query_obj["$text"] = {'$search': filter_str}
 
         projection_obj = {
@@ -185,7 +186,8 @@ class GetEventLog(ListAPIView):
         pagination_skip = int_or_none(request.GET.get('pagination_skip'))
         pagination_limit = int_or_none(request.GET.get('pagination_limit'))
 
-        mode_query_parameters = json.loads(request.GET['mode_query_parameters'])
+        # misc additional parameters passed directly to handler functions
+        query_parameters = json.loads(request.GET['query_parameters'])
 
         mode = request.GET['mode']
 
@@ -193,12 +195,12 @@ class GetEventLog(ListAPIView):
             # a = time.time()
             total_num, keys, entries =\
                 self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit,
-                                        **mode_query_parameters)
+                                        **query_parameters)
             # print 'took', time.time() - a
 
         elif mode == 'ipmi':
             total_num, keys, entries =\
-                self._get_ipmi_event_log(device_pks, pagination_skip, pagination_limit, **mode_query_parameters)
+                self._get_ipmi_event_log(device_pks, pagination_skip, pagination_limit, **query_parameters)
         else:
             raise AssertionError("Invalid mode: {} ".format(mode))
 
