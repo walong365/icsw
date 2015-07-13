@@ -490,20 +490,64 @@ config_module = angular.module(
                 return _catalogs
             scope.get_filter_class = (name) ->
                 if _filter_settings[name]
-                    return "btn btn-xs btn-success"
+                    return "btn btn-sm btn-success"
                 else
-                    return "btn btn-xs"
+                    return "btn btn-sm"
             scope.change_filter_setting = (name) ->
                 _filter_settings[name] = ! _filter_settings[name]
                 if not _.some(_filter_settings)
                     _filter_settings["name"] = true
                 update_filter_field()
     }
-]).directive("icswConfigUploader", ["$templateCache", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", ($templateCache, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall) ->
+]).directive("icswConfigDownload", ["$templateCache", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", "$window", "blockUI", "FileUploader", "$compile", ($templateCache, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall, $window, blockUI, FileUploader, $compile) ->
     return {
         restrict: "E"
         scope: {}
-        template: $templateCache.get("icsw.config.upload")
+        template: $templateCache.get("icsw.config.download")
+        link: (scope, el, attr) ->
+            scope.selected_configs = 0
+            scope.$watch(
+                icswConfigRestService.get_num_selected_configs
+                (new_val) ->
+                    scope.selected_configs = new_val
+            )
+            scope.download_selected = () ->
+                hash = angular.toJson((entry.idx for entry in icswConfigRestService.get_selected_configs()))
+                window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
+    }
+]).directive("icswConfigUploader", ["$templateCache", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", "$window", "blockUI", "FileUploader", "$compile", ($templateCache, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall, $window, blockUI, FileUploader, $compile) ->
+    return {
+        restrict: "E"
+        scope: {}
+        # template: $templateCache.get("icsw.config.uploader")
+        replace: true
+        link: (scope, el, attr) ->
+            scope.uploader = new FileUploader(
+                scope : scope
+                url : ICSW_URLS.CONFIG_UPLOAD_CONFIG
+                queueLimit : 1
+                alias : "config"
+                formData : [
+                     "csrfmiddlewaretoken" : $window.CSRF_TOKEN
+                ]
+                removeAfterUpload : true
+            )
+            scope.uploader.onBeforeUploadItem = () ->
+                blockUI.start()
+                return null
+            scope.uploader.onCompleteAll = () ->
+                blockUI.stop()
+                scope.uploader.clearQueue()
+                # trigger reload
+                icswCachedConfigRestService.trigger_reload()
+                return null
+            el.append($compile($templateCache.get("icsw.config.uploader"))(scope))
+    }
+]).directive("icswConfigUploaded", ["$templateCache", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", ($templateCache, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall) ->
+    return {
+        restrict: "E"
+        scope: {}
+        template: $templateCache.get("icsw.config.uploaded")
         replace: true
         link: (scope, el, attr) ->
             scope.cached_uploads = []
@@ -519,18 +563,6 @@ config_module = angular.module(
     }
 ]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall", "icswCachedConfigRestService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall, icswCachedConfigRestService) ->
-        $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
-        # $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
-        $scope.selected_configs = 0
-        $scope.$watch(
-            icswConfigRestService.get_num_selected_configs
-            (new_val) ->
-                $scope.selected_configs = new_val
-        )
-        $scope.download_selected = () ->
-            hash = angular.toJson((entry.idx for entry in icswConfigRestService.get_selected_configs()))
-            window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
-
         $scope.selected_objects = []
         $scope.num_cached_uploads = 0
         $scope.$watch(
@@ -539,25 +571,6 @@ config_module = angular.module(
             (new_val) ->
                 $scope.num_cached_uploads = new_val
         )
-        $scope.uploader = new FileUploader(
-            scope : $scope
-            url : ICSW_URLS.CONFIG_UPLOAD_CONFIG
-            queueLimit : 1
-            alias : "config"
-            formData : [
-                 "csrfmiddlewaretoken" : $window.CSRF_TOKEN
-            ]
-            removeAfterUpload : true
-        )
-        $scope.uploader.onBeforeUploadItem = () ->
-            blockUI.start()
-            return null
-        $scope.uploader.onCompleteAll = () ->
-            blockUI.stop()
-            $scope.uploader.clearQueue()
-            # trigger reload
-            icswCachedConfigRestService.trigger_reload()
-            return null
         $scope.delete_selected_objects = () ->
             if confirm("really delete #{$scope.selected_objects.length} objects ?")
                 blockUI.start()

@@ -2,17 +2,7 @@
     <tabset>
         <tab heading="Configurations">
             <icsw-config-config-table></icsw-config-config-table>
-            <div class="row panel panel-default">
-                <div class="col-md-4">
-                    <icsw-tools-button type="download" value="download selected configs" ng-show="selected_configs" ng-click="download_selected()" size="sm"/>
-                </div>
-                <div class="col-md-4">
-                    <input type="file" nv-file-select="" class="form-control" uploader="uploader"></input>
-                </div>
-                <div class="col-md-4">
-                    <input type="button" ng-show="uploader.queue.length "class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input>
-                </div>
-            </div>
+            <icsw-config-uploader></icsw-config-uploader>
             <icsw-config-generate-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-config-generate-config>
         </tab>
         <tab heading="Monitoring categories">
@@ -29,16 +19,33 @@
             <icsw-config-catalog-table></icsw-config-catalog-table>
         </tab>
         <tab heading="Uploads ({{ num_cached_uploads }})" ng-show="num_cached_uploads">
-            <icsw-config-uploader></icsw-config-uploader>
+            <icsw-config-uploaded></icsw-config-uploaded>
         </tab>
     </tabset>
 </script>
 
-<script type="text/ng-template" id="icsw.config.upload">
+<script type="text/ng-template" id="icsw.config.download">
+    <icsw-tools-button type="download" value="download selected configs" ng-show="selected_configs" ng-click="download_selected()" size="sm"></icsw-tools-button>
+</script>
+
+<script type="text/ng-template" id="icsw.config.uploader">
+    <div class="input-group" style="width:20px;">
+        <div class="input-group-btn">
+            <input type="file" class="btn btn-sm btn-primary" nv-file-select="" uploader="uploader"></input>
+        </div>
+        <div class="input-group-btn">
+            <input type="button" ng-show="uploader.queue.length "class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.uploaded">
     <div>
-        <form class="form-inline">
-            Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="use_catalog" ng-options="value.idx as value.name for value in config_catalogs"></select>
-        </form>
+        <h3>
+            <form class="form-inline">
+                Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="use_catalog" ng-options="value.idx as value.name for value in config_catalogs"></select>
+            </form>
+        </h3>
         <icsw-config-upload-info ng-repeat="entry in cached_uploads" upload="entry" catalog="use_catalog">
         </icsw-config-upload-info>
     </div>
@@ -83,21 +90,22 @@
                class="table table-hover table-condensed table-striped" style="width:100%;">
             <h2>{{ configs.length }} configurations, {{ filtered.length }} shown, {{ selected_configs }} selected
                 <icsw-tools-button type="create" value="create new config" ng-click="create($event)" size="sm"></icsw-tools-button>
+                <icsw-config-download></icsw-config-download>
             </h2>
             <thead>
                 <tr>
                     <td colspan="99">
                         <div class="row">
-                            <div class="col-sm-6">
+                            <div class="col-sm-4">
                                 <div class="input-group">
                                     <input st-search="search_str" class="form-control" placeholder="filter">
                                     </input>
-                                    <div class="btn-group">
+                                    <div class="input-group-btn">
                                         <input type="button" ng-class="get_filter_class('name')" value="name" ng-click="change_filter_setting('name')"/>
                                         <input type="button" ng-class="get_filter_class('script')" value="script" ng-click="change_filter_setting('script')"/>
                                         <input type="button" ng-class="get_filter_class('var')" value="var" ng-click="change_filter_setting('var')"/>
                                         <input type="button" ng-class="get_filter_class('mon')" value="mon" ng-click="change_filter_setting('mon')"/>
-                                    </div>
+                                        </div>
                                 </div>
                             </div>
                             <div
@@ -105,7 +113,7 @@
                                 st-items-by-page="15"
                                 st-displayed-pages="11"
                                 possible-items-by-page="15,30,100,200"
-                                class="col-sm-6"
+                                class="col-sm-8"
                             ></div>
                         </div>
                     </td>
@@ -196,7 +204,7 @@
     </td>
     <td>
         <div class="btn-group">
-            <button type="button" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_class('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
+            <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
                 Create <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
@@ -316,9 +324,9 @@
                     <td>{{ obj.description }}</td>
                     <td>{{ obj.priority }}</td>
                     <td>{{ obj.enabled | yesno1 }}</td>
-                    <td><input type="button" ng-class="obj.isSelected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(obj)"/>
-                    <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, obj)" size="xs"/></td>
-                    <td><icsw-tools-button type="delete" value="delete" ng-click="delete(obj)" size="xs"/></td>
+                    <td><input type="button" ng-class="obj.isSelected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select(obj)"/></td>
+                    <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
+                    <td><icsw-tools-button type="delete" value="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
                 </tr>
             </tbody>
         </table>
@@ -403,7 +411,7 @@
 
 <script type="text/ng-template" id="icsw.config.cached.upload.info">
     <div>
-        <h3>upload ({{ upload.upload_key }}, {{ upload.list.length }} configs)</h3>
+        <h3>upload {{ upload.upload_key }}, {{ upload.list.length }} configs</h3>
         <ul class="list-group">
             <li class="list-group-item" ng-repeat="conf in upload.list">
                 <icsw-config-cached-config config="conf" upload="upload" catalog="catalog"></icsw-config-cached-config>
