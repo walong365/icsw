@@ -39,8 +39,8 @@
                     </div>
 
                     <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
-                        <thead ng-if="!entries.is_loading">
-                            <tr> <!-- ng-show="entries.keys && !entries.is_loading"> -->
+                        <thead ng-show="!entries.is_loading">  <!-- need pagination in dom for limit -->
+                            <tr>
                                 <td colspan="99">
                                     <icsw-tools-show-hide-columns columns-list="{{entries.keys}}"></icsw-tools-show-hide-columns>
                                 </td>

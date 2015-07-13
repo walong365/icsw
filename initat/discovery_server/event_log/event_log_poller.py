@@ -68,8 +68,15 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self._mongodb_database.wmi_event_log.create_index('record_number', name='record_number_index')
         self._mongodb_database.wmi_event_log.create_index('time_generated', name='time_generated_index')
 
+        self._mongodb_database.wmi_event_log.create_index(
+            [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)],
+            name='sort_index',
+        )
+
         self._mongodb_database.ipmi_event_log.create_index([('$**', 'text')], name="ipmi_log_full_text_index")
-        self._mongodb_database.ipmi_event_log.create_index([('$**', 'text')], name="ipmi_log_full_text_index")
+        # for sorting:
+        self._mongodb_database.ipmi_event_log.create_index([('record_number', pymongo.DESCENDING)],
+                                                           name='record_number_index')
 
     def periodic_update(self):
         self._schedule_wmi_jobs()
@@ -89,6 +96,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
             if not do_continue:
                 self.log("Job {} finished".format(job))
                 self.jobs_running.remove(job)
+                self._log_current_jobs()
 
         have_new_job = True
         while len(self.jobs_running) < self.__class__.MAX_CONCURRENT_JOBS and have_new_job:
@@ -104,6 +112,12 @@ class EventLogPollerProcess(threading_tools.process_obj):
                 else:
                     self.log("Adding new job: {}".format(new_job))
                     self.jobs_running.append(new_job)
+                    self._log_current_jobs()
+
+    def _log_current_jobs(self):
+        self.log("Current jobs ({}):".format(len(self.jobs_running)))
+        for job in self.jobs_running:
+            self.log("  {}".format(job))
 
     def _select_next_job(self):
         chosen_one = None
@@ -137,6 +151,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
             (entry['device_pk'], entry['logfile_name']): entry['maximal_record_number']
             for entry in _last_entries_qs
         }
+        print 'lut', last_record_numbers_lut
+        self.log("last rec numbers lut: {}".format(last_record_numbers_lut))
 
         logfiles_by_device = {entry['device_pk']: entry for entry in
                               self._mongodb_database.wmi_logfile.find()}
@@ -163,6 +179,9 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
                 for logfile_name in logfiles:
                     last_known_record_number = last_record_numbers_lut.get((wmi_dev.pk, logfile_name))
+
+                    self.log('last for {} is {} '.format((wmi_dev.pk, logfile_name), last_known_record_number))
+                    print 'last for ', (wmi_dev.pk, logfile_name), 'is', last_known_record_number
                     try:
                         job = WmiLogEntryJob(log=self.log,
                                              db=self._mongodb_database,
@@ -179,6 +198,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.log("finished scheduling new wmi jobs")
 
     def _schedule_ipmi_jobs(self):
+        return
         self.log("scheduling new ipmi jobs")
         ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
         ipmi_devices = device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)

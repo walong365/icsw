@@ -130,6 +130,8 @@ class GetEventLog(ListAPIView):
             entries.skip(pagination_skip)
         if pagination_limit is not None:
             entries.limit(pagination_limit)
+        else:
+            raise RuntimeError("IPMI query without pagination limit")
 
         result = []
         entry_keys = collections.OrderedDict()  # we only use it as set
@@ -165,12 +167,17 @@ class GetEventLog(ListAPIView):
         }
         sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
         entries = mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj, sort=sort_obj)
+        print 'query', query_obj, projection_obj, sort_obj
+        from pprint import pprint
+        pprint(entries.explain())
         total_num = entries.count()
         # entries.sort(
         if pagination_skip is not None:
             entries.skip(pagination_skip)
         if pagination_limit is not None:
             entries.limit(pagination_limit)
+        else:
+            raise RuntimeError("WMI query without pagination limit")
         result = [entry['entry'] for entry in entries]  # exhaust cursor
         keys = set()
         for entry in result:

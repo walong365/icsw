@@ -88,8 +88,6 @@ class WmiLogFileJob(_WmiJobBase):
             table="Win32_NTEventlogFile",
         )
 
-        print 'doing log file scanning'
-
         self.logfile_com = ExtCom(self.log, cmd, debug=True,
                                   shell=False)  # shell=False since args must not be parsed again
         self.logfile_com.run()
@@ -129,12 +127,6 @@ class WmiLogFileJob(_WmiJobBase):
                         }
                     },
                     upsert=True)
-
-                print 'feeding db ', {
-                    'date': django.utils.timezone.now(),
-                    'logfiles': logfiles,
-                    'device_pk': self.target_device.pk,
-                }
 
         return do_continue
 
@@ -225,11 +217,6 @@ class WmiLogEntryJob(_WmiJobBase):
                 if stderr_out:
                     job._handle_stderr(stderr_out, "FindMaximum for {}".format(job))
 
-                print 'stdout len', len(stdout_out)
-                print ' stderr'
-                import pprint
-                pprint.pprint(stderr_out)
-
                 # begin phase 2
                 parsed = WmiUtils.parse_wmic_output(stdout_out)
                 if not parsed:
@@ -237,10 +224,6 @@ class WmiLogEntryJob(_WmiJobBase):
                     job.log("No records found for {}".format(job))
                     do_continue = False
                 else:
-                    print 'len', len(parsed)
-                    print 'fst', parsed[0]
-                    print 'lst', parsed[-1]
-
                     # the last entry might be invalid since error messages are written to stdout as well
                     # hence 'RecordNumber' may not be present in all entries
                     def try_extract_record_number(entry):
@@ -249,7 +232,6 @@ class WmiLogEntryJob(_WmiJobBase):
                         except ValueError:
                             return -1
                     maximal_record_number = max(try_extract_record_number(entry) for entry in parsed)
-                    print 'max', maximal_record_number
 
                     # usually, you get after less then 100k
                     # [wmi/wmic.c:212:main()] ERROR: Retrieve result data.
@@ -304,18 +286,18 @@ class WmiLogEntryJob(_WmiJobBase):
                         self.retrieve_ext_com.finished())
                     )
 
-                print 'code', self.retrieve_ext_com.finished()
-                _, tmpfilename = tempfile.mkstemp()
-                f = open(tmpfilename, 'w')
-                f.write(stdout_out)
-                f.flush()
-                print 'stdout len', len(stdout_out), tmpfilename
-                print ' stderr'
-                import pprint
-                pprint.pprint(stderr_out)
+                #print 'code', self.retrieve_ext_com.finished()
+                #_, tmpfilename = tempfile.mkstemp()
+                #f = open(tmpfilename, 'w')
+                #f.write(stdout_out)
+                #f.flush()
+                #print 'stdout len', len(stdout_out), tmpfilename
+                #print ' stderr'
+                #import pprint
+                #pprint.pprint(stderr_out)
 
                 parsed = WmiUtils.parse_wmic_output(stdout_out, try_handle_lists=True)
-                print 'len', len(parsed)
+                # print 'len', len(parsed)
                 # `parsed` may be empty for RecordNumber-holes
 
                 job.log("Found {} log entries between {} and {} for {}".format(
@@ -410,13 +392,11 @@ class WmiLogEntryJob(_WmiJobBase):
                             self.get_next_upper_limit(self.from_record_number),
                         )
                     )
-                    print 'start run', " ".join(cmd)
                     job.log("querying entries from {} to {} for {}".format(
                         self.from_record_number,
                         self.get_next_upper_limit(self.from_record_number),
                         job,
                     ))
-                    print 'call from ', self.from_record_number
 
                     self.retrieve_ext_com = ExtCom(job.log, cmd, debug=True,
                                                    shell=False)  # shell=False since args must not be parsed again
