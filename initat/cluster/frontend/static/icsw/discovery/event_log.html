@@ -17,64 +17,64 @@
                     select="set_active(device_pk)"
                     disable="devices_rest[device_pk].capabilities.length == 0"
                     >
-                <div class="row" style="max-width: 900px; margin-top: 5px;">
-                    <div class="col-sm-2">
-                        <div class="form-inline" >
-                            <label>
-                                Type:&nbsp;
-                            </label> <select class="form-control input-sm" ng-model="device_mode[device_pk]" ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
-                        </div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="input-group">
-                            <input ng-model="tab_query_parameters[device_pk].filter_str" class="form-control" placeholder="filter (whole words only)"/>
-                            <span class="input-group-btn">
-                                <button class="btn btn-warning" type="button" ng-click="tab_query_parameters[device_pk].filter_str = ''"><span title="clear filter" class="fa fa-remove"> Clear</span></button>
-                            </span>
-                        </div>
-                    </div>
-                </div>
 
-                <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
-                    <thead>
-                        <tr> <!-- ng-show="entries.keys && !entries.is_loading"> -->
-                            <td colspan="99">
-                                <icsw-tools-show-hide-columns columns-list="{{entries.keys}}"></icsw-tools-show-hide-columns>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="99">
-                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100" no-number-of-elements="true"></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th ng-repeat="key in entries.keys" ng-if="show_column[key]">
-                                {{key}}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody ng-if="!entries.is_loading">
-                        <tr ng-repeat="entry in entries">
-                            <td ng-repeat="key in entries.keys" ng-if="show_column[key]">
-                                {{entry[key]}}
-                            </td>
-                        </tr>
-                        <tr ng-if="entries.length == 0">
-                            <td colspan="99" class="text-center">
-                                <alert type="info" style="max-width: 450px">
-                                    Query returned no entries.
-                                </alert>
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tbody ng-show="entries.is_loading">
-                        <tr>
-                            <td colspan="99" class="text-center">
-                                <i class="fa fa-4x fa-spinner fa-pulse"></i>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div ng-if="device_tab_active[device_pk]">
+
+                    <div class="row" style="max-width: 900px; margin-top: 5px;">
+                        <div class="col-sm-2">
+                            <div class="form-inline" >
+                                <label>
+                                    Type:&nbsp;
+                                </label> <select class="form-control input-sm" ng-model="device_mode[device_pk]" ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="input-group">
+                                <input ng-model="tab_query_parameters[device_pk].filter_str" class="form-control" placeholder="filter (whole words only)"/>
+                                <span class="input-group-btn">
+                                    <button class="btn btn-warning" type="button" ng-click="tab_query_parameters[device_pk].filter_str = ''"><span title="clear filter" class="fa fa-remove"> Clear</span></button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
+                        <thead ng-if="!entries.is_loading">
+                            <tr> <!-- ng-show="entries.keys && !entries.is_loading"> -->
+                                <td colspan="99">
+                                    <icsw-tools-show-hide-columns columns-list="{{entries.keys}}"></icsw-tools-show-hide-columns>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="99">
+                                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500" no-number-of-elements="true"></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th ng-repeat="key in entries.keys" ng-if="show_column[key]">
+                                    {{key}}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody icsw-discovery-event-log-table-body keys="entries.keys" entries="entries" column-toggle-dict="show_column" ng-show="!entries.is_loading"></tbody>
+                        <tbody ng-if="entries.length == 0 && !entries.is_loading">
+                            <tr>
+                                <td colspan="99" class="text-center">
+                                    <alert type="info" style="max-width: 450px">
+                                        Query returned no entries.
+                                    </alert>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tbody ng-show="entries.is_loading">
+                            <tr>
+                                <td colspan="99" class="text-center">
+                                    <i class="fa fa-4x fa-spinner fa-pulse"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </tab>
         </tabset>
     </icsw-tools-ensure-device-selection>

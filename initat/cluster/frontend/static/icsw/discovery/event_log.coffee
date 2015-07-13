@@ -22,18 +22,20 @@ angular.module(
     [
     ]
 ).directive("icswDiscoveryEventLog",
-    ['msgbus', 'icswDiscoveryEventLogDataService', 'Restangular', 'ICSW_URLS', '$timeout'
-     (msgbus, icswDiscoveryEventLogDataService, Restangular, ICSW_URLS, $timeout) ->
+    ['msgbus', 'Restangular', 'ICSW_URLS', '$timeout'
+     (msgbus, Restangular, ICSW_URLS, $timeout) ->
         return  {
             restrict: 'EA'
             templateUrl: 'icsw.discovery.event_log'
             link: (scope, el, attrs) ->
-                scope.data = icswDiscoveryEventLogDataService
+                # we need to remember last table state by device tab to be able to call pipe() again
+                # TODO: if the table is in an ng-if, reinserting it into the dom when the condition becomes try seems to trigger pipe
+                #       then
+                _last_table_state = {}
 
                 reload_current_tab = () ->
-                    console.log 'reload', scope.tab_query_parameters
                     if scope.cur_device_pk?
-                        scope.server_pagination_pipe[scope.cur_device_pk]()
+                        scope.server_pagination_pipe[scope.cur_device_pk](_last_table_state[scope.cur_device_pk])
 
                 scope.set_active = (device_pk) ->
                     scope.cur_device_pk = parseInt(device_pk)
@@ -49,8 +51,6 @@ angular.module(
                 # show hide column in output
                 scope.show_column = {}
 
-                # need to remember last table state by device tab to be able to call pipe() again
-                _last_table_state = {}
 
                 # misc query parameters which partly depend on mode, hence are not general for all queries
                 scope.tab_query_parameters = {}
@@ -60,12 +60,7 @@ angular.module(
                     if _schedule_reload_timeout_promise?
                         $timeout.cancel(_schedule_reload_timeout_promise)
 
-                    init_reload = () ->
-                        if _last_table_state[scope.cur_device_pk]?
-                            _last_table_state[scope.cur_device_pk].pagination.start = 0
-                        reload_current_tab()
-
-                    _schedule_reload_timeout_promise = $timeout(init_reload, 350)
+                    _schedule_reload_timeout_promise = $timeout(reload_current_tab, 350)
 
                 scope.$watch('tab_query_parameters', query_parameter_changed, true)
 
@@ -133,6 +128,7 @@ angular.module(
                                                 do (table_state) ->
                                                     promise.then(([total_num, keys, new_data]) ->
                                                         console.log 'result here'
+                                                        new_data.reload_observable = scope.entries.reload_observable + 1
                                                         scope.entries = new_data
                                                         scope.entries.keys = keys
                                                         scope.entries.total_num = total_num
@@ -161,10 +157,35 @@ angular.module(
 
                 scope.entries = []
                 scope.entries.is_loading = false
-
-
+                scope.entries.reload_observable = 0
         }
-]).service("icswDiscoveryEventLogDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
+]).directive("icswDiscoveryEventLogTableBody", [() ->
+    restrict: 'A'
+    scope:
+        keys: '='
+        entries: '='
+        columnToggleDict: '='
+        show_column: '='
+    link: (scope, el, attrs) ->
+        rebuild = (new_reload_observable) ->
+            el.empty()
+
+            for entry in scope.entries
+                tr = angular.element("<tr/>")
+
+                for key in scope.keys
+                    if !scope.columnToggleDict? or scope.columnToggleDict[key]
+                        td = angular.element("<td>#{entry[key]}</td>")
+                        tr.append(td)
+
+                el.append(tr)
+
+        scope.$watch('entries.reload_observable', rebuild)
+        scope.$watch('columnToggleDict', rebuild, true)
+])
+
+###
+.service("icswDiscoveryEventLogDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
     rest_map = {
     }
     data = {
@@ -194,95 +215,4 @@ angular.module(
 
     return data
 ])
-
-###
-.directive("icswDiscoveryOverview", ['icswDiscoveryDataService', 'icswDiscoveryDialogService', 'msgbus', (icswDiscoveryDataService, icswDiscoveryDialogService, msgbus) ->
-    return  {
-        restrict: 'EA'
-        templateUrl: 'icsw.discovery.overview'
-        link: (scope, el, attrs) ->
-            scope.data = icswDiscoveryDataService
-            scope.dialog_service = icswDiscoveryDialogService
-
-            scope.selected_device_pks = []
-            scope.selected_devices = []
-            scope.selected_dispatch_settings = []
-
-            update_selected_devices = () ->
-                scope.selected_devices = (dev for dev in icswDiscoveryDataService.device when dev.idx in scope.selected_device_pks)
-                scope.selected_dispatch_settings = (ds for ds in icswDiscoveryDataService.dispatch_setting when ds.device in scope.selected_device_pks)
-                device_pks_with_dispatch_settings = _.uniq(ds.device for ds in icswDiscoveryDataService.dispatch_setting)
-                scope.selected_devices_without_dispatch_settings =
-                    (dev for dev in scope.selected_devices when dev.idx not in device_pks_with_dispatch_settings)
-
-            scope.$watch('data.reload_observable', update_selected_devices)
-            scope.$watchCollection('selected_device_pks', update_selected_devices)
-
-            scope.new_devsel = (_dev_sel, _devg_sel) ->
-                scope.selected_device_pks = _dev_sel
-
-            msgbus.emit("devselreceiver")
-            msgbus.receive("devicelist", scope, (name, args) ->
-                scope.new_devsel(args[1])
-            )
-    }
-]).service("icswDiscoveryDialogService",
-    ["Restangular", "ICSW_URLS", "$rootScope", "$q", "$compile", "$templateCache",
-    (Restangular, ICSW_URLS, $rootScope, $q, $compile, $templateCache) ->
-        CREATE_MODE = 1
-        MODIFY_MODE = 1
-
-        show_dialog = (mode, objs) ->
-            child_scope = $rootScope.$new()
-            child_scope.is_create_mode = mode == CREATE_MODE
-            edit_div = $compile($templateCache.get("icsw.discovery.edit_dialog"))(child_scope)
-            modal = BootstrapDialog.show
-                title: if mode == CREATE_MODE then "Create dispatch setting" else "Edit dispatch setting"
-                message: edit_div
-                draggable: true
-                closable: true
-                closeByBackdrop: false
-                closeByKeyboard: false,
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
-            child_scope.modal = modal
-
-        return {
-            show_create_dispatch_setting: () ->
-                show_dialog(CREATE_MODE)
-            show_modify_dispatch_setting: () ->
-                show_dialog(MODIFY_MODE)
-        }
-]).service("icswDiscoveryDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
-    rest_map = {
-        dispatch_setting: ICSW_URLS.REST_DISCOVERY_DISPATCH_SETTING_LIST.slice(1)
-        device: ICSW_URLS.REST_DEVICE_LIST.slice(1)
-    }
-    data = {
-        reload_observable: 0
-    }
-
-    promises = []
-    for name, url of rest_map
-        data[name] = []
-
-        defer = $q.defer()
-        promises.push defer.promise
-        do (name, defer) ->
-            Restangular.all(url).getList().then((new_data) ->
-                defer.resolve([name, new_data])
-            )
-
-    $q.all(promises).then((all_new_data) ->
-        for entry in all_new_data
-            [name, new_data] = entry
-            data[name] = new_data
-
-        data.reload_observable += 1
-    )
-
-    return data
-])
-
 ###
