@@ -86,6 +86,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         # called periodically
         # self.log("Calling job_control on jobs: {}".format(self.jobs_running))
         for job in self.jobs_running[:]:
+            # set to False to remove jobs which throw an error
             do_continue = False
             try:
                 # self.log("periodic_check on {}".format(job))
@@ -175,6 +176,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
             else:
                 logfiles = logfiles_by_device[wmi_dev.pk]['logfiles']
+                print 'FIXING LOGFILE'
+                logfiles = [u'Windows PowerShell']
                 self.log("updating wmi logs of {} using {} for logfiles: {}".format(wmi_dev, ip, logfiles))
 
                 for logfile_name in logfiles:
@@ -198,7 +201,6 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.log("finished scheduling new wmi jobs")
 
     def _schedule_ipmi_jobs(self):
-        return
         self.log("scheduling new ipmi jobs")
         ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
         ipmi_devices = device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)

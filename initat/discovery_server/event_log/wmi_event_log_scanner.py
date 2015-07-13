@@ -17,6 +17,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import tempfile
+import datetime
+import traceback
+import dateutil.tz
 import django.utils.timezone
 from initat.tools import logging_tools
 from initat.cluster.backbone.models import device_variable
@@ -275,6 +278,20 @@ class WmiLogEntryJob(_WmiJobBase):
 
             self.retrieve_ext_com = None
 
+        def parse_datetime(self, datetime_string):
+            # https://technet.microsoft.com/en-us/library/ee198928.aspx
+            # e.g. 20011224113047.000000-480
+            parts = datetime_string.split(".")
+            if len(parts) != 2:
+                raise ValueError("Date does not contain 1 dot: {}".format(datetime_string))
+            base_date = datetime.datetime.strptime(parts[0], "%Y%m%d%H%M%S")
+            timezone_parts = parts[1].split('-')
+            if len(timezone_parts) != 2:
+                raise ValueError("Date does not contain proper timezone info: {}".format(datetime_string))
+            return base_date.replace(
+                tzinfo=dateutil.tz.tzoffset("Custom wmi offset", int(timezone_parts[1]) * 60)
+            )
+
         def get_next_upper_limit(self, lower_limit):
             return min(lower_limit + self.__class__.PAGINATION_LIMIT, self.to_record_number)
 
@@ -327,6 +344,13 @@ class WmiLogEntryJob(_WmiJobBase):
                         job.log("Warning: WMI log entry without record number, ignoring:", logging_tools.LOG_LEVEL_WARN)
                         job.log("{}".format(log_entry))
                     time_generated = log_entry.get('TimeGenerated')
+                    if time_generated is not None:
+                        try:
+                            time_generated = self.parse_datetime(time_generated)
+                        except ValueError as e:
+                            job.log("Failed to parse datetime from time generated {}: {}".format(time_generated, e))
+                            job.log(traceback.format_exc())
+                            time_generated = None
                     if time_generated is None:
                         job.log("Warning: WMI log entry without TimeGenerated, ignoring:", logging_tools.LOG_LEVEL_WARN)
                         job.log("{}".format(log_entry))
@@ -367,6 +391,7 @@ class WmiLogEntryJob(_WmiJobBase):
                     },
                     upsert=True,
                 )
+                job.log("SETTING NEW MAX REC NUM: {} for {}".format(maximal_record_number, job))
 
                 self.from_record_number = maximal_record_number
 

@@ -289,6 +289,7 @@ class IpmiLogJob(EventLogPollerJobBase):
                 keys_ordered = list(itertools.chain.from_iterable(sec.iterkeys() for sec in sections_db_data))
                 db_entry = {
                     'parse_date': django.utils.timezone.now(),
+                    'creation_date': timestamp,
                     'record_id': self.current_record_id,
                     'keys_ordered': keys_ordered,
                     'sections': sections_db_data,

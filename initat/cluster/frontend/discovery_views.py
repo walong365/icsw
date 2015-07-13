@@ -23,6 +23,8 @@ import json
 import pprint
 import bson.json_util
 import collections
+import datetime
+import dateutil.parser
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -107,7 +109,12 @@ class GetEventLogDeviceInfo(View):
 
 class GetEventLog(ListAPIView):
 
-    def _get_ipmi_event_log(self, device_pks, pagination_skip, pagination_limit, filter_str=None):
+    @classmethod
+    def _parse_datetime(cls, datetime_str):
+        return dateutil.parser.parse(datetime_str)
+
+    def _get_ipmi_event_log(self, device_pks, pagination_skip, pagination_limit,
+                            filter_str=None, from_date=None, to_date=None):
         mongo = MongoDbInterface()
         projection_obj = {
             'sections': 1,
@@ -116,22 +123,27 @@ class GetEventLog(ListAPIView):
         query_obj = {
             'device_pk': {'$in': device_pks},
         }
+
+        if from_date is not None:
+            query_obj.setdefault('creation_date', {})['$gte'] = self._parse_datetime(from_date)
+        if to_date is not None:
+            query_obj.setdefault('creation_date', {})['$lte'] = self._parse_datetime(to_date)
+
         if filter_str is not None and filter_str:  # "" means no search as well
             query_obj["$text"] = {'$search': filter_str}
         sort_obj = [('record_id', pymongo.DESCENDING)]
+        print 'query', query_obj, projection_obj, sort_obj
         entries = mongo.event_log_db.ipmi_event_log.find(
             query_obj,
             projection_obj,
             sort=sort_obj,
         )
+        # pprint.pprint(entries.explain())
+
         total_num = entries.count()
 
-        if pagination_skip is not None:
-            entries.skip(pagination_skip)
-        if pagination_limit is not None:
-            entries.limit(pagination_limit)
-        else:
-            raise RuntimeError("IPMI query without pagination limit")
+        entries.skip(pagination_skip)
+        entries.limit(pagination_limit)
 
         result = []
         entry_keys = collections.OrderedDict()  # we only use it as set
@@ -150,8 +162,8 @@ class GetEventLog(ListAPIView):
             result_merged.append(entry_merged)
         return total_num, entry_keys.keys(), result_merged
 
-    def _get_wmi_event_log(self, device_pks, logfile_name=None, pagination_skip=None, pagination_limit=None,
-                           filter_str=None):
+    def _get_wmi_event_log(self, device_pks, pagination_skip, pagination_limit,
+                           filter_str=None, from_date=None, to_date=None, logfile_name=None):
         mongo = MongoDbInterface()
         query_obj = {
             'device_pk': {'$in': device_pks},
@@ -159,8 +171,12 @@ class GetEventLog(ListAPIView):
         if logfile_name is not None:
             query_obj['logfile_name'] = logfile_name
         if filter_str is not None and filter_str:  # "" means no search as well
-            print 'doing search', filter_str
             query_obj["$text"] = {'$search': filter_str}
+
+        if from_date is not None:
+            query_obj.setdefault('time_generated', {})['$gte'] = self._parse_datetime(from_date)
+        if to_date is not None:
+            query_obj.setdefault('time_generated', {})['$lte'] = self._parse_datetime(to_date)
 
         projection_obj = {
             'entry': 1,
@@ -168,16 +184,10 @@ class GetEventLog(ListAPIView):
         sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
         entries = mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj, sort=sort_obj)
         print 'query', query_obj, projection_obj, sort_obj
-        from pprint import pprint
-        pprint(entries.explain())
         total_num = entries.count()
         # entries.sort(
-        if pagination_skip is not None:
-            entries.skip(pagination_skip)
-        if pagination_limit is not None:
-            entries.limit(pagination_limit)
-        else:
-            raise RuntimeError("WMI query without pagination limit")
+        entries.skip(pagination_skip)
+        entries.limit(pagination_limit)
         result = [entry['entry'] for entry in entries]  # exhaust cursor
         keys = set()
         for entry in result:
@@ -188,10 +198,8 @@ class GetEventLog(ListAPIView):
     def list(self, request, *args, **kwargs):
         # NOTE: currently, this list always contains one entry
         device_pks = json.loads(request.GET['device_pks'])
-        logfile_name = request.GET.get('logfile_name')
-        int_or_none = lambda x: int(x) if x is not None else x
-        pagination_skip = int_or_none(request.GET.get('pagination_skip'))
-        pagination_limit = int_or_none(request.GET.get('pagination_limit'))
+        pagination_skip = int(request.GET.get('pagination_skip'))
+        pagination_limit = int(request.GET.get('pagination_limit'))
 
         # misc additional parameters passed directly to handler functions
         query_parameters = json.loads(request.GET['query_parameters'])
@@ -201,8 +209,7 @@ class GetEventLog(ListAPIView):
         if mode == 'wmi':
             # a = time.time()
             total_num, keys, entries =\
-                self._get_wmi_event_log(device_pks, logfile_name, pagination_skip, pagination_limit,
-                                        **query_parameters)
+                self._get_wmi_event_log(device_pks, pagination_skip, pagination_limit, **query_parameters)
             # print 'took', time.time() - a
 
         elif mode == 'ipmi':

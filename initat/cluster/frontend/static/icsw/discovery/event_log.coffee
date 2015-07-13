@@ -46,6 +46,8 @@ angular.module(
                 # show hide column in output
                 scope.show_column = {}
 
+                # TODO: if the table is in an ng-if, reinserting it into the dom when the condition becomes try seems to trigger pipe
+                _last_table_state = {}
 
                 # misc query parameters which partly depend on mode, hence are not general for all queries
                 scope.tab_query_parameters = {}
@@ -55,7 +57,13 @@ angular.module(
                     if _schedule_reload_timeout_promise?
                         $timeout.cancel(_schedule_reload_timeout_promise)
 
-                    _schedule_reload_timeout_promise = $timeout(reload_current_tab, 350)
+                    init_reload = () ->
+                        if _last_table_state[scope.cur_device_pk]?
+                            # rest start since we usually get totally different pages
+                            _last_table_state[scope.cur_device_pk].pagination.start = 0
+                        reload_current_tab()
+
+                    _schedule_reload_timeout_promise = $timeout(init_reload, 350)
 
                 scope.$watch('tab_query_parameters', query_parameter_changed, true)
 
@@ -97,10 +105,6 @@ angular.module(
                     # pipe() function for each tab
                     scope.server_pagination_pipe = {}
 
-
-                    # TODO: if the table is in an ng-if, reinserting it into the dom when the condition becomes try seems to trigger pipe
-                    _last_table_state = {}
-
                     # need pipe functions for each tab since they must remember the table state
                     # in order to be able to get updated
                     for device_pk in scope.device_pks
@@ -120,7 +124,8 @@ angular.module(
                                         if !query_parameters?
                                             query_parameters = {}
 
-                                        console.log 'pag limit', pagination
+                                        console.log 'pag ', pagination
+                                        console.log 'query params ', query_parameters
                                         promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, query_parameters)
                                         if promise
                                             do (table_state) ->
