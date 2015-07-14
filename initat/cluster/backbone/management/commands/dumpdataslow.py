@@ -280,7 +280,7 @@ class Dependencies(object):
         for field in model_obj._meta.fields:
             if isinstance(field, (ForeignKey, OneToOneField)):
                 if field.null:
-                    weak_res.append(field.related.parent_model)
+                    weak_res.append(field.related.model)
                 else:
-                    strong_res.append(field.related.parent_model)
+                    strong_res.append(field.related.model)
         return strong_res, weak_res
