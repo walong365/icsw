@@ -129,7 +129,7 @@ class GetEventLog(ListAPIView):
         if to_date is not None:
             query_obj.setdefault('creation_date', {})['$lte'] = self._parse_datetime(to_date)
 
-        if filter_str is not None and filter_str:  # "" means no search as well
+        if filter_str is not None:
             query_obj["$text"] = {'$search': filter_str}
         sort_obj = [('record_id', pymongo.DESCENDING)]
         print 'query', query_obj, projection_obj, sort_obj
@@ -170,7 +170,7 @@ class GetEventLog(ListAPIView):
         }
         if logfile_name is not None:
             query_obj['logfile_name'] = logfile_name
-        if filter_str is not None and filter_str:  # "" means no search as well
+        if filter_str is not None:
             query_obj["$text"] = {'$search': filter_str}
 
         if from_date is not None:

@@ -143,17 +143,23 @@ angular.module(
                 # actually contact server
                 _last_query_parameters = undefined
                 scope.get_event_log_promise = (device_pk, skip, limit, query_parameters) ->
-                    query_params = {
+                    query_parameters = angular.copy(query_parameters)
+                    for key in Object.keys(query_parameters)
+                        if query_parameters[key] == ""
+                            # empty means no restriction
+                            delete query_parameters[key]
+
+                    rest_params = {
                         device_pks: JSON.stringify([parseInt(device_pk)])
                         query_parameters: query_parameters
                         mode: scope.device_mode[device_pk]
                         pagination_skip: skip
                         pagination_limit: limit
                     }
-                    if !_.isEqual(_last_query_parameters, query_params)
-                        _last_query_parameters = angular.copy(query_params)
+                    if !_.isEqual(_last_query_parameters, rest_params)
+                        _last_query_parameters = angular.copy(rest_params)
                         console.log 'really doing query'
-                        return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(query_params)
+                        return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(rest_params)
                     else
                         console.log 'no query, disregarding'
                         return null
@@ -178,7 +184,10 @@ angular.module(
 
                 for key in scope.keys
                     if !scope.columnToggleDict? or scope.columnToggleDict[key]
-                        td = angular.element("<td>#{entry[key]}</td>")
+                        if entry[key]?
+                            td = angular.element("<td>#{entry[key]}</td>")
+                        else
+                            td = angular.element("<td />")
                         tr.append(td)
 
                 el.append(tr)

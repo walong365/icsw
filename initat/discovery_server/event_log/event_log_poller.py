@@ -45,7 +45,6 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"],
                                                        zmq=True, context=self.zmq_context)
         connection.close()
-        # self.register_func("wmi_scan", self._wmi_scan)
 
         self.register_timer(self.periodic_update, 60 * 1 if global_config["DEBUG"] else 60 * 15, instant=True)
         self.register_timer(self.job_control, 1 if global_config["DEBUG"] else 3, instant=True)
