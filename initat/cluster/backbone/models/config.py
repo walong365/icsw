@@ -75,7 +75,7 @@ def config_catalog_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.system_catalog:
-            _all_c = config_catalog.objects.exclude(Q(pk=cur_inst.idx))
+            _all_c = config_catalog.objects.exclude(Q(idx=cur_inst.idx)).filter(Q(system_catalog=True))
             if len(_all_c):
                 raise ValidationError("only one config_catalog with system_catalog=True allowed")
 
