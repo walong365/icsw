@@ -175,8 +175,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
             else:
                 logfiles = logfiles_by_device[wmi_dev.pk]['logfiles']
-                print 'FIXING LOGFILE'
-                logfiles = [u'Windows PowerShell']
+                # print 'FIXING LOGFILE'
+                # logfiles = [u'Windows PowerShell']
                 self.log("updating wmi logs of {} using {} for logfiles: {}".format(wmi_dev, ip, logfiles))
 
                 for logfile_name in logfiles:
