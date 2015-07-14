@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 angular.module(
     "icsw.device.configuration",
     [
@@ -52,6 +53,93 @@ angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
+]).service("icswDeviceConfigRestService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_DEVICE_TREE_LIST,
+            {"with_device_configs" : true, "with_meta_devices" : true, "pks" : "<PKS>", "olp" : "backbone.device.change_config"}],
+        [
+            ICSW_URLS.REST_CONFIG_LIST,
+        ],
+        [
+            ICSW_URLS.REST_CONFIG_CATALOG_LIST,
+        ],
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # luts
+    devices = []
+    device_lut = {}
+    meta_devices = {}
+    devg_md_lut = {}
+    configs_lut = {}
+    load_data = (client, pk_list) ->
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], pk_list) for _entry in rest_map)
+        if client
+            _defer = $q.defer()
+        $q.all(_wait_list).then((data) ->
+            if _result is undefined
+                _result = data
+            else
+                for _zip in _.zip(_result, data)
+                    _old = _zip[0]
+                    _new = _zip[1]
+                    _old.length = 0
+                    # also the code below does not work if we execute it immediately, but this works:
+                    for entry in _new
+                        _old.push(entry)
+            if client
+                _defer.resolve(_result)
+            for client of _fetch_dict
+                # resolve clients
+                _fetch_dict[client].resolve(_result)
+            # build luts
+            for entry in data[0]
+                if entry.idx in pk_list
+                    devices.push(entry)
+                    device_lut[entry.idx] = entry
+                if entry.is_meta_device
+                    meta_devices[entry.idx] = entry
+                    devg_md_lut[entry.device_group] = entry.idx
+            for entry in data[1]
+                configs_lut[entry.idx] = entry
+            # reset fetch_dict
+            _fetch_dict = {}
+        )
+        if client
+            return _defer
+    trigger_reload = () ->
+        # this code works in principle but is not recommended because we will overwrite all local settings
+        load_data(null)
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result? and _result.length
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+    return {
+        "load": (client, pk_list) ->
+            # loads from server
+            return load_data(client, pk_list).promise
+        "trigger_reload": () ->
+            trigger_reload()
+        "fetch": (client) ->
+            # fetch when data is present (after sidebar)
+            return fetch_data(client).promise
+        "get_config": (conf_idx) ->
+            return configs_lut[conf_idx]
+        "get_all_devices": () ->
+            return devices
+        "get_all_meta_devices": () ->
+            return meta_devices
+        "get_meta_device_from_group": (group_id) ->
+            return meta_devices[devg_md_lut[group_id]]
+        "get_device_lut": () ->
+            return device_lut
+    }
 ]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
@@ -119,8 +207,8 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.var.overview")
         controller: "icswConfigVarsCtrl"
     }
-]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, icswTools, ICSW_URLS) ->
+]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools", "ICSW_URLS", "icswDeviceConfigRestService", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, icswTools, ICSW_URLS, icswDeviceConfigRestService, $timeout) ->
         access_level_service.install($scope)
         $scope.devices = []
         $scope.configs = []
@@ -136,16 +224,9 @@ angular.module(
             $scope.reload()
         $scope.reload = () ->
             pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
-            restDataSource.reset()
-            wait_list = restDataSource.add_sources([
-                [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_device_configs" : true, "with_meta_devices" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_config"}],
-                [ICSW_URLS.REST_CONFIG_LIST, {}]
-                [ICSW_URLS.REST_CONFIG_CATALOG_LIST, {}]
-            ])
-            $q.all(wait_list).then((data) ->
+            icswDeviceConfigRestService.load($scope.$id, $scope.devsel_list).then((data) ->
                 $scope.devices = []
                 $scope.all_devices = []
-                $scope.device_lut = {}
                 $scope.meta_devices = {}
                 $scope.devg_md_lut = {}
                 # multiple name count (for names in config catalogs)
@@ -158,7 +239,6 @@ angular.module(
                 for entry in data[0]
                     if entry.idx in $scope.devsel_list
                         $scope.devices.push(entry)
-                        $scope.device_lut[entry.idx] = entry
                     if entry.is_meta_device
                         $scope.meta_devices[entry.idx] = entry
                         $scope.devg_md_lut[entry.device_group] = entry.idx
@@ -190,10 +270,14 @@ angular.module(
                 return obj.full_name
         $scope.init_devices = (pre_sel) ->
             # called after load
-            for entry in $scope.devices
-                entry.local_selected = (_dc.config for _dc in entry.device_config_set)
             for idx, entry of $scope.meta_devices
                 entry.local_selected = (_dc.config for _dc in entry.device_config_set)
+                entry.num_meta_selected = []
+            for entry in $scope.devices
+                # selection change counter
+                entry._scc = 0
+                entry.local_selected = (_dc.config for _dc in entry.device_config_set)
+                entry.num_meta_selected = icswDeviceConfigRestService.get_meta_device_from_group(entry.device_group).local_selected.length
             for entry in $scope.devices
                 entry.expanded = if entry.idx in pre_sel then true else false
             $scope.configs_lut = {}
@@ -240,8 +324,19 @@ angular.module(
                 return "glyphicon glyphicon-chevron-down"
             else
                 return "glyphicon glyphicon-chevron-right"
-        $scope.$watch("name_filter", (new_val) -> $scope.new_filter_set(new_val, true))
-        $scope.$watch("only_selected", (new_val) -> $scope.new_filter_set($scope.name_filter, true))
+        $scope.$watch("name_filter", (new_val) ->
+            if $scope.filter_to?
+                $timeout.cancel($scope.filter_to)
+            $scope.filter_to = $timeout(
+                $scope.new_filter_set_exp
+                500
+            )
+        )
+        $scope.$watch("only_selected", (new_val) ->
+            $scope.new_filter_set($scope.name_filter, true)
+        )
+        $scope.new_filter_set_exp = () ->
+            $scope.new_filter_set($scope.name_filter, true)
         $scope.new_filter_set = (new_val, change_expand_state) ->
             # called after filter settings have changed
             try
@@ -294,106 +389,174 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.overview")
         controller: "icswDeviceConfigurationCtrl"
     }
-]).directive("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).service("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "icswDeviceConfigRestService", "access_level_service", "$q", (Restangular, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, icswDeviceConfigRestService, access_level_service, $q) ->
+    show_config = (dev, conf_idx) ->
+        if conf_idx != null
+            cur_conf = icswDeviceConfigRestService.get_config(conf_idx)
+            if dev.is_meta_device and cur_conf.server_config
+                return false
+            else
+                return true
+        else
+            return false
+    config_exists = (conf_idx) ->
+        return if conf_idx != null then true else false
     return {
-        restrict : "EA"
-        link: (scope, el, attrs) ->
-            scope.get_th_class = (dev) ->
-                _cls = ""
+        "get_th_class": (dev) ->
+            _cls = ""
+            is_meta_dev = dev.is_meta_device
+            if is_meta_dev
+                return "warning"
+            else
+                return ""
+        "get_td_class": (dev, conf_idx, single_line) ->
+            _cls = ""
+            is_meta_dev = dev.is_meta_device
+            meta_dev = icswDeviceConfigRestService.get_meta_device_from_group(dev.device_group)
+            if single_line and not show_config(dev, conf_idx) and config_exists(conf_idx)
+                _cls = "danger"
+            if conf_idx != null
+                if conf_idx in dev.local_selected
+                    _cls = "success"
+                else if conf_idx in meta_dev.local_selected and not is_meta_dev
+                    _cls = "warn"
+            return _cls
+        "show_config": (dev, conf_idx) ->
+            return show_config(dev, conf_idx)
+        "click": (dev, conf_idx, defer) ->
+            if defer
+                _def = $q.defer()
+            if conf_idx != null and access_level_service.acl_create(dev, 'backbone.device.change_config') and show_config(dev, conf_idx)
+                meta_dev = icswDeviceConfigRestService.get_meta_device_from_group(dev.device_group)
+                value = 1
+                if conf_idx in dev.local_selected
+                    value = 0
+                if conf_idx in meta_dev.local_selected
+                    value = 0
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.CONFIG_ALTER_CONFIG_CB
+                        data: {
+                            "conf_pk": conf_idx
+                            "dev_pk": dev.idx
+                            "value": value
+                        }
+                    }
+                ).then(
+                    (xml) ->
+                        meta_devs = icswDeviceConfigRestService.get_all_meta_devices()
+                        dev_lut = icswDeviceConfigRestService.get_device_lut()
+                        for idx, entry of meta_devs
+                            if entry.device_group == dev.device_group
+                                if conf_idx in entry.local_selected
+                                    entry._scc++
+                                    entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx) # set selection where needed
+                        for entry in icswDeviceConfigRestService.get_all_devices()
+                            if entry.device_group == dev.device_group
+                                if conf_idx in entry.local_selected
+                                    entry._scc++
+                                    entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx)
+                        $(xml).find("device_configs device_config").each (idx, cur_dc) =>
+                            cur_dc = $(cur_dc)
+                            dev_pk = parseInt(cur_dc.attr("device"))
+                            if dev_pk of meta_devs
+                                meta_devs[dev_pk].local_selected.push(conf_idx)
+                            else if dev_pk of dev_lut
+                                if not parseInt(cur_dc.attr("meta"))
+                                    # only set if meta is not 1
+                                    dev_lut[dev_pk].local_selected.push(conf_idx) # force redraw
+                        for entry in icswDeviceConfigRestService.get_all_devices()
+                            if entry.device_group == dev.device_group
+                                entry._scc++
+                                entry.num_meta_selected = icswDeviceConfigRestService.get_meta_device_from_group(entry.device_group).local_selected.length
+                        if defer
+                            _def.resolve(xml)
+                    () ->
+                        if defer
+                            _def.reject()
+                )
+            else
+                if defer
+                    _def.reject()
+            if defer
+                return _def.promise
+        "get_config_class_icon": (dev, conf_idx, single_line) ->
+            if single_line
+                _cls = "glyphicon glyphicon-minus"
+            else
+                _cls = "glyphicon"
+            if conf_idx != null
                 is_meta_dev = dev.is_meta_device
-                if is_meta_dev
-                    return "warning"
-                else
-                    return ""
-            scope.get_td_class = (dev, conf_idx, single_line) ->
-                _cls = ""
-                is_meta_dev = dev.is_meta_device
-                meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
-                if single_line and not scope.show_config(dev, conf_idx) and scope.config_exists(conf_idx)
-                    _cls = "danger"
-                if conf_idx != null
-                    if conf_idx in dev.local_selected
-                        _cls = "success"
-                    else if conf_idx in meta_dev.local_selected and not is_meta_dev
-                        _cls = "warn"
-                return _cls
-            scope.show_config = (dev, conf_idx) ->
-                if conf_idx != null
-                    cur_conf = scope.configs_lut[conf_idx]
-                    if dev.is_meta_device and cur_conf.server_config
-                        return false
-                    else
-                        return true
-                else
-                    return false
-            scope.click = (dev, conf_idx) ->
-                if conf_idx != null and scope.acl_create(dev, 'backbone.device.change_config') and scope.show_config(dev, conf_idx)
-                    meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
-                    value = 1
-                    if conf_idx in dev.local_selected
-                        value = 0
-                    if conf_idx in meta_dev.local_selected
-                        value = 0
-                    icswCallAjaxService
-                        url  : ICSW_URLS.CONFIG_ALTER_CONFIG_CB
-                        data : {
-                            "conf_pk" : conf_idx
-                            "dev_pk"  : dev.idx
-                            "value"   : value
-                        },
-                        success : (xml) =>
-                            # interpret response
-                            icswParseXMLResponseService(xml)
-                            # at first remove all selections
-                            for entry in scope.devices
-                                if entry.device_group == dev.device_group
-                                    if conf_idx in entry.local_selected
-                                        entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx) 
-                            for idx, entry of scope.meta_devices
-                                if entry.device_group == dev.device_group
-                                    if conf_idx in entry.local_selected
-                                        entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx)
-                            # set selection where needed 
-                            $(xml).find("device_configs device_config").each (idx, cur_dc) =>
-                                cur_dc = $(cur_dc)
-                                dev_pk = parseInt(cur_dc.attr("device"))
-                                if dev_pk of scope.meta_devices
-                                    scope.meta_devices[dev_pk].local_selected.push(conf_idx)
-                                else if dev_pk of scope.device_lut
-                                    if not parseInt(cur_dc.attr("meta"))
-                                        # only set if meta is not 1
-                                        scope.device_lut[dev_pk].local_selected.push(conf_idx)
-                            # force redraw
-                            scope.$apply()
-            scope.get_config_class_icon = (dev, conf_idx, single_line) ->
-                if single_line
-                    _cls = "glyphicon glyphicon-minus"
-                else
-                    _cls = "glyphicon"
-                is_meta_dev = dev.is_meta_device
-                meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
-                if conf_idx != null
-                    if conf_idx in dev.local_selected
-                        _cls = "glyphicon glyphicon-ok"
-                    if conf_idx in meta_dev.local_selected and not is_meta_dev
-                        _cls = "glyphicon glyphicon-ok-circle"
-                return _cls
-            scope.config_exists = (conf_idx) ->
-                return if conf_idx != null then true else false
+                meta_dev = icswDeviceConfigRestService.get_meta_device_from_group(dev.device_group)
+                if conf_idx in dev.local_selected
+                    _cls = "glyphicon glyphicon-ok"
+                if conf_idx in meta_dev.local_selected and not is_meta_dev
+                    _cls = "glyphicon glyphicon-ok-circle"
+            return _cls
+        "config_exists": (conf_idx) ->
+            return config_exists(conf_idx)
     }
 ]).directive("icswDeviceConfigurationRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.row")
     }
+]).directive("icswDeviceConfigurationRowData", ["$templateCache", "$compile", "icswDeviceConfigurationHelper", ($templateCache, $compile, icswDeviceConfigurationHelper) ->
+    return {
+        restrict : "EA"
+        scope: {
+            configs: "="
+            device: "="
+        }
+        link: (scope, el, attrs) ->
+            _update_td_el = (conf, _td_el) ->
+                _td_el.children().remove()
+                _td_el.removeClass()
+                _td_el.addClass("text-center " + icswDeviceConfigurationHelper.get_td_class(scope.device, conf.idx, true))
+                if icswDeviceConfigurationHelper.show_config(scope.device, conf.idx)
+                    _td_el.append(angular.element("<span class='" + icswDeviceConfigurationHelper.get_config_class_icon(scope.device, conf.idx, true) + "'></span>"))
+                else
+                    _td_el.append(angular.element("<span class='glyphicon glyphicon-remove-sign'></span>"))
+            _handle_click = (conf, _td_el) ->
+                icswDeviceConfigurationHelper.click(scope.device, conf.idx, true).then(
+                    (ok) ->
+                        _update_td_el(conf, _td_el)
+                )
+            _create_td_el = (entry) ->
+                _td_el = angular.element("<td></td>")
+                _td_el.bind("click", (event) =>
+                    _handle_click(entry, _td_el)
+                )
+                _update_td_el(entry, _td_el)
+                return _td_el
+            _redraw_line = (configs) ->
+                for _entry in _display
+                    _entry.remove()
+                for entry in configs
+                    _td_el = _create_td_el(entry)
+                    _display.push(_td_el)
+                    _parent.append(_td_el)
+            _parent = el.parent()
+            el.remove()
+            _display = []
+            scope.$watch("device._scc", (new_val) ->
+                _redraw_line(scope.configs)
+            )
+            scope.$watch("configs", (new_val) ->
+                if new_val
+                    _redraw_line(new_val)
+            )
+    }
 ]).directive("icswDeviceConfigurationTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.table")
     }
-]).directive("icswDeviceConfigurationSimpleRow", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceConfigurationSimpleRow", ["$templateCache", "icswDeviceConfigurationHelper", ($templateCache, icswDeviceConfigurationHelper) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.simplerow")
+        link: (scope, el, attrs) ->
+            angular.extend(scope, icswDeviceConfigurationHelper)
     }
 ])
