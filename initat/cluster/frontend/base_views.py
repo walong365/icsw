@@ -240,47 +240,52 @@ class CategoryContents(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        cat_db = category.objects.get(pk=request.GET['category_pk'])
         contents = []
+        try:
+            cat_db = category.objects.get(pk=request.GET['category_pk'])
+        except category.DoesNotExist:
+            # on category deletion, client often triggers a reload, so just return empty list in that case
+            pass
+        else:
 
-        # NOTE: gui currently assumes homogenous category contents, i.e. at most one of the following types:
+            # NOTE: gui currently assumes homogenous category contents, i.e. at most one of the following types:
 
-        for dev in device.objects.filter(categories=cat_db).select_related('device_group'):
-            contents.append({
-                "pk": dev.pk,
-                'properties': {
-                    "name": dev.full_name,
-                    "group": dev.device_group.name,
-                },
-                "type": "device",
-            })
+            for dev in device.objects.filter(categories=cat_db).select_related('device_group'):
+                contents.append({
+                    "pk": dev.pk,
+                    'properties': {
+                        "name": dev.full_name,
+                        "group": dev.device_group.name,
+                    },
+                    "type": "device",
+                })
 
-        for mcc in mon_check_command.objects.filter(categories=cat_db):
-            contents.append({
-                "pk": mcc.pk,
-                'properties': {
-                    "Check command": mcc.name
-                },
-                "type": "mon_check_command",
-            })
+            for mcc in mon_check_command.objects.filter(categories=cat_db):
+                contents.append({
+                    "pk": mcc.pk,
+                    'properties': {
+                        "Check command": mcc.name
+                    },
+                    "type": "mon_check_command",
+                })
 
-        for conf in config.objects.filter(categories=cat_db):
-            contents.append({
-                "pk": conf.pk,
-                'properties': {
-                    "Config": conf.name,
-                },
-                "type": "config",
-            })
+            for conf in config.objects.filter(categories=cat_db):
+                contents.append({
+                    "pk": conf.pk,
+                    'properties': {
+                        "Config": conf.name,
+                    },
+                    "type": "config",
+                })
 
-        for loc_dev in device.objects.filter(device_mon_location__location=cat_db):
-            contents.append({
-                "pk": loc_dev.pk,
-                'properties': {
-                    "Location": loc_dev.name,
-                },
-                "type": "location_device",
-            })
+            for loc_dev in device.objects.filter(device_mon_location__location=cat_db):
+                contents.append({
+                    "pk": loc_dev.pk,
+                    'properties': {
+                        "Location": loc_dev.name,
+                    },
+                    "type": "location_device",
+                })
 
         return Response(contents)
 
