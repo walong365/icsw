@@ -35,6 +35,9 @@ class Command(BaseCommand):
             help="Use Django's base manager to dump all models stored in the database, "
             "including those that would otherwise be filtered or modified by a custom manager."
         ),
+        make_option(
+            '-t', '--traceback', action='store_true', default=True,
+        )
     )
     help = ("Output the contents of the database as a fixture of the given "
             "format (using each model's default manager unless --all is "
@@ -277,7 +280,7 @@ class Dependencies(object):
         for field in model_obj._meta.fields:
             if isinstance(field, (ForeignKey, OneToOneField)):
                 if field.null:
-                    weak_res.append(field.related.parent_model)
+                    weak_res.append(field.related.model)
                 else:
-                    strong_res.append(field.related.parent_model)
+                    strong_res.append(field.related.model)
         return strong_res, weak_res
