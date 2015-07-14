@@ -618,7 +618,7 @@ class quota_stuff(bg_stuff):
                     factor=1000,
                     base=1000,
                     valid_until=valid_until,
-                    unit="B"
+                    unit="B",
                 ).build_xml(builder)
             )
             my_vector.append(
@@ -630,7 +630,7 @@ class quota_stuff(bg_stuff):
                     factor=1000,
                     base=1000,
                     valid_until=valid_until,
-                    unit="B"
+                    unit="B",
                 ).build_xml(builder)
             )
             my_vector.append(
@@ -642,7 +642,7 @@ class quota_stuff(bg_stuff):
                     factor=1000,
                     base=1000,
                     valid_until=valid_until,
-                    unit="B"
+                    unit="B",
                 ).build_xml(builder)
             )
         return my_vector
