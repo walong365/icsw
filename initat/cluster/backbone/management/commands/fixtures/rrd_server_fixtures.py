@@ -22,7 +22,7 @@
 """ creates fixtures for rrd-server/grapher """
 
 from initat.cluster.backbone import factories
-from .config_catalog_fixutres import SysConfig
+from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
