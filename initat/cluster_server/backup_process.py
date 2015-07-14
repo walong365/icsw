@@ -17,20 +17,19 @@
 #
 """ cluster-server, backup process """
 
-from django.conf import settings
-from django.db import connection
-from initat.cluster_server.config import global_config
-from initat.cluster.backbone.management.commands import dumpdatafast, dumpdataslow
 from optparse import OptionParser
 import bz2
 import datetime
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import stat
 import subprocess
-from initat.tools import threading_tools
 import time
+
+from django.conf import settings
+from django.db import connection
+from initat.cluster_server.config import global_config
+from initat.cluster.backbone.management.commands import dumpdataslow
+from initat.tools import logging_tools, process_tools, threading_tools
 
 
 class dummy_file(file):
@@ -78,7 +77,6 @@ class backup_process(threading_tools.process_obj):
                     os.unlink(f_name)
         for bu_type, bu_call in [
             ("database", self._database_backup),
-            ("fast", self._fast_backup),
             ("normal", self._normal_backup),
         ]:
             self.log("--------- backup type {} -------------".format(bu_type))
@@ -87,32 +85,6 @@ class backup_process(threading_tools.process_obj):
             e_time = time.time()
             self.log("{} backup finished in {}".format(bu_type, logging_tools.get_diff_time_str(e_time - s_time)))
         self._exit_process()
-
-    def _fast_backup(self, bu_dir):
-        # start 'fast' django backup
-        bu_name = datetime.datetime.now().strftime("db_bu_fast_%Y%m%d_%H:%M:%S")
-        self.log("storing backup in %s" % (os.path.join(
-            bu_dir,
-            bu_name)))
-        # set BASE_OBJECT
-        dumpdatafast.BASE_OBJECT = self
-        buf_com = dumpdatafast.Command()
-        opts, args = OptionParser(option_list=buf_com.option_list).parse_args(
-            [
-                "-d",
-                bu_dir,
-                "-b",
-                "--iterator",
-            ] + sum(
-                [["-e", _ignore] for _ignore in self.get_ignore_list()], []
-            ) + [
-                "--one-file",
-                bu_name
-            ]
-        )
-        buf_com._handle(*args, **vars(opts))
-        # clear base object
-        dumpdatafast.BASE_OBJECT = None
 
     def _normal_backup(self, bu_dir):
         # start 'normal' django backup
@@ -130,7 +102,10 @@ class backup_process(threading_tools.process_obj):
                 "xml",
                 "--traceback",
             ] + sum(
-                [["-e", _ignore] for _ignore in self.get_ignore_list()], []
+                [
+                    ["-e", _ignore] for _ignore in self.get_ignore_list()
+                ],
+                []
             ) + [
                 "auth",
                 "contenttypes",
@@ -142,7 +117,7 @@ class backup_process(threading_tools.process_obj):
         )
         buf_com.handle(*args, **vars(opts))
         buf_com.stdout.close()
-        file("%s.bz2" % (full_path), "wb").write(bz2.compress(file(full_path, "r").read()))
+        file("{}.bz2".format(full_path), "wb").write(bz2.compress(file(full_path, "r").read()))
         os.unlink(full_path)
 
     def _database_backup(self, bu_dir):

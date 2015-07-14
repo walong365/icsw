@@ -239,7 +239,7 @@ class csw_permission(models.Model):
 
     class Meta:
         unique_together = (("content_type", "codename"),)
-        ordering = ("content_type__app_label", "content_type__model", "name",)
+        ordering = ("content_type__app_label", "name",)
         app_label = "backbone"
         verbose_name = "Global permission"
 
@@ -446,14 +446,31 @@ def check_app_permission(auth_obj, app_label):
 
 
 def check_content_permission(auth_obj, app_label, content_name):
+    def name_found(content_type_objects):
+        names = [
+            force_text(i.model_class()._meta.verbose_name) for i in content_type_objects
+        ]
+        return content_name in names
+
     print "ccp", app_label, content_name
-    if auth_obj.perms.filter(Q(content_type__app_label=app_label) & Q(content_type__name=content_name)).count():
+
+    objects = auth_obj.perms.filter(content_type__app_label=app_label)
+    content_types = [i.content_type for i in objects]
+
+    objects_csw = auth_obj.object_perms.filter(
+        csw_permission__content_type__app_label=app_label
+    )
+    content_types_csw = [i.csw_permission.content_type for i in objects_csw]
+
+    if objects and name_found(content_types):
         return True
-    elif auth_obj.object_perms.filter(Q(csw_permission__content_type__app_label=app_label) & Q(csw_permission__content_type__name=content_name)).count():
+    elif objects_csw and name_found(content_types_csw):
         return True
     else:
-        # check for valiid app_label / content_name
-        if csw_permission.objects.filter(Q(content_type__app_label=app_label) & Q(content_type__name=content_name)).count():
+        # check for valid app_label / content_name
+        objects = csw_permission.objects.filter(content_type__app_label=app_label)
+        content_types = [i.content_type for i in objects]
+        if objects and name_found(content_types):
             return False
         else:
             raise ImproperlyConfigured("unknown app_label / content_name combination '{}.{}".format(app_label, content_name))
