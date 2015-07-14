@@ -25,9 +25,3 @@ from initat.cluster.backbone import factories
 def get_sys_conf_cat():
     sys_cc = factories.ConfigCatalog(name="local", system_catalog=True)
     return sys_cc
-
-
-class SysConfig(factories.Config):
-    def __init__(self, *args, **kwargs):
-        sys_cat = get_sys_conf_cat()
-        factories.Config.__init__(self, *args, config_catalog=sys_cat, **kwargs)

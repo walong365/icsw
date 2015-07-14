@@ -22,11 +22,10 @@
 """ creates fixtures for package-server """
 
 from initat.cluster.backbone import factories
-from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    SysConfig(
+    factories.Config(
         name="package_server",
         description="enables packge-server functionalities (RPM/deb distribution)",
         server_config=True,

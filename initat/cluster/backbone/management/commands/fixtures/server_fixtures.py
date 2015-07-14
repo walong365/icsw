@@ -22,48 +22,47 @@
 """ creates fixtures for cluster-server """
 
 from initat.cluster.backbone import factories
-from .config_catalog_fixutres import SysConfig
 
 
 def add_fixtures(**kwargs):
 
-    SysConfig(
+    factories.Config(
         name="server",
         description="sets device as a cluster-server",
         server_config=True,
         system_config=True,
     )
-    SysConfig(
+    factories.Config(
         name="quota_scan",
         description="scan quotas for all users when device has quotas enabled",
         server_config=True,
         system_config=True,
     )
-    SysConfig(
+    factories.Config(
         name="user_scan",
         description="scan user dirs for all users found on this device",
         server_config=True,
         system_config=True,
     )
-    SysConfig(
+    factories.Config(
         name="usv_server",
         description="device has an USV from APC directly attached",
         server_config=True,
         system_config=True,
     )
-    SysConfig(
+    factories.Config(
         name="virtual_desktop",
         description="device can offer virtual desktops to users",
         server_config=True,
         system_config=True,
     )
-    SysConfig(
+    factories.Config(
         name="virtual_desktop_client",
         description="device has a virtual desktop client",
         server_config=True,
         system_config=True,
     )
-    SysConfig(
+    factories.Config(
         name="auto_etc_hosts",
         description="/etc/hosts file can be created from local cluster-server",
         server_config=True,

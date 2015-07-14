@@ -22,11 +22,10 @@
 """ creates fixtures for cluster-config-server """
 
 from initat.cluster.backbone import factories
-from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    SysConfig(
+    factories.Config(
         name="config_server",
         description="enables node provisioning features",
         server_config=True,

@@ -22,11 +22,10 @@
 """ creates fixtures for rms-server """
 
 from initat.cluster.backbone import factories
-from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    SysConfig(
+    factories.Config(
         name="rms_server",
         description="device hosts the RMS-server (Jobsystem)",
         server_config=True,
