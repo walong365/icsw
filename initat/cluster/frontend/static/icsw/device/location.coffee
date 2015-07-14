@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).service("icswDeviceLocationTreeService", () ->
-    class location_tree extends tree_config
+).service("icswDeviceLocationTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class location_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -85,18 +85,28 @@ angular.module(
                 @scope.active_loc_gfx = undefined
                 @scope.gfx_cat = undefined
             @show_active()
-).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+            # important to update frontend
+            @scope.$digest()
+]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus",
+    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
         access_level_service.install($scope)
         $scope.DEBUG = false
         $scope.loc_tree = new icswDeviceLocationTreeService($scope, {})
         $scope.device_pks = []
+        $scope.device_list_ready = false
         # category with gfx 
         $scope.gfx_cat = undefined
         $scope.active_loc_gfx = undefined
+
+        msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
+            $scope.reload()
+        )
         $scope.new_devsel = (pk_list) ->
             $scope.device_pks = pk_list
+            $scope.device_list_ready = true
             $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
+            $scope.reload()
+        $scope.reload = () ->
             wait_list = [
                 restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_mon_locations": true, "pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
@@ -146,6 +156,12 @@ angular.module(
                 $scope.update_monloc_count()
                 $scope.loc_tree.show_selected(false)
             )
+        $scope.is_any_location_defined = () ->
+            if ! $scope.loc_tree_lut
+                return true  # assume that they will arrive
+            else
+                return Object.keys($scope.loc_tree_lut).length > 1
+
         $scope.new_md_selection = (entry) ->
             # for multi-device selection
             cat = entry.obj
@@ -161,7 +177,8 @@ angular.module(
                     icswParseXMLResponseService(xml)
                     $scope.$apply(
                         $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
-                        reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
+                        # FIXME, TODO
+                        # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
                     )
         $scope.new_selection = (sel_list) =>
             icswCallAjaxService
@@ -176,8 +193,9 @@ angular.module(
                     # selectively reload sidebar tree
                     $scope.$apply(
                         $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
-                        reload_sidebar_tree([$scope.devices[0].idx])
-                   )
+                        # FIXME, TODO
+                        # reload_sidebar_tree([$scope.devices[0].idx])
+                    )
         $scope.update_monloc_count = () ->
             _gfx_lut = {}
             for _loc_gfx in $scope.location_gfxs

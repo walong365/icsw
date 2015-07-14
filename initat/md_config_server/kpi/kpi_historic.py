@@ -99,7 +99,7 @@ class TimeLineUtils(list):
     def calculate_compound_time_line(method, time_lines):
         """
         Merges all time_lines according to method
-        :param method: "or" or "and"
+        :param method: "best" or "worst"
         """
         # work on copies
         time_lines = [collections.deque(tl) for tl in time_lines]
@@ -133,9 +133,9 @@ class TimeLineUtils(list):
         def add_to_compound_tl(date, current_tl_states, force_add=False):
             # key_fun = lambda state: (state_ordering[state[0]], state_type_ordering[state[1]])
             key_fun = lambda state: (state[0], state_type_ordering[state[1]])
-            if method == 'or':
+            if method == 'best':
                 next_state = min(current_tl_states, key=key_fun)
-            elif method == 'and':
+            elif method == 'worst':
                 next_state = max(current_tl_states, key=key_fun)
             else:
                 raise RuntimeError("Invalid aggregate_historic method: {}".format(method) +
@@ -144,6 +144,12 @@ class TimeLineUtils(list):
             if not compound_time_line or compound_time_line[-1].state != next_state or force_add:
                 # only add entries on state change or if otherwise necessary
                 compound_time_line.append(TimeLineEntry(date, next_state))
+
+        if any(tl_a[0].date != tl_b[0].date for (tl_a, tl_b) in pairwise(time_lines)):
+            raise RuntimeError("All time lines must have the same start time for historic operations.")
+
+        if any(tl_a[-1].date != tl_b[-1].date for (tl_a, tl_b) in pairwise(time_lines)):
+            raise RuntimeError("All time lines must have the same end time for historic operations.")
 
         current_tl_states = [tl[0].state for tl in time_lines]
         add_to_compound_tl(time_lines[0][0].date, current_tl_states)

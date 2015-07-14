@@ -17,19 +17,20 @@
 #
 """ modifies yp-databases """
 
+import commands
+import os
+import re
+import shutil
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, device_config, \
     config_str, home_export_list, device
 from initat.cluster_server.config import global_config
-import commands
+from initat.tools import logging_tools, server_command
+
 import cs_base_class
 import cs_tools
-from initat.tools import logging_tools
-import os
-import re
-from initat.tools import server_command
-import shutil
-import time
 
 
 class write_yp_config(cs_base_class.server_com):
@@ -267,7 +268,7 @@ class write_yp_config(cs_base_class.server_com):
             map_keys = sorted(ext_keys.keys())
             for mapname in map_keys:
                 self.log("creating map named %s ..." % (mapname))
-                map_name = "%s/%s" % (temp_map_dir, mapname)
+                map_name = os.path.join(temp_map_dir, mapname)
                 # print map_name
                 gdbf = gdbm.open(map_name, "n", 0600)
                 gdbf["YP_INPUT_NAME"] = "{}.dbl".format(mapname)
@@ -279,7 +280,7 @@ class write_yp_config(cs_base_class.server_com):
                     # print "%s --> %s" % (a, b)
                 gdbf.close()
             # rename temporary name to new name
-            map_dir = "/var/yp/%s" % (nis_name)
+            map_dir = "/var/yp/{}".format(nis_name)
             if os.path.isdir(map_dir):
                 shutil.rmtree(map_dir, 1)
             os.rename(temp_map_dir, map_dir)

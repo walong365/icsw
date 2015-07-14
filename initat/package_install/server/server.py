@@ -31,7 +31,7 @@ from initat.tools.server_mixins import RemoteCall
 
 from .config import global_config
 from .repository_process import RepoProcess
-from .structs import Client
+from .package_install_server_structs import Client
 
 
 @server_mixins.RemoteCallProcess
@@ -130,7 +130,7 @@ class server_process(
         for c_name in Client.name_set:
             cur_c = Client.get(c_name)
             if cur_c is None:
-                self.log("no client found for '%s'" % (c_name), logging_tools.LOG_LEVEL_ERROR)
+                self.log("no client found for '{}'".format(c_name), logging_tools.LOG_LEVEL_ERROR)
             else:
                 cur_c.close()
         process_tools.delete_pid(self.__pid_name)
@@ -168,8 +168,6 @@ class server_process(
         except:
             self.log("error sending to {}: {}".format(t_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             _ok = False
-        else:
-            print "done", t_uid
         return _ok
 
     def _send_command(self, command, dev_list=[], **kwargs):
@@ -301,9 +299,10 @@ class server_process(
             valid_uuids = [uuid for uuid in full_uuids if uuid in Client.uuid_set]
             valid_devs = [Client.get(uuid).name for uuid in valid_uuids]
             self.log(
-                "{} requested, {} found".format(
+                "{} requested, {} found: {}".format(
                     logging_tools.get_plural("device", len(com_uuids)),
-                    logging_tools.get_plural("device", len(valid_devs))
+                    logging_tools.get_plural("device", len(valid_devs)),
+                    logging_tools.reduce_list(valid_devs) or "---",
                 )
             )
         for cur_uuid in com_uuids:

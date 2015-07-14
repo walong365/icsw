@@ -31,11 +31,13 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
+from initat.tools.bgnotify.create import create_bg_job
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
-    get_change_reset_list, get_related_models, cluster_timezone, duration
+    get_change_reset_list, get_related_models, cluster_timezone, duration, \
+    system_timezone
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt
@@ -69,11 +71,13 @@ from initat.cluster.backbone.models.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.models.partition import *  # @UnusedWildImport
 from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.models.graph import *  # @UnusedWildImport
+from initat.cluster.backbone.models.selection import *  # @UnusedWildImport
 from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
-    bootsettings_changed, virtual_desktop_user_setting_changed
+    bootsettings_changed, virtual_desktop_user_setting_changed, SensorThresholdChanged
+from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
 import initat.cluster.backbone.models.model_history
 
 
@@ -141,6 +145,11 @@ def vdus_changed(*args, **kwargs):
     _insert_bg_job("reload_virtual_desktop_dispatcher", kwargs["cause"], kwargs["vdus"])
 
 
+@receiver(SensorThresholdChanged)
+def sensor_threshold_changed(*args, **kwargs):
+    _insert_bg_job("sync_sensor_threshold", kwargs["cause"], kwargs["sensor_threshold"])
+
+
 @receiver(bootsettings_changed)
 def rcv_bootsettings_changed(*args, **kwargs):
     # not signal when bootserver is not set
@@ -168,26 +177,7 @@ def _insert_bg_job(cmd, cause, obj):
             _local_pk = 0
     # we need local_pk and a valid user (so we have to be called via webfrontend)
     if _local_pk and thread_local_middleware().user and isinstance(thread_local_middleware().user, user):
-        srv_com = server_command.srv_command(
-            command=cmd,
-        )
-        _bld = srv_com.builder()
-        srv_com["object"] = _bld.object(
-            unicode(obj),
-            model=obj._meta.model_name,
-            app=obj._meta.app_label,
-            pk="{:d}".format(obj.pk)
-        )
-        background_job.objects.create(
-            command=cmd,
-            cause=u"{} of '{}'".format(cause, unicode(obj)),
-            state="pre-init",
-            initiator=device.objects.get(Q(pk=_local_pk)),
-            user=thread_local_middleware().user,
-            command_xml=unicode(srv_com),
-            # valid for 4 hours
-            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)),  # 3600 * 4)),
-        )
+        create_bg_job(_local_pk, thread_local_middleware().user, cmd, cause, obj)
         # init if not already done
         if not hasattr(_thread_local, "num_bg_jobs"):
             _thread_local.num_bg_jobs = 1
@@ -673,44 +663,6 @@ class device(models.Model):
         else:
             return None
 
-    # def get_uptime(self):
-    #    _rs = 0
-    #    if self.mother_xml is not None:
-    #        if int(self.mother_xml.get("ok", "0")):
-    #            now, uptime_ts = (
-    #                cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-    #                self.uptime_timestamp,
-    #            )
-    #            if uptime_ts is not None:
-    #                uptime_timeout = (now - uptime_ts).seconds
-    #            else:
-    #                uptime_timeout = 3600
-    #            if uptime_timeout > 30:
-    #                # too long ago, outdated
-    #                _rs = 0
-    #            else:
-    #                _rs = self.uptime
-    #    return _rs
-
-    # def uptime_valid(self):
-    #    _rs = False
-    #    if self.mother_xml is not None:
-    #        if int(self.mother_xml.get("ok", "0")):
-    #            now, uptime_ts = (
-    #                cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
-    #                self.uptime_timestamp,
-    #            )
-    #            if uptime_ts is not None:
-    #                uptime_timeout = (now - uptime_ts).seconds
-    #            else:
-    #                uptime_timeout = 3600
-    #            if uptime_timeout > 30:
-    #                # too long ago, outdated
-    #                _rs = False
-    #            else:
-    #                _rs = True
-    #    return _rs
-
     def latest_contact(self):
         lc_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_server_last_contact"]
         if lc_obj:
@@ -750,6 +702,7 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
             ("show_status_history", "Access to status history", True),
+            ("discovery_server", "Access to discovery server", False)
         )
         fk_ignore_list = [
             "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", "DeviceLogEntry",

@@ -16,11 +16,13 @@
 
             <button class="btn btn-default btn-primary" ng-if="show_close" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
 
-            <ul class="list-group" ng-if="kpi_set.objects.length > 0">
-                <icsw-config-kpi-show-kpi-object
-                        ng-repeat="kpi_obj in kpi_set.objects | orderBy:['host_name', 'service_info', 'check_command', 'rrd_key']"
-                        kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
-            </ul>
+            <div st-table="entries" st-safe-src="kpi_set.objects" ng-if="kpi_set.objects.length > 0">
+                <div icsw-tools-pagination st-items-by-page="50" st-displayed-pages="8"
+                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                <ul class="list-group" >
+                    <icsw-config-kpi-show-kpi-object ng-repeat="kpi_obj in entries" kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
+                </ul>
+            </div>
 
             <div ng-if="kpi_set.objects.length == 0">
                 <alert type="info">No objects</alert>
@@ -32,7 +34,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_object">
-    <li ng-attr-class="list-group-item {{list_group_class}}">
+    <li ng-attr-class="list-group-item {{list_group_class}}" style="cursor: pointer" ng-click="show_details = !show_details">
 
         <span ng-if="kpi_obj.host_name">
             Host: {{kpi_obj.host_name.split(".")[0]}},
@@ -46,8 +48,8 @@
             Service: {{kpi_obj.check_command}},
         </span>
 
-        <span ng-if="kpi_obj.rrd_key">
-            {{kpi_obj.rrd_key}}: {{kpi_obj.rrd_value}}
+        <span ng-if="kpi_obj.rrd_id">
+            {{kpi_obj.rrd_id}}: {{kpi_obj.rrd_value}}
         </span>
 
         <span ng-if="kpi_obj.result">
@@ -62,13 +64,21 @@
                 <table class="table table-condensed table-hover table-striped" ng-if="pie_data_list">
                     <tbody>
                         <tr ng-repeat="state in pie_data_list">
-                            <td> {{ state.state }}</td>
-                            <td class="text-right"> {{ state.value }}</td>
+                            <td>{{ state.state }}</td>
+                            <td class="text-right">{{ state.value }}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
+        <div ng-if="show_details">
+            <table class="table table-condensed table-striped">
+                <tr ng-repeat="prop in ['result', 'host_name', 'device_category', 'check_command', 'check_command_description', 'config', 'config_description', 'monitoring_category',  'rrd_id', 'rrd_name', 'rrd_value', ]" ng-if="kpi_obj[prop]">
+                    <td>{{prop}}</td>
+                    <td>{{kpi_obj[prop]}}</td>
+                </tr>
+            </table>
+        </div>
     </li>
 </script>

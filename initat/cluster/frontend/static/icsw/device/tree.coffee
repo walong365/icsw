@@ -17,7 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-device_module = angular.module(
+
+angular.module(
     "icsw.device.tree",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table",
@@ -39,7 +40,7 @@ device_module = angular.module(
             {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
             {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
-            {"short" : "device_sel", "url" : ICSW_URLS.REST_DEVICE_SELECTION_LIST}
+            {"short" : "device_sel", "url" : ICSW_URLS.REST_DEVICE_SELECTION_LIST_OLD}
         ]
         $scope.hide_list = [
             # short, full, default
@@ -182,7 +183,8 @@ device_module = angular.module(
                         if parseInt($(xml).find("value[name='changed']").text())
                             $scope.my_modal.close()
                             $scope.reload()
-                            reload_sidebar_tree()
+                            # FIXME, TODO
+                            # reload_sidebar_tree()
         $scope.delete = (a_name, obj) ->
             icswDialogDeleteObjects([obj], a_name, () -> $scope.reload(false))  # set blocking to false because it might happen in background of the delete dlg
         $scope.delete_many = (event) ->
@@ -232,7 +234,8 @@ device_module = angular.module(
             if mod_obj.device_group != $scope.pre_edit_obj.device_group
                 # device group has changed, reload to fix all dependencies
                 $scope.reload()
-                reload_sidebar_tree()
+                # FIXME, TODO
+                # reload_sidebar_tree()
         $scope.object_created = (new_obj) ->
             if $scope._array_name == "device"
                 new_obj.selected = true
@@ -250,11 +253,14 @@ device_module = angular.module(
                 if name_m
                     new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
                     $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
-                reload_sidebar_tree()
+                # FIXME, TODO
+                # reload_sidebar_tree()
                 $scope.update_entries_st_attrs()
             else if $scope._array_name == "device_group"
                 # $scope.reload()
-                reload_sidebar_tree()
+                # FIXME, TODO
+                # reload_sidebar_tree()
+                true
         $scope.new_object = (a_name, parent_obj) ->
             new_obj = {
                 "enabled" : true

@@ -25,7 +25,7 @@ import os
 
 from django.db import connection
 from initat.logcheck_server.config import global_config
-from initat.logcheck_server.struct import machine
+from initat.logcheck_server.logcheck_struct import machine
 from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import logging_tools

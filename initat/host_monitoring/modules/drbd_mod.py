@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,31 +16,36 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.host_monitoring import hm_classes, limits
-from initat.tools import logging_tools
-from initat.tools import server_command
 import json
-try:
-    from initat.tools import drbd_tools
-except ImportError:
-    drbd_tools = None
+
+from initat.host_monitoring import hm_classes, limits
+from initat.tools import logging_tools, server_command, drbd_tools, process_tools
 
 
 class _general(hm_classes.hm_module):
     def init_module(self):
         self.__last_drbd_check = (-1, -1)
         if drbd_tools:
-            self.drbd_config = drbd_tools.drbd_config()
+            try:
+                self.drbd_config = drbd_tools.drbd_config()
+            except:
+                self.drbd_config = None
         else:
             self.drbd_config = None
 
 
 class drbd_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        if drbd_tools:
-            self.module.drbd_config._parse_all()
-            srv_com["drbd_status_format"] = "json"
-            srv_com["drbd_status"] = json.dumps(self.module.drbd_config.get_config_dict())
+        if drbd_tools and self.drbd_config:
+            try:
+                self.module.drbd_config._parse_all()
+                srv_com["drbd_status_format"] = "json"
+                srv_com["drbd_status"] = json.dumps(self.module.drbd_config.get_config_dict())
+            except:
+                srv_com.set_result(
+                    "error parsing DRBD-config: {}".format(process_tools.get_except_info()),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
         else:
             srv_com.set_result(
                 "no drbd_tools found",

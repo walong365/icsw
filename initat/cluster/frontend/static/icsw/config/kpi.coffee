@@ -62,7 +62,7 @@ angular.module(
                 scope.create_new_kpi = () ->
                     icswConfigKpiDialogService.show_create_kpi_dlg(scope)
     }
-]).directive("icswConfigKpiDevMonSelection", ['icswConfigKpiDataService', (icswConfigKpiDataService) ->
+]).directive("icswConfigKpiDevMonSelection", ['icswConfigKpiDataService', 'icswTreeConfig', (icswConfigKpiDataService, icswTreeConfig) ->
     return {
         restrict : "E"
         templateUrl: "icsw.config.kpi.dev_mon_selection"
@@ -76,7 +76,7 @@ angular.module(
                         scope.cur_edit_kpi.available_monitoring_categories.push(tup[1])
                 scope._rebuild_tree()
 
-            class base_tree_config extends tree_config
+            class base_tree_config extends icswTreeConfig
                 constructor: (@scope, args) ->
                     super(args)
                     @show_selection_buttons = false
@@ -94,8 +94,12 @@ angular.module(
                         r_info = "TOP"
                     return r_info
                 handle_click: (entry, event) =>
-                    return  # TODO: also select?
+                    @toggle_checkbox_node(entry)
+                    @_toggle_kpi_cat_entry(entry)
+                    @update_node(entry)
                 selection_changed: (entry) =>
+                    @_toggle_kpi_cat_entry(entry)
+                _toggle_kpi_cat_entry: (entry) =>
                     # update selection in model
                     if entry.selected
                         # entry might already be contained if gui information is not present
@@ -103,6 +107,7 @@ angular.module(
                             @get_category_list().push(entry.obj.idx)
                     else
                         _.remove(@get_category_list(), (rem_item) -> return rem_item == entry.obj.idx)
+                    @scope.$digest()
 
             class device_category_tree_config extends base_tree_config
                 get_category_list: () ->
@@ -111,8 +116,8 @@ angular.module(
                 get_category_list: () ->
                     return scope.cur_edit_kpi.available_monitoring_categories
 
-            scope.device_category_tree = new device_category_tree_config()
-            scope.monitoring_category_tree = new monitoring_category_tree_config()
+            scope.device_category_tree = new device_category_tree_config(scope)
+            scope.monitoring_category_tree = new monitoring_category_tree_config(scope)
 
             scope.$watch(
                 () -> icswConfigKpiDataService.category.length
@@ -121,7 +126,7 @@ angular.module(
 
             scope._rebuild_tree = () ->
                 scope.device_category_tree.clear_root_nodes()
-                scope.monitoring_category_tree = new monitoring_category_tree_config()
+                scope.monitoring_category_tree = new monitoring_category_tree_config(scope)
                 roots = []
                 lut = {}
                 for entry in icswConfigKpiDataService.category
@@ -189,8 +194,8 @@ angular.module(
         }
 
 ]).service("icswConfigKpiDialogService",
-    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService",
-    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService) ->
+    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService", "icswConfigKpiVisUtils", "$timeout",
+    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService, icswConfigKpiVisUtils, $timeout) ->
 
         KPI_DLG_MODE_CREATE = 'create'
         KPI_DLG_MODE_MODIFY = 'modify'
@@ -218,17 +223,32 @@ angular.module(
                 indentUnit : 4
             }
 
+
             update_kpi_data_source = () ->
-                icswCallAjaxService
-                    url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
-                    data:
-                        dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
-                        time_range: JSON.stringify(cur_edit_kpi.time_range)
-                        time_range_parameter: JSON.stringify(cur_edit_kpi.time_range_parameter)
-                    success: (xml) ->
-                        if icswParseXMLResponseService(xml)
-                            res = angular.fromJson($(xml).find("value[name='response']").text())
-                            scope.selected_cats_kpi_set = res
+                # make sure to not query server twice at the same time
+                if update_kpi_data_source.is_running
+                    # only schedule if not already scheduled
+                    if not update_kpi_data_source.is_scheduled
+                        update_kpi_data_source.is_scheduled = true
+                        $timeout(
+                            () ->
+                                update_kpi_data_source.is_scheduled = false
+                                update_kpi_data_source()
+                            400
+                        )
+                else
+                    update_kpi_data_source.is_running = true
+                    icswCallAjaxService
+                        url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
+                        data:
+                            dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
+                            time_range: JSON.stringify(cur_edit_kpi.time_range)
+                            time_range_parameter: JSON.stringify(cur_edit_kpi.time_range_parameter)
+                        success: (xml) ->
+                            update_kpi_data_source.is_running = false
+                            if icswParseXMLResponseService(xml)
+                                res = angular.fromJson($(xml).find("value[name='response']").text())
+                                scope.selected_cats_kpi_set = icswConfigKpiVisUtils.sort_kpi_set(res)
             update_kpi_data_source()
 
             child_scope.on_data_source_tab_selected = () ->
@@ -340,6 +360,8 @@ angular.module(
                                 child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
                             child_scope.kpi_result.loading = false
 
+                            child_scope.$digest()
+
             # parameters as understood by KpiData.parse_kpi_time_range
             child_scope.kpi_time_ranges = [
                 {id_str: 'none', display_str: 'Only current data'},
@@ -360,7 +382,7 @@ angular.module(
                 closeByBackdrop: false
                 closeByKeyboard: false,
                 size: BootstrapDialog.SIZE_WIDE
-                type: BootstrapDialog.TYPE_DANGER
+                cssClass: 'modal-tall'
                 onshow: (modal) =>
                     height = $(window).height() - 100
                     modal.getModal().find(".modal-body").css("max-height", height)
@@ -384,7 +406,7 @@ angular.module(
                 time_range_parameter: 1
                 enabled: true
                 soft_states_as_hard_states: true
-                formula: "kpi = initial_data"
+                formula: "return initial_data\n\n\n\n\n\n\n\n\n\n"  # stupid workaround for CodeMirror indention bug
             }
             show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
         ret.show_modify_kpi_dlg = (scope, kpi) ->

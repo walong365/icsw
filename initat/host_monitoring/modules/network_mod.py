@@ -17,20 +17,17 @@
 #
 """ network througput and status information """
 
-from initat.host_monitoring import hm_classes, limits
-from initat.host_monitoring.config import global_config
 import commands
 import datetime
-from initat.tools import logging_tools
 import os
-import pprint  # @UnusedImport
-from initat.tools import process_tools
-import psutil
 import re
-from initat.tools import server_command
 import stat
 import subprocess
 import time
+
+from initat.host_monitoring import hm_classes, limits
+from initat.tools import logging_tools, process_tools, server_command
+import psutil
 
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
@@ -158,6 +155,8 @@ class _general(hm_classes.hm_module):
         priority = 10
 
     def init_module(self):
+        from initat.host_monitoring.config import global_config
+
         self.dev_dict = {}
         self.last_update = time.time()
         # search ethtool
@@ -803,7 +802,7 @@ class netspeed(object):
             self.__a_time = ntime
 
 
-class ping_sp_struct(hm_classes.subprocess_struct):
+class PingSPStruct(hm_classes.subprocess_struct):
     seq_num = 0
 
     class Meta:
@@ -815,15 +814,15 @@ class ping_sp_struct(hm_classes.subprocess_struct):
     def __init__(self, srv_com, target_spec, num_pings, timeout):
         hm_classes.subprocess_struct.__init__(self, srv_com, "")
         self.target_spec, self.num_pings, self.timeout = (target_spec, num_pings, timeout)
-        ping_sp_struct.seq_num += 1
-        self.seq_str = "ping_{:d}".format(ping_sp_struct.seq_num)
+        PingSPStruct.seq_num += 1
+        self.seq_str = "ping_{:d}".format(PingSPStruct.seq_num)
 
     def run(self):
         self.tart_time = time.time()
         return ("ping", self.seq_str, self.target_spec, self.num_pings, self.timeout)
 
-    def process(self, *args):
-        self.terminated = True
+    def process(self, *args, **kwargs):
+        send_return = kwargs.get("send_return", True)
         cur_b = self.srv_com.builder
         if len(self.target_spec) == 1:
             # single host ping
@@ -861,7 +860,8 @@ class ping_sp_struct(hm_classes.subprocess_struct):
                 )
                 res_el.append(host_el)
             self.srv_com["result"] = res_el
-        self.send_return()
+        if send_return:
+            self.send_return()
         self.terminated = True
     # def __del__(self):
     #    print "dp"
@@ -916,7 +916,7 @@ class ping_command(hm_classes.hm_command):
                 min(32, max(1, int(float(num_pings)))),
                 max(0.1, float(timeout))
             )
-            cur_sps = ping_sp_struct(srv_com, [entry.strip() for entry in target_host.split(",")], num_pings, timeout)
+            cur_sps = PingSPStruct(srv_com, [entry.strip() for entry in target_host.split(",")], num_pings, timeout)
         return cur_sps
 
     def _interpret_wc(self, in_str, def_value, num_sent):

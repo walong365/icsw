@@ -20,17 +20,18 @@
 # -*- coding: utf-8 -*-
 #
 """ helper functions for cluster-backbone-sql models """
+import collections
+import time
+import datetime
+import sys
+import pdb
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import Q
 import pytz
-import time
 import decorator
-import datetime
-import sys
-import pdb
 from initat.tools import logging_tools
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
@@ -362,16 +363,13 @@ class duration(object):
         return shorter_duration
 
 
+_memoize_cache = collections.defaultdict(lambda: {})
+
+
 def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
     def _memoize_with_expiry(func, *args, **kw):
-        # Determine what cache to use - the supplied one, or one we create inside the
-        # wrapped function.
-        if _cache is None:
-            if not hasattr(func, '_cache'):
-                func._cache = {}
-            cache = func._cache
-        else:
-            cache = _cache
+        # NOTE: if _cache is explicitly specified, it is not cleared by clear_memoize_cache()
+        cache = _cache or _memoize_cache[func]
 
         mem_args = args[:num_args]
         # frozenset is used to ensure hashability
@@ -389,6 +387,11 @@ def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
         cache[key] = (result, time.time())
         return result
     return decorator.decorator(_memoize_with_expiry)
+
+
+def clear_memoize_cache():
+    # useful for tests
+    _memoize_cache.clear()
 
 
 # Modified DES required by vnc

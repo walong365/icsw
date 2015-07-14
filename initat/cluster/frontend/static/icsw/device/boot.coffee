@@ -491,9 +491,14 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.boot.row")
         link : (scope, el, attrs) ->
-            _resolve_lut_name = (entry, lut) ->
+            _resolve_i_lut_name = (entry, lut) ->
                 if entry of lut
                     return lut[entry].name
+                else
+                    return null
+            _resolve_k_lut_name = (entry, lut) ->
+                if entry of lut
+                    return lut[entry].display_name
                 else
                     return null
             _get_latest_entry = (hist_tuple, lut, key) ->
@@ -519,11 +524,11 @@ angular.module(
                 _cls = ""
                 if scope.info_ok
                     if entry[0] == "i"
-                        _cls = scope._get_td_class(_get_latest_entry(dev.act_image, scope.image_lut, "name"), _resolve_lut_name(dev.new_image, scope.image_lut))
+                        _cls = scope._get_td_class(_get_latest_entry(dev.act_image, scope.image_lut, "name"), _resolve_i_lut_name(dev.new_image, scope.image_lut))
                     else if entry[0] == "p"
                         _cls = scope._get_td_class(dev.act_partition_table, dev.partition_table)
                     else if entry[0] == "k"
-                        _cls = scope._get_td_class(_get_latest_entry(dev.act_kernel, scope.kernel_lut, "name"), _resolve_lut_name(dev.new_kernel, scope.kernel_lut))
+                        _cls = scope._get_td_class(_get_latest_entry(dev.act_kernel, scope.kernel_lut, "name"), _resolve_k_lut_name(dev.new_kernel, scope.kernel_lut))
                 return _cls
             scope._get_td_class = (act_val, new_val) ->
                 if act_val == new_val
@@ -588,7 +593,10 @@ angular.module(
                     return "..."
             scope.get_lut_val = (s_type, lut, val) ->
                 if val of lut
-                    return lut[val].name
+                    if s_type == "k"
+                        return lut[val].display_name
+                    else
+                        return lut[val].name
                 else
                     return "? #{s_type}: #{val} ?"
             scope.get_info_str = (s_type, act_val, act_vers, new_val, new_vers, lut) ->

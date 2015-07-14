@@ -1198,10 +1198,10 @@ class mon_check_command_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-9'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "cur_edit.modify(this)"
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify()"
     helper.layout = Layout(
-        HTML("<h2>Check command '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<h2>Check command '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
         HTML("<tabset><tab heading='Basic setup'>"),
         Fieldset(
             "Basic settings",
@@ -1209,56 +1209,56 @@ class mon_check_command_form(ModelForm):
             Field("description"),
             Field(
                 "mon_check_command_special",
-                repeat="value.idx as value in mccs_list",
+                repeat="value.idx as value in get_mccs_list()",
                 display="info",
                 placeholder="please select a special command",
                 filter="{name:$select.search}",
                 null=True,
-                wrapper_ng_show="_edit_obj.is_active",
+                wrapper_ng_show="edit_obj.is_active",
             ),
             HTML("""
             {% verbatim %}
-            <div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning(_edit_obj)">
+            <div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning(edit_obj)">
                 <span class="glyphicon glyphicon-exclamation-sign"></span>
-                {{ get_mccs_already_used_warning(_edit_obj) }}
+                {{ get_mccs_already_used_warning(edit_obj) }}
             </div>
             {% endverbatim %}
             """),
-            Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special && _edit_obj.is_active"),
+            Field("command_line", wrapper_ng_show="!edit_obj.mon_check_command_special && edit_obj.is_active"),
             HTML("""
-<div class='form-group' ng-show="_edit_obj.mon_check_command_special">
+<div class='form-group' ng-show="edit_obj.mon_check_command_special">
     <label class="control-label col-sm-2">Info</label>
     <div class="col-sm-9 list-group">
         {% verbatim %}
         <ul>
-            <li class="list-group-item">{{ get_mccs_info() }}</li>
-            <li class="list-group-item">{{ get_mccs_cmdline() }}</li>
+            <li class="list-group-item">{{ get_mccs_info(edit_obj) }}</li>
+            <li class="list-group-item">{{ get_mccs_cmdline(edit_obj) }}</li>
         </ul>
         {% endverbatim %}
     </div>
 </div>
             """),
             HTML("""
-<div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active">
+<div class='form-group' ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active">
     <label class='control-label col-sm-2'>Tools</label>
     <div class='controls col-sm-9'>
         <div class="form-inline">
-        <input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'>
+        <input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument(edit_obj)' ng-value='"add argument"'>
         </input>
         name:
-        <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_name"></input>
+        <input type='text' class="form-control input-sm" title="default value" ng-model="edit_obj.arg_name"></input>
         value:
-        <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_value"></input>
+        <input type='text' class="form-control input-sm" title="default value" ng-model="edit_obj.arg_value"></input>
         </div>
     </div>
 </div>
             """),
             HTML("""
-<div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active">
+<div class='form-group' ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active">
     <label class="control-label col-sm-2">Info</label>
     <div class="col-sm-9 list-group">
         <ul>
-            <li class="list-group-item" ng-repeat="value in get_moncc_info()">{% verbatim %}{{ value }}{% endverbatim %}</li>
+            <li class="list-group-item" ng-repeat="value in get_moncc_info(edit_obj)">{% verbatim %}{{ value }}{% endverbatim %}</li>
         </ul>
     </div>
 </div>
@@ -1276,30 +1276,30 @@ class mon_check_command_form(ModelForm):
             ),
             Field(
                 "event_handler",
-                repeat="value.idx as value in get_event_handlers(_edit_obj)",
+                repeat="value.idx as value in get_event_handlers(edit_obj)",
                 display="name",
                 placeholder="please select an event handler",
                 filter="{name:$select.search}",
                 null=True,
-                wrapper_ng_show="!_edit_obj.is_event_handler"
+                wrapper_ng_show="!edit_obj.is_event_handler"
             ),
         ),
         Fieldset(
             "Active / passive settings",
             Field("is_active"),
             HTML("""
-<div class='form-group col-sm-12' ng-show="!_edit_obj.is_active">
+<div class='form-group col-sm-12' ng-show="!edit_obj.is_active">
     <b>Set result via</b>
 </div>
-<div class='form-group col-sm-12' ng-show="!_edit_obj.is_active">
+<div class='form-group col-sm-12' ng-show="!edit_obj.is_active">
     <tt>
     {% verbatim %}
-    /opt/cluster/bin/set_passive_checkresult.py --device &lt;FQDN&gt; --check {{ _edit_obj.name }} --state {OK|WARN|CRITICAL} --output &lt;OUTPUT&gt;
+    /opt/cluster/bin/set_passive_checkresult.py --device &lt;FQDN&gt; --check {{ edit_obj.name }} --state {OK|WARN|CRITICAL} --output &lt;OUTPUT&gt;
     {% endverbatim %}
     </tt>
 </div>
 """),
-            ng_show="!_edit_obj.mon_check_command_special",
+            ng_show="!edit_obj.mon_check_command_special",
         ),
         Fieldset(
             "Flags",
@@ -1312,23 +1312,23 @@ class mon_check_command_form(ModelForm):
                 ),
                 Div(
                     Field("event_handler_enabled"),
-                    Field("is_event_handler", wrapper_ng_show="_edit_obj.event_handler == undefined"),
+                    Field("is_event_handler", wrapper_ng_show="edit_obj.event_handler == undefined"),
                     css_class="col-md-6",
                 ),
                 css_class="row",
             ),
         ),
-        HTML("</tab><tab heading='Categories ({% verbatim %}{{ num_cats }}{% endverbatim %})' ng-show='num_cats'>"),
+        HTML("</tab><tab heading='Categories'>"),
         Fieldset(
             "Categories",
             HTML("""
-<div icsw-config-category-choice edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
+<div icsw-config-category-choice edit-obj='edit_obj' mode='mon'>
 </div>
             """),
         ),
         HTML("</tab><tab heading='History'>"),
         HTML("<icsw-history-model-history style='config' model=\"'mon_check_command'\""
-             "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
+             "object-id='{% verbatim %}edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
         HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),

@@ -765,6 +765,7 @@ class _general(hm_classes.hm_module):
                     skip_until_next_blank_line = False
                     parted_dict = {}
                     dev_dict = {}
+                    cur_disc = None
                     for line in out.split("\n"):
                         line = line.rstrip()
                         if line and skip_until_next_blank_line:
@@ -785,25 +786,26 @@ class _general(hm_classes.hm_module):
                             }
                         elif lline.startswith("disk /"):
                             d_name = lline.split()[1][:-1]
-                            parted_dict[d_name] = cur_disc
-                            if cur_disc["type"] in ["dm"]:
-                                # ignore mapper devices in dev_dict
-                                pass
-                            else:
-                                dev_dict[d_name] = {}
-                            cur_disc["size"] = line.split()[-1]
+                            if cur_disc is not None:
+                                parted_dict[d_name] = cur_disc
+                                if cur_disc["type"] in ["dm"]:
+                                    # ignore mapper devices in dev_dict
+                                    pass
+                                else:
+                                    dev_dict[d_name] = {}
+                                cur_disc["size"] = line.split()[-1]
                         elif lline.startswith("sector"):
                             pass
                         elif lline.startswith("disk flags"):
                             # ignore flags line
                             pass
-                        elif lline.startswith("partition table"):
+                        elif lline.startswith("partition table") and cur_disc is not None:
                             cur_disc["table_type"] = line.split()[-1]
-                        elif lline.startswith("number"):
+                        elif lline.startswith("number") and cur_disc is not None:
                             if cur_disc["type"] in ["dm"]:
                                 # not interested in parsing device-mapper devices
                                 skip_until_next_blank_line = True
-                        elif line:
+                        elif line and cur_disc is not None:
                             parts = line.strip().split()
                             if len(parts) > 3:
                                 part_num = parts.pop(0)
@@ -832,12 +834,13 @@ class _general(hm_classes.hm_module):
                                         hextype = "0x8e"
                                     else:
                                         hextype = None
-                                dev_dict[d_name][part_num] = {
-                                    "size": size,
-                                    "hextype": hextype,
-                                    "info": " ".join(parts),
-                                }
-                                part_lut["{}{}".format(d_name, part_num)] = (d_name, part_num)
+                                if d_name in dev_dict:
+                                    dev_dict[d_name][part_num] = {
+                                        "size": size,
+                                        "hextype": hextype,
+                                        "info": " ".join(parts),
+                                    }
+                                    part_lut["{}{}".format(d_name, part_num)] = (d_name, part_num)
                 else:
                     self.log("getting partition info via sfdisk (deprecated)")
                     # fetch fdisk information

@@ -17,13 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-device_configuration_module = angular.module(
+
+angular.module(
     "icsw.device.category",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).service("icswDeviceCategoryTreeService", () ->
-    class category_tree extends tree_config
+).service("icswDeviceCategoryTreeService", ["icswTreeConfig", "msgbus", (icswTreeConfig, msgbus) ->
+    class category_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -32,6 +33,7 @@ device_configuration_module = angular.module(
             @show_descendants = false
             @show_childs = false
         selection_changed: (entry) =>
+            # FIXME, TODO, slow update of the frontend (albeit the backbone already got the request)
             if @scope.multi_device_mode
                 @scope.new_md_selection(entry)
             else
@@ -56,20 +58,30 @@ device_configuration_module = angular.module(
                 return cat.full_name
             else
                 return "TOP"
-).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+        handle_click: (entry, event) =>
+            @scope.selected_category = entry.obj
+            @scope.$digest()
+]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
         access_level_service.install($scope)
         $scope.device_pks = []
+        $scope.device_list_ready = false
         $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})
         $scope.new_devsel = (pk_list) ->
             $scope.device_pks = pk_list
             $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
+            $scope.reload()
+        msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
+            $scope.reload()
+        )
+        $scope.reload = () ->
             wait_list = [
                 restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = data[1]
+                $scope.device_list_ready = true
                 $scope.num_devices = $scope.devices.length
                 $scope.cat_tree.change_select = true
                 for dev in $scope.devices
@@ -119,7 +131,10 @@ device_configuration_module = angular.module(
                             $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
                         else
                             $scope.sel_dict[cat.idx] = []
-                        reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
+                        # FIXME, TODO
+                        # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
+
+                        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
                     )
         $scope.new_selection = (sel_list) =>
             # only for single-device mode
@@ -132,8 +147,10 @@ device_configuration_module = angular.module(
                     "cur_sel"  : angular.toJson(sel_list)
                 success : (xml) =>
                     icswParseXMLResponseService(xml)
+                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
                     # selectively reload sidebar tree
-                    reload_sidebar_tree([$scope.devices[0].idx])
+                    # FIXME, TODO
+                    # reload_sidebar_tree([$scope.devices[0].idx])
 ]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"

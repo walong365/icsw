@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,11 +17,11 @@
 #
 """ NVidia GPU monitoring """
 
-from initat.host_monitoring import hm_classes
 import commands
-from initat.tools import logging_tools
-from initat.tools import process_tools
 from lxml import etree  # @UnusedImport
+
+from initat.host_monitoring import hm_classes
+from initat.tools import logging_tools, process_tools
 
 COM_NAME = "nvidia-smi"
 _DEBUG = False

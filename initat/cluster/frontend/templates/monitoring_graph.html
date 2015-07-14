@@ -1,0 +1,14 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Graph" %}{% endblock %}
+
+{% block content %}
+
+<h2>Graph</h2>
+
+<icsw-rrd-graph icsw-sel-man="0" icsw-sel-man-sel-mode="D">
+</icsw-rrd-graph>
+
+{% endblock %}

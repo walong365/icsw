@@ -22,20 +22,18 @@
 
 """ host-monitoring for 0MQ >=  4.x.y, direct socket part """
 
-from initat.host_monitoring.config import global_config
-from initat.tools import icmp_class
-from initat.tools import logging_tools
-from initat.tools import process_tools
 import re
 import select
-from initat.tools import server_command
 import socket
-from initat.tools import threading_tools
 import time
+
+from initat.host_monitoring.config import global_config
+from initat.tools import icmp_class, logging_tools, process_tools, server_command, \
+    threading_tools
 import zmq
 
 
-class hm_icmp_protocol(icmp_class.icmp_protocol):
+class HMIcmpProtocol(icmp_class.icmp_protocol):
     def __init__(self, process, log_template):
         self.__log_template = log_template
         icmp_class.icmp_protocol.__init__(self)
@@ -89,11 +87,15 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
 
     def ping(self, seq_str, target_list, num_pings, timeout):
         if self.__debug:
-            self.log("ping to {} ({}; {:d}, {:.2f}) [{}]".format(
-                logging_tools.get_plural("target", len(target_list)),
-                ", ".join([_entry or "<resolve error>" for _entry in target_list]),
-                num_pings, timeout,
-                seq_str))
+            self.log(
+                "ping to {} ({}; {:d}, {:.2f}) [{}]".format(
+                    logging_tools.get_plural("target", len(target_list)),
+                    ", ".join([_entry or "<resolve error>" for _entry in target_list]),
+                    num_pings,
+                    timeout,
+                    seq_str
+                )
+            )
         cur_time = time.time()
         if len(target_list) > 1:
             seq_list = ["group_{:d}".format(idx) for idx in xrange(self.__group_idx, self.__group_idx + len(target_list))]
@@ -240,7 +242,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                     self._update(self.__seqno_dict[seqno], from_reply=True)
 
 
-class tcp_con(object):
+class TCPCon(object):
     pending = []
 
     def __init__(self, proc, src_id, srv_com):
@@ -268,7 +270,7 @@ class tcp_con(object):
             # there used to be a problem due to connections without successful connection being added to the pending list
             # then, for any further call, socket would not have been defined
             # therefore we only keep track of successful connections now
-            tcp_con.pending.append(self)
+            TCPCon.pending.append(self)
 
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # , socket.IPPROTO_TCP)
             self.socket.setblocking(0)
@@ -349,7 +351,7 @@ class tcp_con(object):
         self.close()
 
     def close(self):
-        tcp_con.pending = [_entry for _entry in tcp_con.pending if _entry != self]
+        TCPCon.pending = [_entry for _entry in TCPCon.pending if _entry != self]
         if self.__registered:
             self.__registered = False
             self.__process.unregister_socket(self.socket)
@@ -357,7 +359,7 @@ class tcp_con(object):
         del self.srv_com
 
 
-class socket_process(threading_tools.process_obj):
+class SocketProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # log.startLoggingWithObserver(my_observer, setStdout=False)
@@ -366,7 +368,7 @@ class socket_process(threading_tools.process_obj):
         self.__extra_twisted_threads = 0
         # print self.start_kwargs
         if self.start_kwargs.get("icmp", True):
-            self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
+            self.icmp_protocol = HMIcmpProtocol(self, self.__log_template)
             # reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
             # reactor.listen_ICMP(self.icmp_protocol)
             self.register_func("ping", self._ping)
@@ -379,7 +381,7 @@ class socket_process(threading_tools.process_obj):
 
     def _check_timeout(self):
         cur_time = time.time()
-        to_list = [entry for entry in tcp_con.pending if abs(entry.s_time - cur_time) > 20]
+        to_list = [entry for entry in TCPCon.pending if abs(entry.s_time - cur_time) > 20]
         if to_list:
             self.log("removing {} (timeout)".format(logging_tools.get_plural("TCP connection", len(to_list))))
             for _entry in to_list:
@@ -388,7 +390,7 @@ class socket_process(threading_tools.process_obj):
 
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
-        tcp_con(self, src_id, srv_com)
+        TCPCon(self, src_id, srv_com)
 
     def _ping(self, *args, **kwargs):
         _addr_list = args[1]

@@ -215,6 +215,10 @@ class server_process(
     def base_scan(self, srv_com, **kwargs):
         return srv_com
 
+    @RemoteCall(target_process="discovery")
+    def wmi_scan(self, srv_com, **kwargs):
+        return srv_com
+
     def _snmp_finished(self, args):
         self.send_to_process("discovery", "snmp_result", *args["args"])
 

@@ -25,25 +25,19 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.tools import cluster_location
-from initat.tools import configfile
+from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
+    server_mixins, threading_tools, uuid_tools, configfile
 import initat.cluster_server.modules
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import server_mixins
-from initat.tools import threading_tools
-from initat.tools import uuid_tools
 import zmq
 
 from .capabilities import capability_process
 from .backup_process import backup_process
 from .license_checker import LicenseChecker
 from .config import global_config
-from .notify import notify_mixin
+from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 
 
-class server_process(threading_tools.process_pool, notify_mixin, server_mixins.NetworkBindMixin, server_mixins.ServerStatusMixin):
+class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, server_mixins.NetworkBindMixin, server_mixins.ServerStatusMixin):
     def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
@@ -224,8 +218,6 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.N
     def _init_network_sockets(self):
         self.__connection_dict = {}
         self.__discovery_dict = {}
-        # connections to other servers
-        self.__other_server_dict = {}
         self.bind_id = get_server_uuid("server")
         self.virtual_sockets = []
         if self.__run_command:
@@ -357,12 +349,12 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.N
         _send_return = True
         com_name = srv_com["command"].text
         self.log("executing command {}".format(com_name))
-        if self.notify_waiting_for_job(srv_com):
-            self.notify_handle_result(srv_com)
+        if self.bg_notify_waiting_for_job(srv_com):
+            self.bg_notify_handle_result(srv_com)
             _send_return = False
         else:
             if com_name in ["wf_notify"]:
-                self.check_notify()
+                self.bg_check_notify()
                 _send_return = False
             else:
                 self._execute_command(srv_com)
@@ -381,25 +373,6 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.N
                 "start_backup",
             )
             connection.close()
-
-    def send_to_server(self, conn_str, srv_uuid, srv_com, **kwargs):
-        _success = True
-        local = kwargs.get("local", False)
-        if local:
-            self._execute_command(srv_com)
-            self.notify_handle_result(srv_com)
-        else:
-            if conn_str not in self.__other_server_dict:
-                self.log("connecting to {} (uuid {})".format(conn_str, srv_uuid))
-                self.__other_server_dict = srv_uuid
-                self.main_socket.connect(conn_str)
-            try:
-                self.main_socket.send_unicode(srv_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                self.main_socket.send_unicode(unicode(srv_com))
-            except:
-                self.log("cannot send to {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
-                _success = False
-        return _success
 
     def _recv_discovery(self, sock):
         result = server_command.srv_command(source=sock.recv_unicode())
@@ -468,14 +441,17 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.N
                             act_sc.name,
                             logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
                             " ({})".format(
-                                ", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
+                                ", ".join(act_sc.Meta.needed_configs)
+                            ) if act_sc.Meta.needed_configs else "",
                             "blocking" if act_sc.Meta.blocking else "not blocking",
                             "{}: {}".format(
                                 logging_tools.get_plural("option key", len(act_sc.Meta.needed_option_keys)),
-                                ", ".join(act_sc.Meta.needed_option_keys)) if act_sc.Meta.needed_option_keys else "no option keys",
+                                ", ".join(act_sc.Meta.needed_option_keys)
+                            ) if act_sc.Meta.needed_option_keys else "no option keys",
                             "{}: {}".format(
                                 logging_tools.get_plural("config key", len(act_sc.Meta.needed_config_keys)),
-                                ", ".join(act_sc.Meta.needed_config_keys)) if act_sc.Meta.needed_config_keys else "no config keys",
+                                ", ".join(act_sc.Meta.needed_config_keys)
+                            ) if act_sc.Meta.needed_config_keys else "no config keys",
                             "background" if act_sc.Meta.background else "foreground",
                         )
                     )
@@ -487,4 +463,8 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.N
         for del_name in del_names:
             initat.cluster_server.modules.command_names.remove(del_name)
             del initat.cluster_server.modules.command_dict[del_name]
-        self.log("Found {}".format(logging_tools.get_plural("command", len(initat.cluster_server.modules.command_names))))
+        self.log(
+            "Found {}".format(
+                logging_tools.get_plural("command", len(initat.cluster_server.modules.command_names))
+            )
+        )

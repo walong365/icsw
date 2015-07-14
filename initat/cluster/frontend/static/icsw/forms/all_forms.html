@@ -1,38 +1,38 @@
 
 <script type='text/ng-template' id='config.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Configuration '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Configuration '{{ edit_obj.name }}'</h2><tabset><tab heading='Basic setup'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_hints() | filter:$viewValue" typeahead-min-length="1" typeahead-on-select="config_selected_vt($item, $model, $label)" /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" typeahead="hint for hint in get_all_config_hint_names() | filter:$viewValue" typeahead-min-length="1" typeahead-on-select="config_selected_vt($item, $model, $label, edit_obj)" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3">
  Description
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div></fieldset><div ng-bind-html='show_config_help()'></div><fieldset 
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="edit_obj.description" type="text" /> </div></div></fieldset><div ng-bind-html='show_config_help(edit_obj)'></div><fieldset 
  ><legend>other settings</legend><div class="form-group"><div id="div_id_enabled"
  class="checkbox
  "
- ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="_edit_obj.enabled" type="checkbox" />
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox" />
  Enabled
  </label></div></div></div><div id="div_id_priority"
  class="form-group 
  "
  ><label for="id_priority" class="control-label col-sm-3 requiredField">
- Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="_edit_obj.priority" required="True" type="number" value="0" /> </div></div><div class="form-group"><div id="div_id_server_config"
+ Priority<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0" /> </div></div><div class="form-group"><div id="div_id_server_config"
  class="checkbox
  "
- ng_show="!_edit_obj.system_config &amp;&amp; !_edit_obj.parent_config"
- ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_server_config" class=""><input class="checkboxinput checkbox" id="id_server_config" name="server_config" ng-model="_edit_obj.server_config" type="checkbox" />
+ ng_show="!edit_obj.system_config"
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_server_config" class=""><input class="checkboxinput checkbox" id="id_server_config" name="server_config" ng-model="edit_obj.server_config" type="checkbox" />
  Server config
- </label></div></div></div></fieldset><fieldset 
- ><legend>Categories</legend><div id="div_id_config_catalog"
+ </label></div></div></div><div id="div_id_config_catalog"
  class="form-group 
  "
  ><label for="id_config_catalog" class="control-label col-sm-3 requiredField">
- Config catalog<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.config_catalog' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='select config catalog'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in this.config_catalogs| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div icsw-config-category-choice edit_obj='{{_edit_obj }}' mode='conf'></div></fieldset><div class="form-actions"><input type="submit"
+ Config catalog<span class="asteriskField">*</span></label><div class="controls col-sm-7"><ui-select ng-model='edit_obj.config_catalog' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='select config catalog'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_all_catalogs()| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></fieldset></tab><tab heading='Categories'><fieldset 
+ ><legend>Categories</legend><div icsw-config-category-choice edit-obj='edit_obj' mode='conf'></div></fieldset></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -171,23 +171,23 @@
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.catalog.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Config catalog '{{ _edit_obj.name }}'</h2><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Config catalog '{{ edit_obj.name }}'</h2><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="254" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_author"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="254" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_author"
  class="form-group 
  "
  ><label for="id_author" class="control-label col-sm-3">
  Author
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_author" maxlength="256" name="author" ng-model="_edit_obj.author" type="text" /> </div></div><div id="div_id_url"
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_author" maxlength="256" name="author" ng-model="edit_obj.author" type="text" /> </div></div><div id="div_id_url"
  class="form-group 
  "
  ><label for="id_url" class="control-label col-sm-3">
  Url
- </label><div class="controls col-sm-7"><input class="urlinput form-control" id="id_url" maxlength="256" name="url" ng-model="_edit_obj.url" type="url" /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><input class="urlinput form-control" id="id_url" maxlength="256" name="url" ng-model="edit_obj.url" type="url" /> </div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -345,7 +345,7 @@
  id="button-id-uuid"
  ng-click="toggle_uuid()"
  /> </div><div 
- ><icsw-tools-button type="modify" button-type="submit" ng-show="acl_modify(_edit_obj, 'backbone.device.change_basic')"></icsw-tools-modify-button></div></div></fieldset></div></form>
+ ><icsw-tools-button type="modify" button-type="submit" ng-show="acl_modify(_edit_obj, 'backbone.device.change_basic')"></icsw-tools-button></div></div></fieldset></div></form>
 </script>
 <script type='text/ng-template' id='mon.period.form'>
 <form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Monitoring period</h2><fieldset 
@@ -433,7 +433,11 @@
 </script>
 <script type='text/ng-template' id='kernel.form'>
 <form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Kernel details</h2><fieldset 
- ><legend>Base data</legend><div id="div_id_name"
+ ><legend>Base data</legend><div id="div_id_display_name"
+ class="form-group 
+ "
+ ><label for="id_display_name" class="control-label col-sm-3 requiredField">
+ Display name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_display_name" maxlength="128" name="display_name" ng-model="edit_obj.display_name" readonly="True" required="True" type="text" /> </div></div><div id="div_id_name"
  class="form-group 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
@@ -1405,22 +1409,22 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.str.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>String var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>String var '{{ edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints() | filter:$viewValue" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div id="div_id_value"
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text" /> </div></div><div id="div_id_value"
  class="form-group 
  "
  ><label for="id_value" class="control-label col-sm-3">
  Value
- </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_value" name="value" ng-model="_edit_obj.value" rows="10"></textarea></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_str'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_value" name="value" ng-model="edit_obj.value" rows="10"></textarea></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_str'"object-id='edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -1878,12 +1882,28 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_remove_not_found" class=""><input class="checkboxinput checkbox" id="id_remove_not_found" name="remove_not_found" ng-model="_edit_obj.remove_not_found" type="checkbox" />
  Remove not found
- </label></div></div></div></fieldset></tab></tabset><div class="form-actions"><input type="button"
+ </label></div></div></div></fieldset></tab><tab ng-show='has_com_capability(_edit_obj, "wmi")' heading='WMI' select='set_scan_mode("wmi")' active='_current_dev.scan_wmi_active'><fieldset 
+ ><legend>Base data</legend><div id="div_id_wmi_username"
+ class="form-group 
+ "
+ ><label for="id_wmi_username" class="control-label col-sm-3">
+ Username
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_username" maxlength="256" name="wmi_username" ng-model="_edit_obj.wmi_username" type="text" /> </div></div><div id="div_id_wmi_password"
+ class="form-group 
+ "
+ ><label for="id_wmi_password" class="control-label col-sm-3">
+ Password
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_password" maxlength="256" name="wmi_password" ng-model="_edit_obj.wmi_password" type="password" /> </div></div><div class="form-group"><div id="div_id_wmi_discard_disabled_interfaces"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_wmi_discard_disabled_interfaces" class=""><input class="checkboxinput checkbox" id="id_wmi_discard_disabled_interfaces" name="wmi_discard_disabled_interfaces" ng-model="_edit_obj.wmi_discard_disabled_interfaces" type="checkbox" />
+ Ignore disabled interfaces
+ </label></div></div></div></fieldset></tab></tabset><alert type="warning" ng-show="!_current_dev.manual_address">Please enter or select an IP address</alert><div class="form-actions"><input type="button"
  name="scan"
  value="scan"
  class="btn btn btn-sm btn-primary"
  id="button-id-scan"
- ng-click="fetch_device_network()"
+ ng-click="fetch_device_network()" ng-disabled="!_current_dev.manual_address"
  /> <input type="submit"
  name="cancel"
  value="cancel"
@@ -1963,7 +1983,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="bo_enabled[&#39;k&#39;]"
  ><label for="id_new_kernel" class="control-label col-sm-4">
  New kernel
- </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_kernel' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='kernel'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in kernels| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div id="div_id_stage1_flavour"
+ </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_kernel' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='kernel'>{{$select.selected.display_name}}</ui-select-match><ui-select-choices repeat='value.idx as value in kernels| props_filter:{name:$select.search}'><div ng-bind-html='value.display_name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div><div id="div_id_stage1_flavour"
  class="form-group 
  "
  ng_show="bo_enabled[&#39;k&#39;]"
@@ -2208,7 +2228,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="_edit_obj.change_new_kernel &amp;&amp; bo_enabled[&#39;k&#39;]"
  ><label for="id_new_kernel" class="control-label col-sm-4">
  New kernel
- </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_kernel' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='kernel'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in kernels| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></div></div><div 
+ </label><div class="controls col-sm-7"><ui-select ng-model='_edit_obj.new_kernel' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='kernel'>{{$select.selected.display_name}}</ui-select-match><ui-select-choices repeat='value.idx as value in kernels| props_filter:{name:$select.search}'><div ng-bind-html='value.display_name | highlight: $select.search'></div></ui-select-choices></ui-select></div></div></div></div><div 
  class="row" ><div 
  class="col-md-3" ></div><div 
  class="col-md-9" ><div id="div_id_stage1_flavour"
@@ -2341,81 +2361,81 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='mon.check.command.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Check command '{{ _edit_obj.name }}'</h2><tabset><tab heading='Basic setup'><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Check command '{{ edit_obj.name }}'</h2><tabset><tab heading='Basic setup'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-2 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-2">
  Description
- </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="_edit_obj.description" type="text" /> </div></div><div id="div_id_mon_check_command_special"
+ </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" type="text" /> </div></div><div id="div_id_mon_check_command_special"
  class="form-group 
  "
- ng_show="_edit_obj.is_active"
+ ng_show="edit_obj.is_active"
  ><label for="id_mon_check_command_special" class="control-label col-sm-2">
  Mon check command special
- </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='_edit_obj.mon_check_command_special' ng-disabled='false'><ui-select-match placeholder='please select a special command'>{{$select.selected.info}}</ui-select-match><ui-select-choices repeat='value.idx as value in mccs_list| props_filter:{name:$select.search}'><div ng-bind-html='value.info | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="_edit_obj.mon_check_command_special = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div><div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning(_edit_obj)"><span class="glyphicon glyphicon-exclamation-sign"></span>
- {{ get_mccs_already_used_warning(_edit_obj) }}
+ </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='edit_obj.mon_check_command_special' ng-disabled='false'><ui-select-match placeholder='please select a special command'>{{$select.selected.info}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_mccs_list()| props_filter:{name:$select.search}'><div ng-bind-html='value.info | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="edit_obj.mon_check_command_special = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div><div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning(edit_obj)"><span class="glyphicon glyphicon-exclamation-sign"></span>
+ {{ get_mccs_already_used_warning(edit_obj) }}
  </div><div id="div_id_command_line"
  class="form-group 
  "
- ng_show="!_edit_obj.mon_check_command_special &amp;&amp; _edit_obj.is_active"
+ ng_show="!edit_obj.mon_check_command_special &amp;&amp; edit_obj.is_active"
  ><label for="id_command_line" class="control-label col-sm-2 requiredField">
- Command line<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_command_line" maxlength="765" name="command_line" ng-model="_edit_obj.command_line" required="True" type="text" /> </div></div><div class='form-group' ng-show="_edit_obj.mon_check_command_special"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item">{{ get_mccs_info() }}</li><li class="list-group-item">{{ get_mccs_cmdline() }}</li></ul></div></div><div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active"><label class='control-label col-sm-2'>Tools</label><div class='controls col-sm-9'><div class="form-inline"><input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'></input>
+ Command line<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_command_line" maxlength="765" name="command_line" ng-model="edit_obj.command_line" required="True" type="text" /> </div></div><div class='form-group' ng-show="edit_obj.mon_check_command_special"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item">{{ get_mccs_info(edit_obj) }}</li><li class="list-group-item">{{ get_mccs_cmdline(edit_obj) }}</li></ul></div></div><div class='form-group' ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active"><label class='control-label col-sm-2'>Tools</label><div class='controls col-sm-9'><div class="form-inline"><input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument(edit_obj)' ng-value='"add argument"'></input>
  name:
- <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_name"></input>
+ <input type='text' class="form-control input-sm" title="default value" ng-model="edit_obj.arg_name"></input>
  value:
- <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_value"></input></div></div></div><div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item" ng-repeat="value in get_moncc_info()">{{ value }}</li></ul></div></div></fieldset><fieldset 
+ <input type='text' class="form-control input-sm" title="default value" ng-model="edit_obj.arg_value"></input></div></div></div><div class='form-group' ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active"><label class="control-label col-sm-2">Info</label><div class="col-sm-9 list-group"><ul><li class="list-group-item" ng-repeat="value in get_moncc_info(edit_obj)">{{ value }}</li></ul></div></div></fieldset><fieldset 
  ><legend>Additional settings</legend><div id="div_id_mon_service_templ"
  class="form-group 
  "
  ><label for="id_mon_service_templ" class="control-label col-sm-2">
  Mon service templ
- </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='_edit_obj.mon_service_templ' ng-disabled='false'><ui-select-match placeholder='please select a service template'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in mon_service_templ | orderBy:&#39;name&#39;| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="_edit_obj.mon_service_templ = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div><div id="div_id_event_handler"
+ </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='edit_obj.mon_service_templ' ng-disabled='false'><ui-select-match placeholder='please select a service template'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in mon_service_templ | orderBy:&#39;name&#39;| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="edit_obj.mon_service_templ = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div><div id="div_id_event_handler"
  class="form-group 
  "
- ng_show="!_edit_obj.is_event_handler"
+ ng_show="!edit_obj.is_event_handler"
  ><label for="id_event_handler" class="control-label col-sm-2">
  Event handler
- </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='_edit_obj.event_handler' ng-disabled='false'><ui-select-match placeholder='please select an event handler'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_event_handlers(_edit_obj)| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="_edit_obj.event_handler = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div></fieldset><fieldset 
- ng-show="!_edit_obj.mon_check_command_special"><legend>Active / passive settings</legend><div class="form-group"><div id="div_id_is_active"
+ </label><div class="controls col-sm-9"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='edit_obj.event_handler' ng-disabled='false'><ui-select-match placeholder='please select an event handler'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_event_handlers(edit_obj)| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="edit_obj.event_handler = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div></fieldset><fieldset 
+ ng-show="!edit_obj.mon_check_command_special"><legend>Active / passive settings</legend><div class="form-group"><div id="div_id_is_active"
  class="checkbox
  "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_active" class=""><input checked="checked" class="checkboxinput checkbox" id="id_is_active" name="is_active" ng-model="_edit_obj.is_active" type="checkbox" />
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_active" class=""><input checked="checked" class="checkboxinput checkbox" id="id_is_active" name="is_active" ng-model="edit_obj.is_active" type="checkbox" />
  Is active
- </label></div></div></div><div class='form-group col-sm-12' ng-show="!_edit_obj.is_active"><b>Set result via</b></div><div class='form-group col-sm-12' ng-show="!_edit_obj.is_active"><tt>
- /opt/cluster/bin/set_passive_checkresult.py --device &lt;FQDN&gt; --check {{ _edit_obj.name }} --state {OK|WARN|CRITICAL} --output &lt;OUTPUT&gt;
+ </label></div></div></div><div class='form-group col-sm-12' ng-show="!edit_obj.is_active"><b>Set result via</b></div><div class='form-group col-sm-12' ng-show="!edit_obj.is_active"><tt>
+ /opt/cluster/bin/set_passive_checkresult.py --device &lt;FQDN&gt; --check {{ edit_obj.name }} --state {OK|WARN|CRITICAL} --output &lt;OUTPUT&gt;
  </tt></div></fieldset><fieldset 
  ><legend>Flags</legend><div 
  class="row" ><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_volatile"
  class="checkbox
  "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_volatile" class=""><input class="checkboxinput checkbox" id="id_volatile" name="volatile" ng-model="_edit_obj.volatile" type="checkbox" />
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_volatile" class=""><input class="checkboxinput checkbox" id="id_volatile" name="volatile" ng-model="edit_obj.volatile" type="checkbox" />
  Volatile
  </label></div></div></div><div class="form-group"><div id="div_id_enable_perfdata"
  class="checkbox
  "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_enable_perfdata" class=""><input class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="_edit_obj.enable_perfdata" type="checkbox" />
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_enable_perfdata" class=""><input class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox" />
  Enable perfdata
  </label></div></div></div></div><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_event_handler_enabled"
  class="checkbox
  "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_event_handler_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_event_handler_enabled" name="event_handler_enabled" ng-model="_edit_obj.event_handler_enabled" type="checkbox" />
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_event_handler_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_event_handler_enabled" name="event_handler_enabled" ng-model="edit_obj.event_handler_enabled" type="checkbox" />
  Event handler enabled
  </label></div></div></div><div class="form-group"><div id="div_id_is_event_handler"
  class="checkbox
  "
- ng_show="_edit_obj.event_handler == undefined"
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_event_handler" class=""><input class="checkboxinput checkbox" id="id_is_event_handler" name="is_event_handler" ng-model="_edit_obj.is_event_handler" type="checkbox" />
+ ng_show="edit_obj.event_handler == undefined"
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_event_handler" class=""><input class="checkboxinput checkbox" id="id_is_event_handler" name="is_event_handler" ng-model="edit_obj.is_event_handler" type="checkbox" />
  Is event handler
- </label></div></div></div></div></div></fieldset></tab><tab heading='Categories ({{ num_cats }})' ng-show='num_cats'><fieldset 
- ><legend>Categories</legend><div icsw-config-category-choice edit_obj='{{_edit_obj }}' mode='mon'></div></fieldset></tab><tab heading='History'><icsw-history-model-history style='config' model="'mon_check_command'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
+ </label></div></div></div></div></div></fieldset></tab><tab heading='Categories'><fieldset 
+ ><legend>Categories</legend><div icsw-config-category-choice edit-obj='edit_obj' mode='mon'></div></fieldset></tab><tab heading='History'><icsw-history-model-history style='config' model="'mon_check_command'"object-id='edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2541,19 +2561,19 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.script.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Config script '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Config script '{{ edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-2 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-2">
  Description
- </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div></fieldset><fieldset 
- ><legend>Script</legend><textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea></fieldset><fieldset 
+ </label><div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="edit_obj.description" type="text" /> </div></div></fieldset><fieldset 
+ ><legend>Script</legend><textarea ui-codemirror='editorOptions' ng-model='edit_obj.value'></textarea></fieldset><fieldset 
  ><legend>Flags</legend><div 
  class="row" ><div 
  class="col-md-6" ><div id="div_id_priority"
@@ -2561,13 +2581,13 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><label for="id_priority" class="control-label col-sm-2">
  Priority
- </label><div class="controls col-sm-9"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="_edit_obj.priority" type="number" value="0" /> </div></div></div><div 
+ </label><div class="controls col-sm-9"><input class="numberinput form-control" id="id_priority" name="priority" ng-model="edit_obj.priority" type="number" value="0" /> </div></div></div><div 
  class="col-md-6" ><div class="form-group"><div id="div_id_enabled"
  class="checkbox
  "
- ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="_edit_obj.enabled" type="checkbox" />
+ ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox" />
  Enabled
- </label></div></div></div></div></div></fieldset></tab><tab heading='History'><icsw-history-model-history on-revert='on_script_revert(get_change_list)'style='config' model="'config_script'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
+ </label></div></div></div></div></div></fieldset></tab><tab heading='History'><icsw-history-model-history on-revert='on_script_revert(edit_obj, get_change_list)'style='config' model="'config_script'"object-id='edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3044,22 +3064,22 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></div></form>
 </script>
 <script type='text/ng-template' id='config.int.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Integer var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Integer var '{{ edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div id="div_id_value"
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text" /> </div></div><div id="div_id_value"
  class="form-group 
  "
  ><label for="id_value" class="control-label col-sm-3">
  Value
- </label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_value" name="value" ng-model="_edit_obj.value" type="number" /> </div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_int'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><input class="numberinput form-control" id="id_value" name="value" ng-model="edit_obj.value" type="number" /> </div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_int'"object-id='edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3215,19 +3235,19 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  /> </div></form>
 </script>
 <script type='text/ng-template' id='config.bool.form'>
-<form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form" ><h2>Bool var '{{ _edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Bool var '{{ edit_obj.name }}'</h2><tabset><tab heading='Settings'><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  ng-class:form_error(&#39;name&#39;) 
  "
  ><label for="id_name" class="control-label col-sm-3 requiredField">
- Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
+ Name<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue" /> </div></div><div id="div_id_description"
  class="form-group 
  "
  ><label for="id_description" class="control-label col-sm-3 requiredField">
- Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" required="True" type="text" /> </div></div><div class='form-group'><label class='control-label col-sm-3'>Value</label><div class='controls col-sm-7'><input type='button'
- ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
- ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'></input></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_bool'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
+ Description<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text" /> </div></div><div class='form-group'><label class='control-label col-sm-3'>Value</label><div class='controls col-sm-7'><input type='button'
+ ng-class='edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
+ ng-click='edit_obj.value = 1 - edit_obj.value' ng-value='edit_obj.value && "true" || "false"'></input></div></div></fieldset><div ng-bind-html='show_config_var_help()'></div></tab><tab heading='History'><icsw-history-model-history style='config' model="'config_bool'"object-id='edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"

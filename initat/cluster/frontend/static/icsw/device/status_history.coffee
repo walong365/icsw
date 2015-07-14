@@ -152,6 +152,7 @@ angular.module(
             # and contains the other directives (this is not necessarily so)
 
             scope.devicepks = []
+            scope.devlistReady = false
             scope.startdate = moment().startOf("day").subtract(1, "days")
             scope.duration_type = 'day'
 
@@ -198,6 +199,7 @@ angular.module(
             scope.devices_rest = {}
             scope.new_devsel = (new_val) ->
                 scope.devicepks = new_val
+                scope.devlistReady = true
 
                 for devicepk in scope.devicepks
                     do (devicepk) ->

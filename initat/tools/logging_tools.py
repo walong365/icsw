@@ -278,7 +278,8 @@ def get_logger(name, destination, **kwargs):
             else:
                 cur_context = kwargs["context"]
             pub = cur_context.socket(zmq.PUSH)
-            pub.setsockopt(zmq.LINGER, -1)
+            pub.setsockopt(zmq.IMMEDIATE, 1)
+            pub.setsockopt(zmq.LINGER, 10)
             pub.connect(rewrite_log_destination(act_dest))
             act_logger.addHandler(zmq_handler(pub, act_logger))
     if log_adapter:
@@ -366,13 +367,24 @@ class zmq_handler(logging.Handler):
         return p_str
 
     def emit(self, record):
-        self.__target.send(self.makePickle(record))
+        _retry_count = 0
+        while True:
+            try:
+                self.__target.send(self.makePickle(record), zmq.DONTWAIT)
+            except zmq.error.Again:
+                _retry_count += 1
+                if _retry_count > 10:
+                    break
+                else:
+                    time.sleep(0.01)
+            else:
+                break
 
     def close(self):
         if self._open:
             self._open = False
             # set linger to zero to speed up close process
-            self.__target.setsockopt(zmq.LINGER, -1)
+            self.__target.setsockopt(zmq.LINGER, 0)
             self.__target.close()
             del self.__target
             if self.__logger:
@@ -443,6 +455,7 @@ class init_handler(zmq_handler):
     def _socket(self):
         cur_context = init_handler.zmq_context
         pub = cur_context.socket(zmq.PUSH)
+        # pub.setsockopt(zmq.IMMEDIATE, True)
         pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
         return pub
 
@@ -1152,7 +1165,10 @@ def list_to_struct(in_list, **kwargs):
         return [("", in_list)]
     # find longest common prefix
     _len = 0
-    _min_len = min([len(_v) for _v in in_list])
+    if in_list:
+        _min_len = min([len(_v) for _v in in_list])
+    else:
+        _min_len = 0
     if not _min_len:
         return [("", in_list)]
     while True:

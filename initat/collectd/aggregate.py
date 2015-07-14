@@ -297,7 +297,7 @@ class AGTopLevelStruct(object):
 
 
 class VE(object):
-    # vector entry
+    # vector entry (duplicated in md_config_server.kpi.kpi_data)
     def __init__(self, *args):
         self.format, self.key, self.info, self.unit, self.v_type, self.value, self.base, self.factor = args
 
@@ -306,6 +306,13 @@ class VE(object):
 
     def get_value(self):
         return self.value * self.factor
+
+    def get_expanded_info(self):
+        # replace "$2" by 2nd part of key and so on
+        expanded_info = self.info
+        for num, subst in enumerate(self.key.split("."), start=1):
+            expanded_info = expanded_info.replace("${}".format(num), subst)
+        return expanded_info
 
 
 class AGSink(object):

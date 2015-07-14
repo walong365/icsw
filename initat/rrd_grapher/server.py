@@ -23,8 +23,8 @@ import json
 
 from django.db import connection
 from initat.rrd_grapher.config import global_config
-from initat.rrd_grapher.struct import DataStore
-from initat.rrd_grapher.graph import graph_process
+from initat.rrd_grapher.rrd_grapher_struct import DataStore
+from initat.rrd_grapher.graph import GraphProcess
 from initat.rrd_grapher.stale import stale_process
 from initat.tools import cluster_location
 from initat.tools import configfile
@@ -56,7 +56,7 @@ class server_process(
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._log_config()
-        self.add_process(graph_process("graph"), start=True)
+        self.add_process(GraphProcess("graph"), start=True)
         self.add_process(stale_process("stale"), start=True)
         connection.close()
         self._init_network_sockets()

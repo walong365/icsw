@@ -26,6 +26,7 @@ import argparse
 
 from .service.service_parser import Parser as ServiceParser
 from .logwatch.logwatch_parser import Parser as LogwatchParser
+from .lse.lse_parser import Parser as LseParser
 
 try:
     from .license.license_parser import Parser as LicenseParser
@@ -51,6 +52,7 @@ class ICSWParser(object):
         # ServiceParser().link(sub_parser)
         # LogwatchParser().link(sub_parser)
         for _sp in [
+            LseParser,
             ServiceParser,
             LogwatchParser,
             LicenseParser,

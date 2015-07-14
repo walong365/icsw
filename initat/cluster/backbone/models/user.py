@@ -89,7 +89,7 @@ class auth_cache(object):
         self.cache_key = u"auth_{}_{:d}".format(
             auth_obj._meta.object_name,
             auth_obj.pk,
-            )
+        )
         self.__perms, self.__obj_perms = ({}, {})
         if self.auth_obj.__class__.__name__ == "user":
             self.has_all_perms = self.auth_obj.is_superuser
@@ -254,8 +254,8 @@ class csw_permission(models.Model):
 
     def __unicode__(self):
         return u"{} | {} | {} | {}".format(
-            self.content_type.app_label,
-            self.content_type,
+            self.content_type.app_label or "backbone",
+            self.content_type.model,
             self.name,
             "G/O" if self.valid_for_object_level else "G",
         )
@@ -579,7 +579,8 @@ class user_manager(models.Manager):
             group=user_group,
             comment="admin created by createsuperuser",
             password=password,
-            is_superuser=True)
+            is_superuser=True
+        )
         return new_admin
 
 
@@ -779,6 +780,7 @@ class user(models.Model):
             ("modify_domain_name_tree", "modify domain name tree", False),
             ("modify_category_tree", "modify category tree", False),
             ("rms_operator", "change RMS settings", True),
+            ("snapshots", "Show database history (snapshots)", False),
         )
         # foreign keys to ignore
         fk_ignore_list = [

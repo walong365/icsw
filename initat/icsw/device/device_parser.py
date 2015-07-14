@@ -30,9 +30,24 @@ class Parser(object):
     def _add_dev_parser(self, sub_parser):
         parser = sub_parser.add_parser("device", help="device information")
         parser.set_defaults(subcom="device", execute=self._execute)
-        parser.add_argument("--action", type=str, default="info", help="action on device list [%(default)s]", choices=["info", "reboot"])
-        parser.add_argument("dev", type=str, nargs="+", help="device to query [%(default)s]", default="")
+        child_parser = parser.add_subparsers(help="device subcommands")
+        self._add_info_parser(child_parser)
+        # self._add_reboot_parser(child_parser)
+        self._add_graphdump_parser(child_parser)
         return parser
+
+    def _add_info_parser(self, sub_parser):
+        _act = sub_parser.add_parser("info", help="show device info")
+        _act.set_defaults(childcom="info")
+        self._add_many_device_option(_act)
+
+    def _add_graphdump_parser(self, sub_parser):
+        _act = sub_parser.add_parser("graphdump", help="show graph structure")
+        _act.set_defaults(childcom="graphdump")
+        self._add_many_device_option(_act)
+
+    def _add_many_device_option(self, _parser):
+        _parser.add_argument("dev", type=str, nargs="+", help="device to query [%(default)s]", default="")
 
     def _execute(self, opt_ns):
         from .main import main

@@ -16,17 +16,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import codecs
+import os
+
 from initat.tools.config_tools import router_object
 from django.db.models import Q
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
 from initat.tools import cluster_location
-import codecs
-import cs_base_class
-from initat.tools import ipvx_tools
-from initat.tools import logging_tools
+from initat.tools import ipvx_tools, logging_tools, process_tools
 import networkx
-import os
-from initat.tools import process_tools
+
+import cs_base_class
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"
@@ -100,14 +100,20 @@ class write_etc_hosts(cs_base_class.server_com):
                     elif mode == 2:
                         post_host_lines.append(line)
             if not any_modes_found:
-                self.log("no ### aeh-.* stuff found in {}, copying to {}.orig".format(
-                    ETC_HOSTS_FILENAME, ETC_HOSTS_FILENAME))
+                self.log(
+                    "no ### aeh-.* stuff found in {}, copying to {}.orig".format(
+                        ETC_HOSTS_FILENAME, ETC_HOSTS_FILENAME
+                    )
+                )
                 try:
                     pass
                 except:
-                    self.log("error writing {}.orig: {}".format(
-                        ETC_HOSTS_FILENAME,
-                        process_tools.get_except_info()))
+                    self.log(
+                        "error writing {}.orig: {}".format(
+                            ETC_HOSTS_FILENAME,
+                            process_tools.get_except_info()
+                        )
+                    )
         # mapping from device_name to all names for ssh_host_keys
         name_dict = {}
         # ip dictionary
@@ -184,9 +190,15 @@ class write_etc_hosts(cs_base_class.server_com):
             for entry in sorted(loc_dict[pen_value]):
                 act_out_list.append([logging_tools.form_entry(entry[0])] + [logging_tools.form_entry(cur_e) for cur_e in entry[1:]])
             host_lines = str(act_out_list).split("\n")
-            out_file.extend(["# penalty {:d}, {}".format(
-                pen_value,
-                logging_tools.get_plural("host entry", len(host_lines))), ""] + host_lines + [""])
+            out_file.extend(
+                [
+                    "# penalty {:d}, {}".format(
+                        pen_value,
+                        logging_tools.get_plural("host entry", len(host_lines))
+                    ),
+                    ""
+                ] + host_lines + [""]
+            )
         if not os.path.isdir(GROUP_DIR):
             try:
                 os.makedirs(GROUP_DIR)
@@ -204,7 +216,11 @@ class write_etc_hosts(cs_base_class.server_com):
                 Q(enabled=True) &
                 Q(device_group__enabled=True) &
                 Q(netdevice__net_ip__ip__contains=".")
-            ).values_list("name", "device_group__name").order_by("device_group__name", "name")
+            ).values_list(
+                "name", "device_group__name"
+            ).order_by(
+                "device_group__name", "name"
+            )
             dg_dict = {}
             for dev_name, dg_name in all_devs:
                 dg_dict.setdefault(dg_name, []).append(dev_name)

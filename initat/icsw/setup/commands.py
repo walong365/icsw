@@ -353,6 +353,9 @@ def check_for_pre17(opts):
         os.rename(PRE_MODELS_DIR, MODELS_DIR)
         # next step: remove all serializer relations from model files
         _files_found = 0
+        _INIT_MODS = [
+            "ipvx_tools", "logging_tools", "net_tools", "process_tools", "server_command"
+        ]
         for _path in [os.path.join(MODELS_DIR, _entry) for _entry in os.listdir(MODELS_DIR) if _entry.endswith(".py")]:
             _files_found += 1
             new_lines = []
@@ -362,12 +365,17 @@ def check_for_pre17(opts):
                 _line = _line.rstrip()
                 empty_line = True if not _line.strip() else False
                 _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
+                _import_line = _line.strip().startswith("import ") and _line.strip().split()[1] in _INIT_MODS
                 if not empty_line:
                     if _ser_line:
                         print("detected serializer line '{}'@{:d}".format(_line, _line_num))
                         _add = False
                         # add dummy declaration
                         new_lines.append("{} = True".format(_line.split()[1].split("(")[0]))
+                    elif _import_line:
+                        print("detected import INIT line '{}'@{:d}".format(_line, _line_num))
+                        _add = True
+                        _line = "from initat.tools import {}".format(_line.strip().split()[1])
                     elif _line[0] != " ":
                         _add = True
                     else:

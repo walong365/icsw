@@ -59,7 +59,6 @@ ics_app = angular.module(
         "icsw.tools.tree",
         "icsw.layout.menu",
         "icsw.layout.sidebar",
-        "icsw.network",
         "icsw.tools",
         "icsw.login",
         "icsw.layout.routing",
@@ -76,6 +75,7 @@ ics_app = angular.module(
         "icsw.device.info",
         "icsw.device.tree",
         "icsw.config.category_tree",
+        "icsw.config.category_location",
         "icsw.config.domain_name_tree",
         "icsw.device.network",
         "icsw.device.configuration",
@@ -102,6 +102,7 @@ ics_app = angular.module(
         "icsw.config.partition_table",
         "icsw.rms",
         "icsw.history",
+        "icsw.discovery",
         {% for app in ADDITIONAL_ANGULAR_APPS %}
         "{{ app }}",
         {% endfor %}
@@ -121,10 +122,12 @@ ics_app = angular.module(
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_ADD_DELETE_REQUEST": "{% url 'base:add_delete_request' %}"
     "BASE_CALCULATE_KPI_PREVIEW": "{% url 'base:CalculateKpiPreview' %}"
-    "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
+    "BASE_CATEGORY_CONTENTS": "{% url 'base:CategoryContents' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
     "BASE_CHECK_DELETE_OBJECT": "{% url 'base:check_delete_object' %}"
     "BASE_CHECK_DELETION_STATUS": "{% url 'base:check_deletion_status' %}"
+    "BASE_DEVICE_CATEGORY": "{% url 'base:DeviceCategory' %}"
+    "BASE_DEVICE_LOCATION": "{% url 'base:DeviceLocation' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
     "BASE_GET_KPI_SOURCE_DATA": "{% url 'base:GetKpiSourceData' %}"
     "BASE_KPI": "{% url 'base:kpi' %}"
@@ -149,6 +152,7 @@ ics_app = angular.module(
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
+    "DEVICE_DEVICE_GENERAL": "{% url 'device:DeviceGeneral' %}"
     "DEVICE_GET_DEVICE_LOCATION": "{% url 'device:get_device_location' %}"
     "DEVICE_MANUAL_CONNECTION": "{% url 'device:manual_connection' %}"
     "DEVICE_SCAN_DEVICE_NETWORK": "{% url 'device:scan_device_network' %}"
@@ -156,6 +160,7 @@ ics_app = angular.module(
     "DEVICE_SHOW_CONFIGS": "{% url 'device:show_configs' %}"
     "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
     "DEVICE_VARIABLES": "{% url 'device:variables' %}"
+    "DISCOVERY_OVERVIEW": "{% url 'discovery:overview' %}"
     "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
     "ICSW_LIC_GET_ALL_LICENSES": "{% url 'icsw_lic:get_all_licenses' %}"
     "ICSW_LIC_GET_LICENSE_PACKAGES": "{% url 'icsw_lic:get_license_packages' %}"
@@ -190,12 +195,16 @@ ics_app = angular.module(
     "MON_GET_MON_VARS": "{% url 'mon:get_mon_vars' %}"
     "MON_GET_NODE_CONFIG": "{% url 'mon:get_node_config' %}"
     "MON_GET_NODE_STATUS": "{% url 'mon:get_node_status' %}"
+    "MON_GRAPH": "{% url 'mon:Graph' %}"
+    "MON_MONITORING_DISK": "{% url 'mon:MonitoringDisk' %}"
+    "MON_MONITORING_HINTS": "{% url 'mon:MonitoringHints' %}"
     "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"
     "MON_OVERVIEW": "{% url 'mon:overview' %}"
     "MON_RESOLVE_NAME": "{% url 'mon:resolve_name' %}"
     "MON_SETUP_CLUSTER": "{% url 'mon:setup_cluster' %}"
     "MON_SETUP_ESCALATION": "{% url 'mon:setup_escalation' %}"
     "MON_SETUP": "{% url 'mon:setup' %}"
+    "MON_STATUS_HISTORY": "{% url 'mon:StatusHistory' %}"
     "MON_SVG_TO_PNG": "{% url 'mon:svg_to_png' %}"
     "MON_USE_PARTITION": "{% url 'mon:use_partition' %}"
     "NETWORK_COPY_NETWORK": "{% url 'network:copy_network' %}"
@@ -239,11 +248,14 @@ ics_app = angular.module(
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"
     "REST_DEVICE_MON_LOCATION_DETAIL": "{% url 'rest:device_mon_location_detail' 1 %}"
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
-    "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
+    "REST_DEVICE_SELECTION_DETAIL": "{% url 'rest:DeviceSelectionDetail' 1 %}"
+    "REST_DEVICE_SELECTION_LIST": "{% url 'rest:DeviceSelectionList' %}"
+    "REST_DEVICE_SELECTION_LIST_OLD": "{% url 'rest:device_selection_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
     "REST_DEVICE_TREE_DETAIL": "{% url 'rest:device_tree_detail' 1 %}"
     "REST_DEVICE_VARIABLE_DETAIL": "{% url 'rest:device_variable_detail' 1 %}"
     "REST_DEVICE_VARIABLE_LIST": "{% url 'rest:device_variable_list' %}"
+    "REST_DISCOVERY_DISPATCH_SETTING_LIST": "{% url 'rest:DispatchSettingList' %}"
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
     "REST_EXT_LICENSE_LIST": "{% url 'rest:ext_license_list' %}"
@@ -311,6 +323,10 @@ ics_app = angular.module(
     "REST_PEER_INFORMATION_LIST": "{% url 'rest:peer_information_list' %}"
     "REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST": "{% url 'rest:quota_capable_blockdevice_list' %}"
     "REST_SNMP_NETWORK_TYPE_LIST": "{% url 'rest:snmp_network_type_list' %}"
+    "REST_SENSOR_ACTION_DETAIL": "{% url 'rest:SensorActionDetail' 1 %}"
+    "REST_SENSOR_ACTION_LIST": "{% url 'rest:SensorActionList' %}"
+    "REST_SENSOR_THRESHOLD_DETAIL": "{% url 'rest:SensorThresholdDetail' 1 %}"
+    "REST_SENSOR_THRESHOLD_LIST": "{% url 'rest:SensorThresholdList' %}"
     "REST_STATUS_LIST": "{% url 'rest:status_list' %}"
     "REST_SYS_PARTITION_DETAIL": "{% url 'rest:sys_partition_detail' 1 %}"
     "REST_SYS_PARTITION_LIST": "{% url 'rest:sys_partition_list'%}"

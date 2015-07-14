@@ -1,81 +1,84 @@
 <script type="text/ng-template" id="icsw.device.livestatus.monconfig">
-    <h4>
-        Action:
-        <div class="btn-group btn-xs">
-            <button type="button" ladda="reload_pending" class="btn btn-success btn-xs dropdown-toggle" data-spinner-size="12" data-toggle="dropdown">
-                reload config <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="load_data('ALWAYS')"><a href="#">cached (fast)</a></li>
-                <li ng-click="load_data('REFRESH')"><a href="#">refresh (contact device if necessary)</a></li>
-            </ul>
-        </div>
-    </h4>
-    <accordion close-others="no" ng-show="!reload_pending">
-        <accordion-group is-open="monconfig_open">
-            <accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monconfig_open, 'glyphicon-chevron-right': !monconfig_open}"></i>
-                Monitoring config, {{ mc_tables.length }} tables shown,
-            </accordion-heading>
-            <tabset>
-                <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
-                    <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3>
-                    <table class="table table-condensed table-hover table-striped" style="width:auto;">
-                        <thead>
-                            <tr>
-                                <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-                            </tr>
-                            <tr>
-                                <th colspan="{{ value.attr_list.length }}">
-                                    <div class="btn-group btn-group-xs">
-                                        <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
-                                    </div>
-                                </th>
-                            </tr>
-                            <tr>
-                                <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
-                                    <span ng-class="value.get_order_glyph(attr)"></span>
-                                    {{ get_short_attr_name(attr) }}
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
-                                <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
-                                    {{ entry[attr] }}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </tab>
-            </tabset>
-        </accordion-group>
-        <accordion-group is-open="monhint_open">
-            <accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monhint_open, 'glyphicon-chevron-right': !monhint_open}"></i>
-                Monitoring hint ({{ devices.length }} devices)
-            </accordion-heading>
-            <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th>Device</th>
-                        <th>Group</th>
-                        <th>Comment</th>
-                        <th>Info</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
-                    <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
-                        <td colspan="9">
-                            <monitoringhinttable></monitoringhinttable>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </accordion-group>
-    </accordion>
+    <h2>Monitoring Hints ({{devsel_list.length}} devices)</h2>
+    <icsw-tools-ensure-device-selection dev-list="devsel_list"> <!-- don't need list-ready since it's handled in the page below -->
+        <h4>
+            Action:
+            <div class="btn-group btn-xs">
+                <button type="button" ladda="reload_pending" class="btn btn-success btn-xs dropdown-toggle" data-spinner-size="12" data-toggle="dropdown">
+                    reload config <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-click="load_data('ALWAYS')"><a href="#">cached (fast)</a></li>
+                    <li ng-click="load_data('REFRESH')"><a href="#">refresh (contact device if necessary)</a></li>
+                </ul>
+            </div>
+        </h4>
+        <accordion close-others="no" ng-show="!reload_pending">
+            <accordion-group is-open="monconfig_open">
+                <accordion-heading>
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monconfig_open, 'glyphicon-chevron-right': !monconfig_open}"></i>
+                    Monitoring config, {{ mc_tables.length }} tables shown,
+                </accordion-heading>
+                <tabset>
+                    <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
+                        <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3>
+                        <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                            <thead>
+                                <tr>
+                                    <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+                                </tr>
+                                <tr>
+                                    <th colspan="{{ value.attr_list.length }}">
+                                        <div class="btn-group btn-group-xs">
+                                            <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
+                                        <span ng-class="value.get_order_glyph(attr)"></span>
+                                        {{ get_short_attr_name(attr) }}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
+                                    <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
+                                        {{ entry[attr] }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </tab>
+                </tabset>
+            </accordion-group>
+            <accordion-group is-open="monhint_open">
+                <accordion-heading>
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monhint_open, 'glyphicon-chevron-right': !monhint_open}"></i>
+                    Monitoring hint ({{ devices.length }} devices)
+                </accordion-heading>
+                <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Device</th>
+                            <th>Group</th>
+                            <th>Comment</th>
+                            <th>Info</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+                        <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
+                            <td colspan="9">
+                                <monitoringhinttable></monitoringhinttable>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </accordion-group>
+        </accordion>
+    </icsw-tools-ensure-device-selection>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.hint.row">

@@ -117,6 +117,26 @@ class device_config(permission_required_mixin, View):
         )()
 
 
+class MonitoringHints(permission_required_mixin, View):
+    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
+
+    def get(self, request):
+        return render_me(
+            request, "monitoring_hints.html", {
+            }
+        )()
+
+
+class MonitoringDisk(permission_required_mixin, View):
+    all_required_permissions = ["backbone.device.change_disk"]
+
+    def get(self, request):
+        return render_me(
+            request, "monitoring_disk.html", {
+            }
+        )()
+
+
 class create_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -303,6 +323,22 @@ class livestatus(View):
         )()
 
 
+class StatusHistory(permission_required_mixin, View):
+    def get(self, request):
+        return render_me(
+            request, "monitoring_status_history.html", {
+            }
+        )()
+
+
+class Graph(permission_required_mixin, View):
+    def get(self, request):
+        return render_me(
+            request, "monitoring_graph.html", {
+            }
+        )()
+
+
 class overview(View):
     @method_decorator(login_required)
     def get(self, request):
@@ -346,7 +382,7 @@ class get_mon_vars(View):
                     )
         mon_special_check_commands = mon_check_command_special.objects.filter(
             Q(mon_check_command__config__device_config__device__in=_dev_pks)
-        ).select_related("mon_check_command__config")
+        )
         for _mc in mon_special_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
             for _key, _value in _mon_info["default_values"].iteritems():

@@ -89,6 +89,9 @@ angular.module(
                             scope.update_dthree()
 
                 scope.update_dthree = () ->
+                    # show result
+                    icswConfigKpiVisUtils.sort_kpi_set(scope.data)
+                    scope.kpi_set_to_show = scope.data
 
                     _get_max_depth = (node, cur_depth) ->
                         max_depth = cur_depth
@@ -245,8 +248,9 @@ angular.module(
                     $timeout(
                         () ->
                             if scope._mouse_on_node == node
+                                icswConfigKpiVisUtils.sort_kpi_set(node)
                                 scope.kpi_set_to_show = node
-                        100
+                        50
                     )
                     scope._mouse_on_node = node
                 scope.on_mouse_leave = (node) ->
@@ -254,7 +258,11 @@ angular.module(
                     scope._mouse_on_node = undefined
                 scope.on_mouse_leave_widget = () ->
                     # when mouse leaves full widget
-                    scope.kpi_set_to_show = undefined
+                    # to hide set:
+                    # scope.kpi_set_to_show = undefined
+                    # to show global result
+                    #scope.kpi_set_to_show = scope.data
+                    # do nothing currently
 
                 scope.get_div_height_style = () ->
                     return {'height': scope.div_height}
@@ -330,7 +338,7 @@ angular.module(
                 )
 
         }
-]).service("icswConfigKpiVisUtils", () ->
+]).service("icswConfigKpiVisUtils", ["$filter", ($filter) ->
     ret = {
         kpi_obj_to_string: (kpi_obj, verbose) ->
             # verbose is currently not used
@@ -343,8 +351,8 @@ angular.module(
                 else if kpi_obj.check_command
                     parts.push kpi_obj.check_command
 
-                if kpi_obj.rrd_key?
-                    parts.push kpi_obj.rrd_key
+                if kpi_obj.rrd_id?
+                    parts.push kpi_obj.rrd_id
 
                 if kpi_obj.aggregated_tl?
                     # parts.push "{" + ( "#{k}: #{(v*100).toFixed(3)}%" for k, v of kpi_obj.aggregated_tl).join(", ") + "}"
@@ -378,6 +386,10 @@ angular.module(
                 return parts.join(",")
 
             return if verbose then kpi_obj_to_string_verbose(kpi_obj) else kpi_obj_to_string_concise(kpi_obj)
+
+        sort_kpi_set: (kpi_set) ->
+            kpi_set.objects = $filter('orderBy')(kpi_set.objects, ['host_name', 'service_info', 'check_command', 'rrd_id'])
+            return kpi_set
     }
 
     contents = Object.keys(ret)
@@ -386,4 +398,4 @@ angular.module(
             scope[c] = ret[c]
 
     return ret
-)
+])

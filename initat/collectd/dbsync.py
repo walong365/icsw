@@ -19,16 +19,14 @@
 #
 """ db-syncer for the NESTOR / CORVUS / NOCTUA graphing solution """
 
+from lxml import etree
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, MachineVector, MVStructEntry, MVValueEntry
-from initat.collectd.config import global_config
-from initat.tools import logging_tools
-from initat.tools import server_mixins
-from initat.tools import threading_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from lxml import etree
+from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
+
+from .config import global_config
 
 
 class GenCache(object):
@@ -227,6 +225,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMix
         elif parent_entry.tag == "mvl":
             _key = (entry.attrib["key"],)
         elif parent_entry.tag == "perfdata_info":
+            # print "pi", parent_entry, entry, entry.attrib
             _key = (entry.attrib["key"],)
         return _key
 
@@ -261,12 +260,16 @@ class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMix
         # compare MVValue with XML
         # list to compare
         # print entry.attrib
+        # from lxml import etree
         _list = [
             ("base", int(entry.get("base", "1"))),
             ("factor", int(entry.get("factor", "1"))),
             ("unit", entry.get("unit", "")),
             ("v_type", entry.get("v_type")),
             ("info", entry.get("info", "")),
+            # only set name for pdes (the attribute names is used differently for other sources)
+            ("name", entry.get("name", "") if mvs.se_type in ["pde", "mvl"] else ""),
+            ("rra_idx", int(entry.get("rra_idx", "0")) if mvs.se_type in ["pde", "mvl"] else 0),
             ("full_key", "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")),
         ]
         _changed = False

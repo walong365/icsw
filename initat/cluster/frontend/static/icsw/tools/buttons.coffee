@@ -77,6 +77,14 @@ angular.module(
             ret_obj.css_class = "btn-primary"
             ret_obj.button_value = gettextCatalog.getString("submit")
             ret_obj.icon_class = "fa fa-arrow-circle-right"
+        else if type == "save"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "save"
+            ret_obj.icon_class = "fa fa-save"
+        else if type == "select_devices"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.button_value = "select devices"
+            ret_obj.icon_class = "fa fa-desktop"
         else
             console.error "Invalid button type: #{type}"
         return ret_obj

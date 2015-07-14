@@ -152,7 +152,10 @@ def image_pre_save(sender, **kwargs):
 
 class kernel(models.Model):
     idx = models.AutoField(db_column="kernel_idx", primary_key=True)
-    name = models.CharField(max_length=384)
+    # display (and directory name), should be unique
+    display_name = models.CharField(max_length=128, default="")
+    # real kernel name
+    name = models.CharField(max_length=384, default="")
     kernel_version = models.CharField(max_length=384)
     major = models.CharField(max_length=192, blank=True)
     minor = models.CharField(max_length=192, blank=True)
@@ -191,7 +194,7 @@ class kernel(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def get_usecount(self):
-        return 5
+        return 0
 
     def create_history_entry(self, _dbh):
         _kdh = KernelDeviceHistory.objects.create(
@@ -211,7 +214,7 @@ class kernel(models.Model):
         return "{:d}.{:d}".format(self.version, self.release)
 
     def __unicode__(self):
-        return "Kernel {} ({})".format(self.name, self.full_version)
+        return "Kernel {} (is {}, {})".format(self.display_name, self.name, self.full_version)
 
     class CSW_Meta:
         permissions = (

@@ -26,6 +26,7 @@ import collections
 import pprint
 
 from collections import defaultdict
+import datetime
 from enum import IntEnum, Enum
 import pytz
 
@@ -156,6 +157,7 @@ class KpiObject(object):
             'result': None if self.result is None else unicode(self.result),
             'host_name': self.host_name,
             'host_pk': self.host_pk,
+            'device_category': ", ".join(self.device_category),
         }
 
     def is_service(self):
@@ -166,21 +168,27 @@ class KpiObject(object):
 
     def get_machine_object_id_properties(self):
         """Returns all properties of the object which are necessary to identify the object"""
+        # TODO: refactor this, see get_machine_object_id_type
         return self.host_pk
 
     class IdType(Enum):
         service = 1
         device = 2
+        rrd = 3
 
     @classmethod
     def get_machine_object_id_type(cls, ident):
         # TODO: refactor this system to something which explicitly says what it represents
+        # for this, get_machine_object_id_properties must be changed
+        # the current system assumes that there are no rrd-objects which are service-objects
         try:
             obj_len = len(ident)
         except TypeError:
             obj_len = None
         if obj_len == 3:
             return cls.IdType.service
+        elif obj_len == 2:
+            return cls.IdType.rrd
         elif isinstance(ident, (int, long)):
             return cls.IdType.device
         else:
@@ -209,7 +217,7 @@ class KpiObject(object):
 
 # all object types:
 
-# rrd_key, rrd_value, host
+# rrd_id, rrd_name rrd_value, host
 # result, host
 # result, host, serv_id, service_info
 # host (historic host)
@@ -244,22 +252,46 @@ class KpiDetailObject(KpiObject):
 
 class KpiRRDObject(KpiObject):
     """Kpi Object with rrd data"""
-    def __init__(self, rrd_key, rrd_value, **kwargs):
-        if rrd_key is None:
-            raise ValueError("rrd_key is None")
+    def __init__(self, rrd_id, rrd_name, rrd_value, **kwargs):
+        if rrd_id is None:
+            raise ValueError("rrd_id is None")
+        if rrd_name is None:
+            raise ValueError("rrd_name is None")
         if rrd_value is None:
             raise ValueError("rrd_value is None")
         super(KpiRRDObject, self).__init__(**kwargs)
-        self.rrd_key = rrd_key
+        self.rrd_id = rrd_id
+        self.rrd_name = rrd_name
         self.rrd_value = rrd_value
 
     def __repr__(self, child_repr=""):
         return super(KpiRRDObject, self).__repr__(child_repr=child_repr +
-                                                  "rrd:{}:{}".format(self.rrd_key, self.rrd_value))
+                                                  "rrd:{}:{}".format(self.rrd_id, self.rrd_value))
+
+    def matches_id(self, ident):
+        try:
+            return ident[1] == self.rrd_id and super(KpiRRDObject, self).matches_id(ident[0])
+        except TypeError:
+            return False
+
+    def get_machine_object_id_properties(self):
+        return (
+            super(KpiRRDObject, self).get_machine_object_id_properties(),
+            self.rrd_id,
+        )
+
+    def get_full_object_id_properties(self):
+        return dict(
+            rrd_id=self.rrd_id,
+            rrd_name=self.rrd_name,
+            rrd_value=self.rrd_value,
+            **super(KpiRRDObject, self).get_full_object_id_properties()
+        )
 
     def serialize(self):
         return dict(
-            rrd_key=self.rrd_key,
+            rrd_id=self.rrd_id,
+            rrd_name=self.rrd_name,
             rrd_value=self.rrd_value,
             **super(KpiRRDObject, self).serialize()
         )
@@ -306,6 +338,11 @@ class KpiServiceObject(KpiObject):
         return dict(
             service_name=self.check_command,
             service_info=self.service_info,
+            monitoring_category=", ".join(self.monitoring_category),
+            check_command=self.check_command,
+            check_command_description=self.check_command_description,
+            config=self.config,
+            config_description=self.config_description,
             **super(KpiServiceObject, self).serialize()
         )
 
@@ -487,18 +524,28 @@ class KpiSet(object):
 
     def _check_value(self, amount, limit_ok, limit_warn, method='at least'):
         if method == 'at least':
-            _cmp = lambda x, y: x >= y
+            if limit_warn is not None and limit_ok < limit_warn:
+                raise RuntimeError("With at least comparisons, limit_ok must be greater than or equal to limit_warn")
+
+            if amount >= limit_ok:
+                result = KpiResult.ok
+            elif limit_warn is not None and amount >= limit_warn:
+                result = KpiResult.warning
+            else:
+                result = KpiResult.critical
         elif method == 'at most':
-            _cmp = lambda x, y: x < y
+            if limit_warn is not None and limit_ok > limit_warn:
+                raise RuntimeError("With at least comparisons, limit_ok must be lesser than or equal to limit_warn")
+
+            if amount <= limit_ok:
+                result = KpiResult.ok
+            elif limit_warn is not None and amount <= limit_warn:
+                result = KpiResult.warning
+            else:
+                result = KpiResult.critical
         else:
             raise ValueError("Invalid comparison method: '{}'. Supported methods are 'at least' or 'at most'.")
 
-        if _cmp(amount, limit_ok):
-            result = KpiResult.ok
-        elif limit_warn is not None and cmp(amount, limit_warn):
-            result = KpiResult.warning
-        else:
-            result = KpiResult.critical
         return result
 
     def _filter_impl(self, parameters, positive):
@@ -520,8 +567,11 @@ class KpiSet(object):
         for k, v in parameters.iteritems():
             # match_check_fun is actually 'equality'-testing
             if isinstance(v, basestring):
-                match_re = re.compile(u".*{}.*".format(v))
-                match_check_fun = lambda x: x is not None and match_re.match(x)
+                match_re = re.compile(v)
+
+                def create_matcher(match_re=match_re):  # force closure
+                    return lambda x: x is not None and match_re.search(x)
+                match_check_fun = create_matcher()
             else:
                 match_check_fun = lambda x: x == v
 
@@ -662,11 +712,11 @@ class KpiSet(object):
 
         return retval
 
-    def historic_or(self):
-        return self.aggregate_historic(method='or')
+    def historic_best(self):
+        return self.aggregate_historic(method='best')
 
-    def historic_and(self):
-        return self.aggregate_historic(method='and')
+    def historic_worst(self):
+        return self.aggregate_historic(method='worst')
 
     def get_historic_data(self, start=None, end=None):
         """
@@ -681,10 +731,17 @@ class KpiSet(object):
             kpi_global_start, kpi_global_end = KpiGlobals.current_kpi.get_time_range()
 
             # help user by fixing their timezones
-            fix_tz = lambda moment: moment if moment.tzinfo is not None else moment.replace(tzinfo=pytz.utc)
+            def fix_input(moment):
+                # moment might be date
+                if not isinstance(moment, datetime.datetime):
+                    moment = datetime.datetime(moment.year, moment.month, moment.day)
+                if moment.tzinfo is not None:
+                    return moment
+                else:
+                    return moment.replace(tzinfo=pytz.utc)
 
-            start = fix_tz(start) if start is not None else kpi_global_start
-            end = fix_tz(end) if end is not None else kpi_global_end
+            start = fix_input(start) if start is not None else kpi_global_start
+            end = fix_input(end) if end is not None else kpi_global_end
 
             if start < kpi_global_start:
                 raise RuntimeError(
@@ -729,16 +786,21 @@ class KpiSet(object):
             for ident, time_line in time_lines.iteritems():
                 id_objs = self.get_by_id(ident)
                 if id_objs:
-                    if KpiObject.get_machine_object_id_type(ident) == KpiObject.IdType.service:
+                    obj_id = KpiObject.get_machine_object_id_type(ident)
+                    if obj_id == KpiObject.IdType.service:
                         kpi_klass = KpiServiceTimeLineObject
-                    else:
+                    elif obj_id == KpiObject.IdType.device:
                         kpi_klass = KpiTimeLineObject
-                    objects.append(
-                        kpi_klass(
-                            time_line=time_line,
-                            **id_objs[0].get_full_object_id_properties()
+                    else:
+                        kpi_klass = None  # this does not happen as only service and device objects are added
+
+                    if kpi_klass:
+                        objects.append(
+                            kpi_klass(
+                                time_line=time_line,
+                                **id_objs[0].get_full_object_id_properties()
+                            )
                         )
-                    )
                 else:
                     print ("Historical obj found but no kpi obj: {} {} {}".format(ident))
                     # TODO: logging is broken in this context
@@ -754,6 +816,12 @@ class KpiSet(object):
         :type result: KpiResult
         :param method: 'at least' or 'at most'
         """
+        if ratio_ok > 1.0:
+            raise ValueError("ratio_ok is greater than 1.0: {}. ".format(ratio_ok) +
+                             "Please specify ratio_ok as floating point number between 0.0 and 1.0.")
+        if ratio_warn is not None and ratio_warn > 1.0:
+            raise ValueError("ratio_warn is greater than 1.0: {}. ".format(ratio_warn) +
+                             "Please specify ratio_warn as floating point number between 0.0 and 1.0.")
         origin = KpiOperation(KpiOperation.Type.evaluate_historic,
                               arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': unicode(result),
                                          'method': method},
@@ -792,17 +860,32 @@ class KpiSet(object):
 
             return KpiSet(objects=objects, origin=origin)
 
-    def evaluate(self):
+    def worst(self):
         """
         Calculate "worst" result, i.e. result is critical
         if at least one is critical or else warn if at least one is warn etc.
         """
-        # TODO: have parameter: method
-        origin = KpiOperation(KpiOperation.Type.evaluate, operands=[self])
+        return self.evaluate(method='worst')
+
+    def best(self):
+        """
+        Calculate "best" result, i.e. result is ok
+        if at least one is ok or else warn if at least one is warn etc.
+        """
+        return self.evaluate(method='best')
+
+    def evaluate(self, method='worst'):
+        # usually called through either worst() or best()
+        if method not in ('worst', 'best'):
+            raise ValueError("method must be either 'worst' or 'best', not {}".format(method))
+        origin = KpiOperation(KpiOperation.Type.evaluate,
+                              arguments={'method': method},
+                              operands=[self])
         if not self.result_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:
-            aggregated_result = max(obj.result for obj in self.result_objects)
+            aggr_fun = max if method == 'worst' else min
+            aggregated_result = aggr_fun(obj.result for obj in self.result_objects)
             return KpiSet([KpiObject(result=aggregated_result)], origin=origin)
 
     def evaluate_rrd(self, limit_ok, limit_warn=None, method='at least'):
@@ -816,11 +899,10 @@ class KpiSet(object):
         if not self.rrd_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:
+            # construct same RRD-objects but with results
             return KpiSet(
                 objects=[
                     KpiRRDObject(
-                        rrd_key=rrd_obj.rrd_key,
-                        rrd_value=rrd_obj.rrd_value,
                         result=self._check_value(rrd_obj.rrd_value, limit_ok, limit_warn, method),
                         **rrd_obj.get_full_object_id_properties()
                     ) for rrd_obj in self.rrd_objects

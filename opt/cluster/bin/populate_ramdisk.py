@@ -33,22 +33,17 @@ from django.db.models import Q
 from initat.cluster.backbone.models import kernel, initrd_build
 import argparse
 import commands
-from initat.tools import config_tools
 import datetime
 import fnmatch
 import gzip
-from initat.tools import logging_tools
-from initat.tools import module_dependency_tools
-from initat.tools import net_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, module_dependency_tools, net_tools, process_tools, server_command, \
+    uuid_tools, config_tools
 import re
-from initat.tools import server_command
 import shutil
 import stat
 import statvfs
 import tempfile
 import time
-from initat.tools import uuid_tools
 
 MOD_REFUSE_LIST = [
     "3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
@@ -84,7 +79,7 @@ stage1_file_dict = {
         "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
         "lsmod", "depmod", "insmod", "mkfs.ext2", "date", "xml",
         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
-        "killall", "seq", "hoststatus_zmq", "chown", "ldconfig", "which",
+        "killall", "seq", "hoststatus_zmq", "chown", "ldconfig", "which", "ln",
         "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee",
     ]
 }
@@ -109,7 +104,7 @@ stage2_file_dict = {
         "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
         "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
-        "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
+        "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod", "pbzip2",
         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm", "which", "xml",
         "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkswap",
         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
@@ -799,8 +794,12 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     # ldconfig call
     ld_stat, _out = commands.getstatusoutput("chroot {} /sbin/ldconfig".format(temp_dir))
     if ld_stat:
-        print "Error calling /sbin/ldconfig"
-        sev_dict["E"] += 1
+        ld_stat, _out = commands.getstatusoutput("chroot {} /usr/sbin/ldconfig".format(temp_dir))
+        if ld_stat:
+            print "Error calling {/usr}/sbin/ldconfig: {}".format(_out)
+            sev_dict["E"] += 1
+        else:
+            os.unlink("{}/usr/sbin/ldconfig".format(temp_dir))
     else:
         os.unlink("{}/sbin/ldconfig".format(temp_dir))
     # check size (not really needed, therefore commented out)
@@ -1170,7 +1169,7 @@ class arg_parser(argparse.ArgumentParser):
             help="read list of kernel-modules from this file, if neither -m or -M is used the latest setting from the db is used"
         )
         self.add_argument("--insert-kernel", default=False, action="store_true", help="add kernel to database (if not already present) [%(default)s]")
-        self.add_argument(dest="kernel_dir", default="", nargs="?")
+        self.add_argument("kernel_name", default="", nargs="?", choices=sorted(kernel.objects.all().values_list("display_name", flat=True)))
 
     def parse(self):
         cur_args = self.parse_args()
@@ -1179,6 +1178,15 @@ class arg_parser(argparse.ArgumentParser):
             sys.exit(0)
         cur_args.modules = [entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]
         return cur_args
+
+
+def copy_stage_file(src_dir, stage_name, stage_dest):
+    src_file = os.path.join(src_dir, stage_name)
+    content = file(src_file, "r").read()
+    if os.path.isfile("/usr/bin/bash"):
+        # rewrite shebang
+        content = "\n".join(["#!/usr/bin/bash"] + content.split("\n")[1:])
+    file(stage_dest, "w").write(content)
 
 
 def main_normal():
@@ -1205,13 +1213,7 @@ def main_normal():
     if my_args.show_kernels:
         do_show_kernels(my_args.show_kernels == 2)
         sys.exit(1)
-    if not my_args.kernel_dir:
-        print "No kernel-dir given, exiting"
-        sys.exit(1)
-    kernel_name = os.path.split(os.path.normpath(my_args.kernel_dir))[1]
-    if not kernel_name:
-        print "Cannot extract kernel_name from {}".format(my_args.kernel_dir)
-        sys.exit(1)
+    my_args.kernel_dir = os.path.join("/tftpboot", "kernels", my_args.kernel_name)
     if not os.path.isfile(os.path.join(my_args.kernel_dir, "bzImage")):
         print "Found no kernel (bzImage) under {}, exiting".format(my_args.kernel_dir)
         sys.exit(1)
@@ -1237,15 +1239,10 @@ def main_normal():
             ", ".join(["{} [{}]".format(
                 unicode(cur_entry.effective_device),
                 ", ".join(cur_entry.simple_ip_list)) for cur_entry in mother_list]))
-    if not os.path.isdir(my_args.kernel_dir):
-        print "Need a directory as argument ('{}' is not a directory)".format(my_args.kernel_dir)
-        sys.exit(1)
-    elif not os.path.isabs(my_args.kernel_dir):
-        print "Need an absoult path as argument ('{}' is a relative path)".format(my_args.kernel_dir)
-        sys.exit(1)
     target_path = os.path.normpath(my_args.kernel_dir)
+    kernel_name = my_args.kernel_name
     try:
-        my_kernel = kernel.objects.get(Q(name=kernel_name))
+        my_kernel = kernel.objects.get(Q(display_name=kernel_name))
     except kernel.DoesNotExist:
         # if my_args.db_insert:
         #    print "*** Cannot find a kernel at path '%s' (%s at %s) in database, inserting..." % #(my_args.kernel_dir, kernel_name, target_path)
@@ -1364,7 +1361,7 @@ def main_normal():
         elif len(kverdirs) == 0:
             print "No KernelVersionDirectory found below '{}/lib/modules'".format(my_args.kernel_dir)
             sys.exit(1)
-        kverdir = kernel_name
+        kverdir = my_kernel.name
 
         if my_args.do_depmod_call:
             lib_dir = os.path.join(my_args.kernel_dir, "lib", "modules", kverdir)
@@ -1574,12 +1571,12 @@ def main_normal():
         for linuxrc_name in LINUXRC_NAMES:
             # stage1 stuff
             stage1_dest = "/%s/%s" % (stage_dirs[0], linuxrc_name)
-            shutil.copy2("/%s/stage1" % (my_args.stage_source_dir), stage1_dest)
+            copy_stage_file(my_args.stage_source_dir, "stage1", stage1_dest)
             os.chmod(stage1_dest, 0744)
             os.chown(stage1_dest, 0, 0)
             # stagelocal stuff
             stageloc_dest = "/%s/%s" % (stage_dirs[2], linuxrc_name)
-            shutil.copy2("/%s/stagelocal" % (my_args.stage_source_dir), stageloc_dest)
+            copy_stage_file(my_args.stage_source_dir, "stagelocal", stageloc_dest)
             os.chmod(stageloc_dest, 0744)
             os.chown(stageloc_dest, 0, 0)
         # add kernel-modules to stage1 / stageloc

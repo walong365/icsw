@@ -1,0 +1,138 @@
+<script type="text/ng-template" id="icsw.layout.selection.modify">
+    <div ng-controller="icswLayoutSelectionController">
+        <tabset>
+            <tab heading="current selection">
+                <div class="input-group">
+                    <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
+                        <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search ..." ng-change="update_search()"/>
+                    </div>
+                    <span class="input-group-btn">
+                        <button class="btn btn-success fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                             Apply
+                        </button>
+                        <button class="btn btn-warning fa fa-remove" title="Clear selection" type="button" ng-click="clear_search()">
+                        </button>
+                    </span>
+                </div>
+                <span class="input-group">
+                    <icsw-tools-button type="display" size="sm" value="show selection" ng-show="selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="sm" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
+                </span>
+                <span class="input-group pull-right">
+                    <button class="btn btn-primary" ng-show="selection.any_selected()"
+                            ng-click="show_current_selection_in_overlay()">
+                        <span class="bootstrap-dialog-button-icon glyphicon glyphicon-menu-hamburger"></span>
+                        show in overlay
+                    </button>
+                </span>
+                <small>
+                    <ul class="list-group" ng-show="show_selection && selection.any_selected()">
+                        <li class="list-group-item" ng-show="selection.devg_sel.length">
+                            <strong>{{ selection.devg_sel.length }} lazy Device Groups:</strong> {{ resolve_device_groups(selection) }}
+                        </li>
+                        <li class="list-group-item" ng-show="selection.cat_sel.length">
+                            <strong>{{ selection.cat_sel.length }} lazy Categories:</strong> {{ resolve_categories(selection) }}
+                        </li>
+                        <li class="list-group-item" ng-show="selection.dev_sel.length">
+                            <strong>{{ selection.dev_sel.length }} direct Devices:</strong> {{ resolve_devices(selection) }}
+                        </li>
+                        <li class="list-group-item text-success" ng-show="selection.tot_dev_sel.length">
+                            <strong>{{ selection.tot_dev_sel.length }} total Devices:</strong> {{ resolve_total_devices(selection) }}
+                        </li>
+                    </ul>
+                </small>
+                <form class="form-horizontal">
+                    <div class="form-group" ng-show="synced">
+                        <label class="col-md-2 control-label">Selected:</label>
+                        <div class="col-md-10 form-control-static">
+                            {{ vars.current.info }}
+                            <span class="pull-right">
+                                <icsw-tools-button type="save" size="sm" ng-show="vars.current.changed" ng-click="update_selection()"></icsw-tools-button>
+                            </span>
+                        </div>
+                    </div>
+                </form>
+                <tabset>
+                    <tab select="activate_tab('d')" active="tabs['d']">
+                        <tab-heading>
+                            Device
+                            <span ng-show="selection_dict['d']">
+                                ({{ selection_dict['d'] }})
+                                <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('d')">
+                                     Clear
+                                </button>
+                            </span>
+                        </tab-heading>
+                        <!-- use tree for production or ntree for testing -->
+                        <!-- add attribute max-heigth to limit used height -->
+                        <tree treeconfig="tc_devices" single="true"></tree>
+                    </tab>
+                    <tab select="activate_tab('g')" active="tabs['g']">
+                        <tab-heading>
+                            Group
+                            <span ng-show="selection_dict['g']">
+                                ({{ selection_dict['g'] }})
+                                <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('g')">
+                                     Clear
+                                </button>
+                            </span>
+                        </tab-heading>
+                        <tree treeconfig="tc_groups"></tree>
+                    </tab>
+                    <tab select="activate_tab('c')" active="tabs['c']">
+                        <tab-heading>
+                            Category
+                            <span ng-show="selection_dict['c']">
+                                ({{ selection_dict['c'] }})
+                                <button class="btn btn-warning btn-xs fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection('c')">
+                                     Clear
+                                </button>
+                            </span>
+                        </tab-heading>
+                        <tree treeconfig="tc_categories"></tree>
+                    </tab>
+                </tabset>
+            </tab>
+            <tab heading="saved selections" select="enable_saved_selections()">
+                <form class="form-horizontal">
+                    <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
+                    <div ng-show="saved_selections.length">
+                        <h3 class="text-success">{{ saved_selections.length }} saved selections found</h3>
+                        <div class="form-group">
+                            <div class="col-md-12 controls">
+                                <ui-select ng-model="vars.current" on-select="use_selection($item, $model)">
+                                    <ui-select-match placeholder="Choose a selection...">{{ $select.selected.info }}</ui-select-match>
+                                    <ui-select-choices repeat="sel in saved_selections">
+                                        <div ng-bind-html="sel.info | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" ng-show="vars.current.idx">
+                        <label class="col-md-2 control-label">Selected:</label>
+                        <div class="col-md-10 form-control-static">
+                            {{ vars.current.info }}
+                            <span class="pull-right">
+                                <icsw-tools-button type="save" size="sm" ng-show="vars.current.changed" ng-click="update_selection()"></icsw-tools-button>
+                                <button class="btn btn-success btn-sm fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                                     Apply
+                                </button>
+                                <icsw-tools-button type="delete" size="sm" ng-click="delete_selection()"></icsw-tools-button>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label"><span ng-show="vars.current.idx">or </span>create:</label>
+                        <div class="col-md-8 controls">
+                            <input class="form-control" ng-model="vars.name" type="text"/>
+                        </div>
+                        <div class="col-md-2 controls">
+                            <icsw-tools-button type="create" size="sm" ng-click="create_selection()"></icsw-tools-button>
+                        </div>
+                    </div>
+                </form>
+            </tab>
+        </tabset>
+    </div>
+</script>

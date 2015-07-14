@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -39,6 +39,7 @@ class architecture_serializer(serializers.ModelSerializer):
 class image_serializer(serializers.ModelSerializer):
     class Meta:
         model = image
+        # set fields explicitly to get references to history
         fields = (
             "idx", "name", "enabled", "version", "release",
             "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
@@ -48,10 +49,10 @@ class image_serializer(serializers.ModelSerializer):
 
 class kernel_serializer(serializers.ModelSerializer):
     class Meta:
-        # why not all fields ? FIXME, check
         model = kernel
+        # set fields explicitly to get references to history
         fields = (
-            "idx", "name", "enabled", "kernel_version", "version",
+            "idx", "name", "enabled", "kernel_version", "version", "display_name",
             "release", "bitcount", "initrd_build_set", "kernel_build_set", "initrd_built",
             "new_kernel", "comment", "target_module_list", "module_list",
             "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",

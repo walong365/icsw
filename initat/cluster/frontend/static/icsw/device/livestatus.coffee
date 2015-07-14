@@ -530,7 +530,7 @@ angular.module(
                 success : (xml) =>
                     if icswParseXMLResponseService(xml)
                         icswDeviceTreeService.fetch("bla").then((data) ->
-                            dev_tree_lut = data[4]
+                            dev_tree_lut = data[2]
                             service_entries = []
                             $(xml).find("value[name='service_result']").each (idx, node) =>
                                 service_entries = service_entries.concat(angular.fromJson($(node).text()))
@@ -643,8 +643,8 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
-]).service("icswDeviceLivestatusCategoryTreeService", () ->
-    class category_tree extends tree_config
+]).service("icswDeviceLivestatusCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class category_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             #@show_selection_buttons = false
@@ -660,6 +660,7 @@ angular.module(
                     return []
             )
             @scope.new_cat_selection(sel_list)
+            @scope.$digest()
         get_name : (t_entry) ->
             cat = t_entry.obj
             if cat.depth > 1
@@ -671,7 +672,7 @@ angular.module(
                 return cat.full_name
             else
                 return "TOP"
-).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
+]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
     return {
         restrict : "E"
         template : $templateCache.get("icsw.device.livestatus.serviceinfo")
@@ -726,7 +727,7 @@ angular.module(
             icswDeviceLivestatusDataService.retain($scope.$id, _dev_list)
         ]
         $q.all(wait_list).then((data) ->
-            $scope.dev_tree_lut = data[0][4]
+            $scope.dev_tree_lut = data[0][2]
             $scope.new_data(data[1])
             $scope.$watch(
                 () ->

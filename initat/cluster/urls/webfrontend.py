@@ -5,7 +5,7 @@ from django.conf import settings
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views, doc_views, license_views, model_history_views
+    base_views, setup_views, doc_views, license_views, model_history_views, discovery_views
 from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
@@ -56,7 +56,8 @@ lic_patterns = patterns(
 base_patterns = patterns(
     "initat.cluster.setup",
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
-    url("^get_cat_tree$", base_views.get_category_tree.as_view(), name="category_tree"),
+    url("^DeviceCategory$", base_views.DeviceCategory.as_view(), name="DeviceCategory"),
+    url("^DeviceLocation$", base_views.DeviceLocation.as_view(), name="DeviceLocation"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
         name="location_gfx_icon"),
@@ -64,6 +65,7 @@ base_patterns = patterns(
         name="location_gfx_image"),
     url("^modify_loc_gfx$", base_views.modify_location_gfx.as_view(), name="modify_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
+    url("^CategoryContents", base_views.CategoryContents.as_view(), name="CategoryContents"),
     url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
     url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
     url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
@@ -111,6 +113,7 @@ boot_patterns = patterns(
 device_patterns = patterns(
     "initat.cluster.frontend",
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
+    url("^DeviceGeneral$", device_views.DeviceGeneral.as_view(), name="DeviceGeneral"),
     url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^config$", device_views.show_configs.as_view(), name="show_configs"),
@@ -149,6 +152,8 @@ monitoring_patterns = patterns(
     url("^setup$", monitoring_views.setup.as_view(), name="setup"),
     url("^extsetupc$", monitoring_views.setup_cluster.as_view(), name="setup_cluster"),
     url("^extsetupe$", monitoring_views.setup_escalation.as_view(), name="setup_escalation"),
+    url("^MonitoringHints$", monitoring_views.MonitoringHints.as_view(), name="MonitoringHints"),
+    url("^MonitoringDisk$", monitoring_views.MonitoringDisk.as_view(), name="MonitoringDisk"),
     url("^xml/dev_config$", monitoring_views.device_config.as_view(), name="device_config"),
     url("^to_icinga$", monitoring_views.call_icinga.as_view(), name="call_icinga"),
     url("^xml/read_part$", monitoring_views.fetch_partition.as_view(), name="fetch_partition"),
@@ -158,6 +163,8 @@ monitoring_patterns = patterns(
     url("^get_node_config", monitoring_views.get_node_config.as_view(), name="get_node_config"),
     url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
     url("^livestatus$", monitoring_views.livestatus.as_view(), name="livestatus"),
+    url("^StatusHistory$", monitoring_views.StatusHistory.as_view(), name="StatusHistory"),
+    url("^Graph$", monitoring_views.Graph.as_view(), name="Graph"),
     url("^overview$", monitoring_views.overview.as_view(), name="overview"),
     url("^create_device$", monitoring_views.create_device.as_view(), name="create_device"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
@@ -225,6 +232,11 @@ rrd_patterns = patterns(
     url(r"^dev_rrds$", rrd_views.device_rrds.as_view(), name="device_rrds"),
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view(), name="graph_rrds"),
     url(r"^merge_cd$", rrd_views.merge_cds.as_view(), name="merge_cds"),
+)
+
+discovery_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"^overview$", discovery_views.discovery_overview.as_view(), name="overview"),
 )
 
 rpl = []
@@ -305,6 +317,7 @@ my_url_patterns = patterns(
     url(r"^dyndoc/", include(dyndoc_patterns, namespace="dyndoc")),
     url(r"^rest/", include(rest_patterns, namespace="rest")),
     url(r"^system/", include(system_patterns, namespace="system")),
+    url(r"^discovery/", include(discovery_patterns, namespace="discovery")),
 )
 
 url_patterns = patterns(

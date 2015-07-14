@@ -17,15 +17,13 @@
 #
 """ checks for Supermicro Hardware (using SMCIPMITool and others) """
 
-from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.host_monitoring.struct import ExtReturn
 import base64
 import json
 import bz2
 
+from initat.host_monitoring import limits, hm_classes
+from initat.tools import logging_tools, process_tools, server_command
+from initat.host_monitoring.host_monitoring_struct import ExtReturn
 
 SMCIPMI_BIN = "SMCIPMITool"
 
@@ -431,47 +429,75 @@ def generate_dict(in_list):
     return r_dict
 
 
-class smcipmi_struct(hm_classes.subprocess_struct):
+MOCK_MODE = None  # "sys1"  # None  # "sys1"
+
+
+class SMCIpmiStruct(hm_classes.subprocess_struct):
     class Meta:
         max_usage = 128
         id_str = "supermicro"
         verbose = False
 
-    def __init__(self, log_com, srv_com, check_bin, target_host, login, passwd, command):
+    def __init__(self, log_com, srv_com, com, real_com, hm_command):
         self.__log_com = log_com
+        self.__real_com = real_com
+        self.__hm_command = hm_command
+        if MOCK_MODE:
+            com = "sleep 5"
         hm_classes.subprocess_struct.__init__(
             self,
             srv_com,
-            "{} {} {} {} {}".format(
-                check_bin,
-                target_host,
-                login,
-                passwd,
-                command
-            ),
+            com,
         )
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[smcipmi] %s" % (what), level)
+        self.__log_com("[smcipmi] {}".format(what), level)
 
     def process(self):
-        if self.run_info["result"]:
-            self.srv_com.set_result(
-                "error ({:d}): {}".format(
-                    self.run_info["result"],
-                    self.read().strip()
-                ),
-                server_command.SRV_REPLY_STATE_ERROR,
-            )
+        if MOCK_MODE is None:
+            if self.run_info["result"]:
+                self.srv_com.set_result(
+                    "error ({:d}): {}".format(
+                        self.run_info["result"],
+                        self.read().strip()
+                    ),
+                    server_command.SRV_REPLY_STATE_ERROR,
+                )
+                output = None
+            else:
+                output = self.read()
         else:
-            output = self.read()
+            output = MOCK_DICT[MOCK_MODE][self.__real_com]
+        if output is not None:
+            self.__hm_command.store_object(self.__real_com, output)
             self.srv_com["output"] = output
 
 
-MOCK_MODE = None  # "sys1"
+class SMCRetrievePendingStruct(hm_classes.subprocess_struct):
+    def __init__(self, srv_com, real_com):
+
+        hm_classes.subprocess_struct.__init__(
+            self,
+            srv_com,
+            None,
+        )
+        # cache set via resolve_cache
+        self._obj = None
+
+    def resolve_cache(self, obj):
+        self._obj = obj
+
+    def finished(self):
+        if self._obj:
+            self.srv_com["output"] = self._obj
+            return True
+        else:
+            return False
 
 
-class smcipmi_command(hm_classes.hm_command):
+class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
+    class Meta:
+        cache_timeout = 60
     info_str = "SMCIPMITool frontend"
 
     def __init__(self, name):
@@ -512,22 +538,33 @@ class smcipmi_command(hm_classes.hm_command):
             }.get(com, com)
             srv_com["orig_command"] = com
             srv_com["mapped_command"] = real_com
-            self.log("mapping command '{}' to '{}'".format(com, real_com))
-            _mock = MOCK_MODE
-            if _mock is None:
-                cur_smcc = smcipmi_struct(
-                    self.log,
+            if self.cache_valid(real_com):
+                cur_smcc = None
+                srv_com["output"] = self.load_object(real_com)
+            elif self.retrieval_pending(real_com):
+                cur_smcc = SMCRetrievePendingStruct(
                     srv_com,
+                    real_com,
+                )
+                self.register_retrieval_client(real_com, cur_smcc)
+            else:
+                self.start_retrieval(real_com)
+                self.log("mapping command '{}' to '{}'".format(com, real_com))
+                _com = "{} {} {} {} {}".format(
                     self.__smcipmi_binary,
                     cur_ns.ip,
                     cur_ns.user,
                     cur_ns.passwd,
                     real_com,
                 )
-            else:
-                srv_com["output"] = MOCK_DICT[_mock][real_com]
-        if not _mock:
-            return cur_smcc
+                cur_smcc = SMCIpmiStruct(
+                    self.log,
+                    srv_com,
+                    _com,
+                    real_com,
+                    self,
+                )
+        return cur_smcc
 
     def _handle_power(self, in_dict, **kwargs):
         if in_dict["power"] == "on":
@@ -566,7 +603,7 @@ class smcipmi_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_OK
         else:
             ret_state = limits.nag_STATE_CRITICAL
-        return ret_state, "gigabit switch '%s' is %s (%s)" % (
+        return ret_state, "gigabit switch '{}' is {} ({})".format(
             in_dict["gbsw"],
             in_dict["power"],
             in_dict["error"] if in_dict["error"] else "no error",

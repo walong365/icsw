@@ -76,7 +76,9 @@ device_variable_module = angular.module(
         template : $templateCache.get("icsw.device.variable.table")
         link : (scope, el, attrs) ->
             scope.device = scope.$eval(attrs["device"])
-            scope.filtervalue = scope.$eval(attrs["filtervalue"])
+            scope.$watch(attrs.filtervalue, (new_val) ->
+                scope.filtervalue = new_val
+            )
             scope.edit_mixin = new angular_edit_mixin(scope, $templateCache, $compile, Restangular, $q)
             scope.edit_mixin.delete_confirm_str = (obj) -> "Really delete variable '#{obj.name}' ?"
             scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
@@ -170,6 +172,7 @@ device_variable_module = angular.module(
                     $scope._edit_obj.val_str = _mon_var.value
         $scope.var_filter = ""
         $scope.entries = []
+        $scope.dataLoaded = false
         $scope.pagSettings = paginatorSettings.get_paginator("dv_base", $scope)
         $scope.pagSettings.conf.filter_mode = "func"
         $scope.valid_var_types = [
@@ -196,6 +199,7 @@ device_variable_module = angular.module(
             ]
             $q.all(wait_list).then((data) ->
                 entries = data[0]
+                $scope.dataLoaded = true
                 $scope.base_edit.create_list = entries
                 # all entries (including parent meta devices and CDG)
                 $scope.cdg = (entry for entry in entries when entry.is_cluster_device_group)[0]

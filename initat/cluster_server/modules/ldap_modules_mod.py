@@ -29,9 +29,7 @@ from initat.cluster.backbone.models import user, group, device_config, \
 from initat.cluster_server.config import global_config
 import ldap  # @UnresolvedImport @UnusedImport
 import ldap.modlist  # important, do not remove  @UnresolvedImport
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, process_tools, server_command
 
 import cs_base_class
 
@@ -99,6 +97,26 @@ Centos:
 
 /usr/libexec/openldap/create-certdb.sh
 /usr/libexec/openldap/generate-server-cert.sh -h <HOSTNAME> -a <ALTNAMES>
+
+Centos uses a MozNSS CA cert directory to store the server certificate. There
+are two ways to extract a PEM certificate:
+
+    Local:
+        $ cp -rf /etc/openldap/certs /tmp/cert-dir
+        $ certutil -L -d /tmp/cert-dir
+        ...
+        A_CERTIFICATE_NAME
+        ...
+        $ certutil -L -d /tmp/cert-dir -a -n "A_CERTIFICATE_NAME" > cert.crt
+
+    Remote:
+        $ openssl s_client -showcerts -connect ldap.example.com:636 > s_client.dump
+        <CTRL-C>
+        $ openssl x509 -in s_client.dump -out cert.crt
+
+Testing LDAP TLS connections:
+
+    $ LDAPTLS_CERT=/path/to/cert.crt ldapsearch -ZZ -x -H ldap://ldap.example.com
 """
 
 
@@ -610,8 +628,8 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 # not used right now
                 devlog_dict = {}
                 # luts
-                group_lut = dict([(cur_g.groupname, cur_g.pk) for cur_g in all_groups.itervalues()])
-                user_lut = dict([(cur_u.login.strip(), cur_u.pk) for cur_u in all_users.itervalues()])
+                group_lut = {cur_g.groupname: cur_g.pk for cur_g in all_groups.itervalues()}
+                user_lut = {cur_u.login.strip(): cur_u.pk for cur_u in all_users.itervalues()}
                 if "sambadomain" in par_dict:
                     dom_node = ld_read.search_s(
                         "{}".format(
@@ -643,11 +661,15 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         "cn": [g_stuff.groupname],
                         "gidNumber": [str(g_stuff.gid)],
                         "memberUid": primary_users + secondary_users,
-                        "description": [u"Responsible person: {} {} {} ({})".format(
-                            g_stuff.title,
-                            g_stuff.first_name,
-                            g_stuff.last_name,
-                            g_stuff.email)]}
+                        "description": [
+                            u"Responsible person: {} {} {} ({})".format(
+                                g_stuff.title,
+                                g_stuff.first_name,
+                                g_stuff.last_name,
+                                g_stuff.email
+                            )
+                        ]
+                    }
                     if "sambadomain" in par_dict:
                         g_stuff.attributes["objectClass"].append("sambaGroupMapping")
                         g_stuff.attributes["sambaGroupType"] = "2"
@@ -661,7 +683,9 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     # ldap.conf filter: pam_filter      &(objectclass=posixAccount)(|(host=\*)(host=zephises))
                     u_password = u_stuff.password
                     if u_password.count(":"):
-                        u_password = u"{{SHA}}{}".format(u_password.split(":", 1)[1])
+                        _enc, _pwd = u_password.split(":", 1)
+                        _enc = {"SHA1": "SHA"}.get(_enc, _enc)
+                        u_password = u"{{{}}}{}".format(_enc, u_password.split(":", 1)[1])
                     else:
                         self.log(u"user_password for {} is not parseable, using value".format(unicode(u_stuff)))
                     u_stuff.attributes = {
@@ -986,9 +1010,9 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                             ", ".join(error_keys)),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-                mount_points = dict([(os.path.dirname(x), 0) for x in export_dict.keys() if x not in error_keys]).keys()
+                mount_points = {os.path.dirname(x): 0 for x in export_dict.keys() if x not in error_keys}.keys()
                 if mount_points:
-                    map_lut = dict([(k, k.replace("/", "").replace(".", "_")) for k in mount_points])
+                    map_lut = {k: k.replace("/", "").replace(".", "_") for k in mount_points}
                     # automounter_map
                     auto_maps.append(
                         {
@@ -1061,7 +1085,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 }
                             )
                 map_keys = [value["dn"] for value in auto_maps]
-                auto_dict = dict([(value["dn"], value) for value in auto_maps])
+                auto_dict = {value["dn"]: value for value in auto_maps}
                 # fetch all maps from ldap
                 maps_ok, maps_to_change, maps_to_remove = ([], [], [])
                 for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(objectClass=clusterAutomount)"):
