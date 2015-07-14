@@ -20,7 +20,7 @@
 
                 <div ng-if="device_tab_active[device_pk]">
 
-                    <div style="max-width: 900px; margin-top: 5px;" class="form-inline">
+                    <div style="max-width: 1100px; margin-top: 5px;" class="form-inline">
                         <div class="input-group">
                             <span class="input-group-addon">
                                 <label>
@@ -83,7 +83,24 @@
                                 </span>
                             </div>
                         </div>
+                        <div class="form-group form-inline">
+                            <div class="input-group">
+                                 <span class="input-group-addon">
+                                     <label>
+                                         Group by
+                                     </label>
+                                 </span>
+                                <ui-select ng-model="tab_query_parameters[device_pk].group_by">
+                                    <ui-select-match placeholder="Group results by..">{{$select.selected}}</ui-select-match>
+                                    <ui-select-null-choice>No grouping</ui-select-null-choice>
+                                    <!-- TODO -->
+                                    <ui-select-choices repeat="key in entries.keys | filter:$select.search">
+                                        <div ng-bind-html="key | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
                         </div>
+                    </div>
 
                     <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
                         <thead ng-show="!entries.is_loading">  <!-- need pagination in dom for limit -->

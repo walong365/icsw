@@ -115,54 +115,107 @@ class GetEventLog(ListAPIView):
     def _parse_datetime(cls, datetime_str):
         return dateutil.parser.parse(datetime_str)
 
-    def _get_ipmi_event_log(self, device_pks, pagination_skip, pagination_limit,
-                            filter_str=None, from_date=None, to_date=None):
-        mongo = MongoDbInterface()
-        projection_obj = {
-            'sections': 1,
-            'keys_ordered': 1,
-        }
-        query_obj = {
-            'device_pk': {'$in': device_pks},
-        }
+    class GetIpmiEventLog(object):
+        def __init__(self):
+            self.mongo = MongoDbInterface()
 
-        if from_date is not None:
-            query_obj.setdefault('creation_date', {})['$gte'] = self._parse_datetime(from_date)
-        if to_date is not None:
-            query_obj.setdefault('creation_date', {})['$lte'] = self._parse_datetime(to_date)
+        def __call__(self, device_pks, pagination_skip, pagination_limit,
+                     filter_str=None, from_date=None, to_date=None, group_by=None):
 
-        if filter_str is not None:
-            query_obj["$text"] = {'$search': filter_str}
-        sort_obj = [('record_id', pymongo.DESCENDING)]
-        print 'query', query_obj, projection_obj, sort_obj
-        entries = mongo.event_log_db.ipmi_event_log.find(
-            query_obj,
-            projection_obj,
-            sort=sort_obj,
-        )
-        # pprint.pprint(entries.explain())
+            self.from_date_parsed = None if from_date is None else GetEventLog._parse_datetime(from_date)
+            self.to_date_parsed = None if to_date is None else GetEventLog._parse_datetime(to_date)
 
-        total_num = entries.count()
+            mongo = MongoDbInterface()
+            if group_by is None:
+                return self._regular_query(device_pks, pagination_skip, pagination_limit, filter_str)
+            else:
+                return self._group_by_query(device_pks, pagination_skip, pagination_limit, filter_str, group_by)
 
-        entries.skip(pagination_skip)
-        entries.limit(pagination_limit)
+        def _group_by_query(self, device_pks, pagination_skip, pagination_limit, filter_str, group_by):
+            entries = self.mongo.event_log_db.ipmi_event_log.aggregate([
+                {
+                    '$group': {
+                        '_id': {
+                            '$arrayElemAt': ['$sections', 1]
+                        },
+                        'c': {
+                            '$sum': 1
+                        }
+                    }
+                },
+                {
+                    '$group':
+                        {
+                            '_id': '$_id.{}'.format(group_by),
+                            'count': {
+                                '$sum': '$c'
+                            }
+                        }
+                }
+            ])
 
-        result = []
-        entry_keys = collections.OrderedDict()  # we only use it as set
-        for entry in entries:  # exhaust cursor
-            result.append(entry['sections'])
-            for k in entry['keys_ordered']:
-                if k != '__icsw_ipmi_section_type':
-                    entry_keys[k] = None
-        # merge ipmi sections
-        result_merged = []
-        for entry in result:
-            entry_merged = {}
-            for section in entry:
-                # filter internal fields
-                entry_merged.update({k: v for k, v in section.iteritems() if k != '__icsw_ipmi_section_type'})
-            result_merged.append(entry_merged)
-        return total_num, entry_keys.keys(), result_merged
+            result = list(entries)
+            import pprint
+            pprint.pprint(result)
+            total_num = len(result)
+            result_paginated = result[pagination_skip:][:pagination_limit]
+            # results now are of this form: {'_id': <group_by_field_value>, 'count': <num>}
+            for entry in result_paginated:
+                entry[group_by] = entry['_id']
+                del entry['_id']
+            keys_ordered = [group_by, 'count']
+
+            return total_num, keys_ordered, result_paginated
+
+        def _regular_query(self, device_pks, pagination_skip, pagination_limit, filter_str=None):
+            projection_obj = {
+                'sections': 1,
+                'keys_ordered': 1,
+            }
+            query_obj = {
+                'device_pk': {'$in': device_pks},
+            }
+
+            if self.from_date_parsed is not None:
+                query_obj.setdefault('creation_date', {})['$gte'] = self._parse_datetime(self.from_date_parsed)
+            if self.from_date_parsed is not None:
+                query_obj.setdefault('creation_date', {})['$lte'] = self._parse_datetime(self.to_date_parsed)
+
+            if filter_str is not None:
+                query_obj["$text"] = {'$search': filter_str}
+
+            sort_obj = [('record_id', pymongo.DESCENDING)]
+            print 'query', query_obj, projection_obj, sort_obj
+            entries = self.mongo.event_log_db.ipmi_event_log.find(
+                query_obj,
+                projection_obj,
+                sort=sort_obj,
+            )
+
+            total_num = entries.count()
+
+            entries.skip(pagination_skip)
+            entries.limit(pagination_limit)
+
+            result = []
+            entry_keys = collections.OrderedDict()  # we only use it as set
+            for entry in entries:  # exhaust cursor
+                result.append(entry['sections'])
+                for k in entry['keys_ordered']:
+                        if k != '__icsw_ipmi_section_type':
+                            entry_keys[k] = None
+            # merge ipmi sections
+            result_merged = []
+            for entry in result:
+                entry_merged = {}
+                for section in entry:
+                    # filter internal fields
+                    entry_merged.update({k: v for k, v in section.iteritems() if k != '__icsw_ipmi_section_type'})
+                result_merged.append(entry_merged)
+
+            keys_ordered = entry_keys.keys()
+
+            return total_num, keys_ordered, result_merged
 
     def _get_wmi_event_log(self, device_pks, pagination_skip, pagination_limit,
                            filter_str=None, from_date=None, to_date=None, logfile_name=None):
@@ -215,8 +268,8 @@ class GetEventLog(ListAPIView):
             # print 'took', time.time() - a
 
         elif mode == 'ipmi':
-            total_num, keys, entries =\
-                self._get_ipmi_event_log(device_pks, pagination_skip, pagination_limit, **query_parameters)
+            total_num, keys, entries = \
+                self.__class__.GetIpmiEventLog()(device_pks, pagination_skip, pagination_limit, **query_parameters)
         else:
             raise AssertionError("Invalid mode: {} ".format(mode))
 
