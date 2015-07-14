@@ -22,16 +22,17 @@
 """ creates fixtures for md-config-server """
 
 from initat.cluster.backbone import factories
+from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    factories.Config(
+    SysConfig(
         name="monitor_server",
         description="sets device as the monitor master server",
         server_config=True,
         system_config=True,
     )
-    factories.Config(
+    SysConfig(
         name="monitor_slave",
         description="sets device as a monitor slave (sattelite)",
         server_config=True,

@@ -22,22 +22,23 @@
 """ creates fixtures for mother """
 
 from initat.cluster.backbone import factories
+from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    factories.Config(
+    SysConfig(
         name="mother_server",
         description="enables basic nodeboot via PXE functionalities",
         server_config=True,
         system_config=True,
     )
-    factories.Config(
+    SysConfig(
         name="kernel_server",
         description="device holds kernels for nodes",
         server_config=True,
         system_config=True,
     )
-    factories.Config(
+    SysConfig(
         name="image_server",
         description="device holds images for nodes",
         server_config=True,

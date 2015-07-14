@@ -22,16 +22,17 @@
 """ creates fixtures for logcheck-server """
 
 from initat.cluster.backbone import factories
+from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    factories.Config(
+    SysConfig(
         name="logcheck_server",
         description="store and check node logs",
         server_config=True,
         system_config=True,
     )
-    factories.Config(
+    SysConfig(
         name="syslog_server",
         description="store and check node logs (for stage2)",
         server_config=True,

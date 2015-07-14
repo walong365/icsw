@@ -22,10 +22,11 @@
 """ creates fixtures for collector """
 
 from initat.cluster.backbone import factories
+from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    factories.Config(
+    SysConfig(
         name="rrd_collector",
         description="devices acts as a collector",
         server_config=True,

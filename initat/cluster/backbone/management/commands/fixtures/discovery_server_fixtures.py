@@ -22,10 +22,11 @@
 """ creates fixtures for discovery-server """
 
 from initat.cluster.backbone import factories
+from .config_catalog_fixtures import SysConfig
 
 
 def add_fixtures(**kwargs):
-    factories.Config(
+    SysConfig(
         name="discovery_server",
         description="enables network discovery and inventory",
         server_config=True,
