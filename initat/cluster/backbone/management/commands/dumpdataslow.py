@@ -35,6 +35,9 @@ class Command(BaseCommand):
             help="Use Django's base manager to dump all models stored in the database, "
             "including those that would otherwise be filtered or modified by a custom manager."
         ),
+        make_option(
+            '-t', '--traceback', action='store_true', default=True,
+        )
     )
     help = ("Output the contents of the database as a fixture of the given "
             "format (using each model's default manager unless --all is "
