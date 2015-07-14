@@ -199,7 +199,8 @@ class netdevice_form(ModelForm):
                 # ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)",
                 placeholder="bridge master device",
                 display="devname",
-                wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length",
+                # BUG: this ng-show is applied also to other fields e.g. on the next tab, so it's disabled for now
+                #wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length",
             ),
         ),
         Fieldset(

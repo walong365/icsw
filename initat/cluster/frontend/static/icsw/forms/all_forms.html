@@ -2869,7 +2869,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  </label> </div> </div> </div> <div id="div_id_bridge_device"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_bridge_device" class="control-label col-sm-3">
  Bridge device
  </label> <div class="controls col-sm-8"> <ui-select ng-model='_edit_obj.bridge_device' style='max-width:400px; min-width:240px;' ng-disabled='false'>
@@ -2882,19 +2882,19 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  > <legend>Routing settings</legend> <div class="form-group"> <div class="controls col-sm-offset-3 col-sm-8"> <div id="div_id_routing"
  class="checkbox
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_routing" class=""> <input class="checkboxinput" id="id_routing" name="routing" ng-model="_edit_obj.routing" type="checkbox" />
  network topology central node
  </label> </div> </div> </div> <div id="div_id_penalty"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_penalty" class="control-label col-sm-3">
  Cost
  </label> <div class="controls col-sm-8"> <input class="numberinput form-control" id="id_penalty" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" type="number" value="1" /> </div> </div> <div class="form-group"> <div class="controls col-sm-offset-3 col-sm-8"> <div id="div_id_inter_device_routing"
  class="checkbox
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_inter_device_routing" class=""> <input class="checkboxinput" id="id_inter_device_routing" name="inter_device_routing" ng-model="_edit_obj.inter_device_routing" type="checkbox" />
  Inter device routing
  </label> </div> </div> </div> </fieldset>
@@ -2902,7 +2902,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-show="!_edit_obj.is_bridge &amp;&amp; get_vlan_masters(_edit_obj).length"> <legend>VLAN settings</legend> <div id="div_id_master_device"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_master_device" class="control-label col-sm-3">
  Master device
  </label> <div class="controls col-sm-8"> <div class='input-group' style='max-width:400px; min-width:240px;'>
@@ -2920,7 +2920,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 </div> </div> </div> <div id="div_id_vlan_id"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_vlan_id" class="control-label col-sm-3">
  Vlan id
  </label> <div class="controls col-sm-8"> <input class="numberinput form-control" id="id_vlan_id" max="255" min="0" name="vlan_id" ng-model="_edit_obj.vlan_id" type="number" value="0" /> </div> </div> </fieldset>
@@ -2928,13 +2928,13 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  > <legend>hardware settings</legend> <div id="div_id_driver"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_driver" class="control-label col-sm-3">
  Driver
  </label> <div class="controls col-sm-8"> <input class="textinput textInput form-control" id="id_driver" maxlength="384" name="driver" ng-model="_edit_obj.driver" type="text" value="e1000e" /> </div> </div> <div id="div_id_driver_options"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_driver_options" class="control-label col-sm-3">
  Driver options
  </label> <div class="controls col-sm-8"> <input class="textinput textInput form-control" id="id_driver_options" maxlength="672" name="driver_options" ng-model="_edit_obj.driver_options" type="text" /> </div> </div> </fieldset>
@@ -2942,7 +2942,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  > <legend>ethtool settings (for cluster boot)</legend> <div id="div_id_ethtool_autoneg"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_ethtool_autoneg" class="control-label col-sm-3 requiredField">
  Ethtool autoneg<span class="asteriskField">*</span> </label> <div class="controls col-sm-8"> <select class="select form-control" id="id_ethtool_autoneg" name="ethtool_autoneg" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_autoneg" required>
 <option value="0">default</option>
@@ -2951,7 +2951,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 </select> </div> </div> <div id="div_id_ethtool_duplex"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_ethtool_duplex" class="control-label col-sm-3 requiredField">
  Ethtool duplex<span class="asteriskField">*</span> </label> <div class="controls col-sm-8"> <select class="select form-control" id="id_ethtool_duplex" name="ethtool_duplex" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_duplex" required>
 <option value="0">default</option>
@@ -2960,7 +2960,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 </select> </div> </div> <div id="div_id_ethtool_speed"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_ethtool_speed" class="control-label col-sm-3 requiredField">
  Ethtool speed<span class="asteriskField">*</span> </label> <div class="controls col-sm-8"> <select class="select form-control" id="id_ethtool_speed" name="ethtool_speed" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_speed" required>
 <option value="0">default</option>
@@ -2975,7 +2975,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="col-md-6" > <div id="div_id_macaddr"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_macaddr" class="control-label col-sm-3">
  Macaddr
  </label> <div class="controls col-sm-8"> <input class="textinput textInput form-control" id="id_macaddr" maxlength="177" name="macaddr" ng-model="_edit_obj.macaddr" type="text" /> </div> </div> </div>
@@ -2983,14 +2983,14 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="col-md-6" > <div id="div_id_fake_macaddr"
  class="form-group 
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_fake_macaddr" class="control-label col-sm-3">
  Fake macaddr
  </label> <div class="controls col-sm-8"> <input class="textinput textInput form-control" id="id_fake_macaddr" maxlength="177" name="fake_macaddr" ng-model="_edit_obj.fake_macaddr" type="text" /> </div> </div> </div>
 </div> <div class="form-group"> <div class="controls col-sm-offset-3 col-sm-8"> <div id="div_id_dhcp_device"
  class="checkbox
  "
- ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length"
+ ng_show="!_edit_obj.vlan_id &amp;&amp; !_edit_obj.bridge_device"
  > <label for="id_dhcp_device" class=""> <input class="checkboxinput" id="id_dhcp_device" name="dhcp_device" ng-model="_edit_obj.dhcp_device" type="checkbox" />
  force write DHCP address
  </label> </div> </div> </div> </fieldset>
