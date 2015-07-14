@@ -386,6 +386,11 @@ class KeySink(object):
     def get_value(self):
         if self.action == "sum":
             return sum(self.__values) / (self.factor)
+        elif self.action == "mean":
+            if len(self.__values):
+                return sum(self.__values) / (len(self.__values) * self.factor)
+            else:
+                return 0
         else:
             print("action '{}' not implemented for key_sink, return 0".format(self.action))
             return 0
