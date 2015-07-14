@@ -69,6 +69,7 @@ class EventLogOverview(View):
 
 
 class GetEventLogDeviceInfo(View):
+    """Returns which logs the given devices have"""
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         device_pks = json.loads(request.GET['device_pks'])
@@ -108,6 +109,7 @@ class GetEventLogDeviceInfo(View):
 
 
 class GetEventLog(ListAPIView):
+    """Returns actual log data (all kinds of logs currently)"""
 
     @classmethod
     def _parse_datetime(cls, datetime_str):

@@ -283,8 +283,9 @@ class IpmiLogJob(EventLogPollerJobBase):
                                 else:
                                     timestamp = timestamp_device_time + self.device_time_diff
 
-                if timestamp is not None:
-                    sections_db_data = [{'Timestamp Local': unicode(timestamp)}] + sections_db_data
+                # timestamp section is first section (timestamp could be None for somewhat broken entries)
+                sections_db_data =\
+                    [{'Timestamp Local': unicode(timestamp) if timestamp is not None else None}] + sections_db_data
 
                 keys_ordered = list(itertools.chain.from_iterable(sec.iterkeys() for sec in sections_db_data))
                 db_entry = {
