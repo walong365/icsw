@@ -24,9 +24,7 @@ import sys
 import os
 
 import zmq
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, process_tools, server_command
 
 
 def _get_parser():

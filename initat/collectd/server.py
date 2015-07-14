@@ -457,7 +457,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                     ip="{}".format(_ip),
                     snmp_version="{:d}".format(_cast_snmp_version(_vars["SNMP_VERSION"])),
                     snmp_read_community=_vars["SNMP_READ_COMMUNITY"],
-                    snmp_read_timeout=_vars["SNMP_READ_TIMEOUT"],
+                    snmp_read_timeout="{:d}".format(_vars["SNMP_READ_TIMEOUT"]),
                 ) for cur_dev, _ip, _vars in _reachable
             ]
         )
