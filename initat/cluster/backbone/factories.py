@@ -8,7 +8,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     network, netdevice, net_ip, device_config, LogSource, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
-    ComCapability, SensorAction
+    ComCapability, SensorAction, config_catalog
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -101,10 +101,23 @@ class HostCheckCommand(factory.django.DjangoModelFactory):
         django_get_or_create = ("name",)
 
 
+class ConfigCatalog(factory.django.DjangoModelFactory):
+    class Meta:
+        model = config_catalog
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def system_catalog(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.system_catalog != extracted:
+            self.system_catalog = extracted
+            self.save()
+
+
 class Config(factory.django.DjangoModelFactory):
     class Meta:
         model = config
-        django_get_or_create = ("name",)
+        django_get_or_create = ("name", "config_catalog")
 
     @factory.post_generation
     def description(self, create, extracted, **kwargs):

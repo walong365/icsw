@@ -47,6 +47,8 @@ class config_catalog(models.Model):
     author = models.CharField(max_length=256, default="", blank=True)
     # gets increased by one on every download
     version = models.IntegerField(default=1)
+    # is system catalog
+    system_catalog = models.BooleanField(default=False)
     # extraction time
     extraction_time = models.DateTimeField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -55,6 +57,7 @@ class config_catalog(models.Model):
     def create_local_catalog():
         def_cc = config_catalog.objects.create(
             name="local",
+            system_catalog=True,
             url="http://www.initat.org/",
             author="Andreas Lang-Nevyjel",
         )
@@ -65,6 +68,16 @@ class config_catalog(models.Model):
 
     class Meta:
         verbose_name = 'Configuration catalog'
+
+
+@receiver(signals.pre_save, sender=config_catalog)
+def config_catalog_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.system_catalog:
+            _all_c = config_catalog.objects.exclude(Q(pk=cur_inst.idx))
+            if len(_all_c):
+                raise ValidationError("only one config_catalog with system_catalog=True allowed")
 
 
 class config(models.Model):
