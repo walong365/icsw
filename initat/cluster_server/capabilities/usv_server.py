@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,6 +20,7 @@
 from initat.cluster_server.capabilities.base import bg_stuff
 import commands
 from initat.tools import logging_tools
+from initat.host_monitoring import hm_classes
 
 
 class usv_server_stuff(bg_stuff):
@@ -28,49 +29,89 @@ class usv_server_stuff(bg_stuff):
         name = "usv_server"
 
     def do_apc_call(self):
-        stat, out = commands.getstatusoutput("apcaccess")
-        if stat:
-            self.log("cannot execute apcaccess (stat=%d): %s" % (stat, str(out)),
-                     logging_tools.LOG_LEVEL_ERROR)
+        _c_stat, out = commands.getstatusoutput("apcaccess")
+        if _c_stat:
+            self.log(
+                "cannot execute apcaccess (stat={:d}): {}".format(_c_stat, str(out)),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             apc_dict = {}
         else:
             apc_dict = {
-                l_part[0].lower().strip(): l_part[1].strip() for l_part in [line.strip().split(":", 1) for line in out.split("\n")] if len(l_part) == 2
+                l_part[0].lower().strip(): l_part[1].strip() for l_part in [
+                    line.strip().split(":", 1) for line in out.split("\n")
+                ] if len(l_part) == 2
             }
         return apc_dict
 
-    def init_machvector(self):
-        ret_list = []
+    def _call(self, cur_time, builder):
         apc_dict = self.do_apc_call()
-        if apc_dict:
-            for key, _value in apc_dict.iteritems():
-                if key == "linev":
-                    ret_list.append("usv.volt.line:0.:Line Voltage:Volt:1:1")
-                elif key == "loadpct":
-                    ret_list.append("usv.percent.load:0.:Percent Load Capacity:%:1:1")
-                elif key == "bcharge":
-                    ret_list.append("usv.percent.charge:0.:Battery Charge:%:1:1")
-                elif key == "timeleft":
-                    ret_list.append("usv.time.left:0.:Time Left in Minutes:1:1:1")
-                elif key == "itemp":
-                    ret_list.append("usv.temp.int:0.:Internal Temperature:C:1:1")
-        return ret_list
-
-    def get_machvector(self):
-        ret_list = []
-        apc_dict = self.do_apc_call()
-        if apc_dict:
+        if apc_dict and self.Meta.creates_machvector:
+            my_vector = builder("values")
+            valid_until = cur_time + self.Meta.min_time_between_runs * 2
             for key, value in apc_dict.iteritems():
                 if value.split():
                     first_v = value.split()[0]
                     if key == "linev":
-                        ret_list.append("usv.volt.line:f:%.2f" % (float(first_v)))
+                        my_vector.append(
+                            hm_classes.mvect_entry(
+                                "usv.volt.line",
+                                info="Line voltage",
+                                default=0.,
+                                first_v=float(first_v),
+                                base=1000,
+                                valid_until=valid_until,
+                                unit="Volt",
+                            ).build_xml(builder)
+                        )
                     elif key == "loadpct":
-                        ret_list.append("usv.percent.load:f:%.2f" % (float(first_v)))
+                        my_vector.append(
+                            hm_classes.mvect_entry(
+                                "usv.percent.load",
+                                info="Percent Load Capacity",
+                                default=0.,
+                                value=float(first_v),
+                                base=1,
+                                valid_until=valid_until,
+                                unit="%",
+                            ).build_xml(builder)
+                        )
                     elif key == "bcharge":
-                        ret_list.append("usv.percent.charge:f:%.2f" % (float(first_v)))
+                        my_vector.append(
+                            hm_classes.mvect_entry(
+                                "usv.percent.charge",
+                                info="Battery charge",
+                                default=0.,
+                                value=float(first_v),
+                                base=1,
+                                valid_until=valid_until,
+                                unit="%",
+                            ).build_xml(builder)
+                        )
                     elif key == "timeleft":
-                        ret_list.append("usv.time.left:f:%.2f" % (float(first_v)))
+                        my_vector.append(
+                            hm_classes.mvect_entry(
+                                "usv.time.left",
+                                info="Time left in minutes",
+                                default=0.,
+                                value=float(first_v),
+                                base=1,
+                                valid_until=valid_until,
+                                unit="m",
+                            ).build_xml(builder)
+                        )
                     elif key == "itemp":
-                        ret_list.append("usv.temp.int:f:%.2f" % (float(first_v)))
-        return ret_list
+                        my_vector.append(
+                            hm_classes.mvect_entry(
+                                "usv.temp.int",
+                                info="Internal temperature",
+                                default=0.,
+                                value=float(first_v),
+                                base=1,
+                                valid_until=valid_until,
+                                unit="C",
+                            ).build_xml(builder)
+                        )
+        else:
+            my_vector = None
+        return my_vector
