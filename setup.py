@@ -33,7 +33,6 @@ setup(
         "initat.cluster.rms",
         "initat.cluster.rms.rms_addons",
         "initat.cluster.frontend",
-        "initat.cluster.frontend.forms",
         "initat.cluster.frontend.ext",
         "initat.cluster.frontend.management",
         "initat.cluster.frontend.management.commands",
