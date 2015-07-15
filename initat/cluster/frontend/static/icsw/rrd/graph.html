@@ -26,68 +26,58 @@
                 </div>
             </div>&nbsp;
             <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-zoom-in"></span>
-                            {{ cur_dim }} <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                        </ul>
-                    </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                    <span class="glyphicon glyphicon-zoom-in"></span>
+                        {{ cur_dim }} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-time"></span>
-                            timerange <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                        </ul>
-                    </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-time"></span>
+                        timerange <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
+                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-dashboard"></span>
-                            timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
-                        </ul>
-                    </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-dashboard"></span>
+                        timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
+                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
-                            <span class="glyphicon glyphicon-tasks"></span>
-                            {{ get_job_mode(job_mode) }}<span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
-                        </ul>
-                    </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
+                        <span class="glyphicon glyphicon-tasks"></span>
+                        {{ get_job_mode(job_mode) }}<span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
+                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="y-Scale mode">
-                            <span class="glyphicon glyphicon-sort"></span>
-                            {{ scale_mode }}<span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="_sm in scale_modes" ng-click="set_scale_mode(_sm)"><a href="#">{{ _sm }}</a></li>
-                        </ul>
-                    </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="y-Scale mode">
+                        <span class="glyphicon glyphicon-sort"></span>
+                        {{ scale_mode }}<span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="_sm in scale_modes" ng-click="set_scale_mode(_sm)"><a href="#">{{ _sm }}</a></li>
+                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group">

@@ -310,9 +310,13 @@ class Service(object):
         unique_pids = {
             key: pids.count(key) for key in set(pids)
         }
-        pids_found = {
-            key: act_proc_dict[key].num_threads() for key in set(pids) if key in act_proc_dict
-        }
+        pids_found = {}
+        for key in set(pids):
+            if key in act_proc_dict:
+                try:
+                    pids_found[key] = act_proc_dict[key].num_threads()
+                except psutil.NoSuchProcess:
+                    pass
         num_started = sum(unique_pids.values()) if unique_pids else 0
         num_found = sum(pids_found.values()) if pids_found else 0
         # check for extra Nagios2.x thread
