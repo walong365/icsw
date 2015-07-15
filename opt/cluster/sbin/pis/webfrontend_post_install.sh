@@ -21,10 +21,6 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     ${MANAGE} collectstatic --noinput -c > /dev/null
     echo "done"
 
-    echo -ne "compiling forms ..."
-    ${MANAGE} render_all_forms > /dev/null
-    echo "done"
-
     if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
         touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
     else

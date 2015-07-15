@@ -36,8 +36,6 @@ from initat.cluster.backbone.models import config, device, device_config, tree_n
     config_script, config_bool, config_blob, config_int, config_catalog
 from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
-    config_bool_form, config_script_form, mon_check_command_form, config_catalog_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports

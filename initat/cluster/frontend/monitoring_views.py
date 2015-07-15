@@ -45,7 +45,7 @@ from django.core.cache import cache
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
-    parse_commandline, mon_check_command_special
+    parse_commandline, mon_check_command_special, device_group
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
@@ -54,7 +54,6 @@ from initat.cluster.backbone.models.status_history import mon_icinga_log_aggrega
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import device_group
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImports
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
