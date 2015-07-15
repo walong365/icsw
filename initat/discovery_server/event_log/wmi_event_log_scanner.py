@@ -184,14 +184,21 @@ class WmiLogEntryJob(_WmiJobBase):
         return do_continue
 
     @classmethod
-    def _parse_wmi_logfile_output(cls, stdout_out, **kwargs):
+    def _parse_wmi_logfile_output(cls, stdout_out, log, **kwargs):
         parsed = WmiUtils.parse_wmic_output(stdout_out, **kwargs)
         # make sure that all record numbers are integer
+        output = []
         for entry in parsed:
             rec_num = entry.get("RecordNumber")
             if rec_num is not None:
-                entry["RecordNumber"] = int(rec_num)
-        return parsed
+                try:
+                    entry["RecordNumber"] = int(rec_num)
+                except ValueError:
+                    if log is not None:
+                        log("Failed to parse RecordNumber {} of entry {}".format(rec_num, unicode(entry)))
+                else:
+                    output.append(entry)
+        return output
 
     class InitialPhase(object):
         # start retrieving maximum number
@@ -231,7 +238,7 @@ class WmiLogEntryJob(_WmiJobBase):
                     job._handle_stderr(stderr_out, "FindMaximum for {}".format(job))
 
                 # begin phase 2
-                parsed = job._parse_wmi_logfile_output(stdout_out)
+                parsed = job._parse_wmi_logfile_output(stdout_out, log=job.log)
                 if not parsed:
                     # we can't check error code, but we should check this
                     job.log("No records found for {}".format(job))
@@ -323,7 +330,7 @@ class WmiLogEntryJob(_WmiJobBase):
                 #import pprint
                 #pprint.pprint(stderr_out)
 
-                parsed = job._parse_wmi_logfile_output(stdout_out, try_handle_lists=True)
+                parsed = job._parse_wmi_logfile_output(stdout_out, try_handle_lists=True, log=job.log)
                 # print 'len', len(parsed)
                 # `parsed` may be empty for RecordNumber-holes
 
