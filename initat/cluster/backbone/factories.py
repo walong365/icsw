@@ -118,13 +118,14 @@ class ConfigCatalog(factory.django.DjangoModelFactory):
 class Config(factory.django.DjangoModelFactory):
     class Meta:
         model = config
-        django_get_or_create = ("name",)
+        django_get_or_create = ("name", "config_catalog",)
 
     @factory.post_generation
     def config_catalog(self, create, extracted, **kwargs):
-        if self.system_config:
-            sys_cc = config_catalog.objects.get(Q(system_catalog=True))
-            print self.config_catalog_id, sys_cc.pk
+        print self.config_catalog, extracted
+        #if self.config_catalog_id != sys_cc.pk:
+        #    self.config_catalog = sys_cc
+        #    self.save()
 
     @factory.post_generation
     def description(self, create, extracted, **kwargs):
