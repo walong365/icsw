@@ -1489,8 +1489,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         # dictionary with all parent / slave relations
         ps_dict = {}
-        for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):  # @UndefinedVariable
-            ps_dict[ps_config.name] = ps_config.parent_config.name
         _bc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(h_filter).values_list("pk", flat=True))
         meta_devices = {
             md.device_group.pk: md for md in device.objects.filter(

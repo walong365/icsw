@@ -182,6 +182,9 @@ class srv_command(object):
         if tag_name.count("&"):
             tag_name = tag_name.replace("&", "__amp__")
             kwargs["escape_ampersand"] = "1"
+        if tag_name.count(";"):
+            tag_name = tag_name.replace(";", "__semicolon__")
+            kwargs["escape_semicolon"] = "1"
         if tag_name[0].isdigit():
             tag_name = "__fdigit__{}".format(tag_name)
             kwargs["first_digit"] = "1"
@@ -207,6 +210,8 @@ class srv_command(object):
             tag_name = tag_name.replace("__colon__", ":")
         if "escape_ampersand" in el.attrib:
             tag_name = tag_name.replace("__amp__", "&")
+        if "escape_semicolon" in el.attrib:
+            tag_name = tag_name.replace("__semicolon__", ";")
         if tag_name.startswith("__int__"):
             tag_name = int(tag_name[7:])
         elif tag_name == "__empty__":

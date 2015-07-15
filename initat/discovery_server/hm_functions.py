@@ -153,7 +153,10 @@ class HostMonitoringMixin(object):
                 else:
                     if "sys_dict" in result:
                         sys_dict = result["sys_dict"]
-                        for _value in sys_dict.itervalues():
+                        for _key, _value in sys_dict.iteritems():
+                            if type(_value) == list and len(_value) == 1:
+                                _value = _value[0]
+                                sys_dict[_key] = _value
                             # rewrite dict
                             _value["opts"] = _value["options"]
                     else:
@@ -185,25 +188,31 @@ class HostMonitoringMixin(object):
                             prev_th_dict[entry[0]] = (entry[1], entry[2])
                         if cur_pt.user_created:
                             self.log(
-                                "prevision partition_table '%s' was user created, not deleting" % (unicode(cur_pt)),
-                                logging_tools.LOG_LEVEL_WARN)
+                                "prevision partition_table '{}' was user created, not deleting".format(unicode(cur_pt)),
+                                logging_tools.LOG_LEVEL_WARN
+                            )
                         else:
-                            self.log("deleting previous partition_table %s" % (unicode(cur_pt)))
+                            self.log("deleting previous partition_table {}".format(unicode(cur_pt)))
                             for rel_obj in cur_pt._meta.get_all_related_objects():
                                 if rel_obj.name in [
                                     "backbone:partition_disc",
                                     "backbone:lvm_lv",
                                     "backbone:lvm_vg",
-                                    "backbone:sys_partition"
+                                    "backbone:sys_partition",
+                                    # new naming scheme starting from django1.8
+                                    "partition_disc",
+                                    "lvm_lv",
+                                    "lvm_vg",
+                                    "sys_partition",
                                 ]:
                                     pass
-                                elif rel_obj.name == "backbone:device":
+                                elif rel_obj.name in ["backbone:device", "device"]:
                                     for ref_obj in rel_obj.model.objects.filter(Q(**{rel_obj.field.name: cur_pt})):
-                                        self.log("cleaning %s of %s" % (rel_obj.field.name, unicode(ref_obj)))
+                                        self.log("cleaning {} of {}".format(rel_obj.field.name, unicode(ref_obj)))
                                         setattr(ref_obj, rel_obj.field.name, None)
                                         ref_obj.save()
                                 else:
-                                    raise ValueError("unknown related object %s for partition_info" % (rel_obj.name))
+                                    raise ValueError("unknown related object {} for partition_info".format(rel_obj.name))
                             cur_pt.delete()
                         target_dev.act_partition_table = None
                     # fetch partition_fs

@@ -71,9 +71,11 @@ class handler(SNMPHandler):
                 # check for network
                 _network_addr = ip_struct.address_ipv4 & ip_struct.netmask_ipv4
 
-                cur_nw = network.objects.get_or_create_network(network_addr=_network_addr,
-                                                               netmask=ip_struct.netmask_ipv4,
-                                                               context="SNMP")
+                cur_nw = network.objects.get_or_create_network(
+                    network_addr=_network_addr,
+                    netmask=ip_struct.netmask_ipv4,
+                    context="SNMP",
+                )
                 # check for existing IP
                 try:
                     _ip = net_ip.objects.get(Q(netdevice__device=dev) & Q(ip=ip_struct.address))

@@ -131,7 +131,7 @@ class _NetworkManager(models.Manager):
         try:
             cur_nw = self.get(Q(network=str(network_addr)) & Q(netmask=str(netmask)))
         except self.model.DoesNotExist:
-            if str(network_addr) == "127.0.0.0":
+            if str(network_addr).startswith("127."):
                 _identifier = "l"
             else:
                 _identifier = "o"
