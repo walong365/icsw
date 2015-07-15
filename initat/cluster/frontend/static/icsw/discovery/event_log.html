@@ -28,81 +28,13 @@
                                 </label>
                                 </span>
                             <select class="form-control input-sm" ng-model="device_mode[device_pk]"
-                                             ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
-                            </div>
-                        <div class="input-group">
-                            <input ng-model="tab_query_parameters[device_pk].filter_str" class="form-control"
-                                   placeholder="filter (whole words only)"/>
-                        <span class="input-group-btn">
-                            <button class="btn btn-warning" type="button"
-                                    ng-click="tab_query_parameters[device_pk].filter_str = ''"><span
-                                    title="clear filter" class="fa fa-remove"> Clear</span></button>
-                        </span>
+                                    ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
                         </div>
-                        <div class="form-group form-inline">
-                            <div class="input-group">
-                                <span class="input-group-addon">
-                                    <label>
-                                        from
-                                    </label>
-                                </span>
-                                <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].from_date"/>
-                                <span class="dropdown-toggle input-group-addon">
-                                    <div class="dropdown">
-                                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                            <i class="glyphicon glyphicon-calendar"></i>
-                                        </button>
-                                        <ul class="dropdown-menu" role="menu">
-                                            <datetimepicker ng-model="tab_query_parameters[device_pk].from_date"
-                                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }">
-                                            </datetimepicker>
-                                        </ul>
-                                    </div>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="form-group form-inline">
-                            <div class="input-group">
-                                <span class="input-group-addon">
-                                    <label>
-                                        to
-                                    </label>
-                                </span>
-                                <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].to_date"/>
-                                <span class="dropdown-toggle input-group-addon">
-                                    <div class="dropdown">
-                                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                            <i class="glyphicon glyphicon-calendar"></i>
-                                        </button>
-                                        <ul class="dropdown-menu" role="menu">
-                                            <datetimepicker ng-model="tab_query_parameters[device_pk].to_date"
-                                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }">
-                                            </datetimepicker>
-                                        </ul>
-                                    </div>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="form-group form-inline">
-                            <div class="input-group">
-                                 <span class="input-group-addon">
-                                     <label>
-                                         Group by
-                                     </label>
-                                 </span>
-                                <ui-select ng-model="tab_query_parameters[device_pk].group_by">
-                                    <ui-select-match placeholder="Group results by..">{{$select.selected}}</ui-select-match>
-                                    <ui-select-null-choice>No grouping</ui-select-null-choice>
-                                    <!-- TODO -->
-                                    <ui-select-choices repeat="key in entries.keys | filter:$select.search">
-                                        <div ng-bind-html="key | highlight: $select.search"></div>
-                                    </ui-select-choices>
-                                </ui-select>
-                            </div>
-                        </div>
+                        <icsw-discovery-event-log-filters></icsw-discovery-event-log-filters>
                     </div>
 
-                    <table class="table table-condensed table-striped" st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
+                    <table class="table table-condensed table-striped" style="width: auto"
+                           st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
                         <thead ng-show="!entries.is_loading">  <!-- need pagination in dom for limit -->
                             <tr>
                                 <td colspan="99">
@@ -142,4 +74,75 @@
             </tab>
         </tabset>
     </icsw-tools-ensure-device-selection>
+</script>
+
+<script type="text/ng-template" id="icsw.discovery.event_log.filters">
+    <div class="input-group">
+        <input ng-model="tab_query_parameters[device_pk].filter_str" class="form-control"
+               placeholder="filter (whole words only)"/>
+                        <span class="input-group-btn">
+                            <button class="btn btn-warning" type="button"
+                                    ng-click="tab_query_parameters[device_pk].filter_str = ''"><span
+                                    title="clear filter" class="fa fa-remove"> Clear</span></button>
+                        </span>
+    </div>
+    <div class="form-group form-inline">
+        <div class="input-group">
+                                <span class="input-group-addon">
+                                    <label>
+                                        from
+                                    </label>
+                                </span>
+            <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].from_date"/>
+                                <span class="dropdown-toggle input-group-addon">
+                                    <div class="dropdown">
+                                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                            <i class="glyphicon glyphicon-calendar"></i>
+                                        </button>
+                                        <ul class="dropdown-menu" role="menu">
+                                            <datetimepicker ng-model="tab_query_parameters[device_pk].from_date"
+                                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }">
+                                            </datetimepicker>
+                                        </ul>
+                                    </div>
+                                </span>
+        </div>
+    </div>
+    <div class="form-group form-inline">
+        <div class="input-group">
+                                <span class="input-group-addon">
+                                    <label>
+                                        to
+                                    </label>
+                                </span>
+            <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].to_date"/>
+                                <span class="dropdown-toggle input-group-addon">
+                                    <div class="dropdown">
+                                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                            <i class="glyphicon glyphicon-calendar"></i>
+                                        </button>
+                                        <ul class="dropdown-menu" role="menu">
+                                            <datetimepicker ng-model="tab_query_parameters[device_pk].to_date"
+                                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }">
+                                            </datetimepicker>
+                                        </ul>
+                                    </div>
+                                </span>
+        </div>
+    </div>
+    <div class="form-group form-inline">
+        <div class="input-group">
+                                 <span class="input-group-addon">
+                                     <label>
+                                         Group by
+                                     </label>
+                                 </span>
+            <ui-select ng-model="tab_query_parameters[device_pk].group_by">
+                <ui-select-match placeholder="Group results by.." allow-clear="true">{{$select.selected}}</ui-select-match>
+                <ui-select-choices repeat="key in entries.grouping_keys | filter:$select.search">
+                    <div ng-bind-html="key | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+    </div>
 </script>

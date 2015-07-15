@@ -129,15 +129,20 @@ angular.module(
                                         promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, query_parameters)
                                         if promise
                                             do (table_state) ->
-                                                promise.then(([total_num, keys, new_data]) ->
-                                                    console.log 'result here'
-                                                    new_data.reload_observable = scope.entries.reload_observable + 1
-                                                    scope.entries = new_data
-                                                    scope.entries.keys = keys
-                                                    scope.entries.total_num = total_num
+                                                promise.then((obj) ->
+                                                    console.log 'got obj', obj
+
+                                                    old_reload_observable = scope.entries.reload_observable
+                                                    old_grouping_keys = scope.entries.grouping_keys
+
+                                                    scope.entries = obj.entries
+                                                    scope.entries.reload_observable = old_reload_observable + 1
+                                                    scope.entries.keys = obj.keys_ordered
+                                                    scope.entries.total_num = obj.total_num
+                                                    scope.entries.grouping_keys = if obj.grouping_keys? then obj.grouping_keys else old_grouping_keys
                                                     scope.entries.is_loading = false
 
-                                                    table_state.pagination.numberOfPages = Math.ceil(total_num / pagination.number)
+                                                    table_state.pagination.numberOfPages = Math.ceil(obj.total_num / pagination.number)
                                                 )
 
                 # actually contact server
@@ -159,7 +164,7 @@ angular.module(
                     if !_.isEqual(_last_query_parameters, rest_params)
                         _last_query_parameters = angular.copy(rest_params)
                         console.log 'really doing query'
-                        return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).getList(rest_params)
+                        return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).customGET('', rest_params)
                     else
                         console.log 'no query, disregarding'
                         return null
@@ -168,6 +173,10 @@ angular.module(
                 scope.entries.is_loading = false
                 scope.entries.reload_observable = 0
         }
+]).directive("icswDiscoveryEventLogFilters", [() ->
+    restrict: 'E'
+    templateUrl: 'icsw.discovery.event_log.filters'
+    scope: false  # currently writes to tab_query_parameters[device_pk] and may reads some values
 ]).directive("icswDiscoveryEventLogTableBody", [() ->
     restrict: 'A'
     scope:

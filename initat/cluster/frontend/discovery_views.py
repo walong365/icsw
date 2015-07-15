@@ -38,6 +38,7 @@ from initat.cluster.backbone.models.functions import memoize_with_expiry
 import pymongo
 from rest_framework.generics import ListAPIView
 from initat.cluster.backbone.render import render_me
+from initat.cluster.frontend.rest_views import rest_logging
 
 
 class MongoDbInterface(object):
@@ -111,6 +112,12 @@ class GetEventLogDeviceInfo(View):
 class GetEventLog(ListAPIView):
     """Returns actual log data (all kinds of logs currently)"""
 
+    class EventLogResult(collections.namedtuple("EventLogResult",
+                                                ["entries", "keys_ordered", "grouping_keys", "total_num"])):
+        # this pattern allows for default values:
+        def __new__(cls, grouping_keys=None, *args, **kwargs):
+            return super(GetEventLog.EventLogResult, cls).__new__(cls, grouping_keys=grouping_keys, *args, **kwargs)
+
     @classmethod
     def _parse_datetime(cls, datetime_str):
         return dateutil.parser.parse(datetime_str)
@@ -165,7 +172,7 @@ class GetEventLog(ListAPIView):
                 del entry['_id']
             keys_ordered = [group_by, 'count']
 
-            return total_num, keys_ordered, result_paginated
+            return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_paginated)
 
         def _regular_query(self, device_pks, pagination_skip, pagination_limit, filter_str=None):
             projection_obj = {
@@ -177,9 +184,9 @@ class GetEventLog(ListAPIView):
             }
 
             if self.from_date_parsed is not None:
-                query_obj.setdefault('creation_date', {})['$gte'] = self._parse_datetime(self.from_date_parsed)
+                query_obj.setdefault('creation_date', {})['$gte'] = GetEventLog._parse_datetime(self.from_date_parsed)
             if self.from_date_parsed is not None:
-                query_obj.setdefault('creation_date', {})['$lte'] = self._parse_datetime(self.to_date_parsed)
+                query_obj.setdefault('creation_date', {})['$lte'] = GetEventLog._parse_datetime(self.to_date_parsed)
 
             if filter_str is not None:
                 query_obj["$text"] = {'$search': filter_str}
@@ -215,7 +222,8 @@ class GetEventLog(ListAPIView):
 
             keys_ordered = entry_keys.keys()
 
-            return total_num, keys_ordered, result_merged
+            return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_merged,
+                                              grouping_keys=keys_ordered)
 
     def _get_wmi_event_log(self, device_pks, pagination_skip, pagination_limit,
                            filter_str=None, from_date=None, to_date=None, logfile_name=None):
@@ -247,9 +255,11 @@ class GetEventLog(ListAPIView):
         keys = set()
         for entry in result:
             keys.update(entry.iterkeys())
-        return total_num, keys, result
+        return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys, entries=result,
+                                          grouping_keys=keys)
 
     @method_decorator(login_required)
+    @rest_logging
     def list(self, request, *args, **kwargs):
         # NOTE: currently, this list always contains one entry
         device_pks = json.loads(request.GET['device_pks'])
@@ -263,15 +273,15 @@ class GetEventLog(ListAPIView):
 
         if mode == 'wmi':
             # a = time.time()
-            total_num, keys, entries =\
-                self._get_wmi_event_log(device_pks, pagination_skip, pagination_limit, **query_parameters)
+            event_log_result = self._get_wmi_event_log(device_pks, pagination_skip, pagination_limit, **query_parameters)
             # print 'took', time.time() - a
 
         elif mode == 'ipmi':
-            total_num, keys, entries = \
-                self.__class__.GetIpmiEventLog()(device_pks, pagination_skip, pagination_limit, **query_parameters)
+            event_log_result = self.__class__.GetIpmiEventLog()(device_pks, pagination_skip, pagination_limit, **query_parameters)
         else:
             raise AssertionError("Invalid mode: {} ".format(mode))
 
-        return HttpResponse(bson.json_util.dumps([total_num, keys, entries]),
+        ret_dict = {field_name: getattr(event_log_result, field_name) for field_name in event_log_result._fields}
+
+        return HttpResponse(bson.json_util.dumps(ret_dict),
                             content_type="application/json")
