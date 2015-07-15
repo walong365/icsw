@@ -153,7 +153,10 @@ class HostMonitoringMixin(object):
                 else:
                     if "sys_dict" in result:
                         sys_dict = result["sys_dict"]
-                        for _value in sys_dict.itervalues():
+                        for _key, _value in sys_dict.iteritems():
+                            if type(_value) == list and len(_value) == 1:
+                                _value = _value[0]
+                                sys_dict[_key] = _value
                             # rewrite dict
                             _value["opts"] = _value["options"]
                     else:
