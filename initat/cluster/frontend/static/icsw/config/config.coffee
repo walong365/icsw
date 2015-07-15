@@ -353,7 +353,7 @@ config_module = angular.module(
             scope.get_num_configs = (cat) ->
                 return (entry for entry in configs when entry.config_catalog == cat.idx).length
     }
-]).service('icswConfigListService', ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", (icswConfigRestService, $q, icswTools, ICSW_URLS, icswConfigHintService) ->
+]).service('icswConfigListService', ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "msgbus", (icswConfigRestService, $q, icswTools, ICSW_URLS, icswConfigHintService, msgbus) ->
     _def = icswConfigRestService.fetch("icsw_config_list_service")
     _config = $q.defer()
     _configs = []
@@ -414,6 +414,9 @@ config_module = angular.module(
         create_extra_fields(config)
         update_filter_field_config(config)
     return {
+        object_modified: () ->
+            # we don't know if categories have changed, notify to be sure
+            msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
         edit_template: "config.form"
         load_promise: _config.promise
         save_defer: (new_obj) ->
@@ -1003,12 +1006,15 @@ config_module = angular.module(
                         ev_handlers.push(cc)
             return ev_handlers
     }
-]).service('icswConfigMonCheckCommandListService', ["icswSimpleAjaxCall", "icswConfigMonCheckCommandHelpService", "icswConfigListService", "icswTools", "icswConfigHintService", "Restangular", "ICSW_URLS", (icswSimpleAjaxCall, icswConfigMonCheckCommandHelpService, icswConfigListService, icswTools, icswConfigHintService, Restangular, ICSW_URLS) ->
+]).service('icswConfigMonCheckCommandListService', ["icswSimpleAjaxCall", "icswConfigMonCheckCommandHelpService", "icswConfigListService", "icswTools", "icswConfigHintService", "Restangular", "ICSW_URLS", "msgbus", (icswSimpleAjaxCall, icswConfigMonCheckCommandHelpService, icswConfigListService, icswTools, icswConfigHintService, Restangular, ICSW_URLS, msgbus) ->
     return {
         delete_confirm_str: (obj) ->
             return "Really delete MonCheckCommand '#{obj.name}' ?"
         edit_template: "mon.check.command.form"
         save_defer: (new_obj) ->
+        object_modified: () ->
+            # we don't know if categories have changed, notify to be sure
+            msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
         init_fn: (scope) ->
             angular.extend(scope, icswConfigMonCheckCommandHelpService)
             # Restangularize all elements
