@@ -134,6 +134,8 @@ def config_pre_save(sender, **kwargs):
         _check_empty_string(cur_inst, "name")
         # priority
         _check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
+        if cur_inst.system_config and not cur_inst.config_catalog.system_catalog:
+            raise ValidationError("System config '{}' has to reside in the system config_catalog".format(cur_inst.name))
 
 
 @receiver(signals.post_save, sender=config)

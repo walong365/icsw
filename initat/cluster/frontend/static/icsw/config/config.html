@@ -61,6 +61,7 @@
             <thead>
                 <tr>
                     <th st-sort="name">name</th>
+                    <th>SysConfigs</th>
                     <th st-sort="url">URL</th>
                     <th st-sort="author">Author</th>
                     <th>Version</th>
@@ -71,6 +72,7 @@
             <tbody>
                 <tr ng-repeat="catalog in entries_displayed">
                     <td>{{ catalog.name }}</td>
+                    <td>{{ catalog.system_catalog | yesno1 }}</td>
                     <td>{{ catalog.url }}</td>
                     <td>{{ catalog.author }}</td>
                     <td>{{ catalog.version }}</td>

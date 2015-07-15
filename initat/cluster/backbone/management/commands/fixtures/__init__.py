@@ -1,7 +1,4 @@
 import os
-from .config_catalog_fixtures import get_sys_conf_cat
-
-get_sys_conf_cat()
 
 
 def add_fixtures(**kwargs):

@@ -25,7 +25,6 @@ from initat.cluster.backbone import factories
 def add_fixtures(**kwargs):
 
     sys_cc = factories.ConfigCatalog(name="local", system_catalog=True)
-
     for _name, _descr in [
         ("config_server", "enables node provisioning features"),
         ("discovery_server", "enables network discovery and inventory"),
@@ -48,10 +47,11 @@ def add_fixtures(**kwargs):
         ("virtual_desktop_client", "device has a virtual desktop client"),
         ("auto_etc_hosts", "/etc/hosts file can be created from local cluster-server"),
     ]:
-        factories.Config(
+        _new_c = factories.Config(
             name=_name,
             description=_descr,
             config_catalog=sys_cc,
             server_config=True,
             system_config=True,
         )
+        print _new_c

@@ -121,13 +121,6 @@ class Config(factory.django.DjangoModelFactory):
         django_get_or_create = ("name", "config_catalog",)
 
     @factory.post_generation
-    def config_catalog(self, create, extracted, **kwargs):
-        print self.config_catalog, extracted
-        #if self.config_catalog_id != sys_cc.pk:
-        #    self.config_catalog = sys_cc
-        #    self.save()
-
-    @factory.post_generation
     def description(self, create, extracted, **kwargs):
         extracted = extracted or ""
         if not self.description:

@@ -452,6 +452,8 @@ config_module = angular.module(
                     return "???"
             scope.select = (obj) ->
                 obj.isSelected = !obj.isSelected
+            scope.get_system_catalog = () ->
+                return (cat for cat in _catalogs when cat.system_catalog)
             scope.get_all_config_hint_names = () ->
                 return icswConfigHintService.get_all_config_hint_names()
             scope.show_config_help = (obj) ->
