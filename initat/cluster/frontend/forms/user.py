@@ -6,7 +6,6 @@ from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
 from django.contrib.auth import authenticate
-from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField
 from django.forms.widgets import TextInput, PasswordInput, NumberInput, CheckboxInput
