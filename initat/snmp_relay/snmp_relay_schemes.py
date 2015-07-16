@@ -17,15 +17,16 @@
 #
 """ SNMP schemes for SNMP relayer """
 
-from initat.host_monitoring import limits
-from initat.snmp.snmp_struct import snmp_oid, value_cache
 import cStringIO
-from initat.tools import logging_tools
 import argparse
-from initat.tools import process_tools
 import socket
 import sys
 import time
+
+from initat.host_monitoring import limits
+from initat.snmp.snmp_struct import snmp_oid, value_cache
+from initat.tools import logging_tools, process_tools
+
 
 # maximum cache time, 15 minutes
 MAX_CACHE_TIME = 15 * 60

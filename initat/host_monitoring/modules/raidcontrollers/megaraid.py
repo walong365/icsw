@@ -388,8 +388,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _ld = get_log_dict(lines)
                 if _entity_type == "v":
                     _ld["ctrl"] = key.split(":")[0]
-                    if "name" not in _ld:
-                        _ld["name"] = ""
+                    for _key, _default in [("name", ""), ("virtual_drive", "")]:
+                        if _key not in _ld:
+                            _ld[_key] = _default
                     _info_str = "vd {virtual_drive} ('{name}', ctrl {ctrl}), RAID level {raid_level}, " \
                         "size={size}, drives={number_of_drives}, state={state}".format(
                             **_ld

@@ -28,6 +28,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect
@@ -36,7 +37,6 @@ from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.render import render_me
-from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object, xml_wrapper
 import django
 
@@ -75,6 +75,8 @@ def login_page(request, **kwargs):
             _vers.append("{:d}".format(_v))
         else:
             break
+    # this is checked in sess_login
+    request.session.set_test_cookie()
     return render_me(
         request,
         "login.html",
@@ -106,14 +108,16 @@ def _failed_login(request, user_name):
         login_history.login_attempt(_user, request, False)
 
 
-def _login(request, _user_object, login_form=None):
+def _login(request, _user_object, login_credentials=None):
     login(request, _user_object)
     login_history.login_attempt(_user_object, request, True)
-    request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in _user_object.user_variable_set.all()])
+    request.session["user_vars"] =\
+        dict([(user_var.name, user_var) for user_var in _user_object.user_variable_set.all()])
     # for alias logins login_name != login
-    if login_form is not None:
-        request.session["login_name"] = login_form.get_login_name()
-        request.session["password"] = base64.b64encode(login_form.cleaned_data.get("password").decode("utf-8"))
+    if login_credentials is not None:
+        login_name, login_password = login_credentials
+        request.session["login_name"] = login_name
+        request.session["password"] = base64.b64encode(login_password.decode("utf-8"))
     else:
         request.session["login_name"] = _user_object.login
     _user_object.login_count += 1
@@ -127,7 +131,7 @@ class sess_login(View):
             return HttpResponseRedirect(reverse("main:index"))
         else:
             if user.objects.all().count():  # @UndefinedVariable
-                if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:  # @UndefinedVariable
+                if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:
                     first_user = authenticate(
                         username=user.objects.all().values_list("login", flat=True)[0],  # @UndefinedVariable
                         password="AUTO_LOGIN"
@@ -140,16 +144,73 @@ class sess_login(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = json.loads(request.POST["blob"])
-        login_form = authentication_form(data=_post)
-        if login_form.is_valid():
-            db_user = login_form.get_user()
-            _login(request, db_user, login_form)
+        login_name = _post.get('username')
+        login_password = _post.get('password')
+
+        real_user_name = self.__class__.get_real_user_name(login_name)
+
+        try:
+            db_user = self.__class__._check_login_data(request, real_user_name, login_password)
+        except ValidationError as e:
+            for err_msg in e:
+                request.xml_response.error(unicode(err_msg))
+            _failed_login(request, real_user_name)
+        else:
+            login_credentials = (real_user_name, login_password)
+            _login(request, db_user, login_credentials)
             if _post.get("next_url", "").strip():
                 request.xml_response["redirect"] = _post["next_url"]
             else:
                 request.xml_response["redirect"] = reverse("main:index")
+
+    @classmethod
+    def _check_login_data(cls, request, username, password):
+        """Returns a valid user instance to be logged in or raises ValidationError"""
+        if username and password:
+            db_user = authenticate(username=username, password=password)
+            if db_user is None:
+                raise ValidationError(
+                    "Please enter a correct username and password. " +
+                    "Note that both fields are case-sensitive."
+                )
+            if db_user is not None and not db_user.is_active:
+                raise ValidationError("This account is inactive.")
         else:
-            for _key, _value in login_form.errors.iteritems():
-                for _str in _value:
-                    request.xml_response.error(_str)
-            _failed_login(request, login_form.real_user_name)
+            raise ValidationError("Need username and password")
+        # TODO: determine whether this should be moved to its own method.
+        if request:
+            if not request.session.test_cookie_worked():
+                raise ValidationError("Your Web browser doesn't appear to have cookies enabled. " +
+                                      "Cookies are required for logging in.")
+
+        assert db_user is not None
+        return db_user
+
+    @classmethod
+    def get_real_user_name(cls, username):
+        """Resolve aliases"""
+        _all_users = user.objects.all()  # @UndefinedVariable
+        all_aliases = [
+            (
+                login_name,
+                [_entry for _entry in al_list.strip().split() if _entry not in [None, "None"]]
+            ) for login_name, al_list in _all_users.values_list(
+                "login", "aliases"
+            ) if al_list is not None and al_list.strip()
+            ]
+        rev_dict = {}
+        all_logins = [login_name for login_name, al_list in all_aliases]
+        for pk, al_list in all_aliases:
+            for cur_al in al_list:
+                if cur_al in rev_dict:
+                    raise ValidationError("Alias '{}' is not unique".format(cur_al))
+                elif cur_al in all_logins:
+                    # ignore aliases which are also logins
+                    pass
+                else:
+                    rev_dict[cur_al] = pk
+        if username in rev_dict:
+            real_user_name = rev_dict[username]
+        else:
+            real_user_name = username
+        return real_user_name

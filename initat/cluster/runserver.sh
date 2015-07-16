@@ -4,12 +4,11 @@ _debug=1
 _localstatic=0
 _nostatic=0
 _insecure=0
-_doforms=1
 
 function print_help {
     echo "usage:"
     echo
-    echo "$0 [--nostatic] [--localstatic] [--noforms] [-h] [[ EXTRA_OPTIONS ]]"
+    echo "$0 [--nostatic] [--localstatic] [-h] [[ EXTRA_OPTIONS ]]"
     echo
     exit -1
 }
@@ -25,9 +24,6 @@ while (( "$#" )) ; do
             _localstatic=1
             _insecure=1
             _debug=0
-            ;;
-        "--noforms")
-            _doforms=0
             ;;
         "-h")
             print_help
@@ -45,15 +41,10 @@ RSOPTIONS="--traceback"
 [ "${_localstatic}" == "1" ] && export LOCAL_STATIC=1
 [ "${_insecure}" == "1" ] && RSOPTIONS="${RSOPTIONS} --insecure"
 
-echo "settings: DEBUG=${_debug}, LOCAL_STATIC=${_localstatic}, NOSTATIC=${_nostatic}, INSECURE=${_insecure}, DOFORMS='${_doforms}', RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
+echo "settings: DEBUG=${_debug}, LOCAL_STATIC=${_localstatic}, NOSTATIC=${_nostatic}, INSECURE=${_insecure}, RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 export NODE_PATH=$(/opt/cluster/bin/npm -g root)
 export NODE_PATH=${NODE_PATH}:${NODE_PATH}/npm/node_modules
 echo "NODE_PATH=${NODE_PATH}"
-
-if [ "${_doforms}" == "1" ] ; then
-    echo "compiling all forms ..."
-    ./manage.py render_all_forms
-fi
 
 if [ "${_nostatic}" == "0" ] ; then
      echo -ne "collecting static files ... "

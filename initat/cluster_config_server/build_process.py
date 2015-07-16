@@ -351,16 +351,6 @@ class build_process(threading_tools.process_obj):
                     Q(device_config__device__is_meta_device=True)
                 )
             ). order_by("-priority", "name").distinct().values_list("pk", flat=True))
-            parent_pks = []
-            while True:
-                new_pks = set(
-                    config.objects.exclude(parent_config=None).filter(
-                        Q(pk__in=config_pks + parent_pks)
-                    ).values_list("parent_config", flat=True)) - set(config_pks + parent_pks)
-                if new_pks:
-                    parent_pks.extend(list(new_pks))
-                else:
-                    break
             pseudo_config_list = config.objects.all().prefetch_related(
                 "config_str_set", "config_int_set", "config_bool_set", "config_blob_set", "config_script_set"
             ).order_by("-priority", "name")
@@ -373,13 +363,12 @@ class build_process(threading_tools.process_obj):
             for _cur_conf in pseudo_config_list:
                 # cur_conf.show_variables(cur_c.log, detail=global_config["DEBUG"])
                 pass
-            cur_c.log("%s found: %s, %s found: %s" % (
-                logging_tools.get_plural("config", len(config_pks)),
-                ", ".join([config_dict[pk].name for pk in config_pks]) if config_pks else "no configs",
-                logging_tools.get_plural("parent config", len(parent_pks)),
-                ", ".join([config_dict[pk].name for pk in parent_pks]) if parent_pks else "no parent configs"))
-            # extend with parent pks
-            config_pks.extend(list(parent_pks))
+            cur_c.log(
+                "{} found: {}".format(
+                    logging_tools.get_plural("config", len(config_pks)),
+                    ", ".join([config_dict[pk].name for pk in config_pks]) if config_pks else "no configs",
+                )
+            )
             # node interfaces
             conf_dict["node_if"] = []
             taken_list, not_taken_list = ([], [])

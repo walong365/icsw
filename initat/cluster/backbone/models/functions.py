@@ -136,13 +136,13 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
     ignore_list_static = [entry for entry in ignore_list]
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
-        _rel_name = rel_obj.model._meta.object_name
+        _rel_name = rel_obj.related_model._meta.object_name
         if _rel_name not in ignore_list_static:
             if rel_obj.field.rel.on_delete == models.SET_NULL:
                 # ignore foreign keys where on_delete == SET_NULL
                 pass
             else:
-                ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
+                ref_list = [entry for entry in rel_obj.related_model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
                 if ref_list:
                     if related_objects is not None:
                         rel_obj.ref_list = ref_list
@@ -161,9 +161,9 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
             m2m_field_name = m2m_obj.field.name
             if detail:
-                used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name: in_obj}))))
+                used_objs.extend(list(m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj}))))
             else:
-                used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name: in_obj})).count()
+                used_objs += m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj})).count()
     in_obj._lock_list = _lock_list
     if ignore_list:
         raise ImproperlyConfigured(

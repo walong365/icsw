@@ -272,18 +272,12 @@ INSTALLED_APPS = (
     "reversion",
     "pipeline",
     "static_precompiler",
-    "crispy_forms",
 )
 if SLAVE_MODE:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
 
 
 ICSW_WEBCACHE = "/opt/cluster/share/webcache"
-
-# crispy settings, bootstrap3 is angularized via a patch
-CRISPY_ALLOWED_TEMPLATE_PACKS = ('bootstrap3')
-CRISPY_TEMPLATE_PACK = "bootstrap3"
-CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
@@ -448,7 +442,7 @@ PIPELINE_JS = {
         "source_filenames": (
             "js/jquery-ui-1.10.2.custom.js",
             # angular
-            "js/angular-1.4.2.js",
+            "js/angular-1.4.3.js",
             "js/lodash.js",
             "js/bluebird.js",
             "js/codemirror/codemirror.js",

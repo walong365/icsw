@@ -525,11 +525,14 @@ class device(models.Model):
     # enabled ?
     enabled = models.BooleanField(default=True)
     # try to read relevant data from device via md-config-server
-    md_cache_mode = models.IntegerField(choices=[
-        (1, "automatic (server)"),
-        (2, "never use cache"),
-        (3, "once (until successfull)"),
-        ], default=1)
+    md_cache_mode = models.IntegerField(
+        choices=[
+            (1, "automatic (server)"),
+            (2, "never use cache"),
+            (3, "once (until successfull)"),
+        ],
+        default=1
+    )
     # system name
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
     # resolve name for monitoring (i.e. use IP for monitoring)

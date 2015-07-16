@@ -191,7 +191,7 @@ angular.module(
             $scope.reload()
         $scope.reload= () ->
             wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
                 restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
                 # 2
                 restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),
@@ -357,7 +357,7 @@ angular.module(
                                 network_type_names.push(network.network_type_name)
                             ip_dict[network.network_type_name].push(ip.ip)
             for key, value of ip_dict
-                ip_dict[key] = _.sortBy(value)
+                ip_dict[key] = _.unique(_.sortBy(value))
             network_type_names = _.sortBy(network_type_names)
             dev.ip_dict = ip_dict
             dev.network_type_names = network_type_names

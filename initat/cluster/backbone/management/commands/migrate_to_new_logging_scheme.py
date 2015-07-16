@@ -52,7 +52,7 @@ class Command(BaseCommand):
             for _ls in log_status.objects.all():
                 _ll_dict[_ls.pk] = LogLevel.objects.get(Q(identifier={"c": "c", "w": "w", "e": "e"}.get(_ls.identifier, "o")))
             _user_ls = {}
-            for _le in devicelog.objects.all().select_related("user", "device", "source"):
+            for _le in devicelog.objects.all().select_related("user", "device", "log_source"):
                 _source = _ls_dict[_le.log_source_id]
                 _new_le = DeviceLogEntry.objects.create(
                     device=_le.device,

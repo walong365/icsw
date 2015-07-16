@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,20 +19,19 @@
 #
 """ cluster-server, quota handling """
 
+import commands
+import grp
+import pwd
+import time
+
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, quota_capable_blockdevice, \
-    user_quota_setting, group_quota_setting, device, partition_fs
+    user_quota_setting, group_quota_setting, partition_fs
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
-import commands
-import grp
-from initat.tools import logging_tools
-import pprint  # @UnusedImport
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 import psutil
-import pwd
-import time
 
 
 class quota_line(object):
@@ -619,7 +618,7 @@ class quota_stuff(bg_stuff):
                     factor=1000,
                     base=1000,
                     valid_until=valid_until,
-                    unit="B"
+                    unit="B",
                 ).build_xml(builder)
             )
             my_vector.append(
@@ -631,7 +630,7 @@ class quota_stuff(bg_stuff):
                     factor=1000,
                     base=1000,
                     valid_until=valid_until,
-                    unit="B"
+                    unit="B",
                 ).build_xml(builder)
             )
             my_vector.append(
@@ -643,7 +642,7 @@ class quota_stuff(bg_stuff):
                     factor=1000,
                     base=1000,
                     valid_until=valid_until,
-                    unit="B"
+                    unit="B",
                 ).build_xml(builder)
             )
         return my_vector

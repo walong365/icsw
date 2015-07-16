@@ -37,8 +37,6 @@ from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, \
     network_with_ip_serializer, ComCapabilitySerializer
-from initat.cluster.frontend import forms
-from initat.cluster.backbone.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
 import rest_framework
 from rest_framework.authentication import SessionAuthentication
@@ -540,7 +538,8 @@ class csw_object_list(viewsets.ViewSet):
     @rest_logging
     def list(self, request):
         all_db_perms = csw_permission.objects.filter(Q(valid_for_object_level=True)).select_related("content_type")
-        perm_cts = ContentType.objects.filter(Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms])).order_by("model")
+        perm_cts = ContentType.objects.filter(Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms]))
+        perm_cts = sorted(perm_cts, key=operator.attrgetter("name"))
         group_list = []
         for perm_ct in perm_cts:
             cur_group = csw_object_group(

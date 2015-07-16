@@ -31,13 +31,8 @@ import tempfile
 import time
 
 from initat.host_monitoring import hm_classes, limits
-from initat.tools import cpu_database
-from initat.tools import logging_tools
-from initat.tools import partition_tools
-from initat.tools import pci_database
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import uuid_tools
+from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, process_tools, \
+    server_command, uuid_tools
 import psutil
 from initat.client_version import VERSION_STRING
 
@@ -2086,7 +2081,10 @@ class partinfo_command(hm_classes.hm_command):
             # pprint.pprint(sys_dict)
         else:
             sys_dict = srv_com["sys_dict"]
-            for _value in sys_dict.itervalues():
+            for _key, _value in sys_dict.iteritems():
+                if type(_value) == list and len(_value) == 1:
+                    _value = _value[0]
+                    sys_dict[_key] = _value
                 # rewrite dict
                 _value["opts"] = _value["options"]
             partitions = []
