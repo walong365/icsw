@@ -191,7 +191,7 @@ angular.module(
             $scope.reload()
         $scope.reload= () ->
             wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
                 restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
                 # 2
                 restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),

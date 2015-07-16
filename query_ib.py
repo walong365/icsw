@@ -83,12 +83,15 @@ class IBDataStore(object):
     def _rewrite_key(self, key):
         _trans = [
             ("port", "Port", True),
+            ("error", "Error", False),
             ("data", "Data", False),
             ("pkts", "Pkts", False),
             ("unicast", "Unicast", False),
             ("multicast", "Multicast", False),
             ("xmit", "Xmit", False),
             ("recv", "Rcv", False),
+            ("symbol", "Symbol", False),
+            ("counter", "Counter", False),
         ]
         for _src, _dst, _ignore in _trans:
             key = key.replace(_dst, "{}.".format(_src))
