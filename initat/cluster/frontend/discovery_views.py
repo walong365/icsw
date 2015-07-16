@@ -144,6 +144,10 @@ class GetEventLog(ListAPIView):
             if self.to_date_parsed is not None:
                 query_obj.setdefault('creation_date', {})['$lte'] = self.to_date_parsed
 
+        def _is_reasonable_grouping_key(self, key):
+            return key in ('Record Type', "Sensor Type", "Event Direction", "Record Type", "EvM Revision", "Event Type",
+                           "Description", "Event Interpretation")
+
         def _group_by_query(self, device_pks, pagination_skip, pagination_limit, filter_str, group_by):
             def _get_match_obj():
                 _match_obj = {
@@ -237,7 +241,7 @@ class GetEventLog(ListAPIView):
                         if k != '__icsw_ipmi_section_type':
                             entry_sections_merged[k] = v
                             # support grouping for section 1 (0 is local timestamp, so 1 is first ipmi)
-                            if section_num == 1:
+                            if section_num == 1 and self._is_reasonable_grouping_key(k):
                                 grouping_keys[k] = None
 
                 result_merged.append(entry_sections_merged)
