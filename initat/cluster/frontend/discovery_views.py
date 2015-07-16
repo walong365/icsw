@@ -120,7 +120,10 @@ class GetEventLog(ListAPIView):
 
     @classmethod
     def _parse_datetime(cls, datetime_str):
-        return dateutil.parser.parse(datetime_str)
+        try:
+            return dateutil.parser.parse(datetime_str)
+        except ValueError as e:
+            raise RuntimeError("Failed to parse date time {}: {}".format(datetime_str, e))
 
     class GetIpmiEventLog(object):
         def __init__(self):
