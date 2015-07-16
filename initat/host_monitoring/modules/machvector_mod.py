@@ -19,29 +19,22 @@
 #
 """ machine vector stuff """
 
+from lxml import etree  # @UnresolvedImports
+import copy
+import json
+import os
+import re
+import shutil
+import time
+
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
 from initat.host_monitoring.config import global_config
-from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
-import commands
-import copy
-import json
-from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
-import re
-from initat.tools import server_command
-import shutil
-import time
-import zmq
+from initat.tools import logging_tools, process_tools, server_command
 
 MACHVECTOR_NAME = "machvector.xml"
-ALERT_NAME = "alert"
 COLLECTOR_PORT = 8002
-
-MONITOR_OBJECT_INFO_LIST = ["load", "mem", "net", "vms", "num"]
-MAX_MONITOR_OBJECTS = 10
 
 
 class _general(hm_classes.hm_module):
@@ -108,57 +101,6 @@ class get_mvector_command(hm_classes.hm_command):
                     out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
             ret_array.extend(unicode(out_list).split("\n"))
             return limits.nag_STATE_OK, "\n".join(ret_array)
-
-
-class alert_object(object):
-    def __init__(self, key, logger, num_dp, th_class, th, command):
-        self.__key = key
-        self.__logger = logger
-        self.__th_class = th_class
-        self.__th = th
-        self.__command = command
-        self.init_buffer(num_dp)
-
-    def init_buffer(self, num_dp):
-        self.__val_buffer = []
-        self.__num_dp = num_dp
-        self.log("init val_buffer, max_size is {:d}".format(num_dp))
-
-    def add_value(self, val):
-        self.__val_buffer.append(val)
-        if len(self.__val_buffer) > self.__num_dp:
-            self.__val_buffer.pop(0)
-        if len(self.__val_buffer) == self.__num_dp:
-            # check for alert
-            if self.__th_class == "U":
-                alert = len([1 for x in self.__val_buffer if x > self.__th]) == self.__num_dp
-            else:
-                alert = len([1 for x in self.__val_buffer if x < self.__th]) == self.__num_dp
-            if alert:
-                self.log(
-                    "*** alert, threshold {:.2f}, {}: {}".format(
-                        self.__th,
-                        logging_tools.get_plural("value", self.__num_dp),
-                        ", ".join(["{:.2f}".format(x) for x in self.__val_buffer])
-                    )
-                )
-                act_com = self.__command
-                for src, dst in [
-                    ("%k", self.__key),
-                    ("%v", ", ".join(["{:.2f}".format(float(x)) for x in self.__val_buffer])),
-                    ("%t", "{:.2f}".format(float(self.__th))),
-                    ("%c", self.__th_class)
-                ]:
-                    act_com = act_com.replace(src, dst)
-                stat, out = commands.getstatusoutput(act_com)
-                lines = [x.rstrip() for x in out.split("\n") if x.rstrip()]
-                self.log("*** calling command '{}' returned {:d} ({}):".format(act_com, stat, logging_tools.get_plural("line", len(lines))))
-                for line in lines:
-                    self.log("*** - {}".format(line))
-        # print self.__key, self.__val_buffer
-
-    def log(self, what):
-        self.__logger.info("[mvect / ao {}, cl {}] {}".format(self.__key, self.__th_class, what))
 
 
 class machine_vector(object):
@@ -402,14 +344,22 @@ class machine_vector(object):
                 "error sending to ({}, {:d}): {}".format(
                     t_host,
                     t_port,
-                    exc_info), logging_tools.LOG_LEVEL_ERROR)
+                    exc_info
+                ), logging_tools.LOG_LEVEL_ERROR
+            )
             if exc_info.count("int_error"):
                 raise
             else:
                 # problem sending, wait 2 minutes
                 _diff_t = 120
                 _w_time = cur_time + _diff_t
-                self.log("setting pause_until to {:d} (+{:d} seconds)".format(_w_time, _diff_t), logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "setting pause_until to {:d} (+{:d} seconds)".format(
+                        _w_time,
+                        _diff_t
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 cur_xml.attrib["pause_until"] = "{:d}".format(_w_time)
         # print etree.tostring(send_vector, pretty_print=True)
 
@@ -537,15 +487,23 @@ class machine_vector(object):
                         self.optimize_list(lost_keys),
                     )
                 )
-            self.log("Machine_vector has changed, setting actual key to {:d} ({:d} keys)".format(self.__act_key, len(self.__act_dict)))
+            self.log(
+                "Machine_vector has changed, setting actual key to {:d} ({:d} keys)".format(
+                    self.__act_key,
+                    len(self.__act_dict)
+                )
+            )
 
     def check_timeout(self):
         cur_time = time.time()
         rem_keys = [key for key, value in self.__act_dict.iteritems() if value.check_timeout(cur_time)]
         if rem_keys:
-            self.log("removing {} because of timeout: {}".format(
-                logging_tools.get_plural("key", len(rem_keys)),
-                ", ".join(sorted(rem_keys))))
+            self.log(
+                "removing {} because of timeout: {}".format(
+                    logging_tools.get_plural("key", len(rem_keys)),
+                    ", ".join(sorted(rem_keys))
+                )
+            )
             for rem_key in rem_keys:
                 self.unregister_entry(rem_key)
             self.__changed = True
@@ -605,40 +563,6 @@ class machine_vector(object):
                 module.update_machine_vector(self)
         self.check_changed()
         # self.check_for_alerts(log_t)
-
-
-class monitor_object(object):
-    def __init__(self, name):
-        self.__name = name
-        self.__start_time, self.__counter = (time.time(), 0)
-        self.__cache = {}
-
-    def update(self, mv):
-        self.__counter += 1
-        for key, value in mv.get_act_dict().iteritems():
-            if [True for item in MONITOR_OBJECT_INFO_LIST if key.startswith(item)]:
-                if key not in self.__cache:
-                    self.__cache[key] = hm_classes.mvect_entry(
-                        key,
-                        default=value.default,
-                        info=value.info,
-                        base=value.base,
-                        factor=value.factor,
-                        unit=value.unit,
-                        value=value.value,
-                        monitor_value=True
-                    )
-                else:
-                    self.__cache[key].update(value.value)
-
-    def get_start_time(self):
-        return self.__start_time
-
-    def get_info(self):
-        return {
-            "start_time": self.__start_time,
-            "cache": self.__cache
-        }
 
 
 def pretty_print(val, base):

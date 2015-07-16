@@ -38,7 +38,7 @@
             <key top-level="pdu.ampere.total" match="used"></key>
         </key_list>
     </aggregate>
-    <aggregate name="ipmi-cpu-temperateure" action="mean">
+    <aggregate name="ipmi-cpu-temperature" action="mean">
         <key_list>
             <key top-level="ipmi.temp" match="system_temp"></key>
             <key top-level="ipmi.temp" match="cpu.*"></key>
