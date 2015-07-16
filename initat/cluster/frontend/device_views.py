@@ -139,7 +139,6 @@ class set_selection(View):
         ] + [
             "devg__{:d}".format(cur_pk) for cur_pk in devg_list
         ]
-        print "***", cur_list
         request.session["sel_list"] = cur_list
         request.session.save()
 
