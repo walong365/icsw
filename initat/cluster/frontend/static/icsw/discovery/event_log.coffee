@@ -151,6 +151,7 @@ angular.module(
                     if scope.cur_device_pk?
                         scope.server_pagination_pipe[scope.cur_device_pk]()
 
+                xhr = {}
                 # actually contact server
                 scope.get_event_log_promise = (device_pk, skip, limit, query_parameters) ->
                     query_parameters = angular.copy(query_parameters)
@@ -172,7 +173,9 @@ angular.module(
                         _last_query_parameters = angular.copy(rest_params)
                         console.log 'really doing query'
                         defer = $q.defer()
-                        cur_xhr = icswCallAjaxService
+                        if xhr.cur_request?
+                            xhr.cur_request.abort()
+                        xhr.cur_request = icswCallAjaxService
                             url  : ICSW_URLS.DISCOVERY_GET_EVENT_LOG
                             data : rest_params
                             dataType  : 'json'
