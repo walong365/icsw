@@ -144,14 +144,12 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.log("scheduling new wmi jobs")
         wmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.wmi.name)
         wmi_devices = device.objects.filter(com_capability_list=wmi_capability, enable_perfdata=True)
-        print 'wmi devs', wmi_devices
 
         _last_entries_qs = self._mongodb_database.wmi_logfile_maximal_record_number.find()
         last_record_numbers_lut = {  # mapping { (device_pk, logfile_name) : latest_record_number }
             (entry['device_pk'], entry['logfile_name']): entry['maximal_record_number']
             for entry in _last_entries_qs
         }
-        print 'lut', last_record_numbers_lut
         self.log("last rec numbers lut: {}".format(last_record_numbers_lut))
 
         logfiles_by_device = {entry['device_pk']: entry for entry in
@@ -175,15 +173,12 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
             else:
                 logfiles = logfiles_by_device[wmi_dev.pk]['logfiles']
-                # print 'FIXING LOGFILE'
-                # logfiles = [u'Windows PowerShell']
                 self.log("updating wmi logs of {} using {} for logfiles: {}".format(wmi_dev, ip, logfiles))
 
                 for logfile_name in logfiles:
                     last_known_record_number = last_record_numbers_lut.get((wmi_dev.pk, logfile_name))
 
                     self.log('last for {} is {} '.format((wmi_dev.pk, logfile_name), last_known_record_number))
-                    print 'last for ', (wmi_dev.pk, logfile_name), 'is', last_known_record_number
                     try:
                         job = WmiLogEntryJob(log=self.log,
                                              db=self._mongodb_database,
@@ -203,7 +198,6 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.log("scheduling new ipmi jobs")
         ipmi_capability = ComCapability.objects.get(matchcode=ComCapability.MatchCode.ipmi.name)
         ipmi_devices = device.objects.filter(com_capability_list=ipmi_capability, enable_perfdata=True)
-        print 'ipmi devs', ipmi_devices
 
         _last_entries_qs = self._mongodb_database.ipmi_event_log.aggregate([{
             '$group': {

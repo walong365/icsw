@@ -26,6 +26,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.apps import apps
 from django.dispatch import receiver
+from enum import enum
 from initat.cluster.backbone.models.functions import _check_integer, _check_empty_string
 
 __all__ = [
@@ -81,6 +82,11 @@ def config_catalog_pre_save(sender, **kwargs):
 
 
 class config(models.Model):
+
+    class ConfigName(enum.Enum):
+        # use this in code for config names to avoid typos and enforce conformity.
+        discovery_server = 1
+
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=False)
     config_catalog = models.ForeignKey(config_catalog, null=True)

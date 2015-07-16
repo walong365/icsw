@@ -4,9 +4,15 @@
         Event Log
     </h2>
 
+    <alert type="danger" ng-if="error">
+        <strong>
+            {{error}}
+        </strong>
+    </alert>
+
     <icsw-tools-ensure-device-selection dev-list="device_pks_ordered" list-ready="device_list_ready">
         <tabset>
-            <tab ng-if="no_device_with_logs_selected" heading="N/A" active="device_tab_active['no_device_tab']">
+            <tab ng-if="!error && no_device_with_logs_selected" heading="N/A" active="device_tab_active['no_device_tab']">
                 <alert type="warning">
                     No device with logs selected.
                 </alert>

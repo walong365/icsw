@@ -31,9 +31,10 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 import itertools
+from pymongo.errors import PyMongoError
 from rest_framework.response import Response
 import time
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, config, config_str, config_int
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 import pymongo
 from rest_framework.generics import ListAPIView
@@ -46,10 +47,23 @@ class MongoDbInterface(object):
         self.client, self.event_log_db = self.__class__._get_config()
 
     @classmethod
-    @memoize_with_expiry(60)
+    @memoize_with_expiry(10)
     def _get_config(cls):
-        # TODO: Make this configurable, access discovery server config somehow?
-        client = pymongo.MongoClient("localhost", 27017,
+        mongo_config = {
+            'MONGODB_HOST': "localhost",
+            'MONGODB_PORT': 27017,
+        }
+
+        configs_db = list(config_str.objects.filter(name="MONGODB_HOST",
+                                                    config__name=config.ConfigName.discovery_server.name))
+
+        configs_db += list(config_int.objects.filter(name="MONGODB_PORT",
+                                                     config__name=config.ConfigName.discovery_server.name))
+        for mongo_config_entry in configs_db:
+            mongo_config[mongo_config_entry.name] = mongo_config_entry.value
+
+        client = pymongo.MongoClient(host=mongo_config['MONGODB_HOST'],
+                                     port=mongo_config['MONGODB_PORT'],
                                      tz_aware=True)
 
         event_log_db = client.icsw_event_log
@@ -78,33 +92,38 @@ class GetEventLogDeviceInfo(View):
         ret = {}
         mongo = MongoDbInterface()
 
-        _wmi_res = mongo.event_log_db.wmi_event_log.aggregate([{
-            '$group': {
-                '_id': {
-                    'device_pk': '$device_pk',
+        try:
+            _wmi_res = mongo.event_log_db.wmi_event_log.aggregate([{
+                '$group': {
+                    '_id': {
+                        'device_pk': '$device_pk',
+                    }
                 }
-            }
-        }])
-        devices_with_wmi = {entry['_id']['device_pk'] for entry in _wmi_res}
+            }])
+            devices_with_wmi = {entry['_id']['device_pk'] for entry in _wmi_res}
 
-        _ipmi_res = mongo.event_log_db.ipmi_event_log.aggregate([{
-            '$group': {
-                '_id': {
-                    'device_pk': '$device_pk',
+            _ipmi_res = mongo.event_log_db.ipmi_event_log.aggregate([{
+                '$group': {
+                    '_id': {
+                        'device_pk': '$device_pk',
+                    }
                 }
-            }
-        }])
-        devices_with_ipmi = {entry['_id']['device_pk'] for entry in _ipmi_res}
+            }])
+            devices_with_ipmi = {entry['_id']['device_pk'] for entry in _ipmi_res}
 
-        for entry in device.objects.filter(pk__in=device_pks):
-            capabilities = []
-            if entry.pk in devices_with_ipmi:
-                capabilities.append("ipmi")
-            if entry.pk in devices_with_wmi:
-                capabilities.append("wmi")
-            ret[entry.pk] = {
-                'name': entry.full_name,
-                'capabilities': capabilities,
+            for entry in device.objects.filter(pk__in=device_pks):
+                capabilities = []
+                if entry.pk in devices_with_ipmi:
+                    capabilities.append("ipmi")
+                if entry.pk in devices_with_wmi:
+                    capabilities.append("wmi")
+                ret[entry.pk] = {
+                    'name': entry.full_name,
+                    'capabilities': capabilities,
+                }
+        except PyMongoError as e:
+            ret = {
+                'error': "Failed to connect to mongo-db: {}\n".format(e)
             }
 
         return HttpResponse(json.dumps(ret), content_type='application/json')
