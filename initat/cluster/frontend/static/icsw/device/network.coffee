@@ -365,7 +365,9 @@ angular.module(
             dev.manual_address = ""
             # set ip if there is only one
             if Object.keys(ip_dict).length == 1
-                dev.manual_address = ip_dict[ Object.keys(ip_dict)[0] ]
+                nw_ip_addresses = ip_dict[ Object.keys(ip_dict)[0] ]
+                if nw_ip_addresses.length == 1
+                    dev.manual_address = nw_ip_addresses[0]
 
             dev.snmp_community = "public"
             if not dev.com_caps?
