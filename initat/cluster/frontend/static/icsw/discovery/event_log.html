@@ -43,7 +43,13 @@
                             </tr>
                             <tr>
                                 <td colspan="99">
-                                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500" no-number-of-elements="true"></div>
+
+                                    <div class="" style="display: inline-block;" ng-if="entries.total_num != undefined">
+                                        Query returned {{entries.total_num}} entries
+                                    </div>
+                                    &nbsp;
+                                    <div style="display: inline-block;" icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500" no-number-of-elements="true"></div>
+
                                 </td>
                             </tr>
                             <tr>
