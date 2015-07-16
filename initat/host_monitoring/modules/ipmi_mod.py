@@ -1,4 +1,4 @@
-# Copyright (C) 2010,2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2010,2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,17 +20,16 @@
 
 """ IPMI sensor readings """
 
-from initat.host_monitoring import hm_classes, limits
-from initat.host_monitoring.config import global_config
 import commands
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
 import subprocess
 import time
 
+from initat.host_monitoring import hm_classes, limits
+from initat.host_monitoring.config import global_config
+from initat.tools import logging_tools, process_tools, server_command
+
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
-IPMI_LONG_LIMITS = ["{}{}".format({"l": "lower", "u": "upper"}[key[0]], key[1:]) for key in IPMI_LIMITS]
+IPMI_LONG_LIMITS = ["{}{}".format({"l": "lower", "u": "upper"}[_key[0]], _key[1:]) for _key in IPMI_LIMITS]
 
 
 def parse_ipmi_type(name, sensor_type):
@@ -71,7 +70,12 @@ def parse_ipmi(in_lines):
                 key, info, unit, base = parse_ipmi_type(parts[0], s_type)
                 if key:
                     # limit dict,
-                    limits = {key: l_val for key, l_val in zip(IPMI_LIMITS, [{"na": ""}.get(value, value) for value in parts[4:10]])}
+                    limits = {
+                        key: l_val for key, l_val in zip(
+                            IPMI_LIMITS,
+                            [{"na": ""}.get(value, value) for value in parts[4:10]]
+                        )
+                    }
                     result[key] = (float(parts[1]), info, unit, base, limits)
     return result
 
@@ -95,7 +99,12 @@ class _general(hm_classes.hm_module):
                     self.ipmi_update = time.time()
                     self.popen = None
             if not self.popen:
-                self.popen = subprocess.Popen("{} sensor".format(self.it_command), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                self.popen = subprocess.Popen(
+                    "{} sensor".format(self.it_command),
+                    shell=True,
+                    stderr=subprocess.STDOUT,
+                    stdout=subprocess.PIPE
+                )
 
     def check_ipmi_settings(self):
         cmd_name = "ipmitool"
@@ -106,7 +115,9 @@ class _general(hm_classes.hm_module):
             self.log(
                 "found {} at {}".format(
                     cmd_name,
-                    self.it_command))
+                    self.it_command
+                )
+            )
             self.log("trying to load ipmi kernel modules")
             for kern_mod in ["ipmi_si", "ipmi_devintf"]:
                 cmd = "{} {}".format(mp_command, kern_mod)
@@ -121,7 +132,8 @@ class _general(hm_classes.hm_module):
         else:
             self.log(
                 "cmd {} not found".format(cmd_name),
-                logging_tools.LOG_LEVEL_WARN)
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def init_machine_vector(self, mv):
         self.ipmi_result = False
@@ -130,13 +142,14 @@ class _general(hm_classes.hm_module):
         if self.ipmi_result:
             new_keys = set(self.ipmi_result) - self.registered_mvs
             del_keys = self.registered_mvs - set(self.ipmi_result)
-            update_keys = set(self.ipmi_result) & self.registered_mvs
             for del_key in del_keys:
                 mv.unregister_entry(del_key)
+                self.registered_mvs.remove(del_key)
             for new_key in new_keys:
                 _values = self.ipmi_result[new_key]
                 self.registered_mvs.add(new_key)
                 mv.register_entry(new_key, _values[0], _values[1], _values[2], _values[3])
+            update_keys = set(self.ipmi_result) & self.registered_mvs
             for upd_key in update_keys:
                 mv[upd_key] = self.ipmi_result[upd_key][0]
             # pprint.pprint(self.ipmi_result)
@@ -150,10 +163,15 @@ class ipmi_bg(hm_classes.subprocess_struct):
     def __init__(self, log_com, srv_com, ipmi_com, it_command):
         self.__log_com = log_com
         self.__ipmi_com = ipmi_com
-        hm_classes.subprocess_struct.__init__(self, srv_com, ["{} -s '{}'".format(
-            it_command,
-            ipmi_com.Meta.command,
-            )])
+        hm_classes.subprocess_struct.__init__(
+            self,
+            srv_com, [
+                "{} -s '{}'".format(
+                    it_command,
+                    ipmi_com.Meta.command,
+                )
+            ]
+        )
 
     def process(self):
         self.__ipmi_com.process(self)
