@@ -22,19 +22,16 @@ angular.module(
     [
     ]
 ).directive("icswDiscoveryEventLog",
-    ['msgbus', 'Restangular', 'ICSW_URLS', '$timeout'
-     (msgbus, Restangular, ICSW_URLS, $timeout) ->
+    ['msgbus', 'Restangular', 'ICSW_URLS', '$timeout', '$q', 'icswCallAjaxService'
+     (msgbus, Restangular, ICSW_URLS, $timeout, $q, icswCallAjaxService) ->
         return  {
             restrict: 'EA'
             templateUrl: 'icsw.discovery.event_log'
             link: (scope, el, attrs) ->
-                reload_current_tab = (force) ->
-                    if scope.cur_device_pk?
-                        scope.server_pagination_pipe[scope.cur_device_pk](force)
 
                 scope.set_active = (device_pk) ->
                     scope.cur_device_pk = parseInt(device_pk)
-                    reload_current_tab()
+                    scope.reload_current_tab(true)  # force
 
                 scope.devices_rest = {}
                 scope.device_pks_ordered = []
@@ -61,7 +58,7 @@ angular.module(
                         if _last_table_state[scope.cur_device_pk]?
                             # rest start since we usually get totally different pages
                             _last_table_state[scope.cur_device_pk].pagination.start = 0
-                        reload_current_tab()
+                        scope.reload_current_tab()
 
                     _schedule_reload_timeout_promise = $timeout(init_reload, 350)
 
@@ -105,11 +102,12 @@ angular.module(
                     # pipe() function for each tab
                     scope.server_pagination_pipe = {}
 
+
                     # need pipe functions for each tab since they must remember the table state
                     # in order to be able to get updated
                     for device_pk in scope.device_pks
                         do (device_pk) ->
-                            scope.server_pagination_pipe[device_pk] = (table_state, force) ->
+                            scope.server_pagination_pipe[device_pk] = (table_state) ->
                                 if scope.cur_device_pk?
                                     #console.log 'called w ts', table_state
                                     if !table_state?
@@ -126,7 +124,7 @@ angular.module(
 
                                         console.log 'pag ', pagination
                                         console.log 'query params ', query_parameters
-                                        promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, query_parameters, force)
+                                        promise = scope.get_event_log_promise(scope.cur_device_pk, pagination.start, pagination.number, query_parameters)
                                         if promise
                                             do (table_state) ->
                                                 promise.then((obj) ->
@@ -145,9 +143,15 @@ angular.module(
                                                     table_state.pagination.numberOfPages = Math.ceil(obj.total_num / pagination.number)
                                                 )
 
-                # actually contact server
                 _last_query_parameters = undefined
-                scope.get_event_log_promise = (device_pk, skip, limit, query_parameters, force) ->
+                scope.reload_current_tab = (force) ->
+                    if force
+                        _last_query_parameters = undefined
+                    if scope.cur_device_pk?
+                        scope.server_pagination_pipe[scope.cur_device_pk]()
+
+                # actually contact server
+                scope.get_event_log_promise = (device_pk, skip, limit, query_parameters) ->
                     query_parameters = angular.copy(query_parameters)
                     for key in Object.keys(query_parameters)
                         if query_parameters[key] == ""
@@ -156,15 +160,24 @@ angular.module(
 
                     rest_params = {
                         device_pks: JSON.stringify([parseInt(device_pk)])
-                        query_parameters: query_parameters
+                        query_parameters: JSON.stringify(query_parameters)
                         mode: scope.device_mode[device_pk]
                         pagination_skip: skip
                         pagination_limit: limit
                     }
-                    if force || !_.isEqual(_last_query_parameters, rest_params)
+
+                    console.log 'cmp', _last_query_parameters, rest_params
+                    if !_.isEqual(_last_query_parameters, rest_params)
                         _last_query_parameters = angular.copy(rest_params)
                         console.log 'really doing query'
-                        return Restangular.all(ICSW_URLS.DISCOVERY_GET_EVENT_LOG.slice(1)).customGET('', rest_params)
+                        defer = $q.defer()
+                        cur_xhr = icswCallAjaxService
+                            url  : ICSW_URLS.DISCOVERY_GET_EVENT_LOG
+                            data : rest_params
+                            dataType  : 'json'
+                            success   : (json) ->
+                                defer.resolve(json)
+                        return defer.promise
                     else
                         console.log 'no query, disregarding'
                         return null

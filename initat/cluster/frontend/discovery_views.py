@@ -109,7 +109,7 @@ class GetEventLogDeviceInfo(View):
         return HttpResponse(json.dumps(ret), content_type='application/json')
 
 
-class GetEventLog(ListAPIView):
+class GetEventLog(View):
     """Returns actual log data (all kinds of logs currently)"""
 
     class EventLogResult(collections.namedtuple("EventLogResult",
@@ -288,24 +288,26 @@ class GetEventLog(ListAPIView):
 
     @method_decorator(login_required)
     @rest_logging
-    def list(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         # NOTE: currently, this list always contains one entry
-        device_pks = json.loads(request.GET['device_pks'])
-        pagination_skip = int(request.GET.get('pagination_skip'))
-        pagination_limit = int(request.GET.get('pagination_limit'))
+        device_pks = json.loads(request.POST['device_pks'])
+        pagination_skip = int(request.POST.get('pagination_skip'))
+        pagination_limit = int(request.POST.get('pagination_limit'))
 
         # misc additional parameters passed directly to handler functions
-        query_parameters = json.loads(request.GET['query_parameters'])
+        query_parameters = json.loads(request.POST['query_parameters'])
 
-        mode = request.GET['mode']
+        mode = request.POST['mode']
 
         if mode == 'wmi':
             # a = time.time()
-            event_log_result = self._get_wmi_event_log(device_pks, pagination_skip, pagination_limit, **query_parameters)
+            event_log_result = self._get_wmi_event_log(device_pks, pagination_skip, pagination_limit,
+                                                       **query_parameters)
             # print 'took', time.time() - a
 
         elif mode == 'ipmi':
-            event_log_result = self.__class__.GetIpmiEventLog()(device_pks, pagination_skip, pagination_limit, **query_parameters)
+            event_log_result = self.__class__.GetIpmiEventLog()(device_pks, pagination_skip, pagination_limit,
+                                                                **query_parameters)
         else:
             raise AssertionError("Invalid mode: {} ".format(mode))
 
