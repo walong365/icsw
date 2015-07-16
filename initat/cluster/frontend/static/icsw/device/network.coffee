@@ -361,7 +361,12 @@ angular.module(
             network_type_names = _.sortBy(network_type_names)
             dev.ip_dict = ip_dict
             dev.network_type_names = network_type_names
+
             dev.manual_address = ""
+            # set ip if there is only one
+            if Object.keys(ip_dict).length == 1
+                dev.manual_address = ip_dict[ Object.keys(ip_dict)[0] ]
+
             dev.snmp_community = "public"
             if not dev.com_caps?
                 # init com_caps array if not already set
