@@ -20,7 +20,7 @@
 
                 <div ng-if="device_tab_active[device_pk]">
 
-                    <div style="max-width: 1100px; margin-top: 5px;" class="form-inline">
+                    <div style="margin-top: 5px;" class="form-inline">
                         <div class="input-group">
                             <span class="input-group-addon">
                                 <label>
@@ -36,7 +36,7 @@
                     <table class="table table-condensed table-striped" style="width: auto"
                            st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
                         <thead ng-show="!entries.is_loading">  <!-- need pagination in dom for limit -->
-                            <tr>
+                            <tr ng-if="entries.keys.length > 0">
                                 <td colspan="99">
                                     <icsw-tools-show-hide-columns columns-list="{{entries.keys}}"></icsw-tools-show-hide-columns>
                                 </td>
@@ -84,19 +84,41 @@
 
 <script type="text/ng-template" id="icsw.discovery.event_log.filters">
     <div class="input-group">
+        <span class="input-group-addon">
+            <label>
+                Filter
+            </label>
+        </span>
         <input ng-model="tab_query_parameters[device_pk].filter_str" class="form-control"
                placeholder="filter (whole words only)"/>
-                        <span class="input-group-btn">
-                            <button class="btn btn-warning" type="button"
-                                    ng-click="tab_query_parameters[device_pk].filter_str = ''"><span
-                                    title="clear filter" class="fa fa-remove"> Clear</span></button>
-                        </span>
+        <!--
+            <span class="input-group-btn">
+                <button class="btn btn-warning" type="button"
+                        ng-click="tab_query_parameters[device_pk].filter_str = ''"><span
+                        title="clear filter" class="fa fa-remove"> Clear</span></button>
+            </span>
+            -->
+    </div>
+    <div class="form-group form-inline" ng-if="device_mode[device_pk] == 'wmi'">
+        <div class="input-group">
+            <span class="input-group-addon">
+                <label>
+                    Logfile
+                </label>
+            </span>
+            <ui-select ng-model="tab_query_parameters[device_pk].logfile">
+                <ui-select-match placeholder="Filter by Logfile" allow-clear="true">{{$select.selected}}</ui-select-match>
+                <ui-select-choices repeat="key in entries.mode_specific_parameters.logfiles | filter:$select.search">
+                    <div ng-bind-html="key | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
     </div>
     <div class="form-group form-inline">
         <div class="input-group">
                                 <span class="input-group-addon">
                                     <label>
-                                        from
+                                        From
                                     </label>
                                 </span>
             <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].from_date"/>
@@ -118,7 +140,7 @@
         <div class="input-group">
                                 <span class="input-group-addon">
                                     <label>
-                                        to
+                                        To
                                     </label>
                                 </span>
             <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].to_date"/>
@@ -138,11 +160,11 @@
     </div>
     <div class="form-group form-inline">
         <div class="input-group">
-                                 <span class="input-group-addon">
-                                     <label>
-                                         Group by
-                                     </label>
-                                 </span>
+            <span class="input-group-addon">
+                <label>
+                    Group by
+                </label>
+            </span>
             <ui-select ng-model="tab_query_parameters[device_pk].group_by">
                 <ui-select-match placeholder="Group results by.." allow-clear="true">{{$select.selected}}</ui-select-match>
                 <ui-select-choices repeat="key in entries.grouping_keys | filter:$select.search">
@@ -151,4 +173,5 @@
             </ui-select>
         </div>
     </div>
+
 </script>

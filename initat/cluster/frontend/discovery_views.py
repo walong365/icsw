@@ -71,6 +71,7 @@ class EventLogOverview(View):
 
 class GetEventLogDeviceInfo(View):
     """Returns which logs the given devices have"""
+
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         device_pks = json.loads(request.GET['device_pks'])
@@ -113,10 +114,13 @@ class GetEventLog(View):
     """Returns actual log data (all kinds of logs currently)"""
 
     class EventLogResult(collections.namedtuple("EventLogResult",
-                                                ["entries", "keys_ordered", "grouping_keys", "total_num"])):
+                                                ["entries", "keys_ordered", "grouping_keys", "total_num",
+                                                 "mode_specific_parameters"])):
         # this pattern allows for default values:
-        def __new__(cls, grouping_keys=None, *args, **kwargs):
-            return super(GetEventLog.EventLogResult, cls).__new__(cls, grouping_keys=grouping_keys, *args, **kwargs)
+        def __new__(cls, grouping_keys=None, mode_specific_parameters=None, *args, **kwargs):
+            return super(GetEventLog.EventLogResult, cls).__new__(
+                cls, grouping_keys=grouping_keys, mode_specific_parameters=mode_specific_parameters, *args, **kwargs
+            )
 
     @classmethod
     def _parse_datetime(cls, datetime_str):
@@ -124,6 +128,16 @@ class GetEventLog(View):
             return dateutil.parser.parse(datetime_str)
         except ValueError as e:
             raise RuntimeError("Failed to parse date time {}: {}".format(datetime_str, e))
+
+    @classmethod
+    def _paginate_list(cls, l, skip, limit):
+        return l[skip:][:limit]
+
+    @classmethod
+    def rename_column_of_dict_list(self, l, old_name, new_name):
+        for entry in l:
+            entry[new_name] = entry[old_name]
+            del entry[old_name]
 
     class GetIpmiEventLog(object):
         def __init__(self):
@@ -135,7 +149,6 @@ class GetEventLog(View):
             self.from_date_parsed = None if from_date is None else GetEventLog._parse_datetime(from_date)
             self.to_date_parsed = None if to_date is None else GetEventLog._parse_datetime(to_date)
 
-            mongo = MongoDbInterface()
             if group_by is None:
                 return self._regular_query(device_pks, pagination_skip, pagination_limit, filter_str)
             else:
@@ -151,8 +164,7 @@ class GetEventLog(View):
             return key in ('Record Type', "Sensor Type", "Event Direction", "Record Type", "EvM Revision", "Event Type",
                            "Description", "Event Interpretation")
 
-        def _group_by_query(self, device_pks, pagination_skip, pagination_limit, filter_str, group_by):
-            def _get_match_obj():
+        def _get_match_obj(self, device_pks, filter_str):
                 _match_obj = {
                     'device_pk': {'$in': device_pks},
                 }
@@ -162,40 +174,32 @@ class GetEventLog(View):
                 self._add_date_constraints(_match_obj)
                 return _match_obj
 
-            aggregate_pipeline = []
-            aggregate_pipeline.append({
-                '$match':  _get_match_obj()
-            })
-
-            aggregate_pipeline.append({
-                '$group': {
-                    '_id': {
-                        '$arrayElemAt': ['$sections', 1]
-                    },
-                    'c': {
-                        '$sum': 1
+        def _group_by_query(self, device_pks, pagination_skip, pagination_limit, filter_str, group_by):
+            aggregate_pipeline = [
+                {
+                    '$match': self._get_match_obj(device_pks, filter_str)
+                },
+                {
+                    '$group': {
+                        '_id': {'$arrayElemAt': ['$sections', 1]},
+                        'c': {'$sum': 1},
+                    }
+                },
+                {
+                    '$group': {
+                        '_id': '$_id.{}'.format(group_by),
+                        'Count': {'$sum': '$c'},
                     }
                 }
-            })
-            aggregate_pipeline.append({
-                '$group':
-                    {
-                        '_id': '$_id.{}'.format(group_by),
-                        'Count': {
-                            '$sum': '$c'
-                        }
-                    }
-            })
+            ]
 
             entries = self.mongo.event_log_db.ipmi_event_log.aggregate(aggregate_pipeline)
 
             result = list(entries)  # exhaust cursor
             total_num = len(result)
-            result_paginated = result[pagination_skip:][:pagination_limit]
+            result_paginated = GetEventLog._paginate_list(result, pagination_skip, pagination_limit)
             # results now are of this form: {'_id': <group_by_field_value>, 'count': <num>}
-            for entry in result_paginated:
-                entry[group_by] = entry['_id']
-                del entry['_id']
+            GetEventLog.rename_column_of_dict_list(result_paginated, old_name='_id', new_name=group_by)
             keys_ordered = [group_by, 'Count']
 
             return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_paginated)
@@ -205,14 +209,7 @@ class GetEventLog(View):
                 'sections': 1,
                 'keys_ordered': 1,
             }
-            query_obj = {
-                'device_pk': {'$in': device_pks},
-            }
-
-            self._add_date_constraints(query_obj)
-
-            if filter_str is not None:
-                query_obj["$text"] = {'$search': filter_str}
+            query_obj = self._get_match_obj(device_pks, filter_str)
 
             sort_obj = [('record_id', pymongo.DESCENDING)]
             entries = self.mongo.event_log_db.ipmi_event_log.find(
@@ -231,8 +228,8 @@ class GetEventLog(View):
             for entry in entries:  # exhaust cursor
                 result.append(entry['sections'])
                 for k in entry['keys_ordered']:
-                        if k != '__icsw_ipmi_section_type':
-                            entry_keys[k] = None
+                    if k != '__icsw_ipmi_section_type':
+                        entry_keys[k] = None
             # merge ipmi sections into one dict for each entry
             result_merged = []
             grouping_keys = collections.OrderedDict()  # only set again
@@ -254,37 +251,104 @@ class GetEventLog(View):
             return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_merged,
                                               grouping_keys=grouping_keys.keys())
 
-    def _get_wmi_event_log(self, device_pks, pagination_skip, pagination_limit,
-                           filter_str=None, from_date=None, to_date=None, logfile_name=None):
-        mongo = MongoDbInterface()
-        query_obj = {
-            'device_pk': {'$in': device_pks},
-        }
-        if logfile_name is not None:
-            query_obj['logfile_name'] = logfile_name
-        if filter_str is not None:
-            query_obj["$text"] = {'$search': filter_str}
+    class GetWmiEventLog(object):
+        def __init__(self, device_pks, pagination_skip, pagination_limit,
+                     group_by=None, filter_str=None, from_date=None, to_date=None, logfile=None):
+            self.device_pks = device_pks
+            self.pagination_skip = pagination_skip
+            self.pagination_limit = pagination_limit
+            self.group_by = group_by
+            self.filter_str = filter_str
+            self.from_date = from_date
+            self.to_date = to_date
+            self.logfile = logfile
 
-        if from_date is not None:
-            query_obj.setdefault('time_generated', {})['$gte'] = self._parse_datetime(from_date)
-        if to_date is not None:
-            query_obj.setdefault('time_generated', {})['$lte'] = self._parse_datetime(to_date)
+            self.mongo = MongoDbInterface()
 
-        projection_obj = {
-            'entry': 1,
-        }
-        sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
-        entries = mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj, sort=sort_obj)
-        total_num = entries.count()
-        # entries.sort(
-        entries.skip(pagination_skip)
-        entries.limit(pagination_limit)
-        result = [entry['entry'] for entry in entries]  # exhaust cursor
-        keys = set()
-        for entry in result:
-            keys.update(entry.iterkeys())
-        return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys, entries=result,
-                                          grouping_keys=keys)
+        def _is_reasonable_grouping_key(self, key):
+            return key in ("Category", "ComputerName", "CategoryString", "EventCode", "SourceName", "User", "Logfile",
+                           "Type", "EventIdentifier")
+
+        def _group_by_query(self):
+            aggregate_pipeline = [
+                {
+                    '$match': self._create_match_obj()
+                },
+                {
+                    '$group': {
+                        '_id': '$entry.{}'.format(self.group_by),
+                        'Count': {'$sum': 1},
+                    }
+                }
+            ]
+
+            entries = self.mongo.event_log_db.wmi_event_log.aggregate(aggregate_pipeline)
+
+            result = list(entries)  # exhaust cursor
+            total_num = len(result)
+            result_paginated = GetEventLog._paginate_list(result, self.pagination_skip, self.pagination_limit)
+            GetEventLog.rename_column_of_dict_list(result_paginated, old_name='_id', new_name=self.group_by)
+            keys_ordered = [self.group_by, 'Count']
+            mode_specific_parameters = self._get_mode_specific_parameters()
+            return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_paginated,
+                                              mode_specific_parameters=mode_specific_parameters)
+
+        def _regular_query(self):
+            query_obj = self._create_match_obj()
+
+            projection_obj = {
+                'entry': 1,
+            }
+            sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
+            entries = self.mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj, sort=sort_obj)
+            total_num = entries.count()
+            entries.skip(self.pagination_skip)
+            entries.limit(self.pagination_limit)
+            result = [entry['entry'] for entry in entries]  # exhaust cursor
+            keys = set()
+            for entry in result:
+                keys.update(entry.iterkeys())
+
+            mode_specific_parameters = self._get_mode_specific_parameters()
+
+            if self.logfile is None:
+                grouping_keys = [k for k in keys if self._is_reasonable_grouping_key(k)]
+            else:
+                grouping_keys = None
+
+            return GetEventLog.EventLogResult(
+                total_num=total_num, keys_ordered=keys, entries=result, grouping_keys=grouping_keys,
+                mode_specific_parameters=mode_specific_parameters
+            )
+
+        def __call__(self,):
+            if self.group_by:
+                return self._group_by_query()
+            else:
+                return self._regular_query()
+
+        def _get_mode_specific_parameters(self):
+            logfiles = set()
+            for logfile_entry in self.mongo.event_log_db.wmi_logfile.find({'device_pk': {'$in': self.device_pks}}):
+                logfiles.update(logfile_entry['logfiles'])
+            mode_specific_parameters = {
+                'logfiles': list(logfiles),
+            }
+            return mode_specific_parameters
+
+        def _create_match_obj(self):
+            query_obj = {
+                'device_pk': {'$in': self.device_pks},
+            }
+            if self.logfile is not None:
+                query_obj['logfile_name'] = self.logfile
+            if self.filter_str is not None:
+                query_obj["$text"] = {'$search': self.filter_str}
+            if self.from_date is not None:
+                query_obj.setdefault('time_generated', {})['$gte'] = GetEventLog._parse_datetime(self.from_date)
+            if self.to_date is not None:
+                query_obj.setdefault('time_generated', {})['$lte'] = GetEventLog._parse_datetime(self.to_date)
+            return query_obj
 
     @method_decorator(login_required)
     @rest_logging
@@ -301,8 +365,8 @@ class GetEventLog(View):
 
         if mode == 'wmi':
             # a = time.time()
-            event_log_result = self._get_wmi_event_log(device_pks, pagination_skip, pagination_limit,
-                                                       **query_parameters)
+            event_log_result = GetEventLog.GetWmiEventLog(device_pks, pagination_skip, pagination_limit,
+                                                          **query_parameters)()
             # print 'took', time.time() - a
 
         elif mode == 'ipmi':

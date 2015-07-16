@@ -138,6 +138,7 @@ angular.module(
                                                     scope.entries.keys = obj.keys_ordered
                                                     scope.entries.total_num = obj.total_num
                                                     scope.entries.grouping_keys = if obj.grouping_keys? then obj.grouping_keys else old_grouping_keys
+                                                    scope.entries.mode_specific_parameters = obj.mode_specific_parameters
                                                     scope.entries.is_loading = false
 
                                                     table_state.pagination.numberOfPages = Math.ceil(obj.total_num / pagination.number)

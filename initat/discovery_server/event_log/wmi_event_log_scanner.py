@@ -426,7 +426,7 @@ class WmiLogEntryJob(_WmiJobBase):
                         target_ip=job.target_ip,
                         columns=["RecordNumber, Message, Category, CategoryString, ComputerName, EventCode, " +
                                  "EventIdentifier, InsertionStrings, SourceName, TimeGenerated, TimeWritten,  " +
-                                 "Type, User"],
+                                 "EventType, Type, User"],
                         table="Win32_NTLogEvent",
                         where_clause="WHERE Logfile = '{}' AND RecordNumber > {} and RecordNumber <= {}".format(
                             job.logfile_name,
