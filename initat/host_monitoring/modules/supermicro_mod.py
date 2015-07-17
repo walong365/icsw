@@ -474,6 +474,9 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
 
 
 class SMCRetrievePendingStruct(hm_classes.subprocess_struct):
+    class Meta:
+        max_usage = 128
+
     def __init__(self, srv_com, real_com):
 
         hm_classes.subprocess_struct.__init__(
