@@ -35,9 +35,7 @@ from multiprocessing import Queue
 
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import configfile, logging_tools, process_tools, \
-    server_command, threading_tools
-
-from initat.tools import uuid_tools
+    server_command, threading_tools, uuid_tools
 import zmq
 
 from .config import global_config
@@ -46,7 +44,6 @@ from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 from .hm_inotify import HMInotifyProcess
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
-
 
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
