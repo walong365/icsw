@@ -55,6 +55,7 @@ class CacheObject(object):
     def store_object(self, obj, valid_until):
         self.obj = obj
         self.valid_until = valid_until
+        self.retrieval_pending = False
         self._resolve_clients()
 
     def _resolve_clients(self):
@@ -79,9 +80,7 @@ class HMCCache(object):
         self._cache[key].store_object(obj, cur_time + self._timeout)
 
     def start_retrieval(self, key):
-        if key in self._cache:
-            # key is in cache, flag as retrieval pending
-            self._cache[key].retrieval_pending = True
+        self._cache[key].retrieval_pending = True
 
     def load_object(self, key):
         return self._cache[key].obj
