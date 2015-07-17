@@ -53,10 +53,11 @@ def rewrite_key(key):
 
 
 class IBDataResult(object):
-    def __init__(self):
+    def __init__(self, dev):
         self.__feed_time = None
         self._speed = {}
         self._active_keys = []
+        self.device = dev
 
     def feed(self, port_num, result):
         cur_time = time.time()
@@ -65,23 +66,33 @@ class IBDataResult(object):
             self._active_keys = sorted(result.keys())
             for _key in self._active_keys:
                 if _key not in self._speed:
-                    if _key.count("data"):
-                        unit = "B/s"
+                    _alt_key = rewrite_key(_key)
+                    if _alt_key.count("data"):
+                        # magic multiplicator for IB data counter
+                        _mult = 4
+                        unit = "Byte/s"
                     else:
+                        _mult = 1
                         unit = "1/s"
                     self._speed[_key] = hm_classes.mvect_entry(
-                        "net.port{}.{}".format(port_num, rewrite_key(_key)),
+                        "{}.{}".format(self._get_root_key(port_num), _alt_key),
                         default=0.,
                         info="IB Readout for {} on port {}".format(_key, port_num),
                         unit=unit,
                         base=1000,
                     )
                 # update value, update for 2 minutes
-                self._speed[_key].update(result[_key] / diff_time, valid_until=cur_time + 2 * 60)
+                self._speed[_key].update(result[_key] * _mult / diff_time, valid_until=cur_time + 2 * 60)
         else:
             self._speed = {}
             self._active_keys = []
         self.__feed_time = cur_time
+
+    def _get_root_key(self, port_num):
+        if self.device.device_type == "H":
+            return "net.ib{:d}".format(int(port_num) - 1)
+        else:
+            return "net.port{}".format(port_num)
 
     def build_mvect_entries(self, cur_time, port_num):
         _entries = []
@@ -105,10 +116,13 @@ class IBDataStoreDevice(object):
         self.name = name
         # lookup name
         if self.name.count(" "):
+            self.device_type = "H"
             self.lu_name = self.name.split()[0]
         elif self.name.count(";"):
+            self.device_type = "S"
             self.lu_name = self.name.split(";")[1].split(":")[0]
         else:
+            self.device_type = "?"
             self.lu_name = self.name
         self.__ports = {}
 
@@ -139,7 +153,7 @@ class IBDataStoreDevice(object):
     def feed(self, key, result):
         _port = key[1]
         if _port not in self.__ports:
-            self.__ports[_port] = IBDataResult()
+            self.__ports[_port] = IBDataResult(self)
         self.__ports[_port].feed(_port, result)
 
 

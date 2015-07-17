@@ -42,33 +42,31 @@ def sys_to_net(in_val):
 
 
 class CacheObject(object):
-    def __init__(self, key, obj, valid_until):
-        self.key = key
-        self.obj = obj
-        self.valid_until = valid_until
-        # retrieval pending
-        self.retrieve = False
-
-    def is_valid(self):
-        return time.time() < self.valid_until
-
-
-class CacheRetrieveDummy(object):
     def __init__(self, key):
         self.key = key
-        self.retrieve = True
+        self.valid_until = None
+        # retrieval pending
+        self.retrieval_pending = False
         self.clients = []
-
-    def is_valid(self):
-        return False
 
     def register_retrieval_client(self, client):
         self.clients.append(client)
 
-    def resolve_clients(self, obj):
+    def store_object(self, obj, valid_until):
+        self.obj = obj
+        self.valid_until = valid_until
+        self._resolve_clients()
+
+    def _resolve_clients(self):
         for _c in self.clients:
-            _c.resolve_cache(obj)
+            _c.resolve_cache(self.obj)
         self.clients = []
+
+    def is_valid(self):
+        if self.valid_until:
+            return time.time() < self.valid_until
+        else:
+            return False
 
 
 class HMCCache(object):
@@ -78,32 +76,23 @@ class HMCCache(object):
 
     def store_object(self, key, obj):
         cur_time = time.time()
-        if key in self._cache and self._cache[key].retrieve:
-            self._cache[key].resolve_clients(obj)
-        self._cache[key] = CacheObject(key, obj, cur_time + self._timeout)
+        self._cache[key].store_object(obj, cur_time + self._timeout)
 
     def start_retrieval(self, key):
         if key in self._cache:
             # key is in cache, flag as retrieval pending
-            self._cache[key].retrieve = True
-        else:
-            # key is not in cache, create dummy object
-            self._cache[key] = CacheRetrieveDummy(key)
+            self._cache[key].retrieval_pending = True
 
     def load_object(self, key):
         return self._cache[key].obj
 
     def cache_valid(self, key):
-        if key in self._cache:
-            return self._cache[key].is_valid()
-        else:
-            return False
+        if key not in self._cache:
+            self._cache[key] = CacheObject(key)
+        return self._cache[key].is_valid()
 
     def retrieval_pending(self, key):
-        if key in self._cache:
-            return self._cache[key].retrieve
-        else:
-            return False
+        return self._cache[key].retrieval_pending
 
     def register_retrieval_client(self, key, client):
         return self._cache[key].register_retrieval_client(client)
