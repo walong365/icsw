@@ -124,6 +124,7 @@ device_patterns = patterns(
     url("^scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
     url("^device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
     url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
+    url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
 )
 
 

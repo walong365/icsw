@@ -332,3 +332,14 @@ class get_device_location(View):
         else:
             _mapping_list = list(category.objects.filter(Q(full_name__startswith="/location/")).values_list("device__pk", "pk"))
         return HttpResponse(json.dumps(_mapping_list), content_type="application/json")
+
+
+class GetMatchingDevices(View):
+    """Search for device by ip or mac"""
+    @method_decorator(login_required)
+    def post(self, request):
+        search_str = request.POST['search_str']
+        result = device.objects.filter(
+            Q(netdevice__macaddr__startswith=search_str) | Q(netdevice__net_ip__ip__startswith=search_str)
+        ).values_list('pk', flat=True)
+        return HttpResponse(json.dumps(list(result)))
