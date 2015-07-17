@@ -419,7 +419,7 @@ class mvect_entry(object):
         self.value = in_mv.value
         self.valid_until = in_mv.valid_until
 
-    def update(self, value, **kwwargs):
+    def update(self, value, **kwargs):
         if value is None:
             # unknown
             self.value = value
