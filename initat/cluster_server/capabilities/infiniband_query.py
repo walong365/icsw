@@ -221,6 +221,7 @@ class DeviceLookup(object):
         self.__cache = {}
         self.__log_com = log_com
         self.log("init devicelookup")
+        self.__unresolvable = set()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[DL] {}".format(what), log_level)
@@ -232,6 +233,7 @@ class DeviceLookup(object):
             self.log("removing {} from cache".format(logging_tools.get_plural("entry", len(to_delete))))
             for _to_del in to_delete:
                 del self.__cache[_to_del]
+        self.__unresolvable = set()
 
     def get(self, name):
         if name not in self.__cache:
@@ -262,7 +264,9 @@ class DeviceLookup(object):
         if name in self.__cache:
             return self.__cache[name]
         else:
-            self.log("name '{}' is not resolveable".format(name), logging_tools.LOG_LEVEL_WARN)
+            if name not in self.__unresolvable:
+                self.__unresolvable.add(name)
+                self.log("name '{}' is not resolveable".format(name), logging_tools.LOG_LEVEL_WARN)
             return None
 
 
