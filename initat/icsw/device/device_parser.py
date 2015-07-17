@@ -34,6 +34,7 @@ class Parser(object):
         self._add_info_parser(child_parser)
         # self._add_reboot_parser(child_parser)
         self._add_graphdump_parser(child_parser)
+        self._add_removegraph_parser(child_parser)
         return parser
 
     def _add_info_parser(self, sub_parser):
@@ -44,6 +45,13 @@ class Parser(object):
     def _add_graphdump_parser(self, sub_parser):
         _act = sub_parser.add_parser("graphdump", help="show graph structure")
         _act.set_defaults(childcom="graphdump")
+        self._add_many_device_option(_act)
+
+    def _add_removegraph_parser(self, sub_parser):
+        _act = sub_parser.add_parser("removegraph", help="remove keys from graph structure")
+        _act.set_defaults(childcom="removegraph")
+        _act.add_argument("--key-re", type=str, default="use.a.re", help="regular expression for key removal [%(default)s]")
+        _act.add_argument("--doit", default=False, action="store_true", help="enable deletiong [%(default)s]")
         self._add_many_device_option(_act)
 
     def _add_many_device_option(self, _parser):

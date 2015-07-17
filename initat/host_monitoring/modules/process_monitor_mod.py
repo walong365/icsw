@@ -30,11 +30,8 @@ import time
 
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
-from initat.tools import affinity_tools
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import affinity_tools, logging_tools, process_tools
 import psutil
-
 
 MIN_UPDATE_TIME = 10
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,8 +18,7 @@
 """ cluster-server, background base object """
 
 from initat.cluster_server.config import global_config
-from initat.tools import logging_tools
-from initat.tools import mail_tools
+from initat.tools import logging_tools, mail_tools
 
 
 class bg_stuff(object):
@@ -44,7 +43,7 @@ class bg_stuff(object):
     def init_bg_stuff(self):
         pass
 
-    def __call__(self, cur_time, drop_com):
+    def __call__(self, cur_time, drop_com, mach_vectors):
         if self.__last_call and abs(self.__last_call - cur_time) < self.Meta.min_time_between_runs:
             # self.log("last call only %d seconds ago, skipping" % (abs(self.__last_call - cur_time)),
             #         logging_tools.LOG_LEVEL_WARN)
@@ -53,8 +52,13 @@ class bg_stuff(object):
             self.__last_call = cur_time
             add_obj = self._call(cur_time, drop_com.builder)
             if add_obj is not None:
-                drop_com["vector_{}".format(self.Meta.name)] = add_obj
-                drop_com["vector_{}".format(self.Meta.name)].attrib["type"] = "vector"
+                # todo: handle case when a drop XML and machine vectors are returned
+                if type(add_obj) is list:
+                    # machine vectors
+                    mach_vectors.extend(add_obj)
+                else:
+                    drop_com["vector_{}".format(self.Meta.name)] = add_obj
+                    drop_com["vector_{}".format(self.Meta.name)].attrib["type"] = "vector"
 
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
@@ -64,7 +68,7 @@ class bg_stuff(object):
         self.server_process.step(*args, **kwargs)
 
     def send_mail(self, to_addr, subject, msg_body):
-        new_mail = mail_tools.mail(subject, "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
+        new_mail = mail_tools.mail(subject, "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
         new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
         _stat, log_lines = new_mail.send_mail()
         return log_lines

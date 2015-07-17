@@ -40,10 +40,6 @@ def add_fixtures(**kwargs):
         ("rrd_collector", "devices acts as a collector"),
         ("rrd_server", "devices acts as a graphing server (via collectd)"),
         ("server", "sets device as a cluster-server"),
-        ("quota_scan", "scan quotas for all users when device has quotas enabled"),
-        ("user_scan", "scan user dirs for all users found on this device"),
-        ("usv_server", "device has an USV from APC directly attached"),
-        ("virtual_desktop", "device can offer virtual desktops to users"),
         ("virtual_desktop_client", "device has a virtual desktop client"),
         ("auto_etc_hosts", "/etc/hosts file can be created from local cluster-server"),
     ]:
@@ -54,4 +50,3 @@ def add_fixtures(**kwargs):
             server_config=True,
             system_config=True,
         )
-        print _new_c

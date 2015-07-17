@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,6 +25,7 @@ import time
 class dummy_stuff(bg_stuff):
     class Meta:
         name = "dummy"
+        description = "Dummy capability, do not use"
 
     def init_bg_stuff(self):
         self.load_value = hm_classes.mvect_entry("sys.load1", info="test entry", default=0.0)

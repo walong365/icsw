@@ -361,7 +361,14 @@ angular.module(
             network_type_names = _.sortBy(network_type_names)
             dev.ip_dict = ip_dict
             dev.network_type_names = network_type_names
+
             dev.manual_address = ""
+            # set ip if there is only one
+            if Object.keys(ip_dict).length == 1
+                nw_ip_addresses = ip_dict[ Object.keys(ip_dict)[0] ]
+                if nw_ip_addresses.length == 1
+                    dev.manual_address = nw_ip_addresses[0]
+
             dev.snmp_community = "public"
             if not dev.com_caps?
                 # init com_caps array if not already set
@@ -755,7 +762,7 @@ angular.module(
                 el.find("span.ladda-label").text("...")
                 scope.pending = true
                 icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
-                    scope.com_caps = data[0]
+                    scope.com_caps = if data[0]? then data[0] else []
                     scope.pending = false
                     if scope.com_caps.length
                         scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)

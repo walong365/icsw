@@ -80,6 +80,7 @@ class sub_dir(dict):
 class user_scan_stuff(bg_stuff):
     class Meta:
         name = "user_scan"
+        description = "scan user dirs for all users found on this device"
 
     def init_bg_stuff(self):
         self.__last_user_scan = None

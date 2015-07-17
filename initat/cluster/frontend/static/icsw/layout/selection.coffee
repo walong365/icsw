@@ -247,11 +247,11 @@ angular.module(
 [
     "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
-    "DeviceOverviewService",
+    "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall'
 (
     $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
-    DeviceOverviewService
+    DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall,
 ) ->
     # search settings
     $scope.search_ok = true
@@ -381,35 +381,64 @@ angular.module(
     $scope.set_search_filter = () ->
         if $scope.vars.search_str == ""
             return
-        try
-            cur_re = new RegExp($scope.vars.search_str, "gi")
-        catch exc
-            cur_re = new RegExp("^$", "gi")
-        cur_tree = $scope.get_tc($scope.active_tab)
-        cur_tree.toggle_tree_state(undefined, -1, false)
-        num_found = 0
-        cur_tree.iter(
-            (entry, cur_re) ->
-                if entry._node_type == "d"
-                    _sel = if icswSelectionService.resolve_device(entry.obj).full_name.match(cur_re) then true else false
-                    entry.set_selected(_sel)
-                    if _sel
-                        num_found++
-                else if entry._node_type == "g"
-                    _sel = if icswSelectionService.resolve_device_group(entry.obj).full_name.match(cur_re) then true else false
-                    entry.set_selected(_sel)
-                    if _sel
-                        num_found++
-                else if entry._node_type == "c"
-                    _sel = if icswSelectionService.resolve_category(entry.obj).name.match(cur_re) then true else false
-                    entry.set_selected(_sel)
-                    if _sel
-                        num_found++
-            cur_re
-        )
-        $scope.search_ok = if num_found > 0 then true else false
-        cur_tree.show_selected(false)
-        $scope.selection_changed()
+
+        looks_like_ip_or_mac_start = (in_str) ->
+            # accept "192.168." or "AB:AB:AB:
+            return /^\d{1,3}\.\d{1,3}\./.test(in_str) || /^([0-9A-Fa-f]{2}[:-]){3}/.test(in_str)
+
+        if looks_like_ip_or_mac_start($scope.vars.search_str)
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.DEVICE_GET_MATCHING_DEVICES
+                dataType: "json"
+                data:
+                    search_str: $scope.vars.search_str
+            ).then((matching_device_pks) ->
+                cur_tree = $scope.get_tc($scope.active_tab)
+                cur_tree.toggle_tree_state(undefined, -1, false)
+                num_found = 0
+                cur_tree.iter(
+                    (entry) ->
+                        if entry._node_type == "d"
+                            _sel = icswSelectionService.resolve_device(entry.obj).idx in matching_device_pks
+                            entry.set_selected(_sel)
+                            if _sel
+                                num_found++
+                )
+                $scope.search_ok = num_found > 0
+                cur_tree.show_selected(false)
+                $scope.selection_changed()
+            )
+
+        else  # regular search
+            try
+                cur_re = new RegExp($scope.vars.search_str, "gi")
+            catch exc
+                cur_re = new RegExp("^$", "gi")
+            cur_tree = $scope.get_tc($scope.active_tab)
+            cur_tree.toggle_tree_state(undefined, -1, false)
+            num_found = 0
+            cur_tree.iter(
+                (entry, cur_re) ->
+                    if entry._node_type == "d"
+                        _sel = if icswSelectionService.resolve_device(entry.obj).full_name.match(cur_re) then true else false
+                        entry.set_selected(_sel)
+                        if _sel
+                            num_found++
+                    else if entry._node_type == "g"
+                        _sel = if icswSelectionService.resolve_device_group(entry.obj).full_name.match(cur_re) then true else false
+                        entry.set_selected(_sel)
+                        if _sel
+                            num_found++
+                    else if entry._node_type == "c"
+                        _sel = if icswSelectionService.resolve_category(entry.obj).name.match(cur_re) then true else false
+                        entry.set_selected(_sel)
+                        if _sel
+                            num_found++
+                cur_re
+            )
+            $scope.search_ok = if num_found > 0 then true else false
+            cur_tree.show_selected(false)
+            $scope.selection_changed()
     $scope.resolve_devices = (sel) ->
         return sel.resolve_devices()
     $scope.resolve_total_devices = (sel) ->

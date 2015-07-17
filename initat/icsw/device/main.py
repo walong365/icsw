@@ -21,7 +21,6 @@
 #
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -32,7 +31,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.functions import to_system_tz
 from initat.tools import logging_tools
-import argparse
+import re
 
 
 def device_info(cur_dev):
@@ -105,6 +104,28 @@ def show_vector(_dev):
             print("   {:<40s}   - {}".format(_fkey, unicode(_value)))
 
 
+def remove_graph(_dev, opt_ns):
+    del_re = re.compile(opt_ns.key_re)
+    _mv = _dev.machinevector_set.all().prefetch_related(
+        "mvstructentry_set",
+        "mvstructentry_set__mvvalueentry_set",
+    )[0]
+    _to_delete = []
+    for _struct in _mv.mvstructentry_set.all():
+        _key = _struct.key
+        if del_re.match(_key):
+            _to_delete.append(_struct)
+    if _to_delete:
+        print(
+            "Found {} to delete: {}".format(
+                logging_tools.get_plural("entry", len(_to_delete)),
+                ", ".join([unicode(_v) for _v in _to_delete]),
+            )
+        )
+        if opt_ns.doit:
+            [_struct.delete() for _struct in _to_delete]
+
+
 def main(opt_ns):
     # resolve devices
     dev_dict = {
@@ -126,6 +147,8 @@ def main(opt_ns):
             device_info(cur_dev)
         elif opt_ns.childcom == "graphdump":
             show_vector(cur_dev)
+        elif opt_ns.childcom == "removegraph":
+            remove_graph(cur_dev, opt_ns)
         else:
             print(
                 "unknown action {} for device {}".format(
