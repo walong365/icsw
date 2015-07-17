@@ -132,6 +132,7 @@ class IBDataStoreDevice(object):
             )
             for _port in sorted(self.__ports.keys()):
                 _vector.extend(self.__ports[_port].build_mvect_entries(cur_time, _port))
+            return _vector
         else:
             return None
 
