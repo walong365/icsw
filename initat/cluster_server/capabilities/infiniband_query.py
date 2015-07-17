@@ -77,7 +77,7 @@ class IBDataResult(object):
                         base=1000,
                     )
                 # update value, update for 2 minutes
-                self._speed[_key].update(_value / diff_time, valid_until=cur_time + 2 * 60)
+                self._speed[_key].update(result[_key] / diff_time, valid_until=cur_time + 2 * 60)
         else:
             self._speed = {}
             self._active_keys = []
@@ -103,6 +103,13 @@ class IBDataStoreDevice(object):
     def __init__(self, guid, name):
         self.guid = guid
         self.name = name
+        # lookup name
+        if self.name.count(" "):
+            self.lu_name = self.name.split()[0]
+        elif self.name.count(";"):
+            self.lu_name = self.name.split(";")[1].split(":")[0]
+        else:
+            self.lu_name = self.name
         self.__ports = {}
 
     def show(self):
@@ -115,7 +122,7 @@ class IBDataStoreDevice(object):
 
     def build_vector(self, dev_lu):
         cur_time = int(time.time())
-        _dev = dev_lu.get(self.name)
+        _dev = dev_lu.get(self.lu_name)
         if _dev is not None:
             _vector = E.machine_vector(
                 time="{:d}".format(cur_time),
@@ -124,7 +131,7 @@ class IBDataStoreDevice(object):
                 uuid=_dev.uuid,
             )
             for _port in sorted(self.__ports.keys()):
-                _vector.extend(self.__ports[port].build_mvect_entries(cur_time, _port))
+                _vector.extend(self.__ports[_port].build_mvect_entries(cur_time, _port))
         else:
             return None
 
@@ -210,7 +217,7 @@ class DeviceLookupEntry(object):
 
 class DeviceLookup(object):
     def __init__(self, log_com):
-        self.__cache = None
+        self.__cache = {}
         self.__log_com = log_com
         self.log("init devicelookup")
 
