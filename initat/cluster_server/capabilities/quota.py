@@ -156,6 +156,7 @@ class quota_line(object):
 class quota_stuff(bg_stuff):
     class Meta:
         name = "quota_scan"
+        description = "scan quotas for all users when device has quotas enabled"
 
     def init_bg_stuff(self):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]

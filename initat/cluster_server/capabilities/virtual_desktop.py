@@ -253,6 +253,7 @@ class vncserver(virtual_desktop_server):
 class virtual_desktop_stuff(bg_stuff):
     class Meta:
         name = "virtual_desktop"
+        description = "device can offer virtual desktops to users"
 
     def init_bg_stuff(self):
         self.__effective_device = device.objects.get(Q(pk=global_config["EFFECTIVE_DEVICE_IDX"]))

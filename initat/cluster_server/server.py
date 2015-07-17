@@ -332,10 +332,13 @@ class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, 
                     err_str,
                     server_command.SRV_REPLY_STATE_CRITICAL
                 )
-            self.log(u"result for {} was ({:d}) {}".format(
-                com_name,
-                int(srv_com["result"].attrib["state"]),
-                srv_com["result"].attrib["reply"]))
+            self.log(
+                u"result for {} was ({:d}) {}".format(
+                    com_name,
+                    int(srv_com["result"].attrib["state"]),
+                    srv_com["result"].attrib["reply"]
+                )
+            )
         else:
             self.log("unknown command {}".format(com_name))
             # to avoid flooding of log
