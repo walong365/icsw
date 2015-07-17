@@ -762,7 +762,7 @@ angular.module(
                 el.find("span.ladda-label").text("...")
                 scope.pending = true
                 icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
-                    scope.com_caps = data[0]
+                    scope.com_caps = if data[0]? then data[0] else []
                     scope.pending = false
                     if scope.com_caps.length
                         scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
