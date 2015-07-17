@@ -28,8 +28,7 @@ import sys
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring.config import global_config
 from initat.client_version import VERSION_STRING
-from initat.tools import configfile
-from initat.tools import logging_tools
+from initat.tools import configfile, logging_tools
 
 
 def show_command_info():

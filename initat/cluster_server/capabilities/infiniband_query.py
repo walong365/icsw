@@ -56,6 +56,7 @@ class IBDataResult(object):
     def __init__(self, dev):
         self.__feed_time = None
         self._speed = {}
+        self._mult_dict = {}
         self._active_keys = []
         self.device = dev
 
@@ -74,6 +75,7 @@ class IBDataResult(object):
                     else:
                         _mult = 1
                         unit = "1/s"
+                    self._mult_dict[_key] = _mult
                     self._speed[_key] = hm_classes.mvect_entry(
                         "{}.{}".format(self._get_root_key(port_num), _alt_key),
                         default=0.,
@@ -82,7 +84,7 @@ class IBDataResult(object):
                         base=1000,
                     )
                 # update value, update for 2 minutes
-                self._speed[_key].update(result[_key] * _mult / diff_time, valid_until=cur_time + 2 * 60)
+                self._speed[_key].update(result[_key] * self._mult_dict[_key] / diff_time, valid_until=cur_time + 2 * 60)
         else:
             self._speed = {}
             self._active_keys = []

@@ -32,7 +32,7 @@ class special_supermicro(SpecialBase):
     class Meta:
         server_contact = True
         info = "SuperMicro"
-        command_line = "$USER2$ -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
+        command_line = "$USER2$ -t 20 -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
         description = "queries IPMI Bladecenters via the collserver on the localhost"
 
     def to_hint(self, srv_reply):
@@ -90,7 +90,7 @@ class special_supermicro_passive(SpecialBase):
     class Meta:
         server_contact = True
         info = "SuperMicro passive"
-        command_line = "$USER2$ -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} counter " \
+        command_line = "$USER2$ -t 20 -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} counter " \
             "--passive-check-prefix=$ARG3$"
         description = "queries IPMI Bladecenters via the collserver on the localhost, reduced load when compared with supermicro"
 
