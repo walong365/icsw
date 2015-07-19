@@ -37,7 +37,6 @@ def main():
     global_config.add_config_entries(
         [
             ("MAILSERVER", configfile.str_c_var("localhost", help_string="mailserver for sending [%(default)s]", short_options="M")),
-            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             ("DEBUG", configfile.bool_c_var(False, help_string="enable ebugging [%(default)s]", only_commandline=True, short_options="d")),
             ("FROM_NAME", configfile.str_c_var("pyerror")),
             ("FROM_ADDR", configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),

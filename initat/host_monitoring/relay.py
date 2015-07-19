@@ -73,7 +73,7 @@ class relay_code(threading_tools.process_pool):
         self.__autosense = global_config["AUTOSENSE"]
         self.__force_resolve = global_config["FORCERESOLVE"]
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.renice(global_config["NICE_LEVEL"])
         # ip resolving
         if self.__force_resolve:

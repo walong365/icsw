@@ -48,7 +48,7 @@ class server_process(
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
-        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         # close connection (daemonize)

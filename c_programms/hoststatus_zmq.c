@@ -180,8 +180,7 @@ int main(int argc, char **argv)
     zmq_setsockopt(responder, ZMQ_IDENTITY, identity_str, strlen(identity_str));
     zmq_setsockopt(responder, ZMQ_TCP_KEEPALIVE, &tcp_keepalive,
                    sizeof(tcp_keepalive));
-    zmq_setsockopt(responder, ZMQ_LINGER, &zmq_linger,
-                   sizeof(zmq_linger));
+    zmq_setsockopt(responder, ZMQ_LINGER, &zmq_linger, sizeof(zmq_linger));
     zmq_setsockopt(responder, ZMQ_TCP_KEEPALIVE_IDLE, &tcp_keepalive_idle,
                    sizeof(tcp_keepalive_idle));
     char bind_address[100];

@@ -1,13 +1,19 @@
 <?xml version="1.0"?>
 <instances>
-    <instance check_type="meta" name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck-server">
+    <instance check_type="meta" name="logcheck-server" alias="logcheck" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck-server" uuid-postfix="logcheck-server">
+        <!--
+        any of the following config_names has to be set to start this service
+        a config_name with attribute contact=0 (default is 1) will not be considered when
+        building the server routing dicts
+        -->
         <config_names>
             <config_name>syslog_server</config_name>
+            <config_name>logcheck_server</config_name>
         </config_names>
         <old-binary>logcheck-server</old-binary>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1" reload="1">
+    <instance check_type="meta" name="package-server" alias="package" pid_file_name="package-server/package-server.pid" has_force_stop="1" reload="1" uuid-postfix="package-server">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
@@ -18,21 +24,37 @@
         <required-license>package_install</required-license>
         <module-name>initat.package_install.server.main</module-name>
         <old-binary>package-server</old-binary>
+        <network>
+            <ports>
+                <port type="command">8007</port>
+            </ports>
+        </network>
         <access-rights>
             <dir value="/var/run/packge-server" user="idpacks" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="mother" pid_file_name="mother/mother.pid" has_force_stop="1">
+    <instance check_type="meta" name="mother" alias="mother-server" pid_file_name="mother/mother.pid" has_force_stop="1" uuid-postfix="mother">
         <config_names>
             <config_name>mother_server</config_name>
         </config_names>
+        <node-split/>
+        <network>
+            <ports>
+                <port type="command">8000</port>
+            </ports>
+        </network>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45" reload="1">
+    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45" reload="1" uuid-postfix="collectd">
         <config_names>
             <config_name>rrd_server</config_name>
             <config_name>rrd_collector</config_name>
         </config_names>
+        <network>
+            <ports>
+                <port type="command">8008</port>
+            </ports>
+        </network>
         <start-argument>
             <arg key="user">idrrd</arg>
             <arg key="group">idg</arg>
@@ -52,35 +74,41 @@
     </instance>
     <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
         <config_names>
-            <config_name>server</config_name>
+            <config_name contact='0'>server</config_name>
         </config_names>
     </instance>
     <instance name="nginx" check_type="simple" pid_file_name="nginx.pid" any_threads_ok="1" runs_on="system">
         <config_names>
-            <config_name>server</config_name>
+            <config_name contact='0'>server</config_name>
         </config_names>
     </instance>
     <instance name="icinga" check_type="simple" pid_file_name="/opt/icinga/var/icinga.lock" any_threads_ok="1" runs_on="system" wait_time="20">
         <config_names>
-            <config_name>monitor_server</config_name>
-            <config_name>monitor_master</config_name>
+            <config_name contact='0'>monitor_server</config_name>
+            <config_name contact='0'>monitor_master</config_name>
         </config_names>
     </instance>
     <instance name="uwsgi-init" check_type="simple" pid_file_name="uwsgi-init.pid" any_threads_ok="1" runs_on="system">
         <config_names>
-            <config_name>server</config_name>
+            <config_name contact='0'>server</config_name>
         </config_names>
     </instance>
     <instance name="rrdcached" check_type="pid_file" any_threads_ok="1" runs_on="system" pid_file_name="rrdcached/rrdcached.pid" startstop="0">
         <config_names>
-            <config_name>rrd_server</config_name>
-            <config_name>rrd_grapher</config_name>
+            <config_name contact="0">rrd_server</config_name>
+            <config_name contact="0">rrd_grapher</config_name>
         </config_names>
     </instance>
-    <instance check_type="meta" name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1">
+    <instance check_type="meta" name="rrd-grapher" alias="grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1" uuid-postfix="grapher">
         <config_names>
+            <config_name>rrd_grapher</config_name>
             <config_name>rrd_server</config_name>
         </config_names>
+        <network>
+            <ports>
+                <port type="command">8003</port>
+            </ports>
+        </network>
         <start-argument>
             <arg key="user">idrrd</arg>
             <arg key="group">idg</arg>
@@ -96,7 +124,7 @@
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server" reload="1">
+    <instance check_type="meta" name="rms-server" alias="rms" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms-server" reload="1" uuid-postfix="rms-server">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
@@ -106,6 +134,11 @@
             <arg key="group">sge</arg>
             <arg key="groups">idg</arg>
         </start-argument>
+        <network>
+            <ports>
+                <port type="command">8009</port>
+            </ports>
+        </network>
         <nice-level>15</nice-level>
         <required-license>rms</required-license>
         <module-name>initat.rms.main</module-name>
@@ -113,15 +146,25 @@
             <file value="/etc/sysconfig/licenses/.license_policy" user="sge" group="sge"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="cluster-server" has_force_stop="1">
+    <instance check_type="meta" name="cluster-server" alias="server" has_force_stop="1" uuid-postfix="cluster-server">
+        <network>
+            <ports>
+                <port type="command">8004</port>
+            </ports>
+        </network>
         <config_names>
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance check_type="meta" name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1">
+    <instance check_type="meta" name="discovery-server" alias="discovery" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1" uuid-postfix="discovery-server">
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
+        <network>
+            <ports>
+                <port type="command">8006</port>
+            </ports>
+        </network>
         <required-license>discovery_server</required-license>
         <old-binary>discovery-server</old-binary>
         <nice-level>15</nice-level>
@@ -129,10 +172,16 @@
             <dir value="/var/run/discovery-server" user="root" group="root" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
+    <instance check_type="meta" name="cluster-config-server" alias="config" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1" uuid-postfix="config-server">
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
+        <network>
+            <ports>
+                <port type="command">8005</port>
+            </ports>
+        </network>
+        <node-split/>
         <start-argument>
             <arg key="user">idccs</arg>
             <arg key="group">idg</arg>
@@ -143,10 +192,11 @@
             <dir value="/var/run/cluster-config-server" user="idccs" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay" reload="1">
+    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay" reload="1" uuid-postfix="host-relay">
         <config_names>
-            <config_name>monitor_server</config_name>
-            <config_name>monitor_master</config_name>
+            <config_name contact='0'>monitor_server</config_name>
+            <config_name contact='0'>monitor_master</config_name>
+            <config_name>monitor_slave</config_name>
         </config_names>
         <!-- special flag: ignore missing database connection, for relayer operation -->
         <ignore-missing-database/>
@@ -154,16 +204,17 @@
         <module-name>initat.host_monitoring.main</module-name>
         <old-binary>collrelay</old-binary>
     </instance>
-    <instance check_type="meta" name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1">
+    <instance check_type="meta" name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1" uuid-postfix="snmp-relay">
         <config_names>
-            <config_name>monitor_server</config_name>
-            <config_name>monitor_master</config_name>
+            <config_name contact='0'>monitor_server</config_name>
+            <config_name contact='0'>monitor_master</config_name>
+            <config_name>monitor_slave</config_name>
         </config_names>
         <ignore-missing-database/>
         <old-binary>snmp-relay</old-binary>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" reload="1">
+    <instance check_type="meta" name="md-config-server" alias="md-config" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" reload="1" uuid-postfix="md-config-server">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
@@ -172,6 +223,11 @@
             <arg key="user">idnagios</arg>
             <arg key="group">idg</arg>
         </start-argument>
+        <network>
+            <ports>
+                <port type="command">8010</port>
+            </ports>
+        </network>
         <required-license>md_config_server</required-license>
         <old-binary>md-config-server</old-binary>
         <access-rights>

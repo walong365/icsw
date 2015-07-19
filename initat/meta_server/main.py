@@ -37,7 +37,6 @@ def main():
         [
             ("MAILSERVER", configfile.str_c_var("localhost", help_string="Mailserver to use [%(default)s]")),
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             (
                 "COM_PORT",
                 configfile.int_c_var(

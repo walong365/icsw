@@ -36,7 +36,6 @@ def main():
         [
             ("BASEDIR_NAME", configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0)),
             ("DAEMONIZE", configfile.bool_c_var(True)),
             ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),

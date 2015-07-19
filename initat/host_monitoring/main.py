@@ -86,7 +86,6 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
             ("LOG_NAME", configfile.str_c_var(prog_name, autoconf_exclude=True)),
             ("KILL_RUNNING", configfile.bool_c_var(True, autoconf_exclude=True)),

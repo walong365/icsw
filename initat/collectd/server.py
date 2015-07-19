@@ -55,7 +55,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
-        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

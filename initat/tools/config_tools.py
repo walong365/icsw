@@ -38,9 +38,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
     netdevice, peer_information, config_int, config_blob, config_str, config_bool
 import networkx
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import configfile, logging_tools, process_tools
 
 
 class router_object(object):
@@ -646,6 +644,8 @@ class server_check(object):
                 break
 
     def get_route_to_other_device(self, router_obj, other, **kwargs):
+        if "cache" in kwargs and other.device.pk in kwargs["cache"]:
+            return kwargs["cache"][other.device.pk]
         filter_ip = kwargs.get("filter_ip", None)
         # at first fetch the network info if necessary
         self._fetch_network_info()
@@ -705,6 +705,8 @@ class server_check(object):
             r_list = sorted(r_list)
         if kwargs.get("prefer_production_net", False):
             r_list = self.prefer_production_net(r_list)
+        if "cache" in kwargs:
+            kwargs["cache"][other.device.pk] = r_list
         return r_list
 
     def prefer_production_net(self, r_list):

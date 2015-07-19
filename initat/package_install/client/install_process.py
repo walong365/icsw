@@ -115,7 +115,6 @@ class install_process(threading_tools.process_obj):
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
             zmq=True,
-            zmq_debug=global_config["ZMQ_DEBUG"],
             context=self.zmq_context,
             init_logger=True
         )

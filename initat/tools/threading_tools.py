@@ -922,7 +922,7 @@ class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, 
 class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin):
     def __init__(self, name, **kwargs):
         threading.currentThread().setName(kwargs.get("name", "main"))
-        self.debug_zmq = kwargs.get("zmq_debug", False)
+        self.debug_zmq = "ICSW_ZMQ_DEBUG" in os.environ
         TimerBase.__init__(self)
         poller_obj.__init__(self)
         exception_handling_mixin.__init__(self)

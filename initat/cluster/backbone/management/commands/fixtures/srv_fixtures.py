@@ -38,7 +38,9 @@ def add_fixtures(**kwargs):
         ("package_server", "enables packge-server functionalities (RPM/deb distribution)"),
         ("rms_server", "device hosts the RMS-server (Jobsystem)"),
         ("rrd_collector", "devices acts as a collector"),
-        ("rrd_server", "devices acts as a graphing server (via collectd)"),
+        # deprecated, no longer in use
+        # ("rrd_server", "devices acts as a graphing server (via collectd)"),
+        ("rrd_grapher", "devices acts as a graphing server (via collectd)"),
         ("server", "sets device as a cluster-server"),
         ("virtual_desktop_client", "device has a virtual desktop client"),
         ("auto_etc_hosts", "/etc/hosts file can be created from local cluster-server"),

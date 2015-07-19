@@ -21,7 +21,7 @@ endif
 ###############################################################################
 # Files
 ###############################################################################
-progs=csnmpclientzmq ccollclientzmq tell_mother hoststatus tell_mother_zmq hoststatus_zmq send_collectd_zmq
+progs=csnmpclientzmq ccollclientzmq tell_mother_zmq hoststatus_zmq send_collectd_zmq
 
 ###############################################################################
 # Targets

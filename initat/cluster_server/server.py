@@ -40,7 +40,7 @@ from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, server_mixins.NetworkBindMixin, server_mixins.ServerStatusMixin):
     def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.__run_command = True if global_config["COMMAND"].strip() else False
         # close DB conncetion (daemonize)
         if self.__run_command:

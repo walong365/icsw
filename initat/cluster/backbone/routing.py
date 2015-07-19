@@ -30,64 +30,29 @@ from initat.tools.config_tools import server_check, device_with_config, router_o
 from django.core.cache import cache
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from initat.tools import uuid_tools
-from initat.tools import logging_tools
-from initat.tools import server_command
+from initat.tools import uuid_tools, logging_tools, server_command
+from initat.icsw.service.instance import InstanceXML
 
 
-# mapping: server type -> default port
-_SRV_TYPE_PORT_MAPPING = {
-    "mother": 8000,
-    "grapher": 8003,
-    "server": 8004,
-    "config": 8005,
-    "discovery": 8006,
-    "package": 8007,
-    "collectd": 8008,
-    "rms": 8009,
-    "md-config": 8010,
-    "cransys": 8013,
-}
+logger = logging.getLogger("cluster.routing")
 
-# mapping: server type -> postfix for ZMQ_IDENTITY string
-_SRV_TYPE_UUID_MAPPING = {
-    "mother": "mother",
-    "server": "cluster-server",
-    "grapher": "grapher",
-    "md-config": "md-config-server",
-    "collectd": "collectd",
-    "rms": "rms-server",
-    "discovery": "discovery-server",
-    "config": "config-server",
-    "package": "package-server"
-}
 
-# mapping: server type -> valid config names
-_SRV_NAME_TYPE_MAPPING = {
-    "mother": ["mother_server"],
-    "grapher": ["rrd_server"],
-    "collectd": ["rrd_collector"],
-    "server": ["server"],
-    "config": ["config_server"],
-    "package": ["package_server"],
-    "discovery": ["discovery_server"],
-    # sge_server is deprecated, still in use
-    "rms": ["rms_server", "sge_server"],
-    "md-config": ["monitor_server"],
-    "cransys": ["cransys_server"],
-}
+def _log(what, log_level):
+    logger.log(log_level, what)
+
+_INSTANCE = InstanceXML(_log)
+
 
 _NODE_SPLIT = ["mother", "config"]
 
-_REVERSE_MAP = {
-    "package_server": "package",
-    "package-server": "package",
-    "config-server": "config",
-    "config_server": "config",
-}
-
 
 def get_type_from_config(c_name):
+    _REVERSE_MAP = {
+        "package_server": "package",
+        "package-server": "package",
+        "config-server": "config",
+        "config_server": "config",
+    }
     return _REVERSE_MAP.get(c_name, None)
 
 
@@ -98,7 +63,7 @@ def get_server_uuid(srv_type, uuid=None):
         uuid = "urn:uuid:{}".format(uuid)
     return "{}:{}:".format(
         uuid,
-        _SRV_TYPE_UUID_MAPPING[srv_type],
+        _INSTANCE.get_uuid_postfix(srv_type),
     )
 
 
@@ -107,10 +72,11 @@ class srv_type_routing(object):
 
     def __init__(self, force=False, logger=None):
         if logger is None:
-            self.logger = logging.getLogger("cluster.srv_routing")
+            self.logger = logging.getLogger("cluster.routing")
         else:
             self.logger = logger
         _resolv_dict = cache.get(self.ROUTING_KEY)
+        # if _resolv_dict is None or True:
         if _resolv_dict is None or force:
             _resolv_dict = self._build_resolv_dict()
         else:
@@ -155,7 +121,7 @@ class srv_type_routing(object):
             # no server id, take first one
             return "tcp://{}:{:d}".format(
                 _found_srv[0][1],
-                _SRV_TYPE_PORT_MAPPING[srv_type],
+                _INSTANCE.get_port_dict(srv_type, command=True),
             )
         else:
             self.logger.critical("no srv_type {} defined".format(srv_type))
@@ -163,7 +129,7 @@ class srv_type_routing(object):
 
     @property
     def resolv_dict(self):
-        return dict([(key, value) for key, value in self._resolv_dict.iteritems() if not key.startswith("_")])
+        return {key: value for key, value in self._resolv_dict.iteritems() if not key.startswith("_")}
 
     @property
     def local_device(self):
@@ -173,20 +139,35 @@ class srv_type_routing(object):
     def no_bootserver_devices(self):
         return self.__no_bootserver_devices
 
+    def _srv_type_to_string(self, in_list):
+        return ", ".join(in_list)
+
     def _build_resolv_dict(self):
         # local device
         _myself = server_check(server_type="", fetch_network_info=True)
         _router = router_object(self.logger)
-        conf_names = sum(_SRV_NAME_TYPE_MAPPING.values(), [])
+        conf_names = sum([_INSTANCE.get_config_names(_inst.get("name")) for _inst in _INSTANCE.get_all_instances()], [])
         # build reverse lut
         _rv_lut = {}
-        for key, value in _SRV_NAME_TYPE_MAPPING.iteritems():
-            _rv_lut.update({_name: key for _name in value})
+        _INSTANCES_WITH_NAMES = set()
+        for _inst in _INSTANCE.get_all_instances():
+            _inst_name = _inst.attrib["name"]
+            for _conf_name in _INSTANCE.get_config_names(_inst):
+                _INSTANCES_WITH_NAMES.add(_inst_name)
+                _rv_lut.setdefault(_conf_name, []).append(_inst_name)  # [_conf_name] = _inst_name
+        # for key, value in _SRV_NAME_TYPE_MAPPING.iteritems():
+        #     _rv_lut.update({_name: key for _name in value})
         # resolve dict
         _resolv_dict = {}
+        # list of all already used srv_type / config_name / device_idx tuples
+        _used_tuples = set()
+        # dict resolving all srv_type / device_idx to set configs
+        _dev_srv_type_lut = {}
+        # simple routing cache
+        routing_cache = {}
         # get all configs
         for _conf_name in conf_names:
-            _srv_type = _rv_lut[_conf_name]
+            _srv_type_list = _rv_lut[_conf_name]
             _sc = device_with_config(config_name=_conf_name)
             if _conf_name in _sc:
                 for _dev in _sc[_conf_name]:
@@ -194,9 +175,9 @@ class srv_type_routing(object):
                     if _dev.effective_device.is_meta_device:
                         # server-like config is set for an md-device, not good
                         self.logger.error(
-                            "device '{}' (srv_type {}) is a meta-device".format(
+                            "device '{}' (srv_type_list {}) is a meta-device".format(
                                 _dev.effective_device.full_name,
-                                _srv_type,
+                                self._srv_type_to_string(_srv_type_list),
                             )
                         )
                     else:
@@ -204,7 +185,14 @@ class srv_type_routing(object):
                             _first_ip = "127.0.0.1"
                             _penalty = 1
                         else:
-                            _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True, prefer_production_net=True)
+                            # print _myself, dir(_myself)
+                            _ri = _dev.get_route_to_other_device(
+                                _router,
+                                _myself,
+                                allow_route_to_other_networks=True,
+                                prefer_production_net=True,
+                                cache=routing_cache
+                            )
                             if _ri:
                                 _first_ri = _ri[0]
                                 _first_ip = _first_ri[2][1][0]
@@ -212,31 +200,45 @@ class srv_type_routing(object):
                             else:
                                 _first_ip = None
                         if _first_ip:
-                            _resolv_dict.setdefault(_srv_type, []).append(
-                                (
-                                    _dev.effective_device.full_name,
-                                    _first_ip,
-                                    _dev.effective_device.pk,
-                                    _penalty,
-                                )
-                            )
-                            self.logger.debug(
-                                "adding device '{}' (IP {}, {:d}) to srv_type {}".format(
-                                    _dev.effective_device.full_name,
-                                    _first_ip,
-                                    _dev.effective_device.pk,
-                                    _srv_type,
-                                )
-                            )
+                            for _srv_type in _srv_type_list:
+                                _add_t = (_srv_type, _conf_name, _dev.effective_device.pk)
+                                if _add_t not in _used_tuples:
+                                    _used_tuples.add(_add_t)
+                                    # lookup for simply adding new config names
+                                    _dst_key = (_srv_type, _dev.effective_device.pk)
+                                    if _dst_key in _dev_srv_type_lut:
+                                        _ce = [_entry for _entry in _resolv_dict[_srv_type] if _entry[2] == _dev.effective_device.pk][0]
+                                        _ce[4].append(_conf_name)
+                                    else:
+                                        _resolv_dict.setdefault(_srv_type, []).append(
+                                            (
+                                                _dev.effective_device.full_name,
+                                                _first_ip,
+                                                _dev.effective_device.pk,
+                                                _penalty,
+                                                [_conf_name],
+                                            )
+                                        )
+                                    _dev_srv_type_lut.setdefault(_dst_key, []).append(_conf_name)
+                                    self.logger.info(
+                                        "adding device '{}' (IP {}, {:d}) to srv_type {} (config {})".format(
+                                            _dev.effective_device.full_name,
+                                            _first_ip,
+                                            _dev.effective_device.pk,
+                                            _srv_type,
+                                            _conf_name,
+                                        )
+                                    )
                         else:
                             self.logger.error(
-                                "no route to device '{}' found (srv_type {})".format(
+                                "no route to device '{}' found (srv_type_list {}, config {})".format(
                                     _dev.effective_device.full_name,
-                                    _srv_type,
+                                    self._srv_type_to_string(_srv_type_list),
+                                    _conf_name,
                                 )
                             )
         # missing routes
-        _missing_srv = set(_SRV_NAME_TYPE_MAPPING.keys()) - set(_resolv_dict.keys())
+        _missing_srv = _INSTANCES_WITH_NAMES - set(_resolv_dict.keys())
         if _missing_srv:
             for _srv_type in sorted(_missing_srv):
                 self.logger.warning("no device for srv_type '{}' found".format(_srv_type))
@@ -275,11 +277,13 @@ class srv_type_routing(object):
                 _cl_dict.setdefault(_value[1], []).append(_value[0])
             elif _value[0] in _bs_hints:
                 # using boothints
-                self.logger.warning("using bootserver_hint {:d} for {:d} ({})".format(
-                    _bs_hints[_value[0]],
-                    _value[0],
-                    _value[2],
-                    ))
+                self.logger.warning(
+                    "using bootserver_hint {:d} for {:d} ({})".format(
+                        _bs_hints[_value[0]],
+                        _value[0],
+                        _value[2],
+                    )
+                )
                 _cl_dict.setdefault(_bs_hints[_value[0]], []).append(_value[0])
             else:
                 self.__no_bootserver_devices.add((_value[0], _value[2]))

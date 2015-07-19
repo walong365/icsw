@@ -39,7 +39,6 @@ def main():
         [
             ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("COM_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port to bind to [%(default)d]", autoconf_exclude=True)),
             ("SERVER_COM_PORT", configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]", autoconf_exclude=True)),

@@ -13,11 +13,11 @@
             <dir value="/var/lib/logging-server" user="idlog" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="meta-server" runs_on="client" has_force_stop="1" wait_time="120">
+    <instance check_type="meta" name="meta-server" short="meta" runs_on="client" has_force_stop="1" wait_time="120">
         <nice-level>15</nice-level>
     </instance>
     <!-- meta-server has a longer wait_time because we have to wait for all subprocesses to terminate -->
-    <instance check_type="meta" name="host-monitoring" runs_on="client" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver" module="initat.host_monitoring.main" wait_time="300" reload="1">
+    <instance check_type="meta" name="host-monitoring" short="collserver" runs_on="client" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver" module="initat.host_monitoring.main" wait_time="300" reload="1">
         <programm-name>collserver</programm-name>
         <programm-title>icsw.collserver</programm-title>
         <old-binary>collserver.py</old-binary>

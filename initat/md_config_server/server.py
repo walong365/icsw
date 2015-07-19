@@ -68,7 +68,7 @@ class server_process(
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
-        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._init_msi_block()
         connection.close()

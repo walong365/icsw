@@ -69,7 +69,6 @@ class server_code(threading_tools.process_pool):
             "main",
             zmq=True,
             zmq_contexts=1,
-            zmq_debug=global_config["ZMQ_DEBUG"],
             loop_granularity=IDLE_LOOP_GRANULARITY,
         )
         self.renice(global_config["NICE_LEVEL"])

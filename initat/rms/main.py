@@ -43,7 +43,6 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
             ("USER", configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
             ("GROUP", configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),

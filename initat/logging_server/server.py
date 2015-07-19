@@ -56,7 +56,7 @@ class main_process(threading_tools.process_pool):
         # number of usecounts
         self.__handle_usecount = {}
         self.__usecount_ts = time.time()
-        threading_tools.process_pool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)

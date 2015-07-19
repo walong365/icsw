@@ -9,6 +9,8 @@
                 <thead>
                     <tr>
                         <th>Name</th>
+                        <th># configs</th>
+                        <th>Config names</th>
                         <th>reachable IP</th>
                         <th>cost</th>
                     </tr>
@@ -20,6 +22,12 @@
                     <tr ng-repeat-end ng-repeat="server in get_servers(role)">
                         <td>
                             {{ server[0] }}
+                        </td>
+                        <td>
+                            {{ server[4].length }}
+                        </td>
+                        <td>
+                            {{ get_config_names(server) }}
                         </td>
                         <td>
                             {{ server[1] }}

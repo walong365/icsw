@@ -58,6 +58,8 @@ angular.module(
             return $scope.routing_info[role].length
         $scope.get_servers = (role) ->
             return $scope.routing_info[role]
+        $scope.get_config_names  = (srv_info) ->
+            return srv_info[4].join(", ")
         $scope.do_action = (srv_info, instance, type) ->
             if $scope.cur_to
                 $timeout.cancel($scope.cur_to)

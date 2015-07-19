@@ -48,7 +48,6 @@ class server_process(
         threading_tools.process_pool.__init__(
             self, "main",
             zmq=True,
-            zmq_debug=global_config["ZMQ_DEBUG"]
         )
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
