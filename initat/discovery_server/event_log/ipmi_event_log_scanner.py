@@ -99,7 +99,7 @@ class IpmiLogJob(EventLogPollerJobBase):
             if self.ext_com is None:
                 # initial call, start the job
                 cmd = (
-                    process_tools.find_file("ipmitool"),
+                    process_tools.find_file("ipmitool", exception_on_error=True),
                     "-H", job.target_ip,
                     "-U", job.username,
                     "-P", job.password,
@@ -156,7 +156,7 @@ class IpmiLogJob(EventLogPollerJobBase):
             if self.ext_com is None:
                 # initial call, start the job
                 cmd = (
-                    process_tools.find_file("ipmitool"),
+                    process_tools.find_file("ipmitool", exception_on_error=True),
                     "-H", job.target_ip,
                     "-U", job.username,
                     "-P", job.password,
@@ -228,7 +228,7 @@ class IpmiLogJob(EventLogPollerJobBase):
 
         def start_next_job(self, job):
             cmd = (
-                process_tools.find_file("ipmitool"),
+                process_tools.find_file("ipmitool", exception_on_error=True),
                 "-H", job.target_ip,
                 "-U", job.username,
                 "-P", job.password,
