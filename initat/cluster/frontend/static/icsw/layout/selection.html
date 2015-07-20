@@ -4,7 +4,7 @@
             <tab heading="current selection">
                 <div class="input-group">
                     <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
-                        <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search ..." ng-change="update_search()"/>
+                        <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search by name, IP or MAC" ng-change="update_search()"/>
                     </div>
                     <span class="input-group-btn">
                         <button class="btn btn-success fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">

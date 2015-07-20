@@ -155,6 +155,7 @@ ics_app = angular.module(
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
     "DEVICE_DEVICE_GENERAL": "{% url 'device:DeviceGeneral' %}"
     "DEVICE_GET_DEVICE_LOCATION": "{% url 'device:get_device_location' %}"
+    "DEVICE_GET_MATCHING_DEVICES": "{% url 'device:GetMatchingDevices' %}"
     "DEVICE_MANUAL_CONNECTION": "{% url 'device:manual_connection' %}"
     "DEVICE_SCAN_DEVICE_NETWORK": "{% url 'device:scan_device_network' %}"
     "DEVICE_SET_SELECTION": "{% url 'device:set_selection' %}"

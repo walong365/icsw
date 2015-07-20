@@ -660,8 +660,9 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
                 _xml = etree.fromstring(in_data)  # @UndefinedVariable
             except etree.XMLSyntaxError:
                 self.log(
-                    "cannot parse tree: {}".format(
-                        process_tools.get_except_info()
+                    "cannot parse tree: {}, first 48 bytes: '{}'".format(
+                        process_tools.get_except_info(),
+                        in_data[:48],
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )

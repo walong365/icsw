@@ -27,6 +27,7 @@ class usv_server_stuff(bg_stuff):
     class Meta:
         creates_machvector = True
         name = "usv_server"
+        description = "device has an USV from APC directly attached"
 
     def do_apc_call(self):
         _c_stat, out = commands.getstatusoutput("apcaccess")

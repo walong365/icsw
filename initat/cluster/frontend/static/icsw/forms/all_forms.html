@@ -3095,7 +3095,7 @@
         </fieldset>
         <tabset>
             <tab heading="BaseScan" select='set_scan_mode("base")' active="_current_dev.scan_base_active"></tab>
-            <tab ng-show='has_com_capability(_edit_obj, "hm")' heading="Hostmonitor" select='set_scan_mode("hm")' active="_current_dev.scan_hm_active">"
+            <tab ng-show='has_com_capability(_edit_obj, "hm")' heading="Hostmonitor" select='set_scan_mode("hm")' active="_current_dev.scan_hm_active">
                 <fieldset>
                     <legend>Flags</legend>
                     <div class="form-group">
@@ -3111,7 +3111,7 @@
             </tab>
             <tab ng-show='has_com_capability(_edit_obj, "snmp")' heading="SNMP" select='set_scan_mode("snmp")' active="_current_dev.scan_snmp_active">
                 <fieldset>
-                    <legend>Base data</legend>
+                    <legend>SNMP Scan Settings</legend>
                     <div id="div_id_snmp_community" class="form-group">
 <label for="id_snmp_community" class="control-label col-sm-3 requiredField">
                         Snmp community<span class="asteriskField">*</span></label>
@@ -3141,19 +3141,17 @@
             </tab>
             <tab ng-show='has_com_capability(_edit_obj, "wmi")' heading="WMI" select='set_scan_mode("wmi")' active="_current_dev.scan_wmi_active">
                 <fieldset>
-                    <legend>Base data</legend>
+                    <legend>WMI Scan Settings</legend>
                     <div id="div_id_wmi_username" class="form-group">
-<label for="id_wmi_username" class="control-label col-sm-3">
-                        Username
-                    </label>
-
+                        <label for="id_wmi_username" class="control-label col-sm-3">
+                            Username
+                        </label>
                         <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_username" maxlength="256" name="wmi_username" ng-model="_edit_obj.wmi_username" type="text"></input></div>
                     </div>
                     <div id="div_id_wmi_password" class="form-group">
-<label for="id_wmi_password" class="control-label col-sm-3">
-                        Password
-                    </label>
-
+                        <label for="id_wmi_password" class="control-label col-sm-3">
+                            Password
+                        </label>
                         <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_password" maxlength="256" name="wmi_password" ng-model="_edit_obj.wmi_password" type="password"></input></div>
                     </div>
                     <div class="form-group">

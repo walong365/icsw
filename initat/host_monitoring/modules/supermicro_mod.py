@@ -455,17 +455,7 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
 
     def process(self):
         if MOCK_MODE is None:
-            if self.run_info["result"]:
-                self.srv_com.set_result(
-                    "error ({:d}): {}".format(
-                        self.run_info["result"],
-                        self.read().strip()
-                    ),
-                    server_command.SRV_REPLY_STATE_ERROR,
-                )
-                output = None
-            else:
-                output = self.read()
+            output = self.read()
         else:
             output = MOCK_DICT[MOCK_MODE][self.__real_com]
         if output is not None:
@@ -474,6 +464,9 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
 
 
 class SMCRetrievePendingStruct(hm_classes.subprocess_struct):
+    class Meta:
+        max_usage = 128
+
     def __init__(self, srv_com, real_com):
 
         hm_classes.subprocess_struct.__init__(

@@ -191,7 +191,7 @@ angular.module(
             $scope.reload()
         $scope.reload= () ->
             wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
                 restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
                 # 2
                 restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),
@@ -357,11 +357,18 @@ angular.module(
                                 network_type_names.push(network.network_type_name)
                             ip_dict[network.network_type_name].push(ip.ip)
             for key, value of ip_dict
-                ip_dict[key] = _.sortBy(value)
+                ip_dict[key] = _.unique(_.sortBy(value))
             network_type_names = _.sortBy(network_type_names)
             dev.ip_dict = ip_dict
             dev.network_type_names = network_type_names
+
             dev.manual_address = ""
+            # set ip if there is only one
+            if Object.keys(ip_dict).length == 1
+                nw_ip_addresses = ip_dict[ Object.keys(ip_dict)[0] ]
+                if nw_ip_addresses.length == 1
+                    dev.manual_address = nw_ip_addresses[0]
+
             dev.snmp_community = "public"
             if not dev.com_caps?
                 # init com_caps array if not already set
@@ -755,7 +762,7 @@ angular.module(
                 el.find("span.ladda-label").text("...")
                 scope.pending = true
                 icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
-                    scope.com_caps = data[0]
+                    scope.com_caps = if data[0]? then data[0] else []
                     scope.pending = false
                     if scope.com_caps.length
                         scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
