@@ -26,7 +26,7 @@ import django
 django.setup()
 
 from initat.rms.functions import call_command
-from initat.rms.config import global_config, COM_PORT
+from initat.rms.config import global_config
 from initat.rms.server import server_process
 from initat.server_version import VERSION_STRING
 from initat.tools import cluster_location, configfile, process_tools, sge_license_tools
