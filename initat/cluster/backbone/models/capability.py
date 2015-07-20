@@ -127,7 +127,7 @@ class ComCapability(models.Model):
     class MatchCode(enum.Enum):
         hm = 1
         ipmi = 2
-        snmp = 4
+        snmp = 3
         wmi = 4
 
     class Meta:
