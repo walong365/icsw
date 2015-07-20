@@ -77,9 +77,6 @@ def main():
         "discovery_server", [
             ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
             ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
-            # TODO: currently not enabled jira: CSW-423
-            # ("MONGODB_HOST", configfile.str_c_var("localhost", help_string="")),
-            # ("MONGODB_PORT", configfile.int_c_var(27017, help_string="")),
         ]
     )
     run_code()

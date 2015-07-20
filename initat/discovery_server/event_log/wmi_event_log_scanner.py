@@ -398,11 +398,9 @@ class WmiLogEntryJob(_WmiJobBase):
                     },
                     upsert=True,
                 )
-                job.log("SETTING NEW MAX REC NUM: {} for {}".format(maximal_record_number, job))
-
                 self.from_record_number = maximal_record_number
 
-                job.log("New maximal record number: {} (maximal to reach: {}) for {}".format(maximal_record_number,
+                job.log("New maximal record number: {} (maximum to reach: {}) for {}".format(maximal_record_number,
                                                                                              self.to_record_number,
                                                                                              job))
 
