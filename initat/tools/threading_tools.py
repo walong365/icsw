@@ -1094,12 +1094,6 @@ class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin
 
     def _close_pp_sockets(self):
         self.__com_socket.close()
-        # hack to check if we run fully daemonized
-        if os.getcwd() == "/":
-            # zmq_context.term() is not working for fully daemonized programs, bug in 0MQ ?
-            pass
-        else:
-            pass
         self.zmq_context.term()
 
     def add_process(self, t_obj, **kwargs):

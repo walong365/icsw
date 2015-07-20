@@ -345,6 +345,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNot
                 pass
 
     def loop_post(self):
+        self.CC.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -356,7 +357,6 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNot
         self.com_socket.close()
         self.receiver.close()
         self.spc.close()
-        self.CC.close()
 
     def _check_database(self):
         if self._still_active("check database"):
