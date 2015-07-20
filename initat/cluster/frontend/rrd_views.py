@@ -74,7 +74,7 @@ def _get_node_rrd(request, dev_pks):
         *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in dev_pks],
         merge_results="1"
     )
-    result, _log_lines = contact_server(request, "grapher", srv_com, timeout=30)
+    result, _log_lines = contact_server(request, "rrd-grapher", srv_com, timeout=30)
     if result is not None:
         _log_str, _log_level = result.get_log_tuple()
         if _log_level <= logging_tools.LOG_LEVEL_WARN:
@@ -147,7 +147,7 @@ class graph_rrds(View):
             E.merge_graphs(self._parse_post_boolean(_post, "merge_graphs", "0")),
             E.timeshift(_post.get("timeshift", "0")),
         )
-        result = contact_server(request, "grapher", srv_com, timeout=30)
+        result = contact_server(request, "rrd-grapher", srv_com, timeout=30)
         if result:
             graph_list = result.xpath(".//graph_list", smart_strings=False)
             if len(graph_list):

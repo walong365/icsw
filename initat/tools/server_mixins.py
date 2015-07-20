@@ -96,6 +96,7 @@ class ConfigCheckObject(object):
                 ),
             ]
             for _name, _value in self._inst_xml.get_port_dict(self._instance).iteritems():
+                print _name, _value
                 _opts.append(
                     ("{}_PORT".format(_name.upper()), configfile.int_c_var(_value)),
                 )
