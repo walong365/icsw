@@ -1656,7 +1656,7 @@ def fetch_sysinfo(root_dir="/"):
     return log_lines, sys_dict
 
 
-def find_file(file_name, s_path=None):
+def find_file(file_name, s_path=None, exception_on_error=False):
     if not s_path:
         s_path = []
     elif type(s_path) != list:
@@ -1670,7 +1670,10 @@ def find_file(file_name, s_path=None):
     if found:
         return os.path.join(cur_path, file_name)
     else:
-        return None
+        if exception_on_error:
+            raise RuntimeError("Failed to find {} (not present any of: {})".format(file_name, s_path))
+        else:
+            return None
 
 
 def create_password(**kwargs):

@@ -21,6 +21,8 @@
 
 from django.db import connection
 from django.db.models import Q
+import zmq
+
 from initat.cluster.backbone.models import device
 from initat.snmp.process import snmp_process_container
 from initat.tools import cluster_location
@@ -30,11 +32,10 @@ from initat.tools import process_tools
 from initat.tools import server_command
 from initat.tools import server_mixins
 from initat.tools import threading_tools
-import zmq
 from initat.tools.server_mixins import RemoteCall
-
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
+from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
 
 
 @server_mixins.RemoteCallProcess
@@ -55,6 +56,7 @@ class server_process(
         self._log_config()
         self.__msi_block = self._init_msi_block()
         self.add_process(DiscoveryProcess("discovery"), start=True)
+        self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         # self.add_process(build_process("build"), start=True)
@@ -142,8 +144,11 @@ class server_process(
 
     def process_start(self, src_process, src_pid):
         mult = 3
+        fuzzy_ceiling = 0
+        if src_process == EventLogPollerProcess.PROCESS_NAME:
+            fuzzy_ceiling = 5
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        self.__msi_block.add_actual_pid(src_pid, mult=mult)
+        self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=fuzzy_ceiling, process_name=src_process)
         self.__msi_block.save_block()
 
     def _init_msi_block(self):
@@ -152,7 +157,7 @@ class server_process(
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("discovery-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block

@@ -423,7 +423,7 @@ class netdevice(models.Model):
     macaddr = models.CharField(db_column="macadr", max_length=177, blank=True, default="")
     driver_options = models.CharField(max_length=672, blank=True)
     # speed is probably deprecated, use netdevice_speed instead
-    speed = models.IntegerField(default=0, null=True, blank=True)
+    speed = models.BigIntegerField(default=0, null=True, blank=True)
     netdevice_speed = models.ForeignKey("backbone.netdevice_speed")
     driver = models.CharField(max_length=384, blank=True, default="e1000e")
     # is a valid routing target

@@ -21,9 +21,40 @@
 #
 import csv
 from StringIO import StringIO
+import logging
+import itertools
+
+logger = logging.getLogger("discovery.wmi_struct")
+
+
+# itertools recipe
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return itertools.izip(a, b)
 
 
 class WmiUtils(object):
+
+    WMIC_BINARY = "/opt/cluster/bin/wmic"
+    DELIMITER = "\01"
+    DELIMITER_NEWLINE = "\02"
+
+    @classmethod
+    def get_wmic_cmd(cls, username, password, target_ip, columns, table, where_clause=""):
+        # NOTE: this is an injection vulnerability
+        # similar to wmi client wrapper https://pypi.python.org/pypi/wmi-client-wrapper
+        return (
+            cls.WMIC_BINARY,
+            "--delimiter={}".format(cls.DELIMITER),
+            "--user={username}%{password}".format(
+                username=username,
+                password=password,
+            ),
+            "//{host}".format(host=target_ip),
+            "SELECT {} FROM {} {}".format(", ".join(columns), table, where_clause),
+        )
 
     # NOTE: similar to wmi client wrapper https://pypi.python.org/pypi/wmi-client-wrapper
 
@@ -43,10 +74,11 @@ class WmiUtils(object):
                 return [obj]  # wmi just returns single objects for list types if there is only one entry
 
     @classmethod
-    def parse_wmic_output(cls, output, delimiter="\01"):
+    def parse_wmic_output(cls, output, try_handle_lists=False):
         """
         Parses output from the wmic command and returns json.
-        NOTE: Does not parse lists properly, so we return WmiList which you have to parse yourself, see above
+        NOTE: Does not parse lists properly, so we by default return WmiList which you have to parse yourself, see above
+        @param try_handle_lists: try to parse lists
         """
         # remove newlines and whitespace from the beginning and end
         output = output.strip()
@@ -78,16 +110,74 @@ class WmiUtils(object):
             # remove the first line because it has the query class
             section = "\n".join(section.split("\n")[1:])
 
+            section = cls._patch_newlines(section)
+
             strio = StringIO(section)
 
-            moredata = list(csv.DictReader(strio, delimiter=delimiter))
+            moredata = list(csv.DictReader(strio, delimiter=cls.DELIMITER))
             items.extend(moredata)
 
         # walk the dictionaries!
-        return cls._fix_dictionary_output(items)
+        return cls._fix_dictionary_output(items, try_handle_lists=try_handle_lists)
 
     @classmethod
-    def _fix_dictionary_output(cls, incoming):
+    def _patch_newlines(cls, section_text):
+        # wmic does not produce valid csv since newlines are contained in text fields
+        # (NTLogEvent can contain \n as well as \r\n
+        # we fix this by concatenating all lines until the line has as many delimiters as a full entry
+        lines = section_text.replace("\r", "").split("\n")
+        num_delimiters = lines[0].count(cls.DELIMITER)
+        fixed_lines = [lines[0]]
+        cur_line = ""
+        fixing = False
+        for line, next_line in pairwise(itertools.chain(lines[1:], [None])):
+            # have to add dummy last elem, else last line would never be `line`
+
+            if cur_line != "":
+                cur_line += cls.DELIMITER_NEWLINE  # add this to show where newlines would have been
+            cur_line += line
+
+            if cur_line.count(cls.DELIMITER) == num_delimiters:
+                # handle newlines in last entry
+                # - in that case, the num_delimiter check says yes, but actually the next line
+                #   still belongs to the entry
+                # find out by checking whether the next line has delimiters
+                # - it cannot have them if is the the part of the last entry after a newline
+                # - TODO: if the first line has newlines, that part is appended to the last entry
+                if next_line is None or cls.DELIMITER in next_line:  # next line is valid line
+                    fixed_lines.append(cur_line)
+                    if fixing:
+                        fixing = False
+                        print 'fixed ', cur_line
+                    cur_line = ""
+                else:
+                    # just add next part in loop start
+                    pass
+            elif cur_line.count(cls.DELIMITER) >= num_delimiters:
+                logger.error("Failed to fix line (should contain {} delimiters): {}".format(
+                    num_delimiters, cur_line
+                ))
+                cur_line = ""
+            else:
+                print 'fixing line', cur_line
+                fixing = True
+
+        if cur_line != "":
+            logger.error("Failed to fix line (should contain {} delimiters): {}".format(
+                num_delimiters, cur_line
+            ))
+
+        # print "\n" * 5, 'fixed:'
+        # print "\n".join(fixed_lines).replace(cls.DELIMITER, "<SEP>") + "\n"
+
+        return "\n".join(fixed_lines) + "\n"
+
+    @classmethod
+    def _reinsert_newlines(cls, s):
+        return s.replace(cls.DELIMITER_NEWLINE, "\n")
+
+    @classmethod
+    def _fix_dictionary_output(cls, incoming, try_handle_lists):
         """
         The dictionary doesn't exactly match the traditional python-wmi output.
         For example, there's "True" instead of True. Integer values are also
@@ -106,7 +196,7 @@ class WmiUtils(object):
             output = []
 
             for each in incoming:
-                output.append(cls._fix_dictionary_output(each))
+                output.append(cls._fix_dictionary_output(each, try_handle_lists))
 
         elif isinstance(incoming, dict):
             output = dict()
@@ -119,13 +209,15 @@ class WmiUtils(object):
                 elif value == "False":
                     output[key] = False
                 elif isinstance(value, str) and len(value) > 1 and value[0] == "(" and value[-1] == ")":
-                    output[key] = WmiUtils.WmiList(value[1:-1])
+                    val = WmiUtils.WmiList(cls._reinsert_newlines(value[1:-1]))
+                    if try_handle_lists:
+                        val = val.try_parse()
+                    output[key] = val
                 elif isinstance(value, str):
-                    output[key] = value
+                    output[key] = cls._reinsert_newlines(value)
                 elif isinstance(value, dict):
-                    output[key] = cls._fix_dictionary_output(value)
+                    output[key] = cls._fix_dictionary_output(value, try_handle_lists)
         else:
             raise RuntimeError("Invalid type in _fix_dictionary_output: {} ({})".format(type(incoming), incoming))
 
         return output
-

@@ -32,7 +32,7 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
                 {{ get_nd_objects().length }} netdevices
             </accordion-heading>
-            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge mac devtype mtu speed penalty flags status"></icsw-tools-show-hide-columns>
+            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge mac devtype mtu speed penalty flags status" create-show-column="true"></icsw-tools-show-hide-columns>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>

@@ -261,6 +261,24 @@ class DeviceVariableManager(models.Manager):
         except device_variable.DoesNotExist:
             return None
 
+    def get_device_variable_value(self, device, var_name, default_val=None):
+        """Returns variable considering inheritance."""
+        var_value = default_val
+        try:
+            cur_var = device.device_variable_set.get(Q(name=var_name))
+        except device_variable.DoesNotExist:
+            try:
+                cur_var = device.device_group.device.device_variable_set.get(Q(name=var_name))
+            except device_variable.DoesNotExist:
+                try:
+                    cur_var = device_variable.objects.get(Q(device__device_group__cluster_device_group=True) &
+                                                          Q(name=var_name))
+                except device_variable.DoesNotExist:
+                    cur_var = None
+        if cur_var:
+            var_value = cur_var.value
+        return var_value
+
 
 class device_variable(models.Model):
     objects = DeviceVariableManager()
@@ -508,7 +526,7 @@ class device(models.Model):
     monitor_server = models.ForeignKey("device", null=True, blank=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks", verbose_name="Checks enabled")
     # performance data tracking, also needed for IPMI and SNMP active monitoring
-    enable_perfdata = models.BooleanField(default=True, verbose_name="enable perfdata, check IPMI and SNMP")
+    enable_perfdata = models.BooleanField(default=True, verbose_name="enable perfdata, check IPMI, SNMP and WMI")
     flap_detection_enabled = models.BooleanField(default=True)
     show_in_bootcontrol = models.BooleanField(default=True)
     # not so clever here, better in extra table, FIXME

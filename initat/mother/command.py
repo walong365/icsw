@@ -193,6 +193,7 @@ class hc_command(object):
         hc_sc.terminate()
 
     def get_var(self, var_name, default_val=None):
+        # NOTE: also implemented more generally accessible as device_variable.objects.get_device_variable
         try:
             cur_var = self.cd_obj.parent.device_variable_set.get(Q(name=var_name))
         except device_variable.DoesNotExist:

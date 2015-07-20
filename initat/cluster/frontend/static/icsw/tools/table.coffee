@@ -60,12 +60,14 @@ angular.module(
         scope: {
             stItemsByPage: '=?',
             stDisplayedPages: '=?'
+            noNumberOfElements: '=?'
         },
         template: $templateCache.get("icsw.tools.paginator")
         link: (scope, element, attrs, ctrl) ->
 
             scope.stItemsByPage = scope.stItemsByPage or 10
             scope.stDisplayedPages = scope.stDisplayedPages or 5
+            scope.noNumberOfElements = scope.noNumberOfElements or false
             scope.Math = Math;
             # this is not nice but only needed for a minor thing (see template above)
             # the problem is that we can't access the scope of the outer directive as the st-table directive overwrites the scope
@@ -121,7 +123,7 @@ angular.module(
                 num = parseInt(num)
                 s_val = (num - 1 ) * scope.stItemsByPage + 1
                 e_val = s_val + scope.stItemsByPage - 1
-                if e_val > ctrl.getNumberOfTotalEntries()
+                if !scope.noNumberOfElements and e_val > ctrl.getNumberOfTotalEntries()
                     e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
     }
@@ -321,18 +323,45 @@ angular.module(
                     )
         }
 ]).directive('icswToolsShowHideColumns', () ->
-     return {
-         restrict: 'EA'
-         template: """
+    return {
+        restrict: 'EA'
+        template: """
 Show/Hide columns: <div class="btn-group btn-group-xs">
     <input type="button" ng-repeat="entry in columns" ng-attr-title="show/hide columns {{entry}}" ng-value="entry"
         ng-class="show_column[entry] && 'btn btn-success' || 'btn'" ng-click="show_column[entry] = ! show_column[entry]"></input>
 </div>
 """
-         link: (scope, element, attrs) ->
-             scope.columns = attrs.columns.split(' ')
-             scope.show_column = {}
-             for col in scope.columns
-                scope.show_column[col] = true
+        scope: false
+        link: (scope, element, attrs) ->
+            scope.a = attrs
+            if attrs.createShowColumn
+                # NOTE: this object can easily end up in the wrong scope
+                #       set this attribute if you know what you are doing, or else create the object yourself in your scope
+                scope.show_column = {}
+
+
+            set_new_columns = (new_columns) ->
+                for k in Object.keys(scope.show_column)
+                    if k not in new_columns
+                        delete scope.show_column[k]
+
+                scope.columns = new_columns
+                for col in scope.columns
+                    scope.show_column[col] = true
+
+            scope.$watch(
+                () -> attrs.columnsList
+                (new_val) ->
+                    if new_val? && new_val
+                        set_new_columns(JSON.parse(new_val))
+            )
+
+            scope.$watch(
+                () -> attrs.columns  # watch on attribute doesn't work
+                (new_val) ->
+                    if new_val?
+                        set_new_columns(new_val.split(' '))
+
+            )
      }
 )

@@ -72,8 +72,10 @@
                     <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard') && has_menu_permission('mon_check_command.show_monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}"><span class="fa fa-dot-circle-o fa-sm fa_icsw"></span>Monitoring dashboard</a></li>
                     <li ng-show="has_menu_permission('backbone.device.show_graphs') && has_valid_license('graphing')"><a href="{{ ICSW_URLS.MON_GRAPH }}"><span class="fa fa-line-chart fa-sm fa_icsw"></span>Graph</a></li>
                     <li ng-show="has_menu_permission('backbone.device.show_status_history') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_STATUS_HISTORY }}"><span class="fa fa-pie-chart fa_icsw"></span>Status history</a></li>
-                    <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')" class="divider"></li> <!-- TODO perm -->
+                    <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')" class="divider"></li>
                     <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')"><a href="{{ ICSW_URLS.BASE_KPI }}"><span class="fa fa-code-fork fa_icsw"></span>Key performance indicators</a></li>
+                    <li ng-show="has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')" class="divider"></li>
+                    <li ng-show="has_menu_permission('device.discovery_server') && has_valid_license('discovery_server')"><a href="{{ ICSW_URLS.DISCOVERY_EVENT_LOG_OVERVIEW }}"><span class="fa fa-list-alt fa_icsw"></span>WMI and IPMI Event logs</a></li>
                     <!--
                         This does not really fit here  // BM 20150629
                     <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_OVERVIEW }}">Monitoring Overview</a></li>
