@@ -26,12 +26,8 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import cluster_location
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools, server_mixins
+from initat.tools import cluster_location, configfile, logging_tools, process_tools, server_command, \
+    threading_tools, server_mixins
 import zmq
 
 from .build_process import build_process
@@ -39,14 +35,14 @@ from .config import global_config
 from .config_control import config_control
 
 
-class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin):
+class server_process(server_mixins.ICSWBasePool):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
-        self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.CC.init("cluster-config-server", global_config)
+        self.CC.check_config()
+        self.__pid_name = global_config["PID_NAME"]
         # close DB connection (daemonize)
         connection.close()
         self._re_insert_config()
@@ -60,14 +56,6 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.register_func("complex_result", self._complex_result)
         self.__run_idx = 0
         self.__pending_commands = {}
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _init_subsys(self):
         self.log("init subsystems")
@@ -121,7 +109,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
     def loop_post(self):
         for open_sock in self.socket_dict.itervalues():
             open_sock.close()
-        self.__log_template.close()
+        self.CC.close()
 
     def _init_network_sockets(self):
         my_0mq_id = get_server_uuid("config")
@@ -129,7 +117,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PORT"], self._new_com),  # @UndefinedVariable
+            ("router", zmq.ROUTER, global_config["COMMAND_PORT"], self._new_com),  # @UndefinedVariable
         ]:
             client = self.zmq_context.socket(sock_type)
             client.setsockopt(zmq.IDENTITY, my_0mq_id)  # @UndefinedVariable

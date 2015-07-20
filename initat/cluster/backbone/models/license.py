@@ -91,6 +91,7 @@ class LicenseState(enum.IntEnum):
     valid_in_future = 20  # license will be valid in the future
     none = 0              # license not present
     not_needed = -1       # license not needed
+    ip_mismatch = 200     # IP mismatch, should not run
 
     def is_valid(self):
         # states where we consider the license to be valid, i.e. the user may access the feature

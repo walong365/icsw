@@ -36,28 +36,21 @@ from .package_install_server_structs import Client
 
 @server_mixins.RemoteCallProcess
 class server_process(
-    threading_tools.process_pool,
-    server_mixins.NetworkBindMixin,
-    server_mixins.OperationalErrorMixin,
+    server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
-    server_mixins.ServerStatusMixin,
 ):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
-        self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(
-            self, "main",
+            self,
+            "main",
             zmq=True,
         )
+        self.CC.init("package-server", global_config)
+        self.CC.check_config()
+        self.__pid_name = global_config["PID_NAME"]
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.zmq_context
-        )
         self._log_config()
         self._re_insert_config()
         self.__msi_block = self._init_msi_block()
@@ -69,14 +62,6 @@ class server_process(
         # not needed, 0MQ is smart enough to keep the connections alive
         # self.reconnect_to_clients()
         self.send_to_process("repo", "rescan_repos")
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _init_clients(self):
         Client.init(self)
@@ -140,13 +125,13 @@ class server_process(
         self.network_unbind()
         for open_sock in self.socket_dict.itervalues():
             open_sock.close()
-        self.__log_template.close()
+        self.CC.close()
 
     def _init_network_sockets(self):
         self.socket_dict = {}
         self.network_bind(
             server_type="package",
-            bind_port=global_config["SERVER_PUB_PORT"],
+            bind_port=global_config["COMMAND_PORT"],
             need_all_binds=False,
             pollin=self.remote_call,
             ext_call=True,

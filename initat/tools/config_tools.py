@@ -722,13 +722,15 @@ class server_check(object):
                 self.server_origin,
                 self.effective_device.pk,
                 self.config.pk,
-                self.server_info_str)
+                self.server_info_str
+            )
         else:
             return "short_host_name is %s (idx %d), server_origin is %s, info_str is \"%s\"" % (
                 self.short_host_name,
                 self.device.pk,
                 self.server_origin,
-                self.server_info_str)
+                self.server_info_str
+            )
 
 
 class device_with_config(dict):

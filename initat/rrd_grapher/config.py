@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,8 +19,6 @@
 #
 """ config part of rrd-grapher """
 
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
-SERVER_COM_PORT = 8003

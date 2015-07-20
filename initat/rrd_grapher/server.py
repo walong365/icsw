@@ -26,27 +26,21 @@ from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.rrd_grapher_struct import DataStore
 from initat.rrd_grapher.graph import GraphProcess
 from initat.rrd_grapher.stale import stale_process
-from initat.tools import cluster_location
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_mixins
-from initat.tools import threading_tools
+from initat.tools import cluster_location, configfile, logging_tools, \
+    process_tools, server_mixins, threading_tools
 
 
 @server_mixins.RemoteCallProcess
 class server_process(
-    threading_tools.process_pool,
-    server_mixins.OperationalErrorMixin,
-    server_mixins.NetworkBindMixin,
+    server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
 ):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.CC.init("rrd-grapher", global_config)
+        self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # close connection (daemonizing)
         connection.close()
         self.__msi_block = self._init_msi_block()
@@ -74,14 +68,6 @@ class server_process(
 
     def _re_insert_config(self):
         cluster_location.write_config("rrd_server", global_config)
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -113,7 +99,7 @@ class server_process(
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COM_PORT"],
+            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             server_type="grapher",
             simple_server_bind=True,
@@ -164,4 +150,4 @@ class server_process(
 
     def loop_post(self):
         self.network_unbind()
-        self.__log_template.close()
+        self.CC.close()

@@ -199,8 +199,6 @@ class Service(object):
             if models_changed:
                 # force state to failed
                 sql_info = self._modify_state(_result, SERVICE_DEAD, "models changed")
-            elif not ip_match:
-                sql_info = self._modify_state(_result, SERVICE_DEAD, "IP address mismatch")
             else:
                 if dev_config:
                     sql_info = ", ".join(
@@ -227,12 +225,16 @@ class Service(object):
                     lic_state = -1
             else:
                 lic_state = -1
+            if not ip_match:
+                lic_state = LIC_STATE_IP_MISMATCH
         else:
             if not ip_match:
-                sql_info = self._modify_state(_result, SERVICE_DEAD, "IP address mismatch")
+                # TODO
+                sql_info = "IP mismatch"
+                lic_state = LIC_STATE_IP_MISMATCH
             else:
                 sql_info = self.attrib["runs_on"]
-            lic_state = -1
+                lic_state = -1
         if isinstance(sql_info, basestring):
             _result.append(
                 E.sql_info(str(sql_info))

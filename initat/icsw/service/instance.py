@@ -36,7 +36,8 @@ def _dummy_log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
 
 
 class InstanceXML(object):
-    def __init__(self, log_com=None):
+    def __init__(self, log_com=None, quiet=False):
+        self.__quiet = quiet
         if log_com:
             self.__log_com = log_com
         else:
@@ -46,7 +47,8 @@ class InstanceXML(object):
         self.normalize()
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[iXML] {}".format(what), level)
+        if not self.__quiet:
+            self.__log_com("[iXML] {}".format(what), level)
 
     @property
     def source_dir(self):
@@ -112,9 +114,11 @@ class InstanceXML(object):
     def __getitem__(self, name):
         return self.__lut[name]
 
+    # utility functions
     def get_all_instances(self):
         return self.tree.findall(".//instance")
 
+    # access functions
     def get_config_names(self, inst, only_contact=True):
         if isinstance(inst, basestring):
             inst = self[inst]
@@ -123,6 +127,11 @@ class InstanceXML(object):
             return inst.xpath(".//config_names/config_name[@contact='1' or not(@contact)]/text()")
         else:
             return inst.xpath(".//config_names/config_name/text()")
+
+    def get_pid_file_name(self, inst):
+        if isinstance(inst, basestring):
+            inst = self[inst]
+        return inst.attrib["pid_file_name"]
 
     def do_node_split(self, inst):
         if isinstance(inst, basestring):
@@ -145,7 +154,10 @@ class InstanceXML(object):
             if len(_pd) == 1:
                 return _pd.values()[0]
             else:
-                return _pd["command"]
+                if "command" in _pd:
+                    return _pd["command"]
+                else:
+                    raise KeyError("no 'command' port found in dict: {}".format(str(_pd)))
         elif ptype:
             # return given port type
             return _pd[ptype]

@@ -470,6 +470,17 @@ class process_base(object):
             self.log("setting stack_size to {}".format(logging_tools.get_size_str(s_size, long_format=True)))
 
 
+class ICSWAutoInit(object):
+    def __init__(self):
+        for _idx, _cl in enumerate(inspect.getmro(self.__class__)):
+            # handle if
+            # ... is not the first class
+            # ... is subclass of ICSWAutoInit
+            # ... is not process_pool or process_base
+            if _idx > 0 and issubclass(_cl, ICSWAutoInit) and _cl not in [ICSWAutoInit, process_pool, process_obj]:
+                _cl.__init__(self)
+
+
 class exception_handling_mixin(object):
     def __init__(self):
         self.__exception_table = {}
@@ -480,7 +491,6 @@ class exception_handling_mixin(object):
             # ... is no subclass of exception_handling_mixin
             if issubclass(_cl, exception_handling_base) and _cl != exception_handling_base and not issubclass(_cl, exception_handling_mixin):
                 _cl.__init__(self)
-                # print "*", _cl
 
     def register_exception(self, exc_type, call):
         self.__exception_table[exc_type] = call
@@ -919,17 +929,18 @@ class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, 
                     raise
 
 
-class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin):
+class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         threading.currentThread().setName(kwargs.get("name", "main"))
+        self.name = name
+        self.__processes = {}
         self.debug_zmq = "ICSW_ZMQ_DEBUG" in os.environ
+        ICSWAutoInit.__init__(self)
         TimerBase.__init__(self)
         poller_obj.__init__(self)
         exception_handling_mixin.__init__(self)
-        self.name = name
         self.pid = os.getpid()
         self.__socket_buffer = {}
-        self.__processes = {}
         if self.debug_zmq:
             self.zmq_context = debug_zmq_ctx(kwargs.pop("zmq_contexts", 1))
         else:

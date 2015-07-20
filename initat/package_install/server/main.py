@@ -27,10 +27,8 @@ import django
 django.setup()
 
 from django.db import connection
-from initat.cluster.backbone.models import LogSource
-from .constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
 from .config import global_config
-from initat.tools import config_tools, configfile, process_tools
+from initat.tools import configfile, process_tools
 
 from initat.server_version import VERSION_STRING
 
@@ -46,44 +44,20 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
             ("USER", configfile.str_c_var("idpacks", help_string="user to run as [%(default)s]")),
             ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
             ("GROUPS", configfile.array_c_var(["idg"])),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-            ("SERVER_PUB_PORT", configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
-            ("NODE_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
             ("DELETE_MISSING_REPOS", configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
             ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]", database=True)),
         ]
     )
-    global_config.parse_file()
     _options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=True,
         positional_arguments=False,
-    )
-    global_config.write_file()
-    sql_info = config_tools.server_check(server_type="package_server")
-    if not sql_info.effective_device:
-        print "not a package_server"
-        return 5
-    global_config.add_config_entries(
-        [
-            (
-                "SERVER_IDX",
-                configfile.int_c_var(sql_info.effective_device.pk, database=False)
-            ),
-            (
-                "LOG_SOURCE_IDX",
-                configfile.int_c_var(LogSource.new("package-server", device=sql_info.effective_device).pk)
-            )
-        ]
     )
     # close DB connection
     connection.close()

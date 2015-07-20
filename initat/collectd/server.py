@@ -50,17 +50,17 @@ from .rsync import RSyncMixin
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(threading_tools.process_pool, server_mixins.OperationalErrorMixin, RSyncMixin, ServerBackgroundNotifyMixin):
+class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNotifyMixin):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
-        self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.zmq_context
+        self.CC.init("collectd", global_config)
+        self.CC.check_config()
+        self.__pid_name = global_config["PID_NAME"]
+        global_config.add_config_entries(
+            [
+                ("MEMCACHE_PORT", configfile.int_c_var(self.CC.Instance.get_port_dict("memcached", command=True))),
+            ]
         )
         # close connection (daemonizing)
         connection.close()
@@ -100,11 +100,6 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         connection.close()
         self.init_notify_framework(global_config)
 
-    # needed for background-notify mixin
-    @property
-    def log_template(self):
-        return self.__log_template
-
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
         if IMPORT_ERRORS:
@@ -139,14 +134,6 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
 
     def _re_insert_config(self):
         cluster_location.write_config("rrd_collector", global_config)
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _int_error(self, err_cause):
         if not self.__snmp_running:
@@ -202,7 +189,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             self.__last_md_send_error = None
             self.md_target_addr = "tcp://{}:{:d}".format(
                 global_config["MD_SERVER_HOST"],
-                global_config["MD_SERVER_PORT"],
+                self.CC.Instance.get_port_dict("md-config", command=True),
             )
             # self.md_target.connect(self.md_target_addr)
             self.md_target_id = "{}:{}:".format(
@@ -213,7 +200,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
             self.log("connection to md-config-server at {}".format(self.md_target_addr))  # , self.md_target_id))
             # receiver socket
             self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
-            listener_url = "tcp://*:{:d}".format(global_config["RECV_PORT"])
+            listener_url = "tcp://*:{:d}".format(global_config["RECEIVE_PORT"])
             self.receiver.bind(listener_url)
             self.register_poller(self.receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
 
@@ -369,7 +356,7 @@ class server_process(threading_tools.process_pool, server_mixins.OperationalErro
         self.com_socket.close()
         self.receiver.close()
         self.spc.close()
-        self.__log_template.close()
+        self.CC.close()
 
     def _check_database(self):
         if self._still_active("check database"):

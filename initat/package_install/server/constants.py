@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -20,9 +20,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ package server, constants """
-
-P_SERVER_PUB_PORT = 8007
-PACKAGE_CLIENT_PORT = 2003
 
 ADD_PACK_PATH = "additional_packages"
 DEL_PACK_PATH = "deleted_packages"

@@ -29,11 +29,7 @@ from initat.rms.functions import call_command
 from initat.rms.config import global_config, COM_PORT
 from initat.rms.server import server_process
 from initat.server_version import VERSION_STRING
-from initat.tools import cluster_location
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import process_tools
-from initat.tools import sge_license_tools
+from initat.tools import cluster_location, configfile, process_tools, sge_license_tools
 import sys
 
 
@@ -43,12 +39,9 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
             ("USER", configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
             ("GROUP", configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
             ("GROUPS", configfile.array_c_var(["idg"])),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             (
                 "FORCE_SCAN", configfile.bool_c_var(
@@ -60,22 +53,13 @@ def main():
             ),
         ]
     )
-    global_config.parse_file()
     _options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
-        add_writeback_option=True,
+            VERSION_STRING
+        ),
         positional_arguments=False
     )
-    global_config.write_file()
-    # check for newer rms-server
-    sql_s_info = config_tools.server_check(server_type="rms_server")
-    if not sql_s_info.effective_device:
-        sql_s_info = config_tools.server_check(server_type="sge_server")
-        if not sql_s_info.effective_device:
-            sys.stderr.write(" %s is no rms_server or sge_server, exiting..." % (long_host_name))
-            sys.exit(5)
     sge_dict = {}
     for v_name, v_src, v_default in [
         ("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
@@ -95,7 +79,6 @@ def main():
         "rms_server",
         [
             ("CHECK_ITERATIONS", configfile.int_c_var(3)),
-            ("COM_PORT", configfile.int_c_var(COM_PORT)),
             ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
             ("FROM_ADDR", configfile.str_c_var("rms_server")),
             ("TO_ADDR", configfile.str_c_var("cluster@init.at")),

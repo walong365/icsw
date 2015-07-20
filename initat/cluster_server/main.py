@@ -25,17 +25,13 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.cluster.backbone.models import LogSource
 from initat.tools import cluster_location
-from initat.tools import config_tools
 from initat.tools import configfile
 from initat.tools import process_tools
 from initat.cluster_server.config import global_config
 import sys
 
 from initat.server_version import VERSION_STRING
-
-SERVER_PORT = 8004
 
 
 def run_code(options):
@@ -58,9 +54,6 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
-            ("PID_NAME", configfile.str_c_var("%s" % (prog_name))),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("CONTACT", configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
             (
@@ -93,61 +86,23 @@ def main():
             ),
         ]
     )
-    global_config.parse_file()
     options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=True,
         positional_arguments=False
     )
     # enable connection debugging
     settings.DEBUG = global_config["DATABASE_DEBUG"]
-    global_config.write_file()
     if global_config["SHOW_COMMANDS"]:
         show_commands()
         sys.exit(0)
-    sql_info = config_tools.server_check(server_type="server")
-    if not sql_info.effective_device:
-        print "not a server"
-        sys.exit(5)
-    if sql_info.device:
-        global_config.add_config_entries(
-            [
-                ("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False)),
-                ("EFFECTIVE_DEVICE_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False)),
-            ]
-        )
-    else:
-        global_config.add_config_entries(
-            [
-                ("SERVER_IDX", configfile.int_c_var(0, database=False)),
-                ("EFFECTIVE_DEVICE_IDX", configfile.int_c_var(0, database=False)),
-            ]
-        )
-    if not global_config["SERVER_IDX"]:
-        sys.stderr.write(" {} is no cluster-server, exiting...".format(long_host_name))
-        sys.exit(5)
-    global_config.add_config_entries(
-        [
-            (
-                "LOG_SOURCE_IDX", configfile.int_c_var(
-                    LogSource.new("cluster-server", device=sql_info.effective_device).pk
-                )
-            )
-        ]
-    )
-    if not global_config["LOG_SOURCE_IDX"]:
-        print "Too many LogSources with my id present, exiting..."
-        sys.exit(5)
     cluster_location.read_config_from_db(
         global_config,
         "server",
         [
-            ("COM_PORT", configfile.int_c_var(SERVER_PORT)),
             ("IMAGE_SOURCE_DIR", configfile.str_c_var("/opt/cluster/system/images")),
-            # ("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
             ("MAILSERVER", configfile.str_c_var("localhost")),
             ("FROM_NAME", configfile.str_c_var("quotawarning")),
             ("FROM_ADDR", configfile.str_c_var(long_host_name)),

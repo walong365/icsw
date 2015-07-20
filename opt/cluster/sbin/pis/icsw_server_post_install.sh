@@ -24,6 +24,11 @@ SERVER_SERVICES="mother rrd-grapher rms-server cluster-config-server collectd di
 
 /sbin/ldconfig
 
+# delete old config-files
+for SRV in cluster-server collectd collectd-init mother ; do
+    rm -f /etc/sysconfig/${SRV}
+done
+
 # purge debian packages
 if [ -f /etc/debian_version ] ; then
     for service in ${SERVER_SERVICES} ; do

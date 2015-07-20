@@ -28,17 +28,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-import sys
 from initat.server_version import VERSION_STRING
-from initat.tools import cluster_location
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import cluster_location, configfile, process_tools
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.server import server_process
-
-
-SERVER_PORT = 8014
 
 
 def main():
@@ -46,36 +39,23 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
-            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
-            ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ]
     )
-    global_config.parse_file()
     options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=True,
         positional_arguments=False
     )
-    global_config.write_file()
-    sql_info = config_tools.server_check(server_type="syslog_server")
-    if not sql_info.effective_device:
-        sql_info = config_tools.server_check(server_type="logcheck_server")
-        if not sql_info.effective_device:
-            print "not a syslog_server"
-            sys.exit(5)
-    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     cluster_location.read_config_from_db(
         global_config,
-        "syslog_server", [
+        "syslog_server",
+        [
             ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
             ("SYSLOG_DIR", configfile.str_c_var("/var/log/hosts")),
-            ("COMPORT", configfile.int_c_var(SERVER_PORT)),
             ("KEEP_LOGS_UNCOMPRESSED", configfile.int_c_var(2)),
             ("KEEP_LOGS_TOTAL", configfile.int_c_var(30)),
             ("COMPRESS_BINARY", configfile.str_c_var("bzip2")),

@@ -26,25 +26,21 @@ from initat.rms.config import global_config
 from initat.rms.license import license_process
 from initat.rms.rmsmon import rms_mon_process
 from django.db import connection
-from initat.tools import cluster_location
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
+from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
+    server_command, threading_tools, server_mixins
 import zmq
 
 
-class server_process(threading_tools.process_pool):
+class server_process(server_mixins.ICSWBasePool):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
-        self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(
             self,
             "main",
             zmq=True,
         )
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.CC.init("rms-server", global_config)
+        self.CC.check_config()
+        self.__pid_name = global_config["PID_NAME"]
         self.__msi_block = self._init_msi_block()
         connection.close()
         # re-insert config
@@ -60,14 +56,6 @@ class server_process(threading_tools.process_pool):
         self.add_process(accounting_process("accounting"), start=True)
         self.add_process(license_process("license"), start=True)
         self.register_func("command_result", self._com_result)
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _log_config(self):
         self.log("Config info:")
@@ -125,18 +113,18 @@ class server_process(threading_tools.process_pool):
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
         client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         try:
-            client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
+            client.bind("tcp://*:{:d}".format(global_config["COMMAND_PORT"]))
         except zmq.ZMQError:
             self.log(
                 "error binding to {:d}: {}".format(
-                    global_config["COM_PORT"],
+                    global_config["COMMAND_PORT"],
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL
             )
             raise
         else:
-            self.log("connected to tcp://*:{:d} (via ID {})".format(global_config["COM_PORT"], self.bind_id))
+            self.log("connected to tcp://*:{:d} (via ID {})".format(global_config["COMMAND_PORT"], self.bind_id))
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
 
@@ -208,4 +196,4 @@ class server_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-        self.__log_template.close()
+        self.CC.close()

@@ -19,11 +19,8 @@
 #
 """ cluster-config-server, configuration and constants """
 
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
-SERVER_PORT = 8005
-NCS_PORT = 8010
 GATEWAY_THRESHOLD = 1000

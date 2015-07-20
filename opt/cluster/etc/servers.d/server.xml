@@ -10,6 +10,11 @@
             <config_name>syslog_server</config_name>
             <config_name>logcheck_server</config_name>
         </config_names>
+        <network>
+            <ports>
+                <port type="command">8014</port>
+            </ports>
+        </network>
         <old-binary>logcheck-server</old-binary>
         <nice-level>15</nice-level>
     </instance>
@@ -45,7 +50,7 @@
         </network>
         <nice-level>15</nice-level>
     </instance>
-    <instance check_type="meta" name="collectd" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45" reload="1" uuid-postfix="collectd">
+    <instance check_type="meta" name="collectd" alias="collectd-server" runs_on="server" has_force_stop="1" pid_file_name="collectd/collectd.pid" wait_time="45" reload="1" uuid-postfix="collectd">
         <config_names>
             <config_name>rrd_server</config_name>
             <config_name>rrd_collector</config_name>
@@ -53,6 +58,7 @@
         <network>
             <ports>
                 <port type="command">8008</port>
+                <port type="receive">8002</port>
             </ports>
         </network>
         <start-argument>
@@ -76,6 +82,11 @@
         <config_names>
             <config_name contact='0'>server</config_name>
         </config_names>
+        <network>
+            <ports>
+                <port type="command">11211</port>
+            </ports>
+        </network>
     </instance>
     <instance name="nginx" check_type="simple" pid_file_name="nginx.pid" any_threads_ok="1" runs_on="system">
         <config_names>

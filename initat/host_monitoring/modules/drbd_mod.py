@@ -36,7 +36,7 @@ class _general(hm_classes.hm_module):
 
 class drbd_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        if drbd_tools and self.drbd_config:
+        if drbd_tools and self.module.drbd_config:
             try:
                 self.module.drbd_config._parse_all()
                 srv_com["drbd_status_format"] = "json"

@@ -26,20 +26,17 @@ import os
 from django.db import connection
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.logcheck_struct import machine
-from initat.tools import cluster_location
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import cluster_location, server_mixins, configfile, logging_tools, \
+    process_tools, threading_tools
 import psutil
-from initat.tools import threading_tools
 
 
-class server_process(threading_tools.process_pool):
+class server_process(server_mixins.ICSWBasePool):
     def __init__(self, options):
-        self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.CC.init("logcheck-server", global_config)
+        self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # close connection (daemonizing)
         connection.close()
         self.__msi_block = self._init_msi_block()
@@ -56,14 +53,6 @@ class server_process(threading_tools.process_pool):
         machine.setup(self)
         self.register_timer(self._sync_machines, 3600, instant=True)
         self.register_timer(self._rotate_logs, 3600 * 12, instant=True)
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -131,7 +120,7 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.__log_template.close()
+        self.CC.close()
 
     # syslog stuff
     def _enable_syslog_config(self):

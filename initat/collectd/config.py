@@ -1,7 +1,7 @@
 #
 # this file is part of collectd-init
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,12 +21,9 @@
 
 """ base constants and config """
 
-from initat.tools import process_tools
-from initat.tools import uuid_tools
-from initat.tools import configfile
+from initat.tools import process_tools, configfile
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name("snmp", connect_to_root_instance=True, s_name="collectd-init")
 MD_SERVER_UUID = uuid_tools.get_uuid().get_urn()
-COMMAND_PORT = 8008

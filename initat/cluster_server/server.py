@@ -29,17 +29,16 @@ from initat.tools import cluster_location, logging_tools, process_tools, server_
     server_mixins, threading_tools, uuid_tools, configfile
 import initat.cluster_server.modules
 import zmq
+from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 
 from .capabilities import capability_process
 from .backup_process import backup_process
 from .license_checker import LicenseChecker
 from .config import global_config
-from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 
 
-class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, server_mixins.NetworkBindMixin, server_mixins.ServerStatusMixin):
+class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
     def __init__(self, options):
-        self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.__run_command = True if global_config["COMMAND"].strip() else False
         # close DB conncetion (daemonize)
@@ -54,8 +53,9 @@ class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, 
                 global_config["LOG_NAME"],
                 global_config["COMMAND"]
             )
+        self.CC.init("cluster-server", global_config)
+        self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         connection.close()
         self._re_insert_config()
@@ -77,18 +77,6 @@ class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, 
                 self.add_process(LicenseChecker("license_checker"), start=True)
                 connection.close()
                 self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
-
-    @property
-    def log_template(self):
-        return self.__log_template
 
     def _set_next_backup_time(self, first=False):
         self.__next_backup_dt = datetime.datetime.now().replace(microsecond=0)
@@ -213,7 +201,7 @@ class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, 
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.__log_template.close()
+        self.CC.close()
 
     def _init_network_sockets(self):
         self.__connection_dict = {}
@@ -226,7 +214,7 @@ class server_process(threading_tools.process_pool, ServerBackgroundNotifyMixin, 
             try:
                 self.network_bind(
                     server_type="server",
-                    bind_port=global_config["COM_PORT"],
+                    bind_port=global_config["COMMAND_PORT"],
                     need_all_binds=global_config["NEED_ALL_NETWORK_BINDS"],
                     pollin=self._recv_command,
                     bind_to_localhost=True,

@@ -18,19 +18,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ server process for md-config-server """
-import json
 
 import os
-from initat.tools.server_mixins import RemoteCallMessageType, RemoteCall, ServerStatusMixin
+import codecs
+import time
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
+from initat.tools.server_mixins import RemoteCall
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
     mon_check_command_special, mon_check_command
 from initat.cluster.backbone.models.functions import get_related_models
-from initat.cluster.backbone.routing import get_server_uuid
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
 from initat.md_config_server.build import build_process
@@ -41,35 +39,24 @@ from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
-from initat.tools import cluster_location
-import codecs
-import inspect
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
-from initat.tools import server_mixins
-import time
+from initat.tools import cluster_location, configfile, logging_tools, process_tools, server_command, \
+    threading_tools, server_mixins
 import zmq
 
 
 @server_mixins.RemoteCallProcess
 class server_process(
-    threading_tools.process_pool,
+    server_mixins.ICSWBasePool,
     version_check_mixin,
     server_mixins.RemoteCallMixin,
-    server_mixins.OperationalErrorMixin,
-    server_mixins.NetworkBindMixin,
-    ServerStatusMixin,
 ):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.CC.init("md-config-server", global_config)
+        self.CC.check_config()
+        self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
-        self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._init_msi_block()
         connection.close()
         # re-insert config
@@ -338,14 +325,6 @@ class server_process(
                         content="\n".join(content)
                     )
 
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
-
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -561,4 +540,4 @@ class server_process(
     def loop_post(self):
         self.network_unbind()
         self.vector_socket.close()
-        self.__log_template.close()
+        self.CC.close()

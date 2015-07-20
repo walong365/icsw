@@ -60,6 +60,7 @@ SERVICE_OK_DICT = {
             constants.LIC_STATE_EXPIRED,
             constants.LIC_STATE_VALID_IN_FUTURE,
             constants.LIC_STATE_NONE,
+            constants.LIC_STATE_IP_MISMATCH,
         ),
         constants.SERVICE_INCOMPLETE: (),
         constants.SERVICE_NOT_INSTALLED: (),
@@ -381,7 +382,13 @@ class ServiceState(object):
                 service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
                 _stable = False
             elif _first[2] < MIN_STATE_TIME:
-                service.log("state not old enough ({:.2f} < {:.2f})".format(_first[2], MIN_STATE_TIME), logging_tools.LOG_LEVEL_WARN)
+                service.log(
+                    "state not old enough ({:.2f} < {:.2f})".format(
+                        _first[2],
+                        MIN_STATE_TIME
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 _stable = False
         return _stable
 
@@ -408,7 +415,11 @@ class ServiceState(object):
                 _lic_state = int(_res_node.find("license_info").attrib["state"])
                 if _state in [constants.SERVICE_NOT_CONFIGURED, constants.SERVICE_NOT_INSTALLED]:
                     _action = "stop"
-                elif _lic_state in [constants.LIC_STATE_VIOLATED, constants.LIC_STATE_EXPIRED, constants.LIC_STATE_VALID_IN_FUTURE, constants.LIC_STATE_NONE]:
+                elif _lic_state in [
+                    constants.LIC_STATE_VIOLATED, constants.LIC_STATE_EXPIRED,
+                    constants.LIC_STATE_VALID_IN_FUTURE, constants.LIC_STATE_NONE,
+                    constants.LIC_STATE_IP_MISMATCH,
+                ]:
                     _action = "stop"
             with self.get_cursor() as crs:
                 crs.execute(

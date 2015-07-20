@@ -29,19 +29,12 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.cluster.backbone.models import LogSource
 from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
 from initat.server_version import VERSION_STRING
-from initat.tools.io_stream_helper import io_stream
-from initat.tools import cluster_location
-from initat.tools import config_tools
-from initat.tools import configfile
-import daemon
-from initat.tools import process_tools
+from initat.tools import cluster_location, configfile, process_tools
 from initat.md_config_server.config import global_config
-import sys
 
 
 def run_code():
@@ -55,17 +48,6 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
-            (
-                "PID_NAME", configfile.str_c_var(
-                    os.path.join(
-                        prog_name,
-                        prog_name
-                    )
-                )
-            ),
-            ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("INITIAL_CONFIG_RUN", configfile.bool_c_var(False, help_string="make a config build run on startup [%(default)s]", only_commandline=True)),
             (
@@ -79,28 +61,14 @@ def main():
             ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
         ]
     )
-    global_config.parse_file()
     _options = global_config.handle_commandline(
         description="%s, version is %s" % (
             prog_name,
             VERSION_STRING),
-        add_writeback_option=True,
-        positional_arguments=False)
+        positional_arguments=False
+    )
     # enable connection debugging
     settings.DEBUG = global_config["DEBUG"]
-    global_config.write_file()
-    sql_info = config_tools.server_check(server_type="monitor_server")
-    if not sql_info.effective_device:
-        print "not a monitor_server"
-        sys.exit(5)
-    else:
-        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
-    global_config.add_config_entries(
-        [
-            ("LOG_SOURCE_IDX", configfile.int_c_var(LogSource.new("mon-server", device=sql_info.device).pk))
-        ]
-    )
-
     cluster_location.read_config_from_db(
         global_config,
         "monitor_server",

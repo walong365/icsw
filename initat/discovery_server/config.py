@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,11 +19,9 @@
 #
 """ discovery-server, configuration and constants """
 
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 
 from initat.server_version import VERSION_STRING
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name("snmp", connect_to_root_instance=True, s_name="discovery-server")
-SERVER_PORT = 8006

@@ -28,8 +28,7 @@ import subprocess
 import time
 
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 import psutil
 
 from .service import Service

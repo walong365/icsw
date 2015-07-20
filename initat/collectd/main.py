@@ -26,11 +26,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.cluster.backbone.models import LogSource
-from initat.collectd.config import global_config, COMMAND_PORT
+from initat.collectd.config import global_config
 from initat.server_version import VERSION_STRING
-from initat.tools import cluster_location, config_tools, configfile, process_tools
-import sys
+from initat.tools import cluster_location, configfile, process_tools
 import time
 
 
@@ -61,15 +59,6 @@ def main():
             ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
             ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
             ("GROUPS", configfile.array_c_var([])),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
-            ("PID_NAME", configfile.str_c_var(
-                os.path.join(
-                    prog_name,
-                    prog_name
-                )
-            )),
-            # ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT, database=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
             ("RRD_CACHED_DIR", configfile.str_c_var("/var/run/rrdcached", database=True)),
@@ -78,35 +67,12 @@ def main():
             ("AGGREGATE_DIR", configfile.str_c_var("/opt/cluster/share/collectd", help_string="base dir for collectd aggregates")),
         ]
     )
-    global_config.parse_file()
     _options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=True,
         positional_arguments=False
-    )
-    global_config.write_file()
-    sql_info = config_tools.server_check(server_type="rrd_collector")
-    if not sql_info.effective_device:
-        sql_info = config_tools.server_check(server_type="rrd_server")
-        if not sql_info.effective_device:
-            print("not an rrd_collector or rrd_server")
-            sys.exit(5)
-    else:
-        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
-    global_config.add_config_entries(
-        [
-            (
-                "LOG_SOURCE_IDX",
-                configfile.int_c_var(
-                    LogSource.new(
-                        "rrd-collector", device=sql_info.effective_device
-                    ).pk
-                )
-            ),
-        ]
     )
     cluster_location.read_config_from_db(
         global_config,
@@ -137,13 +103,11 @@ def main():
             ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
             ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
             ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
-            ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
-            ("COMMAND_PORT", configfile.int_c_var(COMMAND_PORT, help_string="command port, do not change [%(default)s]")),
-            ("GRAPHER_PORT", configfile.int_c_var(8003, help_string="grapher port, do not change [%(default)s]")),
+            # ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
             ("MD_SERVER_HOST", configfile.str_c_var("127.0.0.1", help_string="md-config-server host [%(default)s]")),
-            ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
+            # ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
             ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
-            ("MEMCACHE_PORT", configfile.int_c_var(11211, help_string="port on which memcache is reachable [%(default)s]")),
+            # ("MEMCACHE_PORT", configfile.int_c_var(11211, help_string="port on which memcache is reachable [%(default)s]")),
             ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
             ("RRD_CACHED_WRITETHREADS", configfile.int_c_var(4, help_string="number of write threads for RRD-cached")),
             ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),

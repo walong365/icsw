@@ -20,14 +20,114 @@
 """ usefull server mixins """
 
 import time
-
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import threading_tools
-from initat.tools import server_command, configfile
-import zmq
 import re
+import sys
+
+from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
+    configfile, config_tools
+import zmq
 from enum import IntEnum
+from initat.icsw.service.instance import InstanceXML
+from initat.cluster.backbone.models import LogSource
+
+
+class ConfigCheckObject(object):
+    def __init__(self, proc):
+        self.__process = proc
+        # self.log = self.__process.log
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__process.log("[CC] {}".format(what), log_level)
+
+    def init(self, srv_type, global_config):
+        self.srv_type = srv_type
+        self.global_config = global_config
+        global_config.add_config_entries(
+            [
+                ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ]
+        )
+        if "LOG_NAME" not in global_config:
+            global_config.add_config_entries(
+                [
+                    ("LOG_NAME", configfile.str_c_var(self.srv_type)),
+                ]
+            )
+        self.__process.log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.__process.zmq_context,
+        )
+
+    @property
+    def Instance(self):
+        return self._inst_xml
+
+    def check_config(self):
+        self._inst_xml = InstanceXML(self.log)
+        self._instance = self._inst_xml[self.srv_type]
+        conf_names = self._inst_xml.get_config_names(self._instance)
+        self.log(
+            "check for srv_type {} ({}: {})".format(
+                self.srv_type,
+                logging_tools.get_plural("config name", len(conf_names)),
+                ", ".join(conf_names),
+            )
+        )
+        _sql_info = None
+        for _conf_name in conf_names:
+            sql_info = config_tools.server_check(server_type=_conf_name)
+            if sql_info is not None and sql_info.effective_device:
+                break
+        if sql_info is None or not sql_info.effective_device:
+            self.log("Not a valid {}".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
+            sys.exit(5)
+        else:
+            # set values
+            _opts = [
+                ("PID_NAME", configfile.str_c_var(self._inst_xml.get_pid_file_name(self._instance))),
+                ("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False)),
+                ("EFFECTIVE_DEVICE_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False)),
+                (
+                    "LOG_SOURCE_IDX", configfile.int_c_var(
+                        LogSource.new(self.srv_type, device=sql_info.effective_device).pk
+                    )
+                ),
+            ]
+            for _name, _value in self._inst_xml.get_port_dict(self._instance).iteritems():
+                _opts.append(
+                    ("{}_PORT".format(_name.upper()), configfile.int_c_var(_value)),
+                )
+            self.global_config.add_config_entries(_opts)
+
+    def close(self):
+        self.__process.log_template.close()
+
+
+class ConfigCheckMixin(threading_tools.ICSWAutoInit):
+    def __init__(self):
+        self.__log_cache, self.__log_template = ([], None)
+        self.CC = ConfigCheckObject(self)
+
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_template:
+            self.__log_template.log(lev, what)
+        else:
+            self.__log_cache.append((lev, what))
+
+    @property
+    def log_template(self):
+        return self.__log_template
+
+    @log_template.setter
+    def log_template(self, lt):
+        self.__log_template = lt
+        self._flush_log_cache()
+
+    def _flush_log_cache(self):
+        while self.__log_cache:
+            self.__log_template.log(*self.__log_cache.pop(0))
 
 
 class ServerStatusMixin(object):
@@ -502,3 +602,12 @@ class RemoteCall(object):
     def __call__(self, inst_method):
         self.rc_signature.func = inst_method
         return self.rc_signature
+
+
+class ICSWBasePool(threading_tools.process_pool, NetworkBindMixin, ServerStatusMixin, ConfigCheckMixin, OperationalErrorMixin):
+    def __init__(self):
+        pass
+
+    # to use the log-function of the ConfigCheckMixin
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        ConfigCheckMixin.log(self, what, log_level)

@@ -23,37 +23,34 @@
 
 import os
 
-from initat.tools.server_mixins import RemoteCall, ServerStatusMixin, \
-    RemoteCallProcess, RemoteCallMixin, NetworkBindMixin
+from initat.tools.server_mixins import RemoteCall, RemoteCallProcess, RemoteCallMixin
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import network, status
 from initat.snmp.process import snmp_process
-from initat.tools import cluster_location
+from initat.tools import cluster_location, server_mixins, server_command, \
+    threading_tools, uuid_tools, logging_tools, process_tools
 from initat.tools import configfile
 import initat.tools.server_mixins
 import initat.mother
 import initat.mother.command
 import initat.mother.control
 import initat.mother.kernel
-from initat.tools import logging_tools, process_tools
 import psutil
-from initat.tools import server_command
-from initat.tools import threading_tools, uuid_tools
 import zmq
 
 from .config import global_config
 
 
 @RemoteCallProcess
-class server_process(threading_tools.process_pool, RemoteCallMixin, ServerStatusMixin, NetworkBindMixin):
+class server_process(server_mixins.ICSWBasePool, RemoteCallMixin):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
-        self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.CC.init("mother", global_config)
+        self.CC.check_config()
+        self.__pid_name = global_config["PID_NAME"]
         # close db connection (for daemonizing)
         connection.close()
         self.debug = global_config["DEBUG"]
@@ -94,14 +91,6 @@ class server_process(threading_tools.process_pool, RemoteCallMixin, ServerStatus
             self.send_to_process("control", "refresh", refresh=False)
         else:
             self._int_error("bind problem")
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def process_start(self, src_process, src_pid):
         mult = 3
@@ -150,12 +139,12 @@ class server_process(threading_tools.process_pool, RemoteCallMixin, ServerStatus
     def loop_post(self):
         self.network_unbind()
         self.network_unbind(main_socket_name="pull_socket")
-        self.__log_template.close()
+        self.CC.close()
 
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=True,
-            bind_port=global_config["SERVER_COM_PORT"],
+            bind_port=global_config["COMMAND_PORT"],
             pollin=self.remote_call,
             server_type="mother",
         )

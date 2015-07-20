@@ -36,8 +36,6 @@ import memcache
 from initat.tools import process_tools
 from initat.tools import rrd_tools
 
-mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])
-
 
 class file_creator(object):
     def __init__(self, log_com):
@@ -465,6 +463,7 @@ class CollectdHostInfo(object):
     def setup(fc):
         CollectdHostInfo.entries = {}
         CollectdHostInfo.fc = fc
+        CollectdHostInfo.mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])
 
     @staticmethod
     def host_update(hi):
@@ -476,7 +475,7 @@ class CollectdHostInfo(object):
                 del CollectdHostInfo.entries[del_key]
         # set new entry
         CollectdHostInfo.entries[hi.uuid] = (cur_time, hi.name)
-        mc.set("cc_hc_list", json.dumps(CollectdHostInfo.entries))
+        CollectdHostInfo.mc.set("cc_hc_list", json.dumps(CollectdHostInfo.entries))
 
     def mc_key(self):
         return "cc_hc_{}".format(self.uuid)
@@ -598,7 +597,7 @@ class CollectdHostInfo(object):
         json_vector = [_value.get_json() for _value in self.__dict.itervalues()]
         CollectdHostInfo.host_update(self)
         # set and ignore errors, default timeout is 2 minutes
-        mc.set(self.mc_key(), json.dumps(json_vector), self.__mc_timeout)
+        CollectdHostInfo.mc.set(self.mc_key(), json.dumps(json_vector), self.__mc_timeout)
 
     def transform(self, key, value, cur_time):
         self.last_update = cur_time

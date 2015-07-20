@@ -22,10 +22,20 @@
         <programm-title>icsw.collserver</programm-title>
         <old-binary>collserver.py</old-binary>
         <nice-level>15</nice-level>
+        <network>
+            <ports>
+                <port type="command">2001</port>
+            </ports>
+        </network>
     </instance>
     <instance check_type="meta" name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
         <module-name>initat.package_install.client.main</module-name>
         <old-binary>package-client</old-binary>
         <nice-level>15</nice-level>
+        <network>
+            <ports>
+                <port type="command">2003</port>
+            </ports>
+        </network>
     </instance>
 </instances>

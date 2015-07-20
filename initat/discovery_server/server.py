@@ -39,21 +39,18 @@ from .discovery import DiscoveryProcess
 
 @server_mixins.RemoteCallProcess
 class server_process(
-    threading_tools.process_pool,
-    server_mixins.NetworkBindMixin,
+    server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
-    server_mixins.OperationalErrorMixin,
-    server_mixins.ServerStatusMixin,
 ):
     def __init__(self):
-        self.__log_cache, self.__log_template = ([], None)
-        self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
+        self.CC.init("discovery-server", global_config)
+        self.CC.check_config()
+        self.__pid_name = global_config["PID_NAME"]
         # close connection (daemonize)
         connection.close()
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
@@ -73,14 +70,6 @@ class server_process(
         self.__pending_commands = {}
         if process_tools.get_machine_name() == "eddiex" and global_config["DEBUG"]:
             self._test()
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def clear_pending_scans(self):
         _pdevs = device.objects.exclude(Q(active_scan=""))
@@ -175,12 +164,12 @@ class server_process(
 
     def loop_post(self):
         self.network_unbind()
-        self.__log_template.close()
+        self.CC.close()
 
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["SERVER_PORT"],
+            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             server_type="discovery",
             simple_server_bind=True,

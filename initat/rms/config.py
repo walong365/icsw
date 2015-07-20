@@ -19,10 +19,7 @@
 #
 """ rms-server, config and constants """
 
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 
 # global config
 global_config = configfile.get_global_config(process_tools.get_programm_name())
-# communication port
-COM_PORT = 8009

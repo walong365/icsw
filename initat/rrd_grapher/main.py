@@ -27,10 +27,8 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.cluster.backbone.models import LogSource
-from initat.rrd_grapher.config import global_config, SERVER_COM_PORT
+from initat.rrd_grapher.config import global_config
 from initat.server_version import VERSION_STRING
-from initat.tools import config_tools
 from initat.tools import configfile
 from initat.tools import process_tools
 import sys
@@ -48,19 +46,9 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
-            ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
             ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
             ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
             ("GROUPS", configfile.array_c_var([])),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
-            ("PID_NAME", configfile.str_c_var(
-                os.path.join(
-                    prog_name,
-                    prog_name
-                )
-            )),
-            ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT, database=True)),
             ("SERVER_PATH", configfile.bool_c_var(False, help_string="set server_path to store RRDs [%(default)s]", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
@@ -70,32 +58,15 @@ def main():
             ("COMPOUND_DIR", configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="include dir for compound XMLs")),
         ]
     )
-    global_config.parse_file()
     _options = global_config.handle_commandline(
         description="{}, version is {}".format(
             prog_name,
             VERSION_STRING),
         add_writeback_option=True,
-        positional_arguments=False)
-    global_config.write_file()
-    sql_info = config_tools.server_check(server_type="rrd_server")
-    if not sql_info.effective_device:
-        print "not an rrd_server"
-        sys.exit(5)
-    else:
-        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
-    if global_config["CHECK"]:
-        sys.exit(0)
+        positional_arguments=False
+    )
     global_config.add_config_entries(
         [
-            (
-                "LOG_SOURCE_IDX",
-                configfile.int_c_var(
-                    LogSource.new(
-                        "rrd-grapher", device=sql_info.effective_device
-                    ).pk
-                )
-            ),
             (
                 "GRAPH_ROOT_DEBUG",
                 configfile.str_c_var(
