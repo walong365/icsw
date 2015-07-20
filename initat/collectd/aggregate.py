@@ -451,7 +451,12 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         connection.close()
         self.__debug = global_config["DEBUG"]
         # cache address
-        self.__memcache_address = [global_config["MEMCACHE_ADDRESS"]]
+        self.__memcache_address = [
+            "{}:{:d}".format(
+                global_config["MEMCACHE_ADDRESS"].split(":")[0],
+                global_config["MEMCACHE_PORT"],
+            )
+        ]
         # last update of aggregation structure
         self.__struct_update = None
         # cache for filtered values

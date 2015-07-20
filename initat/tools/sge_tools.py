@@ -34,6 +34,7 @@ import uuid
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools, process_tools, server_command
 import zmq  # @UnresolvedImport
+from initat.icsw.service.instance import InstanceXML
 
 try:
     import memcache
@@ -265,7 +266,14 @@ class sge_info(object):
 
     def _init_cache(self):
         if memcache:
-            self._cache_socket = memcache.Client(["127.0.0.1:11211"], debug=0)
+            self._cache_socket = memcache.Client(
+                [
+                    "127.0.0.1:{:d}".format(
+                    InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+                    )
+                ],
+                debug=0
+            )
         else:
             self._cache_socket = None
 

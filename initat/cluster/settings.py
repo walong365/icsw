@@ -9,6 +9,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from initat.tools import logging_tools
+from initat.icsw.service.instance import InstanceXML
 
 
 # set unified name
@@ -117,7 +118,7 @@ FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.memcached.MemcachedCache",
-        "LOCATION": "127.0.0.1:11211",
+        "LOCATION": "127.0.0.1:{:d}".format(InstanceXML(quiet=True).get_port_dict("memcached", command=True)),
     }
 }
 

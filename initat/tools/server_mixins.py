@@ -94,9 +94,9 @@ class ConfigCheckObject(object):
                         LogSource.new(self.srv_type, device=sql_info.effective_device).pk
                     )
                 ),
+                ("MEMCACHE_PORT", configfile.int_c_var(self._inst_xml.get_port_dict("memcached", command=True))),
             ]
             for _name, _value in self._inst_xml.get_port_dict(self._instance).iteritems():
-                print _name, _value
                 _opts.append(
                     ("{}_PORT".format(_name.upper()), configfile.int_c_var(_value)),
                 )

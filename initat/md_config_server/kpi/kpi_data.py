@@ -236,7 +236,14 @@ class KpiData(object):
             {entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')}
 
         from initat.md_config_server.config.objects import global_config
-        mc = memcache.Client([global_config["MEMCACHE_ADDRESS"]])
+        mc = memcache.Client(
+            [
+                "{}:{:d}".format(
+                    global_config["MEMCACHE_ADDRESS"].split(":")[0],
+                    global_config["MEMCACHE_PORT"],
+                )
+            ]
+        )
         host_rrd_data = {}
         try:
             host_list_mc = mc.get("cc_hc_list")

@@ -29,9 +29,8 @@ import memcache
 import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, process_tools, server_command
+from initat.icsw.service.instance import InstanceXML
 
 
 class base_com(object):
@@ -58,7 +57,7 @@ class base_com(object):
         return unicode(self.srv_com)
 
     def get_mc(self):
-        return memcache.Client([self.options.mc_addr])
+        return memcache.Client(["{}:{:d}".format(self.options.mc_addr, self.options.mc_port)])
 
     def compile_re(self, re_str):
         try:
@@ -271,7 +270,8 @@ def main():
     parser.add_argument("--host-filter", help="set filter for host name [%(default)s]", type=str, default=".*", dest="host_filter")
     parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
     parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
-    parser.add_argument("--mc-addr", type=str, default="127.0.0.1:11211", help="address of memcached [%(default)s]")
+    parser.add_argument("--mc-addr", type=str, default="127.0.0.1", help="address of memcached [%(default)s]")
+    parser.add_argument("--mc-port", type=int, default=InstanceXML(quiet=True).get_port_dict("memcached", command=True), help="port of memcached [%(default)d]")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
