@@ -458,7 +458,8 @@ def migrate_app(_app, **kwargs):
 
 
 def apply_migration(_app, **kwargs):
-    call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
+    success = call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
+    return success
 
 
 def create_db(opts):
@@ -518,10 +519,21 @@ def migrate_db(opts):
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
                 # call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
-        for _app in ["backbone", "django.contrib.auth", "reversion", "django.contrib.admin", "django.contrib.sessions"]:
+        auth_app_name = "django.contrib.auth"
+        for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions"]:
             if app_has_unapplied_migrations(_app.split(".")[-1]):
                 print("migrating app {}".format(_app))
-                apply_migration(_app)
+                success = apply_migration(_app)
+
+                if not success and _app == auth_app_name:
+                    # in old installations, we used to have a custom migration due to a patch for a model in auth.
+                    # django 1.8 then added own migrations for auth, which resulted in a divergence.
+                    # we can however just fix that by merging the migrations, which we attempt here.
+                    print("attempting to fix auth migration divergence due to django-1.8")
+                    call_manage(["makemigrations", "auth", "--merge", "--noinput"])
+                    # try to migrate again (can't do anything in case of failure though)
+                    apply_migration(_app)
+
             else:
                 print("no unapplied migrations found for app {}".format(_app))
         print("")
