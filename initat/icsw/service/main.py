@@ -124,7 +124,7 @@ def main(opt_ns):
             if len(_res) == 1:
                 # set return state to single-state result
                 _state = int(_res[0].find("state_info").get("state"))
-                sys-exit(_state)
+                sys.exit(_state)
     elif opt_ns.childcom in ["start", "stop", "restart", "debug", "reload"]:
         if opt_ns.childcom == "debug":
             debug_args = opt_ns.debug_args
@@ -136,7 +136,7 @@ def main(opt_ns):
             cur_c,
             inst_xml,
             log_com,
-            debug_args=debug_args
+            debug_args=debug_args,
         )
         while True:
             _left = cur_t.step(cur_c)

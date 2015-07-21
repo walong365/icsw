@@ -22,6 +22,14 @@
 
 """ RMS views """
 
+import json
+import logging
+import sys
+import threading
+import time
+import datetime
+from collections import namedtuple
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -33,26 +41,15 @@ from initat.cluster.backbone.models import device, user_variable, rms_job_run
 from initat.cluster.backbone.render import render_me
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
-from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
-import json
-import logging
-from initat.tools import logging_tools
-import pprint  # @UnusedImport
-from initat.tools import server_command
-import sys
-import threading
-import time
-import datetime
-from collections import namedtuple
+from initat.tools import logging_tools, server_command
 
 try:
     from initat.tools import sge_tools
 except ImportError:
     sge_tools = None
 
-RMS_ADDON_KEYS = [key for key in sys.modules.keys() if key.startswith("initat.cluster.rms.rms_addons.") and sys.modules[key]]
+RMS_ADDON_KEYS = [key for key in sys.modules.keys() if key.startswith("initat.cluster.frontend.rms_addons.") and sys.modules[key]]
 RMS_ADDONS = [sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS if key.split(".")[-1] not in ["base"]]
 
 logger = logging.getLogger("cluster.rms")

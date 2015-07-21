@@ -5,8 +5,8 @@ from django.conf import settings
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views, doc_views, license_views, model_history_views, discovery_views
-from initat.cluster.rms import rms_views, lic_views
+    base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
+    lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
 

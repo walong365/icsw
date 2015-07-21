@@ -62,6 +62,8 @@ class InstanceXML(object):
         self.tree = E.instances()
         # lookup table for name / alias search
         self.__lut = {}
+        # alias lut
+        self.__alias_lut = {}
         # check for additional instances
         _tree_dict = {}
         if os.path.isdir(SERVERS_DIR):
@@ -89,7 +91,9 @@ class InstanceXML(object):
             for sub_inst in _tree_dict[_inst_key].findall("instance"):
                 _add_list = [sub_inst.attrib["name"]]
                 if "alias" in sub_inst.attrib:
-                    _add_list.extend(sub_inst.attrib["alias"].split(","))
+                    for _an in sub_inst.attrib["alias"].split(","):
+                        _add_list.append(_an)
+                        self.__alias_lut[_an] = sub_inst.attrib["name"]
                 for _name in _add_list:
                     if _name in self.__lut:
                         raise KeyError("name {} already present in instance lut".format(_name))
@@ -113,6 +117,9 @@ class InstanceXML(object):
 
     def __getitem__(self, name):
         return self.__lut[name]
+
+    def get_alias_dict(self):
+        return self.__alias_lut
 
     # utility functions
     def get_all_instances(self):

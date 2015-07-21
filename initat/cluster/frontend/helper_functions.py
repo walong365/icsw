@@ -220,11 +220,11 @@ def contact_server(request, srv_type, send_com, **kwargs):
     # simple mapping
     cur_router = routing.srv_type_routing()
 
-    if not cur_router.has_type(srv_type):
+    if srv_type not in cur_router:
         # try again harder (rebuild routing table)
         cur_router = routing.srv_type_routing(force=True)
 
-    if cur_router.has_type(srv_type):
+    if srv_type in cur_router:
         # print send_com.pretty_print()
         if request.user:
             send_com["user_id"] = request.user.pk

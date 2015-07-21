@@ -33,7 +33,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
+from initat.cluster.frontend.rms_addons import *  # @UnusedWildImport
 from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_version, \
     ext_license_user, ext_license_client, ext_license_usage_coarse, ext_license_check_coarse, ext_license_state_coarse, duration
 from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, ext_license_version_state_coarse_serializer

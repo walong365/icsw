@@ -43,9 +43,6 @@ def _log(what, log_level):
 _INSTANCE = InstanceXML(_log)
 
 
-_NODE_SPLIT = ["mother", "config"]
-
-
 def get_type_from_config(c_name):
     _REVERSE_MAP = {
         "package_server": "package",
@@ -88,7 +85,9 @@ class srv_type_routing(object):
             self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
         else:
             self._local_device = None
+        self._alias_dict = _resolv_dict.get("_alias_dict", {})
         self._resolv_dict = _resolv_dict
+        self._node_split_list = _resolv_dict.get("node_split_list", [])
 
     def update(self, force=False):
         if not cache.get(self.ROUTING_KEY) or force:
@@ -99,17 +98,26 @@ class srv_type_routing(object):
             else:
                 self._local_device = None
 
-    def has_type(self, srv_type):
-        return srv_type in self._resolv_dict
+    def __getitem__(self, srv_type):
+        if srv_type in self._alias_dict:
+            return self._resolv_dict[self._alias_dict[srv_type]]
+        else:
+            return self._resolv_dict[srv_type]
+
+    def __contains__(self, srv_type):
+        if srv_type in self._alias_dict:
+            return True
+        else:
+            return srv_type in self._resolv_dict
 
     @property
     def service_types(self):
         return [key for key in self._resolv_dict.keys() if not key.startswith("_")]
 
     def get_connection_string(self, srv_type, server_id=None):
-        if srv_type in self._resolv_dict:
+        if srv_type in self:
             # server list
-            _srv_list = self._resolv_dict[srv_type]
+            _srv_list = self[srv_type]
             if server_id:
                 # filter
                 _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
@@ -150,8 +158,12 @@ class srv_type_routing(object):
         # build reverse lut
         _rv_lut = {}
         _INSTANCES_WITH_NAMES = set()
+        # list of configs with node-splitting enabled
+        node_split_list = []
         for _inst in _INSTANCE.get_all_instances():
             _inst_name = _inst.attrib["name"]
+            if _INSTANCE.do_node_split(_inst):
+                node_split_list.append(_inst_name)
             for _conf_name in _INSTANCE.get_config_names(_inst):
                 _INSTANCES_WITH_NAMES.add(_inst_name)
                 _rv_lut.setdefault(_conf_name, []).append(_inst_name)  # [_conf_name] = _inst_name
@@ -249,6 +261,8 @@ class srv_type_routing(object):
         # set local device
         if _myself.device is not None:
             _resolv_dict["_local_device"] = (_myself.device.pk,)
+        _resolv_dict["_alias_dict"] = _INSTANCE.get_alias_dict()
+        _resolv_dict["_node_split_list"] = node_split_list
         # valid for 15 minutes
         cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict
@@ -256,7 +270,7 @@ class srv_type_routing(object):
     def check_for_split_send(self, srv_type, in_com):
         # init error set
         self.__no_bootserver_devices = set()
-        if srv_type in _NODE_SPLIT:
+        if srv_type in self._node_split_list:
             return self._split_send(srv_type, in_com)
         else:
             return [(None, in_com)]
