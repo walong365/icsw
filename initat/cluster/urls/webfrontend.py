@@ -225,6 +225,7 @@ main_patterns = patterns(
     url(r"^server_info$", main_views.get_server_info.as_view(), name="get_server_info"),
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
+    url(r"^num_background_jobs$", main_views.get_number_of_background_jobs.as_view(), name="get_number_of_background_jobs"),
 )
 
 rrd_patterns = patterns(

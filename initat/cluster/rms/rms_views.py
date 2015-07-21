@@ -32,8 +32,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, user_variable, rms_job_run
 from initat.cluster.backbone.render import render_me
 from initat.cluster.backbone.serializers import rms_job_run_serializer
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
-    update_session_object
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
@@ -447,7 +446,6 @@ class set_user_setting(View):
             else:
                 user_vars[var_name].value = ",".join(cur_dis)
                 user_vars[var_name].save()
-            update_session_object(request)
             request.session.save()
         json_resp = {}
         return HttpResponse(json.dumps(json_resp), content_type="application/json")

@@ -48,7 +48,7 @@ from initat.cluster.backbone.serializers import group_object_permission_serializ
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 from initat.cluster.frontend.license_views import login_required_rest
 from initat.server_version import VERSION_STRING, VERSION_MAJOR
@@ -138,7 +138,6 @@ class set_user_var(View):
                 name=key,
                 value=value
             )
-        update_session_object(request)
         request.session.save()
 
 

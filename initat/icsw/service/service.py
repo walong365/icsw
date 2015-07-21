@@ -511,8 +511,10 @@ class SimpleService(Service):
         init_script_name = self.init_script_name
         if os.path.isfile(init_script_name):
             if os.getuid() != 0:
-                self.log("Need root permissions to reliably obtain status information.",
-                         logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "Need root permissions to reliably obtain status information.",
+                    logging_tools.LOG_LEVEL_WARN
+                )
             (_status, _output) = process_tools.getstatusoutput("{} status".format(init_script_name))
             if _status == 0:
                 act_state, act_str = (SERVICE_OK, "running")

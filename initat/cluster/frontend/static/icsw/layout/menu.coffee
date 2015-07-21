@@ -94,15 +94,6 @@ menu_module = angular.module(
                 "height=500,width=600,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
             )
             return false
-        $scope.redirect_to_bgj_info = () ->
-            if $scope.has_menu_permission('background_job.show_background')
-                window.location = ICSW_URLS.USER_BACKGROUND_JOB_INFO
-            return false
-        $scope.get_background_job_class = () ->
-            if $scope.NUM_BACKGROUND_JOBS < 4
-                return "btn btn-xs btn-warning"
-            else
-                return "btn btn-xs btn-danger"
         $scope.rebuild_config = (cache_mode) ->
             # console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
             icswCallAjaxService
@@ -151,5 +142,44 @@ menu_module = angular.module(
                     new_elems.push(_new_el)
 
                 el.replaceWith(new_elems)
+    }
+]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
+    return {
+        restrict: "EA"
+        template: '<button type="button" ng-click="redirect_to_bgj_info()" title="number of background jobs"></button>'
+        replace: true
+        link: (scope, el, attrs) ->
+            scope.background_jobs = 0
+            el.hide()
+            scope.redirect_to_bgj_info = () ->
+                if scope.has_menu_permission('background_job.show_background')
+                    window.location = ICSW_URLS.USER_BACKGROUND_JOB_INFO
+                return false
+            el.removeClass()
+            el.addClass("btn btn-xs btn-warning")
+            get_background_job_class = () ->
+                if scope.background_jobs < 4
+                    return "btn btn-xs btn-warning"
+                else
+                    return "btn btn-xs btn-danger"
+            reload = () ->
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.MAIN_GET_NUMBER_OF_BACKGROUND_JOBS
+                        dataType: "json"
+                    }
+                ).then((data) ->
+                    scope.background_jobs = data["background_jobs"]
+                    if scope.background_jobs
+                        el.show()
+                        el.removeClass()
+                        el.addClass(get_background_job_class())
+                        el.text(scope.background_jobs)
+                    else
+                        el.hide()
+                )
+                # reload every 30 seconds
+                $timeout(reload, 30000)
+            reload()
     }
 ])

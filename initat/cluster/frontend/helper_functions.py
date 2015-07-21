@@ -27,8 +27,7 @@ from lxml import etree  # @UnresolvedImports
 from django.http import HttpResponse
 from initat.cluster.backbone import routing
 from lxml.builder import E  # @UnresolvedImports
-from initat.tools import logging_tools
-from initat.tools import net_tools
+from initat.tools import logging_tools, net_tools
 
 
 class xml_response(object):
@@ -211,22 +210,6 @@ class xml_wrapper(object):
             return request.xml_response.create_response()
         else:
             return ret_value
-
-
-def update_session_object(request):
-    # update request.session_object with user_vars
-    if request.session and request.user is not None:
-        # request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in request.user.user_variable_set.all()])
-        # copy layout vars from user_vars
-        for var_name, attr_name, default in [
-            ("east[isClosed]", "east_closed", True),
-            ("west[isClosed]", "west_closed", False),
-            ("sidebar_mode", "sidebar_mode", "group"),
-        ]:
-            if var_name in request.session.get("user_vars", {}):
-                request.session[attr_name] = request.session["user_vars"][var_name].value
-            else:
-                request.session[attr_name] = default
 
 
 def contact_server(request, srv_type, send_com, **kwargs):

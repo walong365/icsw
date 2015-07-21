@@ -145,7 +145,7 @@
                          HTML Handbook
                     </button>
                     &nbsp;
-                    <button type="button" ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</button>
+                    <icsw-background-job-info></icsw-background-job-info>
                 </p>
                 <p class="navbar-text hidden-lg">
                     <button type="button" class="btn btn-danger btn-xs fa fa-info-circle" title="cluster server information" ng-click="redirect_to_info()">
@@ -157,7 +157,7 @@
                     <button ng-show="HANDBOOK_CHUNKS_PRESENT" type="button" class="btn btn-success btn-xs fa fa-html5" title="show {{ HANDBOOK_PAGE }}" ng-click="show_handbook_page()">
                     </button>
                     &nbsp;
-                    <button type="button" ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</button>
+                    <icsw-background-job-info></icsw-background-job-info>
                 </p>
             </li>
             <li>

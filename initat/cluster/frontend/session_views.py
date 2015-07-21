@@ -37,7 +37,7 @@ from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.render import render_me
-from initat.cluster.frontend.helper_functions import update_session_object, xml_wrapper
+from initat.cluster.frontend.helper_functions import xml_wrapper
 import django
 
 logger = logging.getLogger("cluster.setup")
@@ -122,7 +122,6 @@ def _login(request, _user_object, login_credentials=None):
         request.session["login_name"] = _user_object.login
     _user_object.login_count += 1
     _user_object.save(update_fields=["login_count"])
-    update_session_object(request)
 
 
 class sess_login(View):

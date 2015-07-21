@@ -183,6 +183,7 @@ ics_app = angular.module(
     "MAIN_INDEX":  "{% url 'main:index' %}"
     "MAIN_SERVER_CONTROL": "{% url 'main:server_control' %}"
     "MAIN_VIRTUAL_DESKTOP_VIEWER": "{% url 'main:virtual_desktop_viewer' %}"
+    "MAIN_GET_NUMBER_OF_BACKGROUND_JOBS": "{% url 'main:get_number_of_background_jobs' %}"
     "MON_BUILD_INFO": "{% url 'mon:build_info' %}"
     "MON_CALL_ICINGA": "{% url 'mon:call_icinga' %}"
     "MON_CLEAR_PARTITION": "{% url 'mon:clear_partition' %}"

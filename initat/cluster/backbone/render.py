@@ -55,7 +55,6 @@ class render_me(object):
         self.template = template
         self.my_dict = {
             # default values
-            "NUM_BACKGROUND_JOBS": 0,
             "NUM_QUOTA_SERVERS": 0,
         }
         for add_dict in args:
@@ -86,7 +85,6 @@ class render_me(object):
                 "full_name": unicode(self.request.user),
             }
             _vars = {_name: _var.value for _name, _var in self.request.session["user_vars"].iteritems()}
-            _num_bg_jobs = background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()
             # routing info
             _service_types = {key: True for key in routing.srv_type_routing().service_types}
         else:
@@ -94,7 +92,6 @@ class render_me(object):
                 "is_superuser": False,
                 "authenticated": False,
             }
-            _num_bg_jobs = 0
             _service_types = {}
             _vars = {"sidebar_open": True}
         _cid = _get_cluster_info_dict()
@@ -111,7 +108,6 @@ class render_me(object):
         # store as json for angular
         # store as dict for django templates
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
-        self.my_dict["NUM_BACKGROUND_JOBS"] = _num_bg_jobs
         self.my_dict["ADDITIONAL_MENU_FILES"] = json.dumps(settings.ADDITIONAL_MENU_FILES)
         self.my_dict["ADDITIONAL_ANGULAR_APPS"] = settings.ADDITIONAL_ANGULAR_APPS
         self.my_dict["ADDITIONAL_URLS"] = [

@@ -354,12 +354,6 @@ angular.module(
         $scope.active_tab = t_type
         for tab_key in ["d", "g", "c"]
             $scope.tabs[tab_key] = tab_key == $scope.active_tab
-        #icswCallAjaxService
-        #    url  : ICSW_URLS.USER_SET_USER_VAR
-        #    data :
-        #        key   : "sidebar_mode"
-        #        value : {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab]
-        #        type  : "str"
     $scope.tabs = {}
     $scope.activate_tab($scope.active_tab)
     $scope.get_tc = (short) ->
