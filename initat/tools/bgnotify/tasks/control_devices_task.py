@@ -51,7 +51,7 @@ class ChangeBootsettingTask(BGInotifyTask):
                 # only valid for one device
                 srv_com["devices"] = srv_com.builder(
                     "devices",
-                    *sum([sensor_action.build_mother_element(srv_com.builder, dev) for dev in dev_list], []),
+                    *sum([sensor_action.build_mother_element(srv_com.builder, dev) for dev in dev_list], [])
                 )
                 to_run.append(
                     (

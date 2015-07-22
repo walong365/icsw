@@ -206,7 +206,7 @@ class SensorAction(models.Model):
                     "reboot": "cycle",
                     "halt": "off",
                     "poweron": "on",
-                }[self.choices]
+                }[self.action]
                 _cmd = ("hard_control", _cmd)
             else:
                 # map to hoststatus command, see hoststatus_zmq.c:266
@@ -214,7 +214,7 @@ class SensorAction(models.Model):
                     "reboot": "reboot",
                     "halt": "poweroff",
                     "poweron": None
-                }[self.choices]
+                }[self.action]
                 if _cmd is not None:
                     _cmd = ("soft_control", _cmd)
         return _cmd
