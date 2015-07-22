@@ -221,16 +221,7 @@ class SensorAction(models.Model):
 
     def build_mother_element(self, _bldr, dev):
         from initat.cluster.backbone.models import cd_connection
-        if self.soft_control:
-            return [
-                _bldr(
-                    "device",
-                    name=dev.name,
-                    pk="{:d}".format(dev.pk),
-                    soft_command=self.get_mother_command()[1]
-                )
-            ]
-        else:
+        if self.hard_control:
             cd_cons = cd_connection.objects.filter(Q(child=dev))
             return [
                 _bldr(
@@ -240,6 +231,15 @@ class SensorAction(models.Model):
                     command=self.get_mother_command()[1],
                     cd_con="{:d}".format(cd_con.pk),
                 ) for cd_con in cd_cons
+            ]
+        else:
+            return [
+                _bldr(
+                    "device",
+                    name=dev.name,
+                    pk="{:d}".format(dev.pk),
+                    soft_command=self.get_mother_command()[1]
+                )
             ]
 
     def __unicode__(self):

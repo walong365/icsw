@@ -24,23 +24,15 @@
 
 import json
 import logging
-import datetime
 
 from django.contrib.auth.decorators import login_required
-from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q, ForeignKey
+from django.db.models import Q
 from django.apps import apps
-from django.forms import model_to_dict
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.http.response import HttpResponse
-import itertools
-from initat.cluster.backbone.models.license import InitProduct
-from initat.cluster.backbone.models.model_history import icsw_deletion_record
 from rest_framework.response import Response
-import reversion
-from rest_framework.generics import ListAPIView, RetrieveAPIView
-import initat.cluster
+from rest_framework.generics import RetrieveAPIView
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
     user_object_permission, device, License, device_variable
@@ -52,11 +44,9 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 from initat.cluster.frontend.license_views import login_required_rest
 from initat.server_version import VERSION_STRING, VERSION_MAJOR
-from initat.tools import config_tools
-from initat.tools import server_command
+from initat.tools import config_tools, server_command
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.cluster.frontend.common import duration_utils
-
+from initat.tools.bgnotify.create import create_bg_job, notify_command
 
 logger = logging.getLogger("cluster.user")
 
@@ -93,13 +83,8 @@ class sync_users(View):
             srv_com = server_command.srv_command(command="create_user_home")
             srv_com["server_key:username"] = create_user.login
             _result = contact_server(request, "server", srv_com, timeout=30, target_server_id=create_user.export.device_id)
-        # check for configs, can be optimised ?
-        if config_tools.server_check(server_type="ldap_server").effective_device:
-            srv_com = server_command.srv_command(command="sync_ldap_config")
-            _result = contact_server(request, "server", srv_com, timeout=30)
-        if config_tools.server_check(server_type="yp_server").effective_device:
-            srv_com = server_command.srv_command(command="write_yp_config")
-            _result = contact_server(request, "server", srv_com, timeout=30)
+        # force sync_users
+        request.user.save()
         if config_tools.server_check(server_type="monitor_server").effective_device:
             srv_com = server_command.srv_command(command="sync_http_users")
             _result = contact_server(request, "md-config", srv_com)
