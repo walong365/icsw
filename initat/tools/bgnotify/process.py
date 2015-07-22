@@ -56,16 +56,20 @@ class ServerBackgroundNotifyMixin(object):
         self.srv_routing.update()
         # step 1: delete pending jobs which are too old
         _timeout = background_job.objects.filter(
-            Q(initiator=self.srv_routing.local_device.pk) & Q(state__in=["pre-init", "pending"]) & Q(valid_until__lte=datetime.datetime.now())
+            Q(initiator=self.srv_routing.local_device.pk) &
+            Q(state__in=["pre-init", "pending"]) &
+            Q(valid_until__lte=datetime.datetime.now())
         )
         if _timeout.count():
             self.log("{} timeout".format(logging_tools.get_plural("background job", _timeout.count())), logging_tools.LOG_LEVEL_WARN)
             for _to in _timeout:
-                _to.state = "timeout"
-                _to.save()
+                _to.set_state("timeout")
         # print background_job.objects.filter(Q(initiator=self.srv_routing.local_device.pk) & Q(state="pre-init") & Q(valid_until_lt=datetime.datetime.now()))
         try:
-            _pending = background_job.objects.filter(Q(initiator=self.srv_routing.local_device.pk) & Q(state="pre-init")).order_by("pk")
+            _pending = background_job.objects.filter(
+                Q(initiator=self.srv_routing.local_device.pk) &
+                Q(state="pre-init")
+            ).order_by("pk")
             # force evaluation
             _pc = _pending.count()
         except:
@@ -85,12 +89,12 @@ class ServerBackgroundNotifyMixin(object):
 
     def _handle_bgj(self, cur_bg):
         if cur_bg.command not in self.__tasks:
-            cur_bg.state = "ended"
+            self.log("unknown background-command '{}', ending".format(cur_bg.command), logging_tools.LOG_LEVEL_ERROR)
+            cur_bg.set_state("ended", server_command.SRV_REPLY_STATE_ERROR)
             cur_bg.valid_until = None
             cur_bg.save()
         else:
-            cur_bg.state = "pending"
-            cur_bg.save()
+            cur_bg.set_state("pending")
             self.log("handling {}".format(cur_bg.command))
             to_run = self.__tasks[cur_bg.command].run(cur_bg)
             self._run_bg_jobs(cur_bg, to_run)
@@ -126,8 +130,7 @@ class ServerBackgroundNotifyMixin(object):
 
     def bg_notify_check_for_bgj_finish(self, cur_bg):
         if not cur_bg.background_job_run_set.filter(Q(result="")).count():
-            cur_bg.state = "done"
-            cur_bg.save()
+            cur_bg.set_state("done")
             self.log("{} finished".format(unicode(cur_bg)))
 
     def _run_bg_jobs(self, cur_bg, to_run):

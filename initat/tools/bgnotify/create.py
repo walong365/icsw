@@ -24,7 +24,7 @@ from initat.tools import server_command
 from initat.cluster.backbone.models.functions import cluster_timezone
 
 
-def create_bg_job(server_pk, user_obj, cmd, cause, obj):  # _insert_bg_job(cmd, cause, obj):
+def create_bg_job(server_pk, user_obj, cmd, cause, obj):
     # late import to break import loop
     from initat.cluster.backbone.models import background_job, device
     srv_com = server_command.srv_command(
@@ -35,7 +35,7 @@ def create_bg_job(server_pk, user_obj, cmd, cause, obj):  # _insert_bg_job(cmd, 
         unicode(obj),
         model=obj._meta.model_name,
         app=obj._meta.app_label,
-        pk="{:d}".format(obj.pk)
+        pk="{:d}".format(obj.pk),
     )
     background_job.objects.create(
         command=cmd,
@@ -44,6 +44,7 @@ def create_bg_job(server_pk, user_obj, cmd, cause, obj):  # _insert_bg_job(cmd, 
         initiator=device.objects.get(Q(pk=server_pk)),
         user=user_obj,
         command_xml=unicode(srv_com),
+        num_objects=1,
         # valid for 4 hours
         valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)),  # 3600 * 4)),
     )

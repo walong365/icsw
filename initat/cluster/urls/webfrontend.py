@@ -1,20 +1,34 @@
-#!/usr/bin/python-init -Otu
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+import os
 
 from django.conf.urls import patterns, include, url
 from django.conf import settings
-import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
     lic_views
-# from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
 
 handler404 = main_views.index.as_view()
-
-# Uncomment the next two lines to enable the admin:
-# from django.contrib import admin
-# admin.autodiscover()
 
 session_patterns = patterns(
     "initat.cluster.frontend",
@@ -258,6 +272,7 @@ for src_mod, obj_name in rest_views.REST_LIST:
         url("^%s$" % (obj_name), getattr(rest_views, list_obj_name).as_view(), name=list_obj_name),
         url("^%s/(?P<pk>[0-9]+)$" % (obj_name), getattr(rest_views, detail_obj_name).as_view(), name=detail_obj_name),
     ])
+
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),

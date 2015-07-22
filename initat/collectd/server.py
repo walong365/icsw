@@ -36,7 +36,7 @@ from lxml.builder import E  # @UnresolvedImports
 from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, uuid_tools
 import zmq
-from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
+# from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 
 from .sensor_threshold import ThresholdContainer
 from .background import snmp_job, bg_job, ipmi_builder
@@ -50,7 +50,7 @@ from .rsync import RSyncMixin
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNotifyMixin):
+class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgroundNotifyMixin):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
@@ -98,7 +98,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNot
         self.add_process(aggregate_process("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
         connection.close()
-        self.init_notify_framework(global_config)
+        # self.init_notify_framework(global_config)
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
@@ -508,12 +508,12 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNot
                     elif com_text == "trigger_sensor_threshold":
                         self._trigger_sensor_threshold(in_com)
                     # background notify glue
-                    elif com_text in ["wf_notify"]:
-                        _send_result = False
-                        self.bg_check_notify()
-                    elif self.bg_notify_waiting_for_job(in_com):
-                        self.bg_notify_handle_result(in_com)
-                        _send_result = False
+                    # elif com_text in ["wf_notify"]:
+                    #    _send_result = False
+                    #    self.bg_check_notify()
+                    # elif self.bg_notify_waiting_for_job(in_com):
+                    #    self.bg_notify_handle_result(in_com)
+                    #    _send_result = False
                     else:
                         self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
                         in_com.set_result(
@@ -1030,7 +1030,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNot
         else:
             self.log(
                 "got server_command with unknown command {}".format(
-                    com_text
+                    com_text,
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )

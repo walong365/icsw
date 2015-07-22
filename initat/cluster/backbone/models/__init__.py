@@ -52,11 +52,7 @@ import re
 import time
 import uuid
 
-from initat.tools import ipvx_tools
-from initat.tools import logging_tools
-from initat.tools import net_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import ipvx_tools, logging_tools, net_tools, process_tools, server_command
 
 from initat.cluster.backbone.models.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport

@@ -65,6 +65,10 @@ class background_job(models.Model):
     valid_until = models.DateTimeField(null=True)
     # number of servers to contact
     num_servers = models.IntegerField(default=0)
+    # number of objects, defaults to 0
+    num_objects = models.IntegerField(default=0)
+    # result, is server_REPLY
+    result = models.IntegerField(default=server_command.SRV_REPLY_STATE_UNSET)
 
     def __unicode__(self):
         return "background_job {:d}".format(self.idx)
@@ -74,6 +78,19 @@ class background_job(models.Model):
 
     def user_name(self):
         return unicode(self.user) if self.user_id else "---"
+
+    def set_state(self, state, result=None):
+        self.state = state
+        if self.state in ["timeout"]:
+            self.result = server_command.SRV_REPLY_STATE_ERROR
+        elif self.state in ["ended", "done"]:
+            self.result = server_command.SRV_REPLY_STATE_OK
+        elif self.state in ["pending"]:
+            self.result = server_command.SRV_REPLY_STATE_WARN
+        if result is not None:
+            # override automatic decision
+            self.result = result
+        self.save()
 
     class Meta:
         ordering = ("-date",)
