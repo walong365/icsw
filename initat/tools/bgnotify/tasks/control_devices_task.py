@@ -44,7 +44,6 @@ class ChangeBootsettingTask(BGInotifyTask):
             for _dev in devs:
                 if _dev.bootserver_id:
                     _boot_dict.setdefault(_dev.bootserver_id, []).append(_dev)
-            _ctrl_type, command = sensor_action.get_
             for srv_id, dev_list in _boot_dict.iteritems():
                 # target command
                 srv_com = server_command.srv_command(command=_mother_com[0])
