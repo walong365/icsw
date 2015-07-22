@@ -71,7 +71,9 @@ class merge_cds(View):
 def _get_node_rrd(request, dev_pks):
     srv_com = server_command.srv_command(command="get_node_rrd")
     srv_com["device_list"] = E.device_list(
-        *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in dev_pks],
+        *[
+            E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in dev_pks
+        ],
         merge_results="1"
     )
     result, _log_lines = contact_server(request, "rrd-grapher", srv_com, timeout=30)
@@ -159,3 +161,13 @@ class graph_rrds(View):
                     request.xml_response.error("no node_results", logger=logger)
             else:
                 request.xml_response.error("no node_results", logger=logger)
+
+
+class trigger_sensor_threshold(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _pk = int(request.POST["pk"])
+        srv_com = server_command.srv_command(command="trigger_sensor_threshold")
+        srv_com["sensor_threshold"] = E.sensor_threshold(pk="{:d}".format(_pk), type=request.POST["type"])
+        _result = contact_server(request, "collectd-server", srv_com, timeout=30)

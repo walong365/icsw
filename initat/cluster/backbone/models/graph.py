@@ -235,6 +235,7 @@ class SensorThreshold(models.Model):
 
 
 class SensorThresholdAction(models.Model):
+    # log
     idx = models.AutoField(primary_key=True)
     sensor_threshold = models.ForeignKey("SensorThreshold")
     sensor_action = models.ForeignKey("SensorAction")
@@ -252,6 +253,8 @@ class SensorThresholdAction(models.Model):
     notify_users = models.ManyToManyField("user")
     create_user = models.ForeignKey("user", null=True, blank=True, related_name="sensor_threshold_action_create_user")
     device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)
+    # was triggered via webfrontend ?
+    triggered = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
 

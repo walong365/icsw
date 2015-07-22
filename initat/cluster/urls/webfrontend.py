@@ -233,6 +233,7 @@ rrd_patterns = patterns(
     url(r"^dev_rrds$", rrd_views.device_rrds.as_view(), name="device_rrds"),
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view(), name="graph_rrds"),
     url(r"^merge_cd$", rrd_views.merge_cds.as_view(), name="merge_cds"),
+    url(r"^trigger_threshold", rrd_views.trigger_sensor_threshold.as_view(), name="trigger_sensor_threshold"),
 )
 
 discovery_patterns = patterns(

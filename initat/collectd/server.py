@@ -505,6 +505,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNot
                         self._handle_hk_command(in_com, com_text)
                     elif com_text in ["sync_sensor_threshold"]:
                         self._sync_sensor_threshold(in_com)
+                    elif com_text == "trigger_sensor_threshold":
+                        self._trigger_sensor_threshold(in_com)
                     # background notify glue
                     elif com_text in ["wf_notify"]:
                         _send_result = False
@@ -1092,3 +1094,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, ServerBackgroundNot
     def _sync_sensor_threshold(self, in_com):
         in_com.set_result("ok syncing thresholds")
         self.tc.sync()
+
+    def _trigger_sensor_threshold(self, in_com):
+        in_com.set_result("triggered sensor_threshold")
+        self.tc.trigger(in_com)

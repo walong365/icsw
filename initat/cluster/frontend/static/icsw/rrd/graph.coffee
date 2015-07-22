@@ -717,7 +717,7 @@ angular.module(
                     return "---"
 
     }
-]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", "$window", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout, $window) ->
+]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", "$window", "icswSimpleAjaxCall", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout, $window, icswSimpleAjaxCall) ->
     th_dialog = (create, cur_scope, sensor, threshold, title) ->
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
@@ -809,6 +809,22 @@ angular.module(
                 (res) ->
                     th.remove()
                     sensor.thresholds = (entry for entry in sensor.thresholds when entry.idx != th.idx)
+            )
+        sub_scope.trigger_threshold = (sensor, th, lu_switch) ->
+            icswToolsSimpleModalService("Really trigger Threshold ?").then(
+                (res) ->
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.RRD_TRIGGER_SENSOR_THRESHOLD
+                            data:
+                                "pk": th.idx
+                                # lower or upper
+                                "type": lu_switch
+                        }
+                    ).then(
+                        (ok) ->
+                        (error) ->
+                    )
             )
         sub_scope.modify_threshold = (sensor, threshold) ->
             if threshold.lower_sensor_action

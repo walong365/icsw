@@ -278,6 +278,8 @@
     <td>
         <icsw-tools-button type="modify" size="xs" ng-click="modify_threshold(sensor, threshold)"></icsw-tools-button>
         <icsw-tools-button type="delete" size="xs" ng-click="delete_threshold(sensor, threshold)"></icsw-tools-button>
+        <icsw-tools-button type="create" value="trigger lower" size="xs" ng-click="trigger_threshold(sensor, threshold, 'lower')"></icsw-tools-button>
+        <icsw-tools-button type="create" value="trigger upper" size="xs" ng-click="trigger_threshold(sensor, threshold, 'upper')"></icsw-tools-button>
     </td>
 </script>
 

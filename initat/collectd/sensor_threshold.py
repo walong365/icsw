@@ -22,7 +22,7 @@
 
 import time
 
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, server_command
 from initat.cluster.backbone.models import SensorThreshold, \
     SensorThresholdAction, device
 from django.db.models import Q
@@ -163,22 +163,23 @@ class Threshold(object):
         # store only latest N values
         self.__values = self.__values[-self.Meta.values_to_store:]
 
-    def trigger(self, what):
+    def trigger(self, what, triggered=False):
         setattr(self, "{}_triggered".format(what), True)
         _action = getattr(self.th, "{}_sensor_action".format(what))
         _mail = getattr(self.th, "{}_mail".format(what))
         _value = getattr(self.th, "{}_value".format(what))
         _enabled = getattr(self.th, "{}_enabled".format(what))
         self.log(
-            "trigger {}: action is {}, send_mail is {}, enabled: {}".format(
+            "trigger {}: action is {}, send_mail is {}, enabled: {}, triggered_flag is {}".format(
                 what,
                 unicode(_action) if _action else "none",
                 _mail,
                 str(_enabled),
+                str(triggered),
             )
         )
         # create actionentry
-        if _action is not None and _enabled:
+        if _action is not None and (_enabled or triggered):
             self.log("create SensorThresholdAction entry")
             new_sta = SensorThresholdAction(
                 sensor_threshold=self.th,
@@ -188,21 +189,23 @@ class Threshold(object):
                 value=_value,
                 create_user=self.th.create_user,
                 device_selection=self.th.device_selection,
+                triggered=triggered,
             )
             new_sta.save()
             for _user in self.th.notify_users.all():
                 new_sta.notify_users.add(_user)
-        if _mail and _enabled:
+        if _mail and (_enabled or force):
             _cluster_id = clusterid.get_cluster_id() or "N/A"
             _from = "{}@{}".format(
                 global_config["FROM_NAME"],
                 global_config["FROM_ADDRESS"]
             )
-            _subject = "{} Threshold event from {} for {} ({})".format(
+            _subject = "{} Threshold event from {} for {} ({}){}".format(
                 what,
                 global_config["SERVER_FULL_NAME"],
                 unicode(self.th.name),
                 _cluster_id,
+                ", triggered" if triggered else "",
             )
             _to_users = [_user for _user in self.th.notify_users.all() if _user.email]
             # build message
@@ -331,6 +334,30 @@ class ThresholdContainer(object):
         for _th in self.th_dict.itervalues():
             self.dev_dict.setdefault(_th.dev_idx, {})[_th.lookup_key] = _th
         # pprint.pprint(self.dev_dict)
+
+    def trigger(self, in_com):
+        _sensor_list, not_found = ([], 0)
+        for _el in in_com["sensor_threshold"]:
+            _pk = int(_el.attrib["pk"])
+            if _pk in self.th_dict:
+                _sensor_list.append((self.th_dict[_pk], _el.attrib["type"]))
+            else:
+                not_found += 1
+        if not_found:
+            in_com.set_result(
+                "triggered {}, {:d} not found".format(
+                    logging_tools.get_plural("sensor threshold", len(_sensor_list)),
+                    not_found,
+                ),
+                server_command.SRV_REPLY_STATE_WARN
+            )
+        else:
+            in_com.set_result(
+                "triggered {}".format(
+                    logging_tools.get_plural("sensor threshold", len(_sensor_list)),
+                ),
+            )
+        [_sensor.trigger(_type) for _sensor, _type in _sensor_list]
 
     def device_has_thresholds(self, dev_idx):
         return dev_idx in self.dev_dict

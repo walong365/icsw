@@ -357,6 +357,7 @@ ics_app = angular.module(
     "RRD_DEVICE_RRDS": "{% url 'rrd:device_rrds' %}"
     "RRD_GRAPH_RRDS": "{% url 'rrd:graph_rrds' %}"
     "RRD_MERGE_CDS": "{% url 'rrd:merge_cds' %}"
+    "RRD_TRIGGER_SENSOR_THRESHOLD": "{% url 'rrd:trigger_sensor_threshold' %}",
     "SESSION_LOGOUT": "{% url 'session:logout' %}"
     "SESSION_LOGIN": "{% url 'session:login' %}"
     "SETUP_IMAGE_OVERVIEW": "{% url 'setup:image_overview' %}"
