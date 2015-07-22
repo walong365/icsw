@@ -22,7 +22,7 @@
 """ graph models for NOCTUA, CORVUS and NESTOR """
 
 from django.db import models
-from django.db.models import signals
+from django.db.models import signals, Q
 from django.dispatch import receiver
 from initat.cluster.backbone.signals import SensorThresholdChanged
 

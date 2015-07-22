@@ -38,7 +38,7 @@ class ChangeBootsettingTask(BGInotifyTask):
         _mother_com = sensor_action.get_mother_command()
         if _mother_com is not None:
             _src_com = server_command.srv_command(source=cur_bg.command_xml)
-            devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")[0]]))
+            devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")]))
             # split for bootservers
             _boot_dict = {}
             for _dev in devs:
