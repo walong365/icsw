@@ -42,7 +42,7 @@ from .sensor_threshold import ThresholdContainer
 from .background import snmp_job, bg_job, ipmi_builder
 from .resize import resize_process
 from .aggregate import aggregate_process
-from .config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
+from .config import global_config, IPC_SOCK_SNMP
 from .collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, file_creator
 from .dbsync import SyncProcess
 from .rsync import RSyncMixin
@@ -186,18 +186,32 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgro
             self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
             self.com_socket = client
             # self.md_target = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-            self.__last_md_send_error = None
-            self.md_target_addr = "tcp://{}:{:d}".format(
-                global_config["MD_SERVER_HOST"],
-                self.CC.Instance.get_port_dict("md-config", command=True),
-            )
-            # self.md_target.connect(self.md_target_addr)
-            self.md_target_id = "{}:{}:".format(
-                MD_SERVER_UUID,
-                "md-config-server",
-            )
-            self.com_socket.connect(self.md_target_addr)
-            self.log("connection to md-config-server at {}".format(self.md_target_addr))  # , self.md_target_id))
+            self.__last_send_error = {}
+            self.__target_dict = {
+                "md-config-server": (
+                    "{}:{}:".format(
+                        uuid_tools.get_uuid().get_urn(),
+                        self.CC.Instance.get_uuid_postfix("md-config"),
+                    ),
+                    "tcp://{}:{:d}".format(
+                        global_config["MD_SERVER_HOST"],
+                        self.CC.Instance.get_port_dict("md-config", command=True),
+                    )
+                ),
+                "cluster-server": (
+                    "{}:{}:".format(
+                        uuid_tools.get_uuid().get_urn(),
+                        self.CC.Instance.get_uuid_postfix("cluster-server"),
+                    ),
+                    "tcp://{}:{:d}".format(
+                        "localhost",
+                        self.CC.Instance.get_port_dict("cluster-server", command=True),
+                    )
+                ),
+            }
+            for _key, (_uuid, _addr) in self.__target_dict.iteritems():
+                self.com_socket.connect(_addr)
+                self.log("connection to {} at {} (UUID {})".format(_key, _addr, _uuid))
             # receiver socket
             self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
             listener_url = "tcp://*:{:d}".format(global_config["RECEIVE_PORT"])
@@ -323,24 +337,25 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgro
                 self.log("closed rrdcached socket")
             self.__rrdcached_socket = None
 
-    def send_to_md(self, send_str):
+    def send_to_server(self, target, send_str):
         cur_time = time.time()
-        if self.__last_md_send_error and abs(self.__last_md_send_error - cur_time) < 10:
+        if target in self.__last_send_error and abs(self.__last_send_error[target] - cur_time) < 10:
             # silently fail
             pass
         else:
             try:
-                self.com_socket.send_unicode(self.md_target_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
+                self.com_socket.send_unicode(self.__target_dict[target][0], zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
                 self.com_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
             except zmq.error.ZMQError:
                 # this will never happen because we are using a REQ socket
                 self.log(
-                    "cannot send to md: {}".format(
+                    "cannot send to {}: {}".format(
+                        target,
                         process_tools.get_except_info()
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
-                self.__last_md_send_error = cur_time
+                self.__last_send_error[target] = cur_time
             else:
                 pass
 

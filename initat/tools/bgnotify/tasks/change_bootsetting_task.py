@@ -34,12 +34,15 @@ class ChangeBootsettingTask(BGInotifyTask):
 
     def run(self, cur_bg):
         _src_com = server_command.srv_command(source=cur_bg.command_xml)
-        dev = device.objects.get(Q(pk=int(_src_com.xpath(".//ns:object/@pk")[0])))
+        devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")[0]]))
         # target command
         srv_com = server_command.srv_command(command="refresh")
         srv_com["devices"] = srv_com.builder(
             "devices",
-            srv_com.builder("device", name=dev.name, pk="{:d}".format(dev.pk)))
+            *[
+                srv_com.builder("device", name=dev.name, pk="{:d}".format(dev.pk)) for dev in devs
+            ]
+        )
         to_run = [
             (
                 background_job_run(

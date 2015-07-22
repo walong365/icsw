@@ -25,7 +25,7 @@ import time
 from initat.tools import logging_tools, process_tools, server_command
 from initat.cluster.backbone.models import SensorThreshold, \
     SensorThresholdAction, device
-from initat.tools.bgnotify.create import create_bg_job
+from initat.tools.bgnotify.create import create_bg_job, notify_command
 from django.db.models import Q
 from initat.icsw.service import clusterid
 from django.core.mail import send_mail
@@ -259,13 +259,25 @@ class Threshold(object):
                         "    {}".format(unicode(_dev)) for _dev in _devs
                     ]
                 )
-                create_bg_job(
+                _bg_job = create_bg_job(
                     global_config["SERVER_IDX"],
                     self.th.create_user,
                     # encode sensor action
-                    "sensor_action #{:d}".format(_action.action.pk),
+                    "sensor_action",
                     "{} event {}".format(what, unicode(self.th)),
-                    _devs[0],
+                    _devs,
+                    options="{:d}".format(_action.pk),
+                )
+                _message.extend(
+                    [
+                        "",
+                        "Background job has the PK {:d}".format(_bg_job.pk),
+                        "",
+                    ]
+                )
+                self.__container.proc.send_to_server(
+                    "cluster-server",
+                    unicode(notify_command()),
                 )
             else:
                 _devs = []

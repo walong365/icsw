@@ -40,6 +40,8 @@ class background_job(models.Model):
     cause = models.CharField(max_length=256, default="unknown")
     # command as text
     command = models.CharField(null=False, max_length=256)
+    # options as text
+    options = models.CharField(default="", max_length=256)
     # state
     state = models.CharField(
         max_length=128, default="pre-init",

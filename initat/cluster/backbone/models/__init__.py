@@ -31,7 +31,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
-from initat.tools.bgnotify.create import create_bg_job
+from initat.tools.bgnotify.create import create_bg_job, notify_command
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -188,7 +188,7 @@ def _signal_localhost():
     # signal clusterserver running on localhost
     _sender = net_tools.zmq_connection("wf_server_notify")
     # only send no receive
-    _sender.add_connection("tcp://localhost:8004", server_command.srv_command(command="wf_notify"), multi=True)
+    _sender.add_connection("tcp://localhost:8004", notify_command(), multi=True)
     # close connection / terminate context
     _sender.close()
 
