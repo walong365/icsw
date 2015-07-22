@@ -20,16 +20,15 @@ import re
 import collections
 import datetime
 import traceback
-import django.utils.timezone
 import itertools
-import pytz
 
+import django.utils.timezone
+import pytz
 from initat.tools import logging_tools, process_tools
 from initat.cluster.backbone.models import device_variable
 from initat.discovery_server.discovery_struct import ExtCom
 
 from .event_log_scanner_base import EventLogPollerJobBase
-
 
 __all__ = [
     'IpmiLogJob',
@@ -99,7 +98,7 @@ class IpmiLogJob(EventLogPollerJobBase):
             if self.ext_com is None:
                 # initial call, start the job
                 cmd = (
-                    process_tools.find_file("ipmitool", exception_on_error=True),
+                    "/opt/cluster/bin/ipmitool",
                     "-H", job.target_ip,
                     "-U", job.username,
                     "-P", job.password,
@@ -156,7 +155,7 @@ class IpmiLogJob(EventLogPollerJobBase):
             if self.ext_com is None:
                 # initial call, start the job
                 cmd = (
-                    process_tools.find_file("ipmitool", exception_on_error=True),
+                    "/opt/cluster/bin/ipmitool",
                     "-H", job.target_ip,
                     "-U", job.username,
                     "-P", job.password,
@@ -228,7 +227,7 @@ class IpmiLogJob(EventLogPollerJobBase):
 
         def start_next_job(self, job):
             cmd = (
-                process_tools.find_file("ipmitool", exception_on_error=True),
+                "/opt/cluster/bin/ipmitool",
                 "-H", job.target_ip,
                 "-U", job.username,
                 "-P", job.password,

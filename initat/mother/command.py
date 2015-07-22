@@ -158,7 +158,7 @@ class hc_command(object):
 
     def _build_ipmi_com_str(self, var_dict, com_ip, command):
         com_str = "{}{} -H {} -U {} -P {} chassis power {}".format(
-            process_tools.find_file("ipmitool"),
+            "/opt/cluster/bin/ipmitool",
             # add ipmi interface if defined
             " -I {}".format(var_dict["IPMI_INTERFACE"]) if var_dict.get("IPMI_INTERFACE", "") else "",
             com_ip,

@@ -358,7 +358,7 @@ class ipmi_builder(object):
             _iface_str = " -I {}".format(_dev_xml.get("ipmi_interface"))
         else:
             _iface_str = ""
-        return "/usr/bin/ipmitool -H {} -U {} -P {} {} sensor list".format(
+        return "/opt/cluster/bin/ipmitool -H {} -U {} -P {} {} sensor list".format(
             _dev_xml.get("ip"),
             _dev_xml.get("ipmi_username"),
             _dev_xml.get("ipmi_password"),
