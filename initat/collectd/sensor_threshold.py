@@ -194,7 +194,7 @@ class Threshold(object):
             new_sta.save()
             for _user in self.th.notify_users.all():
                 new_sta.notify_users.add(_user)
-        if _mail and (_enabled or force):
+        if _mail and (_enabled or triggered):
             _cluster_id = clusterid.get_cluster_id() or "N/A"
             _from = "{}@{}".format(
                 global_config["FROM_NAME"],
@@ -357,7 +357,7 @@ class ThresholdContainer(object):
                     logging_tools.get_plural("sensor threshold", len(_sensor_list)),
                 ),
             )
-        [_sensor.trigger(_type) for _sensor, _type in _sensor_list]
+        [_sensor.trigger(_type, True) for _sensor, _type in _sensor_list]
 
     def device_has_thresholds(self, dev_idx):
         return dev_idx in self.dev_dict
