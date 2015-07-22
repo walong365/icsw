@@ -203,7 +203,7 @@ class srv_type_routing(object):
                                 _myself,
                                 allow_route_to_other_networks=True,
                                 prefer_production_net=True,
-                                cache=routing_cache
+                                cache=routing_cache,
                             )
                             if _ri:
                                 _first_ri = _ri[0]

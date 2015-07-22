@@ -644,8 +644,8 @@ class server_check(object):
                 break
 
     def get_route_to_other_device(self, router_obj, other, **kwargs):
-        if "cache" in kwargs and other.device.pk in kwargs["cache"]:
-            return kwargs["cache"][other.device.pk]
+        if "cache" in kwargs and (self.device.pk, other.device.pk) in kwargs["cache"]:
+            return kwargs["cache"][(self.device.pk, other.device.pk)]
         filter_ip = kwargs.get("filter_ip", None)
         # at first fetch the network info if necessary
         self._fetch_network_info()
@@ -706,7 +706,7 @@ class server_check(object):
         if kwargs.get("prefer_production_net", False):
             r_list = self.prefer_production_net(r_list)
         if "cache" in kwargs:
-            kwargs["cache"][other.device.pk] = r_list
+            kwargs["cache"][(self.device.pk, other.device.pk)] = r_list
         return r_list
 
     def prefer_production_net(self, r_list):

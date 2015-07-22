@@ -92,7 +92,7 @@ class SyncUserTask(BGInotifyTask):
                                 _srv_type,
                             )
                         )
-            else:
+            if not _cdict:
                 no_device.append(_command)
         if no_device:
             self.log("no device(s) found for {}".format(", ".join(no_device)), logging_tools.LOG_LEVEL_WARN)
