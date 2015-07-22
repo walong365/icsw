@@ -196,6 +196,52 @@ class SensorAction(models.Model):
     hard_control = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
+    def get_mother_command(self):
+        if self.action == "none":
+            _cmd = None
+        else:
+            if self.hard_control:
+                # map to IPMI command, see command.py:163
+                _cmd = {
+                    "reboot": "cycle",
+                    "halt": "off",
+                    "poweron": "on",
+                }[self.choices]
+                _cmd = ("hard_control", _cmd)
+            else:
+                # map to hoststatus command, see hoststatus_zmq.c:266
+                _cmd = {
+                    "reboot": "reboot",
+                    "halt": "poweroff",
+                    "poweron": None
+                }[self.choices]
+                if _cmd is not None:
+                    _cmd = ("soft_control", _cmd)
+        return _cmd
+
+    def build_mother_element(self, _bldr, dev):
+        from initat.cluster.backbone.models import cd_connection
+        if self.soft_control:
+            return [
+                _bldr(
+                    "device",
+                    name=dev.name,
+                    pk="{:d}".format(dev.pk),
+                    soft_command=self.get_mother_command()[1]
+                )
+            ]
+        else:
+            cd_cons = cd_connection.objects.filter(Q(child=dev))
+            return [
+                _bldr(
+                    "device",
+                    name=dev.name,
+                    pk="{:d}".format(dev.pk),
+                    command=self.get_mother_command()[1],
+                    cd_con="{:d}".format(cd_con.pk),
+                ) for cd_con in cd_cons
+            ]
+
     def __unicode__(self):
         return "SensorAction {}".format(self.name)
 

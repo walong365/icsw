@@ -37,6 +37,7 @@ class ChangeBootsettingTask(BGInotifyTask):
         devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")[0]]))
         # target command
         srv_com = server_command.srv_command(command="refresh")
+        # only valid for one device
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[

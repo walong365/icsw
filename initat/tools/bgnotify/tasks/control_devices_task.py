@@ -21,39 +21,48 @@ import datetime
 
 from django.db.models import Q
 from initat.cluster.backbone.models import background_job_run, device, \
-    cluster_timezone
+    cluster_timezone, SensorAction
 from initat.tools import server_command
 
 from .base import BGInotifyTask
 
 
-class ControlTask(object):
-    pass
-
-
-class ChangeBootsettingTask(BGInotifyTask, ControlTask):
+class ChangeBootsettingTask(BGInotifyTask):
     class Meta:
-        name = "halt;sw"
-        short = "hsw"
+        name = "sensor_action"
+        short = "sa"
 
     def run(self, cur_bg):
-        _src_com = server_command.srv_command(source=cur_bg.command_xml)
-        dev = device.objects.get(Q(pk=int(_src_com.xpath(".//ns:object/@pk")[0])))
-        # target command
-        srv_com = server_command.srv_command(command="refresh")
-        srv_com["devices"] = srv_com.builder(
-            "devices",
-            srv_com.builder("device", name=dev.name, pk="{:d}".format(dev.pk)))
-        to_run = [
-            (
-                background_job_run(
-                    background_job=cur_bg,
-                    server=dev.bootserver,
-                    command_xml=unicode(srv_com),
-                    start=cluster_timezone.localize(datetime.datetime.now()),
-                ),
-                srv_com,
-                "mother",
-            )
-        ]
+        to_run = []
+        sensor_action = SensorAction.objects.get(Q(pk=cur_bg.options))
+        _mother_com = sensor_action.get_mother_command()
+        if _mother_com is not None:
+            _src_com = server_command.srv_command(source=cur_bg.command_xml)
+            devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")[0]]))
+            # split for bootservers
+            _boot_dict = {}
+            for _dev in devs:
+                if _dev.bootserver_id:
+                    _boot_dict.setdefault(_dev.bootserver_id, []).append(_dev)
+            _ctrl_type, command = sensor_action.get_
+            for srv_id, dev_list in _boot_dict.iteritems():
+                # target command
+                srv_com = server_command.srv_command(command=_mother_com[0])
+                # only valid for one device
+                srv_com["devices"] = srv_com.builder(
+                    "devices",
+                    *sum([sensor_action.build_mother_element(srv_com.builder, dev) for dev in dev_list], []),
+                )
+                to_run.append(
+                    (
+                        background_job_run(
+                            background_job=cur_bg,
+                            server=dev_list[0].bootserver,
+                            command_xml=unicode(srv_com),
+                            start=cluster_timezone.localize(datetime.datetime.now()),
+                        ),
+                        srv_com,
+                        "mother",
+                    )
+                )
         return to_run

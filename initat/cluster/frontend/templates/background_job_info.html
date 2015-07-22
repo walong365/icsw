@@ -18,9 +18,10 @@
                 <th>created</th>
                 <th>user</th>
                 <th>state</th>
-                <th>cause</th>
                 <th>initiator</th>
                 <th>commands</th>
+                <th>objects</th>
+                <th>cause</th>
                 <th>valid until</th>
             </tr>
         </thead>
@@ -32,9 +33,10 @@
                 <td>{{ get_time(job.date) }} ({{ get_diff_time(job.date) }})</td>
                 <td>{{ job.user_name }}</td>
                 <td>{{ job.state }}</td>
-                <td>{{ job.cause }}</td>
                 <td>{{ job.initiator_name }}</td>
                 <td>{{ job.num_servers || '-' }}</td>
+                <td>{{ job.num_objects || '-' }}</td>
+                <td>{{ job.cause }}</td>
                 <td>{{ get_time(job.valid_until) }}</td>
             </tr>
         </tbody>

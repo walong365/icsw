@@ -28,11 +28,7 @@ from initat.cluster.backbone.models import cd_connection, device_variable, \
 from initat.mother.command_tools import simple_command
 from initat.snmp.sink import SNMPSink
 from .config import global_config
-from initat.tools import config_tools
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
+from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 
 
 class hc_command(object):
