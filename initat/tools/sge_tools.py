@@ -31,6 +31,8 @@ import json
 import time
 import uuid
 
+from lxml import etree
+from StringIO import StringIO
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools, process_tools, server_command
 import zmq  # @UnresolvedImport
@@ -220,6 +222,11 @@ class sge_info(object):
         self.__counter = 0
         # empty lut
         self.__job_lut = {}
+        # parser
+        self.xml_parser = etree.XMLParser(
+            encoding="utf-8",
+            recover=True,
+        )
         self._init_cache()
         # key : (relevance, call)
         setup_dict = {
@@ -321,7 +328,8 @@ class sge_info(object):
             if _c_stat:
                 job_xml = E.call_error(c_out, stat="{:d}".format(_c_stat))
             else:
-                job_xml = etree.fromstring(c_out)  # @UndefinedVariable
+                fromstring
+                job_xml = etree.parse(StringIO(c_out), self.xml_parser)
             job_name = job_xml.findtext(".//JB_job_name")
             # check for non-standard path
             # get home

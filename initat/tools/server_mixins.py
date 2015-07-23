@@ -24,11 +24,10 @@ import re
 import sys
 
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
-    configfile, config_tools
+    configfile
 import zmq
 from enum import IntEnum
 from initat.icsw.service.instance import InstanceXML
-from initat.cluster.backbone.models import LogSource
 
 
 class ConfigCheckObject(object):
@@ -65,6 +64,9 @@ class ConfigCheckObject(object):
         return self._inst_xml
 
     def check_config(self):
+        # late import (for clients without django)
+        from initat.tools import config_tools
+        from initat.cluster.backbone.models import LogSource
         self._inst_xml = InstanceXML(self.log)
         self._instance = self._inst_xml[self.srv_type]
         conf_names = self._inst_xml.get_config_names(self._instance)

@@ -66,6 +66,22 @@ class accounting_process(threading_tools.process_obj):
         # caching
         self._disable_cache()
         # self.register_func("get_job_xml", self._get_job_xml)
+        # check for version
+        self._check_sge_version()
+
+    def _check_sge_version(self):
+        self._qacct_options = []
+        cur_stat, cur_out, log_lines = call_command(
+            "{} {}".format(
+                self._get_sge_bin("qacct"),
+                " ".join(args) if args else "",
+            ),
+        )
+        if not cur_stat:
+            _lines = [_line.strip() for _line in cur_out.split("\n")]
+            if any([_line.count("[-m") for _line in _lines]):
+                self._qacct_options.append("-m")
+        self.log("default qacct options: {}".format(str(self._qacct_options)))
 
     def process_running(self):
         # initial accounting run
@@ -173,9 +189,9 @@ class accounting_process(threading_tools.process_obj):
         if args:
             _data = args[0]
             if "job_id" in _data:
-                self._call_qacct("-m", "-j", "{:d}".format(_data["job_id"]))
+                self._call_qacct("-j", "{:d}".format(_data["job_id"]))
             elif "start_time" in _data:
-                self._call_qacct("-m", "-b", _data["start_time"], "-j")
+                self._call_qacct("-b", _data["start_time"], "-j")
             else:
                 self.log(
                     "cannot parse args / kwargs: {}, {}".format(
@@ -193,31 +209,32 @@ class accounting_process(threading_tools.process_obj):
                 self.__full_scan_done = True
                 self.log("no jobs in database, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._enable_cache()
-                self._call_qacct("-m", "-j")
+                self._call_qacct("-j")
                 self._disable_cache(log=True)
             elif global_config["FORCE_SCAN"] and not self.__full_scan_done:
                 self.__full_scan_done = True
                 self.log("full scan forced, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._enable_cache()
-                self._call_qacct("-m", "-j")
+                self._call_qacct("-j")
                 self._disable_cache(log=True)
             elif len(_mis_dict) > 1000:
                 self._log_missing(_mis_dict)
                 self._enable_cache()
-                self._call_qacct("-m", "-j")
+                self._call_qacct("-j")
                 self._disable_cache(log=True)
             else:
                 self._log_missing(_mis_dict)
                 for _id in sorted(_mis_dict.iterkeys()):
-                    self._call_qacct("-m", "-j", "{}".format(_id), mult=len(_mis_dict[_id]))
+                    self._call_qacct("-j", "{}".format(_id), mult=len(_mis_dict[_id]))
                 self._log_stats()
         if self.__jobs_added:
             self.log("added {}".format(logging_tools.get_plural("job", self.__jobs_added)))
 
     def _call_qacct(self, *args, **kwargs):
         cur_stat, cur_out, log_lines = call_command(
-            "{} {}".format(
+            "{} {} {}".format(
                 self._get_sge_bin("qacct"),
+                " ".join(self._qacct_options),
                 " ".join(args) if args else "",
             ),
         )
