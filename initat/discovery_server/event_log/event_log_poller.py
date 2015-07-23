@@ -23,6 +23,7 @@ import traceback
 
 from django.db import connection
 import pymongo
+from pymongo.errors import PyMongoError
 
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models import device, ComCapability, net_ip
@@ -49,7 +50,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.register_timer(self.periodic_update, 60 * 1 if global_config["DEBUG"] else 60 * 15, instant=True)
         self.register_timer(self.job_control, 1 if global_config["DEBUG"] else 3, instant=True)
 
-        self._init_db()
+        self._mongodb_inited = False
 
         # jobs are added here then processed sequentially
         self._run_queue = collections.deque()
@@ -78,8 +79,20 @@ class EventLogPollerProcess(threading_tools.process_obj):
                                                            name='record_number_index')
 
     def periodic_update(self):
-        self._schedule_wmi_jobs()
-        self._schedule_ipmi_jobs()
+        if not self._mongodb_inited:
+            # do this here in case mongodb is installed after discovery-server has been started
+            try:
+                self._init_db()
+            except PyMongoError as e:
+                self.log("Failed to connect to mongodb: {}".format(e), logging_tools.LOG_LEVEL_WARN)
+                self.log(traceback.format_exc(), logging_tools.LOG_LEVEL_WARN)
+            else:
+                self._mongodb_inited = True
+
+        if self._mongodb_inited:
+            # only add jobs if we know that mongodb is accessible
+            self._schedule_wmi_jobs()
+            self._schedule_ipmi_jobs()
 
     def job_control(self):
         # called periodically
