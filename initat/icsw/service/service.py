@@ -139,7 +139,12 @@ class Service(object):
             else:
                 return "error"
         else:
-            return "error"
+            _si = self.entry.find(".//state_info[@check_source='simple']")
+            if _si is not None:
+                _state = int(_si.get("state"))
+                return "ok" if _state in [SERVICE_OK, SERVICE_NOT_CONFIGURED] else "warn"
+            else:
+                return "error"
 
     def _modify_state(self, result, act_state, info_str):
         _state_info = result.find("state_info")

@@ -77,7 +77,17 @@ class ServiceTransition(object):
                 cur_c.check_service(entry, use_cache=True, refresh=True)
                 _action_list.extend([(_action, entry) for _action in cur_c.decide(self.target, entry)])
             self._action_list = _action_list
-            self.log("init action_list with {}".format(logging_tools.get_plural("element", len(self._action_list))))
+            if self._action_list:
+                self.log(
+                    "init action_list with {}: {}".format(
+                        logging_tools.get_plural("element", len(self._action_list)),
+                        ", ".join(
+                            ["{} ({})".format(entry.name, action) for action, entry in self._action_list]
+                        ),
+                    )
+                )
+            else:
+                self.log("no action_list generated")
             # if self._action_list:
             #    print "***", self._action_list, self._action_list[0][1].name
             # format: name -> init_time

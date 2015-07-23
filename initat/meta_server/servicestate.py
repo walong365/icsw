@@ -480,7 +480,7 @@ class ServiceState(object):
                         else:
                             _stable = self._check_for_stable_state(_el)
                             _el.log(
-                                "not OK ({}, state {} / {} [{}], {}, {})".format(
+                                "not OK ({}, SState={}, LState={} [{}], {}, {})".format(
                                     "should run" if self.__target_dict[_el.name] else "should not run",
                                     constants.STATE_DICT[_state],
                                     constants.LIC_STATE_DICT[_lic_state],
