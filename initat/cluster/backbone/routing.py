@@ -106,7 +106,7 @@ class srv_type_routing(object):
 
     def __contains__(self, srv_type):
         if srv_type in self._alias_dict:
-            return True
+            return self._alias_dict[srv_type] in self._resolv_dict
         else:
             return srv_type in self._resolv_dict
 
@@ -132,7 +132,7 @@ class srv_type_routing(object):
                 _INSTANCE.get_port_dict(srv_type, command=True),
             )
         else:
-            self.logger.critical("no srv_type {} defined".format(srv_type))
+            self.logger.critical("no ServerType {} defined".format(srv_type))
             return None
 
     @property

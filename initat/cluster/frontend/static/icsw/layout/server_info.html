@@ -17,7 +17,7 @@
                 </thead>
                 <tbody>
                     <tr ng-repeat-start="role in get_roles()">
-                        <th colspan="4">{{ role }}, {{ get_num_servers(role) }} devices</th>
+                        <th colspan="5">{{ role }}, {{ get_num_servers(role) }} devices</th>
                     </tr>
                     <tr ng-repeat-end ng-repeat="server in get_servers(role)">
                         <td>

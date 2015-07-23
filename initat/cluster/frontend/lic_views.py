@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,29 +22,26 @@
 
 """ License views """
 
+import json  # @UnusedImport
+import logging
+import collections
+
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.http.response import HttpResponse
-from django.db.models.aggregates import Sum
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.frontend.rms_addons import *  # @UnusedWildImport
-from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_version, \
-    ext_license_user, ext_license_client, ext_license_usage_coarse, ext_license_check_coarse, ext_license_state_coarse, duration
-from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, ext_license_version_state_coarse_serializer
+from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_usage_coarse, \
+    ext_license_state_coarse
+from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, \
+    ext_license_version_state_coarse_serializer
 from initat.cluster.frontend.common import duration_utils
-from lxml import etree  # @UnresolvedImport @UnusedImport
-import json  # @UnusedImport
-import pprint  # @UnusedImport
 from initat.tools import server_command
-import datetime
-import logging
-import collections
 
 logger = logging.getLogger("cluster.license")
 

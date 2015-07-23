@@ -278,7 +278,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
             result = None
     else:
         result = None
-        _err_str = u"srv_type '{}' not defined in routing".format(srv_type)
+        _err_str = u"ServerType '{}' not defined in routing".format(srv_type)
         cur_router._log(request, _log_lines, _err_str, logging_tools.LOG_LEVEL_ERROR)
     if _xml_req:
         return result
