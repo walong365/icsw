@@ -24,6 +24,7 @@ import itertools
 
 import django.utils.timezone
 import pytz
+from initat.discovery_server.config import global_config
 from initat.tools import logging_tools, process_tools
 from initat.cluster.backbone.models import device_variable
 from initat.discovery_server.discovery_struct import ExtCom
@@ -295,11 +296,10 @@ class IpmiLogJob(EventLogPollerJobBase):
                     'sections': sections_db_data,
                     'device_pk': job.target_device.pk,
                 }
-                # DEBUG check
-                if list(job.db.ipmi_event_log.find({'record_id': self.current_record_id, 'device_pk': job.target_device.pk})):
-                    raise RuntimeError("DUPLICATES FOR " + unicode(db_entry))
                 job.db.ipmi_event_log.insert(db_entry)
-                job.log("feeding db: {}".format(db_entry))
+
+                if global_config['DEBUG']:
+                    job.log("feeding db: {}".format(db_entry))
 
                 self.current_record_id += 1
 

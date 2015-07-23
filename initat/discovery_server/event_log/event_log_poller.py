@@ -78,6 +78,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self._mongodb_database.ipmi_event_log.create_index([('record_number', pymongo.DESCENDING)],
                                                            name='record_number_index')
 
+        self.log("Set up mongodb successfully")
+
     def periodic_update(self):
         if not self._mongodb_inited:
             # do this here in case mongodb is installed after discovery-server has been started
@@ -128,9 +130,10 @@ class EventLogPollerProcess(threading_tools.process_obj):
                     self._log_current_jobs()
 
     def _log_current_jobs(self):
-        self.log("Current jobs ({}):".format(len(self.jobs_running)))
-        for job in self.jobs_running:
-            self.log("  {}".format(job))
+        if global_config['DEBUG']:
+            self.log("Current jobs ({}):".format(len(self.jobs_running)))
+            for job in self.jobs_running:
+                self.log("  {}".format(job))
 
     def _select_next_job(self):
         chosen_one = None
