@@ -100,7 +100,8 @@ class ServiceTransition(object):
                 cur_time = time.time()
                 _doit = True
                 if entry.name in self.__wait_dict:
-                    if abs(cur_time - self.__wait_dict[entry.name]) < int(entry.attrib["wait_time"]):
+                    _wait_time = 2 if self.target == "debug" else int(entry.attrib["wait_time"])
+                    if abs(cur_time - self.__wait_dict[entry.name]) < _wait_time:
                         new_list.append((_action, entry))
                         _doit = False
                     else:

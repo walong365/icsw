@@ -95,6 +95,8 @@ class ServiceState(object):
         self._init_states()
         self.init_db()
         self.__shutdown = False
+        # for throtteling
+        self.__throttle_dict = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[SrvState] {}".format(what), log_level)
@@ -456,13 +458,25 @@ class ServiceState(object):
             if name in self.__transition_lock_dict:
                 del self.__transition_lock_dict[name]
 
+    def _check_for_throttle(self, el, cur_time, t_dict):
+        if el.name in t_dict and el.name in self.__throttle_dict and abs(cur_time - self.__throttle_dict[el.name]) < t_dict[el.name]:
+            self.log("throtteling transition generation for {}".format(el.name), logging_tools.LOG_LEVEL_WARN)
+            return True
+        else:
+            self.__throttle_dict[el.name] = cur_time
+            return False
+
     def update(self, res_list, **kwargs):
         # services to exclude from transition
         exclude = kwargs.get("exclude", [])
         # force mode (for first call or command-line induced)
         force = kwargs.get("force", False)
+        # list of instances which should be throttled
+        throttle_dict = {key: delay for key, delay in kwargs.get("throttle", [])}
         # return a transition list
         t_list = []
+        # time
+        cur_time = time.time()
         for _el in res_list:
             if int(_el.entry.attrib["startstop"]):
                 # ignore entries without startstop == 1
@@ -476,7 +490,8 @@ class ServiceState(object):
                     if not _is_ok:
                         if self.__shutdown:
                             if _el.name not in exclude:
-                                t_list.extend(self._generate_transition(_el))
+                                if not self._check_for_throttle(_el, cur_time, throttle_dict):
+                                    t_list.extend(self._generate_transition(_el))
                         else:
                             _stable = self._check_for_stable_state(_el)
                             _el.log(
@@ -492,9 +507,8 @@ class ServiceState(object):
                             )
                             if _stable or force:
                                 if _el.name not in exclude:
-                                    t_list.extend(self._generate_transition(_el))
-                    # if _state or True:
-                    #    print "*", _el.name, _state, len(_pids)
+                                    if not self._check_for_throttle(_el, cur_time, throttle_dict):
+                                        t_list.extend(self._generate_transition(_el))
                 else:
                     _el.log("no result entry found", logging_tools.LOG_LEVEL_WARN)
         self.conn.commit()

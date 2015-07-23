@@ -160,11 +160,12 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self.__exit_process = True
-            if not (self.__next_stop_is_restart or global_config["DEBUG"]):
+            if not (self.__next_stop_is_restart):  # or global_config["DEBUG"]):
                 self.service_state.enable_shutdown_mode()
                 _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
                 trans_list = self.service_state.update(
                     _res_list,
+                    throttle=[("uwsgi-init", 5)],
                     exclude=["logging-server", "meta-server"],
                 )
                 self._new_transitions(trans_list)
@@ -349,6 +350,7 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
         trans_list = self.service_state.update(
             _res_list,
             exclude=["meta-server", "logging-server"],
+            throttle=[("uwsgi-init", 5)],
             # force first call
             force=(self.__loopcount == 1 or force),
         )
