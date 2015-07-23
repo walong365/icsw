@@ -443,7 +443,7 @@ def check_for_0800(opts):
         ds1.restore(800)
         # fake migration
         call_manage(["makemigrations", "backbone", "--merge", "--noinput"])
-        call_manage(["migrate", "backbone", "--noinput"])
+        call_manage(["migrate", "backbone", "--noinput", "--fake"])
         ds1.restore()
         ds1.cleanup()
 
