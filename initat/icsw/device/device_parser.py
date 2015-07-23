@@ -32,6 +32,7 @@ class Parser(object):
         parser.set_defaults(subcom="device", execute=self._execute)
         child_parser = parser.add_subparsers(help="device subcommands")
         self._add_info_parser(child_parser)
+        self._add_overview_parser(child_parser)
         # self._add_reboot_parser(child_parser)
         self._add_graphdump_parser(child_parser)
         self._add_removegraph_parser(child_parser)
@@ -40,7 +41,15 @@ class Parser(object):
     def _add_info_parser(self, sub_parser):
         _act = sub_parser.add_parser("info", help="show device info")
         _act.set_defaults(childcom="info")
+        _act.add_argument("--ip", default=False, action="store_true", help="enable display of IP-info [%(default)s]")
+        _act.add_argument("--boot", default=False, action="store_true", help="enable display of bootrecords [%(default)s]")
+        _act.add_argument("--join-logs", default=False, action="store_true", help="join logs [%(default)s]")
         self._add_many_device_option(_act)
+
+    def _add_overview_parser(self, sub_parser):
+        _act = sub_parser.add_parser("overview", help="show device structur (groups)")
+        _act.add_argument("--devices", default=False, action="store_true", help="show devices [%(default)s]")
+        _act.set_defaults(childcom="overview")
 
     def _add_graphdump_parser(self, sub_parser):
         _act = sub_parser.add_parser("graphdump", help="show graph structure")
@@ -55,8 +64,13 @@ class Parser(object):
         self._add_many_device_option(_act)
 
     def _add_many_device_option(self, _parser):
-        _parser.add_argument("dev", type=str, nargs="+", help="device to query [%(default)s]", default="")
+        _parser.add_argument("-g", type=str, dest="groupname", default="", help="name of group [%(default)s]")
+        _parser.add_argument("dev", type=str, nargs="*", help="device to query [%(default)s]", default="")
 
     def _execute(self, opt_ns):
-        from .main import main
-        main(opt_ns)
+        from .main import dev_main, overview_main
+        if opt_ns.childcom in ["info", "graphdump", "removegraph"]:
+            dev_main(opt_ns)
+        else:
+            overview_main(opt_ns)
+

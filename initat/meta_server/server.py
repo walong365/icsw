@@ -254,8 +254,10 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
             for log_line, log_level in global_config.get_log():
                 self.log("Config info : [{:d}] {}".format(log_level, log_line))
         except:
-            self.log("error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         conf_info = global_config.get_config_info()
         self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:

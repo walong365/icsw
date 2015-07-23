@@ -28,62 +28,103 @@ import django
 django.setup()
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, device_group
 from initat.cluster.backbone.models.functions import to_system_tz
 from initat.tools import logging_tools
 import re
+import datetime
 
 
-def device_info(cur_dev):
+class JoinedLogs(object):
+    def __init__(self):
+        self._records = {}
+
+    def feed(self, what, dev, log_list):
+        for _log in log_list:
+            self._records.setdefault(what, []).append((_log.date, dev, _log))
+
+    def show(self):
+        if not self._records:
+            print("no log records found")
+        else:
+            for _key in sorted(self._records.keys()):
+                print("{} records ({})".format(_key, logging_tools.get_plural("entry", len(self._records[_key]))))
+                _prev_day = None
+                for _entry in sorted(self._records[_key]):
+                    _cur_day = datetime.date(_entry[0].year, _entry[0].month, _entry[0].day)
+                    if _cur_day != _prev_day:
+                        _prev_day = _cur_day
+                        print("")
+                        print(_cur_day.strftime("%a, %d. %b %Y"))
+                        print("")
+                    self.show_record(_key, _entry)
+
+    def format_boot_record(self, entry, device=None):
+        return "  {} {}kernel: {}, image: {}".format(
+            to_system_tz(entry.date),
+            "dev={:<30s}".format(unicode(device)) if device else "",
+            ", ".join(
+                [
+                    "{} ({}, {})".format(
+                        unicode(_kernel.kernel.name),
+                        _kernel.full_version,
+                        _kernel.timespan,
+                    ) for _kernel in entry.kerneldevicehistory_set.all()
+                ]
+            ) or "---",
+            ", ".join(
+                [
+                    "{} ({}, {})".format(
+                        unicode(_image.image.name),
+                        _image.full_version,
+                        _image.timespan,
+                    ) for _image in entry.imagedevicehistory_set.all()
+                ]
+            ) or "---",
+        )
+
+    def show_record(self, ltype, entry):
+        if ltype == "boot":
+            print(self.format_boot_record(entry[2], device=entry[1]))
+        else:
+            print("unknown record type '{}'".format(ltype))
+
+
+def device_info(opt_ns, cur_dev, j_logs):
     print(u"Information about device '{}' (full name {}, devicegroup {})".format(
         unicode(cur_dev),
         unicode(cur_dev.full_name),
         unicode(cur_dev.device_group))
     )
     print("UUID is '{}', database-ID is {:d}".format(cur_dev.uuid, cur_dev.pk))
-    net_devs = cur_dev.netdevice_set.all().order_by("devname")
-    if len(net_devs):
-        for cur_nd in net_devs:
-            print(
-                "    {}".format(
-                    cur_nd.devname,
-                )
-            )
-            for cur_ip in cur_nd.net_ip_set.all().order_by("ip"):
+    if opt_ns.ip:
+        net_devs = cur_dev.netdevice_set.all().order_by("devname")
+        if len(net_devs):
+            for cur_nd in net_devs:
                 print(
-                    "        IP {} in network {}".format(
-                        cur_ip.ip,
-                        unicode(cur_ip.network),
+                    "    {}".format(
+                        cur_nd.devname,
                     )
                 )
-    print("")
-    if cur_dev.deviceboothistory_set.count():
-        _brs = cur_dev.deviceboothistory_set.all()
-        print("found {}".format(logging_tools.get_plural("boot record", len(_brs))))
-        for _entry in _brs:
-            print "  {}, kernel: {}, image: {}".format(
-                to_system_tz(_entry.date),
-                ", ".join(
-                    [
-                        "{} ({}, {})".format(
-                            unicode(_kernel.kernel.name),
-                            _kernel.full_version,
-                            _kernel.timespan,
-                        ) for _kernel in _entry.kerneldevicehistory_set.all()
-                    ]
-                ) or "---",
-                ", ".join(
-                    [
-                        "{} ({}, {})".format(
-                            unicode(_image.image.name),
-                            _image.full_version,
-                            _image.timespan,
-                        ) for _image in _entry.imagedevicehistory_set.all()
-                    ]
-                ) or "---",
-            )
-    else:
-        print("device has not boot history records")
+                for cur_ip in cur_nd.net_ip_set.all().order_by("ip"):
+                    print(
+                        "        IP {} in network {}".format(
+                            cur_ip.ip,
+                            unicode(cur_ip.network),
+                        )
+                    )
+        print("")
+    if opt_ns.boot:
+        if opt_ns.join_logs:
+            j_logs.feed("boot", cur_dev, cur_dev.deviceboothistory_set.all())
+        else:
+            if cur_dev.deviceboothistory_set.count():
+                _brs = cur_dev.deviceboothistory_set.all()
+                print("found {}".format(logging_tools.get_plural("boot record", len(_brs))))
+                for _entry in _brs:
+                    print(j_logs.format_boot_record(_entry))
+            else:
+                print("device has no boot history records")
 
 
 def show_vector(_dev):
@@ -126,11 +167,14 @@ def remove_graph(_dev, opt_ns):
             [_struct.delete() for _struct in _to_delete]
 
 
-def main(opt_ns):
+def dev_main(opt_ns):
     # resolve devices
     dev_dict = {
         _dev.name: _dev for _dev in device.objects.filter(Q(name__in=opt_ns.dev))
     }
+    if opt_ns.groupname:
+        for _dev in device.objects.filter(Q(device_group__name__in=opt_ns.groupname.split(","))):
+            dev_dict[_dev.name] = _dev
     _unres = set(opt_ns.dev) - set(dev_dict.keys())
     print(
         "{}: {}{}".format(
@@ -141,10 +185,11 @@ def main(opt_ns):
             ) if _unres else ""
         )
     )
+    j_logs = JoinedLogs()
     for dev_name in sorted(dev_dict.keys()):
         cur_dev = dev_dict[dev_name]
         if opt_ns.childcom == "info":
-            device_info(cur_dev)
+            device_info(opt_ns, cur_dev, j_logs)
         elif opt_ns.childcom == "graphdump":
             show_vector(cur_dev)
         elif opt_ns.childcom == "removegraph":
@@ -156,3 +201,25 @@ def main(opt_ns):
                     unicode(cur_dev),
                 )
             )
+    if opt_ns.childcom == "info":
+        j_logs.show()
+
+
+def overview_main(opt_ns):
+    print("Group structure")
+    for _devg in device_group.objects.all().prefetch_related("device_group"):
+        print(
+            "G [pk={:4d}] {}, {}".format(
+                _devg.pk,
+                unicode(_devg),
+                logging_tools.get_plural("device", _devg.device_group.all().count()),
+            )
+        )
+        if opt_ns.devices:
+            for _dev in _devg.device_group.all():
+                print(
+                    "    D [pk={:4d}] {}".format(
+                        _dev.pk,
+                        unicode(_dev),
+                    )
+                )
