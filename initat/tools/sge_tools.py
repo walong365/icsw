@@ -370,7 +370,7 @@ class sge_info(object):
             if _c_stat:
                 job_xml = E.call_error(c_out, stat="{:d}".format(_c_stat))
             else:
-                job_xml = etree.fromstring(c_out)  # @UndefinedVariable
+                job_xml = etree.parse(StringIO(c_out), self.xml_parser)
             # print etree.tostring(job_xml, pretty_print=True)
             ext_xml = E.job_ext_info()
             _exec_time_el = job_xml.find(".//JB_execution_time")
