@@ -32,6 +32,14 @@ test -x ${CHILD_BIN} || exit 5
 
 rc_reset
 
+function do_status () {
+    if [ "${RH}" = "1" ] ; then
+        status ${HOSTSTAT_BIN}
+    else
+        /sbin/checkproc ${HOSTSTAT_BIN}
+    fi
+}
+
 # set variables
 export CRL_MESG="to runlevel"
 export HOSTSTAT_ARG="running"
@@ -91,13 +99,8 @@ case "$1" in
         ;;
     status)
         echo -n "Checking for hoststatus..."
-        if [ -f /etc/redhat-release ] ; then
-            status ${HOSTSTAT_BIN}
-        else
-            checkproc ${HOSTSTAT_BIN}
-        fi
+        do_status
         rc_status -v
-        rc_reset
         ;;
     *)
         echo "Usage: $0 {start|stop|force-stop|status}"
