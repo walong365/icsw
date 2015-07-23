@@ -32,6 +32,28 @@ test -x ${CHILD_BIN} || exit 5
 
 rc_reset
 
+# check for redhat
+if [ -f /etc/redhat-release ] ; then
+    export RH=1
+    . /etc/init.d/functions
+else
+    export RH=0
+fi
+
+# check for debian
+if [ -f /etc/debian_version ] ; then
+    export DB=1
+else
+    export DB=0
+fi
+
+# check for suse
+if [ -f /etc/SuSE-release ] ; then
+    export SUSE=1
+else
+    export SUSE=0
+fi
+
 function do_status () {
     if [ "${RH}" = "1" ] ; then
         status ${HOSTSTAT_BIN}

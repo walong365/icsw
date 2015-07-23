@@ -328,7 +328,6 @@ class sge_info(object):
             if _c_stat:
                 job_xml = E.call_error(c_out, stat="{:d}".format(_c_stat))
             else:
-                fromstring
                 job_xml = etree.parse(StringIO(c_out), self.xml_parser)
             job_name = job_xml.findtext(".//JB_job_name")
             # check for non-standard path

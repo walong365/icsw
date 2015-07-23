@@ -72,8 +72,9 @@ class accounting_process(threading_tools.process_obj):
     def _check_sge_version(self):
         self._qacct_options = []
         cur_stat, cur_out, log_lines = call_command(
-            "{} -help".format(
+            "{} {}".format(
                 self._get_sge_bin("qacct"),
+                "-help",
             ),
         )
         if not cur_stat:
