@@ -215,7 +215,10 @@ angular.module(
                 for key in scope.keys
                     if !scope.columnToggleDict? or scope.columnToggleDict[key]
                         if entry[key]?
-                            td = angular.element("<td>#{entry[key]}</td>")
+                            if angular.isArray(entry[key])
+                                td = angular.element("<td>#{entry[key].join("<br />")}</td>")
+                            else
+                                td = angular.element("<td>#{entry[key]}</td>")
                         else
                             td = angular.element("<td />")
                         tr.append(td)
