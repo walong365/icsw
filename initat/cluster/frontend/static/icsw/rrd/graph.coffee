@@ -653,8 +653,7 @@ angular.module(
             if entry._node_type == "s"
                 entry.expand = ! entry.expand
             else if entry._node_type == "e"
-                entry.set_selected(!entry.selected)
-                @scope.selection_changed()
+                @_jq_toggle_checkbox_node(entry)
             @scope.$digest()
         selection_changed: () =>
             @scope.selection_changed()
