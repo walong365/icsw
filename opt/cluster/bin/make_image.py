@@ -125,7 +125,8 @@ class build_process(threading_tools.process_obj):
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=self.zmq_context,
-            init_logger=True)
+            init_logger=True
+        )
         connection.close()
         self.register_func("compress", self._compress)
 
@@ -225,7 +226,9 @@ class server_process(threading_tools.process_pool):
         self.__verbose = global_config["VERBOSE"]
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
-            self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"]
+            self,
+            "main",
+            zmq=True,
         )
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -624,7 +627,6 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
             ("COMPRESSION", configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
             ("COMPRESSION_OPTION", configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
             ("VERBOSE", configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
