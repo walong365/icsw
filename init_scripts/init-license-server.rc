@@ -22,7 +22,6 @@ if [ -f /etc/rc.status ] ; then
 else
     . /etc/rc.status_suse
 fi
-. /etc/sysconfig/init-license-server
 . /etc/init.d/ics_tools.sh
 
 TOOLS_BIN=/opt/cluster/bin/license_server_tool.py

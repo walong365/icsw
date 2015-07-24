@@ -177,7 +177,6 @@ def main():
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=prog_name in ["collserver", "collrelay"],
         positional_arguments=prog_name in ["collclient"],
         partial=prog_name in ["collclient"],
         add_auto_config_option=prog_name in ["collserver"],
@@ -187,6 +186,5 @@ def main():
     if global_config.show_autoconfig():
         ret_state = 0
     else:
-        global_config.write_file()
         ret_state = run_code(prog_name, global_config)
     return ret_state

@@ -1302,13 +1302,11 @@ def zmq_main_code():
     global_config.parse_file()
     if NEW_CODE:
         options = global_config.handle_commandline(
-            add_writeback_option=True,
             positional_arguments=True,
             positional_arguments_optional=True,
         )
     else:
         options = global_config.handle_commandline(
-            add_writeback_option=True,
             positional_arguments=True,
         )
     _exit = False

@@ -55,8 +55,8 @@ def main():
     _options = global_config.handle_commandline(
         description="%s, version is %s" % (
             prog_name,
-            VERSION_STRING),
-        add_writeback_option=True,
+            VERSION_STRING
+        ),
         positional_arguments=False
     )
     cluster_location.read_config_from_db(

@@ -26,8 +26,7 @@ import socket
 
 from initat.meta_server.config import global_config
 from initat.meta_server.server import main_process
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 from initat.client_version import VERSION_STRING
 
 
@@ -66,7 +65,6 @@ def main():
         add_auto_config_option=True,
     )
     if not global_config.show_autoconfig():
-        global_config.write_file()
         main_process().loop()
         os._exit(0)
     return 0

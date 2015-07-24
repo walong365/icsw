@@ -64,19 +64,14 @@ def main():
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=True,
-        add_exit_after_writeback_option=True,
         positional_arguments=False,
         add_auto_config_option=True,
         partial=False
     )
     ret_code = 0
-    if _options.exit_after_writeback and _options.writeback:
-        pass
-    elif global_config.show_autoconfig():
+    if global_config.show_autoconfig():
         pass
     else:
-        global_config.write_file()
         ps_file_name = global_config["PACKAGE_SERVER_FILE"]
         if not os.path.isfile(ps_file_name):
             try:

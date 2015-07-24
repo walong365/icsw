@@ -47,7 +47,7 @@ def main():
             ("SRV_COM_MODE", configfile.bool_c_var(True, help_string="disbale server command mode [%(default)s], always True for 0MQ", short_options="S"))
         ]
     )
-    options = my_config.handle_commandline(add_writeback_option=False, positional_arguments=True)
+    options = my_config.handle_commandline(positional_arguments=True)
     start_time = time.time()
     if my_config["ZMQ"]:
         conn_str = "%s://%s:%d" % (my_config["PROTOCOLL"],

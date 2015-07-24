@@ -36,11 +36,8 @@ def main():
         [
             ("BASEDIR_NAME", configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("VERBOSE", configfile.int_c_var(0)),
-            ("DAEMONIZE", configfile.bool_c_var(True)),
             ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
             ("MAIN_TIMER", configfile.int_c_var(60, help_string="main timer [%(default)d]")),
-            ("BACKLOG_SIZE", configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
             ("LOG_NAME", configfile.str_c_var("snmp-relay")),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
             ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
@@ -56,13 +53,10 @@ def main():
             ),
         ]
     )
-    global_config.parse_file()
     _options = global_config.handle_commandline(
         positional_arguments=False,
         partial=False,
-        add_writeback_option=True,
     )
-    global_config.write_file()
     process_tools.ALLOW_MULTIPLE_INSTANCES = False
     run_code()
     configfile.terminate_manager()

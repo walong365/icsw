@@ -33,8 +33,7 @@ import sys
 import threading
 
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 class config_proxy(BaseProxy):
@@ -91,9 +90,6 @@ class config_proxy(BaseProxy):
     def parse_file(self, *args, **kwargs):
         return self._callmethod("parse_file", (args), kwargs)
 
-    def write_file(self, *args):
-        return self._callmethod("write_file", (args))
-
     def show_autoconfig(self, *args):
         return self._callmethod("show_autoconfig", (args))
 
@@ -131,9 +127,12 @@ class _conf_var(object):
         self.__default_val = def_val
         self.__info = kwargs.get("info", "")
         if not self.check_type(def_val):
-            raise TypeError("Type of Default-value differs from given type ({}, {})".format(
-                type(def_val),
-                str(self.short_type)))
+            raise TypeError(
+                "Type of Default-value differs from given type ({}, {})".format(
+                    type(def_val),
+                    str(self.short_type)
+                )
+            )
         self.source = kwargs.get("source", "default")
         self.fixed = kwargs.get("fixed", False)
         self.is_global = kwargs.get("is_global", True)
@@ -146,13 +145,13 @@ class _conf_var(object):
         self._nargs = kwargs.get("nargs", None)
         self._database_set = "database" in kwargs
         self._database = kwargs.get("database", False)
-        self._writeback = kwargs.get("writeback", True)
         self._only_commandline = kwargs.get("only_commandline", False)
-        kw_keys = set(kwargs) - set([
-            "writeback", "only_commandline", "info", "source", "fixed", "action",
-            "help_string", "autoconf_exclude", "short_options", "choices", "nargs", "database",
-            "writeback"
-        ])
+        kw_keys = set(kwargs) - set(
+            [
+                "only_commandline", "info", "source", "fixed", "action",
+                "help_string", "autoconf_exclude", "short_options", "choices", "nargs", "database",
+            ]
+        )
         if kw_keys:
             print "*** {} for _conf_var('{}') left: {} ***".format(
                 logging_tools.get_plural("keyword argument", len(kw_keys)),
@@ -190,10 +189,7 @@ class _conf_var(object):
         if self.argparse_type is None:
             if self.short_type == "b":
                 # bool
-                if self._only_commandline and not self._writeback:
-                    arg_parser.add_argument(*opts, action="store_{}".format("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
-                else:
-                    arg_parser.add_argument(*opts, action="store_{}".format("false" if self.value else "true"), default=self.value, **kwargs)
+                arg_parser.add_argument(*opts, action="store_{}".format("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
             else:
                 print("*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type)
         else:
@@ -426,7 +422,6 @@ class configuration(object):
         self.__spm = kwargs.pop("single_process_mode", False)
         self.__c_dict = OrderedDict()
         self.clear_log()
-        self.__writeback_changes = False
         if args:
             self.add_config_entries(*args)
 
@@ -640,8 +635,12 @@ class configuration(object):
                                 try:
                                     cur_type = self.get_type(key)
                                 except KeyError:
-                                    self.log("Error: key {} not defined in dictionary for get_type".format(key),
-                                             logging_tools.LOG_LEVEL_ERROR)
+                                    self.log(
+                                        "Error: key {} not defined in dictionary for get_type".format(
+                                            key
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
                                 else:
                                     # interpret using eval
                                     if cur_type == "s":
@@ -657,51 +656,34 @@ class configuration(object):
                                             "{}, sec {}".format(file_name, act_section)
                                         )
                                     except KeyError:
-                                        self.log("Error: key {} not defined in dictionary".format(key),
-                                                 logging_tools.LOG_LEVEL_ERROR)
+                                        self.log(
+                                            "Error: key {} not defined in dictionary".format(
+                                                key
+                                            ),
+                                            logging_tools.LOG_LEVEL_ERROR
+                                        )
                                     else:
                                         if self.__verbose:
-                                            self.log("Changing value of key {} to {}".format(key, self.__c_dict[key]))
+                                            self.log(
+                                                "Changing value of key {} to {}".format(
+                                                    key,
+                                                    self.__c_dict[key]
+                                                )
+                                            )
                             else:
-                                self.log("Error parsing line '{}'".format(str(line)),
-                                         logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("Cannot find file {}".format(file_name),
-                     logging_tools.LOG_LEVEL_ERROR)
-
-    def write_file(self, *args):
-        if len(args):
-            file_name = args[0]
-        else:
-            file_name = os.path.join("/etc", "sysconfig", self.__name)
-        if (not os.path.isfile(file_name)) or (os.path.isfile(file_name) and self.__writeback_changes):
-            all_keys = self.__c_dict.keys()
-            try:
-                open(file_name, "w").write(
-                    "\n".join(
-                        sum(
-                            [
-                                [
-                                    "# {}".format(self.__c_dict[key]),
-                                    "# {}".format(self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
-                                    "# {}".format(self.__c_dict[key].get_commandline_info()),
-                                    "{}={}".format(
-                                        key,
-                                        "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value
+                                self.log(
+                                    "Error parsing line '{}'".format(
+                                        str(line)
                                     ),
-                                    ""
-                                ] for key in all_keys if (
-                                    not self.get_cvar(key)._only_commandline and self.get_cvar(key)._writeback
+                                    logging_tools.LOG_LEVEL_ERROR
                                 )
-                            ],
-                            [""]
-                        )
-                    )
-                )
-            except:
-                self.log("Error while writing file {}: {}".format(file_name, process_tools.get_except_info()))
-            else:
-                pass
+        else:
+            self.log(
+                "Cannot find file {}".format(
+                    file_name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def show_autoconfig(self, *args):
         # returns True if the main process should exit
@@ -747,8 +729,6 @@ class configuration(object):
 
     def handle_commandline(self, **kwargs):
         proxy_call = kwargs.pop("proxy_call", False)
-        add_writeback_option = kwargs.pop("add_writeback_option", True)
-        add_exit_after_writeback_option = kwargs.pop("add_exit_after_writeback_option", False)
         pos_arguments = kwargs.pop("positional_arguments", False)
         pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
         add_auto_config_option = kwargs.pop("add_auto_config_option", False)
@@ -766,22 +746,6 @@ class configuration(object):
                 argparse_entries.append(key)
                 c_var.add_argument(key, my_parser)
         if argparse_entries:
-            if add_writeback_option:
-                my_parser.add_argument(
-                    "--writeback",
-                    dest="writeback",
-                    default=False,
-                    action="store_true",
-                    help="write back changes to configfile [%(default)s]"
-                )
-                if add_exit_after_writeback_option:
-                    my_parser.add_argument(
-                        "--exit-after-writeback",
-                        dest="exit_after_writeback",
-                        default=False,
-                        action="store_true",
-                        help="exit after config file is written [%(default)s]"
-                    )
             if add_auto_config_option:
                 my_parser.add_argument(
                     "--show-autoconfig",
@@ -814,11 +778,9 @@ class configuration(object):
                 for key in argparse_entries:
                     self[key] = getattr(options, key)
                 self.positional_arguments = options.arguments if pos_arguments else []
-                self.__writeback_changes = options.writeback if add_writeback_option else False
                 self.__show_autoconfig = getattr(options, "show_autoconfig", False)
         else:
             options = argparse.Namespace()
-            self.__writeback_changes = False
             self.__show_autoconfig = False
         if proxy_call:
             return options, self.exit_code
@@ -893,14 +855,20 @@ class config_manager(BaseManager):
         except KeyError:
             pass
 
-config_manager.register("config", configuration, config_proxy, exposed=[
-    "parse_file", "add_config_entries", "set_uid_gid",
-    "single_process_mode", "help_string",
-    "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
-    "is_global", "database", "is_global", "set_global",
-    "__getitem__", "__setitem__", "__contains__", "__delitem__",
-    "show_autoconfig",
-    "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
+config_manager.register(
+    "config",
+    configuration,
+    config_proxy,
+    exposed=[
+        "parse_file", "add_config_entries", "set_uid_gid",
+        "single_process_mode", "help_string",
+        "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
+        "is_global", "database", "is_global", "set_global",
+        "__getitem__", "__setitem__", "__contains__", "__delitem__",
+        "show_autoconfig",
+        "get_config_info", "name", "get_argument_stuff", "fixed",
+    ]
+)
 
 cur_manager = config_manager()
 

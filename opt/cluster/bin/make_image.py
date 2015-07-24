@@ -36,15 +36,11 @@ from initat.cluster.backbone.models import image
 from lxml import etree  # @UnresolvedImports
 from initat.tools import config_tools
 from initat.tools import configfile
-from initat.tools import logging_tools
-import pprint
-from initat.tools import process_tools
-import shutil
+from initat.tools import logging_tools, process_tools, threading_tools
 import stat
 import statvfs
 import subprocess
 import tempfile
-from initat.tools import threading_tools
 import time
 import shutil
 
@@ -659,10 +655,8 @@ def main():
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=True,
         positional_arguments=False
     )
-    global_config.write_file()
     if not all_imgs:
         print("No images found")
         sys.exit(1)

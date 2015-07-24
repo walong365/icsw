@@ -53,7 +53,7 @@ class server_process(threading_tools.process_pool):
         self.register_func("int_error", self._int_error)
         self.register_func("snmp_finished", self._snmp_finished)
         self.__verbose = global_config["VERBOSE"]
-        self.__max_calls = global_config["MAX_CALLS"] if global_config["DAEMONIZE"] else 5
+        self.__max_calls = global_config["MAX_CALLS"]
         self._log_config()
         # init luts
         self.__ip_lut, self.__forward_lut = ({}, {})

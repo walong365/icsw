@@ -57,7 +57,6 @@ def main():
             prog_name,
             VERSION_STRING
         ),
-        add_writeback_option=True,
         positional_arguments=False,
     )
     cluster_location.read_config_from_db(

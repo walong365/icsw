@@ -62,7 +62,6 @@ def main():
         description="{}, version is {}".format(
             prog_name,
             VERSION_STRING),
-        add_writeback_option=True,
         positional_arguments=False
     )
     global_config.add_config_entries(

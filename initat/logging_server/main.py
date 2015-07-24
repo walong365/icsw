@@ -71,6 +71,5 @@ def main():
             os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         except:
             pass
-        global_config.write_file()
         main_process(options).loop()
     return 0

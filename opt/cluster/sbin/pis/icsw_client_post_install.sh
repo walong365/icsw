@@ -73,9 +73,6 @@ if [ -f /etc/debian_version ] ; then
         ${USRSBIN}/update-rc.d ${client} start 25 2 3 5 . stop 75 0 1 4 6 .
     done
 fi
-# generate package-client config if not present
-# not working right now, FIXME
-# ${ICSW_SBIN}/package-client.py --writeback --exit-after-writeback
 
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 

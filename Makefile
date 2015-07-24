@@ -163,8 +163,8 @@ install:
 	${LN} -s ${PYTHON_SITE}/initat/tools/send_mail.py ${DESTDIR}/${ICSW_BIN}/
 	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
-	${INSTALL} ${INSTALL_OPTS} loadmodules ${DESTDIR}/${INIT}/loadmodules
-	${INSTALL} ${INSTALL_OPTS} init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
+	${INSTALL} ${INSTALL_OPTS} init-scripts/loadmodules ${DESTDIR}/${INIT}/loadmodules
+	${INSTALL} ${INSTALL_OPTS} init-scripts/init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
 	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
@@ -182,17 +182,8 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/logging-server.d
 	touch ${DESTDIR}/etc/sysconfig/cluster/.disable_rrdcached_start
 	cp -a db.cf ${DESTDIR}/etc/sysconfig/cluster/db.cf.sample
-	${INSTALL} ${INSTALL_OPTS} logging-server.cf ${DESTDIR}/${SYSCONF}/logging-server
-	${INSTALL} ${INSTALL_OPTS} configs/host-monitoring ${DESTDIR}/${SYSCONF}/host-monitoring
-	${INSTALL} ${INSTALL_OPTS} configs/host-relay ${DESTDIR}/${SYSCONF}/host-relay
 	touch ${DESTDIR}/${SYSCONF}/logging-server.d/tail
-	${INSTALL} ${INSTALL_OPTS} init-license-server.cf ${DESTDIR}/${SYSCONF}/init-license-server
-	${INSTALL} ${INSTALL_OPTS} configs/mother.cf ${DESTDIR}/${SYSCONF}/mother
-	${INSTALL} ${INSTALL_OPTS} logcheck-server.cf ${DESTDIR}/${SYSCONF}/logcheck-server
-	install ${INSTALL_OPTS} md-config-server.cf ${DESTDIR}/${SYSCONF}/md-config-server
 	${INSTALL} ${INSTALL_OPTS} test_license ${DESTDIR}/${SYSCONF}/init-license-server.d
-	${INSTALL} ${INSTALL_OPTS} discovery-server.cf ${DESTDIR}/${SYSCONF}/discovery-server
-	${INSTALL} ${INSTALL_OPTS} cluster-config-server.cf ${DESTDIR}/${SYSCONF}/cluster-config-server
 	# /usr/local/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/local/bin
 	for link_source in sgenodestat sgejobstat sjs sns ; do \
@@ -236,8 +227,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${META_DIR}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${CONFDIR_HM}
 	${INSTALL} ${INSTALL_OPTS} configs/remote_ping.test ${DESTDIR}/${CONFDIR_HM}
-	${INSTALL} ${INSTALL_OPTS} configs/host-monitoring ${DESTDIR}/${SYSCONF}/host-monitoring
-	# uwsgi 
+	# uwsgi
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/
 	${INSTALL} ${INSTALL_OPTS} nginx/${WSGI_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/webfrontend.wsgi.ini
