@@ -163,8 +163,8 @@ install:
 	${LN} -s ${PYTHON_SITE}/initat/tools/send_mail.py ${DESTDIR}/${ICSW_BIN}/
 	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
-	${INSTALL} ${INSTALL_OPTS} init-scripts/loadmodules ${DESTDIR}/${INIT}/loadmodules
-	${INSTALL} ${INSTALL_OPTS} init-scripts/init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
+	${INSTALL} ${INSTALL_OPTS} init_scripts/loadmodules ${DESTDIR}/${INIT}/loadmodules
+	${INSTALL} ${INSTALL_OPTS} init_scripts/init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
 	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
