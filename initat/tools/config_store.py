@@ -21,16 +21,11 @@
 simple interface to a file-base config store, file format is XML
 """
 
-import array
-import netifaces
-import sys
-import time
 import os
-
-from django.db.models import Q
-import networkx
-from initat.tools import configfile, logging_tools, process_tools
 from lxml import etree
+
+from initat.tools import configfile, logging_tools, process_tools
+from lxml.builder import E
 
 
 CS_NG = """
@@ -63,27 +58,62 @@ CS_NG = """
 """
 
 
+class ConfigVar(object):
+    def __init__(self, name, val, descr=""):
+        self.name = name
+        self.value = val
+        self.description = descr
+
+    def get_element(self):
+        if type(self.value) in [int, long]:
+            _val = "{:d}".format(self.value)
+            _type = "int"
+        elif type(self.value) is bool:
+            _val = "True" if self.value else "False"
+            _type = "bool"
+        else:
+            _val = self.value
+            _type = "str"
+        _el = E.key(
+            _val,
+            name=self.name,
+            type=_type,
+        )
+        if self.description:
+            _el.attrib["description"] = self.description
+        return _el
+
+
 class ConfigStore(object):
     def __init__(self, name, log_com=None):
-        self.store_name = name
+        self.file_name = name
+        self.tree_valid = False
+        self.name = None
         self.__log_com = log_com
         self.vars = {}
         self.read()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
-            self.__log_com("[CS] {}".format(what), log_level)
+            self.__log_com(
+                "[CS {}] {}".format(
+                    self.name if self.tree_valid else "N/V",
+                    what,
+                ),
+                log_level
+            )
         else:
             print "{} {}".format(logging_tools.get_log_level_str(log_level), what)
 
     def read(self):
-        if os.path.isfile(self.store_name):
+        self.tree_valid = False
+        if os.path.isfile(self.file_name):
             try:
-                _tree = etree.fromstring(file(self.store_name, "r").read())
+                _tree = etree.fromstring(file(self.file_name, "r").read())
             except:
                 self.log(
                     "cannot read or interpret ConfigStore at '{}': {}".format(
-                        self.store_name,
+                        self.file_name,
                         process_tools.get_except_info(),
                     ),
                     logging_tools.LOG_LEVEL_ERROR,
@@ -92,17 +122,19 @@ class ConfigStore(object):
                 _ng = etree.RelaxNG(etree.fromstring(CS_NG))
                 _valid = _ng.validate(_tree)
                 if _valid:
+                    self.tree_valid = True
+                    self.name = _tree.get("name", "")
                     _found, _parsed = (0, 0)
                     for _key in _tree.xpath(".//key", smart_strings=False):
                         _found += 1
-                        _type = _key.attrib["type"]
                         _name = _key.attrib["name"]
+                        _type = _key.attrib["type"]
                         _val = _key.text
                         try:
                             if _type == "int":
                                 _val = int(_val)
                             elif _type == "bool":
-                                _val = bool(_val)
+                                _val = True if _val.lower() in ["y", "yes", "1", "true"] else False
                         except:
                             self.log(
                                 "error casting key '{}' to {} (text was '{}'): {}".format(
@@ -115,27 +147,55 @@ class ConfigStore(object):
                             )
                         else:
                             _parsed += 1
-                            self.vars[_name] = _val
+                            self.vars[_name] = ConfigVar(_name, _val, descr=_key.get("description", ""))
                     self.log(
                         "added {} from {} (found {})".format(
                             logging_tools.get_plural("variable", _parsed),
-                            self.store_name,
+                            self.file_name,
                             logging_tools.get_plural("key", _found),
                         )
                     )
                 else:
                     self.log(
                         "XML-tree from '{}' is invalid: {}".format(
-                            self.store_name,
+                            self.file_name,
                             str(_ng.error_log),
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
         else:
-            self.log("ConfigStore '{}' not found".format(self.store_name), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "ConfigStore '{}' not found".format(
+                    self.file_name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+
+    def write(self):
+        # dangerous, use with care
+        if self.tree_valid:
+            _root = E("config-store", name=self.name)
+            _kl = E("key-list")
+            for _key, _var in self.vars.iteritems():
+                _kl.append(_var.get_element())
+            _root.append(_kl)
+            try:
+                file(self.file_name, "w").write(etree.tostring(_root, pretty_print=True, xml_declaration=True))
+            except:
+                self.log(
+                    "cannot write tree to {}: {}".format(
+                        self.file_name,
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            else:
+                self.log("wrote to {}".format(self.file_name))
+        else:
+            self.log("tree is not valid", logging_tools.LOG_LEVEL_ERROR)
 
     def __getitem__(self, key):
-        return self.vars[key]
+        return self.vars[key].value
 
     def copy_to_global_config(self, global_config, mapping):
         _adds = []
