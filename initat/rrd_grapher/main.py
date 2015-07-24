@@ -46,9 +46,6 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
-            ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
-            ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
-            ("GROUPS", configfile.array_c_var([])),
             ("SERVER_PATH", configfile.bool_c_var(False, help_string="set server_path to store RRDs [%(default)s]", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),

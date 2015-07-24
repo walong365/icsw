@@ -46,8 +46,6 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
-            ("USER", configfile.str_c_var("root", help_string="user to run as [%(default)s]")),
-            ("GROUP", configfile.str_c_var("root", help_string="group to run as [%(default)s]")),
             ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True, help_string="modify /etc/exports [%(default)s]", action="store_true")),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ]

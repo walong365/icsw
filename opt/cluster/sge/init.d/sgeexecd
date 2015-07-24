@@ -11,7 +11,11 @@
 ### END INIT INFO
 # chkconfig: 35 96 2
 
+# suse
 export SYSTEMD_NO_WRAP="1"
+# redhat
+export SYSTEMCTL_SKIP_REDIRECT="1"
+
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -175,17 +179,11 @@ GetExecdSpoolDir() {
 usage() {
     echo "Grid Engine start/stop script. Valid parameters are:"
     echo ""
-    echo "   (no parameters): start execution daemon if applicable"
-    echo "   \"start\"        ditto."
-    echo "   \"stop\"         shutdown local Grid Engine processes and jobs"
-    echo "   \"softstop\"     shutdown local Grid Engine processes (no jobs)"
-    echo "   \"restart\"      restart local Grid Engine processes (keeping jobs)"
-    echo "   \"status\"       status of the sgeexecd"
-    echo ""
-    echo "Only one of \"start\", \"stop\", \"restart\", or \"softstop\" is allowed."
-    echo
-    echo "Default argument is \"start\" for all components."
-    echo "Default for \"stop\" is shutting down all components."
+    echo "   start        start the SGE execution daemon."
+    echo "   stop         shutdown local Grid Engine processes and jobs"
+    echo "   softstop     shutdown local Grid Engine processes (no jobs)"
+    echo "   restart      restart local Grid Engine processes (keeping jobs)"
+    echo "   status       status of the sgeexecd"
     echo
     exit 1
 }
