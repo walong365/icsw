@@ -107,7 +107,7 @@ class IpmiLogJob(EventLogPollerJobBase):
                     "list",
                 )
                 self.ext_com = ExtCom(job.log, cmd, shell=False,
-                                      debug=True)  # shell=False since args must not be parsed again
+                                      debug=global_config['DEBUG'])  # shell=False since args must not be parsed again
                 self.ext_com.run()
             else:
                 # job has been started, check
@@ -165,7 +165,7 @@ class IpmiLogJob(EventLogPollerJobBase):
                     "get",
                 )
                 self.ext_com = ExtCom(job.log, cmd, shell=False,
-                                      debug=True)  # shell=False since args must not be parsed again
+                                      debug=global_config['DEBUG'])  # shell=False since args must not be parsed again
                 self.ext_com.run()
             else:
                 exit_code = self.ext_com.finished()
@@ -237,7 +237,7 @@ class IpmiLogJob(EventLogPollerJobBase):
                 hex(self.current_record_id),
             )
             self.ext_com = ExtCom(job.log, cmd, shell=False,
-                                  debug=True)  # shell=False since args must not be parsed again
+                                  debug=global_config['DEBUG'])  # shell=False since args must not be parsed again
             self.ext_com.run()
 
         def check_current_output(self, job):
@@ -306,7 +306,7 @@ class IpmiLogJob(EventLogPollerJobBase):
     def _parse_section(self, section_string):
         lines = section_string.split("\n")
         # print 'parsing', section_string, '\nlines', lines
-        ret = None
+        section_content = None
         if lines:
             # keep the order at least for now (json will not obey it in general)
             section_content = collections.OrderedDict()
@@ -333,6 +333,18 @@ class IpmiLogJob(EventLogPollerJobBase):
             # States Asserted       : Redundancy State
             #                         [Fully Redundant]
 
+            def add_section_entry(key, entry):
+                # some keys can occur multiple times
+                # we make such values into lists
+                if key in section_content:
+                    if isinstance(section_content[key], list):
+                        section_content[key].append(entry)
+                    else:
+                        # make it into list
+                        section_content[key] = [section_content[key], entry]
+                else:
+                    section_content[key] = entry
+
             # we assume that lines with no keys belong to the last entry
             last_key = None
             for content_line in lines[1:]:
@@ -341,19 +353,17 @@ class IpmiLogJob(EventLogPollerJobBase):
                         self.log("Invalid content line in ipmi sel: {}".format(content_line),
                                  logging_tools.LOG_LEVEL_WARN)
                     else:
-                        section_content[last_key] = section_content[last_key] + ", " + content_line.strip()
-
+                        add_section_entry(last_key, content_line.strip())
                 else:
                     key, value = strip_list_entries(content_line.split(":", 1))
-                    section_content[key] = value
+                    add_section_entry(key, value)
 
                     last_key = key
 
-            ret = section_content
         else:
             self.log("Empty section in ipmi sel: {}".format(section_string),
                      logging_tools.LOG_LEVEL_WARN)
-        return ret
+        return section_content
 
     def _handle_stderr(self, stderr_out, context):
         self.log("impitool yielded error output in {}:".format(context), logging_tools.LOG_LEVEL_ERROR)

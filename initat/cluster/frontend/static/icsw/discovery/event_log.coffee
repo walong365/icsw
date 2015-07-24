@@ -28,6 +28,8 @@ angular.module(
             restrict: 'EA'
             templateUrl: 'icsw.discovery.event_log'
             link: (scope, el, attrs) ->
+                # this special pk is translated to mean all devices
+                scope.ALL_DEVICES_PK = -2
 
                 scope.set_active = (device_pk) ->
                     scope.cur_device_pk = parseInt(device_pk)
@@ -50,7 +52,7 @@ angular.module(
                 scope.tab_query_parameters = {}
 
                 _schedule_reload_timeout_promise = undefined
-                query_parameter_changed = () ->
+                scope.query_parameter_changed = () ->
                     if _schedule_reload_timeout_promise?
                         $timeout.cancel(_schedule_reload_timeout_promise)
 
@@ -62,7 +64,7 @@ angular.module(
 
                     _schedule_reload_timeout_promise = $timeout(init_reload, 350)
 
-                scope.$watch('tab_query_parameters', query_parameter_changed, true)
+                scope.$watch('tab_query_parameters', scope.query_parameter_changed, true)
 
                 scope.new_devsel = (sel) ->
                     scope.device_pks = sel
@@ -81,14 +83,14 @@ angular.module(
                             disabled_devs = []
                             enabled_devs = []
 
-                            has_device_with_logs = false
                             first_dev_pk_with_logs = undefined
+                            all_occurring_capabilities = []
                             for pk, dev_entry of scope.devices_rest.plain()
                                 if dev_entry.capabilities.length > 0
                                     desc = dev_entry.capabilities.join(", ")
                                     enabled_devs.push(pk)
                                     scope.device_mode[pk] = dev_entry.capabilities[0]
-                                    has_device_with_logs = true
+                                    all_occurring_capabilities = _.union(all_occurring_capabilities, dev_entry.capabilities)
                                     first_dev_pk_with_logs = first_dev_pk_with_logs || pk
                                 else
                                     desc = "N/A"
@@ -97,11 +99,20 @@ angular.module(
 
                             scope.device_pks_ordered = enabled_devs.concat(disabled_devs)
 
-                            scope.no_device_with_logs_selected = !has_device_with_logs
+                            scope.devices_rest[scope.ALL_DEVICES_PK] = {
+                                name: "All selected devices"
+                                full_name: "All selected devices"
+                                capabilities: all_occurring_capabilities
+                                capabilities_description: all_occurring_capabilities.join(", ")
+                            }
+
+                            if all_occurring_capabilities.length > 0
+                                scope.device_mode[scope.ALL_DEVICES_PK] = all_occurring_capabilities[0]
+                            scope.no_device_with_logs_selected = all_occurring_capabilities.length == 0
                             if scope.no_device_with_logs_selected
                                 scope.device_tab_active['no_device_tab'] = true
                             else
-                                scope.device_tab_active[first_dev_pk_with_logs] = true
+                                scope.device_tab_active[scope.ALL_DEVICES_PK] = true
                     )
 
                     # pipe() function for each tab
@@ -109,7 +120,7 @@ angular.module(
 
                     # need pipe functions for each tab since they must remember the table state
                     # in order to be able to get updated
-                    for device_pk in scope.device_pks
+                    for device_pk in scope.device_pks.concat([scope.ALL_DEVICES_PK])
                         do (device_pk) ->
                             scope.server_pagination_pipe[device_pk] = (table_state) ->
                                 if scope.cur_device_pk?
@@ -120,7 +131,6 @@ angular.module(
                                     #console.log 'got ok', device_pk, 'table state', table_state
                                     if table_state?
                                         pagination = table_state.pagination
-                                        scope.entries.is_loading = true
 
                                         query_parameters = scope.tab_query_parameters[scope.cur_device_pk]
                                         if !query_parameters?
@@ -164,8 +174,13 @@ angular.module(
                             # empty means no restriction
                             delete query_parameters[key]
 
+                    if parseInt(device_pk) == scope.ALL_DEVICES_PK
+                        device_pks_request = JSON.stringify(parseInt(pk) for pk in scope.device_pks_ordered)
+                    else
+                        device_pks_request = JSON.stringify([parseInt(device_pk)])
+
                     rest_params = {
-                        device_pks: JSON.stringify([parseInt(device_pk)])
+                        device_pks: device_pks_request
                         query_parameters: JSON.stringify(query_parameters)
                         mode: scope.device_mode[device_pk]
                         pagination_skip: skip
@@ -175,6 +190,7 @@ angular.module(
                     console.log 'cmp', _last_query_parameters, rest_params
                     if !_.isEqual(_last_query_parameters, rest_params)
                         _last_query_parameters = angular.copy(rest_params)
+                        scope.entries.is_loading = true
                         console.log 'really doing query'
                         defer = $q.defer()
                         if xhr.cur_request?
@@ -215,7 +231,10 @@ angular.module(
                 for key in scope.keys
                     if !scope.columnToggleDict? or scope.columnToggleDict[key]
                         if entry[key]?
-                            td = angular.element("<td>#{entry[key]}</td>")
+                            if angular.isArray(entry[key])
+                                td = angular.element("<td>#{entry[key].join("<br />")}</td>")
+                            else
+                                td = angular.element("<td>#{entry[key]}</td>")
                         else
                             td = angular.element("<td />")
                         tr.append(td)

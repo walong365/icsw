@@ -215,7 +215,7 @@ class mon_icinga_log_full_system_dump(models.Model):
     # i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
     # this is needed for faster access, the alerts-tables are too huge
     idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField(db_index=True)
+    date = models.DateTimeField(db_index=True, unique=True)
 
     class CSW_Meta:
         backup = False

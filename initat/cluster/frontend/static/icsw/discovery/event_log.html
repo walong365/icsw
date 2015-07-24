@@ -17,7 +17,7 @@
                     No device with logs selected.
                 </alert>
             </tab>
-            <tab ng-repeat="device_pk in device_pks_ordered"
+            <tab ng-repeat="device_pk in [ALL_DEVICES_PK].concat(device_pks_ordered) track by device_pk"
                     heading="{{devices_rest[device_pk].name}} ({{devices_rest[device_pk].capabilities_description}})"
                     active="device_tab_active[device_pk]"
                     select="set_active(device_pk)"
@@ -34,7 +34,8 @@
                                 </label>
                                 </span>
                             <select class="form-control input-sm" ng-model="device_mode[device_pk]"
-                                    ng-options="value as value for value in devices_rest[device_pk].capabilities"></select>
+                                    ng-options="value as value for value in devices_rest[device_pk].capabilities"
+                                    ng-change="query_parameter_changed()"></select>
                         </div>
                         <icsw-discovery-event-log-filters></icsw-discovery-event-log-filters>
                     </div>
