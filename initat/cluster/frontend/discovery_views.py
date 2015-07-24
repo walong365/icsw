@@ -226,11 +226,12 @@ class GetEventLog(View):
         def _regular_query(self, device_pks, pagination_skip, pagination_limit, filter_str=None):
             projection_obj = {
                 'sections': 1,
+                'device_pk': 1,
                 'keys_ordered': 1,
             }
             query_obj = self._get_match_obj(device_pks, filter_str)
 
-            sort_obj = [('record_id', pymongo.DESCENDING)]
+            sort_obj = [('creation_date', pymongo.DESCENDING)]
             entries = self.mongo.event_log_db.ipmi_event_log.find(
                 query_obj,
                 projection_obj,
@@ -242,19 +243,24 @@ class GetEventLog(View):
             entries.skip(pagination_skip)
             entries.limit(pagination_limit)
 
-            result = []
             entry_keys = collections.OrderedDict()  # we only use it as set
-            for entry in entries:  # exhaust cursor
-                result.append(entry['sections'])
-                for k in entry['keys_ordered']:
-                    if k != '__icsw_ipmi_section_type':
-                        entry_keys[k] = None
+
+            device_name_lut = {dev[0]: dev[1] for dev in device.objects.values_list('pk', 'name')}
+
             # merge ipmi sections into one dict for each entry
             result_merged = []
             grouping_keys = collections.OrderedDict()  # only set again
-            for entry in result:
+
+            include_device_info = len(device_pks) > 1
+
+            for entry in entries:  # exhaust cursor
+                # remove internal info
+                for key in entry['keys_ordered']:
+                    if key != '__icsw_ipmi_section_type':
+                        entry_keys[key] = None  # add k to ordered set
+
                 entry_sections_merged = {}
-                for section_num, section in enumerate(entry):
+                for section_num, section in enumerate(entry['sections']):
                     # filter internal fields
                     for k, v in section.iteritems():
                         if k != '__icsw_ipmi_section_type':
@@ -263,9 +269,14 @@ class GetEventLog(View):
                             if section_num == 1 and self._is_reasonable_grouping_key(k):
                                 grouping_keys[k] = None
 
+                if include_device_info:
+                    entry_sections_merged['Device'] = device_name_lut.get(entry['device_pk'], "Unknown device")
+
                 result_merged.append(entry_sections_merged)
 
             keys_ordered = entry_keys.keys()
+            if include_device_info:
+                keys_ordered = ['Device'] + keys_ordered
 
             return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_merged,
                                               grouping_keys=grouping_keys.keys())
@@ -317,16 +328,26 @@ class GetEventLog(View):
 
             projection_obj = {
                 'entry': 1,
+                'device_pk': 1,
             }
             sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
             entries = self.mongo.event_log_db.wmi_event_log.find(query_obj, projection_obj, sort=sort_obj)
             total_num = entries.count()
             entries.skip(self.pagination_skip)
             entries.limit(self.pagination_limit)
-            result = [entry['entry'] for entry in entries]  # exhaust cursor
+
+            include_device_info = len(self.device_pks) > 1
+            device_name_lut = {dev[0]: dev[1] for dev in device.objects.values_list('pk', 'name')}
+
+            result = []
             keys = set()
-            for entry in result:
+            for db_row in entries:  # exhaust cursor
+                entry = db_row['entry']
                 keys.update(entry.iterkeys())
+
+                if include_device_info:
+                    entry['Device'] = device_name_lut.get(db_row['device_pk'])
+                result.append(entry)
 
             mode_specific_parameters = self._get_mode_specific_parameters()
 
@@ -334,6 +355,9 @@ class GetEventLog(View):
                 grouping_keys = [k for k in keys if self._is_reasonable_grouping_key(k)]
             else:
                 grouping_keys = None
+
+            if include_device_info:
+                keys = ['Device'] + list(keys)
 
             return GetEventLog.EventLogResult(
                 total_num=total_num, keys_ordered=keys, entries=result, grouping_keys=grouping_keys,

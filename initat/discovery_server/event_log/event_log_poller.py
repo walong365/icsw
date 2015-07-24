@@ -75,8 +75,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
         self._mongodb_database.ipmi_event_log.create_index([('$**', 'text')], name="ipmi_log_full_text_index")
         # for sorting:
-        self._mongodb_database.ipmi_event_log.create_index([('record_number', pymongo.DESCENDING)],
-                                                           name='record_number_index')
+        self._mongodb_database.ipmi_event_log.create_index([('creation_date', pymongo.DESCENDING)],
+                                                           name='creation_date_index')
 
         self.log("Set up mongodb successfully")
 
