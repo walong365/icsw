@@ -409,9 +409,6 @@ class WmiLogEntryJob(_WmiJobBase):
             if com_finished or is_initial:
                 # check whether to start next run
 
-                job.log("cond {}".format(self.from_record_number >= self.to_record_number))
-                job.log("a {} {} b {} {}".format(self.from_record_number, type(self.from_record_number),
-                                                 self.to_record_number, type(self.to_record_number)))
                 if self.from_record_number >= self.to_record_number:
                     do_continue = False
                     job.log("Reached maximal record number {} (by {}).".format(self.to_record_number,
