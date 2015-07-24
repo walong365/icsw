@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config-store name="client">
+    <key-list>
+        <key name="mail.server" type="str" description="mail server to contact">localhost</key>
+        <key name="mail.from.address" type="str" description="from address for mails">cluster@init.at</key>
+        <key name="mail.target.address" type="str" description="mail target address">cluster@init.at</key>
+        <key name="meta.maindir" type="str" description="main directory for meta-server">/var/lib/meta-server</key>
+        <key name="meta.mail.from.name" type="str" description="from name for mails from meta-server">meta-server</key>
+        <key name="meta.track.icsw.memory" type="bool" description="track memory consumption of the ICSW">False</key>
+        <key name="meta.check.time" type="int" description="minimum time between checks for meta-server">20</key>
+        <key name="meta.check.memory.time" type="int" description="minimum time between memory checks for meta-server">300</key>
+    </key-list>
+</config-store>

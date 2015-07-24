@@ -86,9 +86,9 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
-            ("LOG_NAME", configfile.str_c_var(prog_name, autoconf_exclude=True)),
-            ("KILL_RUNNING", configfile.bool_c_var(True, autoconf_exclude=True)),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
+            ("KILL_RUNNING", configfile.bool_c_var(True)),
             ("SHOW_COMMAND_INFO", configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
             ("BACKLOG_SIZE", configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
@@ -101,7 +101,6 @@ def main():
                         prog_name,
                         prog_name
                     ),
-                    autoconf_exclude=True
                 )
             )
         ]
@@ -112,7 +111,7 @@ def main():
                 (
                     "COM_PORT",
                     configfile.int_c_var(
-                        2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p", autoconf_exclude=True
+                        2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p"
                     )
                 ),
                 ("ENABLE_KSM", configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]")),
@@ -179,12 +178,8 @@ def main():
         ),
         positional_arguments=prog_name in ["collclient"],
         partial=prog_name in ["collclient"],
-        add_auto_config_option=prog_name in ["collserver"],
     )
     if global_config["SHOW_COMMAND_INFO"]:
         show_command_info()
-    if global_config.show_autoconfig():
-        ret_state = 0
-    else:
-        ret_state = run_code(prog_name, global_config)
+    ret_state = run_code(prog_name, global_config)
     return ret_state

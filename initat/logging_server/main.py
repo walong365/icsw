@@ -39,17 +39,17 @@ def main():
             ("MAILSERVER", configfile.str_c_var("localhost", help_string="mailserver for sending [%(default)s]", short_options="M")),
             ("DEBUG", configfile.bool_c_var(False, help_string="enable ebugging [%(default)s]", only_commandline=True, short_options="d")),
             ("FROM_NAME", configfile.str_c_var("pyerror")),
-            ("FROM_ADDR", configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),
+            ("FROM_ADDR", configfile.str_c_var(socket.getfqdn())),
             ("LOG_FORMAT", configfile.str_c_var("%(asctime)s : %(levelname)-5s (%(threadName)s.%(process)d) %(message)s")),
             ("DATE_FORMAT", configfile.str_c_var("%a %b %d %H:%M:%S %Y")),
-            ("OUT_HANDLE", configfile.str_c_var("/var/lib/logging-server/py_out", autoconf_exclude=True)),
-            ("ERR_HANDLE", configfile.str_c_var("/var/lib/logging-server/py_err", autoconf_exclude=True)),
-            ("LOG_HANDLE", configfile.str_c_var("/var/lib/logging-server/py_log", autoconf_exclude=True)),
-            ("LOG_DESTINATION", configfile.str_c_var("/var/log/cluster/logging-server", autoconf_exclude=True)),
-            ("LISTEN_PORT", configfile.int_c_var(8011, autoconf_exclude=True)),
+            ("OUT_HANDLE", configfile.str_c_var("/var/lib/logging-server/py_out")),
+            ("ERR_HANDLE", configfile.str_c_var("/var/lib/logging-server/py_err")),
+            ("LOG_HANDLE", configfile.str_c_var("/var/lib/logging-server/py_log")),
+            ("LOG_DESTINATION", configfile.str_c_var("/var/log/cluster/logging-server")),
+            ("LISTEN_PORT", configfile.int_c_var(8011)),
             ("STATISTICS_TIMER", configfile.int_c_var(600, help_string="how often we should log statistical information [%(default)i]")),
             ("SEND_ERROR_MAILS", configfile.bool_c_var(True, help_string="send error mails")),
-            ("LOG_COMMANDS", configfile.bool_c_var(True, autoconf_exclude=True)),
+            ("LOG_COMMANDS", configfile.bool_c_var(True)),
             ("EXCESS_LIMIT", configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
             ("FORWARDER", configfile.str_c_var("", help_string="Address to forwared all logs to")),
             ("ONLY_FORWARD", configfile.bool_c_var(False, help_string="only forward (no local logging)")),
@@ -63,13 +63,11 @@ def main():
     global_config.parse_file()
     options = global_config.handle_commandline(
         description="logging server, version is {}".format(VERSION_STRING),
-        add_auto_config_option=True
     )
-    if not global_config.show_autoconfig():
-        try:
-            os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-            os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-        except:
-            pass
-        main_process(options).loop()
+    try:
+        os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+    except:
+        pass
+    main_process(options).loop()
     return 0

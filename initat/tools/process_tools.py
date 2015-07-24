@@ -1428,7 +1428,7 @@ def get_fqdn():
     """
     short_sock_name = get_machine_name()
     full_sock_name = socket.getfqdn(short_sock_name)
-    mach_name = get_machine_name()
+    mach_name = short_sock_name
     if full_sock_name.count(".") > 0:
         if full_sock_name.split(".")[0] in ["localhost"]:
             # rewrite fqdn to something meaningfull

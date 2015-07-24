@@ -37,23 +37,23 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
-            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
+            ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-            ("COM_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port to bind to [%(default)d]", autoconf_exclude=True)),
-            ("SERVER_COM_PORT", configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]", autoconf_exclude=True)),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
-            ("LOG_NAME", configfile.str_c_var(prog_name, autoconf_exclude=True)),
+            ("COM_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port to bind to [%(default)d]")),
+            ("SERVER_COM_PORT", configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]")),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("NICE_LEVEL", configfile.int_c_var(15, help_string="nice level [%(default)d]")),
             ("MODIFY_REPOS", configfile.bool_c_var(False, help_string="modify repository files")),
             (
                 "PACKAGE_SERVER_FILE",
-                configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]", autoconf_exclude=True)
+                configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]")
             ),
             (
                 "PACKAGE_SERVER_ID_FILE",
                 configfile.str_c_var(
-                    "/etc/packageserver_id", help_string="filename where packageserver ID for 0MQ communication is stored [%(default)s]", autoconf_exclude=True
+                    "/etc/packageserver_id", help_string="filename where packageserver ID for 0MQ communication is stored [%(default)s]"
                 )
             ),
         ]
@@ -65,36 +65,32 @@ def main():
             VERSION_STRING
         ),
         positional_arguments=False,
-        add_auto_config_option=True,
         partial=False
     )
     ret_code = 0
-    if global_config.show_autoconfig():
-        pass
-    else:
-        ps_file_name = global_config["PACKAGE_SERVER_FILE"]
-        if not os.path.isfile(ps_file_name):
-            try:
-                file(ps_file_name, "w").write("localhost\n")
-            except:
-                print("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info()))
-                ret_code = 5
-            else:
-                pass
+    ps_file_name = global_config["PACKAGE_SERVER_FILE"]
+    if not os.path.isfile(ps_file_name):
         try:
-            global_config.add_config_entries(
-                [
-                    ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip())),
-                    ("VERSION", configfile.str_c_var(VERSION_STRING)),
-                ]
-            )
+            file(ps_file_name, "w").write("localhost\n")
         except:
-            print("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info()))
+            print("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info()))
             ret_code = 5
-        if not ret_code:
-            global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
-            run_code()
-            configfile.terminate_manager()
-            # exit
-            os._exit(0)
+        else:
+            pass
+    try:
+        global_config.add_config_entries(
+            [
+                ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip())),
+                ("VERSION", configfile.str_c_var(VERSION_STRING)),
+            ]
+        )
+    except:
+        print("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info()))
+        ret_code = 5
+    if not ret_code:
+        global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
+        run_code()
+        configfile.terminate_manager()
+        # exit
+        os._exit(0)
     return 0

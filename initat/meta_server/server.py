@@ -25,33 +25,54 @@ import os
 import stat
 import time
 
+import zmq
 from initat.icsw.service import container, transition, instance, service_parser, clusterid
 from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
-    threading_tools, server_mixins, inotify_tools
-import zmq
+    threading_tools, inotify_tools
 from initat.host_monitoring import hm_classes
 from initat.client_version import VERSION_STRING
+
+from initat.tools.server_mixins import ICSWBasePool
 
 from .config import global_config
 from .servicestate import ServiceState
 
 
-class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin):
+class main_process(ICSWBasePool):
     def __init__(self):
         self.__debug = global_config["DEBUG"]
-        self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main")
+        self.CC.init("meta-server", global_config)
+        self.CC.check_config(client=True)
+        self.CC.CS.copy_to_global_config(
+            global_config, [
+                ("meta.track.icsw.memory", "TRACK_CSW_MEMORY"),
+                ("meta.check.time", "MIN_CHECK_TIME"),
+                ("meta.check.memory.time", "MIN_MEMCHECK_TIME"),
+            ]
+        )
+        global_config.add_config_entries(
+            [
+                ("STATE_DIR", configfile.str_c_var(os.path.join(self.CC.CS["meta.maindir"], ".srvstate"), source="dynamic")),
+            ]
+        )
         # check for correct rights
         self._check_dirs()
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._init_msi_block()
         self._init_network_sockets()
         self._init_inotify()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         # init stuff for mailing
-        self.__new_mail = mail_tools.mail(None, "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]), global_config["TO_ADDR"])
-        self.__new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
+        self.__new_mail = mail_tools.mail(
+            None,
+            "{}@{}".format(
+                self.CC.CS["meta.mail.from.name"],
+                process_tools.get_fqdn()[0],
+            ),
+            self.CC.CS["mail.target.address"],
+        )
+        self.__new_mail.set_server(self.CC.CS["mail.server"], self.CC.CS["mail.server"])
         # msi dict
         self.__last_update_time = time.time() - 2 * global_config["MIN_CHECK_TIME"]
         self.__last_memcheck_time = time.time() - 2 * global_config["MIN_MEMCHECK_TIME"]
@@ -63,12 +84,6 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
         self.__exit_process = False
         self.__transition_timer = False
         self.register_timer(self._check, 30, instant=True)
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _init_statemachine(self):
         self.__transitions = []
@@ -89,7 +104,7 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
         self.__watcher = inotify_tools.InotifyWatcher(log_com=self.log)
         self.__watcher.add_watcher(
             "main",
-            global_config["MAIN_DIR"],
+            self.CC.CS["meta.maindir"],
             inotify_tools.IN_CLOSE_WRITE | inotify_tools.IN_DELETE,
             self._inotify_event,
         )
@@ -123,7 +138,7 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
             self._update_or_create_msi_by_file_name(_event.pathname)
 
     def _check_dirs(self):
-        main_dir = global_config["MAIN_DIR"]
+        main_dir = self.CC.CS["meta.maindir"]
         if not os.path.isdir(main_dir):
             self.log("creating {}".format(main_dir))
             os.mkdir(main_dir)
@@ -160,7 +175,7 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self.__exit_process = True
-            if not (self.__next_stop_is_restart):  # or global_config["DEBUG"]):
+            if not (self.__next_stop_is_restart or global_config["DEBUG"]):
                 self.service_state.enable_shutdown_mode()
                 _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
                 trans_list = self.service_state.update(
@@ -186,7 +201,7 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
 
     def _init_network_sockets(self):
         self.network_bind(
-            bind_port=global_config["COM_PORT"],
+            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_command,
             client_type="meta",
@@ -363,7 +378,7 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
                 self.__new_mail.set_subject(
                     "{} from {} ({})".format(
                         mail_subject,
-                        global_config["SERVER_FULL_NAME"],
+                        process_tools.get_fqdn()[0],
                         _cluster_id,
                     )
                 )
@@ -501,4 +516,4 @@ class main_process(threading_tools.process_pool, server_mixins.NetworkBindMixin)
         # close vector socket if set
         if self.vector_socket:
             self.vector_socket.close()
-        self.__log_template.close()
+        self.CC.close()

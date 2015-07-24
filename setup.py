@@ -113,6 +113,12 @@ setup(
             ]
         ),
         (
+            "/opt/cluster/etc",
+            [
+                "opt/cluster/etc/client_config.xml",
+            ]
+        ),
+        (
             "/opt/cluster/sbin/pis",
             [
                 "opt/cluster/sbin/pis/cluster_post_install.sh",

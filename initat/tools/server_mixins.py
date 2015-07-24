@@ -24,7 +24,7 @@ import re
 import sys
 
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
-    configfile
+    configfile, config_store
 import zmq
 from enum import IntEnum
 from initat.icsw.service.instance import InstanceXML
@@ -38,9 +38,13 @@ class ConfigCheckObject(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[CC] {}".format(what), log_level)
 
-    def init(self, srv_type, global_config):
+    def init(self, srv_type, global_config, add_config_store=True):
         self.srv_type = srv_type
         self.global_config = global_config
+        if add_config_store:
+            self.__cs = config_store.ConfigStore("/opt/cluster/etc/client_config.xml", self.log)
+        else:
+            self.__cs = None
         global_config.add_config_entries(
             [
                 ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
@@ -49,7 +53,7 @@ class ConfigCheckObject(object):
         if "LOG_NAME" not in global_config:
             global_config.add_config_entries(
                 [
-                    ("LOG_NAME", configfile.str_c_var(self.srv_type)),
+                    ("LOG_NAME", configfile.str_c_var(self.srv_type, source="instance")),
                 ]
             )
         self.__process.log_template = logging_tools.get_logger(
@@ -60,13 +64,18 @@ class ConfigCheckObject(object):
         )
 
     @property
+    def CS(self):
+        return self.__cs
+
+    @property
     def Instance(self):
         return self._inst_xml
 
-    def check_config(self):
+    def check_config(self, client=False):
         # late import (for clients without django)
-        from initat.tools import config_tools
-        from initat.cluster.backbone.models import LogSource
+        if not client:
+            from initat.tools import config_tools
+            from initat.cluster.backbone.models import LogSource
         self._inst_xml = InstanceXML(self.log)
         self._instance = self._inst_xml[self.srv_type]
         conf_names = self._inst_xml.get_config_names(self._instance)
@@ -77,32 +86,38 @@ class ConfigCheckObject(object):
                 ", ".join(conf_names),
             )
         )
-        _sql_info = None
-        for _conf_name in conf_names:
-            sql_info = config_tools.server_check(server_type=_conf_name)
-            if sql_info is not None and sql_info.effective_device:
-                break
-        if sql_info is None or not sql_info.effective_device:
-            self.log("Not a valid {}".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
-            sys.exit(5)
-        else:
-            # set values
-            _opts = [
-                ("PID_NAME", configfile.str_c_var(self._inst_xml.get_pid_file_name(self._instance))),
-                ("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False)),
-                ("EFFECTIVE_DEVICE_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False)),
-                (
-                    "LOG_SOURCE_IDX", configfile.int_c_var(
-                        LogSource.new(self.srv_type, device=sql_info.effective_device).pk
-                    )
-                ),
-                ("MEMCACHE_PORT", configfile.int_c_var(self._inst_xml.get_port_dict("memcached", command=True))),
-            ]
-            for _name, _value in self._inst_xml.get_port_dict(self._instance).iteritems():
-                _opts.append(
-                    ("{}_PORT".format(_name.upper()), configfile.int_c_var(_value)),
+        _opts = [
+            ("PID_NAME", configfile.str_c_var(self._inst_xml.get_pid_file_name(self._instance), source="instance", database=False)),
+        ]
+        for _name, _value in self._inst_xml.get_port_dict(self._instance).iteritems():
+            _opts.append(
+                ("{}_PORT".format(_name.upper()), configfile.int_c_var(_value, source="instance", database=False)),
+            )
+        if not client:
+            sql_info = None
+            for _conf_name in conf_names:
+                sql_info = config_tools.server_check(server_type=_conf_name)
+                if sql_info is not None and sql_info.effective_device:
+                    break
+            if sql_info is None or not sql_info.effective_device:
+                self.log("Not a valid {}".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
+                sys.exit(5)
+            else:
+                # set values
+                _opts.extend(
+                    [
+                        ("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False, source="instance")),
+                        ("EFFECTIVE_DEVICE_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False, source="instance")),
+                        (
+                            "LOG_SOURCE_IDX", configfile.int_c_var(
+                                LogSource.new(self.srv_type, device=sql_info.effective_device).pk,
+                                source="instance",
+                            )
+                        ),
+                        ("MEMCACHE_PORT", configfile.int_c_var(self._inst_xml.get_port_dict("memcached", command=True), source="instance")),
+                    ]
                 )
-            self.global_config.add_config_entries(_opts)
+        self.global_config.add_config_entries(_opts)
 
     def close(self):
         self.__process.log_template.close()

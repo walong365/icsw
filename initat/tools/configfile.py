@@ -90,9 +90,6 @@ class config_proxy(BaseProxy):
     def parse_file(self, *args, **kwargs):
         return self._callmethod("parse_file", (args), kwargs)
 
-    def show_autoconfig(self, *args):
-        return self._callmethod("show_autoconfig", (args))
-
     def get_config_info(self):
         return self._callmethod("get_config_info")
 
@@ -139,7 +136,6 @@ class _conf_var(object):
         self.value = self.__default_val
         # for commandline options
         self._help_string = kwargs.get("help_string", None)
-        self._autoconf_exclude = kwargs.get("autoconf_exclude", False)
         self._short_opts = kwargs.get("short_options", None)
         self._choices = kwargs.get("choices", None)
         self._nargs = kwargs.get("nargs", None)
@@ -149,7 +145,7 @@ class _conf_var(object):
         kw_keys = set(kwargs) - set(
             [
                 "only_commandline", "info", "source", "fixed", "action",
-                "help_string", "autoconf_exclude", "short_options", "choices", "nargs", "database",
+                "help_string", "short_options", "choices", "nargs", "database",
             ]
         )
         if kw_keys:
@@ -685,31 +681,6 @@ class configuration(object):
                 logging_tools.LOG_LEVEL_ERROR
             )
 
-    def show_autoconfig(self, *args):
-        # returns True if the main process should exit
-        if self.__show_autoconfig:
-            all_keys = self.__c_dict.keys()
-            ac = E.autoconfig(name=self.__name)
-            for key in sorted(all_keys):
-                _var = self.__c_dict[key]
-                if _var._only_commandline:
-                    pass
-                elif _var._autoconf_exclude:
-                    pass
-                elif _var.short_type in ["i", "b", "s"]:
-                    help_string = re.sub("\[%\(default\)(s|d|i)\]", "", _var._help_string or "").strip()
-                    # help_string = (_var._help_string or "") % ({"default" : _var.value})
-                    ac.append(
-                        E.option(
-                            name=key,
-                            type=_var.long_type,
-                            info=help_string,
-                            default=str(self[key]),
-                        )
-                    )
-            print etree.tostring(ac, pretty_print=True)
-        return self.__show_autoconfig
-
     def _argparse_exit(self, status=0, message=None):
         if message:
             print(message)
@@ -731,7 +702,6 @@ class configuration(object):
         proxy_call = kwargs.pop("proxy_call", False)
         pos_arguments = kwargs.pop("positional_arguments", False)
         pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
-        add_auto_config_option = kwargs.pop("add_auto_config_option", False)
         partial = kwargs.pop("partial", False)
         self.exit_code = None
         my_parser = argparse.ArgumentParser(**kwargs)
@@ -746,14 +716,6 @@ class configuration(object):
                 argparse_entries.append(key)
                 c_var.add_argument(key, my_parser)
         if argparse_entries:
-            if add_auto_config_option:
-                my_parser.add_argument(
-                    "--show-autoconfig",
-                    dest="show_autoconfig",
-                    default=False,
-                    action="store_true",
-                    help="show autoconfig options [%(default)s]"
-                )
             if pos_arguments:
                 my_parser.add_argument(
                     "arguments",
@@ -778,10 +740,8 @@ class configuration(object):
                 for key in argparse_entries:
                     self[key] = getattr(options, key)
                 self.positional_arguments = options.arguments if pos_arguments else []
-                self.__show_autoconfig = getattr(options, "show_autoconfig", False)
         else:
             options = argparse.Namespace()
-            self.__show_autoconfig = False
         if proxy_call:
             return options, self.exit_code
         else:
@@ -865,7 +825,6 @@ config_manager.register(
         "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
         "is_global", "database", "is_global", "set_global",
         "__getitem__", "__setitem__", "__contains__", "__delitem__",
-        "show_autoconfig",
         "get_config_info", "name", "get_argument_stuff", "fixed",
     ]
 )

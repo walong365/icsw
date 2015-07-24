@@ -30,7 +30,6 @@ django.setup()
 
 from initat.server_version import VERSION_STRING
 from initat.cluster_config_server.config import global_config
-from initat.cluster.backbone.models import LogSource
 from initat.tools import cluster_location, configfile, process_tools
 from initat.icsw.service.instance import InstanceXML
 
