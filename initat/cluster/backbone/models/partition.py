@@ -69,6 +69,7 @@ class partition_fs(models.Model):
     class Meta:
         db_table = u'partition_fs'
         ordering = ("name",)
+        verbose_name = u"Partition: File System"
 
 
 class sys_partition(models.Model):
@@ -81,6 +82,7 @@ class sys_partition(models.Model):
 
     class Meta:
         db_table = u'sys_partition'
+        verbose_name = u"Partition: System Partition"
 
 
 class lvm_lv(models.Model):
@@ -101,6 +103,7 @@ class lvm_lv(models.Model):
     class Meta:
         db_table = u'lvm_lv'
         ordering = ("name",)
+        verbose_name = u"Partition: LVM Logical Volume"
 
 
 @receiver(signals.pre_save, sender=lvm_lv)
@@ -124,6 +127,7 @@ class lvm_vg(models.Model):
     class Meta:
         db_table = u'lvm_vg'
         ordering = ("name",)
+        verbose_name = u"Partition: LVM Volume Group"
 
 
 class partition(models.Model):
@@ -163,6 +167,7 @@ class partition(models.Model):
     class Meta:
         db_table = u'partition'
         ordering = ("pnum",)
+        verbose_name = u"Partition"
 
 
 @receiver(signals.pre_save, sender=partition)
@@ -246,6 +251,7 @@ class partition_disc(models.Model):
     class Meta:
         db_table = u'partition_disc'
         ordering = ("priority", "disc",)
+        verbose_name = u"Partition: Disc"
 
     def __unicode__(self):
         return self.disc
@@ -334,6 +340,7 @@ class partition_table(models.Model):
 
     class Meta:
         db_table = u'partition_table'
+        verbose_name = u"Partition: Table"
 
     class CSW_Meta:
         fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]

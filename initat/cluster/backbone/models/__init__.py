@@ -1402,6 +1402,9 @@ def _register_models():
         Kpi, KpiDataSourceTuple,
         # lic
         License,
+        # setup
+        architecture, image, kernel,
+        partition, partition_disc, partition_fs, partition_table, sys_partition,
     )
     for model in models:
         model_history.icsw_register(model)

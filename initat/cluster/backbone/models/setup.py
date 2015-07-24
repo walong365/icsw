@@ -50,6 +50,7 @@ class architecture(models.Model):
 
     class Meta:
         db_table = u'architecture'
+        verbose_name = u"Architecture"
 
     def __unicode__(self):
         return self.architecture
@@ -137,6 +138,7 @@ class image(models.Model):
     class Meta:
         db_table = u'image'
         ordering = ("name",)
+        verbose_name = u"Image"
 
 
 class ImageDeviceHistory(HistoryObject):
@@ -208,6 +210,7 @@ class kernel(models.Model):
 
     class Meta:
         db_table = u'kernel'
+        verbose_name = u"Kernel"
 
     @property
     def full_version(self):
