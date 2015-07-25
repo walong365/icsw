@@ -52,8 +52,10 @@ fi
 # modify root bashrc
 if [ -f /root/.bashrc ] ; then
     grep ${ICSW_BIN} /root/.bashrc >/dev/null || echo "export PATH=\$PATH:${ICSW_BIN}:${ICSW_SBIN}" >> /root/.bashrc
+    grep PDSH_RCMD_TYPE /root/.bashrc >/dev/null || echo "export PDSH_RCMD_TYPE=ssh" >> /root/.bashrc
 else
     echo "export PATH=\$PATH:${ICSW_BIN}:${ICSW_SBIN}" > /root/.bashrc
+    echo "export PDSH_RCMD_TYPE=ssh" >> /root/.bashrc
     chmod 0644 /root/.bashrc
 fi
 

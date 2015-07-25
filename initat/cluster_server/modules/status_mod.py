@@ -22,11 +22,7 @@ import os
 from initat.cluster.backbone import routing
 from initat.icsw.service import instance, container, service_parser, main
 import initat.cluster_server
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import uuid_tools
-from initat.tools import net_tools
-
+from initat.tools import process_tools, server_command, uuid_tools, net_tools
 from initat.cluster_server.config import global_config
 
 import cs_base_class
