@@ -410,7 +410,8 @@ class HMInotifyProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], context=self.zmq_context)
         self.__watcher = inotify_tools.InotifyWatcher()
-        self.__idle_timeout = global_config["INOTIFY_IDLE_TIMEOUT"]
+        # was INOTIFY_IDLE_TIMEOUT in global_config, now static
+        self.__idle_timeout = 5
         # self.__watcher.add_watcher("internal", "/etc/sysconfig/host-monitoring.d", inotify_tools.IN_CREATE | inotify_tools.IN_MODIFY, self._trigger)
         self.__file_watcher_dict = {}
         self.__target_dict = {}

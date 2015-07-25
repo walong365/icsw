@@ -2,12 +2,34 @@
 <config-store name="client">
     <key-list>
         <key name="mail.server" type="str" description="mail server to contact">localhost</key>
-        <key name="mail.from.address" type="str" description="from address for mails">cluster@init.at</key>
         <key name="mail.target.address" type="str" description="mail target address">cluster@init.at</key>
         <key name="meta.maindir" type="str" description="main directory for meta-server">/var/lib/meta-server</key>
         <key name="meta.mail.from.name" type="str" description="from name for mails from meta-server">meta-server</key>
         <key name="meta.track.icsw.memory" type="bool" description="track memory consumption of the ICSW">False</key>
         <key name="meta.check.time" type="int" description="minimum time between checks for meta-server">20</key>
         <key name="meta.check.memory.time" type="int" description="minimum time between memory checks for meta-server">300</key>
+        <key name="log.logdir" type="str" description="base dir for all logs">/var/log/cluster/logging-server</key>
+        <key name="log.mail.from.name" type="str" description="from name for mails from logging-server">logging-server</key>
+        <key name="log.format.line" type="str" description="format for loglines">%(asctime)s : %(levelname)-5s (%(threadName)s.%(process)d) %(message)s</key>
+        <key name="log.format.date" type="str" description="format for datetimes">%a %b %d %H:%M:%S %Y</key>
+        <key name="log.forward.address" type="str" description="address to send all logs to"></key>
+        <key name="log.forward.exclusive" type="bool" description="only forward (when forward address is set)">False</key>
+        <key name="log.send.errormails" type="bool" description="send error mails">True</key>
+        <key name="log.max.age.logs" type="int" description="maximum age of log files in days">365</key>
+        <key name="log.max.size.logs" type="int" description="maximum size of log files in bytes before compressing">10000000</key>
+        <key name="log.max.line.length" type="int" description="maximum length of a single log line">0</key>
+        <key name="hm.run.argus" type="bool" description="run argus on all activated network interfaces">False</key>
+        <key name="hm.track.ipmi" type="bool" description="track IPMI sensor values by running ipmitool">False</key>
+        <key name="hm.enable.affinity.matcher" type="bool" description="enable affinity matcher (use with care)">False</key>
+        <key name="hm.disable.inotify.process" type="bool" description="disable inotify process (file tracking)">False</key>
+        <key name="hm.machvector.poll.time" type="int" description="seconds between machvector runs">30</key>
+        <key name="hm.socket.backlog.size" type="int" description="backlog size of certains 0MQ sockets">5</key>
+        <key name="hm.enable.ksm" type="bool" description="enable Kernel same-page merging">False</key>
+        <key name="hm.enable.hugepages" type="bool" description="enable Kernel hugepage">False</key>
+        <key name="hm.hugepage.percentage" type="int" description="percentage of memory to use for hugepages">50</key>
+        <key name="hm.enable.objgraph" type="bool" description="enable debugging with objgraph">False</key>
+        <key name="hr.connection.timeout" type="int" description="timeout in seconds for calls to distant machines">8</key>
+        <key name="hr.force.name.resolve" type="bool" description="enable automatic name resolving (dangerous)">False</key>
+        <key name="hr.enable.objgraph" type="bool" description="enable debugging with objgraph">False</key>
     </key-list>
 </config-store>

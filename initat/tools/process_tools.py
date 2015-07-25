@@ -176,7 +176,10 @@ def call_command(act_command, log_com, close_fds=False):
             ret_code,
         )
     )
-    for _val, _name, _lev in [(_stdout, "stdout", logging_tools.LOG_LEVEL_OK), (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)]:
+    for _val, _name, _lev in [
+        (_stdout, "stdout", logging_tools.LOG_LEVEL_OK),
+        (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)
+    ]:
         if _val.strip():
             _lines = _val.split("\n")
             log_com("{} has {} ({})".format(_name, logging_tools.get_plural("byte", len(_val)), logging_tools.get_plural("line", len(_lines))))

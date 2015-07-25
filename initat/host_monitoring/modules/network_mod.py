@@ -187,7 +187,7 @@ class _general(hm_classes.hm_module):
             self.log("argus found at %s" % (argus_path))
         else:
             self.log("no argus found", logging_tools.LOG_LEVEL_WARN)
-        if global_config.get("RUN_ARGUS", False) and argus_path:
+        if self.main_proc.CC.CS["hm.run.argus"] and argus_path:
             self.log("argus monitoring is enabled")
             if not os.path.isdir(ARGUS_TARGET):
                 os.mkdir(ARGUS_TARGET)

@@ -85,7 +85,7 @@ class _general(hm_classes.hm_module):
         self.ipmi_result, self.ipmi_update = (None, None)
         self.it_command = False
         self.registered_mvs = set()
-        if hasattr(self.main_proc, "register_vector_receiver") and global_config["TRACK_IPMI"]:
+        if hasattr(self.main_proc, "register_vector_receiver") and self.main_proc.CC.CS["hm.track.ipmi"]:
             self.check_ipmi_settings()
             self.popen = None
             self.main_proc.register_timer(self._update_ipmi, 20, instant=True)

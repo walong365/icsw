@@ -2,7 +2,7 @@
 <instances>
     <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="client">
     </instance>
-    <instance check_type="meta" name="logging-server" runs_on="client" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver">
+    <instance check_type="meta" name="logging-server" runs_on="client" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver" uuid-postfix="logging-server">
         <start-argument>
             <arg key="user">idlog</arg>
             <arg key="group">idg</arg>
@@ -12,9 +12,14 @@
             <dir value="/var/log/cluster/logging-server" user="idlog" group="idg" create="1" recursive="1"/>
             <dir value="/var/lib/logging-server" user="idlog" group="idg" create="1"/>
         </access-rights>
+        <network>
+            <ports>
+                <port type="command">8011</port>
+            </ports>
+        </network>
     </instance>
     <!-- wait_time of 120 seconds to give the meta server some time to shut down -->
-    <instance check_type="meta" name="meta-server" short="meta" runs_on="client" has_force_stop="1" wait_time="120">
+    <instance check_type="meta" name="meta-server" short="meta" runs_on="client" has_force_stop="1" wait_time="120" uuid-postfix="meta-server">
         <nice-level>15</nice-level>
         <network>
             <ports>
@@ -34,7 +39,7 @@
             </ports>
         </network>
     </instance>
-    <instance check_type="meta" name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
+    <instance check_type="meta" name="package-client" runs_on="client"  has_force_stop="1" pid_file_name="package-client/package-client.pid" uuid-postfix="package-client">
         <module-name>initat.package_install.client.main</module-name>
         <old-binary>package-client</old-binary>
         <nice-level>15</nice-level>

@@ -103,6 +103,16 @@ MAP_DICT = {
     "PC_MODIFY_REPOS": "packageclient.modify.repos",
     "MS_MAILSERVER": "mail.server",
     "MS_FROM_NAME": "meta.mail.from.name",
+    "MS_TO_ADDR": "mail.target.address",
+    "LS_FORWARDER": "log.forward.address",
+    "LS_ONLY_FORWARD": "log.forward.exclusive",
+    "CS_RUN_ARGUS": "hm.run.argus",
+    "CS_TRACK_IPMI": "hm.track.ipmi",
+    "CS_AFFINITY": "hm.enable.affinity.matcher",
+    "CS_NO_INOTIFY": "hm.disable.inotify.process",
+    "CS_ENABLE_KSM": "hm.enable.ksm",
+    "CS_ENABLE_HUGE": "hm.enable.hugepages",
+    "CS_HUGEPAGES": "hm.hugepage.percentage",
 }
 
 

@@ -44,7 +44,6 @@ class main_process(ICSWBasePool):
         threading_tools.process_pool.__init__(self, "main")
         self.CC.init("meta-server", global_config)
         self.CC.check_config(client=True)
-        self.CC.CS.write()
         self.CC.CS.copy_to_global_config(
             global_config, [
                 ("meta.track.icsw.memory", "TRACK_CSW_MEMORY"),

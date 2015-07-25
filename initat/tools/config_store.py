@@ -109,6 +109,12 @@ class ConfigVar(object):
             _el.attrib["description"] = self.description
         return _el
 
+    def get_value(self):
+        if self._type == "str" and self.value is None:
+            return ""
+        else:
+            return self.value
+
 
 class ConfigStore(object):
     def __init__(self, name, log_com=None):
@@ -232,7 +238,7 @@ class ConfigStore(object):
 
     def __getitem__(self, key):
         if self.tree_valid:
-            return self.vars[key].value
+            return self.vars[key].get_value()
         else:
             raise ValueError("ConfigStore {} not valid".format(self.name))
 

@@ -214,6 +214,11 @@
         <programm-name>collrelay</programm-name>
         <module-name>initat.host_monitoring.main</module-name>
         <old-binary>collrelay</old-binary>
+        <network>
+            <ports>
+                <port type="command">2004</port>
+            </ports>
+        </network>
     </instance>
     <instance check_type="meta" name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1" uuid-postfix="snmp-relay">
         <config_names>

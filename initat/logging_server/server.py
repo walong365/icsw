@@ -33,19 +33,15 @@ import time
 
 from initat.logging_server.config import global_config
 from initat.icsw.service import clusterid
-from initat.tools import io_stream_helper
-from initat.tools import logging_tools
-from initat.tools import mail_tools
-from initat.tools import process_tools
-from initat.tools import threading_tools
-from initat.tools import uuid_tools
+from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
+    uuid_tools
+from initat.tools.server_mixins import ICSWBasePool
 import zmq
-
 
 SEP_STR = "-" * 50
 
 
-class main_process(threading_tools.process_pool):
+class main_process(ICSWBasePool):
     def __init__(self, options):
         self.__options = options
         # log structures
@@ -60,6 +56,8 @@ class main_process(threading_tools.process_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
+        self.CC.init("logging-server", global_config, init_logging=False)
+        self.CC.check_config(client=True)
         self.change_resource()
         self._init_msi_block()
         self._log_config()
@@ -77,7 +75,7 @@ class main_process(threading_tools.process_pool):
         self.__last_stat_time = time.time()
         # error gather dict
         self.__eg_dict = {}
-        self.__stat_timer = global_config["STATISTICS_TIMER"]
+        self.__stat_timer = 600
 
     def change_resource(self):
         cur_files = resource.getrlimit(resource.RLIMIT_OFILE)
@@ -91,6 +89,12 @@ class main_process(threading_tools.process_pool):
             )
         )
         resource.setrlimit(resource.RLIMIT_OFILE, new_files)
+        self.log("fixing directory rights")
+        try:
+            os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+            os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        except:
+            pass
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst="log", **kwargs):
         if not self["exit_requested"]:
@@ -161,39 +165,30 @@ class main_process(threading_tools.process_pool):
             time.sleep(0.5)
 
     def _init_network_sockets(self):
-        self.__open_handles = [io_stream_helper.zmq_socket_name(global_config[h_name]) for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]] + \
-            [global_config[h_name] for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]]
+        _log_base = "/var/lib/logging-server"
+        _handle_names = [os.path.join(_log_base, "py_{}".format(_type)) for _type in ["out", "err", "log"]]
+        self.__open_handles = [
+            io_stream_helper.zmq_socket_name(h_name) for h_name in _handle_names
+        ] + [
+            h_name for h_name in _handle_names
+        ]
         self._remove_handles()
         client = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
-        for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]:
-            client.bind(io_stream_helper.zmq_socket_name(global_config[h_name], check_ipc_prefix=True))
-            os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-        self.net_receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
-        my_0mq_id = uuid_tools.get_uuid().get_urn()
-        for flag, value in [
-            (zmq.IDENTITY, my_0mq_id),  # @UndefinedVariable
-            (zmq.SNDHWM, 256),  # @UndefinedVariable
-            (zmq.RCVHWM, 256),  # @UndefinedVariable
-            (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
-            (zmq.TCP_KEEPALIVE_IDLE, 300),  # @UndefinedVariable
-        ]:
-            self.net_receiver.setsockopt(flag, value)
-        _bind_str = "tcp://*:{:d}".format(global_config["LISTEN_PORT"])
-        self.net_receiver.bind(_bind_str)
-        _fwd_string = global_config["FORWARDER"].strip()
-        self.__only_forward = global_config["ONLY_FORWARD"]
+        for h_name in _handle_names:
+            client.bind(io_stream_helper.zmq_socket_name(h_name, check_ipc_prefix=True))
+            os.chmod(io_stream_helper.zmq_socket_name(h_name), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        self.network_bind(
+            bind_port=global_config["COMMAND_PORT"],
+            bind_to_localhost=True,
+            pollin=self._recv_data,
+            client_type="logging-server",
+        )
+
+        _fwd_string = self.CC.CS["log.forward.address"].strip()
+        self.__only_forward = self.CC.CS["log.forward.exclusive"]
         if _fwd_string:
-            _forward = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-            for flag, value in [
-                (zmq.IDENTITY, my_0mq_id),  # @UndefinedVariable
-                (zmq.SNDHWM, 256),  # @UndefinedVariable
-                (zmq.RCVHWM, 256),  # @UndefinedVariable
-                (zmq.LINGER, 10),  # @UndefinedVariable
-                (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
-                (zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
-            ]:
-                _forward.setsockopt(flag, value)
-            self.log("connecting forward to {}".format(_fwd_string))
+            _forward = process_tools.get_socket("PUSH", identity=uuid_tools.get_uuid().get_urn())
+            self.log("connecting forward socket to {}".format(_fwd_string))
             try:
                 _forward.connect(_fwd_string)
             except:
@@ -203,7 +198,6 @@ class main_process(threading_tools.process_pool):
             _forward = None
         self.net_forwarder = _forward
         self.register_poller(client, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
-        self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
         self.std_client = client
 
     def _init_msi_block(self):
@@ -229,9 +223,9 @@ class main_process(threading_tools.process_pool):
         self._remove_handles()
         process_tools.delete_pid("logserver/logserver")
         self.__msi_block.remove_meta_block()
-        self.net_receiver.close()
         if self.net_forwarder:
             self.net_forwarder.close()
+        self.network_unbind()
         self.std_client.close()
 
     def _flush_log_cache(self):
@@ -343,7 +337,7 @@ class main_process(threading_tools.process_pool):
                         "{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(err_lines)
                     ]
                 )
-                if global_config["SEND_ERROR_MAILS"]:
+                if self.CC.CS["log.send.errormails"]:
                     self._send_mail(subject, msg_body)
                     mails_sent += 1
                 ep_dels.append(ep)
@@ -361,13 +355,14 @@ class main_process(threading_tools.process_pool):
     def _send_mail(self, subject, msg_body):
         new_mail = mail_tools.mail(
             subject,
-            "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]),
-            global_config["TO_ADDR"],
-            msg_body)
-        new_mail.set_server(
-            global_config["MAILSERVER"],
-            global_config["MAILSERVER"]
+            "{}@{}".format(
+                self.CC.CS["log.mail.from.name"],
+                process_tools.get_fqdn()[0],
+            ),
+            self.CC.CS["mail.target.address"],
+            msg_body,
         )
+        new_mail.set_server(self.CC.CS["mail.server"], self.CC.CS["mail.server"])
         try:
             send_stat, log_lines = new_mail.send_mail()
             for log_line in log_lines:
@@ -446,7 +441,8 @@ class main_process(threading_tools.process_pool):
         diff_time = max(1, abs(cur_time - self.__usecount_ts))
         s_dict = {key: float(value) / diff_time for key, value in self.__handle_usecount.iteritems()}
         self.__handle_usecount = {key: 0 for key in self.__handle_usecount}
-        s_dict = {key: value for key, value in s_dict.iteritems() if value > global_config["EXCESS_LIMIT"]}
+        # ("EXCESS_LIMIT", configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
+        # s_dict = {key: value for key, value in s_dict.iteritems() if value > global_config["EXCESS_LIMIT"]}
         # pprint.pprint(s_dict)
 
     def get_python_handle(self, record):
@@ -508,9 +504,11 @@ class main_process(threading_tools.process_pool):
                     "init.at" if init_logger else "native"
                 )
             )
-            full_name = os.path.join(global_config["LOG_DESTINATION"], h_name)
-            base_dir, base_name = (os.path.dirname(full_name),
-                                   os.path.basename(full_name))
+            full_name = os.path.join(self.CC.CS["log.logdir"], h_name)
+            base_dir, base_name = (
+                os.path.dirname(full_name),
+                os.path.basename(full_name)
+            )
             self.log("attempting to create log_file '{}' in dir '{}'".format(base_name, base_dir))
             # add new sub_dirs
             sub_dirs = []
@@ -521,7 +519,7 @@ class main_process(threading_tools.process_pool):
                     sub_dirs.append(os.path.join(sub_dirs[-1], new_sub_dir))
             # create sub_dirs
             for sub_dir in sub_dirs:
-                act_dir = os.path.join(global_config["LOG_DESTINATION"], sub_dir)
+                act_dir = os.path.join(self.CC.CS["log.logdir"], sub_dir)
                 if not os.path.isdir(act_dir):
                     try:
                         os.makedirs(act_dir)
@@ -544,13 +542,17 @@ class main_process(threading_tools.process_pool):
             # print dir(base_logger)
             # print "***", logger_name, base_logger, logger
             form = logging_tools.my_formatter(
-                global_config["LOG_FORMAT"],
-                global_config["DATE_FORMAT"]
+                self.CC.CS["log.format.line"],
+                self.CC.CS["log.format.date"],
             )
             logger.setLevel(logging.DEBUG)
             full_name = full_name.encode("ascii", errors="replace")
-            new_h = logging_tools.logfile(full_name, max_bytes=global_config["MAX_FILE_SIZE"], max_age_days=global_config["MAX_AGE_FILES"])
-            form.set_max_line_length(global_config["MAX_LINE_LENGTH"])
+            new_h = logging_tools.logfile(
+                full_name,
+                max_bytes=self.CC.CS["log.max.size.logs"],
+                max_age_days=self.CC.CS["log.max.age.logs"],
+            )
+            form.set_max_line_length(self.CC.CS["log.max.line.length"])
             new_h.setFormatter(form)
             self.__num_open += 1
             logger.addHandler(new_h)
@@ -632,7 +634,7 @@ class main_process(threading_tools.process_pool):
         else:
             # flag to disable logging of close message (would polute the usage_cache)
             log_it, is_command = (True, False)
-        if (not is_command or (is_command and global_config["LOG_COMMANDS"])) and log_it:
+        if (not is_command or is_command) and log_it:
             self.__handle_usage[handle.handle_name].add(src_key)
             try:
                 self.__handle_usecount[handle.handle_name] += 1
@@ -680,7 +682,7 @@ class main_process(threading_tools.process_pool):
             try:
                 line_length = int(log_msg.split()[1])
             except:
-                print("**")
+                # print("**")
                 pass
             else:
                 for f_handle in handle.handlers:
@@ -688,6 +690,8 @@ class main_process(threading_tools.process_pool):
         elif log_msg.lower() == "ignore_process_id":
             handle.ignore_process_id = True
         else:
-            self.log("unknown command '{}'".format(log_msg),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "unknown command '{}'".format(log_msg),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         return log_it

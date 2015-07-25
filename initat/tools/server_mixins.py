@@ -24,7 +24,7 @@ import re
 import sys
 
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
-    configfile, config_store
+    configfile, config_store, uuid_tools
 import zmq
 from enum import IntEnum
 from initat.icsw.service.instance import InstanceXML
@@ -38,30 +38,31 @@ class ConfigCheckObject(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[CC] {}".format(what), log_level)
 
-    def init(self, srv_type, global_config, add_config_store=True):
+    def init(self, srv_type, global_config, add_config_store=True, init_logging=True):
         self.srv_type = srv_type
         self.global_config = global_config
         if add_config_store:
             self.__cs = config_store.ConfigStore("client", self.log)
         else:
             self.__cs = None
-        global_config.add_config_entries(
-            [
-                ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ]
-        )
-        if "LOG_NAME" not in global_config:
+        if init_logging:
             global_config.add_config_entries(
                 [
-                    ("LOG_NAME", configfile.str_c_var(self.srv_type, source="instance")),
+                    ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
                 ]
             )
-        self.__process.log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.__process.zmq_context,
-        )
+            if "LOG_NAME" not in global_config:
+                global_config.add_config_entries(
+                    [
+                        ("LOG_NAME", configfile.str_c_var(self.srv_type, source="instance")),
+                    ]
+                )
+            self.__process.log_template = logging_tools.get_logger(
+                global_config["LOG_NAME"],
+                global_config["LOG_DESTINATION"],
+                zmq=True,
+                context=self.__process.zmq_context,
+            )
 
     @property
     def CS(self):
@@ -215,7 +216,13 @@ class NetworkBindMixin(object):
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
         _sock_type = kwargs.get("socket_type", "ROUTER")
         if "client_type" in kwargs:
-            self.bind_id = process_tools.get_client_uuid(kwargs["client_type"])
+            uuid = uuid_tools.get_uuid().get_urn()
+            if not uuid.startswith("urn"):
+                uuid = "urn:uuid:{}".format(uuid)
+            self.bind_id = "{}:{}:".format(
+                uuid,
+                InstanceXML(quiet=True).get_uuid_postfix(kwargs["client_type"]),
+            )
             dev_r = None
         else:
             from initat.tools import cluster_location

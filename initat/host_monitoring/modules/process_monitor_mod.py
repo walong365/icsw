@@ -153,7 +153,7 @@ class affinity_struct(object):
 class _general(hm_classes.hm_module):
     def init_module(self):
         # AFFINITY ist not set for relay mode
-        self.check_affinity = global_config.get("AFFINITY", False)
+        self.check_affinity = self.main_proc.CC.CS["hm.enable.affinity.matcher"]
         self.log("affinity check is %s" % ("enabled" if self.check_affinity else "disabled"))
         self.__affinity_dict = {}
         if self.check_affinity:

@@ -49,32 +49,32 @@ from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
 from .host_monitoring_struct import HostConnection, host_message
 from .tools import my_cached_file
+from initat.tools.server_mixins import ICSWBasePool
 
 from initat.host_monitoring.modules.network_mod import PingSPStruct, ping_command
 
 
-class relay_code(threading_tools.process_pool):
+class relay_code(ICSWBasePool):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
         self.objgraph = None
-        if global_config["OBJGRAPH"]:
+        # copy to access from modules
+        from initat.host_monitoring import modules
+        self.modules = modules
+        self.global_config = global_config
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.CC.init("host-relay", global_config)
+        self.CC.check_config(client=True)
+        if self.CC.CS["hr.enable.objgraph"]:
             try:
                 import objgraph
             except ImportError:
                 pass
             else:
                 self.objgraph = objgraph
-        # copy to access from modules
-        from initat.host_monitoring import modules
-        self.modules = modules
-        self.global_config = global_config
         self.__verbose = global_config["VERBOSE"]
-        self.__autosense = global_config["AUTOSENSE"]
-        self.__force_resolve = global_config["FORCERESOLVE"]
-        self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.renice(global_config["NICE_LEVEL"])
+        self.__force_resolve = self.CC.CS["hr.force.name.resolve"]
         # ip resolving
         if self.__force_resolve:
             self.log("automatic resolving is enabled", logging_tools.LOG_LEVEL_WARN)
@@ -84,18 +84,17 @@ class relay_code(threading_tools.process_pool):
             self._resolve_address = self._resolve_address_noresolve
         # pending_connection.init(self)
         # global timeout value for host connections
-        self.__global_timeout = global_config["TIMEOUT"]
+        self.__global_timeout = self.CC.CS["hr.connection.timeout"]
         self._show_config()
         self._get_mon_version()
-        HostConnection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
+        HostConnection.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose)
         # init lut
         self.__old_send_lut = {}
         # we need no icmp capability in relaying
         self.add_process(SocketProcess("socket"), start=True)
         self.add_process(ResolveProcess("resolve"), start=True)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
-        id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose, self.__force_resolve)
+        id_discovery.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose, self.__force_resolve)
         self._init_filecache()
         self._init_msi_block()
         self._change_rlimits()
@@ -117,14 +116,6 @@ class relay_code(threading_tools.process_pool):
             self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
             self._sigint("error init")
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                self.__log_template.log(*self.__log_cache.pop(0))
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _sigint(self, err_cause):
         if self["exit_requested"]:
@@ -278,14 +269,8 @@ class relay_code(threading_tools.process_pool):
     def _init_filecache(self):
         self.__client_dict = {}
         self.__last_tried = {}
-        if not self.__autosense:
-            self.__new_clients, self.__old_clients = (
-                my_cached_file("/tmp/.new_clients", log_handle=self.log),
-                my_cached_file("/tmp/.old_clients", log_handle=self.log)
-            )
-        else:
-            if os.path.isfile(MAPPING_FILE_TYPES):
-                self.__client_dict.update(dict([(key, "0") for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()]))
+        if os.path.isfile(MAPPING_FILE_TYPES):
+            self.__client_dict.update(dict([(key, "0") for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()]))
         self.__default_0mq = False
 
     def _new_client(self, c_ip, c_port):
@@ -296,18 +281,17 @@ class relay_code(threading_tools.process_pool):
 
     def _set_client_state(self, c_ip, c_port, c_type):
         write_file = False
-        if self.__autosense:
-            check_names = [c_ip]
-            if self.__force_resolve:
-                if c_ip in self.__ip_lut:
-                    real_name = self.__ip_lut[c_ip]
-                    if real_name != c_ip:
-                        check_names.append(real_name)
-            for c_name in check_names:
-                if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
-                    self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
-                    self.__client_dict[c_name] = c_type
-                    write_file = True
+        check_names = [c_ip]
+        if self.__force_resolve:
+            if c_ip in self.__ip_lut:
+                real_name = self.__ip_lut[c_ip]
+                if real_name != c_ip:
+                    check_names.append(real_name)
+        for c_name in check_names:
+            if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
+                self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
+                self.__client_dict[c_name] = c_type
+                write_file = True
         if write_file:
             file(MAPPING_FILE_TYPES, "w").write("\n".join([key for key, value in self.__client_dict.iteritems() if value == "0"]))
 
@@ -471,7 +455,7 @@ class relay_code(threading_tools.process_pool):
                 raise
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
-                _backlog_size = global_config["BACKLOG_SIZE"]
+                _backlog_size = self.CC.CS["hm.socket.backlog.size"]
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
@@ -501,13 +485,13 @@ class relay_code(threading_tools.process_pool):
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
         client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
         conn_str = "tcp://*:{:d}".format(
-            global_config["COM_PORT"])
+            global_config["COMMAND_PORT"])
         try:
             client.bind(conn_str)
         except zmq.ZMQError:
             self.log(
                 "error binding to *:{:d}: {}".format(
-                    global_config["COM_PORT"],
+                    global_config["COMMAND_PORT"],
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL
@@ -702,34 +686,22 @@ class relay_code(threading_tools.process_pool):
                         # , _e.host(ip_addr)])
                         # srv_com["host_unresolved"] = t_host
                         # srv_com["host"] = ip_addr
-                        if self.__autosense:
-                            # try to get the state of both addresses
-                            c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
-                            # just for debug runs
-                            # c_state = "T"
-                            if c_state is None:
-                                # not needed
-                                # HostConnection.delete_hc(srv_com)
-                                if t_host not in self.__last_tried:
-                                    self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                                self.__last_tried[t_host] = {
-                                    "T": "0",
-                                    "0": "T",
-                                }[self.__last_tried[t_host]]
-                                c_state = self.__last_tried[t_host]
-                            con_mode = c_state
-                            # con_mode = "0"
-                        else:
-                            self.__old_clients.update()
-                            self.__new_clients.update()
-                            if t_host in self.__new_clients:
-                                con_mode = "0"
-                            elif t_host in self.__old_clients:
-                                con_mode = "T"
-                            elif self.__default_0mq:
-                                con_mode = "0"
-                            else:
-                                con_mode = "T"
+                        # try to get the state of both addresses
+                        c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
+                        # just for debug runs
+                        # c_state = "T"
+                        if c_state is None:
+                            # not needed
+                            # HostConnection.delete_hc(srv_com)
+                            if t_host not in self.__last_tried:
+                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                            self.__last_tried[t_host] = {
+                                "T": "0",
+                                "0": "T",
+                            }[self.__last_tried[t_host]]
+                            c_state = self.__last_tried[t_host]
+                        con_mode = c_state
+                        # con_mode = "0"
                         # decide which code to use
                         if self.__verbose:
                             self.log(
@@ -1118,7 +1090,7 @@ class relay_code(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.__log_template.close()
+        self.CC.close()
 
     def _init_commands(self):
         self.log("init commands")

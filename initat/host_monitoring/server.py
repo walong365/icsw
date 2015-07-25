@@ -44,26 +44,19 @@ from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 from .hm_inotify import HMInotifyProcess
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
+from initat.tools.server_mixins import ICSWBasePool
 
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
 
 
-class server_code(threading_tools.process_pool):
+class server_code(ICSWBasePool):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
         self.global_config = global_config
         self.objgraph = None
-        if global_config["OBJGRAPH"]:
-            try:
-                import objgraph
-            except ImportError:
-                pass
-            else:
-                self.objgraph = objgraph
-        self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
             self,
             "main",
@@ -71,15 +64,17 @@ class server_code(threading_tools.process_pool):
             zmq_contexts=1,
             loop_granularity=IDLE_LOOP_GRANULARITY,
         )
-        self.renice(global_config["NICE_LEVEL"])
+        self.CC.init("host-monitoring", global_config)
+        self.CC.check_config(client=True)
+        if self.CC.CS["hm.enable.objgraph"]:
+            try:
+                import objgraph
+            except ImportError:
+                pass
+            else:
+                self.objgraph = objgraph
         self.add_process(SocketProcess("socket"), start=True)
         self.add_process(ResolveProcess("resolve"), start=True)
-        self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.zmq_context
-        )
         self.install_signal_handlers()
         self._check_ksm()
         self._check_huge()
@@ -93,7 +88,7 @@ class server_code(threading_tools.process_pool):
         self.__callbacks, self.__callback_queue = ({}, {})
         self.register_func("register_callback", self._register_callback)
         self.register_func("callback_result", self._callback_result)
-        if not global_config["NO_INOTIFY"]:
+        if not self.CC.CS["hm.disable.inotify.process"]:
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self._show_config()
         self.__debug = global_config["DEBUG"]
@@ -129,15 +124,6 @@ class server_code(threading_tools.process_pool):
                     )
                 del self.long_running_checks[i]
 
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                cur_lev, cur_what = self.__log_cache.pop(0)
-                self.__log_template.log(cur_lev, cur_what)
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
-
     def _sigint(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -164,7 +150,7 @@ class server_code(threading_tools.process_pool):
         sys.stdout = cur_stdout
 
     def _check_ksm(self):
-        if global_config["ENABLE_KSM"]:
+        if self.CC.CS["hm.enable.ksm"]:
             ksm_dir = "/sys/kernel/mm/ksm/"
             if os.path.isdir(ksm_dir):
                 try:
@@ -194,10 +180,10 @@ class server_code(threading_tools.process_pool):
         )
 
     def _check_huge(self):
-        if global_config["ENABLE_HUGE"]:
+        if self.CC.CS["hm.enable.hugepages"]:
             huge_dir = "/sys/kernel/mm/hugepages/"
             mem_total = int([line for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")][0].split()[1]) * 1024
-            mem_to_map = mem_total * global_config["HUGEPAGES"] / 100
+            mem_to_map = mem_total * self.CC.CS["hm.hugepage.percentage"] / 100
             self.log("memory to use for hugepages ({:d} %): {} (of {})".format(
                 global_config["HUGEPAGES"],
                 logging_tools.get_size_str(mem_to_map),
@@ -295,11 +281,11 @@ class server_code(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=4 if global_config["NO_INOTIFY"] else 5)
+        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=4 if self.CC.CS["hm.disable.inotify.process"] else 5)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collserver")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4 if global_config["NO_INOTIFY"] else 5, process_name="manager")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4 if self.CC.CS["hm.disable.inotify.process"] else 5, process_name="manager")
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 60
         msi_block.save_block()
@@ -443,7 +429,7 @@ class server_code(threading_tools.process_pool):
                 raise
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
-                _backlog_size = global_config["BACKLOG_SIZE"]
+                _backlog_size = self.CC.CS["hm.socket.backlog.size"]
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
@@ -456,9 +442,9 @@ class server_code(threading_tools.process_pool):
         for bind_ip, sock in zip(sorted(self.zmq_id_dict.keys()), self.socket_list):
             # print "unbind", bind_ip
             sock.unbind(
-                "tcp://%s:%d" % (
+                "tcp://{}:{:d}".format(
                     bind_ip,
-                    global_config["COM_PORT"]
+                    global_config["COMMAND_PORT"]
                 )
             )
             sock.close()
@@ -481,7 +467,7 @@ class server_code(threading_tools.process_pool):
             client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
             _conn_str = "tcp://{}:{:d}".format(
                 bind_ip,
-                global_config["COM_PORT"]
+                global_config["COMMAND_PORT"]
             )
             try:
                 client.bind(_conn_str)
@@ -769,4 +755,4 @@ class server_code(threading_tools.process_pool):
         self.vector_socket.close()
         self.command_socket.close()
         self.result_socket.close()
-        self.__log_template.close()
+        self.CC.close()

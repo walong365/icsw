@@ -49,7 +49,7 @@ class _general(hm_classes.hm_module):
             # at first init the machine_vector
             self._init_machine_vector()
             # then start the polling loop, 30 seconds default timeout (defined in main.py) poll time
-            _mpc = global_config["MACHVECTOR_POLL_COUNTER"]
+            _mpc = self.main_proc.CC.CS["hm.machvector.poll.time"]
             self.log("machvector poll_counter is {:d} seconds".format(_mpc))
             self.main_proc.register_timer(self._update_machine_vector, _mpc, instant=True)
 
