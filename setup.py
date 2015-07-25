@@ -113,12 +113,6 @@ setup(
             ]
         ),
         (
-            "/opt/cluster/etc",
-            [
-                "opt/cluster/etc/client_config.xml",
-            ]
-        ),
-        (
             "/opt/cluster/sbin/pis",
             [
                 "opt/cluster/sbin/pis/cluster_post_install.sh",
@@ -129,6 +123,7 @@ setup(
                 "opt/cluster/sbin/pis/hpc_library_post_install.py",
                 "opt/cluster/sbin/pis/icsw_client_post_install.sh",
                 "opt/cluster/sbin/pis/icsw_server_post_install.sh",
+                "opt/cluster/sbin/pis/merge_client_configs.py",
             ]
         ),
         (

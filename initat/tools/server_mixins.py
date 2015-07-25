@@ -42,7 +42,7 @@ class ConfigCheckObject(object):
         self.srv_type = srv_type
         self.global_config = global_config
         if add_config_store:
-            self.__cs = config_store.ConfigStore("/opt/cluster/etc/client_config.xml", self.log)
+            self.__cs = config_store.ConfigStore("client", self.log)
         else:
             self.__cs = None
         global_config.add_config_entries(

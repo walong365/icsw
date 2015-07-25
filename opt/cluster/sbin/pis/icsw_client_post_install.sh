@@ -31,6 +31,9 @@ rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
 [ -d /var/log/cluster/sockets/snmprelay ] && rm -rf /var/log/cluster/sockets/snmprelay
 [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
 
+# migrate client config files
+/opt/cluster/sbin/pis/merge_client_configs.py
+
 PY_FILES="host-monitoring limits hm_classes ipc_comtools"
 for file in $PY_FILES ; do
     rm -f ${ICSW_SBIN}/$file.pyo
