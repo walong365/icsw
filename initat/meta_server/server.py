@@ -31,7 +31,6 @@ from initat.tools import configfile, logging_tools, mail_tools, process_tools, s
     threading_tools, inotify_tools
 from initat.host_monitoring import hm_classes
 from initat.client_version import VERSION_STRING
-
 from initat.tools.server_mixins import ICSWBasePool
 
 from .config import global_config
@@ -204,7 +203,7 @@ class main_process(ICSWBasePool):
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_command,
-            client_type="meta",
+            client_type="meta-server",
         )
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         if hm_classes and global_config["TRACK_CSW_MEMORY"]:

@@ -19,16 +19,14 @@
 #
 """ install process structures """
 
+from lxml import etree  # @UnresolvedImport
+import os
+
 from initat.package_install.client.command import simple_command
 from initat.package_install.client.config import global_config
 from initat.client_version import VERSION_STRING
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
+from initat.tools import logging_tools, process_tools, threading_tools, config_store, server_command
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 
@@ -118,6 +116,7 @@ class install_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
+        self.CS = config_store.ConfigStore("client", self.log)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -473,7 +472,7 @@ class yum_install_process(install_process):
         elif set(cur_repo_names) ^ set(new_repo_dict.keys()):
             self.log("list of old and new repositories differ, forcing rewrite")
             rewrite_repos = True
-        if rewrite_repos and global_config["MODIFY_REPOS"]:
+        if rewrite_repos and self.CS["pc.modify.repos"]:
             self.log("rewritting repo files")
             # remove old ones
             for old_r_name in old_repo_dict.iterkeys():
@@ -629,7 +628,7 @@ class zypper_install_process(install_process):
         elif set(cur_repo_names) ^ set(new_repo_dict.keys()):
             self.log("list of old and new repositories differ, forcing rewrite")
             rewrite_repos = True
-        if rewrite_repos and global_config["MODIFY_REPOS"]:
+        if rewrite_repos and self.CS["pc.modify.repos"]:
             self.log("rewritting repo files")
             # remove old ones
             for old_r_name in old_repo_dict.iterkeys():

@@ -100,7 +100,7 @@ def parse_file(file_name):
 MAP_DICT = {
     "MS_MIN_CHECK_TIME": "meta.check.time",
     "MS_TRACK_CSW_MEMORY": "meta.track.icsw.memory",
-    "PC_MODIFY_REPOS": "packageclient.modify.repos",
+    "PC_MODIFY_REPOS": "pc.modify.repos",
     "MS_MAILSERVER": "mail.server",
     "MS_FROM_NAME": "meta.mail.from.name",
     "MS_TO_ADDR": "mail.target.address",

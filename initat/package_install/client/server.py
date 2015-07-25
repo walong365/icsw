@@ -25,22 +25,22 @@ import time
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, uuid_tools
 import zmq
+from initat.tools.server_mixins import ICSWBasePool
 
 from .config import global_config
-from .install_process import yum_install_process, zypper_install_process, \
-    get_srv_command
+from .install_process import yum_install_process, zypper_install_process, get_srv_command
 
 
-class server_process(threading_tools.process_pool):
+class server_process(ICSWBasePool):
     def __init__(self):
         self.global_config = global_config
-        self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
             self,
             "main",
             zmq=True,
         )
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.CC.init("package-client", global_config)
+        self.CC.check_config(client=True)
         self.install_signal_handlers()
         # init environment
         self._init_environment()
@@ -63,17 +63,8 @@ class server_process(threading_tools.process_pool):
             else:
                 self.add_process(zypper_install_process("install"), start=True)
         else:
-            self.client_socket = None
+            self.main_socket = None
             self._int_error("no package_server id")
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                cur_lev, cur_what = self.__log_cache.pop(0)
-                self.__log_template.log(cur_lev, cur_what)
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _init_environment(self):
         # Debian fix to get full package names, sigh ...
@@ -141,9 +132,9 @@ class server_process(threading_tools.process_pool):
     def _get_package_server_id(self):
         self.srv_conn_str = "tcp://{}:{:d}".format(
             global_config["PACKAGE_SERVER"],
-            global_config["SERVER_COM_PORT"]
+            self.CC.CS["pc.server.com.port"],
         )
-        ps_id_file_name = global_config["PACKAGE_SERVER_ID_FILE"]
+        ps_id_file_name = "/etc/packageserver_id"
         if not os.path.exists(ps_id_file_name):
             _result = self._get_package_server_id_from_server()
             if _result is not None:
@@ -203,21 +194,12 @@ class server_process(threading_tools.process_pool):
 
     def _init_network_sockets(self):
         # socket
-        self.bind_id = "{}:pclient:".format(uuid_tools.get_uuid().get_urn())
-        self.log("connected to {}".format(self.srv_conn_str))
-        client_sock = process_tools.get_socket(
-            self.zmq_context,
-            "ROUTER",
-            identity=self.bind_id,
+        self.network_bind(
+            bind_port=global_config["COMMAND_PORT"],
+            bind_to_localhost=True,
+            pollin=self._recv_client,
+            client_type="package-client",
         )
-        bind_str = "tcp://0.0.0.0:{:d}".format(
-            global_config["COM_PORT"]
-        )
-        client_sock.bind(bind_str)
-        client_sock.connect(self.srv_conn_str)
-        self.log("bound to {} (ID {})".format(bind_str, self.bind_id))
-        self.client_socket = client_sock
-        self.register_poller(client_sock, zmq.POLLIN, self._recv_client)  # @UndefinedVariable
         # send commands
         self._register()
         self._get_repos()
@@ -230,8 +212,8 @@ class server_process(threading_tools.process_pool):
         for _msg in self.__send_buffer:
             if _success:
                 try:
-                    self.client_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
-                    self.client_socket.send_unicode(_msg)
+                    self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
+                    self.main_socket.send_unicode(_msg)
                 except zmq.error.ZMQError:
                     _success = False
                     new_buffer.append(_msg)
@@ -276,8 +258,8 @@ class server_process(threading_tools.process_pool):
             )
         )
         try:
-            self.client_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
-            self.client_socket.send_unicode(send_com)
+            self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(send_com)
         except zmq.error.ZMQError:
             self.__send_buffer.append(send_com)
             self.log("error sending message to server, buffering ({:d})".format(len(self.__send_buffer)))
@@ -379,6 +361,6 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        if self.client_socket:
-            self.client_socket.close()
-        self.__log_template.close()
+        if self.main_socket:
+            self.network_unbind()
+        self.CC.close()

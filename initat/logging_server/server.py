@@ -323,7 +323,7 @@ class main_process(ICSWBasePool):
             if force or (t_diff < 0 or t_diff > 60):
                 subject = "Python error for pid {:d} on {}@{} ({}, {})".format(
                     ep,
-                    global_config["LONG_HOST_NAME"],
+                    process_tools.get_fqdn()[0],
                     c_name,
                     process_tools.get_machine_name(),
                     clusterid.get_cluster_id() or "N/A",
