@@ -99,7 +99,7 @@ class ConfigVar(object):
         elif self._type == "bool":
             _val = "True" if self.value else "False"
         else:
-            _val = self.value
+            _val = self.get_value()
         _el = E.key(
             _val,
             name=self.name,
