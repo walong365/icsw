@@ -200,6 +200,7 @@ class server_process(ICSWBasePool):
             pollin=self._recv_client,
             client_type="package-client",
         )
+        self.main_socket.connect(self.srv_conn_str)
         # send commands
         self._register()
         self._get_repos()
@@ -215,6 +216,13 @@ class server_process(ICSWBasePool):
                     self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
                     self.main_socket.send_unicode(_msg)
                 except zmq.error.ZMQError:
+                    self.log(
+                        "error sending to {}: {}".format(
+                            self.__package_server_id,
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     _success = False
                     new_buffer.append(_msg)
                 else:
@@ -222,10 +230,11 @@ class server_process(ICSWBasePool):
             else:
                 new_buffer.append(_msg)
         self.__send_buffer = new_buffer
-        self.log("trying to resend {}: {:d} ok, {:d} still pending".format(
-            logging_tools.get_plural("message", len(self.__send_buffer)),
-            _send_ok,
-            len(self.__send_buffer),
+        self.log(
+            "trying to resend {}: {:d} ok, {:d} still pending".format(
+                logging_tools.get_plural("message", len(self.__send_buffer)),
+                _send_ok,
+                len(self.__send_buffer),
             )
         )
         # print len(self.__send_buffer)
