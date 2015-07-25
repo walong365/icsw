@@ -80,6 +80,7 @@ def get_empty_node_options(**kwargs):
     options.show_memory = False
     options.show_acl = False
     options.merge_node_queue = False
+    options.queue_name = ""
     for key, value in kwargs.iteritems():
         if not hasattr(options, key):
             print("wrong key in get_empty_node_options: {}".format(key))
@@ -1329,11 +1330,15 @@ def build_node_list(s_info, options):
                 ) for act_h in s_info.get_all_hosts() if act_h.attrib["short_name"] != "global"
             ]
         )
+        if options.queue_name:
+            d_list = [(_d_name, _q_list) for _d_name, _q_list in d_list if options.queue_name in _q_list]
     else:
         d_list = []
         for act_q in s_info.get_all_queues():
             d_list.extend([(act_q.attrib["name"], h_name.text) for h_name in act_q.findall(".//host") if h_name.text != "NONE"])
         d_list = sorted(d_list, key=lambda node: node[1 if options.node_sort else 0])
+        if options.queue_name:
+            d_list = [(_q_name, _d_name) for _q_name, _d_name in d_list if _q_name == options.queue_name]
     node_list = E.node_list()
     if options.merge_node_queue:
         for h_name, q_list in d_list:

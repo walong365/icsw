@@ -27,8 +27,7 @@ import sys
 import time
 
 import urwid
-from initat.tools import logging_tools
-from initat.tools import sge_tools
+from initat.tools import logging_tools, sge_tools
 
 
 def check_environment():
@@ -72,7 +71,11 @@ def sjs(s_info, opt_dict):
     left_justified = set(["id", "task", "depends"])
     wait_list = sge_tools.build_waiting_list(s_info, opt_dict)
     for wait_job in wait_list:
-        w_out_list.append([logging_tools.form_entry(cur_el.text, header=cur_el.tag, left=cur_el.tag in left_justified) for cur_el in wait_job])
+        w_out_list.append(
+            [
+                logging_tools.form_entry(cur_el.text, header=cur_el.tag, left=cur_el.tag in left_justified) for cur_el in wait_job
+            ]
+        )
     if len(wait_list) == int(wait_list.get("total")):
         ret_list.append("{}".format(logging_tools.get_plural("waiting job", len(wait_list))))
     else:
@@ -93,7 +96,12 @@ def sns(s_info, opt_dict):
     ret_list = [time.ctime()]
     s_info.build_luts()
     node_list = sge_tools.build_node_list(s_info, opt_dict)
-    left_justified = set(["host", "queue", "queues", "node", "seqno", "state", "type", "complex", "pe_list", "userlists", "projects", "jobs"])
+    left_justified = set(
+        [
+            "host", "queue", "queues", "node", "seqno", "state", "type",
+            "complex", "pe_list", "userlists", "projects", "jobs"
+        ]
+    )
     short_dict = {
         "slots_used": "su",
         "slots_reserved": "sr",
@@ -280,7 +288,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("-S", dest="long_status", help="show long status [%(default)s]", action="store_true", default=False)
             self.add_argument("-T", dest="show_long_type", help="show long queue type [%(default)s]", action="store_true", default=False)
             self.add_argument("-a", dest="show_acl", help="show access control info [%(default)s]", action="store_true", default=False)
-            self.add_argument("-q", dest="show_seq", help="show sequence number [%(default)s]", action="store_true", default=False)
+            self.add_argument("--seq", dest="show_seq", help="show sequence number [%(default)s]", action="store_true", default=False)
             self.add_argument("-u", dest="users", type=str, help="show only jobs of user [%(default)s]", action="append", default=[])
             self.add_argument("-c", dest="complexes", type=str, help="show only jobs with the given complexes [%(default)s]", action="append", default=[])
             self.add_argument(
@@ -298,6 +306,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("-N", dest="node_sort", help="sort according to the nodename [%(default)s]", action="store_true", default=False)
             self.add_argument("--pe", dest="show_pe", help="show pe information [%(default)s]", action="store_true", default=False)
             self.add_argument("-J", dest="merge_node_queue", help="merge node with queues in output [%(default)s]", action="store_true", default=False)
+            self.add_argument("-q", dest="queue_name", type=str, default="", help="queue to show [%(default)s]")
         elif run_mode == "sjs":
             # self.add_argument("-s", dest="no_status", help="suppress status [%(default)s]", action="store_true", default=False)
             self.add_argument("--valid", dest="only_valid_waiting", help="show only valid waiting jobs [%(default)s]", action="store_true", default=False)
@@ -318,7 +327,8 @@ def log_com(what, level):
     print "{} [{}] {}".format(
         time.ctime(),
         logging_tools.get_log_level_str(level),
-        what)
+        what
+    )
 
 
 def get_server():
@@ -379,40 +389,49 @@ def main():
     s_time = time.time()
     if run_mode == "sjs":
         if options.interactive:
-            window(callback=sjs,
-                   args=(act_si, options),
-                   tree=dt_tree(
-                       dt_node(
-                           "press p to print and q to exit",
-                           edges=[
-                               dt_edge(
-                                   "p",
-                                   dt_node(
-                                       "Are you sure",
-                                       edges=[
-                                           dt_edge("y", dt_node(None, action="back_to_top")),
-                                           dt_edge("n", dt_node(None, action="back_to_top"))])),
-                               dt_edge(
-                                   "q",
-                                   dt_node(
-                                       None,
-                                       action="close"))])
-                       )).loop()
+            window(
+                callback=sjs,
+                args=(act_si, options),
+                tree=dt_tree(
+                    dt_node(
+                        "press p to print and q to exit",
+                        edges=[
+                            dt_edge(
+                                "p",
+                                dt_node(
+                                    "Are you sure",
+                                    edges=[
+                                        dt_edge("y", dt_node(None, action="back_to_top")),
+                                        dt_edge("n", dt_node(None, action="back_to_top"))])),
+                            dt_edge(
+                                "q",
+                                dt_node(
+                                    None,
+                                    action="close"))])
+                    )
+            ).loop()
         else:
             sjs(act_si, options)
     elif run_mode == "sns":
         if options.interactive:
-            window(callback=sns, args=(act_si, options),
-                   tree=dt_tree(
-                       dt_node(
-                           "press q to exit",
-                           edges=[
-                               dt_edge(
-                                   "q",
-                                   dt_node(
-                                       None,
-                                       action="close"))])
-                       )).loop()
+            window(
+                callback=sns,
+                args=(act_si, options),
+                tree=dt_tree(
+                    dt_node(
+                        "press q to exit",
+                        edges=[
+                            dt_edge(
+                                "q",
+                                dt_node(
+                                    None,
+                                    action="close"
+                                )
+                            )
+                        ]
+                    )
+                )
+            ).loop()
         else:
             sns(act_si, options)
     else:
