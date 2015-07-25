@@ -261,7 +261,7 @@ class ServiceState(object):
                     "enable" if enable else "disable",
                 )
             elif _chkconfig_bin:
-                _cmdline = "{} {0 {}".format(
+                _cmdline = "{} {} {}".format(
                     _chkconfig_bin,
                     _srv,
                     "on" if enable else "off",
