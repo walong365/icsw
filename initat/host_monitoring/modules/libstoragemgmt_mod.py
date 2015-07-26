@@ -4,9 +4,7 @@ import lsm
 
 from .. import limits
 from ..hm_classes import hm_command, hm_module
-from ..long_running_checks import (
-    LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
-)
+from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
 
 class _general(hm_module):

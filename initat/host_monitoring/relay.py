@@ -270,7 +270,7 @@ class relay_code(ICSWBasePool):
         self.__client_dict = {}
         self.__last_tried = {}
         if os.path.isfile(MAPPING_FILE_TYPES):
-            self.__client_dict.update(dict([(key, "0") for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()]))
+            self.__client_dict.update({key: "0" for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()})
         self.__default_0mq = False
 
     def _new_client(self, c_ip, c_port):

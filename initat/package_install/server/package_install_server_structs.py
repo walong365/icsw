@@ -483,7 +483,7 @@ class Client(object):
 
     @staticmethod
     def full_uuid(in_uuid):
-        return "urn:uuid:{}:pclient:".format(in_uuid)
+        return "urn:uuid:{}:package-client:".format(in_uuid)
 
     @staticmethod
     def get(key):
@@ -491,8 +491,8 @@ class Client(object):
 
     @staticmethod
     def register(uid, name):
-        if not uid.endswith(":pclient:"):
-            uid = "{}:pclient:".format(uid)
+        if not uid.endswith(":pclient:") or not uid.endswith(":package-client:"):
+            uid = "{}:package-client:".format(uid)
         if uid not in Client.uuid_set:
             try:
                 new_client = Client(uid, name)

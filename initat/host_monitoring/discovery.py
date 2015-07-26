@@ -22,16 +22,15 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
+from lxml import etree  # @UnresolvedImport
+import os
+import time
+
 from initat.host_monitoring import limits
 from initat.host_monitoring.constants import MAPPING_FILE_IDS
 from initat.host_monitoring.host_monitoring_struct import host_message
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
-from initat.tools import server_command
-import time
+from initat.tools import logging_tools, process_tools, server_command
 import zmq
 
 
@@ -168,6 +167,7 @@ class id_discovery(object):
                 "ccserver",
                 "sgeserver",
                 "rrd_grapher",
+                "pclient",
             ]
         )
         id_discovery.reverse_mapping = {}

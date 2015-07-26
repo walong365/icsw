@@ -330,7 +330,10 @@ class server_process(
     def client_command(self, srv_com, **kwargs):
         return self._client_command(srv_com, **kwargs)
 
-    # support old client (without :pclient: postfix)
+    @RemoteCall(id_filter="^.*:(package-client):.*$")
+    def client_command(self, srv_com, **kwargs):
+        return self._client_command(srv_com, **kwargs)
+
     @RemoteCall()
     def register(self, srv_com, **kwargs):
         return self._client_command(srv_com, **kwargs)
@@ -350,8 +353,8 @@ class server_process(
     def _client_command(self, srv_com, **kwargs):
         c_uid = kwargs["src_id"]
         cur_com = srv_com["command"].text
-        if not c_uid.endswith(":pclient:"):
-            c_uid = "{}:pclient:".format(c_uid)
+        if not c_uid.endswith(":pclient:") or not c_uid.endswith(":package-client:"):
+            c_uid = "{}:package-client:".format(c_uid)
         if cur_com == "register":
             srv_com = Client.register(c_uid, srv_com["source"].attrib["host"])
         else:

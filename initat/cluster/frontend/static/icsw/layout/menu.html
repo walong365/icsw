@@ -47,7 +47,7 @@
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_MONITORING_DISK }}"><span class="fa fa-hdd-o fa_icsw"></span>Disk</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank"><span class="fa fa-share-alt fa_icsw"></span>Icinga</a></li>
-                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config']" class="text-left">
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config-server']" class="text-left">
                         <ul class="list-group" style="margin-bottom: 10px; margin-top: 5px">
                             <li class="list-group-item">
                                 <input type="button" class="btn btn-success btn-xs" value="rebuild config (cached, RC)" title="fully cached (with routing cache)" ng-click="rebuild_config('ALWAYS')"/>
@@ -69,7 +69,7 @@
                          (has_valid_license('kpi') && has_menu_permission('kpi.kpi'))">
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-line-chart fa-lg fa_top"></span>Status</a>
                 <ul class="dropdown-menu">
-                    <li ng-show="SERVICE_TYPES['md-config'] && has_valid_license('monitoring_dashboard') && has_menu_permission('mon_check_command.show_monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}"><span class="fa fa-dot-circle-o fa-sm fa_icsw"></span>Monitoring dashboard</a></li>
+                    <li ng-show="SERVICE_TYPES['md-config-server'] && has_valid_license('monitoring_dashboard') && has_menu_permission('mon_check_command.show_monitoring_dashboard')"><a href="{{ ICSW_URLS.MON_LIVESTATUS }}"><span class="fa fa-dot-circle-o fa-sm fa_icsw"></span>Monitoring dashboard</a></li>
                     <li ng-show="has_menu_permission('backbone.device.show_graphs') && has_valid_license('graphing')"><a href="{{ ICSW_URLS.MON_GRAPH }}"><span class="fa fa-line-chart fa-sm fa_icsw"></span>Graph</a></li>
                     <li ng-show="has_menu_permission('backbone.device.show_status_history') && has_valid_license('reporting')"><a href="{{ ICSW_URLS.MON_STATUS_HISTORY }}"><span class="fa fa-pie-chart fa_icsw"></span>Status history</a></li>
                     <li ng-show="has_valid_license('kpi') && has_menu_permission('kpi.kpi')" class="divider"></li>
@@ -91,8 +91,8 @@
                 <a class="dropdown-toggle" data-toggle="dropdown"><span class="fa fa-cubes fa-lg fa_top"></span>Cluster</a>
                 <ul class="dropdown-menu">
                     <li ng-show="SERVICE_TYPES.mother && has_valid_license('netboot') && has_menu_permission('device.change_boot')"><a href="{{ ICSW_URLS.BOOT_SHOW_BOOT }}">Nodeboot</a></li>
-                    <li ng-show="SERVICE_TYPES.package && has_valid_license('package_install') && has_menu_permission('package.package_install') && has_valid_license('package_install')"><a href="{{ ICSW_URLS.PACK_REPO_OVERVIEW }}">Package install</a></li>
-                    <li ng-show="has_valid_license('netboot') && SERVICE_TYPES.mother && SERVICE_TYPES.package" class="divider"></li>
+                    <li ng-show="SERVICE_TYPES['package-server'] && has_valid_license('package_install') && has_menu_permission('package.package_install') && has_valid_license('package_install')"><a href="{{ ICSW_URLS.PACK_REPO_OVERVIEW }}">Package install</a></li>
+                    <li ng-show="has_valid_license('netboot') && SERVICE_TYPES.mother && SERVICE_TYPES['package-server']" class="divider"></li>
                     <li ng-show="has_valid_license('netboot') && has_menu_permission('image.modify_images')"><a href="{{ ICSW_URLS.SETUP_IMAGE_OVERVIEW }}"><span class="fa fa-suitcase fa-sm fa_icsw"></span>Image overview</a></li>
                     <li ng-show="has_valid_license('netboot') && has_menu_permission('kernel.modify_kernels')"><a href="{{ ICSW_URLS.SETUP_KERNEL_OVERVIEW }}"><span class="fa fa-linux fa-sm fa_icsw"></span>Kernel overview</a></li>
                     <li ng-show="has_valid_license('netboot') && has_menu_permission('partition_fs.modify_partitions')"><a href="{{ ICSW_URLS.SETUP_PARTITION_OVERVIEW }}"><span class="fa fa-database fa-sm fa_icsw"></span>Partition overview</a></li>
