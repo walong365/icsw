@@ -491,7 +491,7 @@ class Client(object):
 
     @staticmethod
     def register(uid, name):
-        if not uid.endswith(":pclient:") or not uid.endswith(":package-client:"):
+        if (not uid.endswith(":pclient:")) and (not uid.endswith(":package-client:")):
             uid = "{}:package-client:".format(uid)
         if uid not in Client.uuid_set:
             try:

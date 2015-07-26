@@ -353,7 +353,7 @@ class server_process(
     def _client_command(self, srv_com, **kwargs):
         c_uid = kwargs["src_id"]
         cur_com = srv_com["command"].text
-        if not c_uid.endswith(":pclient:") or not c_uid.endswith(":package-client:"):
+        if (not c_uid.endswith(":pclient:")) and (not c_uid.endswith(":package-client:")):
             c_uid = "{}:package-client:".format(c_uid)
         if cur_com == "register":
             srv_com = Client.register(c_uid, srv_com["source"].attrib["host"])

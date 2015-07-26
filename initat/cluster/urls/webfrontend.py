@@ -32,9 +32,9 @@ handler404 = main_views.index.as_view()
 
 session_patterns = patterns(
     "initat.cluster.frontend",
-    url(r"logout$", session_views.sess_logout.as_view(), name="logout"),
-    url(r"login$", session_views.sess_login.as_view(), name="login"),
-    url(r"login_addons$", session_views.login_addons.as_view(), name="login_addons"),
+    url(r"logout", session_views.sess_logout.as_view(), name="logout"),
+    url(r"login", session_views.sess_login.as_view(), name="login"),
+    url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
 )
 
 rms_patterns = patterns(

@@ -23,15 +23,16 @@ import os
 import time
 
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
-    threading_tools, uuid_tools
+    threading_tools, uuid_tools, server_mixins
+from initat.tools.server_mixins import RemoteCall
 import zmq
-from initat.tools.server_mixins import ICSWBasePool
 
 from .config import global_config
 from .install_process import yum_install_process, zypper_install_process, get_srv_command
 
 
-class server_process(ICSWBasePool):
+@server_mixins.RemoteCallProcess
+class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def __init__(self):
         self.global_config = global_config
         threading_tools.process_pool.__init__(
@@ -197,7 +198,7 @@ class server_process(ICSWBasePool):
         self.network_bind(
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            pollin=self._recv_client,
+            pollin=self.remote_call,
             client_type="package-client",
         )
         self.main_socket.connect(self.srv_conn_str)
@@ -284,74 +285,55 @@ class server_process(ICSWBasePool):
     def _get_repos(self):
         self._send_to_server_int(get_srv_command(command="get_repo_list"))
 
-    def _recv_client(self, zmq_sock):
-        data = [zmq_sock.recv()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-            data.append(zmq_sock.recv())
-        batch_list = []
-        if len(data) == 2:
-            src_id = data.pop(0)
-            data = data[0]
-            try:
-                srv_com = server_command.srv_command(source=data)
-            except:
-                self.log(
-                    "error decoding command from {}: {}, '{}'".format(
-                        src_id,
-                        process_tools.get_except_info(),
-                        data[:30],
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            else:
-                send_reply = True
-                srv_com.update_source()
-                cur_com = srv_com["command"].text
-                self.log("got {} (length: {:d}) from {}".format(cur_com, len(data), src_id))
-                srv_com["result"] = None
-                if cur_com == "get_0mq_id":
-                    srv_com["zmq_id"] = self.bind_id
-                    srv_com.set_result(
-                        "0MQ_ID is {}".format(self.bind_id)
-                    )
-                elif cur_com == "status":
-                    # FIXME, Todo
-                    srv_com.set_result(
-                        "everything OK :-)"
-                    )
-                elif cur_com == "new_config":
-                    # no reply for this command
-                    send_reply = False
-                    self._get_new_config()
-                elif cur_com == "sync_repos":
-                    # no reply for this command
-                    send_reply = False
-                    self._get_repos()
-                else:
-                    # no reply for this command
-                    send_reply = False
-                    batch_list.append(srv_com)
-                if send_reply:
-                    self.log("send reply for command {}".format(cur_com))
-                    zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                    zmq_sock.send_unicode(unicode(srv_com))
-                del srv_com
-        else:
-            self.log(
-                "cannot receive more data, already got '{}'".format(
-                    ", ".join(data)
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-        if batch_list:
-            self.log("... batch list valid ({})".format(batch_list[0]["*command"]))
-            self.send_to_process(
-                "install",
-                "command_batch",
-                [
-                    unicode(cur_com) for cur_com in batch_list
-                ]
-            )
+    @RemoteCall()
+    def status(self, srv_com, **kwargs):
+        return self.server_status(srv_com, self.__msi_block, global_config)
+
+    @RemoteCall()
+    def get_0mq_id(self, srv_com, **kwargs):
+        srv_com["zmq_id"] = kwargs["bind_id"]
+        srv_com.set_result("0MQ_ID is {}".format(kwargs["bind_id"]))
+        return srv_com
+
+    @RemoteCall()
+    def get_package_list(self, srv_com, **kwargs):
+        self._new_batch_list(srv_com)
+        return None
+
+    @RemoteCall()
+    def package_list(self, srv_com, **kwargs):
+        self._new_batch_list(srv_com)
+        return None
+
+    @RemoteCall()
+    def get_repo_list(self, srv_com, **kwargs):
+        self._new_batch_list(srv_com)
+        return None
+
+    @RemoteCall()
+    def repo_list(self, srv_com, **kwargs):
+        self._new_batch_list(srv_com)
+        return None
+
+    def _new_batch_list(self, srv_com):
+        self.log("... batch list valid ({})".format(srv_com["*command"]))
+        self.send_to_process(
+            "install",
+            "command_batch",
+            [
+                unicode(srv_com)
+            ]
+        )
+
+    @RemoteCall()
+    def sync_repos(self, srv_com, **kwargs):
+        self._get_repos()
+        return None
+
+    @RemoteCall()
+    def new_config(self, srv_com, **kwargs):
+        self._get_new_config()
+        return None
 
     def _int_error(self, err_cause):
         self.__exit_cause = err_cause
