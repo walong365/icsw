@@ -110,9 +110,9 @@ class render_me(object):
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
         self.my_dict["ADDITIONAL_MENU_FILES"] = json.dumps(settings.ADDITIONAL_MENU_FILES)
         self.my_dict["ADDITIONAL_ANGULAR_APPS"] = settings.ADDITIONAL_ANGULAR_APPS
-        self.my_dict["ADDITIONAL_URLS"] = [
-            (_name, reverse(_url, args=_args)) for _name, _url, _args in settings.ADDITIONAL_URLS
-        ]
+        # self.my_dict["ADDITIONAL_URLS"] = [
+        #     (_name, reverse(_url, args=_args)) for _name, _url, _args in settings.ADDITIONAL_URLS
+        # ]
         return render_to_response(
             self.template,
             self.my_dict,
