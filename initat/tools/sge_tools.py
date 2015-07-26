@@ -1355,10 +1355,14 @@ def build_node_list(s_info, options):
             # check for user filters
             if options.users:
                 h_users = set(
-                    act_h.xpath("job[jobvalue[@name='qinstance_name' and text() = '{}@{}']]/jobvalue[@name='job_owner']/text()".format(
-                        q_name,
-                        h_name
-                    ), smart_strings=False))
+                    act_h.xpath(
+                        "job[jobvalue[@name='qinstance_name' and text() = '{}@{}']]/jobvalue[@name='job_owner']/text()".format(
+                            q_name,
+                            h_name
+                        ),
+                        smart_strings=False
+                    )
+                )
                 if not set(options.users) & h_users:
                     continue
             # check for complex filters
@@ -1565,7 +1569,8 @@ def build_node_list(s_info, options):
                     continue
             cur_node = E.node(
                 E.queue(q_name),
-                E.host(s_name))
+                E.host(s_name)
+            )
             if options.show_seq:
                 cur_node.append(
                     E.seqno(

@@ -535,6 +535,7 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
                 cur_smcc = None
                 srv_com["output"] = self.load_object(real_com)
             elif self.retrieval_pending(real_com):
+                self.log("{} (pend)".format(com))
                 cur_smcc = SMCRetrievePendingStruct(
                     srv_com,
                     real_com,
@@ -688,7 +689,12 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
                             obj_num,
                         )
                 else:
-                    return limits.nag_STATE_CRITICAL, "key {} not found in {}".format(
-                        obj_type,
-                        ", ".join(sorted(r_dict.keys())) or "EMPTY"
-                    )
+                    if r_dict:
+                        return limits.nag_STATE_CRITICAL, "key {} not found in {}".format(
+                            obj_type,
+                            ", ".join(sorted(r_dict.keys()))
+                        )
+                    else:
+                        return limits.nag_STATE_CRITICAL, "key {} not found, null result".format(
+                            obj_type,
+                        )

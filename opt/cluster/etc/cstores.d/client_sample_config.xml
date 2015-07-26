@@ -28,7 +28,7 @@
         <key name="hm.enable.hugepages" type="bool" description="enable Kernel hugepage">False</key>
         <key name="hm.hugepage.percentage" type="int" description="percentage of memory to use for hugepages">50</key>
         <key name="hm.enable.objgraph" type="bool" description="enable debugging with objgraph">False</key>
-        <key name="hr.connection.timeout" type="int" description="timeout in seconds for calls to distant machines">8</key>
+        <key name="hr.connection.timeout" type="int" description="timeout in seconds for calls to distant machines">20</key>
         <key name="hr.force.name.resolve" type="bool" description="enable automatic name resolving (dangerous)">False</key>
         <key name="hr.enable.objgraph" type="bool" description="enable debugging with objgraph">False</key>
         <key name="pc.server.com.port" type="int" description="network port of package-server">8007</key>

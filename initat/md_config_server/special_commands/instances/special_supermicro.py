@@ -19,13 +19,12 @@
 #
 """ supermicro special """
 
+from argparse import Namespace
+
 from initat.cluster.backbone.models import monitoring_hint
 from initat.host_monitoring.modules import supermicro_mod
 from initat.md_config_server.special_commands.base import SpecialBase
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from argparse import Namespace
-import pprint
 
 
 class special_supermicro(SpecialBase):
@@ -51,7 +50,6 @@ class special_supermicro(SpecialBase):
                 )
         if len(_hints):
             self.remove_cache_entries()
-        print _hints
         return _hints
 
     def _call(self):

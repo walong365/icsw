@@ -209,7 +209,7 @@ class HostConnection(object):
             for to_mes in to_messages:
                 self.return_error(
                     to_mes,
-                    "timeout (after {:.2f} seconds [{:.2f}, {:.2f}])".format(
+                    "timeout (after {:.2f} seconds [con={:.2f}, mes={:.2f}])".format(
                         to_mes.get_runtime(cur_time),
                         HostConnection.timeout,
                         to_mes.timeout,
