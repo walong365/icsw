@@ -268,10 +268,12 @@ for src_mod, obj_name in rest_views.REST_LIST:
     list_obj_name = "{}{}".format(obj_name, list_postfix)
     detail_obj_name = "{}{}".format(obj_name, detail_postfix)
 
-    rpl.extend([
-        url("^%s$" % (obj_name), getattr(rest_views, list_obj_name).as_view(), name=list_obj_name),
-        url("^%s/(?P<pk>[0-9]+)$" % (obj_name), getattr(rest_views, detail_obj_name).as_view(), name=detail_obj_name),
-    ])
+    rpl.extend(
+        [
+            url("^{}$".format(obj_name), getattr(rest_views, list_obj_name).as_view(), name=list_obj_name),
+            url("^{}/(?P<pk>[0-9]+)$".format(obj_name), getattr(rest_views, detail_obj_name).as_view(), name=detail_obj_name),
+        ]
+    )
 
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
@@ -342,7 +344,7 @@ my_url_patterns = patterns(
 
 url_patterns = patterns(
     "",
-    url(r"^%s/" % (settings.REL_SITE_ROOT), include(my_url_patterns)),
+    url(r"^{}/".format(settings.REL_SITE_ROOT), include(my_url_patterns)),
     url(r"^$", session_views.redirect_to_main.as_view()),
 )
 

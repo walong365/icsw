@@ -82,14 +82,14 @@ menu_module = angular.module(
             window.location = "http://www.init.at"
             return false
         $scope.redirect_to_info = () ->
-            window.location = ICSW_URLS.INFO_PAGE
+            window.location = ICSW_URLS.MAIN_INFO_PAGE
             return false
         $scope.redirect_to_handbook = () ->
             window.location = "/cluster/doc/#{initProduct.name.toLowerCase()}_handbook.pdf"
             return false
         $scope.show_handbook_page = () ->
             window.open(
-                ICSW_URLS.DYNDOC_PAGE_X.slice(0, -1) + $scope.HANDBOOK_PAGE
+                ICSW_URLS.DYNDOC_DOC_PAGE.slice(0, -1) + $scope.HANDBOOK_PAGE
                 "cluster documenation"
                 "height=500,width=600,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
             )

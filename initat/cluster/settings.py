@@ -291,7 +291,6 @@ INSTALLED_APPS = (
     "django_extensions",
     "reversion",
     "pipeline",
-    "static_precompiler",
 )
 if SLAVE_MODE:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
@@ -301,7 +300,6 @@ ICSW_WEBCACHE = "/opt/cluster/share/webcache"
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
-# STATIC_PRECOMPILER_CACHE = not DEBUG
 
 # pipeline settings
 
@@ -329,12 +327,8 @@ else:
 STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "static_precompiler.finders.StaticPrecompilerFinder",
     "pipeline.finders.PipelineFinder",
 )
-
-if DEBUG:
-    STATICFILES_FINDERS = tuple(list(STATICFILES_FINDERS) + ["pipeline.finders.PipelineFinder"])
 
 STATICFILES_DIRS = []
 if os.path.isdir("/opt/icinga/share/images/logos"):
@@ -355,7 +349,7 @@ INSTALLED_APPS = list(INSTALLED_APPS)
 # deprecated ?
 ADDITIONAL_MENU_FILES = []
 ADDITIONAL_ANGULAR_APPS = []
-ADDITIONAL_URLS = []
+# ADDITIONAL_URLS = []
 ADDITIONAL_JS = []
 
 # my authentication backend
@@ -384,17 +378,17 @@ for sub_dir in os.listdir(dir_name):
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )
-                        ADDITIONAL_URLS.extend(
-                            [
-                                (
-                                    _el.attrib["name"],
-                                    _el.attrib["url"],
-                                    [
-                                        _part for _part in _el.get("arguments", "").strip().split() if _part
-                                    ]
-                                ) for _el in _tree.findall(".//url")
-                            ]
-                        )
+                        # ADDITIONAL_URLS.extend(
+                        #    [
+                        #        (
+                        #            _el.attrib["name"],
+                        #            _el.attrib["url"],
+                        #            [
+                        #                _part for _part in _el.get("arguments", "").strip().split() if _part
+                        #            ]
+                        #        ) for _el in _tree.findall(".//url")
+                        #    ]
+                        # )
                         js_full_paths = glob.glob(os.path.join(full_path, "static", "js", "*.js"))
                         ADDITIONAL_JS.extend(
                             [

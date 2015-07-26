@@ -22,6 +22,9 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     echo -ne "collecting static ..."
     ${MANAGE} collectstatic --noinput -c > /dev/null
     echo "done"
+    echo -ne "building url_list ..."
+    ${MANAGE} show_icsw_urls > /opt/python-init/lib/python/site-packages/initat/cluster/frontend/templates/all_urls.html
+    echo "done"
 
     if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
         touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch

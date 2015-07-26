@@ -81,7 +81,7 @@ angular.module(
         }
 ]).service("icswDiscoveryDataService", ["Restangular", "ICSW_URLS", "$rootScope", "$q", (Restangular, ICSW_URLS, $rootScope, $q) ->
     rest_map = {
-        dispatch_setting: ICSW_URLS.REST_DISCOVERY_DISPATCH_SETTING_LIST.slice(1)
+        dispatch_setting: ICSW_URLS.REST_DISPATCH_SETTING_LIST.slice(1)
         device: ICSW_URLS.REST_DEVICE_LIST.slice(1)
     }
     data = {
