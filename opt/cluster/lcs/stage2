@@ -1171,6 +1171,9 @@ elif [ "$do_mount" = "1" ] ; then
                     set_hoststat -q "${UNP_MESG} $basen"
                     echo -e "Unpacking $basen ($(ls -sh $file | cut -d'/' -f1 | tr -d " "))"
                     if [ "${tar_flags}" = "-xjf" ] ; then
+                        if [ ! -f /opt/cluster/bin/pbzip2 ] ; then
+                            err_exit "no /opt/cluster/bin/pbzip2 found, please round populate_ramdisk.py"
+                        fi
                         (/opt/cluster/bin/pbzip2 -dc $file | tar xf - ) 2>&1 | grep -v "s in the future"
                     else
                         (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"

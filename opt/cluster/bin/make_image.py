@@ -69,6 +69,13 @@ NEEDED_PACKAGES_2 = [
     "modules-init",
 ]
 
+NEEDED_PACKAGES_3 = [
+    "python-init",
+    "icsw-binaries",
+    "icsw-client",
+    "modules-init",
+]
+
 COMPRESS_MAP = {
     "gz": "z",
     "bz2": "j",
@@ -515,11 +522,13 @@ class server_process(threading_tools.process_pool):
         cur_pc = package_check(self.log, cur_img)
         missing_1 = cur_pc.check(NEEDED_PACKAGES_1)
         missing_2 = cur_pc.check(NEEDED_PACKAGES_2)
-        if missing_1 and missing_2:
+        missing_3 = cur_pc.check(NEEDED_PACKAGES_3)
+        if missing_1 and missing_2 and missing_3:
             self.log("missing packages 1: {}".format(", ".join(sorted(list(missing_1)))), logging_tools.LOG_LEVEL_ERROR)
             self.log("missing packages 2: {}".format(", ".join(sorted(list(missing_2)))), logging_tools.LOG_LEVEL_ERROR)
+            self.log("missing packages 3: {}".format(", ".join(sorted(list(missing_3)))), logging_tools.LOG_LEVEL_ERROR)
             if not global_config["IGNORE_ERRORS"]:
-                raise ValueError("packages missing ({})".format(", ".join(sorted(list(missing_1 | missing_2)))))
+                raise ValueError("packages missing ({})".format(", ".join(sorted(list(missing_1 | missing_2 | missing_3)))))
         else:
             self.log("all packages installed")
 
