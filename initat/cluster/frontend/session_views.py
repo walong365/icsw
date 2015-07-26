@@ -68,13 +68,6 @@ def _get_login_hints():
 
 
 def login_page(request, **kwargs):
-    # django version
-    _vers = []
-    for _v in django.VERSION:
-        if type(_v) == int:
-            _vers.append("{:d}".format(_v))
-        else:
-            break
     # this is checked in sess_login
     request.session.set_test_cookie()
     return render_me(
@@ -82,11 +75,8 @@ def login_page(request, **kwargs):
         "login.html",
         {
             "from_logout": kwargs.get("from_logout", False),
-            # "login_hints": _get_login_hints(),
             # "app_path": reverse("session:login"),
             "LOGIN_SCREEN_TYPE": {"big": "big", "medium": "medium"}.get(settings.LOGIN_SCREEN_TYPE, "big"),
-            "LOGIN_HINTS": _get_login_hints(),
-            "DJANGO_VERSION": ".".join(_vers),
             "NEXT_URL": kwargs.get("next", ""),
         }
     )()
@@ -122,6 +112,20 @@ def _login(request, _user_object, login_credentials=None):
         request.session["login_name"] = _user_object.login
     _user_object.login_count += 1
     _user_object.save(update_fields=["login_count"])
+
+
+class login_addons(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        # django version
+        _vers = []
+        for _v in django.VERSION:
+            if type(_v) == int:
+                _vers.append("{:d}".format(_v))
+            else:
+                break
+        request.xml_response["login_hints"] = _get_login_hints()
+        request.xml_response["django_version"] = ".".join(_vers)
 
 
 class sess_login(View):

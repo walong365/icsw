@@ -6,7 +6,7 @@
         <div ng-class="login_class()">
             <div class="well"  style="margin-top:60px;">
                 <icsw-login-form></icsw-login-form>
-                <p class="text-right">{{ initProduct.family}} ({{ initProduct.version }}) on Django {{ DJANGO_VERSION }}</p>
+                <p class="text-right">{{ initProduct.family }} ({{ initProduct.version }}) on Django {{ django_version }}</p>
                 <p class="text-right" ng-show="CLUSTER_ID">ClusterID is {{ CLUSTER_ID }}</p>
                 <alert ng-show="lds.license_packages.length == 0 && lds.state_valid" style="font-size: larger">
                     You are running an <strong>unlicensed version</strong>.<br />
@@ -36,4 +36,37 @@
             </div>
         </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="authentication.form">
+    <form id="form" class="form-horizontal" ng-submit="do_login()">
+        <div class="form-horizontal">
+            <fieldset>
+                <legend>Please enter your login credentials <span ng-show="CLUSTER_NAME"> for {{ CLUSTER_NAME }}</span>
+                </legend>
+                <div id="div_id_username" class="form-group">
+<label for="id_username" class="control-label col-sm-2 requiredField">
+                    Username<span class="asteriskField">*</span></label>
+
+                    <div class="controls col-sm-8">
+                        <input ng-disabled="disabled" autofocus="1" class="textinput textInput form-control" id="id_username" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text">
+                        </input>
+                    </div>
+                </div>
+                <div id="div_id_password" class="form-group">
+                    <label for="id_password" class="control-label col-sm-2 requiredField">
+                        Password<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-8">
+                        <input ng-disabled="disabled" class="textinput textInput form-control" id="id_password" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password">
+                        </input>
+                    </div>
+                </div>
+            </fieldset>
+            <div class="form-actions">
+                <input ng-disabled="disabled" type="submit" name="submit" value="Login" class="btn btn-primary btn btn-primary" id="submit-id-submit">
+                </input>
+            </div>
+        </div>
+    </form>
 </script>

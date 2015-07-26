@@ -37,28 +37,19 @@
 <script type="text/javascript">
 // attach global permissions and license info to window object (== global variable)
 window.CSRF_TOKEN = "{{ csrf_token }}";
-{% if LOGIN_HINTS %}
-window.LOGIN_HINTS = {{ LOGIN_HINTS | safe }};
-{% endif %}
 // for login screen redirect
 window.NEXT_URL = "{{ NEXT_URL }}";
 window.LOGIN_SCREEN_TYPE = "{{ LOGIN_SCREEN_TYPE }}";
-window.DJANGO_VERSION = "{{ DJANGO_VERSION }}";
 window.PASSWORD_CHARACTER_COUNT = "{{ PASSWORD_CHARACTER_COUNT }}";
 window.CLUSTER_NAME = "{{ CLUSTER_NAME }}";
 window.CLUSTER_ID = "{{ CLUSTER_ID }}";
 window.CURRENT_USER = {{ CURRENT_USER | safe }};
-window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }};
 window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }};
 window.USER_VARS = {{ USER_VARS | safe }};
-window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %};
 window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
 window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %};
 window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %};
-window.ROUTING = "{{ routing | safe }}";
-window.LOCAL_DEVICE = "{{ local_device }}";
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
-window.CSRF_TOKEN = "{{ csrf_token }}";
 window.DEBUG = {% if debug %}true{% else %}false{% endif %};
 window.ADDITIONAL_MENU_FILES = {{ ADDITIONAL_MENU_FILES | safe }};
 window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %};

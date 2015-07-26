@@ -23,11 +23,13 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
+    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
-        $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
-        $scope.SERVICE_TYPES = $window.SERVICE_TYPES
+        # init background jobs
+        $scope.NUM_BACKGROUND_JOBS = 0
+        # init service types
+        $scope.SERVICE_TYPES = {}
         $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
@@ -43,6 +45,15 @@ menu_module = angular.module(
         $scope.progress_iters = 0
         $scope.cur_gauges = {}
         $scope.num_gauges = 0
+        icswSimpleAjaxCall(
+            {
+                "url": ICSW_URLS.MAIN_ROUTING_INFO
+                "dataType": "json"
+            }
+        ).then(
+            (json) ->
+                $scope.SERVICE_TYPES = json.service_types
+        )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
         $scope.show_time = () ->
@@ -52,10 +63,13 @@ menu_module = angular.module(
             $scope.$digest()
             $timeout($scope.show_time, 1000, false)
         $scope.update_progress_bar = () ->
-            icswCallAjaxService
-                url     : ICSW_URLS.BASE_GET_GAUGE_INFO
-                hidden  : true
-                success : (xml) =>
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.BASE_GET_GAUGE_INFO
+                    hidden: true
+                }
+            ).then(
+                (xml) =>
                     cur_pb = []
                     if icswParseXMLResponseService(xml)
                         $(xml).find("gauge_info gauge_element").each (idx, cur_g) ->
@@ -78,6 +92,7 @@ menu_module = angular.module(
                                 $scope.progress_iters--
                             $timeout($scope.update_progress_bar, 1000)
                     )
+            )
         $scope.redirect_to_init = () ->
             window.location = "http://www.init.at"
             return false
@@ -96,17 +111,19 @@ menu_module = angular.module(
             return false
         $scope.rebuild_config = (cache_mode) ->
             # console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
-            icswCallAjaxService
-                url     : ICSW_URLS.MON_CREATE_CONFIG
-                data    : {
-                    "cache_mode" : cache_mode
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.MON_CREATE_CONFIG
+                    data: {
+                        "cache_mode": cache_mode
+                    }
+                    title: "create config"
                 }
-                title   : "create config"
-                success : (xml) =>
-                    if icswParseXMLResponseService(xml)
-                        # make at least five iterations to catch slow startup of md-config-server
-                        $scope.progress_iters = 5
-                        $scope.update_progress_bar()
+            ).then((xml) ->
+                # make at least five iterations to catch slow startup of md-config-server
+                $scope.progress_iters = 5
+                $scope.update_progress_bar()
+            )
         $timeout($scope.show_time, 1, false)
         $scope.$watch("navbar_size", (new_val) ->
             if new_val

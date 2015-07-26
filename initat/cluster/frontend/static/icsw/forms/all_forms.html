@@ -5012,31 +5012,9 @@
         </div>
     </form>
 </script>
-<script type="text/ng-template" id="authentication.form"><form id="form" class="form-horizontal" ng-submit="do_login()">
-        <div class="form-horizontal">
-            <fieldset>
-                <legend>Please enter your login credentials <span ng-show="CLUSTER_NAME"> for {{ CLUSTER_NAME }}</span>
-                </legend>
-                <div id="div_id_username" class="form-group">
-<label for="id_username" class="control-label col-sm-2 requiredField">
-                    Username<span class="asteriskField">*</span></label>
 
-                    <div class="controls col-sm-8"><input autofocus="1" class="textinput textInput form-control" id="id_username" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text"></input></div>
-                </div>
-                <div id="div_id_password" class="form-group">
-<label for="id_password" class="control-label col-sm-2 requiredField">
-                    Password<span class="asteriskField">*</span></label>
-
-                    <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_password" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password"></input></div>
-                </div>
-            </fieldset>
-            <div class="form-actions"><input type="submit" name="submit" value="Login" class="btn btn-primary btn btn-primary" id="submit-id-submit"></input></div>
-        </div>
-    </form>
-</script>
 <script type="text/ng-template" id="cd.connection.form"><form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
-<h2>Connection {{
-        get_cd_info() }}</h2>
+<h2>Connection {{ get_cd_info() }}</h2>
         <fieldset>
             <legend>Settings</legend>
             <div id="div_id_connection_info" class="form-group">
@@ -5073,6 +5051,7 @@
         <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
+
 <script type="text/ng-template" id="partition.disc.form"><form id="id_partition_disc_form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
         <div>
 <h2>Disc '{{ _edit_obj.disc }}'</h2>

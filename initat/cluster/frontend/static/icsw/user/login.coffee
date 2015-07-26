@@ -22,17 +22,17 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.user.license",
     ]
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService"
-    ($scope, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService) ->
-        $scope.login_hints = $window.LOGIN_HINTS
+).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService"
+    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService) ->
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
         $scope.lds = icswUserLicenseDataService
         $scope.INIT_PRODUCT_FAMILY = $window.INIT_PRODUCT_FAMILY
-        $scope.DJANGO_VERSION = $window.DJANGO_VERSION
+        $scope.django_version = "---"
         $scope.CLUSTER_NAME = $window.CLUSTER_NAME
         $scope.CLUSTER_ID = $window.CLUSTER_ID
-        #$scope.CSRF_TOKEN = $window.CSRF_TOKEN
+        $scope.login_hints = []
+        $scope.disabled = true
         style_dict = {
             "medium" : {
                 "gfx_class" : "col-xs-4"
@@ -46,18 +46,32 @@ angular.module(
             }
         }
         $scope.init_login = () ->
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.SESSION_LOGIN_ADDONS
+                }
+            ).then(
+                (xml) ->
+                    $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
+                    $scope.django_version = $(xml).find("value[name='django_version']").text()
+                    $scope.disabled = false
+            )
             $scope.login_data = {
                 "username": ""
                 "password": ""
                 "next_url": $window.NEXT_URL
             }
+
         $scope.do_login = () ->
             blockUI.start()
-            icswCallAjaxService
-                url: ICSW_URLS.SESSION_LOGIN
-                data:
-                    blob: angular.toJson($scope.login_data)
-                success: (xml) ->
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.SESSION_LOGIN
+                    data:
+                        blob: angular.toJson($scope.login_data)
+                }
+            ).then(
+                (xml) ->
                     if icswParseXMLResponseService(xml)
                         if $(xml).find("value[name='redirect']").length
                             _val = $(xml).find("value[name='redirect']").text()
@@ -67,6 +81,7 @@ angular.module(
                         $scope.$apply(
                             $scope.init_login()
                         )
+            )
         $scope.gfx_class = () ->
             return style_dict[$window.LOGIN_SCREEN_TYPE]["gfx_class"]
         $scope.gfx_style = () ->

@@ -32,8 +32,9 @@ handler404 = main_views.index.as_view()
 
 session_patterns = patterns(
     "initat.cluster.frontend",
-    url(r"logout", session_views.sess_logout.as_view(), name="logout"),
-    url(r"login", session_views.sess_login.as_view(), name="login"),
+    url(r"logout$", session_views.sess_logout.as_view(), name="logout"),
+    url(r"login$", session_views.sess_login.as_view(), name="login"),
+    url(r"login_addons$", session_views.login_addons.as_view(), name="login_addons"),
 )
 
 rms_patterns = patterns(
@@ -240,6 +241,7 @@ main_patterns = patterns(
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
     url(r"^num_background_jobs$", main_views.get_number_of_background_jobs.as_view(), name="get_number_of_background_jobs"),
+    url(r"^routing_info$", main_views.get_routing_info.as_view(), name="routing_info"),
 )
 
 rrd_patterns = patterns(

@@ -47,7 +47,6 @@ class index(View):
             request,
             "index.html",
             {
-                "index_view": True,
                 "doc_page": "index",
                 "NUM_QUOTA_SERVERS": device.objects.filter(Q(device_config__config__name="quota_scan")).count()
             }
@@ -66,14 +65,21 @@ class get_number_of_background_jobs(View):
         return HttpResponse(json.dumps(_return), content_type="application/json")
 
 
+class get_routing_info(View):
+    def post(self, request):
+        cur_routing = routing.srv_type_routing(force=True)
+        _return = {
+            "service_types": {key: True for key in routing.srv_type_routing().service_types},
+            "routing": cur_routing.resolv_dict,
+            "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
+        }
+        return HttpResponse(json.dumps(_return), content_type="application/json")
+
+
 class info_page(View):
     @method_decorator(login_required)
     def get(self, request):
-        cur_routing = routing.srv_type_routing(force=True)
-        return render_me(request, "info_page.html", {
-            "routing": json.dumps(cur_routing.resolv_dict),
-            "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
-        })()
+        return render_me(request, "info_page.html")()
 
 
 class get_server_info(View):

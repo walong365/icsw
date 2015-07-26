@@ -22,13 +22,25 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswCallAjaxService", "icswParseXMLResponseService", "icswSimpleAjaxCall",
+    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswCallAjaxService, icswParseXMLResponseService, icswSimpleAjaxCall) ->
         access_level_service.install($scope)
         $scope.show_server = true
         $scope.show_roles = false
         $scope.server_info_list = []
+        $scope.local_device = "---"
+        $scope.routing_info = {}
         $scope.cur_to = null
+        icswSimpleAjaxCall(
+            {
+                "url": ICSW_URLS.MAIN_ROUTING_INFO
+                "dataType": "json"
+            }
+        ).then(
+            (json) ->
+                $scope.local_device = json.local_device
+                $scope.routing_info = json.routing
+        )
         $scope.reload_server_info = () ->
             icswCallAjaxService
                 url     : ICSW_URLS.MAIN_GET_SERVER_INFO
@@ -78,8 +90,6 @@ angular.module(
                     blockUI.stop()
                     $scope.cur_to = $timeout($scope.reload_server_info, 100)
             return false
-        $scope.local_device = $window.LOCAL_DEVICE
-        $scope.routing_info = $window.ROUTING
         $scope.reload_server_info()
 ]).service("icswLayoutServerInfoService", () ->
     class server_info

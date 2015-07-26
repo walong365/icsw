@@ -32,11 +32,8 @@ from django.db.models import Q
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-from initat.cluster.backbone.models import background_job, device_variable
+from initat.cluster.backbone.models import device_variable
 import django.template
-
-import routing
-
 
 logger = logging.getLogger("cluster.render")
 
@@ -86,13 +83,12 @@ class render_me(object):
             }
             _vars = {_name: _var.value for _name, _var in self.request.session["user_vars"].iteritems()}
             # routing info
-            _service_types = {key: True for key in routing.srv_type_routing().service_types}
+
         else:
             _user = {
                 "is_superuser": False,
                 "authenticated": False,
             }
-            _service_types = {}
             _vars = {"sidebar_open": True}
         _cid = _get_cluster_info_dict()
         self.my_dict["CLUSTER_NAME"] = _cid.get("CLUSTER_NAME", "")
@@ -100,11 +96,6 @@ class render_me(object):
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
         self.my_dict["PASSWORD_CHARACTER_COUNT"] = settings.PASSWORD_CHARACTER_COUNT
         self.my_dict["USER_VARS"] = json.dumps(_vars)
-        # store routing types as json
-        self.my_dict["SERVICE_TYPES"] = json.dumps(_service_types)
-        # add transformed dict ( md-config -> md_config )
-        _service_types.update({key.replace("-", "_"): value for key, value in _service_types.iteritems()})
-        self.my_dict["DJANGO_SERVICE_TYPES"] = _service_types
         # store as json for angular
         # store as dict for django templates
         self.my_dict["CURRENT_USER"] = json.dumps(_user)

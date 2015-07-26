@@ -30,11 +30,6 @@ angular.module(
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal,
      $window, ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
      access_level_service) ->
-        $scope.get_service_state = (srv) ->
-            if $window.SERVICE_TYPES[srv] ? false
-                return "success"
-            else
-                return "danger"
         $scope.uploader = new FileUploader(
                 scope : $scope
                 url : ICSW_URLS.USER_UPLOAD_LICENSE_FILE

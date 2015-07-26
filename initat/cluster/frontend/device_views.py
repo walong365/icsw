@@ -320,7 +320,14 @@ class device_info(View):
         # set selection list
         request.session["sel_list"] = ["dev__{}".format(kwargs["device_pk"])]
         request.session.save()
-        return render_me(request, "index.html", {"index_view": True, "doc_page": "index", "DEVICE_MODE": kwargs.get("mode", "")})()
+        return render_me(
+            request,
+            "index.html",
+            {
+                "doc_page": "index",
+                "DEVICE_MODE": kwargs.get("mode", "")
+            }
+        )()
 
 
 class get_device_location(View):
