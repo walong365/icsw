@@ -38,7 +38,11 @@ import time
 import syslog
 import traceback
 
-import zmq
+try:
+    import zmq
+except NotImplementedError:
+    print("cannot import zmq, running chrooted ? setting zmq to None")
+    zmq = None
 
 
 LOG_LEVEL_OK = 20

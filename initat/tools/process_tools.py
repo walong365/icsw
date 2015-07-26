@@ -43,8 +43,15 @@ import pwd
 
 import six
 from initat.tools import logging_tools, uuid_tools
-import psutil
-import zmq
+try:
+    import zmq
+except (NotImplementedError, ImportError):
+    # handle chrooted calls
+    print("cannot import zmq, running chrooted ? setting zmq to None")
+    zmq = None
+    psutil = None
+else:
+    import psutil
 from lxml.builder import E  # @UnresolvedImports
 
 RUN_DIR = "/var/run"
@@ -354,30 +361,31 @@ def submit_at_command(com, diff_time=0, as_root=False):
         log_f.append(" - {}".format(out_l))
     return cstat, log_f
 
-PROC_STATUSES = {
-    "R": psutil.STATUS_RUNNING,
-    "S": psutil.STATUS_SLEEPING,
-    "D": psutil.STATUS_DISK_SLEEP,
-    "T": psutil.STATUS_STOPPED,
-    "t": psutil.STATUS_TRACING_STOP,
-    "Z": psutil.STATUS_ZOMBIE,
-    "X": psutil.STATUS_DEAD,
-    "W": psutil.STATUS_WAKING
-}
+if psutil is not None:
+    PROC_STATUSES = {
+        "R": psutil.STATUS_RUNNING,
+        "S": psutil.STATUS_SLEEPING,
+        "D": psutil.STATUS_DISK_SLEEP,
+        "T": psutil.STATUS_STOPPED,
+        "t": psutil.STATUS_TRACING_STOP,
+        "Z": psutil.STATUS_ZOMBIE,
+        "X": psutil.STATUS_DEAD,
+        "W": psutil.STATUS_WAKING
+    }
 
 
-PROC_INFO_DICT = {
-    psutil.STATUS_RUNNING:  "number of running processes",
-    psutil.STATUS_ZOMBIE: "number of zombie processes",
-    psutil.STATUS_DISK_SLEEP: "processes in uninterruptable sleep",
-    psutil.STATUS_STOPPED: "processes stopped",
-    psutil.STATUS_TRACING_STOP: "processes traced",
-    psutil.STATUS_SLEEPING: "processes sleeping",
-    psutil.STATUS_WAKING: "processes waking",
-    psutil.STATUS_DEAD: "processes dead",
-}
+    PROC_INFO_DICT = {
+        psutil.STATUS_RUNNING:  "number of running processes",
+        psutil.STATUS_ZOMBIE: "number of zombie processes",
+        psutil.STATUS_DISK_SLEEP: "processes in uninterruptable sleep",
+        psutil.STATUS_STOPPED: "processes stopped",
+        psutil.STATUS_TRACING_STOP: "processes traced",
+        psutil.STATUS_SLEEPING: "processes sleeping",
+        psutil.STATUS_WAKING: "processes waking",
+        psutil.STATUS_DEAD: "processes dead",
+    }
 
-PROC_STATUSES_REV = {value: key for key, value in PROC_STATUSES.iteritems()}
+    PROC_STATUSES_REV = {value: key for key, value in PROC_STATUSES.iteritems()}
 
 
 def get_mem_info(pid=0, **kwargs):

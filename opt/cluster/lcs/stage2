@@ -1168,7 +1168,7 @@ elif [ "$do_mount" = "1" ] ; then
             for file in /images/*.${imtype} ; do
                 basen=`basename $file`
                 if [ "$basen" != "$dirperm_file" ] ; then
-                    set_hoststat -q "${UNP_MESG} $basen"
+                    set_hoststat -q "${UNP_MESG} $basen ($(stat -c%s ${file}) Bytes)"
                     echo -e "Unpacking $basen ($(ls -sh $file | cut -d'/' -f1 | tr -d " "))"
                     if [ "${tar_flags}" = "-xjf" ] ; then
                         if [ ! -f /opt/cluster/bin/pbzip2 ] ; then

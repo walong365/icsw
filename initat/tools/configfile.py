@@ -21,8 +21,18 @@
 
 from collections import OrderedDict
 from lxml import etree  # @UnresolvedImport @UnusedImport
-from multiprocessing import current_process, util, forking, managers
-from multiprocessing.managers import BaseManager, BaseProxy, Server
+try:
+    from multiprocessing import current_process, util, forking, managers
+    from multiprocessing.managers import BaseManager, BaseProxy, Server
+except NotImplementedError:
+    print("NotImplementedError catched, running chrooted ? setting various modules to None")
+    current_process = None
+    util = None
+    forking = None
+    managers = None
+    BaseManager = object
+    BaseProxy = object
+    Server = object
 import argparse
 import datetime
 import grp
@@ -815,21 +825,22 @@ class config_manager(BaseManager):
         except KeyError:
             pass
 
-config_manager.register(
-    "config",
-    configuration,
-    config_proxy,
-    exposed=[
-        "parse_file", "add_config_entries", "set_uid_gid",
-        "single_process_mode", "help_string",
-        "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
-        "is_global", "database", "is_global", "set_global",
-        "__getitem__", "__setitem__", "__contains__", "__delitem__",
-        "get_config_info", "name", "get_argument_stuff", "fixed",
-    ]
-)
+if forking is not None:
+    config_manager.register(
+        "config",
+        configuration,
+        config_proxy,
+        exposed=[
+            "parse_file", "add_config_entries", "set_uid_gid",
+            "single_process_mode", "help_string",
+            "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
+            "is_global", "database", "is_global", "set_global",
+            "__getitem__", "__setitem__", "__contains__", "__delitem__",
+            "get_config_info", "name", "get_argument_stuff", "fixed",
+        ]
+    )
 
-cur_manager = config_manager()
+    cur_manager = config_manager()
 
 CONFIG_MANAGER_INIT = False
 

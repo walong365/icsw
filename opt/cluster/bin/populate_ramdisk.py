@@ -70,7 +70,8 @@ stage1_dir_dict = {
 
 stage1_file_dict = {
     0: [
-        "inetd", "xinetd", "in.rshd", "tcpd", "in.rlogind", "whoami", "ntpdate", "sntp", "ps", "rmmod", "rmmod.old", "lsmod.old", "depmod.old",
+        "inetd", "xinetd", "in.rshd", "tcpd", "in.rlogind", "whoami", "ntpdate", "sntp", "ps", "rmmod",
+        "rmmod.old", "lsmod.old", "depmod.old",
         "insmod.old", "modprobe.old", "route", "free", "arp", "login", "mount.nfs", "lsof", "xz",
     ],
     1: [
@@ -108,9 +109,11 @@ stage2_file_dict = {
         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm", "which", "xml",
         "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkswap",
         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
-        ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
+        ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall",
+        "head", "tail", "stat",
         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
-        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci",
+        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty",
+        "reset", "id", "lspci",
     ]
 }
 
@@ -138,9 +141,11 @@ stageloc_file_dict = {
         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "pivot_root",
         "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkswap",
         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
-        ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
+        ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami",
+        "killall", "head", "tail",
         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
-        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci",
+        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname",
+        "rsync", "stty", "reset", "id", "lspci",
     ]
 }
 
