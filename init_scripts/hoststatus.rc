@@ -27,6 +27,8 @@ fi
 
 HOSTSTAT_BIN=/opt/cluster/sbin/hoststatus_zmq
 CHILD_BIN=/opt/cluster/sbin/tell_mother_zmq
+[ -f /lib/lsb/init-functions ] && . /lib/lsb/init-functions
+
 test -x ${HOSTSTAT_BIN} || exit 5
 test -x ${CHILD_BIN} || exit 5
 
@@ -57,6 +59,8 @@ fi
 function do_status () {
     if [ "${RH}" = "1" ] ; then
         status ${HOSTSTAT_BIN}
+    elif [ "${DB}" = "1" ] ; then
+        status_of_proc ${HOSTSTAT_BIN}
     else
         /sbin/checkproc ${HOSTSTAT_BIN}
     fi
