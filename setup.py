@@ -18,6 +18,7 @@ setup(
         "initat.icsw.device",
         "initat.icsw.lse",
         "initat.tools",
+        "initat.tools.logging_tools",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",
         "initat.rms",

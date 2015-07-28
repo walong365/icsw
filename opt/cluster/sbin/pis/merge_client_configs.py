@@ -26,13 +26,14 @@
 import os
 import re
 
-from initat.tools import logging_tools, config_store
+from initat.tools import config_store
+from initat.tools.logging_tools import logbase
 
 
 def log(what, log_level=logging_tools.LOG_LEVEL_OK):
     print(
         "[{}] {}".format(
-            logging_tools.get_log_level_str(log_level),
+            logbase.get_log_level_str(log_level),
             what,
         )
     )
@@ -56,7 +57,7 @@ def parse_file(file_name):
                     _name,
                     process_tools.get_except_info()
                 ),
-                logging_tools.LOG_LEVEL_ERROR
+                logbase.LOG_LEVEL_ERROR
             )
         else:
             for line in lines:
@@ -84,14 +85,14 @@ def parse_file(file_name):
                                 "Error: key {} not defined in dictionary".format(
                                     key
                                 ),
-                                logging_tools.LOG_LEVEL_ERROR
+                                logbase.LOG_LEVEL_ERROR
                             )
                     else:
                         print(
                             "Error parsing line '{}'".format(
                                 str(line)
                             ),
-                            logging_tools.LOG_LEVEL_ERROR
+                            logbase.LOG_LEVEL_ERROR
                         )
     return _dict
 

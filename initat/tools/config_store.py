@@ -24,9 +24,9 @@ simple interface to a file-base config store, file format is XML
 import os
 from lxml import etree
 
-from initat.tools import configfile, logging_tools, process_tools
+from initat.tools import process_tools
+from initat.tools.logging_tools import logbase
 from lxml.builder import E
-
 
 CS_NG = """
 <element name="config-store" xmlns="http://relaxng.org/ns/structure/1.0">
@@ -125,7 +125,7 @@ class ConfigStore(object):
         self.vars = {}
         self.read()
 
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+    def log(self, what, log_level=logbase.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com(
                 "[CS {}] {}".format(
@@ -135,7 +135,7 @@ class ConfigStore(object):
                 log_level
             )
         else:
-            print "{} {}".format(logging_tools.get_log_level_str(log_level), what)
+            print "{} {}".format(logbase.get_log_level_str(log_level), what)
 
     @staticmethod
     def exists(name):
@@ -160,7 +160,7 @@ class ConfigStore(object):
                         _read_name,
                         process_tools.get_except_info(),
                     ),
-                    logging_tools.LOG_LEVEL_ERROR,
+                    logbase.LOG_LEVEL_ERROR,
                 )
             else:
                 _ng = etree.RelaxNG(etree.fromstring(CS_NG))
@@ -178,16 +178,16 @@ class ConfigStore(object):
                                 "error creating new var: {}".format(
                                     process_tools.get_except_info(),
                                 ),
-                                logging_tools.LOG_LEVEL_ERROR,
+                                logbase.LOG_LEVEL_ERROR,
                             )
                         else:
                             _parsed += 1
                             self.vars[_new_var.name] = _new_var
                     self.log(
                         "added {} from {} (found {})".format(
-                            logging_tools.get_plural("variable", _parsed),
+                            logbase.get_plural("variable", _parsed),
                             _read_name,
-                            logging_tools.get_plural("key", _found),
+                            logbase.get_plural("key", _found),
                         )
                     )
                 else:
@@ -196,14 +196,14 @@ class ConfigStore(object):
                             _read_name,
                             str(_ng.error_log),
                         ),
-                        logging_tools.LOG_LEVEL_ERROR
+                        logbase.LOG_LEVEL_ERROR
                     )
         else:
             self.log(
                 "ConfigStore '{}' not found".format(
                     _read_name
                 ),
-                logging_tools.LOG_LEVEL_ERROR
+                logbase.LOG_LEVEL_ERROR
             )
 
     def _generate(self):
@@ -229,12 +229,12 @@ class ConfigStore(object):
                         self.file_name,
                         process_tools.get_except_info(),
                     ),
-                    logging_tools.LOG_LEVEL_ERROR
+                    logbase.LOG_LEVEL_ERROR
                 )
             else:
                 self.log("wrote to {}".format(self.file_name))
         else:
-            self.log("tree is not valid", logging_tools.LOG_LEVEL_ERROR)
+            self.log("tree is not valid", logbase.LOG_LEVEL_ERROR)
 
     def __getitem__(self, key):
         if self.tree_valid:
@@ -253,6 +253,7 @@ class ConfigStore(object):
         return key in self.vars
 
     def copy_to_global_config(self, global_config, mapping):
+        from initat.tools import configfile
         _adds = []
         for _src, _dst in mapping:
             _val = self[_src]

@@ -43,15 +43,13 @@ import pwd
 
 import six
 from initat.tools import logging_tools, uuid_tools
+
 try:
-    import zmq
+    import psutil
 except (NotImplementedError, ImportError):
     # handle chrooted calls
-    print("cannot import zmq, running chrooted ? setting zmq to None")
-    zmq = None
+    print("cannot import psutil, running chrooted ? setting psutil to None")
     psutil = None
-else:
-    import psutil
 from lxml.builder import E  # @UnresolvedImports
 
 RUN_DIR = "/var/run"
@@ -209,6 +207,7 @@ def get_client_uuid(client_type, uuid=None):
 
 
 def get_socket(context, r_type, **kwargs):
+    import zmq
     _sock = context.socket(getattr(zmq, r_type))
     # DEALER from grapher/server.py
     if r_type in ["ROUTER", "DEALER"]:
@@ -236,7 +235,8 @@ def zmq_identity_str(id_string):
     return "{}:{}:{:d}".format(
         get_machine_name(),
         id_string,
-        os.getpid())
+        os.getpid()
+    )
 
 
 def remove_zmq_dirs(dir_name):
