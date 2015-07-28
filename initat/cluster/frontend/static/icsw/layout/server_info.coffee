@@ -34,6 +34,7 @@ angular.module(
         icswSimpleAjaxCall(
             {
                 "url": ICSW_URLS.MAIN_ROUTING_INFO
+                "force": 1
                 "dataType": "json"
             }
         ).then(

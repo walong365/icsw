@@ -37,8 +37,6 @@
 <script type="text/javascript">
 // attach global permissions and license info to window object (== global variable)
 window.CSRF_TOKEN = "{{ csrf_token }}";
-// for login screen redirect
-window.NEXT_URL = "{{ NEXT_URL }}";
 window.CURRENT_USER = {{ CURRENT_USER | safe }};
 window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
 window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %};

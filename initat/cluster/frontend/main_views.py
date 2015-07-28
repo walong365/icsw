@@ -79,7 +79,7 @@ class get_cluster_info(View):
 
 class get_routing_info(View):
     def post(self, request):
-        cur_routing = routing.srv_type_routing(force=True)
+        cur_routing = routing.srv_type_routing(force="force" in request.POST)
         _return = {
             "service_types": {key: True for key in routing.srv_type_routing().service_types},
             "routing": cur_routing.resolv_dict,

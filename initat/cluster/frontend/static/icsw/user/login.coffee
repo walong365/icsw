@@ -45,6 +45,7 @@ angular.module(
                 "login_class" : "col-md-offset-4 col-md-4"
             }
         }
+        first_call = true
         $scope.init_login = () ->
             $q.all(
                 [
@@ -69,11 +70,14 @@ angular.module(
                     $scope.disabled = false
                     $scope.CLUSTER_NAME = data[1].CLUSTER_NAME
                     $scope.CLUSTER_ID = data[1].CLUSTER_ID
+                    if first_call
+                        first_call = false
+                        $scope.login_data.next_url = $(xml).find("value[name='next_url']").text()
             )
             $scope.login_data = {
                 "username": ""
                 "password": ""
-                "next_url": $window.NEXT_URL
+                "next_url": ""
             }
 
         $scope.do_login = () ->

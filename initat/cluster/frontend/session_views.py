@@ -30,6 +30,7 @@ from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
+from django.core.cache import cache
 from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
@@ -70,13 +71,15 @@ def _get_login_hints():
 def login_page(request, **kwargs):
     # this is checked in sess_login
     request.session.set_test_cookie()
+    # store next url
+    _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
+    cache.set(_ckey, kwargs.get("next", ""), 15)
     return render_me(
         request,
         "login.html",
         {
             "from_logout": kwargs.get("from_logout", False),
             # "app_path": reverse("session:login"),
-            "NEXT_URL": kwargs.get("next", ""),
         }
     )()
 
@@ -123,9 +126,13 @@ class login_addons(View):
                 _vers.append("{:d}".format(_v))
             else:
                 break
+        _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
+        _next_url = cache.get(_ckey)
+        cache.delete(_ckey)
         request.xml_response["login_hints"] = json.dumps(_get_login_hints())
         request.xml_response["login_screen_type"] = settings.LOGIN_SCREEN_TYPE
         request.xml_response["django_version"] = ".".join(_vers)
+        request.xml_response["next_url"] = _next_url or ""
         request.xml_response["password_character_count"] = "{:d}".format(int(settings.PASSWORD_CHARACTER_COUNT))
 
 
