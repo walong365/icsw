@@ -30,7 +30,7 @@ from initat.tools import config_store
 from initat.tools.logging_tools import logbase
 
 
-def log(what, log_level=logging_tools.LOG_LEVEL_OK):
+def log(what, log_level=logbase.LOG_LEVEL_OK):
     print(
         "[{}] {}".format(
             logbase.get_log_level_str(log_level),
