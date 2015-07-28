@@ -64,7 +64,7 @@ def _get_login_hints():
                 _valid = False
     if not _valid:
         _hints = []
-    return json.dumps(_hints)
+    return _hints
 
 
 def login_page(request, **kwargs):
@@ -76,7 +76,6 @@ def login_page(request, **kwargs):
         {
             "from_logout": kwargs.get("from_logout", False),
             # "app_path": reverse("session:login"),
-            "LOGIN_SCREEN_TYPE": {"big": "big", "medium": "medium"}.get(settings.LOGIN_SCREEN_TYPE, "big"),
             "NEXT_URL": kwargs.get("next", ""),
         }
     )()
@@ -124,7 +123,8 @@ class login_addons(View):
                 _vers.append("{:d}".format(_v))
             else:
                 break
-        request.xml_response["login_hints"] = _get_login_hints()
+        request.xml_response["login_hints"] = json.dumps(_get_login_hints())
+        request.xml_response["login_screen_type"] = settings.LOGIN_SCREEN_TYPE
         request.xml_response["django_version"] = ".".join(_vers)
 
 

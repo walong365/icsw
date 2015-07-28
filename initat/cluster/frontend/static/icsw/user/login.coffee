@@ -22,39 +22,53 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.user.license",
     ]
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService"
-    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService) ->
+).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService", "$q",
+    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService, $q) ->
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
         $scope.lds = icswUserLicenseDataService
-        $scope.INIT_PRODUCT_FAMILY = $window.INIT_PRODUCT_FAMILY
         $scope.django_version = "---"
-        $scope.CLUSTER_NAME = $window.CLUSTER_NAME
-        $scope.CLUSTER_ID = $window.CLUSTER_ID
+        $scope.CLUSTER_NAME = ""
+        $scope.CLUSTER_ID = ""
+        $scope.LOGIN_SCREEN_TYPE = "big"
         $scope.login_hints = []
         $scope.disabled = true
         style_dict = {
             "medium" : {
                 "gfx_class" : "col-xs-4"
-                "gfx_style" : ""
+                "gfx_style" : {}
                 "login_class" : "col-xs-6"
             }
             "big" : {
                 "gfx_class" : "col-md-offset-4 col-md-4"
-                "gfx_style" : "margin-top:60px;"
+                "gfx_style" : {"margin-top": "60px"}
                 "login_class" : "col-md-offset-4 col-md-4"
             }
         }
         $scope.init_login = () ->
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.SESSION_LOGIN_ADDONS
-                }
+            $q.all(
+                [
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.SESSION_LOGIN_ADDONS
+                        }
+                    ),
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
+                            dataType: "json"
+                        }
+                    ),
+                ]
             ).then(
-                (xml) ->
+                (data) ->
+                    xml = data[0]
                     $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                     $scope.django_version = $(xml).find("value[name='django_version']").text()
+                    $scope.LOGIN_SCREEN_TYPE = $(xml).find("value[name='login_screen_type']").text()
                     $scope.disabled = false
+                    $scope.CLUSTER_NAME = data[1].CLUSTER_NAME
+                    $scope.CLUSTER_ID = data[1].CLUSTER_ID
             )
             $scope.login_data = {
                 "username": ""
@@ -81,11 +95,11 @@ angular.module(
                     $scope.init_login()
             )
         $scope.gfx_class = () ->
-            return style_dict[$window.LOGIN_SCREEN_TYPE]["gfx_class"]
+            return style_dict[$scope.LOGIN_SCREEN_TYPE]["gfx_class"]
         $scope.gfx_style = () ->
-            return style_dict[$window.LOGIN_SCREEN_TYPE]["gfx_style"]
+            return style_dict[$scope.LOGIN_SCREEN_TYPE]["gfx_style"]
         $scope.login_class = () ->
-            return style_dict[$window.LOGIN_SCREEN_TYPE]["login_class"]
+            return style_dict[$scope.LOGIN_SCREEN_TYPE]["login_class"]
         $scope.init_login()
 ]).directive("icswLoginForm", ["$templateCache", ($templateCache) ->
     return {

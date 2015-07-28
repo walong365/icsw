@@ -38,14 +38,6 @@ import django.template
 logger = logging.getLogger("cluster.render")
 
 
-def _get_cluster_info_dict():
-    _list = device_variable.objects.values_list("name", "val_str").filter(
-        Q(name__in=["CLUSTER_NAME", "CLUSTER_ID"]) &
-        Q(device__device_group__cluster_device_group=True)
-    )
-    return {_v[0]: _v[1] for _v in _list}
-
-
 class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request = request
@@ -85,9 +77,6 @@ class render_me(object):
                 "is_superuser": False,
                 "authenticated": False,
             }
-        _cid = _get_cluster_info_dict()
-        self.my_dict["CLUSTER_NAME"] = _cid.get("CLUSTER_NAME", "")
-        self.my_dict["CLUSTER_ID"] = _cid.get("CLUSTER_ID", "")
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
         self.my_dict["PASSWORD_CHARACTER_COUNT"] = settings.PASSWORD_CHARACTER_COUNT
         # store as json for angular

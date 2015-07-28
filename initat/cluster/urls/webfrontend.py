@@ -243,6 +243,7 @@ main_patterns = patterns(
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
     url(r"^num_background_jobs$", main_views.get_number_of_background_jobs.as_view(), name="get_number_of_background_jobs"),
     url(r"^routing_info$", main_views.get_routing_info.as_view(), name="routing_info"),
+    url(r"^get_cluster_info$", main_views.get_cluster_info.as_view(), name="get_cluster_info"),
 )
 
 rrd_patterns = patterns(

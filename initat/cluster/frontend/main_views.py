@@ -31,7 +31,7 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone import routing
-from initat.cluster.backbone.models import background_job
+from initat.cluster.backbone.models import background_job, device_variable
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
@@ -61,6 +61,20 @@ class get_number_of_background_jobs(View):
     def post(self, request):
         _return = {"background_jobs": background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()}
         return HttpResponse(json.dumps(_return), content_type="application/json")
+
+
+class get_cluster_info(View):
+    def post(self, request):
+        _info_dict = {
+            "CLUSTER_NAME": "",
+            "CLUSTER_ID": "",
+        }
+        for _key, _value in device_variable.objects.values_list("name", "val_str").filter(
+            Q(name__in=["CLUSTER_NAME", "CLUSTER_ID"]) &
+            Q(device__device_group__cluster_device_group=True)
+        ):
+            _info_dict[_key] = _value
+        return HttpResponse(json.dumps(_info_dict), content_type="application/json")
 
 
 class get_routing_info(View):

@@ -31,14 +31,14 @@ angular.module(
      $window, ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
      access_level_service) ->
         $scope.uploader = new FileUploader(
-                scope : $scope
-                url : ICSW_URLS.USER_UPLOAD_LICENSE_FILE
-                queueLimit : 1
-                alias : "license_file"
-                formData : [
-                     "csrfmiddlewaretoken" : $window.CSRF_TOKEN
-                ]
-                removeAfterUpload : true
+            scope : $scope
+            url : ICSW_URLS.USER_UPLOAD_LICENSE_FILE
+            queueLimit : 1
+            alias : "license_file"
+            formData : [
+                 "csrfmiddlewaretoken" : $window.CSRF_TOKEN
+            ]
+            removeAfterUpload : true
         )
         $scope.upload_list = []
         $scope.uploader.onBeforeUploadItem = () ->
@@ -52,13 +52,21 @@ angular.module(
         $scope.uploader.onCompleteAll = () ->
             blockUI.stop()
             $scope.uploader.clearQueue()
-]).directive("icswUserLicenseOverview", ["icswUserLicenseDataService", "$window", (icswUserLicenseDataService, $window) ->
+]).directive("icswUserLicenseOverview", ["icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS", (icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS) ->
     return {
         restrict : "EA"
         controller: 'icswUserLicenseCtrl'
         templateUrl : "icsw.user.license.overview"
         link: (scope, el, attrs) ->
-            scope.CLUSTER_ID = $window.CLUSTER_ID
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
+                    dataType: "json"
+                }
+            ).then((json) ->
+                scope.CLUSTER_ID = json.CLUSTER_ID
+            )
+            scope.CLUSTER_ID = "---"
             scope.your_licenses_open = false
             scope.lic_packs_open = false
             scope.lic_upload_open = true
@@ -76,8 +84,8 @@ angular.module(
             )
     }
 ]).directive("icswUserLicenseYourLicenses",
-    ["icswUserLicenseDataService", "$window",
-     (icswUserLicenseDataService, $window) ->
+    ["icswUserLicenseDataService",
+     (icswUserLicenseDataService) ->
         return {
             restrict : "EA"
             templateUrl : "icsw.user.license.your_licenses"
@@ -94,12 +102,21 @@ angular.module(
                 scope.undefined_to_zero = (x) ->
                     return if x? then x else 0
         }
-]).directive("icswUserLicensePackages", ["icswUserLicenseDataService", "$window", (icswUserLicenseDataService, $window) ->
+]).directive("icswUserLicensePackages", ["icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS", (icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS) ->
     return {
         restrict : "EA"
         controller: 'icswUserLicenseCtrl'
         templateUrl : "icsw.user.license.packages"
         link: (scope, el, attrs) ->
+            scope.CLUSTER_ID = "---"
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
+                    dataType: "json"
+                }
+            ).then((json) ->
+                scope.CLUSTER_ID = json.CLUSTER_ID
+            )
             icswUserLicenseDataService.add_to_scope(scope)
             scope.cluster_accordion_open = {
                 0: true  # show first accordion which is the cluster id of this cluster by the ordering below
@@ -109,7 +126,7 @@ angular.module(
             scope.cluster_order_fun = (data) ->
                 # order by is_this_cluster, cluster_id
                 prio = 0
-                if data[0] == $window.CLUSTER_ID
+                if data[0] == scope.CLUSTER_ID
                     prio -= 1
                 return [prio, data[0]]
             scope.get_list = (obj) ->
@@ -118,12 +135,21 @@ angular.module(
                 return obj.__transformed_list
 
             scope.get_cluster_title = (cluster_id) ->
-                if cluster_id == $window.CLUSTER_ID
+                if cluster_id == scope.CLUSTER_ID
                     return "Current cluster (#{cluster_id})"
                 else
                     return "Cluster #{cluster_id}"
     }
-]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "gettextCatalog", "$window", "$q", (Restangular, ICSW_URLS, gettextCatalog, $window, $q) ->
+]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q", (Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q) ->
+    icswSimpleAjaxCall(
+        {
+            url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
+            dataType: "json"
+        }
+    ).then((json) ->
+        CLUSTER_ID = json.CLUSTER_ID
+    )
+    CLUSTER_ID = "---"
     data = {
         state_valid: false
         all_licenses: []
@@ -245,7 +271,8 @@ angular.module(
             state.state_str = gettextCatalog.getString('License parameter violated')
         return state
 
-    calculate_effective_license_state = (license_id) -> return calculate_license_state(data.license_packages, license_id, $window.CLUSTER_ID)
+    calculate_effective_license_state = (license_id) ->
+        return calculate_license_state(data.license_packages, license_id, CLUSTER_ID)
 
     add_grace_period = (date) ->
         # NOTE: keep grace period in sync with py

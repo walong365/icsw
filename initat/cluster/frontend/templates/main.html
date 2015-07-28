@@ -39,16 +39,13 @@
 window.CSRF_TOKEN = "{{ csrf_token }}";
 // for login screen redirect
 window.NEXT_URL = "{{ NEXT_URL }}";
-window.LOGIN_SCREEN_TYPE = "{{ LOGIN_SCREEN_TYPE }}";
 window.PASSWORD_CHARACTER_COUNT = "{{ PASSWORD_CHARACTER_COUNT }}";
-window.CLUSTER_NAME = "{{ CLUSTER_NAME }}";
-window.CLUSTER_ID = "{{ CLUSTER_ID }}";
 window.CURRENT_USER = {{ CURRENT_USER | safe }};
 window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
 window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %};
 window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %};
-window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
 window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %};
+window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
 {% include "js/app.js" %}
 </script>
 {% javascript 'icsw_cs1' %}
