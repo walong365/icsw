@@ -126,6 +126,7 @@ class login_addons(View):
         request.xml_response["login_hints"] = json.dumps(_get_login_hints())
         request.xml_response["login_screen_type"] = settings.LOGIN_SCREEN_TYPE
         request.xml_response["django_version"] = ".".join(_vers)
+        request.xml_response["password_character_count"] = "{:d}".format(int(settings.PASSWORD_CHARACTER_COUNT))
 
 
 class sess_login(View):

@@ -22,15 +22,22 @@ password_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswUserPasswordCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window) ->
+).controller("icswUserPasswordCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "icswSimpleAjaxCall", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, icswSimpleAjaxCall, ICSW_URLS) ->
         $scope.$on("icsw.enter_password", () ->
             child_scope = $scope.$new()
-            child_scope.PASSWORD_CHARACTER_COUNT = $window.PASSWORD_CHARACTER_COUNT
+            child_scope.PASSWORD_CHARACTER_COUNT = 16
             child_scope.pwd = {
                 "pwd1" : ""
                 "pwd2" : ""
             }
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.SESSION_LOGIN_ADDONS
+                }
+            ).then((xml) ->
+                child_scope.PASSWORD_CHARACTER_COUNT = parseInt($(xml).find("value[name='password_character_count']").text())
+            )
             child_scope.dyn_check = (val) ->
                 child_scope.check()
                 _rc = []
@@ -55,7 +62,7 @@ password_module = angular.module(
                 message : msg
                 draggable: true
                 size: BootstrapDialog.SIZE_MEDIUM
-                title: "Enter password (min len: #{$window.PASSWORD_CHARACTER_COUNT})"
+                title: "Enter password"
                 closable: true
                 closeByBackdrop: false
                 buttons: [

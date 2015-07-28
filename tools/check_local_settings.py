@@ -24,6 +24,7 @@
 
 import os
 import sys
+
 from django.utils.crypto import get_random_string
 
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
