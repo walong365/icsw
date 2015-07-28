@@ -17,32 +17,33 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
+
 // {% load staticfiles %}
 
 // Naming conventions
 //
-//- where possible use CamelCase
-//- controllers end with "Ctrl"
-//- module names start with "icsw.", separation with dots (no CamelCase)
-//- second part is the name of the directory
-//- then the (optional) functionality (for example icsw.device.network)
-//- directives use '-' as separator, CamelCase in code
-//- service, provider and factory names end with service, provider, factory and also use CamelCase
+// - where possible use CamelCase
+// - controllers end with "Ctrl"
+// - module names start with "icsw.", separation with dots (no CamelCase)
+// - second part is the name of the directory
+// - then the (optional) functionality (for example icsw.device.network)
+// - directives use '-' as separator, CamelCase in code
+// - service, provider and factory names end with service, provider, factory and also use CamelCase
 //
-//Directory setup
+// Directory setup
 //
-//- below templates
-//- top level equals the second part of the module name
-//- second level (optional) for functionality (icsw.device.network -> templates/device/network/ )
-//- shared functions in utils.{function} (app icsw.utils) [init.csw.filters -> icsw.utils.filters]
+// - below templates
+// - top level equals the second part of the module name
+// - second level (optional) for functionality (icsw.device.network -> templates/device/network/ )
+// - shared functions in utils.{function} (app icsw.utils) [init.csw.filters -> icsw.utils.filters]
 //
-//File separation inside directories
+// File separation inside directories
 //
-//- one or more file(s) for HTML and cs / js code
-//- no templates in coffeescript files
-//- templates in .html via script type=ng-template/script
-//- name of templates start with the name of the module with underscores, ending is ".html"
-//- no root. bindings
+// - one or more file(s) for HTML and cs / js code
+// - no templates in coffeescript files
+// - templates in .html via script type=ng-template/script
+// - name of templates start with the name of the module with underscores, ending is ".html"
+// - no root. bindings
 
 ics_app = angular.module(
     "icsw.app",
@@ -104,9 +105,9 @@ ics_app = angular.module(
         "icsw.history",
         "icsw.discovery",
         "icsw.discovery.event_log",
-        //{% for app in ADDITIONAL_ANGULAR_APPS %}
-        "{{ app }}",
-        //{% endfor %}
+        // {% for app in ADDITIONAL_ANGULAR_APPS %}
+        "{{ app }}"
+        // {% endfor %}
     ]
 ).config(
     function() {
@@ -127,7 +128,7 @@ ics_app = angular.module(
         // {% load static %} // this is needed for get_static_prefix below
         "STATIC_URL": "{% get_static_prefix %}",
         "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}",
-        "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}",
         // {% include 'all_urls.html' %}
+        "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     }
 );
