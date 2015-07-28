@@ -17,7 +17,7 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
-{% load staticfiles %}
+// {% load staticfiles %}
 
 // Naming conventions
 //
@@ -104,9 +104,9 @@ ics_app = angular.module(
         "icsw.history",
         "icsw.discovery",
         "icsw.discovery.event_log",
-        {% for app in ADDITIONAL_ANGULAR_APPS %}
+        //{% for app in ADDITIONAL_ANGULAR_APPS %}
         "{{ app }}",
-        {% endfor %}
+        //{% endfor %}
     ]
 ).config(
     function() {
@@ -124,10 +124,10 @@ ics_app = angular.module(
     ]
 ).constant(
     "ICSW_URLS", {
-        {% load static %} // this is needed for get_static_prefix below
+        // {% load static %} // this is needed for get_static_prefix below
         "STATIC_URL": "{% get_static_prefix %}",
         "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}",
         "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}",
-        {% include 'all_urls.html' %}
+        // {% include 'all_urls.html' %}
     }
 );

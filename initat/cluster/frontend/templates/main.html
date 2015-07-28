@@ -52,7 +52,7 @@ window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
 window.DEBUG = {% if debug %}true{% else %}false{% endif %};
 window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %};
-{% include "angular/app.coffee" %}
+{% include "angular/app.js" %}
 </script>
 {# common angular modules #}
 {% javascript 'icsw_cs1' %}

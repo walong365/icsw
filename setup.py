@@ -227,7 +227,7 @@ setup(
             "static/js/*/*/*/*",
             "static/js/*/*/*/*/*",
             "templates/*.html",
-            "templates/angular/*.coffee",
+            "templates/js/*.js",
         ],
         "initat.cluster": [
             "runserver.sh",
