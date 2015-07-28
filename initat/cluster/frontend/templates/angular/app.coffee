@@ -128,7 +128,6 @@ ics_app = angular.module(
         "STATIC_URL": "{% get_static_prefix %}",
         "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}",
         "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}",
-        "REST_DEVICE_SELECTION_LIST_OLD": "{% url 'rest:device_selection_list' %}",
         {% include 'all_urls.html' %}
     }
 );

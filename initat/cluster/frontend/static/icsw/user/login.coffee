@@ -72,15 +72,13 @@ angular.module(
                 }
             ).then(
                 (xml) ->
-                    if icswParseXMLResponseService(xml)
-                        if $(xml).find("value[name='redirect']").length
-                            _val = $(xml).find("value[name='redirect']").text()
-                            $window.location = _val
-                    else
-                        blockUI.stop()
-                        $scope.$apply(
-                            $scope.init_login()
-                        )
+                    blockUI.stop()
+                    if $(xml).find("value[name='redirect']").length
+                        _val = $(xml).find("value[name='redirect']").text()
+                        $window.location = _val
+                (error) ->
+                    blockUI.stop()
+                    $scope.init_login()
             )
         $scope.gfx_class = () ->
             return style_dict[$window.LOGIN_SCREEN_TYPE]["gfx_class"]

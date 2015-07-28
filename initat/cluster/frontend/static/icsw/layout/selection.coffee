@@ -230,7 +230,9 @@ angular.module(
             "categories": sel.cat_sel
             "device_groups": sel.devg_sel
         }
+        console.log "save", _sel
         Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).post(_sel).then((data) ->
+            console.log "done"
             enrich_selection(data)
             defer.resolve(data)
         )

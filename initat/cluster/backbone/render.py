@@ -99,11 +99,7 @@ class render_me(object):
         # store as json for angular
         # store as dict for django templates
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
-        self.my_dict["ADDITIONAL_MENU_FILES"] = json.dumps(settings.ADDITIONAL_MENU_FILES)
         self.my_dict["ADDITIONAL_ANGULAR_APPS"] = settings.ADDITIONAL_ANGULAR_APPS
-        # self.my_dict["ADDITIONAL_URLS"] = [
-        #     (_name, reverse(_url, args=_args)) for _name, _url, _args in settings.ADDITIONAL_URLS
-        # ]
         return render_to_response(
             self.template,
             self.my_dict,
@@ -128,21 +124,29 @@ class permission_required_mixin(object):
         perm_ok = True
         if self.all_required_permissions:
             if any([_perm.count(".") != 2 for _perm in self.all_required_permissions]):
-                raise ImproperlyConfigured("permission format error: {}".format(", ".join(self.all_required_permissions)))
+                raise ImproperlyConfigured(
+                    "permission format error: {}".format(
+                        ", ".join(self.all_required_permissions)
+                    )
+                )
             if not request.user.has_object_perms(self.all_required_permissions):
-                logger.error("user {} has not the required permissions {}".format(
-                    unicode(request.user),
-                    str(self.all_required_permissions),
-                    ))
+                logger.error(
+                    "user {} has not the required permissions {}".format(
+                        unicode(request.user),
+                        str(self.all_required_permissions),
+                    )
+                )
                 perm_ok = False
         if self.any_required_permissions:
             if any([_perm.count(".") != 2 for _perm in self.any_required_permissions]):
                 raise ImproperlyConfigured("permission format error: {}".format(", ".join(self.any_required_permissions)))
             if not request.user.has_any_object_perms(self.any_required_permissions):
-                logger.error("user {} has not any of the required permissions {}".format(
-                    unicode(request.user),
-                    str(self.any_required_permissions),
-                    ))
+                logger.error(
+                    "user {} has not any of the required permissions {}".format(
+                        unicode(request.user),
+                        str(self.any_required_permissions),
+                    )
+                )
                 perm_ok = False
         if not perm_ok:
             try:

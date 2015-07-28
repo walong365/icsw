@@ -723,6 +723,10 @@ config_module = angular.module(
                     break
             c_name = "#{c_name}_#{c_idx}"
             sub_scope.config = config
+            sub_scope.mon_service_templ = []
+            icswConfigRestService.fetch(sub_scope.$id).then((data) ->
+                sub_scope.mon_service_templ = data[1]
+            )
             sub_scope.edit_obj = {
                 "config" : config.idx
                 "name" : c_name
@@ -1006,7 +1010,7 @@ config_module = angular.module(
                         ev_handlers.push(cc)
             return ev_handlers
     }
-]).service('icswConfigMonCheckCommandListService', ["icswSimpleAjaxCall", "icswConfigMonCheckCommandHelpService", "icswConfigListService", "icswTools", "icswConfigHintService", "Restangular", "ICSW_URLS", "msgbus", (icswSimpleAjaxCall, icswConfigMonCheckCommandHelpService, icswConfigListService, icswTools, icswConfigHintService, Restangular, ICSW_URLS, msgbus) ->
+]).service('icswConfigMonCheckCommandListService', ["icswSimpleAjaxCall", "icswConfigMonCheckCommandHelpService", "icswConfigListService", "icswTools", "icswConfigHintService", "Restangular", "ICSW_URLS", "msgbus", "icswConfigRestService", (icswSimpleAjaxCall, icswConfigMonCheckCommandHelpService, icswConfigListService, icswTools, icswConfigHintService, Restangular, ICSW_URLS, msgbus, icswConfigRestService) ->
     return {
         delete_confirm_str: (obj) ->
             return "Really delete MonCheckCommand '#{obj.name}' ?"
@@ -1016,6 +1020,10 @@ config_module = angular.module(
             # we don't know if categories have changed, notify to be sure
             msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
         init_fn: (scope) ->
+            scope.mon_service_templ = []
+            icswConfigRestService.fetch(scope.$id).then((data) ->
+                scope.mon_service_templ = data[1]
+            )
             angular.extend(scope, icswConfigMonCheckCommandHelpService)
             # Restangularize all elements
             for entry in scope.config.mon_check_command_set
@@ -1049,7 +1057,7 @@ config_module = angular.module(
             # remove from config_script list
             _list_name = "mon_check_command_set"
             config = scope.config
-            config[_list_name] = (entry for entry in config[_list_name] when entry.idx != obj.idx)
+            _.remove(config[_list_name], (entry) -> return entry.idx == obj.idx)
             icswConfigListService.update_config(config)
     }
 ]).directive("icswConfigMonTable", ["$templateCache", ($templateCache) ->

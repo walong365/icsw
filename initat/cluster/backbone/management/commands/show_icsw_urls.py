@@ -143,4 +143,9 @@ class Command(BaseCommand):
                     except:
                         pass
                     else:
-                        print("    \"{}\": \"{}\",".format(_rewrite(url_name), _reverse))
+                        _url = {
+                            "/cluster/rest/device_selection": "REST_DEVICE_SELECTION_LIST_OLD"
+                        }.get(_reverse, None)
+                        if _url is None:
+                            _url = _rewrite(url_name)
+                        print("    \"{}\": \"{}\",".format(_url, _reverse))

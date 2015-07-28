@@ -51,7 +51,6 @@ window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else
 window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %};
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
 window.DEBUG = {% if debug %}true{% else %}false{% endif %};
-window.ADDITIONAL_MENU_FILES = {{ ADDITIONAL_MENU_FILES | safe }};
 window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %};
 {% include "angular/app.coffee" %}
 </script>

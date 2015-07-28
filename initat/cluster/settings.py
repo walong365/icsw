@@ -346,8 +346,6 @@ STATICFILES_DIRS = list(STATICFILES_DIRS)
 AUTOCOMMIT = True
 
 INSTALLED_APPS = list(INSTALLED_APPS)
-# deprecated ?
-ADDITIONAL_MENU_FILES = []
 ADDITIONAL_ANGULAR_APPS = []
 # ADDITIONAL_URLS = []
 ADDITIONAL_JS = []
@@ -378,17 +376,6 @@ for sub_dir in os.listdir(dir_name):
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )
-                        # ADDITIONAL_URLS.extend(
-                        #    [
-                        #        (
-                        #            _el.attrib["name"],
-                        #            _el.attrib["url"],
-                        #            [
-                        #                _part for _part in _el.get("arguments", "").strip().split() if _part
-                        #            ]
-                        #        ) for _el in _tree.findall(".//url")
-                        #    ]
-                        # )
                         js_full_paths = glob.glob(os.path.join(full_path, "static", "js", "*.js"))
                         ADDITIONAL_JS.extend(
                             [
