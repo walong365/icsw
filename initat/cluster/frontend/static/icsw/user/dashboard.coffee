@@ -149,8 +149,8 @@ dashboard_module = angular.module(
                 blob = new Blob(content, {type: "text/plain;charset=utf-8"});
                 # use FileSaver.js
                 saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
-]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS", "access_level_service"
-    ($scope, $timeout, $window, ICSW_URLS, access_level_service) ->
+]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS", "access_level_service", "icswSimpleAjaxCall",
+    ($scope, $timeout, $window, ICSW_URLS, access_level_service, icswSimpleAjaxCall) ->
         $scope.ICSW_URLS = ICSW_URLS
         $scope.show_index = true
         $scope.quick_open = true
@@ -159,7 +159,16 @@ dashboard_module = angular.module(
         $scope.vdesktop_open = true
         $scope.jobinfo_open = true
         $scope.show_devices = false
-        $scope.NUM_QUOTA_SERVERS = $window.NUM_QUOTA_SERVERS
+        $scope.NUM_QUOTA_SERVERS = 0
+        icswSimpleAjaxCall(
+            {
+                "url": ICSW_URLS.USER_GET_NUM_QUOTA_SERVERS
+                "dataType": "json"
+            }
+        ).then(
+            (json) ->
+                $scope.NUM_QUOTA_SERVERS = json.num_quota_servers
+        )
         $scope.has_menu_permission = access_level_service.has_menu_permission
 ]).directive("indexView", ["$templateCache", "access_level_service", "icswUserLicenseDataService", ($templateCache, access_level_service, icswUserLicenseDataService) ->
     return {

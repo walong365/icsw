@@ -34,7 +34,7 @@ from django.http.response import HttpResponse
 from rest_framework.response import Response
 from rest_framework.generics import RetrieveAPIView
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
-    csw_object_permission, group_object_permission, \
+    csw_object_permission, group_object_permission, device, \
     user_object_permission, device, License, device_variable
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
@@ -46,7 +46,6 @@ from initat.cluster.frontend.license_views import login_required_rest
 from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
 from initat.tools import config_tools, server_command
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.tools.bgnotify.create import create_bg_job, notify_command
 
 logger = logging.getLogger("cluster.user")
 
@@ -60,6 +59,12 @@ class overview(permission_required_mixin, View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return render_me(request, "user_overview_tree.html")()
+
+
+class get_num_quota_servers(View):
+    def post(self, request):
+        _num = device.objects.filter(Q(device_config__config__name="quota_scan")).count()
+        return HttpResponse(json.dumps({"num_quota_servers": _num}), content_type="application/json")
 
 
 class sync_users(View):

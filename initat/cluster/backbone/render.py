@@ -50,10 +50,7 @@ class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request = request
         self.template = template
-        self.my_dict = {
-            # default values
-            "NUM_QUOTA_SERVERS": 0,
-        }
+        self.my_dict = {}
         for add_dict in args:
             self.my_dict.update(add_dict)
         for key, value in kwargs.iteritems():
@@ -81,7 +78,6 @@ class render_me(object):
                 "login_name": self.request.session["login_name"],
                 "full_name": unicode(self.request.user),
             }
-            _vars = {_name: _var.value for _name, _var in self.request.session["user_vars"].iteritems()}
             # routing info
 
         else:
@@ -89,13 +85,11 @@ class render_me(object):
                 "is_superuser": False,
                 "authenticated": False,
             }
-            _vars = {"sidebar_open": True}
         _cid = _get_cluster_info_dict()
         self.my_dict["CLUSTER_NAME"] = _cid.get("CLUSTER_NAME", "")
         self.my_dict["CLUSTER_ID"] = _cid.get("CLUSTER_ID", "")
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
         self.my_dict["PASSWORD_CHARACTER_COUNT"] = settings.PASSWORD_CHARACTER_COUNT
-        self.my_dict["USER_VARS"] = json.dumps(_vars)
         # store as json for angular
         # store as dict for django templates
         self.my_dict["CURRENT_USER"] = json.dumps(_user)

@@ -301,8 +301,8 @@ angular.module(
                 @top_div.append($("<ul>"))
             ai_ul = @top_div.find("ul")
             title_str = settings.title or "pending..."
-            if $window.DEBUG
-                title_str = "(#{cur_id}) #{title_str}"
+            # if $window.DEBUG
+            #    title_str = "(#{cur_id}) #{title_str}"
             ai_ul.append(
                 $("<li>").attr({
                     "id" : cur_id

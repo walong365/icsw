@@ -31,11 +31,10 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone import routing
-from initat.cluster.backbone.models import device, background_job
+from initat.cluster.backbone.models import background_job
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
-
 
 logger = logging.getLogger("cluster.main")
 
@@ -48,7 +47,6 @@ class index(View):
             "index.html",
             {
                 "doc_page": "index",
-                "NUM_QUOTA_SERVERS": device.objects.filter(Q(device_config__config__name="quota_scan")).count()
             }
         )()
 

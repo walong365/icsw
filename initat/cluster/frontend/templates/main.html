@@ -44,17 +44,13 @@ window.PASSWORD_CHARACTER_COUNT = "{{ PASSWORD_CHARACTER_COUNT }}";
 window.CLUSTER_NAME = "{{ CLUSTER_NAME }}";
 window.CLUSTER_ID = "{{ CLUSTER_ID }}";
 window.CURRENT_USER = {{ CURRENT_USER | safe }};
-window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }};
-window.USER_VARS = {{ USER_VARS | safe }};
 window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
 window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %};
 window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %};
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
-window.DEBUG = {% if debug %}true{% else %}false{% endif %};
 window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %};
-{% include "angular/app.js" %}
+{% include "js/app.js" %}
 </script>
-{# common angular modules #}
 {% javascript 'icsw_cs1' %}
 
 </head>
