@@ -41,6 +41,8 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
     def __init__(self, options):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.__run_command = True if global_config["COMMAND"].strip() else False
+        self.CC.init("cluster-server", global_config)
+        self.CC.check_config()
         # close DB conncetion (daemonize)
         if self.__run_command:
             # rewrite LOG_NAME and PID_NAME
@@ -53,8 +55,6 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                 global_config["LOG_NAME"],
                 global_config["COMMAND"]
             )
-        self.CC.init("cluster-server", global_config)
-        self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         self.__msi_block = self._init_msi_block()
         connection.close()

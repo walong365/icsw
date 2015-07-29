@@ -125,7 +125,7 @@ ics_app = angular.module(
         "STATIC_URL": "{% get_static_prefix %}",
         "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}",
         // {% include 'all_urls.html' %}
-        "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
+        "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.6.min.js' %}"
     }
 ).service(
     "icswCSRFService",

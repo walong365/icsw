@@ -19,6 +19,7 @@
 
 import base64
 import json
+import re
 import bz2
 
 from initat.host_monitoring import limits, hm_classes
@@ -459,6 +460,12 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
         else:
             output = MOCK_DICT[MOCK_MODE][self.__real_com]
         if output is not None:
+            self.__log_com(
+                "[smcipmi] output has {:d} bytes: {}".format(
+                    len(output),
+                    re.sub("-+", "-", re.sub("\s+", " ", output)),
+                )
+            )
             self.__hm_command.store_object(self.__real_com, output)
             self.srv_com["output"] = output
 

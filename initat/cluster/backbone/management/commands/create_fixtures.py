@@ -585,7 +585,7 @@ Used for automounter maps
             ac_flag=True,
             ac_type="str",
             ac_description="options",
-            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
+            ac_value="-soft,tcp,soft,rsize=1048576,wsize=1048576,ac,vers=4,port=2049",
         )
         # export entries
         export_cfg = factories.ConfigHint(
@@ -637,7 +637,7 @@ Used for automounter maps
             ac_flag=True,
             ac_type="str",
             ac_description="options",
-            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
+            ac_value="-soft,tcp,soft,rsize=1048576,wsize=1048576,ac,vers=4,port=2049",
         )
         # home export entries
         homedir_export_cfg = factories.ConfigHint(
@@ -689,7 +689,7 @@ Used for automounter maps
             ac_flag=True,
             ac_type="str",
             ac_description="options",
-            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
+            ac_value="-soft,tcp,soft,rsize=1048576,wsize=1048576,ac,vers=4,port=2049",
         )
         ldap_server_cfg = factories.ConfigHint(
             config_name="ldap_server",
