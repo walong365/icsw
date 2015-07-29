@@ -104,9 +104,9 @@ ics_app = angular.module(
         "icsw.rms",
         "icsw.history",
         "icsw.discovery",
-        "icsw.discovery.event_log",
+        "icsw.discovery.event_log"{% if ADDITIONAL_ANGULAR_APPS %},{% endif %}  // make sure that in any case, the last entry does not have a comma (IE workaround)
         // {% for app in ADDITIONAL_ANGULAR_APPS %}
-        "{{ app }}"
+        "{{ app }}"{% if not forloop.last %},{% endif %}
         // {% endfor %}
     ]
 ).config(
