@@ -141,15 +141,17 @@ angular.module(
                     return "Cluster #{cluster_id}"
     }
 ]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q", (Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q) ->
+    cluster_id_wrapper = {
+        CLUSTER_ID: "---"
+    }
     icswSimpleAjaxCall(
         {
             url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
             dataType: "json"
         }
     ).then((json) ->
-        CLUSTER_ID = json.CLUSTER_ID
+        cluster_id_wrapper.CLUSTER_ID = json.CLUSTER_ID
     )
-    CLUSTER_ID = "---"
     data = {
         state_valid: false
         all_licenses: []
@@ -272,7 +274,7 @@ angular.module(
         return state
 
     calculate_effective_license_state = (license_id) ->
-        return calculate_license_state(data.license_packages, license_id, CLUSTER_ID)
+        return calculate_license_state(data.license_packages, license_id, cluster_id_wrapper.CLUSTER_ID)
 
     add_grace_period = (date) ->
         # NOTE: keep grace period in sync with py
