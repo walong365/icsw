@@ -215,9 +215,7 @@ class get_domain_name_tree(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_domain_name_tree"]
 
     def get(self, request):
-        return render_me(request, "domain_name_tree.html", {
-            "doc_page": "domain_name_tree",
-            })()
+        return render_me(request, "domain_name_tree.html", {})()
 
 
 class get_network_clusters(permission_required_mixin, View):

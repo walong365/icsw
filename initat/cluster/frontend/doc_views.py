@@ -22,12 +22,13 @@
 
 """ views for dynamic docu"""
 
+import logging
+import os
+
 from django.conf import settings
 from django.http.response import HttpResponse
 from django.views.generic import View
 from initat.cluster.backbone.render import render_me
-import logging
-import os
 
 logger = logging.getLogger("cluster.doc")
 

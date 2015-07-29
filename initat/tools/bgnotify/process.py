@@ -221,7 +221,14 @@ class ServerBackgroundNotifyMixin(object):
                 else:
                     _success = True
                 if _success:
-                    self.log("send to {} [{:d}/{:d}]".format(conn_str, _cur_iter, num_iters))
+                    self.log(
+                        "send {} to {} [{:d}/{:d}]".format(
+                            logging_tools.get_size_str(len(unicode(srv_com))),
+                            conn_str,
+                            _cur_iter,
+                            num_iters,
+                        )
+                    )
                     break
                 else:
                     if _cur_iter < num_iters:

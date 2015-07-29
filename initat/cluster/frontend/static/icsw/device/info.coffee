@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
     ]
-).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window", "msgbus", "access_level_service", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window, msgbus, access_level_service, ICSW_URLS) ->
+).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "msgbus", "access_level_service", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, msgbus, access_level_service, ICSW_URLS) ->
         access_level_service.install($scope)
 ]).service(
     "DeviceOverviewService",

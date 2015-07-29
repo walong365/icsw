@@ -547,6 +547,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgro
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
+            else:
+                self.log("short data received", logging_tools.LOG_LEVEL_ERROR)
 
     def _still_active(self, msg):
         # return true if process is not shuting down

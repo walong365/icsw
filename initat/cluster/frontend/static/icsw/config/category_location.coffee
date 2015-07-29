@@ -67,10 +67,10 @@ angular.module(
         link: (scope, element, attrs) ->
     }
 ]).controller("icswConfigCategoryLocationCtrl", [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$timeout", "icswCSRFService",
     "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
     "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService", "msgbus",
-   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, $q, $modal, access_level_service,
+   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $timeout, icswCSRFService, $q, $modal, access_level_service,
     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster,
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, msgbus) ->
         $scope.entries = []
@@ -103,7 +103,7 @@ angular.module(
             alias : "gfx"
             formData : [
                  "location_id" : 0
-                 "csrfmiddlewaretoken" : $window.CSRF_TOKEN
+                 "csrfmiddlewaretoken" : icswCSRFService["csrf_token"],
             ]
             removeAfterUpload : true
         )

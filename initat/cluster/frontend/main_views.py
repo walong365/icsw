@@ -22,6 +22,8 @@
 
 """ main views """
 
+import os
+import glob
 import json
 import logging
 
@@ -45,9 +47,7 @@ class index(View):
         return render_me(
             request,
             "index.html",
-            {
-                "doc_page": "index",
-            }
+            {}
         )()
 
 
@@ -74,6 +74,16 @@ class get_cluster_info(View):
             Q(device__device_group__cluster_device_group=True)
         ):
             _info_dict[_key] = _value
+        return HttpResponse(json.dumps(_info_dict), content_type="application/json")
+
+
+class get_docu_info(View):
+    def post(self, request):
+        HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
+        _info_dict = {
+            "HANDBOOK_PDF_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf"))),
+            "HANDBOOK_CHUNKS_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk"))),
+        }
         return HttpResponse(json.dumps(_info_dict), content_type="application/json")
 
 

@@ -279,6 +279,11 @@ class SensorThreshold(models.Model):
             unicode(self.mv_value_entry),
         )
 
+    class CSW_Meta:
+        fk_ignore_list = [
+            "SensorThresholdAction",
+        ]
+
 
 class SensorThresholdAction(models.Model):
     # log

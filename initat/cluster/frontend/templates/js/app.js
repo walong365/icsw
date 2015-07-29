@@ -110,10 +110,6 @@ ics_app = angular.module(
         // {% endfor %}
     ]
 ).config(
-    function() {
-        // console.log "config"
-    }
-).config(
     [
         "blockUIConfig",
         function(blockUIConfig) {
@@ -131,4 +127,11 @@ ics_app = angular.module(
         // {% include 'all_urls.html' %}
         "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     }
+).service(
+    "icswCSRFService",
+    [
+        function() {
+            return {"csrf_token": "{{ csrf_token }}"};
+        }
+    ]
 );

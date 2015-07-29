@@ -23,36 +23,44 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q",
+    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         # init background jobs
         $scope.NUM_BACKGROUND_JOBS = 0
         # init service types
         $scope.SERVICE_TYPES = {}
-        $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
         $scope.quicksel = false
         $scope.CURRENT_USER = $window.CURRENT_USER
-        if $window.DOC_PAGE
-            $scope.HANDBOOK_CHUNKS_PRESENT = $window.HANDBOOK_CHUNKS_PRESENT
-            $scope.HANDBOOK_PAGE = $window.DOC_PAGE
-        else
-            $scope.HANDBOOK_CHUNKS_PRESENT = 0
-            $scope.HANDBOOK_PAGE = "---"
+        $scope.HANDBOOK_PDF_PRESENT = false
+        $scope.HANDBOOK_CHUNKS_PRESENT = false
+        $scope.HANDBOOK_PAGE = "---"
         access_level_service.install($scope)
         $scope.progress_iters = 0
         $scope.cur_gauges = {}
         $scope.num_gauges = 0
-        icswSimpleAjaxCall(
-            {
-                "url": ICSW_URLS.MAIN_ROUTING_INFO
-                "dataType": "json"
-            }
+        $q.all(
+            [
+                icswSimpleAjaxCall(
+                    {
+                        "url": ICSW_URLS.MAIN_ROUTING_INFO
+                        "dataType": "json"
+                    }
+                ),
+                icswSimpleAjaxCall(
+                    {
+                        "url": ICSW_URLS.MAIN_GET_DOCU_INFO,
+                        "dataType": "json"
+                    }
+                ),
+            ]
         ).then(
-            (json) ->
-                $scope.SERVICE_TYPES = json.service_types
+            (data) ->
+                $scope.SERVICE_TYPES = data[0].service_types
+                $scope.HANDBOOK_PDF_PRESENT = data[1].HANDBOOK_PDF_PRESENT
+                $scope.HANDBOOK_CHUNKS_PRESENT = data[1].HANDBOOK_CHUNKS_PRESENT
         )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
@@ -103,6 +111,7 @@ menu_module = angular.module(
             window.location = "/cluster/doc/#{initProduct.name.toLowerCase()}_handbook.pdf"
             return false
         $scope.show_handbook_page = () ->
+            # not working right now, FIXME
             window.open(
                 ICSW_URLS.DYNDOC_DOC_PAGE.slice(0, -1) + $scope.HANDBOOK_PAGE
                 "cluster documenation"

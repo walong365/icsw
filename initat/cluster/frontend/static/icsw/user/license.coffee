@@ -25,18 +25,18 @@ angular.module(
     ]
 ).controller("icswUserLicenseCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal",
-     "$window", "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService', 'icswUserLicenseDataService',
-     "access_level_service",
+     "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService', 'icswUserLicenseDataService',
+     "access_level_service", "icswCSRFService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal,
-     $window, ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
-     access_level_service) ->
+     ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
+     access_level_service, icswCSRFService) ->
         $scope.uploader = new FileUploader(
             scope : $scope
             url : ICSW_URLS.USER_UPLOAD_LICENSE_FILE
             queueLimit : 1
             alias : "license_file"
             formData : [
-                 "csrfmiddlewaretoken" : $window.CSRF_TOKEN
+                 "csrfmiddlewaretoken" : icswCSRFService["csrf_token"]
             ]
             removeAfterUpload : true
         )

@@ -324,7 +324,6 @@ class device_info(View):
             request,
             "index.html",
             {
-                "doc_page": "index",
                 "DEVICE_MODE": kwargs.get("mode", "")
             }
         )()

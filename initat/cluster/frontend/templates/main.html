@@ -36,12 +36,8 @@
     {% javascript 'js_icsw_modules' %}
 <script type="text/javascript">
 // attach global permissions and license info to window object (== global variable)
-window.CSRF_TOKEN = "{{ csrf_token }}";
 window.CURRENT_USER = {{ CURRENT_USER | safe }};
 window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
-window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %};
-window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %};
-window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %};
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
 {% include "js/app.js" %}
 </script>

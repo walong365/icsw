@@ -20,11 +20,10 @@
 """ sends a command to one of the python-servers, 0MQ version"""
 
 import argparse
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
 import sys
 import time
+
+from initat.tools import logging_tools, process_tools, server_command
 import zmq
 
 
@@ -51,7 +50,7 @@ def _get_parser():
     return parser
 
 
-class send_com(object):
+class SendCommand(object):
     def __init__(self):
         self.ret_state = 0
         self.parser = _get_parser()
@@ -76,7 +75,13 @@ class send_com(object):
         if self.args.protocoll == "ipc":
             if self.args.root:
                 process_tools.ALLOW_MULTIPLE_INSTANCES = False
-            conn_str = "{}".format(process_tools.get_zmq_ipc_name(self.args.host, s_name=self.args.server_name, connect_to_root_instance=self.args.root))
+            conn_str = "{}".format(
+                process_tools.get_zmq_ipc_name(
+                    self.args.host,
+                    s_name=self.args.server_name,
+                    connect_to_root_instance=self.args.root
+                )
+            )
         else:
             conn_str = "{}://{}:{:d}".format(self.args.protocoll, self.args.host, self.args.port)
         if self.args.split:
@@ -244,7 +249,7 @@ class send_com(object):
 
 
 def main():
-    my_com = send_com()
+    my_com = SendCommand()
     my_com.parse()
     my_com.init_connection()
     if my_com.connect():

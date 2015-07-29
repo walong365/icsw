@@ -319,14 +319,14 @@ angular.module(
                 @ajax_dict[xhr_id]["state"]   = "done"
                 @ajax_dict[xhr_id]["runtime"] = new Date() - @ajax_dict[xhr_id]["start"]
                 @top_div.find("li##{xhr_id}").remove()
-]).service("icswCallAjaxService", ["icswAjaxInfoService", "$window", (icswAjaxInfoService, $window) ->
+]).service("icswCallAjaxService", ["icswAjaxInfoService", "icswCSRFService", (icswAjaxInfoService, icswCSRFService) ->
     local_ajax_info = new icswAjaxInfoService("div#ajax_info")
     default_ajax_dict =
         type       : "POST"
         timeout    : 50000
         dataType   : "xml"
         headers    : {
-            "X-CSRFToken" : $window.CSRF_TOKEN
+            "X-CSRFToken" : icswCSRFService["csrf_token"],
         }
         beforeSend : (xhr, settings) ->
             if not settings.hidden

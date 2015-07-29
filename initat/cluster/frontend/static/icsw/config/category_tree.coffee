@@ -41,11 +41,11 @@ angular.module(
             return _fetch(id, pk_list)
     }
 ]).controller("icswConfigCategoryTreeCtrl", [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$timeout",
     "$q", "$modal", "access_level_service", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService", "msgbus",
     "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService",
     "icswToolsSimpleModalService",
-   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, $q, $modal, access_level_service,
+   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $timeout, $q, $modal, access_level_service,
     blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, msgbus, icswCallAjaxService, icswParseXMLResponseService, toaster,
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, icswToolsSimpleModalService) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})

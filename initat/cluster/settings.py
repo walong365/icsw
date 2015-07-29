@@ -530,12 +530,6 @@ TEMPLATES = [
 ]
 
 
-HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
-
-HANDBOOK_PDF_PRESENT = bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf")))
-
-HANDBOOK_CHUNKS_PRESENT = bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk")))
-
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
 _config_ok = False

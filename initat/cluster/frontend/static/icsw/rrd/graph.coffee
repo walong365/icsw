@@ -690,6 +690,11 @@ angular.module(
         restrict: "AE"
         template: $templateCache.get("icsw.rrd.graph.threshold.overview")
         link: (scope, el, attr) ->
+            scope.get_enabled = (type) ->
+                return if scope.threshold["#{type}_enabled"] then "enabled" else "disabled"
+            scope.toggle_enabled = (sensor, threshold, type) ->
+                scope.threshold["#{type}_enabled"] = !scope.threshold["#{type}_enabled"]
+                scope.threshold.save()
             scope.get_lower_sensor_action_name = () ->
                 if scope.threshold.lower_sensor_action
                     return scope.sensor.graph.sensor_action_lut[scope.threshold.lower_sensor_action].name
@@ -848,20 +853,21 @@ angular.module(
                 threshold.create_user_obj = undefined
             th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
         sub_scope.create_new_threshold = (sensor) ->
-            console.log $window.CURRENT_USER
             _mv = sensor.mean_value
+            non_action = (entry for entry in graph.sensor_action_list when entry.action == "none")[0]
             threshold = {
                 "name": "Threshold for #{sensor.mv_key}"
                 "lower_value": _mv - _mv / 10
                 "upper_value": _mv + _mv / 10
                 "lower_mail": true
                 "upper_mail": true
-                "lower_enabled": true
-                "upper_enabled": true
+                "lower_enabled": false
+                "upper_enabled": false
                 "notify_users": []
                 "create_user": $window.CURRENT_USER.idx
-                "lower_sensor_action": undefined,
-                "upper_sensor_action": undefined,
+                "create_user_obj": $window.CURRENT_USER
+                "lower_sensor_action_obj": non_action
+                "upper_sensor_action_obj": non_action
                 "device_selection": undefined
             }
             th_dialog(true, sub_scope, sensor, threshold, "Create new threshold")
