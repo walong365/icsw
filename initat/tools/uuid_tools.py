@@ -40,6 +40,10 @@ def get_uuid():
             except ValueError:
                 # uuid is not readable, create new
                 the_uuid = uuid.uuid4()
+            try:
+                os.unlink(OLD_UUID_NAME)
+            except:
+                pass
         else:
             the_uuid = uuid.uuid4()
         _ds = config_store.ConfigStore(DATASTORE_NAME)
