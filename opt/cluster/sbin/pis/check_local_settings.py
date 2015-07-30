@@ -30,8 +30,16 @@ from initat.tools.logging_tools import logbase
 from django.utils.crypto import get_random_string
 
 LS_OLD_FILE = "/etc/sysconfig/cluster/local_settings.py"
-CS_NAME = "icsw.general"
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
+CS_NAME = "icsw.general"
+
+
+def remove_file(f_name):
+    if os.path.exists(f_name):
+        try:
+            os.unlink(f_name)
+        except:
+            pass
 
 
 def log(what, log_level=logbase.LOG_LEVEL_OK):
@@ -96,13 +104,12 @@ def main():
     if "db.auto.update" not in new_store:
         if os.path.exists(AUTO_FLAG):
             new_store["db.auto.update"] = True
-            try:
-                os.unlink(AUTO_FLAG)
-            except:
-                pass
+            remove_file(AUTO_FLAG)
         else:
             new_store["db.auto.update"] = False
     new_store.write()
+    remove_file(LS_OLD_FILE)
+
 
 if __name__ == "__main__":
     main()
