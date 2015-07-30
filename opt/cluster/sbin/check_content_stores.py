@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" reads and modifies local_settings.py, now stored in a config_store"""
+""" transform local_settings, uuid and db.cf to config_store(s) """
 
 import os
 import sys
@@ -34,6 +34,8 @@ AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 CS_NAME = "icsw.general"
 SATELLITE_FLAG = "/etc/sysconfig/cluster/is_satellite"
 SLAVE_FLAG = "/etc/sysconfig/cluster/is_slave"
+DB_FILE = "/etc/sysconfig/cluster/db.cf"
+DB_CS_NAME = "icsw.db.access"
 
 
 def remove_file(f_name):
@@ -95,6 +97,32 @@ def get_old_local_settings():
     }
 
 
+def migrate_uuid():
+    from initat.tools import uuid_tools
+    uuid_tools.get_uuid()
+
+
+def migrate_db_cf():
+    if not config_store.ConfigStore.exists(DB_CS_NAME) and os.path.exists(DB_FILE):
+        _cs = config_store.ConfigStore(DB_CS_NAME)
+        sql_dict = {
+            key.split("_")[1]: value for key, value in [
+                line.strip().split("=", 1) for line in file(DB_FILE, "r").read().split(
+                    "\n"
+                ) if line.count("=") and line.count("_") and not line.count("NAGIOS")
+            ]
+        }
+        for src_key in [
+            "DATABASE", "USER", "PASSWD", "HOST", "ENGINE",
+        ]:
+            if src_key in sql_dict:
+                _val = sql_dict[src_key]
+                if _val.isdigit():
+                    _val = int(_val)
+                _cs["db.{}".format(src_key.lower())] = _val
+        _cs.write()
+
+
 def main():
     if not config_store.ConfigStore.exists(CS_NAME):
         # migrate
@@ -121,8 +149,8 @@ def main():
         new_store["mode.is.slave"] = False
     new_store.write()
     remove_file(LS_OLD_FILE)
-    from initat.tools import uuid_tools
-    uuid_tools.get_uuid()
+    migrate_uuid()
+    migrate_db_cf()
 
 
 if __name__ == "__main__":

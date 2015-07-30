@@ -123,7 +123,7 @@ setup(
                 "opt/cluster/sbin/pis/icsw_client_post_install.sh",
                 "opt/cluster/sbin/pis/icsw_server_post_install.sh",
                 "opt/cluster/sbin/pis/merge_client_configs.py",
-                "opt/cluster/sbin/pis/check_local_settings.py",
+                "opt/cluster/sbin/pis/check_content_stores.py",
             ]
         ),
         (

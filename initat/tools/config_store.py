@@ -120,7 +120,7 @@ class ConfigVar(object):
 
 class ConfigStore(object):
     def __init__(self, name, log_com=None, read=True, quiet=False):
-        self.file_name = ConfigStore._build_path(name)
+        self.file_name = ConfigStore.build_path(name)
         self.tree_valid = True
         self.name = name
         self.__quiet = quiet
@@ -143,10 +143,10 @@ class ConfigStore(object):
 
     @staticmethod
     def exists(name):
-        return os.path.exists(ConfigStore._build_path(name))
+        return os.path.exists(ConfigStore.build_path(name))
 
     @staticmethod
-    def _build_path(name):
+    def build_path(name):
         return os.path.join("/opt", "cluster", "etc", "cstores.d", "{}_config.xml".format(name))
 
     def read(self, name=None):
@@ -213,8 +213,8 @@ class ConfigStore(object):
     def _generate(self):
         _root = E("config-store", name=self.name)
         _kl = E("key-list")
-        for _key, _var in self.vars.iteritems():
-            _kl.append(_var.get_element())
+        for _key in sorted(self.vars.iterkeys()):
+            _kl.append(self.vars[_key].get_element())
         _root.append(_kl)
         return _root
 

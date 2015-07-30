@@ -68,6 +68,7 @@ DB_PRESENT = {
     "mysql": True,
     "sqlite": True,
 }
+
 for module_name, key in (
     ("psycopg2", "psql"),
     ("MySQLdb", "mysql"),
@@ -87,7 +88,9 @@ else:
     except IndexError:
         DEFAULT_ENGINE = ""
 
-DB_FILE = "/etc/sysconfig/cluster/db.cf"
+DB_CS_NAME = "icsw.db.access"
+DB_CS_FILENAME = config_store.ConfigStore.build_path(DB_CS_NAME)
+# DB_FILE = "/etc/sysconfig/cluster/db.cf"
 
 
 def call_manage(args, **kwargs):
@@ -269,20 +272,18 @@ def create_db_cf(opts):
             print("cannot connect, please check your settings and / or the setup of your database:")
             test_obj.show_config()
     # content
-    _content = [
-        "DB_{}={}".format(
-            key.upper(),
-            str(c_dict[key]),
-            ) for key in sorted(c_dict) if not key.startswith("_")
-        ] + [""]
-    print("The file {} should be readable for root and the uwsgi processes".format(DB_FILE))
+    _cs = config_store.ConfigStore(DB_CS_NAME)
+    for key in sorted(c_dict):
+        if not key.startswith("_"):
+            _cs["db.{}".format(key.lower())] = c_dict[key]
+    print("The file {} should be readable for root and the uwsgi processes".format(DB_CS_FILENAME))
     try:
-        file(DB_FILE, "w").write("\n".join(_content))
+        _cs.write()
     except:
-        print("cannot create {}: {}".format(DB_FILE, process_tools.get_except_info()))
-        print("content of {}:".format(DB_FILE))
+        print("cannot create {}: {}".format(DB_CS_FILENAME, process_tools.get_except_info()))
+        print("content of {}:".format(DB_CS_NAME))
         print("")
-        print("\n".join(_content))
+        print(_cs.show())
         print("")
         return False
     else:
@@ -492,7 +493,7 @@ def migrate_db(opts):
                 print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
                 # call_manage(["migrate", _sync_app, "--noinput"])
-        subprocess.check_output("/opt/cluster/sbin/pis/check_local_settings.py")
+        subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores.py")
         auth_app_name = "django.contrib.auth"
         for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions"]:
             if app_has_unapplied_migrations(_app.split(".")[-1]):
@@ -533,12 +534,12 @@ def create_fixtures():
 
 
 def check_db_rights():
-    if os.path.isfile(DB_FILE):
-        c_stat = os.stat(DB_FILE)
+    if os.path.isfile(DB_CS_FILENAME):
+        c_stat = os.stat(DB_CS_FILENAME)
         if c_stat[stat.ST_UID] == 0 & c_stat[stat.ST_GID]:
             if not c_stat.st_mode & stat.S_IROTH:
-                print "setting R_OTHER flag on {} (because owned by root.root)".format(DB_FILE)
-                os.chmod(DB_FILE, c_stat.st_mode | stat.S_IROTH)
+                print "setting R_OTHER flag on {} (because owned by root.root)".format(DB_CS_FILENAME)
+                os.chmod(DB_CS_FILENAME, c_stat.st_mode | stat.S_IROTH)
 
 
 def _check_dirs():
@@ -614,7 +615,7 @@ def main(args):
         cs_store["db.auto.update"] = True
         cs_store.write()
         print("enabled auto_update_flag")
-    db_exists = os.path.exists(DB_FILE)
+    db_exists = config_store.ConfigStore.exists(DB_CS_NAME)
     call_create_db = True
     call_migrate_db = False
     call_create_fixtures = False
@@ -634,18 +635,18 @@ def main(args):
                 setup_db_cf = False
             else:
                 if args.ignore_existing:
-                    print("DB access file {} already exists, ignoring ...".format(DB_FILE))
+                    print("DB access file {} already exists, ignoring ...".format(DB_CS_FILENAME))
                     setup_db_cf = True
                 else:
-                    print("DB access file {} already exists, exiting ...".format(DB_FILE))
+                    print("DB access file {} already exists, exiting ...".format(DB_CS_FILENAME))
                     sys.exit(1)
     else:
         setup_db_cf = True
         if args.use_existing:
-            print("DB access file {} does not exist ...".format(DB_FILE))
+            print("DB access file {} does not exist ...".format(DB_CS_FILENAME))
     if setup_db_cf:
         if not create_db_cf(args):
-            print("Creation of {} not successfull, exiting".format(DB_FILE))
+            print("Creation of {} not successfull, exiting".format(DB_CS_FILENAME))
             sys.exit(3)
     check_db_rights()
     if call_create_db:
