@@ -120,6 +120,7 @@ def migrate_db_cf():
                 if _val.isdigit():
                     _val = int(_val)
                 _cs["db.{}".format(src_key.lower())] = _val
+        _cs.set_type("db.passwd", "password")
         _cs.write()
         remove_file(DB_FILE)
 

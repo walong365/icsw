@@ -276,6 +276,7 @@ def create_db_cf(opts):
     for key in sorted(c_dict):
         if not key.startswith("_"):
             _cs["db.{}".format(key.lower())] = c_dict[key]
+    _cs.set_type("db.passwd", "password")
     print("The file {} should be readable for root and the uwsgi processes".format(DB_CS_FILENAME))
     try:
         _cs.write()

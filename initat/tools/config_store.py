@@ -72,6 +72,9 @@ class ConfigVar(object):
             self._type = "str"
         self.description = descr
 
+    def set_type(self, _type):
+        self._type = _type
+
     @staticmethod
     def interpret(el):
         _name = el.attrib["name"]
@@ -82,6 +85,8 @@ class ConfigVar(object):
                 _val = int(_val)
             elif _type == "bool":
                 _val = True if _val.lower() in ["y", "yes", "1", "true"] else False
+            elif _type == "password":
+                _val = _val
         except:
             raise ValueError(
                 "error casting key '{}' to {} (text was '{}'): {}".format(
@@ -112,7 +117,7 @@ class ConfigVar(object):
         return _el
 
     def get_value(self):
-        if self._type == "str" and self.value is None:
+        if self._type in ["str", "password"] and self.value is None:
             return ""
         else:
             return self.value
@@ -255,6 +260,9 @@ class ConfigStore(object):
 
     def __contains__(self, key):
         return key in self.vars
+
+    def set_type(self, key, _type):
+        self.vars[key].set_type(_type)
 
     def copy_to_global_config(self, global_config, mapping):
         from initat.tools import configfile
