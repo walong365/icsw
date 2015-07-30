@@ -23,6 +23,7 @@ simple interface to a file-base config store, file format is XML
 
 import os
 from lxml import etree
+import argparse
 
 from initat.tools import process_tools
 from initat.tools.logging_tools import logbase
@@ -43,6 +44,7 @@ CS_NG = """
                             <value>int</value>
                             <value>str</value>
                             <value>bool</value>
+                            <value>password</value>
                         </choice>
                     </attribute>
                     <optional>
@@ -267,3 +269,18 @@ class ConfigStore(object):
                 (_dst, _obj(_val, database=False, source="ConfigStore"))
             )
         global_config.add_config_entries(_adds)
+
+
+if __name__ == "__main__":
+    def quiet_log(_a, _b):
+        pass
+
+    _ap = argparse.ArgumentParser()
+    _ap.add_argument("--store", default="client", type=str, help="ConfigStore name [%(default)s]")
+    _ap.add_argument("--key", default="", type=str, help="Key to show [%(default)s]")
+    opts = _ap.parse_args()
+    _store = ConfigStore(opts.store, log_com=quiet_log)
+    if opts.key in _store:
+        print(_store[opts.key])
+    else:
+        raise KeyError("unknown key '{}'".format(opts.key))

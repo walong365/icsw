@@ -31,6 +31,7 @@ from django.utils.crypto import get_random_string
 
 LS_OLD_FILE = "/etc/sysconfig/cluster/local_settings.py"
 CS_NAME = "icsw.general"
+AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 
 
 def log(what, log_level=logbase.LOG_LEVEL_OK):
@@ -71,7 +72,7 @@ def get_old_local_settings():
     except:
         PASSWORD_CHARACTER_COUNT = 8
     if SECRET_KEY in [None, "None"]:
-        chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+        chars = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
         SECRET_KEY = get_random_string(50, chars)
     sys.path.remove(LS_DIR)
     return {
@@ -86,10 +87,22 @@ def get_old_local_settings():
 
 def main():
     if not config_store.ConfigStore.exists(CS_NAME):
+        # migrate
         new_store = config_store.ConfigStore(CS_NAME)
         for _key, _value in get_old_local_settings().iteritems():
             new_store[_key] = _value
         new_store.write()
+    new_store = config_store.ConfigStore(CS_NAME)
+    if "db.auto.update" not in new_store:
+        if os.path.exists(AUTO_FLAG):
+            new_store["db.auto.update"] = True
+            try:
+                os.unlink(AUTO_FLAG)
+            except:
+                pass
+        else:
+            new_store["db.auto.update"] = False
+    new_store.write()
 
 if __name__ == "__main__":
     main()

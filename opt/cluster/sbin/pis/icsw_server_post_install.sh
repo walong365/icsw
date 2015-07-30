@@ -98,7 +98,7 @@ chmod a+rwx ${WEBCACHE_DIR}
 
 if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     # already installed
-    if [ -f /etc/sysconfig/cluster/db_auto_update ] ; then
+    if [ "$(/usr/bin/python-init ${PREFIX_INIT}/initat/tools/config_store.py --store icsw.general --key db.auto.update)" = "True" ] ; then
         echo "running auto-update script ${ICSW_BASE}/sbin/icsw setup --migrate"
         ${ICSW_BASE}/sbin/icsw setup --migrate
     else

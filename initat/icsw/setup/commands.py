@@ -32,11 +32,12 @@ import sys
 import time
 import subprocess
 
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, config_store
 
 from .utils import generate_password, DirSave, get_icsw_root
 from .connection_tests import test_psql, test_mysql, test_sqlite
 
+CS_NAME = "icsw.general"
 ICSW_ROOT = get_icsw_root()
 CMIG_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone", "migrations")
 MIGRATION_DIRS = [
@@ -45,8 +46,6 @@ MIGRATION_DIRS = [
     "initat/cluster/backbone",
     "initat/cluster/liebherr",
 ]
-# flag for autoupdate
-AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 
 # which apps needs syncing
 SYNC_APPS = ["liebherr", "licadmin"]
@@ -607,28 +606,15 @@ def main(args):
 
     # flag: setup db_cf data
     if args.disable_auto_update:
-        if os.path.isfile(AUTO_FLAG):
-            try:
-                os.unlink(AUTO_FLAG)
-            except:
-                print("cannot remove auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
-                sys.exit(-1)
-            else:
-                print("removed auto_update_flag {}".format(AUTO_FLAG))
-        else:
-            print("auto_udpate_flag {} not present".format(AUTO_FLAG))
+        cs_store = config_store.ConfigStore(CS_NAME)
+        cs_store["db.auto.update"] = False
+        cs_store.write()
+        print("disabled auto_update_flag")
     else:
-        if os.path.exists(AUTO_FLAG):
-            pass
-            # print("auto_udpate_flag {} already exists".format(AUTO_FLAG))
-        else:
-            try:
-                file(AUTO_FLAG, "w").write("\n")
-            except:
-                print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
-                sys.exit(-1)
-            else:
-                print("created auto_update_flag {}".format(AUTO_FLAG))
+        cs_store = config_store.ConfigStore(CS_NAME)
+        cs_store["db.auto.update"] = True
+        cs_store.write()
+        print("enabled auto_update_flag")
     db_exists = os.path.exists(DB_FILE)
     call_create_db = True
     call_migrate_db = False
