@@ -31,15 +31,21 @@ from initat.cluster.backbone.models import device_variable, domain_tree_node, ne
 from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
 from initat.cluster_config_server.partition_setup import partition_setup
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools
+from initat.tools import logging_tools, config_store, uuid_tools
 import networkx
 
 
 def do_uuid(conf):
     conf_dict = conf.conf_dict
     uuid_str = "urn:uuid:{}".format(conf_dict["device"].uuid)
-    cdf_file = conf.add_file_object("/etc/sysconfig/cluster/.cluster_device_uuid")
-    cdf_file.append(uuid_str)
+    _cs = config_store.ConfigStore(uuid_tools.DATASTORE_NAME)
+    _cs["cluster.device.uuid"] = uuid_str
+    # cdf_file = conf.add_file_object("/etc/sysconfig/cluster/.cluster_device_uuid")
+    # cdf_file.append(uuid_str)
+    cdf_file = conf.add_file_object(_cs.file_name)
+    cdf_file.append(
+        _cs.show()
+    )
     hm_uuid = conf.add_file_object("/etc/sysconfig/host-monitoring.d/0mq_id")
     hm_uuid.append(
         etree.tostring(

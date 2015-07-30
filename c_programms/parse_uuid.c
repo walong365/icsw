@@ -1,4 +1,4 @@
-#define UUID_NAME "/etc/sysconfig/cluster/.cluster_device_uuid"
+#define UUID_NAME "/opt/cluster/etc/.cluster_device_uuid"
 
 char* parse_uuid() {
     char* identity_str = malloc(1000);

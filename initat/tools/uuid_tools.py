@@ -25,13 +25,15 @@ import uuid
 from initat.tools import config_store
 
 OLD_UUID_NAME = "/etc/sysconfig/cluster/.cluster_device_uuid"
+# for simple C-progs
+NEW_UUID_NAME = "/opt/cluster/etc/.cluster_device_uuid"
 # name of datastore
 DATASTORE_NAME = "icsw.device"
 
 
 def get_uuid():
     if not config_store.ConfigStore.exists(DATASTORE_NAME):
-        if os.path.isfile(UUID_NAME):
+        if os.path.isfile(OLD_UUID_NAME):
             uuid_content = file(UUID_NAME, "r").read().strip()
             try:
                 the_uuid = uuid.UUID(uuid_content)
@@ -43,7 +45,13 @@ def get_uuid():
         _ds = config_store.ConfigStore(DATASTORE_NAME)
         _ds["cluster.device.uuid"] = the_uuid.get_urn()
         _ds.write()
-    return uuid.UUID(config_store.ConfigStore(DATASTORE_NAME)["cluster.device.uuid"])
+    the_uuid = uuid.UUID(config_store.ConfigStore(DATASTORE_NAME)["cluster.device.uuid"])
+    if not os.path.exists(NEW_UUID_NAME):
+        try:
+            file(NEW_UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
+        except:
+            pass
+    return the_uuid
 
 if __name__ == "__main__":
     print(get_uuid())

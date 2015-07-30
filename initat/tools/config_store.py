@@ -119,13 +119,14 @@ class ConfigVar(object):
 
 
 class ConfigStore(object):
-    def __init__(self, name, log_com=None):
+    def __init__(self, name, log_com=None, read=True):
         self.file_name = ConfigStore._build_path(name)
         self.tree_valid = True
         self.name = name
         self.__log_com = log_com
         self.vars = {}
-        self.read()
+        if read:
+            self.read()
 
     def log(self, what, log_level=logbase.LOG_LEVEL_OK):
         if self.__log_com:
@@ -218,7 +219,7 @@ class ConfigStore(object):
 
     def show(self):
         if self.tree_valid:
-            print etree.tostring(self._generate(), pretty_print=True)
+            return etree.tostring(self._generate(), pretty_print=True)
 
     def write(self):
         # dangerous, use with care

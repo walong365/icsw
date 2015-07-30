@@ -270,7 +270,8 @@ generate_devicefiles
 
 echo "system UUID is '$uuid'"
 
-echo urn:uuid:${uuid} > /etc/sysconfig/cluster/.cluster_device_uuid
+mkdir -p /opt/cluster/etc
+echo urn:uuid:${uuid} > /opt/cluster/etc/.cluster_device_uuid
 
 if [ ${ip:-0} = "0" ] ; then
     boottype="NET"
@@ -576,8 +577,8 @@ if [ "$check_ram_fill" = "1" ] ; then
 fi
 
 # copy UUID to stage2
-mkdir -p /stage2/etc/sysconfig/cluster
-cp -a /etc/sysconfig/cluster/.cluster_device_uuid /stage2/etc/sysconfig/cluster
+mkdir -p /stage2/opt/cluster/etc
+cp -a /opt/cluster/etc/.cluster_device_uuid /stage2/opt/cluster/etc
 
 if [ ! -x /stage2/bin/bash ] ; then
     if [ ! -d /stage2/bin ] ; then
