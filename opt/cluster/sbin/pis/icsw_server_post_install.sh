@@ -82,6 +82,13 @@ done
 # PostInstallTaks
 [ -x ${ICSW_PIS}/check_local_settings.py ] && ${ICSW_PIS}/check_local_settings.py
 
+# ... remove ...
+# old config files
+rm -f /etc/sysconfig/cluster/.is_corvus
+rm -f /etc/sysconfig/cluster/local_settings.py?
+# old license files
+rm -f /etc/sysconfig/cluster/cluster_license*
+
 # add idg to webserver group
 if [ -f /etc/debian_version ] ; then
     usermod -G idg www-data

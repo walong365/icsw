@@ -109,6 +109,8 @@ def main():
             new_store["db.auto.update"] = False
     new_store.write()
     remove_file(LS_OLD_FILE)
+    from initat.tools import uuid_tools
+    uuid_tools.get_uuid()
 
 
 if __name__ == "__main__":

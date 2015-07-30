@@ -42,7 +42,7 @@ import grp
 import pwd
 
 import six
-from initat.tools import logging_tools, uuid_tools
+from initat.tools import logging_tools
 
 try:
     import psutil
@@ -156,12 +156,6 @@ class exception_info(object):
                 self.log_lines.append(u" - {:d} : {}".format(line_no, line))
         self.log_lines.append(get_except_info(self.except_info))
 
-# mapping: server type -> postfix for ZMQ_IDENTITY string
-_CLIENT_TYPE_UUID_MAPPING = {
-    "meta": "meta-server",
-    "package": "package-client",
-}
-
 
 def call_command(act_command, log_com, close_fds=False):
     log_com("calling command '{}'".format(act_command))
@@ -193,17 +187,6 @@ def call_command(act_command, log_com, close_fds=False):
         else:
             log_com("{} is empty".format(_name))
     return ret_code, _stdout, _stderr
-
-
-def get_client_uuid(client_type, uuid=None):
-    if uuid is None:
-        uuid = uuid_tools.get_uuid().get_urn()
-    if not uuid.startswith("urn"):
-        uuid = "urn:uuid:{}".format(uuid)
-    return "{}:{}:".format(
-        uuid,
-        _CLIENT_TYPE_UUID_MAPPING[client_type],
-    )
 
 
 def get_socket(context, r_type, **kwargs):
@@ -372,7 +355,6 @@ if psutil is not None:
         "X": psutil.STATUS_DEAD,
         "W": psutil.STATUS_WAKING
     }
-
 
     PROC_INFO_DICT = {
         psutil.STATUS_RUNNING:  "number of running processes",

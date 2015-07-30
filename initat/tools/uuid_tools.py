@@ -22,36 +22,28 @@
 import os
 import uuid
 
-UUID_NAME = "/etc/sysconfig/cluster/.cluster_device_uuid"
+from initat.tools import config_store
+
+OLD_UUID_NAME = "/etc/sysconfig/cluster/.cluster_device_uuid"
+# name of datastore
+DATASTORE_NAME = "icsw.device"
 
 
 def get_uuid():
-    write_uuid = False
-    if os.path.isfile(UUID_NAME):
-        uuid_content = file(UUID_NAME, "r").read().strip()
-        try:
-            the_uuid = uuid.UUID(uuid_content)
-        except ValueError:
-            # uuid is not readable, create new
-            write_uuid = True
-    else:
-        write_uuid = True
-    if write_uuid:
-        # changed from uuid1 to uuid4 by ALN, 20120726
-        the_uuid = uuid.uuid4()
-        uuid_dir = os.path.dirname(UUID_NAME)
-        if not os.path.isdir(uuid_dir):
+    if not config_store.ConfigStore.exists(DATASTORE_NAME):
+        if os.path.isfile(UUID_NAME):
+            uuid_content = file(UUID_NAME, "r").read().strip()
             try:
-                os.makedirs(uuid_dir)
-            except:
-                pass
-        try:
-            file(UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
-        except IOError:
-            print("Cannot write uuid to {}".format(UUID_NAME))
+                the_uuid = uuid.UUID(uuid_content)
+            except ValueError:
+                # uuid is not readable, create new
+                the_uuid = uuid.uuid4()
         else:
-            pass
-    return the_uuid
+            the_uuid = uuid.uuid4()
+        _ds = config_store.ConfigStore(DATASTORE_NAME)
+        _ds["cluster.device.uuid"] = the_uuid.get_urn()
+        _ds.write()
+    return uuid.UUID(config_store.ConfigStore(DATASTORE_NAME)["cluster.device.uuid"])
 
 if __name__ == "__main__":
     print(get_uuid())

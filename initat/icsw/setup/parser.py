@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import argparse
-
 from .commands import AVAILABLE_DATABASES, DB_FILE, main
 from .utils import generate_password
 
@@ -120,4 +118,3 @@ class Parser(object):
             "--db-file-mode", type=str, default="660",
             help="database file access mode"
         )
-
