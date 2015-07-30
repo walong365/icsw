@@ -45,7 +45,7 @@ def get_uuid():
         _ds = config_store.ConfigStore(DATASTORE_NAME)
         _ds["cluster.device.uuid"] = the_uuid.get_urn()
         _ds.write()
-    the_uuid = uuid.UUID(config_store.ConfigStore(DATASTORE_NAME)["cluster.device.uuid"])
+    the_uuid = uuid.UUID(config_store.ConfigStore(DATASTORE_NAME, quiet=True)["cluster.device.uuid"])
     if not os.path.exists(NEW_UUID_NAME):
         try:
             file(NEW_UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))

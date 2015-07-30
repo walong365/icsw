@@ -119,26 +119,27 @@ class ConfigVar(object):
 
 
 class ConfigStore(object):
-    def __init__(self, name, log_com=None, read=True):
+    def __init__(self, name, log_com=None, read=True, quiet=False):
         self.file_name = ConfigStore._build_path(name)
         self.tree_valid = True
         self.name = name
+        self.__quiet = quiet
         self.__log_com = log_com
         self.vars = {}
-        if read:
-            self.read()
+        self.read()
 
     def log(self, what, log_level=logbase.LOG_LEVEL_OK):
-        if self.__log_com:
-            self.__log_com(
-                "[CS {}] {}".format(
-                    self.name if self.tree_valid else "N/V",
-                    what,
-                ),
-                log_level
-            )
-        else:
-            print "{} {}".format(logbase.get_log_level_str(log_level), what)
+        if not self.__quiet:
+            if self.__log_com:
+                self.__log_com(
+                    "[CS {}] {}".format(
+                        self.name if self.tree_valid else "N/V",
+                        what,
+                    ),
+                    log_level
+                )
+            else:
+                print "{} {}".format(logbase.get_log_level_str(log_level), what)
 
     @staticmethod
     def exists(name):

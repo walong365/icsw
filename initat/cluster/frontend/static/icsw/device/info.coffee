@@ -207,9 +207,15 @@ angular.module(
                         element.append($compile($templateCache.get("device.info.form"))(scope))
                         element.append($compile("""
                         <div ng-show="show_uuid">
-                            <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
-                            <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
-                            <h4>and restart host-monitoring .</h4>
+                            <h4>Copy the following snippet to <code>/opt/cluster/etc/cstores.d/icsw.device_config.xml</code> :</h4>
+                            <pre><code>&lt;?xml version='1.0' encoding='ASCII'?&gt;
+&lt;config-store name="icsw.device"&gt;
+  &lt;key-list&gt;
+    &lt;key type="str" name="cluster.device.uuid"&gt;urn:uuid:{{ _edit_obj.uuid }}&lt;/key&gt;
+  &lt;/key-list&gt;
+&lt;/config-store&gt;
+</code></pre>
+                            <h4>and restart host-monitoring with <code>icsw service restart host-monitoring</code></h4>
                         </div>
                         """)(scope))
                     )
