@@ -34,7 +34,7 @@ DATASTORE_NAME = "icsw.device"
 def get_uuid():
     if not config_store.ConfigStore.exists(DATASTORE_NAME):
         if os.path.isfile(OLD_UUID_NAME):
-            uuid_content = file(UUID_NAME, "r").read().strip()
+            uuid_content = file(OLD_UUID_NAME, "r").read().strip()
             try:
                 the_uuid = uuid.UUID(uuid_content)
             except ValueError:
