@@ -113,7 +113,7 @@ def migrate_db_cf():
             ]
         }
         for src_key in [
-            "DATABASE", "USER", "PASSWD", "HOST", "ENGINE",
+            "DATABASE", "USER", "PASSWD", "HOST", "ENGINE", "PORT",
         ]:
             if src_key in sql_dict:
                 _val = sql_dict[src_key]

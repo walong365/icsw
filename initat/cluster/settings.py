@@ -70,33 +70,25 @@ DATABASES = {
 
 DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
 
-NEW_CONF_FILE = "/etc/sysconfig/cluster/db.cf"
+# config stores
+_cs = config_store.ConfigStore("icsw.general", quiet=True)
+_ps = config_store.ConfigStore("icsw.db.access")
 
 # validate settings
-_cs = config_store.ConfigStore("icsw.general", quiet=True)
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
     raise ImproperlyConfigured("password hash function '{}' not known".format(_cs["password.hash.function"]))
 
 SECRET_KEY = _cs["django.secret.key"]
 
-conf_content = file(NEW_CONF_FILE, "r").read()
-
-sql_dict = {
-    key.split("_")[1]: value for key, value in [
-        line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and not line.count("NAGIOS")
-    ]
-}
-
 for src_key, dst_key in [
-    ("DATABASE", "NAME"),
-    ("USER", "USER"),
-    ("PASSWD", "PASSWORD"),
-    ("HOST", "HOST"),
-    ("ENGINE", "ENGINE")
+    ("db.database", "NAME"),
+    ("db.user", "USER"),
+    ("db.passwd", "PASSWORD"),
+    ("db.host", "HOST"),
+    ("db.engine", "ENGINE")
 ]:
-    if src_key in sql_dict:
-        DATABASES["default"][dst_key] = sql_dict[src_key]
-
+    if src_key in _ps:
+        DATABASES["default"][dst_key] = _ps[src_key]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
