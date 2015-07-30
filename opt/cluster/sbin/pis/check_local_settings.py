@@ -32,6 +32,8 @@ from django.utils.crypto import get_random_string
 LS_OLD_FILE = "/etc/sysconfig/cluster/local_settings.py"
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 CS_NAME = "icsw.general"
+SATELLITE_FLAG = "/etc/sysconfig/cluster/is_satellite"
+SLAVE_FLAG = "/etc/sysconfig/cluster/is_slave"
 
 
 def remove_file(f_name):
@@ -107,6 +109,16 @@ def main():
             remove_file(AUTO_FLAG)
         else:
             new_store["db.auto.update"] = False
+    if os.path.exists(SATELLITE_FLAG):
+        new_store["mode.is.satellite"] = True
+        remove_file(SATELLITE_FLAG)
+    else:
+        new_store["mode.is.satellite"] = False
+    if os.path.exists(SLAVE_FLAG):
+        new_store["mode.is.slave"] = True
+        remove_file(SLAVE_FLAG)
+    else:
+        new_store["mode.is.slave"] = False
     new_store.write()
     remove_file(LS_OLD_FILE)
     from initat.tools import uuid_tools

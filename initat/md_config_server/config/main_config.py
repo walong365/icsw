@@ -459,8 +459,10 @@ class main_config(object):
                      logging_tools.LOG_LEVEL_ERROR)
             ndo2db_cfg = None
         elif "monitor" not in settings.DATABASES:
-            self.log("no 'monitor' database defined in settings.py",
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "no 'monitor' database defined in settings.py",
+                logging_tools.LOG_LEVEL_ERROR
+            )
             ndo2db_cfg = None
         else:
             nag_engine = settings.DATABASES["monitor"]["ENGINE"]

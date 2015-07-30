@@ -71,40 +71,19 @@ DATABASES = {
 DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
 
 NEW_CONF_FILE = "/etc/sysconfig/cluster/db.cf"
-OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
 
-SLAVE_MODE = os.path.exists("/etc/sysconfig/cluster/is_slave")
-SATELLITE_MODE = os.path.exists("/etc/sysconfig/cluster/is_satellite")
-if not SLAVE_MODE:
-    SLAVE_MODE = not os.path.exists("/opt/python-init/lib/python/site-packages/initat/cluster/frontend")
+# validate settings
+_cs = config_store.ConfigStore("icsw.general", quiet=True)
+if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
+    raise ImproperlyConfigured("password hash function '{}' not known".format(_cs["password.hash.function"]))
 
-if SATELLITE_MODE:
-    # satellite mode, no database configured
-    conf_content = ""
-else:
-    if os.path.isfile(NEW_CONF_FILE):
-        try:
-            conf_content = file(NEW_CONF_FILE, "r").read()
-        except IOError:
-            raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(NEW_CONF_FILE))
-    else:
-        if not os.path.isfile(OLD_CONF_FILE):
-            raise ImproperlyConfigured("config '{}' and '{}' not found".format(NEW_CONF_FILE, OLD_CONF_FILE))
-        else:
-            try:
-                conf_content = file(OLD_CONF_FILE, "r").read()
-            except IOError:
-                raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(OLD_CONF_FILE))
+SECRET_KEY = _cs["django.secret.key"]
+
+conf_content = file(NEW_CONF_FILE, "r").read()
 
 sql_dict = {
     key.split("_")[1]: value for key, value in [
         line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and not line.count("NAGIOS")
-    ]
-}
-
-mon_dict = {
-    key.split("_")[1]: value for key, value in [
-        line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and line.count("NAGIOS_")
     ]
 }
 
@@ -118,17 +97,6 @@ for src_key, dst_key in [
     if src_key in sql_dict:
         DATABASES["default"][dst_key] = sql_dict[src_key]
 
-if mon_dict:
-    DATABASES["monitor"] = {key: value for key, value in DATABASES["default"].iteritems()}
-    for src_key, dst_key in [
-        ("DATABASE", "NAME"),
-        ("USER", "USER"),
-        ("PASSWD", "PASSWORD"),
-        ("HOST", "HOST"),
-        ("ENGINE", "ENGINE")
-    ]:
-        if src_key in mon_dict:
-            DATABASES["monitor"][dst_key] = mon_dict[src_key]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
@@ -267,7 +235,7 @@ INSTALLED_APPS = (
     "pipeline",
 )
 
-if SLAVE_MODE:
+if _cs["mode.is.slave"]:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
 
 
@@ -287,7 +255,7 @@ PIPELINE_UGLIFYJS_BINARY = "/opt/cluster/lib/node_modules/uglify-js/bin/uglifyjs
 PIPELINE_CSS_COMPRESSOR = 'pipeline.compressors.cssmin.CSSMinCompressor'
 PIPELINE_CSSMIN_BINARY = '/opt/cluster/lib/node_modules/ycssmin/bin/cssmin'
 
-if not SLAVE_MODE:
+if not _cs["mode.is.slave"]:
     for binary in [PIPELINE_UGLIFYJS_BINARY, PIPELINE_CSSMIN_BINARY]:
         if not os.path.exists(binary):
             raise ImproperlyConfigured("{} does not exist".format(binary))
@@ -527,13 +495,6 @@ TEMPLATES = [
 
     }
 ]
-
-# validate settings
-_cs = config_store.ConfigStore("icsw.general", quiet=True)
-if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
-    raise ImproperlyConfigured("password hash function '{}' not known".format(_cs["password.hash.function"]))
-
-SECRET_KEY = _cs["django.secret.key"]
 
 INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 

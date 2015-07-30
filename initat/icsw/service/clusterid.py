@@ -22,6 +22,8 @@
 
 """ return ClusterID if DB is present """
 
+from initat.tools import config_store
+
 
 def get_cluster_id():
     import os
@@ -34,8 +36,9 @@ def get_cluster_id():
         pass
     else:
         from django.db import connection
+        _cs = config_store.ConfigStore("icsw.general", quiet=True)
         try:
-            _sm = settings.SATELLITE_MODE
+            _sm = _cs["mode.is.satellite"]
         except:
             _sm = False
         if _sm:
