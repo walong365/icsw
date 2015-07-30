@@ -20,21 +20,32 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" reads and modifies local_settings.py """
+""" reads and modifies local_settings.py, now stored in a config_store"""
 
 import os
 import sys
 
+from initat.tools import config_store
+from initat.tools.logging_tools import logbase
 from django.utils.crypto import get_random_string
 
-LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
+LS_OLD_FILE = "/etc/sysconfig/cluster/local_settings.py"
+CS_NAME = "icsw.general"
+
+
+def log(what, log_level=logbase.LOG_LEVEL_OK):
+    print(
+        "[{}] {}".format(
+            logbase.get_log_level_str(log_level),
+            what,
+        )
+    )
 
 
 # a similar routine exists in setup_cluster.py
-def check_local_settings():
-    LS_DIR = os.path.dirname(LS_FILE)
+def get_old_local_settings():
+    LS_DIR = os.path.dirname(LS_OLD_FILE)
     sys.path.append(LS_DIR)
-    changed = False
     try:
         from local_settings import SECRET_KEY  # @UnresolvedImports
     except:
@@ -43,44 +54,42 @@ def check_local_settings():
         from local_settings import PASSWORD_HASH_FUNCTION  # @UnresolvedImports
     except:
         PASSWORD_HASH_FUNCTION = "SHA1"
-        changed = True
     try:
         from local_settings import GOOGLE_MAPS_KEY  # @UnresolvedImports
     except:
-        changed = True
         GOOGLE_MAPS_KEY = ""
     try:
         from local_settings import AUTO_CREATE_NEW_DOMAINS  # @UnresolvedImports
     except:
-        changed = True
         AUTO_CREATE_NEW_DOMAINS = True
     try:
         from local_settings import LOGIN_SCREEN_TYPE  # @UnresolvedImports
     except:
-        changed = True
         LOGIN_SCREEN_TYPE = "big"
     try:
         from local_settings import PASSWORD_CHARACTER_COUNT
     except:
-        changed = True
         PASSWORD_CHARACTER_COUNT = 8
     if SECRET_KEY in [None, "None"]:
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
-        changed = True
-    if changed:
-        file(LS_FILE, "w").write("\n".join(
-            [
-                "SECRET_KEY = \"{}\"".format(SECRET_KEY),
-                "PASSWORD_HASH_FUNCTION = \"{}\"".format(PASSWORD_HASH_FUNCTION),
-                "GOOGLE_MAPS_KEY = \"{}\"".format(GOOGLE_MAPS_KEY),
-                "PASSWORD_CHARACTER_COUNT = \"{}\"".format(PASSWORD_CHARACTER_COUNT),
-                "AUTO_CREATE_NEW_DOMAINS = {}".format(AUTO_CREATE_NEW_DOMAINS),
-                "LOGIN_SCREEN_TYPE = \"{}\"".format(LOGIN_SCREEN_TYPE),
-                "",
-            ]
-        ))
     sys.path.remove(LS_DIR)
+    return {
+        "django.secret.key": SECRET_KEY,
+        "password.hash.function": PASSWORD_CHARACTER_COUNT,
+        "google.maps.key": GOOGLE_MAPS_KEY,
+        "password.character.count": PASSWORD_CHARACTER_COUNT,
+        "auto.create.new.domains": AUTO_CREATE_NEW_DOMAINS,
+        "login.screen.type": LOGIN_SCREEN_TYPE,
+    }
+
+
+def main():
+    if not config_store.ConfigStore.exists(CS_NAME):
+        new_store = config_store.ConfigStore(CS_NAME)
+        for _key, _value in get_old_local_settings().iteritems():
+            new_store[_key] = _value
+        new_store.write()
 
 if __name__ == "__main__":
-    check_local_settings()
+    main()

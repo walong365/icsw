@@ -10,9 +10,18 @@ ICSW_SHARE=${ICSW_BASE}/share
 ICSW_SYSCONF=${SYSCONF}/cluster
 ICSW_TFTP=${ICSW_BASE}/system/tftpboot
 ICSW_MOTHER=${ICSW_SHARE}/mother
+
+export PREFIX_INIT=/opt/python-init/lib/python/site-packages
+
 USRSBIN=/usr/sbin
 USRBIN=/usr/bin
 INIT=/etc/init.d
+
+MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
+
+# static dir
+STATIC_DIR=/srv/www/htdocs/icsw/static
+WEBCACHE_DIR=${ICSW_BASE}/share/webcache
 
 BOLD="\033[1m"
 RED="\033[31m"
@@ -28,6 +37,15 @@ SERVER_SERVICES="mother rrd-grapher rms-server cluster-config-server collectd di
 for SRV in cluster-server collectd collectd-init mother ; do
     rm -f /etc/sysconfig/${SRV}
 done
+
+# remove cached urls.py files
+rm -f ${PREFIX_INIT}/initat/cluster/urls.py*
+rm -rf ${PREFIX_INIT}/initat/core
+
+# delete modules install via npm
+rm -rf ${ICSW_BASE}/lib/node_modules/yuglify/node_modules
+# delete old modules
+rm -rf ${PREFIX_INIT}/initat/cluster/rms
 
 # purge debian packages
 if [ -f /etc/debian_version ] ; then
@@ -61,9 +79,50 @@ for server in ${SERVER_SERVICES} ; do
     fi
 done
 
+# PostInstallTaks
+[ -x ${ICSW_BASE}/sbin/check_local_settings.py ] && ${ICSW_BASE}/sbin/check_local_settings.py
+
+# add idg to webserver group
+if [ -f /etc/debian_version ] ; then
+    usermod -G idg www-data
+elif [ -f /etc/redhat-release ] ; then
+    usermod -G idg apache
+else
+    usermod -G idg wwwrun
+fi
+
+[ ! -d ${STATIC_DIR} ] && mkdir -p ${STATIC_DIR}
+[ ! -d ${WEBCACHE_DIR} ] && mkdir -p ${WEBCACHE_DIR}
+
+chmod a+rwx ${WEBCACHE_DIR}
+
+if [ -f /etc/sysconfig/cluster/db.cf ] ; then
+    # already installed
+    if [ -f /etc/sysconfig/cluster/db_auto_update ] ; then
+        echo "running auto-update script ${ICSW_BASE}/sbin/icsw setup --migrate"
+        ${ICSW_BASE}/sbin/icsw setup --migrate
+    else
+        echo "to update the current database schema via django please use ${ICSW_BASE}/sbin/setup_cluster.py --migrate"
+    fi
+    # already configured; run collectstatic
+    echo -ne "collecting static ..."
+    ${MANAGE} collectstatic --noinput -c > /dev/null
+    echo "done"
+    echo -ne "building url_list ..."
+    ${MANAGE} show_icsw_urls > /opt/python-init/lib/python/site-packages/initat/cluster/frontend/templates/all_urls.html
+    echo "done"
+
+    if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
+        touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
+    else
+        echo "no reload-dir found, please restart uwsgi-init"
+    fi
+
+else
+    echo "to create a new database use ${ICSW_BASE}/sbin/icsw setup"
+fi
+
 # PostInstallScripts
-[ -x ${ICSW_PIS}/cluster_post_install.sh ] && ${ICSW_PIS}/cluster_post_install.sh
-[ -x ${ICSW_PIS}/webfrontend_post_install.sh ] && ${ICSW_PIS}/webfrontend_post_install.sh
 [ -x ${ICSW_PIS}/sge_post_install.sh ] && ${ICSW_PIS}/sge_post_install.sh
 
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload

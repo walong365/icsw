@@ -10,6 +10,7 @@ ICSW_SHARE=${ICSW_BASE}/share
 ICSW_SYSCONF=${SYSCONF}/cluster
 ICSW_TFTP=${ICSW_BASE}/system/tftpboot
 ICSW_MOTHER=${ICSW_SHARE}/mother
+
 USRSBIN=/usr/sbin
 USRBIN=/usr/bin
 INIT=/etc/init.d

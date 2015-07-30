@@ -116,15 +116,14 @@ setup(
         (
             "/opt/cluster/sbin/pis",
             [
-                "opt/cluster/sbin/pis/cluster_post_install.sh",
                 "opt/cluster/sbin/pis/sge_post_install.sh",
                 "opt/cluster/sbin/pis/modify_service.sh",
                 "opt/cluster/sbin/pis/webfrontend_pre_start.sh",
-                "opt/cluster/sbin/pis/webfrontend_post_install.sh",
                 "opt/cluster/sbin/pis/hpc_library_post_install.py",
                 "opt/cluster/sbin/pis/icsw_client_post_install.sh",
                 "opt/cluster/sbin/pis/icsw_server_post_install.sh",
                 "opt/cluster/sbin/pis/merge_client_configs.py",
+                "opt/cluster/sbin/pis/check_local_settings.py",
             ]
         ),
         (

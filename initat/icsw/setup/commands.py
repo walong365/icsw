@@ -32,9 +32,7 @@ import sys
 import time
 import subprocess
 
-from django.utils.crypto import get_random_string
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 from .utils import generate_password, DirSave, get_icsw_root
 from .connection_tests import test_psql, test_mysql, test_sqlite
@@ -92,28 +90,6 @@ else:
 
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
-
-
-def check_local_settings():
-    directory = os.path.dirname(LS_FILE)
-    sys.path.append(directory)
-    try:
-        from local_settings import SECRET_KEY  # @UnresolvedImports
-    except:
-        SECRET_KEY = None
-    if SECRET_KEY in [None, "None"]:
-        print("creating file {} with secret key".format(LS_FILE))
-        chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
-        SECRET_KEY = get_random_string(50, chars)
-        file(LS_FILE, "w").write(
-            "\n".join(
-                [
-                    "SECRET_KEY = \"{}\"".format(SECRET_KEY),
-                    "",
-                ]
-            )
-        )
-    sys.path.remove(directory)
 
 
 def call_manage(args, **kwargs):
@@ -518,7 +494,7 @@ def migrate_db(opts):
                 print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
                 # call_manage(["migrate", _sync_app, "--noinput"])
-        check_local_settings()
+        subprocess.check_output("/opt/cluster/sbin/pis/check_local_settings.py")
         auth_app_name = "django.contrib.auth"
         for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions"]:
             if app_has_unapplied_migrations(_app.split(".")[-1]):

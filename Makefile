@@ -17,7 +17,6 @@ ICSW_SHARE=${ICSW_BASE}/share
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SGE=${ICSW_BASE}/sge
 ICSW_SBIN=${ICSW_BASE}/sbin
-ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_TFTP=/opt/cluster/system/tftpboot
 
 CONFDIR_HM=${SYSCONF}/host-monitoring.d
@@ -142,7 +141,7 @@ install:
 	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for pyf in db_magic check_local_settings create_django_users restore_user_group fix_models ; do \
+	for pyf in db_magic create_django_users restore_user_group fix_models ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
 	# Create to ICSW_SBIN
