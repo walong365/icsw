@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from .commands import AVAILABLE_DATABASES, DB_FILE, main
+from .commands import AVAILABLE_DATABASES, DB_CS_FILENAME, main
 from .utils import generate_password
 
 
@@ -44,11 +44,11 @@ class Parser(object):
         )
         group.add_argument(
             "--ignore-existing", default=False, action="store_true",
-            help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE)
+            help="Ignore existing db.cf file {} [%(default)s]".format(DB_CS_FILENAME)
         )
         group.add_argument(
             "--use-existing", default=False, action="store_true",
-            help="use existing db.cf file {} [%(default)s]".format(DB_FILE)
+            help="use existing db.cf file {} [%(default)s]".format(DB_CS_FILENAME)
         )
 
     def add_migration_group(self):

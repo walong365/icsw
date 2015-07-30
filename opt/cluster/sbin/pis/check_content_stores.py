@@ -121,6 +121,7 @@ def migrate_db_cf():
                     _val = int(_val)
                 _cs["db.{}".format(src_key.lower())] = _val
         _cs.write()
+        remove_file(DB_FILE)
 
 
 def main():
