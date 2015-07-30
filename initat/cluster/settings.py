@@ -72,7 +72,7 @@ DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
 
 # config stores
 _cs = config_store.ConfigStore("icsw.general", quiet=True)
-_ps = config_store.ConfigStore("icsw.db.access")
+_ps = config_store.ConfigStore("icsw.db.access", quiet=True)
 
 # validate settings
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
