@@ -80,7 +80,7 @@ for server in ${SERVER_SERVICES} ; do
 done
 
 # PostInstallTaks
-[ -x ${ICSW_BASE}/sbin/check_local_settings.py ] && ${ICSW_BASE}/sbin/check_local_settings.py
+[ -x ${ICSW_PIS}/check_local_settings.py ] && ${ICSW_PIS}/check_local_settings.py
 
 # add idg to webserver group
 if [ -f /etc/debian_version ] ; then
