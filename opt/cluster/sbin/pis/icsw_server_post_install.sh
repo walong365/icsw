@@ -88,6 +88,8 @@ rm -f /etc/sysconfig/cluster/.is_corvus
 rm -f /etc/sysconfig/cluster/local_settings.py?
 # old license files
 rm -f /etc/sysconfig/cluster/cluster_license*
+# start disable file
+rm -f /etc/sysconfig/cluster/.disable_rrdcached_start
 
 # add idg to webserver group
 if [ -f /etc/debian_version ] ; then
