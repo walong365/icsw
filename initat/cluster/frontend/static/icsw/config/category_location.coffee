@@ -66,6 +66,17 @@ angular.module(
         template: $templateCache.get("icsw.config.category.location.list.show")
         link: (scope, element, attrs) ->
     }
+]).service("icswConfigCategoryLocationHelperService", [() ->
+    active_tab = ""
+    return {
+        "set_active_tab": (tab) ->
+            active_tab = tab
+        "get_active_tab": () ->
+            return active_tab
+    }
+]).controller("icswConfigCategoryLocationTopCtrl", ["$scope", "icswConfigCategoryLocationHelperService", ($scope, icswConfigCategoryLocationHelperService) ->
+    $scope.set_active_tab = (name) ->
+        icswConfigCategoryLocationHelperService.set_active_tab(name)
 ]).controller("icswConfigCategoryLocationCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$timeout", "icswCSRFService",
     "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
@@ -258,7 +269,7 @@ angular.module(
         $scope.preview_close = () ->
             $scope.preview_gfx = undefined
         $scope.reload()
-]).directive("icswConfigCategoryTreeGoogleMap", ["$templateCache", "icswConfigCategoryTreeMapService", ($templateCache, icswConfigCategoryTreeMapService) ->
+]).directive("icswConfigCategoryTreeGoogleMap", ["$templateCache", "icswConfigCategoryTreeMapService", "uiGmapGoogleMapApi", "icswConfigCategoryLocationHelperService", "$timeout", ($templateCache, icswConfigCategoryTreeMapService, uiGmapGoogleMapApi, icswConfigCategoryLocationHelperService, $timeout) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree.google.map")
@@ -308,7 +319,6 @@ angular.module(
                     _cat.longitude = _pos.lng()
                     _cat.put()
             }
-            icswConfigCategoryTreeMapService.set_map(scope.map)
             scope.build_markers = () ->
                 if scope.location_list.length == scope.marker_list.length
                     # update list to reduce flicker
@@ -341,6 +351,29 @@ angular.module(
                         marker_lut[_entry.idx] = _entry
                     scope.marker_list = new_list
                     scope.marker_lut = marker_lut
+            scope.maps_ready = false
+            scope.maps = undefined
+            uiGmapGoogleMapApi.then((maps) ->
+                scope.maps_ready = true
+                icswConfigCategoryTreeMapService.set_map(scope.map)
+                scope.maps = maps
+            )
+            scope.$watch(
+                icswConfigCategoryLocationHelperService.get_active_tab
+                (new_val) ->
+                    if new_val == "conf"
+                        $timeout(
+                            () ->
+                                _map = scope.map
+                                _map.control.refresh(
+                                    {
+                                        "latitude": _map.center.latitude
+                                        "longitude": _map.center.longitude
+                                    }
+                                )
+                            100
+                        )
+            )
             scope.$watch(
                 "locations",
                 (new_val) ->

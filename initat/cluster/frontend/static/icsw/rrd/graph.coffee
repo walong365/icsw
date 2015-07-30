@@ -161,11 +161,11 @@ angular.module(
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
         "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-        "toaster", "icswCachingCall", "$window", "icswSavedSelectionService",
+        "toaster", "icswCachingCall", "icswUserService", "icswSavedSelectionService",
     (
         $scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
         $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService,
-        toaster, icswCachingCall, $window, icswSavedSelectionService
+        toaster, icswCachingCall, icswUserService, icswSavedSelectionService
     ) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
@@ -221,6 +221,10 @@ angular.module(
         $scope.merge_graphs = false
         $scope.show_tree = true
         $scope.g_tree = new icswRRDGraphTreeService($scope)
+        $scope.user = undefined
+        icswUserService.load().then((user) ->
+            $scope.user = user
+        )
         $q.all(
             [
                 icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_SENSOR_ACTION_LIST, {}, [])
@@ -577,7 +581,7 @@ angular.module(
                             if sth.mv_value_entry not of sth_dict
                                 sth_dict[sth.mv_value_entry] = []
                             if not sth.create_user
-                                sth.create_user = $window.CURRENT_USER.idx
+                                sth.create_user = $scope.user.idx
                             sth_dict[sth.mv_value_entry].push(sth)
                         $scope.is_drawing = false
                         graph_list = []
@@ -721,7 +725,7 @@ angular.module(
                     return "---"
 
     }
-]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", "$window", "icswSimpleAjaxCall", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout, $window, icswSimpleAjaxCall) ->
+]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", "icswUserService", "icswSimpleAjaxCall", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall) ->
     th_dialog = (create, cur_scope, sensor, threshold, title) ->
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
@@ -864,8 +868,8 @@ angular.module(
                 "lower_enabled": false
                 "upper_enabled": false
                 "notify_users": []
-                "create_user": $window.CURRENT_USER.idx
-                "create_user_obj": $window.CURRENT_USER
+                "create_user": icswUserService.get().idx
+                "create_user_obj": icswUserService.get()
                 "lower_sensor_action_obj": non_action
                 "upper_sensor_action_obj": non_action
                 "device_selection": undefined

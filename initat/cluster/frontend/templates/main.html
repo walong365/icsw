@@ -36,8 +36,6 @@
     {% javascript 'js_icsw_modules' %}
 <script type="text/javascript">
 // attach global permissions and license info to window object (== global variable)
-window.CURRENT_USER = {{ CURRENT_USER | safe }};
-window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
 {% include "js/app.js" %}
 </script>

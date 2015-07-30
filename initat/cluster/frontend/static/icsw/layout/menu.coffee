@@ -21,11 +21,11 @@
 menu_module = angular.module(
     "icsw.layout.menu",
     [
-        "ngSanitize", "ui.bootstrap", "icsw.layout.selection",
+        "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q",
-    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q) ->
-        $scope.is_authenticated = $window.IS_AUTHENTICATED
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
+    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
+        $scope.is_authenticated = false
         # init background jobs
         $scope.NUM_BACKGROUND_JOBS = 0
         # init service types
@@ -33,7 +33,7 @@ menu_module = angular.module(
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
         $scope.quicksel = false
-        $scope.CURRENT_USER = $window.CURRENT_USER
+        $scope.CURRENT_USER = {}
         $scope.HANDBOOK_PDF_PRESENT = false
         $scope.HANDBOOK_CHUNKS_PRESENT = false
         $scope.HANDBOOK_PAGE = "---"
@@ -62,6 +62,18 @@ menu_module = angular.module(
                 $scope.HANDBOOK_PDF_PRESENT = data[1].HANDBOOK_PDF_PRESENT
                 $scope.HANDBOOK_CHUNKS_PRESENT = data[1].HANDBOOK_CHUNKS_PRESENT
         )
+        icswUserService.load().then((data) ->
+            $scope.is_authenticated = data.authenticated
+            $scope.CURRENT_USER = data
+        )
+        # testing
+        # $timeout(
+        #    () ->
+        #        icswUserService.load().then((data) ->
+        #            console.log "*", data
+        #        )
+        #    2000
+        # )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
         $scope.show_time = () ->

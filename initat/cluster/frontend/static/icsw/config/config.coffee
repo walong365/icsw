@@ -322,7 +322,7 @@ config_module = angular.module(
             else
                 return []
     }
-]).service('icswConfigCatalogListService', ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", "$window", (icswConfigRestService, $q, icswTools, ICSW_URLS, $window) ->
+]).service('icswConfigCatalogListService', ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", "icswUserService", (icswConfigRestService, $q, icswTools, ICSW_URLS, icswUserService) ->
     _def = icswConfigRestService.fetch("icsw_config_catalog_list_service")
     _config = $q.defer()
     configs = []
@@ -339,7 +339,7 @@ config_module = angular.module(
             return "Really delete config catalog '#{obj.name}' ?"
         new_object: () ->
             new_obj = {
-                "name" : "new catalog", "author" : $window.CURRENT_USER.login, "url" : "http://localhost/",
+                "name" : "new catalog", "author" : icswUserService.get().login, "url" : "http://localhost/",
             }
             return new_obj
         save_defer: (new_obj) ->

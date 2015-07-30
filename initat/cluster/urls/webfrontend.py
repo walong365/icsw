@@ -35,6 +35,7 @@ session_patterns = patterns(
     url(r"logout", session_views.sess_logout.as_view(), name="logout"),
     url(r"login", session_views.sess_login.as_view(), name="login"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
+    url(r"get_user$", session_views.get_user.as_view(), name="get_user"),
 )
 
 rms_patterns = patterns(

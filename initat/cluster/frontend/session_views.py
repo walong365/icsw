@@ -29,6 +29,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
 from django.core.exceptions import ValidationError
+from django.http.response import HttpResponse
 from django.core.urlresolvers import reverse
 from django.core.cache import cache
 from django.db.models import Q, Sum
@@ -225,3 +226,23 @@ class sess_login(View):
         else:
             real_user_name = username
         return real_user_name
+
+
+class get_user(View):
+    def post(self, request):
+        if request.user and not request.user.is_anonymous:
+            _user = {
+                "idx": request.user.pk,
+                "pk": request.user.pk,
+                "is_superuser": request.user.is_superuser,
+                "authenticated": True,
+                "login": request.user.login,
+                "login_name": request.session["login_name"],
+                "full_name": unicode(request.user),
+            }
+        else:
+            _user = {
+                "is_superuser": False,
+                "authenticated": False,
+            }
+        return HttpResponse(json.dumps(_user), content_type="application/json")

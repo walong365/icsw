@@ -18,11 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-monitoring_overview_module = angular.module("icsw.monitoring.overview",
-            ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
-             "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"])
-
-monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
+monitoring_overview_module = angular.module(
+    "icsw.monitoring.overview",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
+        "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"
+    ]
+).controller("icswMonitoringOverviewCtrl",
     ["$scope", "$compile", "$filter", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal",
      "access_level_service", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
     ($scope, $compile, $filter, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service,
@@ -135,5 +137,3 @@ monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
         templateUrl: "monitoring_overview_template.html"
     }
 )
-
-

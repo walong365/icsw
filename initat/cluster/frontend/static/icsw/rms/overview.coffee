@@ -821,7 +821,7 @@ rms_module = angular.module(
         scope:
             struct : "="
     }
-]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $templateCache, $modal, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "icswUserService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $templateCache, $modal, icswUserService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     return {
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
@@ -834,12 +834,8 @@ rms_module = angular.module(
             return (scope, el, attrs) ->
                 scope.job_control = (command, force) ->
                     scope.$emit("job_control", scope.job, command, force)
-                if scope.operator
-                    is_oper = true
-                else if scope.job.real_user == $window.CURRENT_USER.login
-                    is_oper = true
-                else
-                    is_oper = false
+
+                is_oper = false
                 scope.$watch("job", (job) ->
                     scope.job = job
                 )
@@ -885,7 +881,15 @@ rms_module = angular.module(
                     child_scope.cancel = () ->
                         child_scope.modal.close()
 
-                el.append($compile($templateCache.get(if is_oper then "icsw.rms.job.action.oper" else "icsw.rms.job.action"))(scope))
+                icswUserService.load().then((user) ->
+                    if scope.operator
+                        is_oper = true
+                    else if scope.job.real_user == user.login
+                        is_oper = true
+                    else
+                        is_oper = false
+                    el.append($compile($templateCache.get(if is_oper then "icsw.rms.job.action.oper" else "icsw.rms.job.action"))(scope))
+                )
     }
 ]).directive("icswRmsQueueState", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {

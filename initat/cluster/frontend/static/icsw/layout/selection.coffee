@@ -23,9 +23,63 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
-        "icsw.device.info", "icsw.layout.sidebar", "icsw.tools.tree",
+        "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
-).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
+).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_DEVICE_TREE_LIST,
+            {
+                "ignore_cdg" : false
+                "tree_mode" : true
+                "all_devices" : true
+                "with_categories" : true
+                "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
+            }
+        ]
+        [ICSW_URLS.REST_CATEGORY_LIST, {}]
+    ]
+    _fetch_dict = {}
+    _result = []
+    # load called
+    load_called = false
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then((data) ->
+            _result = data
+            # build luts
+            _result.push(icswTools.build_lut(data[0]))
+            _defer.resolve(_result)
+            for client of _fetch_dict
+                # resolve clients
+                _fetch_dict[client].resolve(_result)
+            # reset fetch_dict
+            _fetch_dict = {}
+        )
+        return _defer
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result.length
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+    return {
+        "load": (client) ->
+            # loads from server
+            return load_data(client).promise
+        "fetch": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
+]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
     load_selection = () ->
@@ -186,7 +240,7 @@ angular.module(
         "resolve_device_group": (devg_idx) ->
             return devg_lut[devg_idx]
     }
-]).service("icswSavedSelectionService", ["Restangular", "$q", "ICSW_URLS", "$window", (Restangular, $q, ICSW_URLS, $window) ->
+]).service("icswSavedSelectionService", ["Restangular", "$q", "ICSW_URLS", "icswUserService", (Restangular, $q, ICSW_URLS, icswUserService) ->
     enrich_selection = (entry) ->
         _created = moment(entry.date)
         info = [entry.name]
@@ -216,25 +270,29 @@ angular.module(
             json_sel.changed = true
     load_selections = () ->
         defer = $q.defer()
-        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList({"user": $window.CURRENT_USER.idx}).then((data) ->
-            (enrich_selection(entry) for entry in data)
-            defer.resolve(data)
+        icswUserService.load().then((user) ->
+            Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList({"user": user.idx}).then((data) ->
+                (enrich_selection(entry) for entry in data)
+                defer.resolve(data)
+            )
         )
         return defer.promise
     save_selection = (name, sel) ->
         defer = $q.defer()
-        _sel = {
-            "name": name
-            "user": $window.CURRENT_USER.idx
-            "devices": sel.dev_sel
-            "categories": sel.cat_sel
-            "device_groups": sel.devg_sel
-        }
-        console.log "save", _sel
-        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).post(_sel).then((data) ->
-            console.log "done"
-            enrich_selection(data)
-            defer.resolve(data)
+        icswUserService.load().then((user) ->
+            _sel = {
+                "name": name
+                "user": user.idx
+                "devices": sel.dev_sel
+                "categories": sel.cat_sel
+                "device_groups": sel.devg_sel
+            }
+            # console.log "save", _sel
+            Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).post(_sel).then((data) ->
+                console.log "done"
+                enrich_selection(data)
+                defer.resolve(data)
+            )
         )
         return defer.promise
     return {
@@ -247,11 +305,11 @@ angular.module(
     }
 ]).controller("icswLayoutSelectionController",
 [
-    "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "$window", "msgbus",
+    "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "msgbus",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
     "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall'
 (
-    $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, $window, msgbus,
+    $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, msgbus,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall,
 ) ->

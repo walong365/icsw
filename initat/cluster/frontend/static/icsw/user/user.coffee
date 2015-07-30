@@ -45,7 +45,33 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).service("icswUserTree", ["icswTreeConfig", (icswTreeConfig) ->
+).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", ($q, ICSW_URLS, icswSimpleAjaxCall) ->
+    _last_load = 0
+    _user = undefined
+    load_data = (cache) ->
+        cur_time = moment().unix()
+        _diff_time = Math.abs(cur_time - _last_load)
+        _defer = $q.defer()
+        if _diff_time > 5 or not cache
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.SESSION_GET_USER,
+                dataType: "json"
+            ).then((data) ->
+                _last_load = moment().unix()
+                _user = data
+                _defer.resolve(data)
+            )
+        else
+            _defer.resolve(_user)
+        return _defer
+    return {
+        "load": (cache) ->
+            # loads from server
+            return load_data(cache).promise
+        "get": () ->
+            return _user
+    }
+]).service("icswUserTree", ["icswTreeConfig", (icswTreeConfig) ->
     class icsw_user_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -464,8 +490,8 @@ user_module = angular.module(
                     blob = new Blob([ script ], { type : 'application/x-bat' });
                     # console.log "blob", blob
                     vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
-]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "$window",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, $window) ->
+]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswUserService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswUserService) ->
         $scope.virtual_desktop_user_setting = []
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
@@ -474,36 +500,38 @@ user_module = angular.module(
             {"level" : 7, "info" : "Modify, Create, Delete"},
         ]
         $scope.update = () ->
-            wait_list = restDataSource.add_sources([
-                [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
-                [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
-                [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
-                [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
-                [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
-                [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
-                [ICSW_URLS.REST_DEVICE_LIST, {}]
-            ])
-            wait_list.push(Restangular.one(ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2), $window.CURRENT_USER.idx).get())
-            $q.all(wait_list).then(
-                (data) ->
-                    # update once per minute
-                    $timeout($scope.update, 60000)
-                    $scope.edit_obj = data[7]
-                    $scope.csw_permission_list = data[0]
-                    $scope.csw_permission_lut = {}
-                    for entry in $scope.csw_permission_list
-                        $scope.csw_permission_lut[entry.idx] = entry
-                    $scope.ct_dict = {}
-                    for entry in data[1]
-                        $scope.ct_dict[entry.content_label] = entry.object_list
-                    $scope.qcb_list = data[2]
-                    $scope.qcb_lut = {}
-                    for entry in $scope.qcb_list
-                        $scope.qcb_lut[entry.idx] = entry
-                    $scope.virtual_desktop_user_setting = data[3]
-                    $scope.virtual_desktop_protocol = data[4]
-                    $scope.window_manager = data[5]
-                    $scope.device = data[6]
+            icswUserService.load().then((user) ->
+                wait_list = restDataSource.add_sources([
+                    [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
+                    [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
+                    [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
+                    [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
+                    [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
+                    [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
+                    [ICSW_URLS.REST_DEVICE_LIST, {}]
+                ])
+                wait_list.push(Restangular.one(ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2), user.idx).get())
+                $q.all(wait_list).then(
+                    (data) ->
+                        # update once per minute
+                        $timeout($scope.update, 60000)
+                        $scope.edit_obj = data[7]
+                        $scope.csw_permission_list = data[0]
+                        $scope.csw_permission_lut = {}
+                        for entry in $scope.csw_permission_list
+                            $scope.csw_permission_lut[entry.idx] = entry
+                        $scope.ct_dict = {}
+                        for entry in data[1]
+                            $scope.ct_dict[entry.content_label] = entry.object_list
+                        $scope.qcb_list = data[2]
+                        $scope.qcb_lut = {}
+                        for entry in $scope.qcb_list
+                            $scope.qcb_lut[entry.idx] = entry
+                        $scope.virtual_desktop_user_setting = data[3]
+                        $scope.virtual_desktop_protocol = data[4]
+                        $scope.window_manager = data[5]
+                        $scope.device = data[6]
+                )
             )
         $scope.update_account = () ->
             $scope.edit_obj.put().then(

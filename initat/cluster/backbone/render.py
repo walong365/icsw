@@ -20,7 +20,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import json
 import logging
 
 import django
@@ -28,11 +27,9 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
-from django.db.models import Q
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-from initat.cluster.backbone.models import device_variable
 import django.template
 
 logger = logging.getLogger("cluster.render")
@@ -60,28 +57,9 @@ class render_me(object):
         for add_dict in args:
             in_dict.update(add_dict)
         self.my_dict.update(in_dict)
-        if self.request.user and not self.request.user.is_anonymous:
-            _user = {
-                "idx": self.request.user.pk,
-                "pk": self.request.user.pk,
-                "is_superuser": self.request.user.is_superuser,
-                "authenticated": True,
-                "login": self.request.user.login,
-                "login_name": self.request.session["login_name"],
-                "full_name": unicode(self.request.user),
-            }
-            # routing info
-
-        else:
-            _user = {
-                "is_superuser": False,
-                "authenticated": False,
-            }
-        self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
-        self.my_dict["PASSWORD_CHARACTER_COUNT"] = settings.PASSWORD_CHARACTER_COUNT
+        # self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
         # store as json for angular
         # store as dict for django templates
-        self.my_dict["CURRENT_USER"] = json.dumps(_user)
         self.my_dict["ADDITIONAL_ANGULAR_APPS"] = settings.ADDITIONAL_ANGULAR_APPS
         return render_to_response(
             self.template,

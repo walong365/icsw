@@ -59,7 +59,6 @@ ics_app = angular.module(
         "init.csw.filters",
         "icsw.tools.tree",
         "icsw.layout.menu",
-        "icsw.layout.sidebar",
         "icsw.tools",
         "icsw.login",
         "icsw.layout.routing",

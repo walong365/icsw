@@ -95,8 +95,8 @@ package_module = angular.module(
         set_repos: (repo_list) ->
             _scope.repos = repo_list
     }
-]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "icswUserService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, icswUserService, icswCallAjaxService, icswParseXMLResponseService) ->
         # flags
         $scope.show_enabled_repos = false
         $scope.show_published_repos = false
@@ -510,8 +510,8 @@ package_module = angular.module(
 ]).controller(
     "icswPackageInstallSearchController",
     [
-        "$scope", "$templateCache", "$window", "ICSW_URLS", "icswCallAjaxService", "Restangular", "blockUI", "icswParseXMLResponseService", "icswPackageInstallSearchService", "icswPackageInstallPackageListService", "$timeout", "icswPackageInstallSearchResultService",
-        ($scope, $templateCache, $window, ICSW_URLS, icswCallAjaxService, Restangular, blockUI, icswParseXMLResponseService, icswPackageInstallSearchService, icswPackageInstallPackageListService, $timeout, icswPackageInstallSearchResultService) ->
+        "$scope", "$templateCache", "icswUserService", "ICSW_URLS", "icswCallAjaxService", "Restangular", "blockUI", "icswParseXMLResponseService", "icswPackageInstallSearchService", "icswPackageInstallPackageListService", "$timeout", "icswPackageInstallSearchResultService",
+        ($scope, $templateCache, icswUserService, ICSW_URLS, icswCallAjaxService, Restangular, blockUI, icswParseXMLResponseService, icswPackageInstallSearchService, icswPackageInstallPackageListService, $timeout, icswPackageInstallSearchResultService) ->
             $scope.search_string = ""
             $scope.searchresults = undefined
             # active search
@@ -546,17 +546,19 @@ package_module = angular.module(
                     icswPackageInstallSearchResultService.set_data([])
             $scope.create_search = () ->
                 if $scope.search_string
-                    Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_string, "user" : $window.CURRENT_USER.idx}).then((data) ->
-                        icswCallAjaxService
-                            url     : ICSW_URLS.PACK_REPO_OVERVIEW
-                            data    : {
-                                "mode" : "reload_searches"
-                            }
-                            success : (xml) ->
-                                icswParseXMLResponseService(xml)
-                                icswPackageInstallSearchService.reload()
-                                $timeout(icswPackageInstallSearchService.reload, 500)
-                        $scope.search_string = ""
+                    icswUserService.load().then((user) ->
+                        Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_string, "user" : user.idx}).then((data) ->
+                            icswCallAjaxService
+                                url     : ICSW_URLS.PACK_REPO_OVERVIEW
+                                data    : {
+                                    "mode" : "reload_searches"
+                                }
+                                success : (xml) ->
+                                    icswParseXMLResponseService(xml)
+                                    icswPackageInstallSearchService.reload()
+                                    $timeout(icswPackageInstallSearchService.reload, 500)
+                            $scope.search_string = ""
+                        )
                     )
             $scope.take_search_result = (obj, exact) ->
                 obj.copied = 1

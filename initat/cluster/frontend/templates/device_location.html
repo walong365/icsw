@@ -6,22 +6,25 @@
 
 {% block content %}
 
-<tabset>
-    <tab heading="Device location">
-        <icsw-device-location-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
-        </icsw-device-location-overview>
-    </tab>
-    <tab heading="Location configuration">
-        <h3>Map view, {{ locations.length }} locations</h3>
-        <icsw-config-category-location-edit preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-location-edit>
-        <hr ng-show="preview_gfx"/>
-        <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-tree-map-enhance>
-    </tab>
-    <tab heading="Available locations">
-        <div ng-controller="icswConfigCategoryTreeCtrl">
-            <icsw-config-category-tree mode="location"></icsw-config-category-tree>
-        </div>
-    </tab>
-</tabset>
+<div ng-controller="icswConfigCategoryLocationTopCtrl">
+    <tabset >
+        <tab heading="Device location" select="set_active_tab('loc')">
+            <icsw-device-location-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
+            </icsw-device-location-overview>
+        </tab>
+        <tab heading="Location configuration" select="set_active_tab('conf')">
+            <icsw-config-category-location-edit preview-gfx="preview_gfx" preview-close="close_preview">
+            </icsw-config-category-location-edit>
+            <hr ng-show="preview_gfx"/>
+            <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview">
+            </icsw-config-category-tree-map-enhance>
+        </tab>
+        <tab heading="Available locations" select="set_active_tab('avail')">
+            <div ng-controller="icswConfigCategoryTreeCtrl">
+                <icsw-config-category-tree mode="location"></icsw-config-category-tree>
+            </div>
+        </tab>
+    </tabset>
+</div>
 
 {% endblock %}
