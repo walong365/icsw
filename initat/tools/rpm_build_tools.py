@@ -26,8 +26,7 @@ import pwd
 import stat
 import sys
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 SCRIPT_TYPES = ["post", "pre", "postun", "preun"]
 
@@ -506,8 +505,10 @@ class file_content_list(object):
         # return
         file_dict = {_v[1]: _v[2] for _v in self.__content_list if _v[0] == "f"}
         dir_dict = {_v[1]: _v[2] for _v in self.__content_list if _v[0] == "d"}
-        file_keys, dir_keys = (sorted(file_dict.keys()),
-                               sorted(dir_dict.keys()))
+        file_keys, dir_keys = (
+            sorted(file_dict.keys()),
+            sorted(dir_dict.keys())
+        )
         if file_keys:
             print "Content of file-list (source -> dest, %s):" % (logging_tools.get_plural("entry", len(file_keys)))
             for sf in file_keys:

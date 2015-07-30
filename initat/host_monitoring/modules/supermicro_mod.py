@@ -434,6 +434,8 @@ MOCK_MODE = None  # "sys1"  # None  # "sys1"
 
 
 class SMCIpmiStruct(hm_classes.subprocess_struct):
+    g_error_cache = {}
+
     class Meta:
         max_usage = 128
         id_str = "supermicro"
@@ -460,12 +462,25 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
         else:
             output = MOCK_DICT[MOCK_MODE][self.__real_com]
         if output is not None:
-            self.__log_com(
-                "[smcipmi] output has {:d} bytes: {}".format(
-                    len(output),
-                    re.sub("-+", "-", re.sub("\s+", " ", output)),
+            if output.count("java.lang.NullPointerException"):
+                self.log(
+                    "call problem: {}".format(
+                        output,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
                 )
-            )
+                if self.__real_com in SMCIpmiStruct.g_error_cache:
+                    self.log("return last sane value", logging_tools.LOG_LEVEL_WARN)
+                    output = SMCIpmiStruct.g_error_cache[self.__real_com]
+            else:
+                # store to global error cache
+                SMCIpmiStruct.g_error_cache[self.__real_com] = output
+            # self.log(
+            #    "output has {:d} bytes: {}".format(
+            #        len(output),
+            #        re.sub("-+", "-", re.sub("\s+", " ", output)),
+            #    )
+            # )
             self.__hm_command.store_object(self.__real_com, output)
             self.srv_com["output"] = output
 

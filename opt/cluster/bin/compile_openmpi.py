@@ -542,9 +542,13 @@ class mpi_builder(object):
         info_name = "README.%s" % (self.parser.package_name)
         sep_str = "-" * 50
         readme_lines = [sep_str] + self.parser.get_compile_options().split("\n") + [
-            "Compile times: %s" % (", ".join(
-                ["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in self.time_dict.keys()]
-            )),
+            "Compile times: {}".format(
+                ", ".join(
+                    [
+                        "%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in self.time_dict.keys()
+                    ]
+                )
+            ),
             sep_str,
             ""
         ]
@@ -557,6 +561,7 @@ class mpi_builder(object):
             self.parser.package_name,
             self.parser.options.mpi_version,
             self.parser.options.release)
+
         if self.parser.options.module_file:
             self._create_module_file()
         if self.parser.options.mpi_selector:
