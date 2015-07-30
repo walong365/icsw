@@ -24,6 +24,7 @@
 
 import os
 import sys
+import stat
 
 from initat.tools import config_store
 from initat.tools.logging_tools import logbase
@@ -104,6 +105,7 @@ def migrate_uuid():
 
 def migrate_db_cf():
     if not config_store.ConfigStore.exists(DB_CS_NAME) and os.path.exists(DB_FILE):
+        _src_stat = os.stat(DB_FILE)
         _cs = config_store.ConfigStore(DB_CS_NAME)
         sql_dict = {
             key.split("_")[1]: value for key, value in [
@@ -122,6 +124,10 @@ def migrate_db_cf():
                 _cs["db.{}".format(src_key.lower())] = _val
         _cs.set_type("db.passwd", "password")
         _cs.write()
+        # copy modes
+        os.chown(_cs.file_name, _src_stat[stat.ST_UID], _src_stat[stat.ST_GID])
+        os.chmod(_cs.file_name, _src_stat[stat.ST_MODE])
+        # delete old file
         remove_file(DB_FILE)
 
 
