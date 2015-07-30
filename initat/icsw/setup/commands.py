@@ -88,7 +88,6 @@ else:
         DEFAULT_ENGINE = ""
 
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
-LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 
 
 def call_manage(args, **kwargs):

@@ -22,18 +22,10 @@
 # from lxml.builder import E # @UnresolvedImport
 from django.core.management.base import BaseCommand
 from django.db.models import Q
-from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ComCapability as ComCapability_Model, SensorAction
-from lxml import etree  # @UnresolvedImport
 from initat.tools import logging_tools
-import os
-import sys
-
-# old local_settings.py
-
-LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
 SNMP_NET_TYPES = [
     (1, 'other'),
@@ -437,7 +429,7 @@ class Command(BaseCommand):
         for _name in ["mail"]:
             try:
                 SensorAction.objects.get(Q(name=_name)).delete()
-            except:
+            except SensorAction.DoesNotExist:
                 pass
         factories.SensorActionFactory(
             name="nothing",

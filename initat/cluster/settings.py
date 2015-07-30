@@ -27,9 +27,8 @@ from lxml import etree
 from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
-from initat.tools import logging_tools
+from initat.tools import logging_tools, config_store
 from initat.icsw.service.instance import InstanceXML
-
 
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
@@ -529,36 +528,12 @@ TEMPLATES = [
     }
 ]
 
-
-LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
-
-_config_ok = False
-
-if os.path.isfile(LOCAL_CONFIG):
-    local_dir = os.path.dirname(LOCAL_CONFIG)
-    sys.path.append(local_dir)
-    try:
-        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY,\
-            PASSWORD_CHARACTER_COUNT, AUTO_CREATE_NEW_DOMAINS, LOGIN_SCREEN_TYPE  # @UnresolvedImport
-    except:
-        pass
-    else:
-        _config_ok = True
-    sys.path.remove(local_dir)
-
-if not _config_ok:
-    chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
-    SECRET_KEY = get_random_string(50, chars)
-    GOOGLE_MAPS_KEY = ""
-    PASSWORD_CHARACTER_COUNT = 8
-    PASSWORD_HASH_FUNCTION = "SHA1"
-    AUTO_CREATE_NEW_DOMAINS = True
-    LOGIN_SCREEN_TYPE = "big"
-
-
 # validate settings
-if PASSWORD_HASH_FUNCTION not in ["SHA1", "CRYPT"]:
-    raise ImproperlyConfigured("password hash function '{}' not known".format(PASSWORD_HASH_FUNCTION))
+_cs = config_store.ConfigStore("icsw.general", quiet=True)
+if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
+    raise ImproperlyConfigured("password hash function '{}' not known".format(_cs["password.hash.function"]))
+
+SECRET_KEY = _cs["django.secret.key"]
 
 INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 

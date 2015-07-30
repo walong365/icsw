@@ -31,13 +31,13 @@ import string
 import smbpasswd
 import datetime
 
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
+from initat.tools import config_store
 from django.dispatch import receiver
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
@@ -46,7 +46,6 @@ from initat.cluster.backbone.models.functions import _check_empty_string, _check
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     virtual_desktop_user_setting_changed
 import django.core.serializers
-
 
 __all__ = [
     "csw_permission",
@@ -873,7 +872,7 @@ def user_pre_save(sender, **kwargs):
         else:
             cur_inst.lm_password = smbpasswd.lmhash(passwd)
             cur_inst.nt_password = smbpasswd.nthash(passwd)
-            pw_gen_1 = settings.PASSWORD_HASH_FUNCTION
+            pw_gen_1 = config_store.ConfigStore("icsw.general", quiet=True)["password.hash.function"]
             if pw_gen_1 == "CRYPT":
                 salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in xrange(4))
                 cur_pw = "{}:{}".format(pw_gen_1, crypt.crypt(passwd, salt))

@@ -85,9 +85,9 @@ def get_old_local_settings():
     sys.path.remove(LS_DIR)
     return {
         "django.secret.key": SECRET_KEY,
-        "password.hash.function": PASSWORD_CHARACTER_COUNT,
+        "password.hash.function": PASSWORD_HASH_FUNCTION,
         "google.maps.key": GOOGLE_MAPS_KEY,
-        "password.character.count": PASSWORD_CHARACTER_COUNT,
+        "password.character.count": int(PASSWORD_CHARACTER_COUNT),
         "auto.create.new.domains": AUTO_CREATE_NEW_DOMAINS,
         "login.screen.type": LOGIN_SCREEN_TYPE,
     }

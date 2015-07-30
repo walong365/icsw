@@ -34,6 +34,7 @@ from django.utils.crypto import get_random_string
 from initat.tools.bgnotify.create import create_bg_job, notify_command
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
+from initat.tools import config_store
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone, duration, \
@@ -798,6 +799,8 @@ def _get_top_level_dtn():
         top_level_dn = None
     return top_level_dn
 
+_ICSW_CS = config_store.ConfigStore("icsw.general", quiet=True)
+
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -810,7 +813,7 @@ def device_pre_save(sender, **kwargs):
                 cur_dnt = domain_tree_node.objects.get(Q(full_name=dom_name))
             except domain_tree_node.DoesNotExist:
                 # create new domain
-                if settings.AUTO_CREATE_NEW_DOMAINS:
+                if _ICSW_CS["auto.create.new.domains"]:
                     cur_inst.domain_tree_node = domain_name_tree().add_domain(dom_name)
                     cur_inst.name = short_name
                 else:

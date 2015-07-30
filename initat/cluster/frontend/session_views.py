@@ -37,6 +37,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
+from initat.tools import config_store
 from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper
@@ -130,11 +131,12 @@ class login_addons(View):
         _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
         _next_url = cache.get(_ckey)
         cache.delete(_ckey)
+        _cs = config_store.ConfigStore("icsw.general", quiet=True)
         request.xml_response["login_hints"] = json.dumps(_get_login_hints())
-        request.xml_response["login_screen_type"] = settings.LOGIN_SCREEN_TYPE
+        request.xml_response["login_screen_type"] = _cs["login.screen.type"]
         request.xml_response["django_version"] = ".".join(_vers)
         request.xml_response["next_url"] = _next_url or ""
-        request.xml_response["password_character_count"] = "{:d}".format(int(settings.PASSWORD_CHARACTER_COUNT))
+        request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
 
 
 class sess_login(View):
