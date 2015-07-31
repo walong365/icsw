@@ -159,7 +159,7 @@ class ConfigStore(object):
 
     def read(self, name=None):
         if name is not None:
-            _read_name = ConfigStore._build_path(name)
+            _read_name = ConfigStore.build_path(name)
         else:
             _read_name = self.file_name
         if os.path.isfile(_read_name):
