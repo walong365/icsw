@@ -47,7 +47,7 @@
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')"><a href="{{ ICSW_URLS.MON_MONITORING_DISK }}"><span class="fa fa-hdd-o fa_icsw"></span>Disk</a></li>
                     <li ng-show="has_valid_license('md_config_server') && has_menu_permission('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="has_valid_license('md_config_server')"><a href="{{ ICSW_URLS.MON_CALL_ICINGA }}" target="_blank"><span class="fa fa-share-alt fa_icsw"></span>Icinga</a></li>
-                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config-server']" class="text-left">
+                    <li ng-show="has_menu_permission('mon_check_command.setup_monitoring') && SERVICE_TYPES['md-config-server']" class="text-left">-->
                         <ul class="list-group" style="margin-bottom: 10px; margin-top: 5px">
                             <li class="list-group-item">
                                 <input type="button" class="btn btn-success btn-xs" value="rebuild config (cached, RC)" title="fully cached (with routing cache)" ng-click="rebuild_config('ALWAYS')"/>

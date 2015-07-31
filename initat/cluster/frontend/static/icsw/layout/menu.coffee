@@ -105,13 +105,11 @@ menu_module = angular.module(
                     for del_pb in del_pbs
                         delete $scope.cur_gauges[del_pb]
                     #for cur_idx, value of $scope.cur_gauges
-                    $scope.$apply(
-                        $scope.num_gauges = cur_pb.length
-                        if cur_pb.length or $scope.progress_iters
-                            if $scope.progress_iters
-                                $scope.progress_iters--
-                            $timeout($scope.update_progress_bar, 1000)
-                    )
+                    $scope.num_gauges = cur_pb.length
+                    if cur_pb.length or $scope.progress_iters
+                        if $scope.progress_iters
+                            $scope.progress_iters--
+                        $timeout($scope.update_progress_bar, 1000)
             )
         $scope.redirect_to_init = () ->
             window.location = "http://www.init.at"
@@ -140,10 +138,11 @@ menu_module = angular.module(
                     }
                     title: "create config"
                 }
-            ).then((xml) ->
-                # make at least five iterations to catch slow startup of md-config-server
-                $scope.progress_iters = 5
-                $scope.update_progress_bar()
+            ).then(
+                (xml) ->
+                    # make at least five iterations to catch slow startup of md-config-server
+                    $scope.progress_iters = 5
+                    $scope.update_progress_bar()
             )
         $timeout($scope.show_time, 1, false)
         $scope.$watch("navbar_size", (new_val) ->
