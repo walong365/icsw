@@ -181,7 +181,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/init-license-server.d
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/licenses
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/logging-server.d
-	cp -a icsw.db.acces_config.xml.sample ${DESTDIR}/${ICSW_ETC}/cstores.d
+	cp -a icsw.db.access_config.xml.sample ${DESTDIR}/${ICSW_ETC}/cstores.d
 	touch ${DESTDIR}/${SYSCONF}/logging-server.d/tail
 	${INSTALL} ${INSTALL_OPTS} test_license ${DESTDIR}/${SYSCONF}/init-license-server.d
 	# /usr/local/bin
