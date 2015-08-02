@@ -18,6 +18,7 @@ USRBIN=/usr/bin
 INIT=/etc/init.d
 
 MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
+CST=${ICSW_BIN}/cstoretool.py
 
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static
@@ -105,9 +106,9 @@ fi
 
 chmod a+rwx ${WEBCACHE_DIR}
 
-if /usr/bin/python-init ${PREFIX_INIT}/initat/tools/config_store.py --store icsw.db.access --mode storeexists ; then
+if ${CST} --store icsw.db.access --mode storeexists ; then
     # already installed
-    if [ "$(/usr/bin/python-init ${PREFIX_INIT}/initat/tools/config_store.py --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
+    if [ "${CST} --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
         echo "running auto-update script ${ICSW_BASE}/sbin/icsw setup --migrate"
         ${ICSW_BASE}/sbin/icsw setup --migrate
     else

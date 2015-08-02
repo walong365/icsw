@@ -25,9 +25,7 @@ for password-types we need to add some encryption / message digest code via {alg
 """
 
 import os
-import sys
 from lxml import etree
-import argparse
 
 from initat.tools import process_tools
 from initat.tools.logging_tools import logbase
@@ -284,25 +282,3 @@ class ConfigStore(object):
             )
         global_config.add_config_entries(_adds)
 
-
-if __name__ == "__main__":
-    def quiet_log(_a, _b):
-        pass
-
-    _ap = argparse.ArgumentParser()
-    _ap.add_argument("--mode", default="getkey", choices=["getkey", "storeexists", "keyexists"], type=str, help="Operation mode [%(default)s]")
-    _ap.add_argument("--store", default="client", type=str, help="ConfigStore name [%(default)s]")
-    _ap.add_argument("--key", default="", type=str, help="Key to show [%(default)s]")
-    opts = _ap.parse_args()
-    if opts.mode == "storeexists":
-        if ConfigStore.exists(opts.store):
-            sys.exit(0)
-        else:
-            sys.exit(1)
-    elif opts.mode == "getkey":
-        _store = ConfigStore(opts.store, log_com=quiet_log)
-        if opts.key in _store:
-            print(_store[opts.key])
-            sys.exit(0)
-        else:
-            raise KeyError("unknown key '{}'".format(opts.key))

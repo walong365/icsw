@@ -111,6 +111,7 @@ setup(
                 "opt/cluster/bin/license_progs.py",
                 "opt/cluster/bin/loadsensor.py",
                 "opt/cluster/bin/modify_object.py",
+                "opt/cluster/bin/cstoretool.py",
             ]
         ),
         (
