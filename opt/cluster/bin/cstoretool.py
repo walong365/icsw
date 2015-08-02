@@ -25,6 +25,8 @@ frontend tool to config store
 import sys
 import argparse
 
+from initat.tools.config_store import ConfigStore
+
 
 def quiet_log(_a, _b):
     pass
@@ -32,11 +34,21 @@ def quiet_log(_a, _b):
 
 def main():
     _ap = argparse.ArgumentParser()
-    _ap.add_argument("--mode", default="getkey", choices=["getkey", "storeexists", "keyexists"], type=str, help="Operation mode [%(default)s]")
+    _ap.add_argument(
+        "--mode",
+        default="liststores",
+        choices=[
+            "liststores", "getkey", "storeexists", "keyexists"
+        ],
+        type=str,
+        help="Operation mode [%(default)s]"
+    )
     _ap.add_argument("--store", default="client", type=str, help="ConfigStore name [%(default)s]")
     _ap.add_argument("--key", default="", type=str, help="Key to show [%(default)s]")
     opts = _ap.parse_args()
-    if opts.mode == "storeexists":
+    if opts.mode == "liststores":
+        print("not implemented")
+    elif opts.mode == "storeexists":
         if ConfigStore.exists(opts.store):
             sys.exit(0)
         else:
