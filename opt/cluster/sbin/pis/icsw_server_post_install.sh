@@ -40,7 +40,7 @@ for SRV in cluster-server collectd collectd-init mother ; do
 done
 
 # remove cached urls.py files
-rm -f ${PREFIX_INIT}/initat/cluster/urls.py*
+rm -f ${PREFIX_INIT}/initat/cluster/urls.py{c,o}
 rm -rf ${PREFIX_INIT}/initat/core
 
 # delete modules install via npm
@@ -108,7 +108,7 @@ chmod a+rwx ${WEBCACHE_DIR}
 
 if ${CST} --store icsw.db.access --mode storeexists ; then
     # already installed
-    if [ "${CST} --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
+    if [ "$(${CST} --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
         echo "running auto-update script ${ICSW_BASE}/sbin/icsw setup --migrate"
         ${ICSW_BASE}/sbin/icsw setup --migrate
     else

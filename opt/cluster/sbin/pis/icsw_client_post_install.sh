@@ -28,7 +28,7 @@ OFF="\033[m"
 rm -rf /usr/local/sbin/check_scripts.py*
 rm -rf ${ICSW_SBIN}/modules/*.pyo
 rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
-rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py*
+rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py{c,o}
 
 [ -d /var/log/cluster/sockets/snmprelay ] && rm -rf /var/log/cluster/sockets/snmprelay
 [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
@@ -38,8 +38,7 @@ rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py
 
 PY_FILES="host-monitoring limits hm_classes ipc_comtools"
 for file in $PY_FILES ; do
-    rm -f ${ICSW_SBIN}/$file.pyo
-    rm -f ${ICSW_SBIN}/$file.pyc
+    rm -f ${ICSW_SBIN}/$file.py{c,o}
 done
 
 # purge debian packages
