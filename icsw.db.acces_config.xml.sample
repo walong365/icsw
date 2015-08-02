@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='ASCII'?>
+<config-store name="icsw.db.access">
+  <key-list>
+    <key type="str" name="db.database">{{ DATABASE }}</key>
+    <key type="str" name="db.engine">django.db.backends.postgresql_psycopg2</key>
+    <key type="str" name="db.host">localhost</key>
+    <key type="password" name="db.passwd">{{ PASSWORD }}</key>
+    <key type="int" name="db.port">5432</key>
+    <key type="str" name="db.user">{{ USER }}</key>
+  </key-list>
+</config-store>

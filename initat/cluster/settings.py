@@ -262,8 +262,13 @@ else:
 STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    # 'pipeline.finders.FileSystemFinder',
+    # 'pipeline.finders.AppDirectoriesFinder',
+    # 'pipeline.finders.CachedFileFinder',
     "pipeline.finders.PipelineFinder",
 )
+
+# print STATICFILES_FINDERS, STATICFILES_STORAGE
 
 STATICFILES_DIRS = []
 if os.path.isdir("/opt/icinga/share/images/logos"):
@@ -275,6 +280,7 @@ STATICFILES_DIRS.append(
 )
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
+# print STATICFILES_DIRS
 
 # add all applications, including backbone
 

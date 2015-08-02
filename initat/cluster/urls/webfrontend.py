@@ -355,7 +355,8 @@ url_patterns = patterns(
 )
 
 url_patterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-url_patterns += patterns(
-    'django.contrib.staticfiles.views',
-    url(r'^{}/static/(?P<path>.*)$'.format(settings.REL_SITE_ROOT), 'serve'),
-)
+# no longer needed ...
+# url_patterns += patterns(
+#    'django.contrib.staticfiles.views',
+#    url(r'^{}/static/(?P<path>.*)$'.format(settings.REL_SITE_ROOT), 'serve'),
+# )

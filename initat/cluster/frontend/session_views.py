@@ -142,6 +142,7 @@ class login_addons(View):
 class sess_login(View):
     def get(self, request):
         if request.user.is_authenticated():
+            # return HttpResponseRedirect(reverse("user:account_info"))
             return HttpResponseRedirect(reverse("main:index"))
         else:
             if user.objects.all().count():  # @UndefinedVariable
