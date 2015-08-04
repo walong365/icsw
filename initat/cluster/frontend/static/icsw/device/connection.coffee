@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswUserService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswUserService) ->
         $scope.devsel_list = []
         # ac settings
         $scope.ac_type = "master"
@@ -44,6 +44,10 @@ angular.module(
                     icswParseXMLResponseService(xml, 30)
                     # reload (even on error)
                     $scope.reload()
+        $scope.CURRENT_USER = undefined
+        icswUserService.load().then((data) ->
+            $scope.CURRENT_USER = data
+        )
         # mixins
         $scope.cd_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.cd_edit.create_template = "cd.connection.form"
@@ -111,7 +115,7 @@ angular.module(
                 "parent" : dev.idx
                 "child"  : pk
                 "connection_info" : "from webfrontend"
-                "created_by" : CURRENT_USER.pk
+                "created_by" : $scope.CURRENT_USER.pk
             }
             $scope.cd_edit.create_rest_url.post(new_obj).then((data) ->
                 dev.slave_list.push(data)
@@ -121,7 +125,7 @@ angular.module(
                 "parent" : pk
                 "child"  : dev.idx
                 "connection_info" : "from webfrontend"
-                "created_by" : CURRENT_USER.pk
+                "created_by" : $scope.CURRENT_USER.pk
             }
             $scope.cd_edit.create_rest_url.post(new_obj).then((data) ->
                 dev.master_list.push(data)

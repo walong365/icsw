@@ -177,11 +177,14 @@ angular.module(
             dev_pk_md_list = []
             for _pk in @tot_dev_sel
                 _dev = icswSelectionService.resolve_device(_pk)
-                if _dev.is_meta_device
-                    devg_pk_list.push(_dev.device_group)
-                    dev_pk_md_list.push(_pk)
+                if _dev
+                    if _dev.is_meta_device
+                        devg_pk_list.push(_dev.device_group)
+                        dev_pk_md_list.push(_pk)
+                    else
+                        dev_pk_nmd_list.push(_pk)
                 else
-                    dev_pk_nmd_list.push(_pk)
+                    console.log "device with pk #{_pk} is not resolvable"
             return [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list]
         category_selected: (cat_idx) ->
             return cat_idx in @cat_sel

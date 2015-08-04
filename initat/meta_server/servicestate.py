@@ -213,6 +213,11 @@ class ServiceState(object):
                 _ts = constants.TARGET_STATE_RUNNING
             else:
                 _ts = constants.TARGET_STATE_STOPPED
+        elif srv_name == "mongodb-init":
+            if os.path.exists("/etc/init.d/mongodb-init"):
+                _ts = constants.TARGET_STATE_RUNNING
+            else:
+                _ts = constants.TARGET_STATE_STOPPED
         else:
             _ts = constants.TARGET_STATE_RUNNING
         return _ts
