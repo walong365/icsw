@@ -670,7 +670,7 @@ angular.module(
         update_extra_span: (entry, span) ->
             span.removeClass()
             if entry.num_sensors
-                span.addClass("fa fa-wrench")
+                span.addClass("fa fa-arrows-v")
 
 ]).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
