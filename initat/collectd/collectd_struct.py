@@ -297,6 +297,15 @@ class host_matcher(object):
                 _found = {_key: _value for _key, _value in _found.iteritems() if not _value}
                 if "f" in _found:
                     # rename fqdn
+                    if os.path.exists(_check_dict["u"]):
+                        self.log(
+                            "target dir {} already existing, removing old dir {}".format(
+                                _check_dict["u"],
+                                _check_dict["f"],
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
+                        shutil.rmtree(_check_dict["u"])
                     self.log("renaming {} to {}".format(_check_dict["f"], _check_dict["u"]))
                     os.rename(_check_dict["f"], _check_dict["u"])
                     _found["u"] = False
