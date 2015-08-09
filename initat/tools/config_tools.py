@@ -644,7 +644,7 @@ class server_check(object):
                 break
 
     def get_route_to_other_device(self, router_obj, other, **kwargs):
-        if "cache" in kwargs and (self.device.pk, other.device.pk) in kwargs["cache"]:
+        if "cache" in kwargs and self.device is not None and other.device is not None and (self.device.pk, other.device.pk) in kwargs["cache"]:
             return kwargs["cache"][(self.device.pk, other.device.pk)]
         filter_ip = kwargs.get("filter_ip", None)
         # at first fetch the network info if necessary

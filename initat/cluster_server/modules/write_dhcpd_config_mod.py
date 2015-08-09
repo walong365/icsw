@@ -39,7 +39,7 @@ class write_dhcpd_config(cs_base_class.server_com):
         boot_ips = my_c.identifier_ip_lut.get("b", [])
         if not boot_ips:
             cur_inst.srv_com.set_result(
-                "error no boot-net found for '{}'".forat(global_config["SERVER_SHORT_NAME"]),
+                "error no boot-net found for '{}'".format(global_config["SERVER_SHORT_NAME"]),
                 server_command.SRV_REPLY_STATE_ERROR
             )
         else:

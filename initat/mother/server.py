@@ -29,7 +29,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import network, status
 from initat.snmp.process import snmp_process
 from initat.tools import cluster_location, server_mixins, server_command, \
-    threading_tools, uuid_tools, logging_tools, process_tools
+    threading_tools, uuid_tools, logging_tools, process_tools, service_tools
 from initat.tools import configfile
 import initat.tools.server_mixins
 import initat.mother
@@ -54,7 +54,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin):
         # close db connection (for daemonizing)
         connection.close()
         self.debug = global_config["DEBUG"]
-        self.log("open")
+        self.srv_helper = service_tools.ServiceHelper(self.log)
         # log config
         self._log_config()
         self._re_insert_config()
@@ -370,8 +370,8 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin):
             if new_exports:
                 open(exp_file, "a").write("\n".join(["{:<30s} {}".format(x, y) for x, y in new_exports.iteritems()] + [""]))
                 # hm, dangerous, FIXME
-                _command = "/etc/init.d/nfsserver restart"
-                process_tools.call_command(_command, self.log, close_fds=True)
+                for _srv_name in self.srv_helper.find_services(".*nfs.*serv.*"):
+                    self.srv_helper.service_command(_srv_name, "restart")
 
     def _enable_syslog_config(self):
         syslog_exe_dict = {value.pid: value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
@@ -410,13 +410,13 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin):
         os.chmod(_scan_file, 0755)
         slcn = "/etc/rsyslog.d/mother.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
-        self._reload_syslog()
+        self._restart_syslog()
 
     def _disable_rsyslog(self):
         slcn = "/etc/rsyslog.d/mother.conf"
         if os.path.isfile(slcn):
             os.unlink(slcn)
-        self._reload_syslog()
+        self._restart_syslog()
 
     def _enable_syslog_ng(self):
         self.log("syslog-ng is no longer supported", logging_tools.LOG_LEVEL_ERROR)
@@ -424,20 +424,9 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin):
     def _disable_syslog_ng(self):
         self.log("syslog-ng is no longer supported", logging_tools.LOG_LEVEL_ERROR)
 
-    def _reload_syslog(self):
-        syslog_rc = None
-        syslog_found = False
-        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng", "/etc/init.d/rsyslog"]:
-            if os.path.isfile(syslog_rc):
-                syslog_found = True
-                break
-        if syslog_found:
-            self.log("found syslog script at {}, restarting".format(syslog_rc))
-            restart_com = "{} restart".format(syslog_rc)
-        else:
-            self.log("no syslog script found, reloading via systemd")
-            restart_com = "/usr/bin/systemctl restart syslog.service"
-        process_tools.call_command(restart_com, log_com=self.log, close_fds=True)
+    def _restart_syslog(self):
+        for _srv_name in self.srv_helper.find_services(".*syslog"):
+            self.srv_helper.service_command(_srv_name, "restart")
 
     def _check_netboot_functionality(self):
         syslinux_dir = os.path.join(global_config["SHARE_DIR"], "syslinux")

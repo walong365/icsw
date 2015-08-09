@@ -171,7 +171,7 @@
         </button>
     </td>
     <td>
-        <div class="input-group-btn" ng-show="acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
+        <div ng-show="acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
             <div class="btn-group btn-xs">
 
                 <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
@@ -185,7 +185,8 @@
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
                 ng-show="acl_create(obj, 'backbone.device.change_network')"
-                ng-click="scan_device_network(ndip_obj, $event)"></icsw-tools-button>
+                ng-click="scan_device_network(ndip_obj, $event)">
+            </icsw-tools-button>
         </div>
     </td>
 </script>

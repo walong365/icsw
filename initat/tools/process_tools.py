@@ -157,7 +157,7 @@ class exception_info(object):
         self.log_lines.append(get_except_info(self.except_info))
 
 
-def call_command(act_command, log_com, close_fds=False):
+def call_command(act_command, log_com, close_fds=False, log_stdout=True):
     log_com("calling command '{}'".format(act_command))
     s_time = time.time()
     try:
@@ -182,10 +182,12 @@ def call_command(act_command, log_com, close_fds=False):
         if _val.strip():
             _lines = _val.split("\n")
             log_com("{} has {} ({})".format(_name, logging_tools.get_plural("byte", len(_val)), logging_tools.get_plural("line", len(_lines))))
-            for _line_num, _line in enumerate(_lines):
-                log_com(" {:3d} : {}".format(_line_num + 1, _line), _lev)
+            if log_stdout:
+                for _line_num, _line in enumerate(_lines):
+                    log_com(" {:3d} : {}".format(_line_num + 1, _line), _lev)
         else:
-            log_com("{} is empty".format(_name))
+            if log_stdout:
+                log_com("{} is empty".format(_name))
     return ret_code, _stdout, _stderr
 
 
