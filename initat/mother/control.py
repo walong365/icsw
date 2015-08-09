@@ -1013,6 +1013,15 @@ class Host(object):
     def feed_dhcp(self, in_dict, in_line):
         self.refresh_device()
         if in_dict["key"] == "discover":
+            if self.bootnetdevice is None:
+                DeviceLogEntry.new(
+                    device=self.device,
+                    source=Host.process.node_src,
+                    text="no valid bootnetdevice (mac: {})".format(in_dict["macaddr"]),
+                    level=logging_tools.LOG_LEVEL_ERROR
+                )
+                self.log("no bootnetdevice set", logging_tools.LOG_LEVEL_ERROR)
+                return
             # dhcp feed, in most cases discover
             self.log("set macaddress of bootnetdevice to '{}'".format(in_dict["macaddr"]))
             self.bootnetdevice.macaddr = in_dict["macaddr"]
@@ -1248,6 +1257,8 @@ class NodeControlProcess(threading_tools.process_obj):
             "offer": re.compile("^(?P<program>\S+): DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$"),
             "request": re.compile("^(?P<program>\S+): DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$"),
             "answer": re.compile("^(?P<program>\S+): DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$"),
+            "inform": re.compile("^(?P<program>\S+): DHCPINFORM from (?P<ip>\S+) via .*$"),
+            "nak": re.compile("^(?P<program>\S+): DHCPNAK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$"),
         }
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -1510,5 +1521,6 @@ class NodeControlProcess(threading_tools.process_obj):
                 entry_type=in_dict["key"],
                 device=ip_dev,
                 ip_action=in_dict["ip"],
-                macaddr=in_dict["macaddr"].lower()
+                # macaddr is not set for certain dhcp actions
+                macaddr=in_dict.get("macaddr", "N/A").lower(),
             )

@@ -506,7 +506,7 @@ class server_check(object):
                     _co = config.objects  # @UndefinedVariable
                     try:
                         self.config = _co.get(
-                            Q(name=self.__server_type) & Q(device_config__device=self.device)
+                            Q(name=self.__server_type) & Q(device_config__device=self.device) & Q(config_catalog__system_catalog=True)
                         )
                     except config.DoesNotExist:  # @UndefinedVariable
                         try:
@@ -522,6 +522,8 @@ class server_check(object):
                                 Q(device_group=self.device.device_group_id) &
                                 Q(is_meta_device=True)
                             )
+                    except:
+                        raise
                     else:
                         self.effective_device = self.device
                 else:
@@ -637,7 +639,10 @@ class server_check(object):
             if match_ips:
                 self.device = cur_dev
                 # always working ?
-                self.config = config.objects.get(Q(name=self.__server_type))  # @UndefinedVariable
+                try:
+                    self.config = config.objects.get(Q(name=self.__server_type))  # @UndefinedVariable
+                except config.MultipleObjectsReturned:
+                    self.config = config.objects.get(Q(name=self.__server_type) & Q(config_catalog__system_catalog=True))  # @UndefinedVariable
                 self.effective_device = cur_dev
                 self.short_host_name = cur_dev.name
                 self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))

@@ -90,16 +90,25 @@
                     <th>type</th>
                     <th>IP</th>
                     <th>MAC</th>
+                    <th>Action</th>
                     <th>Logsource</th>
                     <th>created</th>
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="mbl in mbl_entries">
+                <tr ng-repeat="mbl in mbl_entries" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
                     <td>{{ mbl.device_name }}</td>
                     <td>{{ mbl.entry_type }}</td>
                     <td>{{ mbl.ip_action }}</td>
                     <td>{{ mbl.macaddr }}</td>
+                    <td>
+                        <span ng-if="mbl.show_ignore">
+                            <icsw-tools-button type="delete" size="xs" value="Ignore Macaddr" ng-click="modify_mbl(mbl, 'ignore')"></icsw-tools-button>
+                        </span>
+                        <span ng-if="mbl.show_unignore">
+                            <icsw-tools-button type="create" size="xs" value="Unignore Macaddr" ng-click="modify_mbl(mbl, 'unignore')"></icsw-tools-button>
+                        </span>
+                    </td>
                     <td style="white-space:nowrap;">{{ mbl.log_source | follow_fk:this:'log_source_lut':'name' }}</td>
                     <td>{{ get_mbl_created(mbl) }}</td>
                 </tr>

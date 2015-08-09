@@ -24,8 +24,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswSimpleAjaxCall) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
@@ -474,11 +474,53 @@ angular.module(
             if $scope.show_mbl
                 $scope.fetch_macbootlog_entries()
         $scope.fetch_macbootlog_entries = () ->
-            Restangular.all(ICSW_URLS.REST_MACBOOTLOG_LIST.slice(1)).getList({"_num_entries" : 50, "_order_by" : "-pk"}).then(
+            $q.all(
+                [
+                    Restangular.all(ICSW_URLS.REST_MACBOOTLOG_LIST.slice(1)).getList({"_num_entries" : 50, "_order_by" : "-pk"}),
+                    Restangular.all(ICSW_URLS.REST_MAC_IGNORE_LIST.slice(1)).getList({"_order_by" : "-pk"}),
+                ]
+            ).then(
                 (data) ->
-                    $scope.mbl_entries = data
+                    $scope.mbl_entries = data[0]
+                    $scope.mbi_entries = data[1]
+                    $scope.check_mbl()
                     $scope.mbl_timeout = $timeout($scope.fetch_macbootlog_entries, 5000)
             )
+        $scope.modify_mbl = (mbl, action) ->
+            if $scope.mbl_timeout
+                $timeout.cancel($scope.mbl_timeout)
+            icswSimpleAjaxCall(
+                "url": ICSW_URLS.BOOT_MODIFY_MBL,
+                "dataType": "json"
+                "data": {
+                    "mbl": angular.toJson(mbl)
+                    "action": action
+                }
+            ).then(
+                (result) ->
+            )
+            $scope.fetch_macbootlog_entries()
+        $scope.check_mbl = () ->
+            # not beautiful but working
+            _ignore_list = (_entry.macaddr for _entry in $scope.mbi_entries)
+            _ignored_shown_list = []
+            _unignored_shown_list = []
+            _show_ignore_list = []
+            for _entry in $scope.mbl_entries
+                _entry.show_ignore = false
+                _entry.show_unignore = false
+                _entry.ignore = false
+                if _entry.macaddr.match(/^([a-fA-F\d][a-fA-F\d+]:){5}[a-fA-F\d]+$/)
+                    # only handle real mac addrs
+                    if _entry.macaddr in _ignore_list
+                        _entry.ignore = true
+                        _ignored_shown_list.push(entry.macaddr)
+                        if _entry.macaddr not in _unignored_shown_list
+                            _unignored_shown_list.push(_entry.macaddr)
+                            _entry.show_unignore = true
+                    if _entry.macaddr not in _show_ignore_list and not _entry.ignore
+                        _entry.show_ignore = true
+                        _show_ignore_list.push(_entry.macaddr)
         $scope.get_mbl_created = (mbl) ->
             return moment.unix(mbl.created).format(DT_FORM)
 ]).directive("icswDeviceBootTable", ["$templateCache", ($templateCache) ->

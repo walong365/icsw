@@ -34,7 +34,7 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
-    kernel, image, partition_table, status, network, DeviceLogEntry
+    kernel, image, partition_table, status, network, DeviceLogEntry, mac_ignore
 from initat.cluster.backbone.serializers import device_serializer_boot
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -377,3 +377,21 @@ class hard_control(View):
             ]
         )
         contact_server(request, "mother", srv_com, timeout=10)
+
+
+class modify_mbl(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        _mbl = json.loads(_post["mbl"])
+        if _post["action"] == "ignore":
+            try:
+                mac_ignore.objects.get(Q(macaddr=_mbl["macaddr"]))
+            except mac_ignore.DoesNotExist:
+                new_mi = mac_ignore(
+                    macaddr=_mbl["macaddr"]
+                )
+                new_mi.save()
+        else:
+            mac_ignore.objects.filter(Q(macaddr=_mbl["macaddr"])).delete()
+        return HttpResponse(json.dumps({}), content_type="application/json")
