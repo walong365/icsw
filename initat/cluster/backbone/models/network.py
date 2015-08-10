@@ -233,6 +233,13 @@ class network(models.Model):
         )
 
 
+@receiver(signals.post_init, sender=network)
+def network_post_init(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst._pre_enforce_unique_ips = cur_inst.enforce_unique_ips
+
+
 @receiver(signals.pre_save, sender=network)
 def network_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -278,6 +285,24 @@ def network_pre_save(sender, **kwargs):
         ip_dict["network"] = ip_dict["network"] & ip_dict["netmask"]
         # always correct gateway
         ip_dict["gateway"] = (ip_dict["gateway"] & ~ip_dict["netmask"]) | ip_dict["network"]
+        if cur_inst._pre_enforce_unique_ips != cur_inst.enforce_unique_ips and cur_inst.enforce_unique_ips:
+            ip_dict = {}
+            for _ip in cur_inst.net_ip_set.all():
+                ip_dict.setdefault(_ip.ip, []).append(_ip)
+            ip_dict = {key: value for key, value in ip_dict.iteritems() if len(value) > 1}
+            if ip_dict:
+                raise ValidationError(
+                    "not all IPs are unique: {}".format(
+                        ", ".join(
+                            [
+                                "{}: used {}".format(
+                                    _key,
+                                    logging_tools.get_plural("time", len(_value)),
+                                ) for _key, _value in ip_dict.iteritems()
+                            ]
+                        )
+                    )
+                )
         # set values
         for key, value in ip_dict.iteritems():
             setattr(cur_inst, key, unicode(value))
