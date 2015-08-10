@@ -24,20 +24,20 @@
 import datetime
 import logging
 from collections import defaultdict
-
+import django.utils.timezone
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-from django.core.cache import cache
+
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, AlertList
 from initat.cluster.backbone.models.functions import duration
 
 
@@ -62,9 +62,16 @@ class _device_status_history_util(object):
     def get_timespan_db_from_request(request):
         start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
 
+        if duration_type == 'day' and (django.utils.timezone.now() - start) < datetime.timedelta(days=1):
+            # produce view for today
+            pass
+
         try:
-            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID,
-                                                                  start_date__range=(start, end - datetime.timedelta(seconds=1)))
+            # time spans end one second before next start
+            return mon_icinga_log_aggregated_timespan.objects.get(
+                duration_type=duration_type.ID,
+                start_date__range=(start, end - datetime.timedelta(seconds=1))
+            )
         except mon_icinga_log_aggregated_timespan.DoesNotExist:
             return None
 
@@ -77,10 +84,8 @@ class _device_status_history_util(object):
         :return: dict of either {(dev_id, service_id): values} or {dev_id: values}
         """
         if for_host:
-            obj_man = mon_icinga_log_raw_host_alert_data.objects
             trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
         else:
-            obj_man = mon_icinga_log_raw_service_alert_data.objects
             trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
         device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
@@ -116,7 +121,8 @@ class _device_status_history_util(object):
 
             if not for_host:
                 # use nice service id for services
-                key = key[0], mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client_tuple(key[1], key[2])
+                objs = mon_icinga_log_raw_service_alert_data.objects  # pep 8
+                key = key[0], objs.calculate_service_name_for_client_tuple(key[1], key[2])
 
             return_data[key] = l
         return return_data
@@ -134,14 +140,19 @@ class get_hist_timespan(RetrieveAPIView):
             start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
             # return most recent data type if this type is not yet finished
             try:
-                latest_timespan_db = \
-                    mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest('start_date')
+                latest_timespan_db = mon_icinga_log_aggregated_timespan.objects.filter(
+                    duration_type=duration_type.ID
+                ).latest('start_date')
             except mon_icinga_log_aggregated_timespan.DoesNotExist:
                 pass  # no data at all, can't do anything useful
             else:
                 date = duration_utils.parse_date(request.GET["date"])
                 if latest_timespan_db.end_date < date:
-                    data = {'status': 'found earlier', 'start': latest_timespan_db.start_date, 'end': latest_timespan_db.end_date}
+                    data = {
+                        'status': 'found earlier',
+                        'start': latest_timespan_db.start_date,
+                        'end': latest_timespan_db.end_date
+                    }
 
         return Response(data)
 
@@ -171,7 +182,9 @@ class get_hist_device_data(ListAPIView):
             if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.reporting, device_id):
                 data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
                     device_data,
-                    mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+                    mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[
+                        mon_icinga_log_raw_base.STATE_UNDETERMINED
+                    ]
                 )
 
         LicenseUsage.log_usage(LicenseEnum.reporting,

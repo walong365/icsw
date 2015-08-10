@@ -51,6 +51,7 @@ class duration_utils(object):
         :return: tuple (unit of data to display, start, end)
         '''
         date = duration_utils.parse_date(date)
+        # durations end one second before start of next, i.e. interval is inclusive
         if in_duration_type == "day":
             duration_type = duration.Hour
             start = duration.Day.get_time_frame_start(date)
