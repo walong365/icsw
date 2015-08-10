@@ -148,7 +148,6 @@ class WmiUtils(object):
                     fixed_lines.append(cur_line)
                     if fixing:
                         fixing = False
-                        print 'fixed ', cur_line
                     cur_line = ""
                 else:
                     # just add next part in loop start
@@ -159,7 +158,6 @@ class WmiUtils(object):
                 ))
                 cur_line = ""
             else:
-                print 'fixing line', cur_line
                 fixing = True
 
         if cur_line != "":
