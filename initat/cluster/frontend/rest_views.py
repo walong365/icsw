@@ -140,10 +140,20 @@ class rest_logging(object):
 
     def __call__(self, *args, **kwargs):
         s_time = time.time()
+
+        display_name = getattr(args[0], "display_name", None)
+        # get: head.im_class.__name__ (contains class name for django class views)
+        view_class_name = getattr(getattr(getattr(args[0], 'head', None), 'im_class', None), '__name__', None)
+
         if hasattr(args[0], "model") and args[0].model is not None:
             self.__obj_name = args[0].model._meta.object_name
+        elif display_name is not None:
+            self.__obj_name = display_name
+        elif view_class_name is not None:
+            self.__obj_name = view_class_name
         else:
-            self.__obj_name = getattr(args[0], "display_name", "unknown")
+            self.__obj_name = "unknown"
+
         try:
             result = self._func(*args, **kwargs)
         except:
