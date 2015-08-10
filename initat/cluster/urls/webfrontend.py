@@ -25,7 +25,7 @@ from django.conf import settings
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
-    lic_views
+    lic_views, status_history_views
 from django.conf.urls.static import static
 
 handler404 = main_views.index.as_view()
@@ -188,15 +188,15 @@ monitoring_patterns = patterns(
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
     url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),
     url("^get_mon_vars$", monitoring_views.get_mon_vars.as_view(), name="get_mon_vars"),
-    url("^get_hist_timespan$", monitoring_views.get_hist_timespan.as_view(), name="get_hist_timespan"),
-    url("^get_hist_device_data$", monitoring_views.get_hist_device_data.as_view(), name="get_hist_device_data"),
-    url("^get_hist_service_data$", monitoring_views.get_hist_service_data.as_view(), name="get_hist_service_data"),
-    url("^get_hist_service_line_graph_data$", monitoring_views.get_hist_service_line_graph_data.as_view(),
-        name="get_hist_service_line_graph_data"),
-    url("^get_hist_device_line_graph_data$", monitoring_views.get_hist_device_line_graph_data.as_view(),
-        name="get_hist_device_line_graph_data"),
     url("^svg_to_png$", monitoring_views.svg_to_png.as_view(), name="svg_to_png"),
     url("^fetch_png/(?P<cache_key>\S+)$", monitoring_views.fetch_png_from_cache.as_view(), name="fetch_png_from_cache"),
+    url("^get_hist_timespan$", status_history_views.get_hist_timespan.as_view(), name="get_hist_timespan"),
+    url("^get_hist_device_data$", status_history_views.get_hist_device_data.as_view(), name="get_hist_device_data"),
+    url("^get_hist_service_data$", status_history_views.get_hist_service_data.as_view(), name="get_hist_service_data"),
+    url("^get_hist_service_line_graph_data$", status_history_views.get_hist_service_line_graph_data.as_view(),
+        name="get_hist_service_line_graph_data"),
+    url("^get_hist_device_line_graph_data$", status_history_views.get_hist_device_line_graph_data.as_view(),
+        name="get_hist_device_line_graph_data"),
 )
 
 user_patterns = patterns(
