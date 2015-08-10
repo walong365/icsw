@@ -123,7 +123,7 @@ ics_app = angular.module(
         // {% load static %} // this is needed for get_static_prefix below
         "STATIC_URL": "{% get_static_prefix %}",
         "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}",
-        // {% include 'all_urls.html' %}
+        {% include 'all_urls.html' %}
         "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.6.min.js' %}"
     }
 ).service(
