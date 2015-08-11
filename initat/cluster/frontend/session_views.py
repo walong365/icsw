@@ -109,7 +109,7 @@ def _login(request, _user_object, login_credentials=None):
         dict([(user_var.name, user_var) for user_var in _user_object.user_variable_set.all()])
     # for alias logins login_name != login
     if login_credentials is not None:
-        login_name, login_password = login_credentials
+        real_user_name, login_password, login_name = login_credentials
         request.session["login_name"] = login_name
         request.session["password"] = base64.b64encode(login_password.decode("utf-8"))
     else:
@@ -163,6 +163,7 @@ class sess_login(View):
         login_password = _post.get('password')
 
         real_user_name = self.__class__.get_real_user_name(login_name)
+        print "****", login_name, real_user_name
 
         try:
             db_user = self.__class__._check_login_data(request, real_user_name, login_password)
@@ -171,7 +172,7 @@ class sess_login(View):
                 request.xml_response.error(unicode(err_msg))
             _failed_login(request, real_user_name)
         else:
-            login_credentials = (real_user_name, login_password)
+            login_credentials = (real_user_name, login_password, login_name)
             _login(request, db_user, login_credentials)
             if _post.get("next_url", "").strip():
                 request.xml_response["redirect"] = _post["next_url"]
