@@ -44,6 +44,10 @@ angular.module(
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("reload")
             ret_obj.icon_class = "fa fa-refresh"
+        else if type == "stop"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = gettextCatalog.getString("stop")
+            ret_obj.icon_class = "fa fa-hand-stop-o"
         else if type == "clear_selection"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("clear selection")
@@ -62,6 +66,10 @@ angular.module(
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = "disable"
             ret_obj.icon_class = "fa fa-ban"
+        else if type == "close"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = "close"
+            ret_obj.icon_class = "fa fa-close"
         else if type == "display"
             ret_obj.css_class = "btn-info"
             ret_obj.icon_class = "fa fa-search"
