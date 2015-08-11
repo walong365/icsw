@@ -33,27 +33,34 @@ class ChangeBootsettingTask(BGInotifyTask):
         short = "cb"
 
     def run(self, cur_bg):
+        to_run = []
         _src_com = server_command.srv_command(source=cur_bg.command_xml)
         devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")[0]]))
-        # target command
-        srv_com = server_command.srv_command(command="refresh")
-        # only valid for one device
-        srv_com["devices"] = srv_com.builder(
-            "devices",
-            *[
-                srv_com.builder("device", name=dev.name, pk="{:d}".format(dev.pk)) for dev in devs
-            ]
-        )
-        to_run = [
-            (
-                background_job_run(
-                    background_job=cur_bg,
-                    server=dev.bootserver,
-                    command_xml=unicode(srv_com),
-                    start=cluster_timezone.localize(datetime.datetime.now()),
-                ),
-                srv_com,
-                "mother",
+        # split for bootservers
+        _boot_dict = {}
+        for _dev in devs:
+            if _dev.bootserver_id:
+                _boot_dict.setdefault(_dev.bootserver_id, []).append(_dev)
+        for srv_id, dev_list in _boot_dict.iteritems():
+            # target command
+            srv_com = server_command.srv_command(command="refresh")
+            # only valid for one device
+            srv_com["devices"] = srv_com.builder(
+                "devices",
+                *[
+                    srv_com.builder("device", name=dev.name, pk="{:d}".format(dev.pk)) for dev in dev_list
+                ]
             )
-        ]
+            to_run.append(
+                (
+                    background_job_run(
+                        background_job=cur_bg,
+                        server=dev_list[0].bootserver,
+                        command_xml=unicode(srv_com),
+                        start=cluster_timezone.localize(datetime.datetime.now()),
+                    ),
+                    srv_com,
+                    "mother",
+                )
+            )
         return to_run
