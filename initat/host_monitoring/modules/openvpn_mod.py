@@ -26,13 +26,12 @@ import tempfile
 import time
 
 from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 OPENVPN_DIR = "/etc/openvpn"
 
 
-class net_speed(object):
+class VPNNetSpeed(object):
     def __init__(self):
         self.__last_update = None
         self.__act_rx, self.__act_tx = (0., 0.)
@@ -51,8 +50,10 @@ class net_speed(object):
         self.__act_rx, self.__act_tx = (rx, tx)
         if last_update:
             diff_time = max(1, abs(last_update - self.__last_update))
-            return (self._get_value(self.__act_rx - prev_rx, diff_time),
-                    self._get_value(self.__act_tx - prev_tx, diff_time))
+            return (
+                self._get_value(self.__act_rx - prev_rx, diff_time),
+                self._get_value(self.__act_tx - prev_tx, diff_time)
+            )
         else:
             return (0., 0.)
 
@@ -113,7 +114,7 @@ class _general(hm_classes.hm_module):
                     client,
                     {
                         "registered": False,
-                        "speed": net_speed()
+                        "speed": VPNNetSpeed(),
                     }
                 )
                 c_pfix = "ovpn.{}.{}".format(ovpn_name, client.replace(".", "_"))
@@ -150,10 +151,10 @@ class _general(hm_classes.hm_module):
                                 found_inst.append(e_key)
                         else:
                             try:
-                                new_inst = openvpn_instance(self.log, entry)
+                                new_inst = OpenVPNInstance(self.log, entry)
                             except:
                                 self.log(
-                                    u"unable to create new openvpn_instance for {}: {}".format(
+                                    u"unable to create new OpenVPNInstance for {}: {}".format(
                                         entry,
                                         process_tools.get_except_info()
                                     ),
@@ -180,14 +181,17 @@ class _general(hm_classes.hm_module):
         return self.__inst_dict[key]
 
 
-class openvpn_instance(object):
+class OpenVPNInstance(object):
     def __init__(self, log_h, name):
         self.__log_handle = log_h
         self.name = name
         self.__conf_obj = process_tools.cached_file(
-            "{}/{}".format(
-                OPENVPN_DIR, name),
-            log_handle=self.log)
+            os.path.join(
+                OPENVPN_DIR,
+                name
+            ),
+            log_handle=self.log
+        )
         self.__status_name, self.__status_obj = ("", None)
         # save client_config_files
         self.__client_config_files = {}
@@ -292,10 +296,12 @@ class openvpn_instance(object):
                                         if diff_time:
                                             cur_speed_dict[c_name] = (int(line[3]), int(line[4]))
                                             if c_name in prev_speed_dict:
-                                                act_dict[c_name].update({
-                                                    "rxs": abs(int(line[3]) - prev_speed_dict[c_name][0]) / diff_time,
-                                                    "txs": abs(int(line[4]) - prev_speed_dict[c_name][1]) / diff_time,
-                                                })
+                                                act_dict[c_name].update(
+                                                    {
+                                                        "rxs": abs(int(line[3]) - prev_speed_dict[c_name][0]) / diff_time,
+                                                        "txs": abs(int(line[4]) - prev_speed_dict[c_name][1]) / diff_time,
+                                                    }
+                                                )
                                     elif key == "ROUTING_TABLE":
                                         act_dict[line[1]]["reference"] = int(line[4])
                         # try to add client dirs
@@ -337,10 +343,14 @@ class openvpn_instance(object):
 
 class certificate_status_command(hm_classes.hm_command):
     def __init__(self, name):
+        self._openssl_command = process_tools.find_file("openssl")
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
 
     def _get_pem_status(self, file_name):
-        pem_com = "/usr/bin/openssl x509 -in {} -startdate -enddate -noout".format(file_name)
+        pem_com = "{} x509 -in {} -startdate -enddate -noout".format(
+            self._openssl_command,
+            file_name,
+        )
         c_stat, c_out = commands.getstatusoutput(pem_com)
         if not c_stat:
             act_dict = {}
@@ -357,6 +367,7 @@ class certificate_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cm):
         temp_dir = tempfile.mkdtemp("_certcheck")
         pem_files = sum([glob.glob(s_glob) for s_glob in cm.arguments], [])
+        pem_files = [(_x, _x) for _x in pem_files]
         inline_cert_re = re.compile(".*</*(?P<cert_type>[a-zA-Z]+)>.*")
         cert_dict, map_dict = ({}, {})
         if not pem_files and os.path.isdir(OPENVPN_DIR):
@@ -389,16 +400,22 @@ class certificate_status_command(hm_classes.hm_command):
                     if key not in ["key"]:
                         full_name = os.path.join(temp_dir, "{}_{}.pem".format(conf_file.replace(".conf", ""), key))
                         file(full_name, "w").write("\n".join(inline_pems[key]))
-                        pem_files.append(full_name)
+                        pem_files.append(("{}@{}".format(key, conf_file), full_name))
                 # pprint.pprint(inline_pems)
             for dir_name, _dir_list, file_list in os.walk(OPENVPN_DIR):
-                pem_files.extend([os.path.join(dir_name, file_name) for file_name in file_list if file_name.endswith(".pem")])
-        for file_name in pem_files:
+                pem_files.extend(
+                    [
+                        (_x, _x) for _x in [
+                            os.path.join(dir_name, file_name) for file_name in file_list if file_name.endswith(".pem")
+                        ]
+                    ]
+                )
+        for show_name, file_name in pem_files:
             act_dict = self._get_pem_status(file_name)
             if act_dict:
                 if file_name in map_dict:
                     act_dict["openvpn_config"] = map_dict[file_name]
-                cert_dict[file_name] = act_dict
+                cert_dict[show_name] = act_dict
         shutil.rmtree(temp_dir)
         srv_com["certificates"] = cert_dict
 
@@ -423,7 +440,8 @@ class certificate_status_command(hm_classes.hm_command):
             if "openvpn_config" in cert_info:
                 info_str = "{} ({})".format(
                     file_name,
-                    os.path.basename(cert_info["openvpn_config"]))
+                    os.path.basename(cert_info["openvpn_config"])
+                )
             else:
                 info_str = file_name
             num_dict["total"] += 1
@@ -454,8 +472,13 @@ class certificate_status_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_OK
         return ret_state, "checked {}, {}{}".format(
             logging_tools.get_plural("certificate", num_dict["total"]),
-            ", ".join([logging_tools.get_plural(key, num_dict[key]) for key in ["ok", "warn", "error"] if num_dict[key]]) or "no problems",
-            "; {}".format(", ".join(sorted(errors))) if errors else "")
+            ", ".join(
+                [
+                    logging_tools.get_plural(key, num_dict[key]) for key in ["ok", "warn", "error"] if num_dict[key]
+                ]
+            ) or "no problems",
+            "; {}".format(", ".join(sorted(errors))) if errors else ""
+        )
 
 
 class openvpn_status_command(hm_classes.hm_command):
@@ -504,28 +527,36 @@ class openvpn_status_command(hm_classes.hm_command):
                     # no p_ip, set p_ip_str according to
                     p_ip_str = " at {}".format(remote_ip)
             if "rxs" in peer_dict:
-                res_field.append("%s (Srv on %s, client %s%s ok, %s/s %s/s) | rx=%d tx=%d" % (
-                    inst_name,
-                    vpn_device,
-                    peer_name,
-                    p_ip_str,
-                    logging_tools.get_size_str(peer_dict["rxs"]),
-                    logging_tools.get_size_str(peer_dict["txs"]),
-                    peer_dict["rxs"],
-                    peer_dict["txs"],
-                ))
+                res_field.append(
+                    "{} (Srv on {}, client {}{} ok, {}/s {}/s) | rx={:d} tx={:d}".format(
+                        inst_name,
+                        vpn_device,
+                        peer_name,
+                        p_ip_str,
+                        logging_tools.get_size_str(peer_dict["rxs"]),
+                        logging_tools.get_size_str(peer_dict["txs"]),
+                        int(peer_dict["rxs"]),
+                        int(peer_dict["txs"]),
+                    )
+                )
             else:
-                res_field.append("%s (Srv on %s, client %s%s ok)" % (
+                res_field.append(
+                    "{} (Srv on {}, client {}{} ok)".format(
+                        inst_name,
+                        vpn_device,
+                        peer_name,
+                        p_ip_str
+                    )
+                )
+        else:
+            res_field.append(
+                "{} (Srv via {}, client {}{} not found)".format(
                     inst_name,
                     vpn_device,
                     peer_name,
-                    p_ip_str))
-        else:
-            res_field.append("%s (Srv via %s, client %s%s not found)" % (
-                inst_name,
-                vpn_device,
-                peer_name,
-                p_ip_str))
+                    p_ip_str
+                )
+            )
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state
 
@@ -585,7 +616,12 @@ class openvpn_status_command(hm_classes.hm_command):
                                         ret_state = max(ret_state, _local_state)
                                         res_field.extend(_field)
                                 if ok_peers:
-                                    res_field.append("{} ok: {}".format(logging_tools.get_plural("peer", len(ok_peers)), ", ".join(sorted(ok_peers))))
+                                    res_field.append(
+                                        "{} ok: {}".format(
+                                            logging_tools.get_plural("peer", len(ok_peers)),
+                                            ", ".join(sorted(ok_peers))
+                                        )
+                                    )
                             else:
                                 ret_state = max(ret_state, self._check_single_peer(clients, vpn_device, inst_name, peer_name, res_field))
                         else:
