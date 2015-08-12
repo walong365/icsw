@@ -37,7 +37,9 @@ class special_net(SpecialBase):
         sc_array = []
         virt_check = re.compile("^.*:\S+$")
         # never check duplex and stuff for a loopback-device
-        nd_list = netdevice.objects.filter(
+        nd_list = netdevice.objects.exclude(
+            Q(devname__icontains=";")
+        ).filter(
             Q(device=self.host) &
             Q(enabled=True)
         ).select_related("netdevice_speed")

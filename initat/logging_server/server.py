@@ -204,7 +204,8 @@ class main_process(ICSWBasePool):
         process_tools.save_pids("logserver/logserver", mult=3)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logserver")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=2, process_name="main")
+        # increased ceiling to 4, ALN 20150812
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block

@@ -21,6 +21,8 @@
 
 class ipv4(object):
     def __init__(self, in_value):
+        if isinstance(in_value, ipv4):
+            in_value = str(in_value)
         # cast tuple to list
         if type(in_value) in [long, int]:
             in_value = list(in_value)
@@ -50,6 +52,10 @@ class ipv4(object):
                 in_value = in_value >> 8
             self.parts = [x for x in self.inv_parts]
             self.parts.reverse()
+        self._update_rep()
+
+    def _update_rep(self):
+        self.__str_rep = ".".join([str(_val) for _val in self.parts])
 
     def value(self):
         bin_ip, mult = (0, 1)
@@ -70,10 +76,10 @@ class ipv4(object):
         return bits
 
     def __str__(self):
-        return ".".join([str(y) for y in self.parts])
+        return self.__str_rep
 
     def __repr__(self):
-        return ".".join([str(y) for y in self.parts])
+        return self.__str_rep
 
     def __len__(self):
         return len(str(self))
@@ -88,10 +94,10 @@ class ipv4(object):
         return ipv4(".".join([str(x | y) for x, y in zip(self.parts, other.parts)]))
 
     def __eq__(self, other):
-        return len([True for x, y in zip(self.parts, other.parts) if x == y]) == 4
+        return self.parts == other.parts
 
     def __ne__(self, other):
-        return len([True for x, y in zip(self.parts, other.parts) if x == y]) != 4
+        return self.parts != other.parts
 
     def __add__(self, other):
         ov = 0
@@ -109,7 +115,7 @@ class ipv4(object):
             return ipv4(".".join([str(x) for x in new_v]))
 
     def __lt__(self, other):
-        for i in range(4):
+        for i in xrange(4):
             if self.parts[i] > other.parts[i]:
                 return False
             elif self.parts[i] < other.parts[i]:
@@ -117,7 +123,7 @@ class ipv4(object):
         return False
 
     def __gt__(self, other):
-        for i in range(4):
+        for i in xrange(4):
             if self.parts[i] < other.parts[i]:
                 return False
             elif self.parts[i] > other.parts[i]:
@@ -125,7 +131,7 @@ class ipv4(object):
         return False
 
     def __le__(self, other):
-        for i in range(4):
+        for i in xrange(4):
             if self.parts[i] > other.parts[i]:
                 return False
             elif self.parts[i] < other.parts[i]:
@@ -133,7 +139,7 @@ class ipv4(object):
         return True
 
     def __ge__(self, other):
-        for i in range(4):
+        for i in xrange(4):
             if self.parts[i] < other.parts[i]:
                 return False
             elif self.parts[i] > other.parts[i]:
