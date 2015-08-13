@@ -46,7 +46,7 @@ class ServiceHelper(object):
         self.log("found {}".format(logging_tools.get_plural("service", len(self.__services))))
 
     def _get_systemd_services(self):
-        _out = self._call_command("{} list-units --type=service".format(self._systemctl))
+        _stat, _out, _err = self._call_command("{} list-units --type=service".format(self._systemctl))
         for _line in _out.strip().split("\n")[1:-1]:
             try:
                 _key, _value = _line.strip().split(None, 1)
@@ -56,17 +56,26 @@ class ServiceHelper(object):
                 self.__services[_key] = _value
 
     def _get_init_services(self):
-        _out = self._call_command("{} -A".format(self._chkconfig))
-        for _line in _out.strip().split("\n")[1:-1]:
-            try:
-                _key, _value = _line.strip().split(None, 1)
-            except:
-                pass
-            else:
-                self.__services[_key] = _value
+        _stat, _out, _err = self._call_command("{} -A".format(self._chkconfig))
+        if _err:
+            # -A switch not known (centos 6), use full output and parse
+            _stat, _out, _err = self._call_command("{}".format(self._chkconfig))
+            for _line in _out.strip().split("\n"):
+                if not _line.strip():
+                    break
+                _key, _rest = _line.strip().split(None, 1)
+                self.__services[_key] = None
+        else:
+            for _line in _out.strip().split("\n")[1:-1]:
+                try:
+                    _key, _value = _line.strip().split(None, 1)
+                except:
+                    pass
+                else:
+                    self.__services[_key] = _value
 
     def _call_command(self, com_str):
-        return process_tools.call_command(com_str, self.log, close_fds=True, log_stdout=False)[1]
+        return process_tools.call_command(com_str, self.log, close_fds=True, log_stdout=False)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[SH{}] {}".format(self._method, what), log_level)

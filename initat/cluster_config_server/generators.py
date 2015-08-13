@@ -40,8 +40,6 @@ def do_uuid(conf):
     uuid_str = "urn:uuid:{}".format(conf_dict["device"].uuid)
     _cs = config_store.ConfigStore(uuid_tools.DATASTORE_NAME)
     _cs["cluster.device.uuid"] = uuid_str
-    # cdf_file = conf.add_file_object("/etc/sysconfig/cluster/.cluster_device_uuid")
-    # cdf_file.append(uuid_str)
     cdf_file = conf.add_file_object(_cs.file_name)
     cdf_file.append(
         _cs.show()
@@ -54,6 +52,13 @@ def do_uuid(conf):
             xml_declaration=True,
         )
     )
+
+
+def do_uuid_old(conf):
+    conf_dict = conf.conf_dict
+    uuid_str = "urn:uuid:{}".format(conf_dict["device"].uuid)
+    cdf_file = conf.add_file_object("/etc/sysconfig/cluster/.cluster_device_uuid")
+    cdf_file.append(uuid_str)
 
 
 def do_nets(conf):

@@ -440,20 +440,39 @@ class KernelHelper(object):
         lib_dir = os.path.join(self.path, "lib", "modules")
         if os.path.isdir(lib_dir):
             _entry = os.listdir(lib_dir)
+            # create weak_updates flag
             if len(_entry) != 1:
                 self.log(
-                    "need one entry in lib/modules subdir, found {:d}: {}".format(
+                    "need only one entry in lib/modules subdir, found {:d}: {}".format(
                         len(_entry),
                         ", ".join(sorted(_entry))
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
-                _name = ""
+                _sub_dirs = {
+                    _key: os.listdir(_key) for _key in [
+                        os.path.join(lib_dir, _dir) for _dir in _entry
+                    ] if os.path.isdir(_key)
+                }
+                _weak_dirs = [
+                    _key for _key, _value in _sub_dirs.iteritems() if not set(_value) - set(["extra"])
+                ]
+                self.log("weak dirs: {}".format(", ".join(_weak_dirs)))
+                _left = list(set(_sub_dirs.keys()) - set(_weak_dirs))
+                if len(_left) == 1:
+                    _name = os.path.basename(_left[0])
+                else:
+                    self.log("clearing name", logging_tools.LOG_LEVEL_ERROR)
+                    _name = ""
             else:
                 _name = _entry[0]
         else:
             self.log("no lib_dir {} found".format(lib_dir), logging_tools.LOG_LEVEL_ERROR)
             _name = ""
+        self.log(
+            "setting kernel name to '{}'".format(_name),
+            logging_tools.LOG_LEVEL_OK if _name else logging_tools.LOG_LEVEL_WARN
+        )
         self._update_kernel(name=_name)
 
     def check_comment(self):

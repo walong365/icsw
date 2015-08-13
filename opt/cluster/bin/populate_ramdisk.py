@@ -1336,9 +1336,11 @@ def main_normal():
     # set initsize if not already set
     if not my_args.init_size:
         my_args.init_size = int(conf_dict.get("CONFIG_BLK_DEV_RAM_SIZE", "32768"))
+        print("read CONFIG_BLK_DEV_RAM_SIZE from .config: {:d}".format(my_args.init_size))
     # check for 64bit Kernel
     if not my_args.kernel_64_bit:
         my_args.kernel_64_bit = "CONFIG_X86_64" in conf_dict
+    print("using initrd RAM-Disk size of {:d}".format(my_args.init_size))
     if not local_arch_64bit and my_args.kernel_64_bit:
         print "/ is 32bit and Kernel 64 bit, exiting"
         sys.exit(1)

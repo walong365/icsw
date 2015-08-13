@@ -56,6 +56,7 @@ class ipv4(object):
 
     def _update_rep(self):
         self.__str_rep = ".".join([str(_val) for _val in self.parts])
+        self.__int_rep = int("".join(["{:02x}".format(_val) for _val in self.parts]), 16)
 
     def value(self):
         bin_ip, mult = (0, 1)
@@ -98,6 +99,9 @@ class ipv4(object):
 
     def __ne__(self, other):
         return self.parts != other.parts
+
+    def __hash__(self):
+        return self.__int_rep
 
     def __add__(self, other):
         ov = 0
