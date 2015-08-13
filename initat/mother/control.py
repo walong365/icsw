@@ -767,8 +767,8 @@ class Host(object):
                         self.log("Copying {} from {} to {} ...".format(stage_name, stage_source, stage_dest))
                         open(stage_dest, "w").write(open(stage_source, "r").read())
                 # print kernel_stuff
-                kern_base_dir = "../../kernels/{}".format(new_kernel.name)
-                kern_abs_base_dir = "{}/kernels/{}".format(global_config["TFTP_DIR"], new_kernel.name)
+                kern_base_dir = "../../kernels/{}".format(new_kernel.display_name)
+                kern_abs_base_dir = "{}/kernels/{}".format(global_config["TFTP_DIR"], new_kernel.display_name)
                 unlink_field = [
                     "{}/k".format(kern_dst_dir),
                     "{}/i".format(kern_dst_dir),
@@ -950,7 +950,12 @@ class Host(object):
                         "Netmask        : {} ({})".format(self.maint_ip.network.netmask, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask)),
                         "MACAddress     : {}".format(self.bootnetdevice.macaddr.lower()),
                         "Stage1 flavour : {}".format(self.device.stage1_flavour),
-                        "Kernel to boot : {}".format(new_kernel.name or "<no kernel set>"),
+                        "Kernel to boot : {}".format(
+                            "{} (is a {})".format(
+                                new_kernel.display_name,
+                                new_kernel.name
+                            ) or "<no kernel set>"
+                        ),
                         "device UUID    : {}".format(self.device.get_boot_uuid()),
                         "Kernel options : {}".format(append_string or "<none set>"),
                         "target state   : {}".format(unicode(self.device.new_state) if self.device.new_state_id else "???"),

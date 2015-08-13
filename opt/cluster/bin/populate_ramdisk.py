@@ -78,7 +78,7 @@ stage1_file_dict = {
         "readlink", "ethtool", "cp", "mount", "cat", "ls", "mount", "mkdir", "find", "head",
         "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
         "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
-        "lsmod", "depmod", "insmod", "mkfs.ext2", "date", "xml",
+        "lsmod", "depmod", "insmod", "mkfs.ext2", "date", "xml", "uname",
         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
         "killall", "seq", "hoststatus_zmq", "chown", "ldconfig", "which", "ln",
         "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee",
@@ -1357,7 +1357,7 @@ def main_normal():
         if len(kverdirs) > 1:
             if kernel_name not in kverdirs:
                 print("Cannot find kernel specifier {} in kernel dir".format(kernel_name))
-                sys.exit(1)
+                # sys.exit(1)
             _extra = [_kvd for _kvd in kverdirs if _kvd != kernel_name]
             print(
                 "    {} found: {}".format(
@@ -1369,6 +1369,7 @@ def main_normal():
             print "No KernelVersionDirectory found below '{}/lib/modules'".format(my_args.kernel_dir)
             sys.exit(1)
         kverdir = my_kernel.name
+        print("kernel version dir name is '{}'".format(kverdir))
 
         if my_args.do_depmod_call:
             lib_dir = os.path.join(my_args.kernel_dir, "lib", "modules", kverdir)

@@ -29,7 +29,7 @@ from initat.cluster.backbone.models import wc_files, tree_node
 from initat.cluster_config_server.base_objects import new_config_object, dir_object, copy_object, \
     link_object, delete_object, file_object
 from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
-    do_etc_hosts, do_hosts_equiv
+    do_etc_hosts, do_hosts_equiv, do_uuid_old
 from initat.cluster_config_server.partition_setup import partition_setup
 from initat.tools import logging_tools
 from initat.tools import process_tools
@@ -450,6 +450,7 @@ class build_container(object):
                             "do_routes": do_routes,
                             "do_fstab": do_fstab,
                             "do_uuid": do_uuid,
+                            "do_uuid_old": do_uuid_old,
                             "partition_setup": partition_setup,
                         }
                     )

@@ -163,7 +163,6 @@ class sess_login(View):
         login_password = _post.get('password')
 
         real_user_name = self.__class__.get_real_user_name(login_name)
-        print "****", login_name, real_user_name
 
         try:
             db_user = self.__class__._check_login_data(request, real_user_name, login_password)

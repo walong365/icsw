@@ -87,7 +87,7 @@ cp -a /sbin/reboot /sbin/reboot.old
 rm /sbin/reboot
 echo "#!/bin/bash" > /sbin/reboot
 echo "/sbin/reboot.old -f " >> /sbin/reboot
-chmod +x /sbin/v
+chmod +x /sbin/reboot
 
 # create links for Centos
 if [ -x /sbin/mount.nfs ] ; then

@@ -156,7 +156,7 @@ class kernel(models.Model):
     idx = models.AutoField(db_column="kernel_idx", primary_key=True)
     # display (and directory name), should be unique
     display_name = models.CharField(max_length=128, default="")
-    # real kernel name
+    # real kernel name (== subdir in lib/modules)
     name = models.CharField(max_length=384, default="")
     kernel_version = models.CharField(max_length=384)
     major = models.CharField(max_length=192, blank=True)
