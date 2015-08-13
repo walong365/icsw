@@ -211,7 +211,7 @@ class kernel(models.Model):
     class Meta:
         db_table = u'kernel'
         verbose_name = u"Kernel"
-        order_by = ("display_name", "pk",)
+        ordering = ("display_name", "pk",)
 
     @property
     def full_version(self):
