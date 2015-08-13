@@ -24,6 +24,11 @@
 
 import sys
 
+
+if __name__ == "__main__":
+    # modify path if testing
+    sys.path.insert(0, ".")
+
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring.config import global_config
 from initat.client_version import VERSION_STRING
@@ -110,3 +115,7 @@ def main():
         show_command_info()
     ret_state = run_code(prog_name, global_config)
     return ret_state
+
+
+if __name__ == "__main__":
+    main()
