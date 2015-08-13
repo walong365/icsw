@@ -33,8 +33,6 @@ import psutil
 TOTAL_DEVICE_NAME = "all"
 # names of netdevices to ignore for total
 TOTAL_IGNORE_LIST = ["lo"]
-# name of bonding info filename
-# BONDFILE_NAME = "bondinfo"
 # devices to check
 NET_DEVICES = ["eth", "lo", "myr", "ib", "xenbr", "vmnet", "tun", "tap", TOTAL_DEVICE_NAME]
 # devices for detailed statistics
@@ -1602,12 +1600,17 @@ class ntp_status_command(hm_classes.hm_command):
             else:
                 good_peers = set()
             ignored_peers = set(_peers) - (good_peers | set([primary_peer]))
-            return ret_state, "%s defined, %s" % (
+            return ret_state, "{} defined, {}".format(
                 logging_tools.get_plural("peer", len(_peers)),
-                ", ".join([entry for entry in [
-                    "primary is {}".format(primary_peer) if primary_peer else "",
-                    "good: {}".format(", ".join(sorted(good_peers))) if good_peers else "",
-                    "ignored: {}".format(", ".join(sorted(ignored_peers))) if ignored_peers else "",
-                ] if entry]))
+                ", ".join(
+                    [
+                        entry for entry in [
+                            "primary is {}".format(primary_peer) if primary_peer else "",
+                            "good: {}".format(", ".join(sorted(good_peers))) if good_peers else "",
+                            "ignored: {}".format(", ".join(sorted(ignored_peers))) if ignored_peers else "",
+                        ] if entry
+                    ]
+                )
+            )
         else:
             return limits.nag_STATE_CRITICAL, _lines[0]

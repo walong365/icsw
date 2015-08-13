@@ -657,7 +657,7 @@ def mon_device_templ_pre_save(sender, **kwargs):
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
             ("max_attempts", 1, 10),
-            ("ninterval", 0, 60 * 24),
+            ("ninterval", 0, 60 * 24 * 7),
             ("low_flap_threshold", 0, 100),
             ("high_flap_threshold", 0, 100),
             ("check_interval", 1, 60),
@@ -698,7 +698,7 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
         for attr_name, min_val, max_val in [
             ("first_notification", 1, 10),
             ("last_notification", 1, 10),
-            ("ninterval", 0, 60 * 24)
+            ("ninterval", 0, 60 * 24 * 7)
         ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 

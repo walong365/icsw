@@ -874,16 +874,19 @@ class _general(hm_classes.hm_module):
                                 dev_name = part_name
                                 while dev_name[-1].isdigit():
                                     dev_name = dev_name[:-1]
-                                part_num = int(part_name[len(dev_name):])
-                                dev_name = os.path.join("/dev", dev_name)
-                                if dev_name not in dev_dict:
-                                    dev_dict[dev_name] = {}
-                                dev_dict[dev_name]["%d" % (part_num)] = {
-                                    "size": part_size / 1024,
-                                    "hextype": "0x00",
-                                    "info": ""
-                                }
-                                part_lut["/dev/{}".format(part_name)] = (dev_name, "{:d}".format(part_num))
+                                if len(dev_name) == len(part_name):
+                                    self.log("no partition number found in {}".format(part_name), logging_tools.LOG_LEVEL_WARN)
+                                else:
+                                    part_num = int(part_name[len(dev_name):])
+                                    dev_name = os.path.join("/dev", dev_name)
+                                    if dev_name not in dev_dict:
+                                        dev_dict[dev_name] = {}
+                                    dev_dict[dev_name]["%d" % (part_num)] = {
+                                        "size": part_size / 1024,
+                                        "hextype": "0x00",
+                                        "info": ""
+                                    }
+                                    part_lut["/dev/{}".format(part_name)] = (dev_name, "{:d}".format(part_num))
                     # automount mointpoints
                     auto_mps = []
                     # drop unneeded entries

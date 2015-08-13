@@ -17,6 +17,9 @@
 ### END INIT INFO
 
 export SYSTEMD_NO_WRAP="1"
+export SYSTEMCTL_SKIP_REDIRECT="1"
+export _SYSTEMCTL_SKIP_REDIRECT="1"
+
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else

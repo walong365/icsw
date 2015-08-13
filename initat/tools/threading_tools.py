@@ -225,13 +225,13 @@ class debug_zmq_ctx(zmq.Context):
         super(debug_zmq_ctx, self).term()
 
 
-class _timer_obj(object):
+class TimerBaseEntry(object):
     timer_id = 0
 
     def __init__(self, step, next_time, cb_func, **kwargs):
         # unique id
-        self.timer_id = _timer_obj.timer_id
-        _timer_obj.timer_id += 1
+        self.timer_id = TimerBaseEntry.timer_id
+        TimerBaseEntry.timer_id += 1
         # step value
         self.step = step
         # next wakeup time
@@ -262,7 +262,7 @@ class TimerBase(object):
         s_time = time.time()
         if not kwargs.get("instant", False):
             s_time = s_time + kwargs.get("first_timeout", timeout)
-        self.__timer_list.append(_timer_obj(timeout, s_time, cb_func, **kwargs))
+        self.__timer_list.append(TimerBaseEntry(timeout, s_time, cb_func, **kwargs))
         self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
         if not self.__loop_timer:
             self.__loop_timer = 500

@@ -2,7 +2,7 @@
 
 import os
 from lxml import etree
-import pprint
+
 
 # dumps the current data_store xml structure
 # ignore all in sub_dict, is an ancient structure
