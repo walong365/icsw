@@ -68,38 +68,39 @@ class handler(SNMPHandler):
                     "peer_d_netdevice",
                 )
             }
-            for _mac in sorted(_mac_dict):
-                if _mac in _nd_dict:
-                    _snmp_idx = _mac_dict[_mac]
-                    _nd = _nd_dict[_mac]
-                    s_peers, d_peers = (_nd.peer_s_netdevice.all(), _nd.peer_d_netdevice.all())
-                    self.log(
-                        "MAC {} (snmp_idx {:d}) -> netdevice '{}' on device '{}', current: {}".format(
-                            _mac,
-                            _snmp_idx,
-                            unicode(_nd),
-                            unicode(_nd.device),
-                            logging_tools.get_plural("peer", len(s_peers) + len(d_peers)),
+            if flags["modify_peering"]:
+                for _mac in sorted(_mac_dict):
+                    if _mac in _nd_dict:
+                        _snmp_idx = _mac_dict[_mac]
+                        _nd = _nd_dict[_mac]
+                        s_peers, d_peers = (_nd.peer_s_netdevice.all(), _nd.peer_d_netdevice.all())
+                        self.log(
+                            "MAC {} (snmp_idx {:d}) -> netdevice '{}' on device '{}', current: {}".format(
+                                _mac,
+                                _snmp_idx,
+                                unicode(_nd),
+                                unicode(_nd.device),
+                                logging_tools.get_plural("peer", len(s_peers) + len(d_peers)),
+                            )
                         )
-                    )
-                    other_pks = set([_p.d_netdevice_id for _p in s_peers]) | set([_p.s_netdevice_id for _p in d_peers])
-                    if not other_pks & my_nd_pks:
-                        if _snmp_idx in my_nd_dict:
-                            self.log(
-                                "creating new peer from '{}' to '{}'".format(
-                                    unicode(my_nd_dict[_snmp_idx]),
-                                    unicode(_nd),
+                        other_pks = set([_p.d_netdevice_id for _p in s_peers]) | set([_p.s_netdevice_id for _p in d_peers])
+                        if not other_pks & my_nd_pks:
+                            if _snmp_idx in my_nd_dict:
+                                self.log(
+                                    "creating new peer from '{}' to '{}'".format(
+                                        unicode(my_nd_dict[_snmp_idx]),
+                                        unicode(_nd),
+                                    )
                                 )
-                            )
-                            _added += 1
-                            peer_information.objects.create(
-                                s_netdevice=my_nd_dict[_snmp_idx],
-                                d_netdevice=_nd,
-                                penalty=1,
-                                autocreated=True,
-                            )
-                        else:
-                            self.log("snmp_idx {:d} not found in local network dict".format(_snmp_idx), logging_tools.LOG_LEVEL_WARN)
+                                _added += 1
+                                peer_information.objects.create(
+                                    s_netdevice=my_nd_dict[_snmp_idx],
+                                    d_netdevice=_nd,
+                                    penalty=1,
+                                    autocreated=True,
+                                )
+                            else:
+                                self.log("snmp_idx {:d} not found in local network dict".format(_snmp_idx), logging_tools.LOG_LEVEL_WARN)
         if _added:
             return ResultNode(
                 ok="added {}".format(logging_tools.get_plural("peer information", _added))

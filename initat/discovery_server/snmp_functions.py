@@ -48,12 +48,13 @@ class SNMPBatch(object):
             self.device = device.objects.get(Q(pk=_dev.attrib["pk"]))
             self.log("device is {}".format(unicode(self.device)))
             self.set_snmp_props(
-                int(_dev.attrib["snmp_version"]),
+                int({"2c": "2"}.get(_dev.attrib["snmp_version"], _dev.attrib["snmp_version"])),
                 _dev.attrib["scan_address"],
                 _dev.attrib["snmp_community"],
             )
             self.flags = {
                 "strict": True if int(_dev.attrib.get("strict", "0")) else False,
+                "modify_peering": True if int(_dev.attrib.get("modify_peering", "0")) else False,
             }
         except:
             handle_error("error setting device node: {}".format(process_tools.get_except_info()))

@@ -3161,7 +3161,15 @@
                             </label></div>
                         </div>
                     </div>
-                    <div class="alert alert-danger" ng-show="!_edit_obj.strict_mode">attention: peers might get lost
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="_edit_obj.modify_peering" type="checkbox"/>
+                                Modify peering (dangerous)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger" ng-show="!_edit_obj.strict_mode && _edit_obj.modify_peering">attention: peers might get lost
                     </div>
                 </fieldset>
             </tab>
@@ -3170,17 +3178,17 @@
                     <legend>SNMP Scan Settings</legend>
                     <div id="div_id_snmp_community" class="form-group">
                         <label for="id_snmp_community" class="control-label col-sm-3 requiredField">
-                            Snmp community<span class="asteriskField">*</span></label>
-
+                            SNMP community<span class="asteriskField">*</span>
+                        </label>
                         <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_snmp_community" maxlength="128" name="snmp_community" ng-model="_edit_obj.snmp_community" required="True" type="text"></input></div>
                     </div>
                     <div id="div_id_snmp_version" class="form-group">
                         <label for="id_snmp_version" class="control-label col-sm-3 requiredField">
-                            Snmp version<span class="asteriskField">*</span></label>
-
+                            SNMP version<span class="asteriskField">*</span>
+                        </label>
                         <div class="controls col-sm-7"><select class="select form-control" id="id_snmp_version" name="snmp_version" ng-model="_edit_obj.snmp_version" required="True">
                             <option value="1">1</option>
-                            <option value="2">2</option>
+                            <option value="2c">2c</option>
                         </select></div>
                     </div>
                 </fieldset>
@@ -3188,9 +3196,20 @@
                     <legend>Flags</legend>
                     <div class="form-group">
                         <div id="div_id_remove_not_found" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_remove_not_found"><input class="checkboxinput checkbox" id="id_remove_not_found" name="remove_not_found" ng-model="_edit_obj.remove_not_found" type="checkbox"></input>
-                                Remove not found
-                            </label></div>
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label for="id_remove_not_found">
+                                    <input class="checkboxinput checkbox" id="id_remove_not_found" name="remove_not_found" ng-model="_edit_obj.remove_not_found" type="checkbox"/>
+                                    Remove not found
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="_edit_obj.modify_peering" type="checkbox"/>
+                                Modify peering (dangerous)
+                            </label>
                         </div>
                     </div>
                 </fieldset>
@@ -3210,11 +3229,20 @@
                         </label>
                         <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_password" maxlength="256" name="wmi_password" ng-model="_edit_obj.wmi_password" type="password"></input></div>
                     </div>
-                    <div class="form-group">
-                        <div id="div_id_wmi_discard_disabled_interfaces" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_wmi_discard_disabled_interfaces"><input class="checkboxinput checkbox" id="id_wmi_discard_disabled_interfaces" name="wmi_discard_disabled_interfaces" ng-model="_edit_obj.wmi_discard_disabled_interfaces" type="checkbox"></input>
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="_edit_obj.wmi_discard_disabled_interfaces" type="checkbox"/>
                                 Ignore disabled interfaces
-                            </label></div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="_edit_obj.modify_peering" type="checkbox"/>
+                                Modify peering (dangerous)
+                            </label>
                         </div>
                     </div>
                 </fieldset>

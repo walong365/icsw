@@ -404,6 +404,7 @@ class HostMonitoringMixin(object):
     def scan_network_info(self, dev_com, scan_dev):
         res_node = ResultNode()
         strict_mode = True if int(dev_com.get("strict_mode")) else False
+        modify_peering = True if int(dev_com.get("modify_peering")) else False
         scan_address = dev_com.get("scan_address")
         self.log(
             "scanning network for device '{}' ({:d}), scan_address is '{}', strict_mode is {}".format(
@@ -430,7 +431,9 @@ class HostMonitoringMixin(object):
         res_list = zmq_con.loop()
         self.log("length of result list: {:d}".format(len(res_list)))
         num_taken, num_ignored = (0, 0)
-        nds_list = netdevice_speed.objects.filter(Q(speed_bps__in=[1000000000, 100000000])).order_by("-speed_bps", "-full_duplex", "-check_via_ethtool")
+        nds_list = netdevice_speed.objects.filter(
+            Q(speed_bps__in=[1000000000, 100000000])
+        ).order_by("-speed_bps", "-full_duplex", "-check_via_ethtool")
         default_nds = nds_list[0]
         self.log("default nds is {}".format(unicode(default_nds)))
 
@@ -508,7 +511,9 @@ class HostMonitoringMixin(object):
                                 all_ok = False
                             else:
                                 res_node.warn(_err_str)
-                        [NDStruct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(NDStruct.dict.keys())]
+                        [
+                            NDStruct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(NDStruct.dict.keys())
+                        ]
                         if not all_ok and strict_mode:
                             self.log("rolling back to savepoint because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
                             num_taken -= target_dev.netdevice_set.all().count()

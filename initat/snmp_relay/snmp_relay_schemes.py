@@ -455,7 +455,7 @@ class snmp_info_scheme(snmp_scheme):
         simple_dict = self.snmp_dict.values()[0]
         self._check_for_missing_keys(simple_dict, needed_keys=set([(4, 0), (5, 0), (6, 0)]))
         ret_state = limits.nag_STATE_OK
-        return ret_state, "SNMP Info: contact %s, name %s, location %s" % (
+        return ret_state, "SNMP Info: contact {}, name {}, location {}".format(
             simple_dict[(4, 0)] or "???",
             simple_dict[(5, 0)] or "???",
             simple_dict[(6, 0)] or "???",

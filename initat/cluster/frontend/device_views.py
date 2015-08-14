@@ -263,6 +263,7 @@ class scan_device_network(View):
                     "pk": "{:d}".format(_dev.pk),
                     "scan_address": _json_dev["scan_address"],
                     "strict_mode": "1" if _json_dev["strict_mode"] else "0",
+                    "modify_peering": "1" if _json_dev["modify_peering"] else "0",
                 }
             )
             srv_com["devices"] = _dev_node
@@ -275,7 +276,8 @@ class scan_device_network(View):
                     "scan_address": _json_dev["scan_address"],
                     "snmp_version": "{}".format(_json_dev["snmp_version"]),
                     "snmp_community": _json_dev["snmp_community"],
-                    "strict": "1" if _json_dev["remove_not_found"] else "0"
+                    "strict": "1" if _json_dev["remove_not_found"] else "0",
+                    "modify_peering": "1" if _json_dev["modify_peering"] else "0",
                 }
             )
             srv_com["devices"] = _dev_node

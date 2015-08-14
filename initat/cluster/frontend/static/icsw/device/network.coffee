@@ -373,9 +373,10 @@ angular.module(
             if not dev.com_caps?
                 # init com_caps array if not already set
                 dev.com_caps = []
-            dev.snmp_version = 1
+            dev.snmp_version = "2c"
             dev.remove_not_found = false
             dev.strict_mode = true
+            dev.modify_peering = false
             dev.wmi_username = "Administrator"
             dev.wmi_password = ""
             dev.wmi_discard_disabled_interfaces = true

@@ -20,24 +20,18 @@
 # -*- coding: utf-8 -*-
 #
 import json
-import pprint
-import bson.json_util
 import collections
-import datetime
-import dateutil.parser
 
+import bson.json_util
+import dateutil.parser
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-import itertools
 from pymongo.errors import PyMongoError
-from rest_framework.response import Response
-import time
 from initat.cluster.backbone.models import device, config, config_str, config_int
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 import pymongo
-from rest_framework.generics import ListAPIView
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.rest_views import rest_logging
 
