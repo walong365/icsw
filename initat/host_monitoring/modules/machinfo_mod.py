@@ -1747,7 +1747,9 @@ class ksminfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         ksm_dir = "/sys/kernel/mm/ksm"
         if os.path.isdir(ksm_dir):
-            srv_com["ksm"] = {entry: file(os.path.join(ksm_dir, entry), "r").read().strip() for entry in os.listdir(ksm_dir)}
+            srv_com["ksm"] = {
+                entry: file(os.path.join(ksm_dir, entry), "r").read().strip() for entry in os.listdir(ksm_dir)
+            }
         else:
             srv_com["ksm"] = "not found"
 
@@ -1756,18 +1758,27 @@ class ksminfo_command(hm_classes.hm_command):
         if type(ksm_info) == dict:
             page_size = 4096
             ksm_info = {key: int(value) * page_size if value.isdigit() else value for key, value in ksm_info.iteritems()}
+            info_field = [
+                "{} shared".format(
+                    logging_tools.get_size_str(ksm_info["pages_shared"], strip_spaces=True)
+                ),
+                "{} saved".format(
+                    logging_tools.get_size_str(ksm_info["pages_sharing"], strip_spaces=True)
+                ),
+                "{} volatile".format(
+                    logging_tools.get_size_str(ksm_info["pages_volatile"], strip_spaces=True)
+                ),
+                "{} unshared".format(
+                    logging_tools.get_size_str(ksm_info["pages_unshared"], strip_spaces=True)
+                )
+            ]
             if ksm_info["run"]:
-                info_field = [
-                    "%s shared" % (logging_tools.get_size_str(ksm_info["pages_shared"], strip_spaces=True)),
-                    "%s saved" % (logging_tools.get_size_str(ksm_info["pages_sharing"], strip_spaces=True)),
-                    "%s volatile" % (logging_tools.get_size_str(ksm_info["pages_volatile"], strip_spaces=True)),
-                    "%s unshared" % (logging_tools.get_size_str(ksm_info["pages_unshared"], strip_spaces=True))
-                ]
-                return limits.nag_STATE_OK, "KSM info: %s" % (", ".join(info_field))
+                info_field.append("running")
             else:
-                return limits.nag_STATE_WARNING, "KSM available but not enabled"
+                info_field.append("not running")
+            return limits.nag_STATE_OK, "KSM info: {}".format(", ".join(info_field))
         else:
-            return limits.nag_STATE_CRITICAL, "ksm problem: %s" % (ksm_info.text)
+            return limits.nag_STATE_CRITICAL, "ksm problem: {]".format(ksm_info.text)
 
 
 class hugepageinfo_command(hm_classes.hm_command):
