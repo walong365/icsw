@@ -436,9 +436,9 @@
 
 <script type="text/ng-template" id="icsw.config.generate.config">
     <div ng-show="has_valid_license('netboot')">
-        <input type="button" class="btn btn-success btn-sm" value="generate device config" ng-show="devsel_list.length" ng-click="generate_config()"/>
+        <input type="button" class="btn btn-info btn-sm" value="show device config" ng-show="devsel_list.length" ng-click="generate_config()"/>
         <span ng-show="devsel_list.length">
-            for {{ dev_names() }}
+            <!--for {{ dev_names() }}-->
         </span>
         <div ng-show="result_trees.length">
             <tabset>
