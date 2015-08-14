@@ -21,6 +21,7 @@ setup(
         "initat.tools.logging_tools",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",
+        "initat.tools.nameserver_tools",
         "initat.rms",
         "initat.cluster",
         "initat.cluster.backbone",
