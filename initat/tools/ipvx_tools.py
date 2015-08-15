@@ -150,6 +150,15 @@ class ipv4(object):
                 return True
         return True
 
+    @property
+    def private(self):
+        _priv = False
+        for _nw, _nm in _PRIV_NETWORKS:
+            if self & _nm == _nw:
+                _priv = True
+                break
+        return _priv
+
     def find_matching_network(self, nw_list):
         match_list = []
         for nw_stuff in nw_list:
@@ -160,6 +169,19 @@ class ipv4(object):
 
     def network_matches(self, nw_stuff):
         return self & ipv4(nw_stuff.netmask) == ipv4(nw_stuff.network)
+
+
+_PRIV_NETWORKS = [
+    (
+        ipv4("10.0.0.0"), ipv4("255.0.0.0"),
+    ),
+    (
+        ipv4("172.16.0.0"), ipv4("255.224.0.0"),
+    ),
+    (
+        ipv4("192.168.0.0"), ipv4("255.255.0.0"),
+    ),
+]
 
 
 def get_network_name_from_mask(mask):

@@ -35,6 +35,8 @@ class Network(object):
         self.netmask = netmask
         # is a private network
         self.private = kwargs.get("private", False)
+        if "private" not in kwargs:
+            self.private = self.network.private
         self.records = []
         self.used_ips = set()
 
