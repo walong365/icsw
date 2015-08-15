@@ -223,7 +223,7 @@ class ctrl_type_hpacu(ctrl_type):
                 status_dict = {
                     key: value for key, value in c_stuff.get("status", {}).iteritems()
                 }
-            if set(status_dict.values()) != set(["ok", "not redundant"]):
+            if set(status_dict.values()) - set(["ok", "not redundant"]):
                 error_f.append(
                     "status of controller {} (slot {:d}): {}".format(
                         c_stuff["info"],
