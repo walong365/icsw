@@ -285,6 +285,8 @@ class ctrl_type_hpacu(ctrl_type):
         else:
             ret_state, ret_str = (limits.nag_STATE_OK, "OK")
             error_str = ""
+        if not num_cont:
+            ret_state = max(ret_state, limits.nag_STATE_WARNING)
         if num_array:
             return ret_state, "{}: {}, {} ({}), {} ({}), {} ({}){}".format(
                 ret_str,

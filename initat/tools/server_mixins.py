@@ -23,9 +23,9 @@ import time
 import re
 import sys
 
+import zmq
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
     configfile, config_store, uuid_tools
-import zmq
 from enum import IntEnum
 from initat.icsw.service.instance import InstanceXML
 

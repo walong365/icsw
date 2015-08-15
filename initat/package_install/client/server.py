@@ -291,8 +291,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     @RemoteCall()
     def get_0mq_id(self, srv_com, **kwargs):
-        srv_com["zmq_id"] = kwargs["bind_id"]
-        srv_com.set_result("0MQ_ID is {}".format(kwargs["bind_id"]))
+        srv_com["zmq_id"] = self.bind_id
+        srv_com.set_result("0MQ_ID is {}".format(self.bind_id))
         return srv_com
 
     @RemoteCall()

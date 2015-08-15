@@ -52,6 +52,10 @@ def do_uuid(conf):
             xml_declaration=True,
         )
     )
+    old_uuid = conf.add_file_object("/opt/cluster/etc/.cluster_device_uuid")
+    old_uuid.append(
+        uuid_str
+    )
 
 
 def do_uuid_old(conf):
