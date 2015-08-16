@@ -32,6 +32,11 @@ RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 
 
 def get_repo_str(_type, in_repo):
+    def get_url(in_repo):
+        _url = in_repo.findtext("url")
+        # FIXEME, add username / password
+        return _url
+
     if _type == "zypper":
         # copy from initat.cluster.backbone.models.package_repo.repo_str
         _vf = [
@@ -39,7 +44,7 @@ def get_repo_str(_type, in_repo):
             "name={}".format(in_repo.findtext("name")),
             "enabled={:d}".format(1 if in_repo.findtext("enabled") == "True" else 0),
             "autorefresh={:d}".format(1 if in_repo.findtext("autorefresh") == "True" else 0),
-            "baseurl={}".format(in_repo.findtext("url")),
+            "baseurl={}".format(get_url(in_repo)),
             "type={}".format(in_repo.findtext("repo_type") or "NONE"),
         ]
         if in_repo.findtext("priority"):
@@ -55,7 +60,7 @@ def get_repo_str(_type, in_repo):
             "name={}".format(in_repo.findtext("alias")),
             "enabled={:d}".format(1 if in_repo.findtext("enabled") == "True" else 0),
             "autorefresh={:d}".format(1 if in_repo.findtext("autorefresh") == "True" else 0),
-            "baseurl={}".format(in_repo.findtext("url")),
+            "baseurl={}".format(get_url(in_repo)),
             "type={}".format(in_repo.findtext("repo_type") or "NONE"),
         ]
         if in_repo.findtext("priority"):

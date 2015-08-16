@@ -497,10 +497,17 @@ class Service(object):
                             _pid_list.add(_key)
                         elif _cmdline[0].endswith("python-init"):
                             # print _cmdline
-                            _icsw_found, _old_found = (any([_part.count("icsw") or _part.count("check_scripts") for _part in _cmdline]), False)
+                            _icsw_found, _old_found = (
+                                any([_part.count("icsw") or _part.count("check_scripts") for _part in _cmdline]),
+                                False
+                            )
                             # print "*", _cmdline
                             for _part in _cmdline:
-                                if any([_part.count(_old_bin) for _old_bin in _old_bins]):
+                                if any(
+                                    [
+                                        _part.count(_old_bin) for _old_bin in _old_bins
+                                    ]
+                                ):
                                     # match
                                     _old_found = True
                             # print _old_found, _icsw_found

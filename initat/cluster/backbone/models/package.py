@@ -47,14 +47,21 @@ class package_repo(models.Model):
     autorefresh = models.BooleanField(default=True)
     gpg_check = models.BooleanField(default=True)
     url = models.CharField(max_length=384, default="")
+    # username and password for urls with authentication
+    username = models.CharField(max_length=128, default="")
+    password = models.CharField(max_length=128, default="")
     created = models.DateTimeField(auto_now_add=True)
     service = models.ForeignKey(package_service, null=True, blank=True)
     publish_to_nodes = models.BooleanField(default=False, verbose_name="PublishFlag")
     priority = models.IntegerField(default=99)
-    system_type = models.CharField(max_length=64, choices=[
-        ("zypper", "zypper (suse)"),
-        ("yum", "yum (redhat)"),
-        ], default="zypper")
+    system_type = models.CharField(
+        max_length=64,
+        choices=[
+            ("zypper", "zypper (suse)"),
+            ("yum", "yum (redhat)"),
+        ],
+        default="zypper"
+    )
     # service = models.CharField(max_length=128, default="")
 
     def __unicode__(self):
@@ -98,6 +105,8 @@ class package_repo(models.Model):
             "type={}".format(self.repo_type),
             "keeppackages=0",
             "priority={:d}".format(self.priority),
+            "username={}".format(self.username),
+            "password={}".format(self.password),
             "",
         ]
         if self.service_id:
@@ -107,6 +116,18 @@ class package_repo(models.Model):
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
+
+
+@receiver(signals.pre_save, sender=package_repo)
+def package_repo_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst.username = cur_inst.username.strip()
+        cur_inst.password = cur_inst.password.strip()
+        _username_set = True if len(cur_inst.username) else False
+        _password_set = True if len(cur_inst.password) else False
+        if _username_set != _password_set:
+            raise ValidationError("Need both username and password or none of them")
 
 
 class package_search(models.Model):
