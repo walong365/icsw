@@ -1,4 +1,4 @@
-# Copyright (C) 2011,2013-2014 lang-nevyjel@init.at
+# Copyright (C) 2011,2013-2015 lang-nevyjel@init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -15,11 +15,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" frontend to various HP monitoring commands """
 
 from initat.host_monitoring import hm_classes, limits
-from initat.tools import logging_tools
-from initat.tools import server_command
-from initat.tools import process_tools
+from initat.tools import logging_tools, server_command, process_tools
 
 HPASM_BIN = "hpasmcli"
 
@@ -29,7 +28,7 @@ class _general(hm_classes.hm_module):
         pass
 
 
-class _dimm(object):
+class HPDimm(object):
     class Meta:
         command = "show dimm"
 
@@ -66,13 +65,15 @@ class _dimm(object):
                         entry["module"],
                         entry["processor"],
                         entry["size"],
-                        entry["status"]))
+                        entry["status"]
+                    )
+                )
             return ret_state, "; ".join(ret_v)
         else:
             return limits.nag_STATE_CRITICAL, "nothing returned"
 
 
-class _psu(object):
+class HPPsu(object):
     class Meta:
         command = "show powersupply"
 
@@ -158,17 +159,17 @@ class hp_dimm_command(hm_classes.hm_command):
     info_string = "check DIMM state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):
-        return hp_health_bg(self.log, srv_com, _dimm())
+        return hp_health_bg(self.log, srv_com, HPDimm())
 
     def interpret(self, srv_com, cur_ns):
-        return _dimm().interpret(srv_com, cur_ns)
+        return HPDimm().interpret(srv_com, cur_ns)
 
 
 class hp_powersupply_command(hm_classes.hm_command):
     info_string = "check PSU state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):
-        return hp_health_bg(self.log, srv_com, _psu())
+        return hp_health_bg(self.log, srv_com, HPPsu())
 
     def interpret(self, srv_com, cur_ns):
-        return _psu().interpret(srv_com, cur_ns)
+        return HPPsu().interpret(srv_com, cur_ns)

@@ -279,7 +279,8 @@ class HMFileWatcher(object):
                     self.fw_id,
                     new_file,
                     reg_mask,
-                    self._process_event)
+                    self._process_event
+                )
                 self._check_content(new_file)
         else:
             if new_file not in self.__act_files:
@@ -480,18 +481,23 @@ class HMInotifyProcess(threading_tools.process_obj):
         args = {}
         if "arguments" in srv_com:
             for entry in srv_com["arguments"]:
+                _key = entry.tag.split("}")[-1]
                 _val = entry.text
+                if _val is None:
+                    self.log("key {} has empty value ({})".format(_key, in_com), logging_tools.LOG_LEVEL_ERROR)
                 if _val.lower() in ["true", "false"]:
                     _val = bool(_val)
                 elif _val.isdigit():
                     _val = int(_val)
                 # if
-                args[entry.tag.split("}")[-1]] = _val
-        self.log("got '{}', {}: {}".format(
-            in_com,
-            logging_tools.get_plural("argument", len(args)),
-            ", ".join(["{}='{}' ({})".format(key, value, type(value)) for key, value in args.iteritems()])
-            ))
+                args[_key] = _val
+        self.log(
+            "got '{}', {}: {}".format(
+                in_com,
+                logging_tools.get_plural("argument", len(args)),
+                ", ".join(["{}='{}' ({})".format(key, value, type(value)) for key, value in args.iteritems()])
+            )
+        )
         args = {key.replace("-", "_"): value for key, value in args.iteritems()}
         found_keys = set(args.keys())
         needed_keys = {
@@ -547,9 +553,13 @@ class HMInotifyProcess(threading_tools.process_obj):
                     "ok removed ID {}".format(fw_id),
                 )
             else:
-                self.log("cannot remove HMFileWatcher entry with id {} (present: {})".format(
-                    fw_id,
-                    self.__file_watcher_dict and ", ".join(self.__file_watcher_dict.keys()) or "none"), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "cannot remove HMFileWatcher entry with id {} (present: {})".format(
+                        fw_id,
+                        self.__file_watcher_dict and ", ".join(self.__file_watcher_dict.keys()) or "none"
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 cur_com.set_result(
                     "ID {} not found".format(fw_id),
                     server_command.SRV_REPLY_STATE_ERROR

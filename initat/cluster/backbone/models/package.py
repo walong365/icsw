@@ -1,5 +1,7 @@
 #!/usr/bin/python-init
 
+from lxml import etree  # @UnresolvedImport
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
@@ -7,8 +9,8 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseParameterTypeEnum, LicenseEnum, \
     LicenseLockListDeviceService
 from initat.cluster.backbone.models.functions import _check_empty_string
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
+
 
 __all__ = [
     "package_repo",
@@ -77,7 +79,8 @@ class package_repo(models.Model):
             autorefresh="1" if self.autorefresh else "0",
             gpg_check="1" if self.gpg_check else "0",
             publish_to_nodes="1" if self.publish_to_nodes else "0",
-            url=self.url)
+            url=self.url,
+        )
 
     def get_service_name(self):
         if self.service_id:

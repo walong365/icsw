@@ -217,7 +217,9 @@ class ctrl_type_hpacu(ctrl_type):
             # new code
             if new_style:
                 status_dict = {
-                    key: value for key, value in c_stuff.get("config", {}).iteritems() if key.count("status") and not key.count("6_adg")
+                    key: value for key, value in c_stuff.get(
+                        "config", {}
+                    ).iteritems() if key.count("status") and not (key.count("6_adg") or key.count("encrypt"))
                 }
             else:
                 status_dict = {
