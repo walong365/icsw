@@ -2271,13 +2271,27 @@ class cpufreq_info_command(hm_classes.hm_command):
                     _cpu_dir = os.path.join(_TOP_DIR, _cpu)
                     if os.path.isdir(_cpu_dir):
                         _cpu_num = _cpu[3:]
-                        _freq_dir = os.path.join(_cpu_dir, "cpufreq")
-                        if os.path.isdir(_freq_dir):
-                            _res_dict[_cpu_num] = {
-                                _f_name: file(os.path.join(_freq_dir, _f_name), "r").read().strip() for _f_name in os.listdir(_freq_dir)
-                            }
+                        _online = os.path.join(_cpu_dir, "online")
+                        if os.path.exists(_online):
+                            _is_online = True if int(file(_online, "r").read().strip()) else False
                         else:
-                            _res_dict[_cpu_num] = None
+                            _is_online = True
+                        if _is_online:
+                            _freq_dir = os.path.join(_cpu_dir, "cpufreq")
+                            if os.path.isdir(_freq_dir):
+                                _res_dict[_cpu_num] = {
+                                    _f_name: file(
+                                        os.path.join(
+                                            _freq_dir,
+                                            _f_name
+                                        ),
+                                        "r"
+                                    ).read().strip() for _f_name in os.listdir(_freq_dir)
+                                }
+                            else:
+                                _res_dict[_cpu_num] = None
+                        else:
+                            _res_dict[_cpu_num] = False
             srv_com["cpu_info"] = json.dumps(_res_dict)
         else:
             srv_com.set_result("no cpu info dir {} found".format(_TOP_DIR), server_command.SRV_REPLY_STATE_ERROR)
@@ -2286,6 +2300,7 @@ class cpufreq_info_command(hm_classes.hm_command):
         info_dict = json.loads(srv_com["*cpu_info"])
         _num_cpus = len(info_dict.keys())
         _unknown = [key for key, value in info_dict.iteritems() if value is None]
+        _offline = [key for key, value in info_dict.iteritems() if value is False]
         ret_state = limits.nag_STATE_OK
         all_govs = set([value["scaling_governor"] for value in info_dict.itervalues() if value and "scaling_governor" in value])
         all_drivers = set([value["scaling_driver"] for value in info_dict.itervalues() if value and "scaling_driver" in value])
@@ -2296,6 +2311,13 @@ class cpufreq_info_command(hm_classes.hm_command):
                 "{} without cpufreq info: {}".format(
                     logging_tools.get_plural("CPU", len(_unknown)),
                     ", ".join(_unknown),
+                )
+            )
+        if _offline:
+            ret_f.append(
+                "{} offline: {}".format(
+                    logging_tools.get_plural("CPU", len(_offline)),
+                    ", ".join(_offline),
                 )
             )
         if cur_ns.governor:
