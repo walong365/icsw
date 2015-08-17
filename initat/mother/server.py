@@ -39,11 +39,12 @@ import initat.mother.kernel
 import psutil
 import zmq
 
+from .dhcp_config import DHCPConfigMixin
 from .config import global_config
 
 
 @RemoteCallProcess
-class server_process(server_mixins.ICSWBasePool, RemoteCallMixin):
+class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
@@ -66,6 +67,8 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin):
         self._check_nfs_exports()
         # modify syslog config
         self._enable_syslog_config()
+        # dhcp config
+        self.write_dhcp_config()
         # check status entries
         self._check_status_entries()
         self.__msi_block = self._init_msi_block()

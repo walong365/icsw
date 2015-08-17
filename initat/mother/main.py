@@ -69,6 +69,8 @@ def main():
             ("NODE_BOOT_DELAY", configfile.int_c_var(50)),
             ("FANCY_PXE_INFO", configfile.bool_c_var(False)),
             ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
+            ("WRITE_DHCP_CONFIG", configfile.bool_c_var(False)),
+            ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
         ]
     )
     global_config.add_config_entries(

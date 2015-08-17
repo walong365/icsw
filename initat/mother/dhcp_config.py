@@ -18,29 +18,30 @@
 """ writes the dhcpd.conf in /etc """
 
 import os
+import time
 
 from django.db.models import Q
 from initat.cluster.backbone.models import network
-from initat.cluster_server.config import global_config
-from initat.tools import config_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import config_tools, logging_tools
 
-import cs_base_class
+from .config import global_config
 
 
-class write_dhcpd_config(cs_base_class.server_com):
-    class Meta:
-        needed_configs = ["mother_server"]
-        needed_option_keys = ["authoritative"]
+class DHCPConfigMixin(object):
+    def write_dhcp_config(self):
+        if not global_config["WRITE_DHCP_CONFIG"]:
+            self.log("altering the DHCP-config disabled", logging_tools.LOG_LEVEL_WARN)
+            return
 
-    def _call(self, cur_inst):
+        is_authoritative = global_config["DHCP_AUTHORITATIVE"]
+        self.log("writing dhcp-config, {}".format("auth" if is_authoritative else "not auth"))
+
         my_c = config_tools.server_check(server_type="mother_server")
         boot_ips = my_c.identifier_ip_lut.get("b", [])
         if not boot_ips:
-            cur_inst.srv_com.set_result(
-                "error no boot-net found for '{}'".format(global_config["SERVER_SHORT_NAME"]),
-                server_command.SRV_REPLY_STATE_ERROR
+            self.log(
+                "error no boot-net found",
+                logging_tools.LOG_LEVEL_ERROR,
             )
         else:
             add_nets = list(
@@ -64,6 +65,9 @@ class write_dhcpd_config(cs_base_class.server_com):
                 []
             )
             dhcpd_c = [
+                "",
+                "# created from mother on {}".format(time.ctime(time.time())),
+                "",
                 "ddns-update-style none;",
                 "omapi-port 7911;",
                 "ddns-domainname \"{}\";".format(global_config["SERVER_SHORT_NAME"]),
@@ -77,7 +81,7 @@ class write_dhcpd_config(cs_base_class.server_com):
                 "option arch code 93 = unsigned integer 16;",
                 "",
             ]
-            if cur_inst.srv_com["server_key:authoritative"].text.lower() in ["1", "true", "yes"]:
+            if is_authoritative:
                 dhcpd_c.extend(
                     [
                         "authoritative;",
@@ -170,32 +174,16 @@ class write_dhcpd_config(cs_base_class.server_com):
                     "",
                 ]
             )
-            if os.path.isdir("/etc/dhcp3"):
-                file("/etc/dhcp3/dhcpd.conf", "w").write("\n".join(dhcpd_c))
+            _target_file = None
+            for _tf in ["/etvc/dhcp/dhcpd.conf", "/etc/dhcp3/dhcpd.conf", "/etc/dhcpd.conf"]:
+                if os.path.isfile(_tf):
+                    self.log("found dhcp-config in {}".format(_tf))
+                    _target_file = _tf
+                    break
+            if not _target_file:
+                self.log("no DHCP config file found", logging_tools.LOG_LEVEL_ERROR)
             else:
-                file("/etc/dhcpd.conf", "w").write("\n".join(dhcpd_c))
-            ret_state = None
-            for s_name in ["dhcp3-server", "dhcpd"]:
-                if os.path.isfile("/etc/init.d/{}".format(s_name)):
-                    cstat, log_f = process_tools.submit_at_command("/etc/init.d/{} restart".format(s_name), 1)
-                    for log_line in log_f:
-                        self.log(log_line)
-                    if cstat:
-                        ret_state, ret_str = (
-                            server_command.SRV_REPLY_STATE_ERROR,
-                            "error wrote dhcpd-config, unable to submit at-command ({:d}, please check logs)".format(cstat)
-                        )
-                    else:
-                        ret_state, ret_str = (
-                            server_command.SRV_REPLY_STATE_OK,
-                            "ok wrote dhcpd-config and successfully submitted configuration"
-                        )
-            if ret_state is None:
-                ret_state, ret_str = (
-                    server_command.SRV_REPLY_STATE_ERROR,
-                    "error no method found to restart the dhcp-server (systemd ?)",
-                )
-            cur_inst.srv_com.set_result(
-                ret_str,
-                ret_state,
-            )
+                file(_target_file, "w").write("\n".join(dhcpd_c))
+                self.log("wrote DHCP config to {}".format(_target_file))
+                for _srv_name in self.srv_helper.find_services(".*dhcpd.*"):
+                    self.srv_helper.service_command(_srv_name, "restart")

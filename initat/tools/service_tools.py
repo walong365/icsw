@@ -46,7 +46,7 @@ class ServiceHelper(object):
         self.log("found {}".format(logging_tools.get_plural("service", len(self.__services))))
 
     def _get_systemd_services(self):
-        _stat, _out, _err = self._call_command("{} list-units --type=service".format(self._systemctl))
+        _stat, _out, _err = self._call_command("{} list-units -a --type=service".format(self._systemctl))
         for _line in _out.strip().split("\n")[1:-1]:
             try:
                 _key, _value = _line.strip().split(None, 1)
