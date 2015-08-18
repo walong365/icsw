@@ -398,10 +398,12 @@ class MemoryMixin(object):
         all_used = phys_used + swap_used
         phys_free, swap_free = (
             phys_total - phys_used,
-            swap_total - swap_used)
+            swap_total - swap_used
+        )
         all_total, _all_free = (
             phys_total + swap_total,
-            phys_free + swap_free)
+            phys_free + swap_free
+        )
         if phys_total == 0:
             memp = 100
         else:
@@ -463,7 +465,7 @@ class linux_memory_scheme(RelaySNMPScheme, MemoryMixin):
         }
         return self.show_memory(
             phys_total=use_dict["physical memory"]["size"],
-            phys_used= use_dict["physical memory"]["used"],
+            phys_used=use_dict["physical memory"]["used"],
             swap_total=use_dict["swap space"]["size"],
             swap_used=use_dict["swap space"]["used"],
         )

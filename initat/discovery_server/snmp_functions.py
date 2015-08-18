@@ -205,6 +205,9 @@ class SNMPBatch(object):
         if _added_pks:
             _scan_schemes = [_all_schemes.get_scheme(_pk) for _pk in _added_pks if _all_schemes.get_scheme(_pk).initial]
             if _scan_schemes:
+                self.log("doing initial run with {}".format(logging_tools.get_plural("scheme", len(_scan_schemes))))
+                for _scan_scheme in _scan_schemes:
+                    self.log("    {}".format(unicode(_scan_scheme)))
                 self.init_run("snmp_initial_scan")
                 for _scheme in _scan_schemes:
                     self.new_run(

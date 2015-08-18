@@ -91,5 +91,33 @@ class SNMPHandler(object):
                 _oid_lut[oid]: in_dict[_oid_lut[oid]] for oid in oids if oid in _oid_lut
             }
 
+    def reorganize(self, in_dict):
+        def _shorten_key(_key):
+            if type(_key) is tuple and len(_key) == 1:
+                return _key[0]
+            else:
+                return _key
+
+        def _to_dict(dwt):
+            if len(dwt) == 1 and dwt.keys() in [[(0,)], [0]]:
+                return dwt.values()[0]
+            # input: dict with tuples as keys
+            if all(type(_skey) is tuple for _skey in dwt.iterkeys()):
+                if min([len(_key) for _key in dwt.iterkeys()]) > 1:
+                    first_keys = set([_key[0] for _key in dwt.iterkeys()])
+                    return {
+                        _key: _to_dict(
+                            {
+                                _shorten_key(_skey[1:]): _value for _skey, _value in dwt.iteritems() if _skey[0] == _key
+                            }
+                        ) for _key in first_keys
+                    }
+                else:
+                    return dwt
+            else:
+                return dwt
+        # rewrites all values with tuples as keys to dicts
+        return {key: _to_dict(value) for key, value in in_dict.iteritems()}
+
     def __unicode__(self):
         return "SNMPHandler {}".format(self.Meta.full_name)

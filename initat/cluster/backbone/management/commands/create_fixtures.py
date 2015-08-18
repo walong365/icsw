@@ -319,6 +319,7 @@ def _add_snmp_fixtures():
         # not snmp handler instances found, ignore
         pass
     else:
+        initials = []
         handlers = [_h(dummy_log) for _h in handlers]
         for _handler in handlers:
             cur_scheme = factories.SNMPScheme(
@@ -332,11 +333,20 @@ def _add_snmp_fixtures():
                 mon_check=getattr(_handler.Meta, "mon_check", False),
                 snmp_scheme_vendor=factories.SNMPSchemeVendor(name=_handler.Meta.vendor_name),
             )
+            if _handler.Meta.initial:
+                initials.append(_handler)
             for tl_oid in _handler.Meta.tl_oids:
                 factories.SNMPSchemeTLOID(
                     oid=tl_oid,
                     snmp_scheme=cur_scheme,
                 )
+        print(
+            "{} found, {}: {}".format(
+                logging_tools.get_plural("handler", len(handlers)),
+                logging_tools.get_plural("initial", len(initials)),
+                ", ".join([unicode(_handler) for _handler in initials])
+            )
+        )
 
 
 class Command(BaseCommand):
