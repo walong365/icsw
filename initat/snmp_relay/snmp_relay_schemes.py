@@ -430,12 +430,12 @@ class ucd_memory_scheme(RelaySNMPScheme, MemoryMixin):
     def process_return(self):
         use_dict = self._simplify_keys(self.snmp_dict.values()[0])
         swap_total, swap_avail = (
-            use_dict[(3, 0)],
-            use_dict[(4, 0)],
+            use_dict[(3, 0)] * 1024,
+            use_dict[(4, 0)] * 1024,
         )
         phys_total, phys_avail = (
-            use_dict[(5, 0)],
-            use_dict[(6, 0)],
+            use_dict[(5, 0)] * 1024,
+            use_dict[(6, 0)] * 1024,
         )
         return self.show_memory(
             phys_total=phys_total,

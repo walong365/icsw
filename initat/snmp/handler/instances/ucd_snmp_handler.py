@@ -70,7 +70,7 @@ class handler(SNMPHandler):
                     unit="B",
                     base="1",
                     v_type="f",
-                    value="{:.3f}".format(_value),
+                    value="{:.3f}".format(_value * 1024),
                     name=_name,
                 )
             )
