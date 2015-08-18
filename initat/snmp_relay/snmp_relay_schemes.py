@@ -101,7 +101,7 @@ class net_object(object):
         return self.__cache_tree[oid]["tree"]
 
 
-class snmp_scheme(object):
+class RelaySNMPScheme(object):
     def __init__(self, name, **kwargs):
         self.name = name
         self.parser = argparse.ArgumentParser(prog=self.name)
@@ -357,9 +357,9 @@ class snmp_scheme(object):
                     self.snmp_dict.setdefault(header, {})[key] = value
 
 
-class load_scheme(snmp_scheme):
+class load_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "load", **kwargs)
+        RelaySNMPScheme.__init__(self, "load", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.4.1.2021.10.1.3", cache=True)
         self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=5.0)
@@ -389,9 +389,63 @@ def k_str(i_val):
     return "%.2f GB" % (f_val)
 
 
-class linux_memory_scheme(snmp_scheme):
+class MemoryMixin(object):
+    def show_memory(self, **kwargs):
+        phys_total = kwargs["phys_total"]
+        phys_used = kwargs["phys_used"]
+        swap_total = kwargs["swap_total"]
+        swap_used = kwargs["swap_used"]
+        all_used = phys_used + swap_used
+        phys_free, swap_free = (
+            phys_total - phys_used,
+            swap_total - swap_used)
+        all_total, _all_free = (
+            phys_total + swap_total,
+            phys_free + swap_free)
+        if phys_total == 0:
+            memp = 100
+        else:
+            memp = 100. * phys_used / phys_total
+        if all_total == 0:
+            allp = 100
+        else:
+            allp = 100. * all_used / all_total
+        ret_state = limits.nag_STATE_OK
+        return ret_state, "meminfo: {:.2f} % of {} phys, {:.2f} % of {} tot".format(
+            memp,
+            k_str(phys_total),
+            allp,
+            k_str(all_total)
+        )
+
+
+class ucd_memory_scheme(RelaySNMPScheme, MemoryMixin):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "linux_memory", **kwargs)
+        RelaySNMPScheme.__init__(self, "ucd_memory", **kwargs)
+        # T for table, G for get
+        self.requests = snmp_oid("1.3.6.1.4.1.2021.4", cache=True, cache_timeout=5)
+
+    def process_return(self):
+        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        swap_total, swap_avail = (
+            use_dict[(3, 0)],
+            use_dict[(4, 0)],
+        )
+        phys_total, phys_avail = (
+            use_dict[(5, 0)],
+            use_dict[(6, 0)],
+        )
+        return self.show_memory(
+            phys_total=phys_total,
+            phys_used=phys_total - phys_avail,
+            swap_total=swap_total,
+            swap_used=swap_total - swap_avail,
+        )
+
+
+class linux_memory_scheme(RelaySNMPScheme, MemoryMixin):
+    def __init__(self, **kwargs):
+        RelaySNMPScheme.__init__(self, "linux_memory", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.2.1.25.2.3.1", cache=True, cache_timeout=5)
         self.parse_options(kwargs["options"])
@@ -407,46 +461,17 @@ class linux_memory_scheme(snmp_scheme):
                 _key[1] for _key in use_dict.keys() if _key[0] == 1
             ] if not use_dict[(3, key)].startswith("/")
         }
-        # pprint.pprint(use_dict)
-        phys_total, phys_used = (
-            use_dict["physical memory"]["size"],
-            use_dict["physical memory"]["used"]
+        return self.show_memory(
+            phys_total=use_dict["physical memory"]["size"],
+            phys_used= use_dict["physical memory"]["used"],
+            swap_total=use_dict["swap space"]["size"],
+            swap_used=use_dict["swap space"]["used"],
         )
-        # cached = use_dict["cached memory"]["size"]
-        # buffers = use_dict["memory buffers"]["size"]
-        # cb_size = cached + buffers
-        swap_total, swap_used = (
-            use_dict["swap space"]["size"],
-            use_dict["swap space"]["used"]
-        )
-        # sub buffers and cache from phys_used
-        # phys_used -= cb_size
-        all_used = phys_used + swap_used
-        phys_free, swap_free = (
-            phys_total - phys_used,
-            swap_total - swap_used)
-        all_total, _all_free = (
-            phys_total + swap_total,
-            phys_free + swap_free)
-        if phys_total == 0:
-            memp = 100
-        else:
-            memp = 100 * phys_used / phys_total
-        if all_total == 0:
-            allp = 100
-        else:
-            allp = 100 * all_used / all_total
-        ret_state = limits.nag_STATE_OK
-        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot" % (
-            memp,
-            k_str(phys_total),
-            allp,
-            k_str(all_total))
 
 
-class snmp_info_scheme(snmp_scheme):
+class snmp_info_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "snmp_info", **kwargs)
+        RelaySNMPScheme.__init__(self, "snmp_info", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.2.1.1", cache=True)
         self.parse_options(kwargs["options"])
@@ -490,9 +515,9 @@ class qos_cfg(object):
             ", ".join([str(value) for value in self.class_dict.itervalues()]) if self.class_dict else "<NC>")
 
 
-class check_snmp_qos_scheme(snmp_scheme):
+class check_snmp_qos_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "check_snmp_qos", **kwargs)
+        RelaySNMPScheme.__init__(self, "check_snmp_qos", **kwargs)
         self.oid_dict = {
             "if_name": (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1),
             "if_alias": (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 18),
@@ -974,9 +999,9 @@ class eonstor_voltage(eonstor_object):
             self.out_string)
 
 
-class eonstor_info_scheme(snmp_scheme):
+class eonstor_info_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "eonstor_info", **kwargs)
+        RelaySNMPScheme.__init__(self, "eonstor_info", **kwargs)
         if "net_obj" in kwargs:
             net_obj = kwargs["net_obj"]
             if not hasattr(net_obj, "eonstor_version"):
@@ -1049,9 +1074,9 @@ class eonstor_info_scheme(snmp_scheme):
         return ret_state, "; ".join(ret_field) or "no errors or warnings"
 
 
-class eonstor_proto_scheme(snmp_scheme):
+class eonstor_proto_scheme(RelaySNMPScheme):
     def __init__(self, name, **kwargs):
-        snmp_scheme.__init__(self, name, **kwargs)
+        RelaySNMPScheme.__init__(self, name, **kwargs)
         if "net_obj" in kwargs:
             net_obj = kwargs["net_obj"]
             if not hasattr(net_obj, "eonstor_version"):
@@ -1234,9 +1259,9 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
             return limits.nag_STATE_OK, process_tools.sys_to_net(info_dict)
 
 
-class port_info_scheme(snmp_scheme):
+class port_info_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "port_info", **kwargs)
+        RelaySNMPScheme.__init__(self, "port_info", **kwargs)
         self.__th_mac = (1, 3, 6, 1, 2, 1, 17, 4, 3, 1, 2)
         self.__th_type = (1, 3, 6, 1, 2, 1, 17, 4, 3, 1, 3)
         self.requests = [
@@ -1282,9 +1307,9 @@ class port_info_scheme(snmp_scheme):
             return limits.nag_STATE_OK, "port %d: ---" % (p_num)
 
 
-class trunk_info_scheme(snmp_scheme):
+class trunk_info_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "trunk_info", **kwargs)
+        RelaySNMPScheme.__init__(self, "trunk_info", **kwargs)
         self.requests = snmp_oid("1.0.8802.1.1.2.1.4.1.1", cache=True)
 
     def process_return(self):
@@ -1318,9 +1343,9 @@ class trunk_info_scheme(snmp_scheme):
             return limits.nag_STATE_OK, "no trunks"
 
 
-class apc_rpdu_load_scheme(snmp_scheme):
+class apc_rpdu_load_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "apc_rpdu_load", **kwargs)
+        RelaySNMPScheme.__init__(self, "apc_rpdu_load", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1")
 
@@ -1338,9 +1363,9 @@ class apc_rpdu_load_scheme(snmp_scheme):
         return ret_state, "load is %.2f Ampere" % (float(act_load) / 10.)
 
 
-class usv_apc_load_scheme(snmp_scheme):
+class usv_apc_load_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_load", **kwargs)
+        RelaySNMPScheme.__init__(self, "usv_apc_load", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 4, 2), cache=True)
 
     def process_return(self):
@@ -1363,9 +1388,9 @@ class usv_apc_load_scheme(snmp_scheme):
                 ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 
-class usv_apc_output_scheme(snmp_scheme):
+class usv_apc_output_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_output", **kwargs)
+        RelaySNMPScheme.__init__(self, "usv_apc_output", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 4, 2), cache=True)
 
     def process_return(self):
@@ -1391,9 +1416,9 @@ class usv_apc_output_scheme(snmp_scheme):
             ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 
-class usv_apc_input_scheme(snmp_scheme):
+class usv_apc_input_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_input", **kwargs)
+        RelaySNMPScheme.__init__(self, "usv_apc_input", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 3, 2), cache=True)
 
     def process_return(self):
@@ -1420,9 +1445,9 @@ class usv_apc_input_scheme(snmp_scheme):
         )
 
 
-class usv_apc_battery_scheme(snmp_scheme):
+class usv_apc_battery_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_battery", **kwargs)
+        RelaySNMPScheme.__init__(self, "usv_apc_battery", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 2, 2), cache=True)
         self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=35.0)
         self.parser.add_argument("-c", type=float, dest="crit", help="critical value [%(default)s]", default=40.0)
@@ -1470,9 +1495,9 @@ class usv_apc_battery_scheme(snmp_scheme):
             ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 
-class ibm_bc_blade_status_scheme(snmp_scheme):
+class ibm_bc_blade_status_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "ibm_bc_blade_status", **kwargs)
+        RelaySNMPScheme.__init__(self, "ibm_bc_blade_status", **kwargs)
         self.__blade_oids = {
             key: (1, 3, 6, 1, 4, 1, 2, 3, 51, 2, 22, 1, 5, 1, 1, idx + 1) for idx, key in enumerate(
                 ["idx", "id", "exists", "power_state", "health_state", "name"]
@@ -1517,9 +1542,9 @@ class ibm_bc_blade_status_scheme(snmp_scheme):
             "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
 
 
-class ibm_bc_storage_status_scheme(snmp_scheme):
+class ibm_bc_storage_status_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "ibm_bc_storage_status", **kwargs)
+        RelaySNMPScheme.__init__(self, "ibm_bc_storage_status", **kwargs)
         self.__blade_oids = {
             key: (1, 3, 6, 1, 4, 1, 2, 3, 51, 2, 22, 6, 1, 1, 1, idx + 1) for idx, key in enumerate(
                 ["idx", "module", "status", "name"]
@@ -1555,9 +1580,9 @@ class ibm_bc_storage_status_scheme(snmp_scheme):
         )
 
 
-class temperature_probe_scheme(snmp_scheme):
+class temperature_probe_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "temperature_probe_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "temperature_probe_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 1), cache=True)
         self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=35.0)
         self.parser.add_argument("-c", type=float, dest="crit", help="critical value [%(default)s]", default=40.0)
@@ -1580,9 +1605,9 @@ class temperature_probe_scheme(snmp_scheme):
         )
 
 
-class temperature_probe_hum_scheme(snmp_scheme):
+class temperature_probe_hum_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "temperature_probe_hum_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "temperature_probe_hum_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 2), cache=True)
         self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=80.0)
         self.parser.add_argument("-c", type=float, dest="crit", help="critical value [%(default)s]", default=95.0)
@@ -1605,9 +1630,9 @@ class temperature_probe_hum_scheme(snmp_scheme):
         )
 
 
-class temperature_knurr_scheme(snmp_scheme):
+class temperature_knurr_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "temperature_knurr_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "temperature_knurr_scheme", **kwargs)
         self.parser.add_argument(
             "--type",
             type="choice",
@@ -1642,9 +1667,9 @@ class temperature_knurr_scheme(snmp_scheme):
         )
 
 
-class humidity_knurr_scheme(snmp_scheme):
+class humidity_knurr_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "humidity_knurr_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "humidity_knurr_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 1, 7), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
 
@@ -1665,9 +1690,9 @@ class humidity_knurr_scheme(snmp_scheme):
             cur_val)
 
 
-class environment_knurr_scheme(snmp_scheme):
+class environment_knurr_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "environment_knurr_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "environment_knurr_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 2, 4), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
 
@@ -1698,10 +1723,10 @@ class environment_knurr_scheme(snmp_scheme):
         )
 
 
-class SNMPGenScheme(snmp_scheme):
+class SNMPGenScheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
         self.handler = kwargs.pop("handler")
-        snmp_scheme.__init__(self, self.handler.Meta.name, **kwargs)
+        RelaySNMPScheme.__init__(self, self.handler.Meta.name, **kwargs)
         self.handler.parser_setup(self.parser)
         self.parse_options(kwargs["options"])
         if not self.get_errors():
@@ -1712,9 +1737,9 @@ class SNMPGenScheme(snmp_scheme):
 
 
 # new version of Emerson/Knuerr CoolCon rack (APP 1.15.10, HMI 1.15.10)
-class environment2_knurr_scheme(snmp_scheme):
+class environment2_knurr_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "environment2_knurr_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "environment2_knurr_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 9, 1), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
 
@@ -1742,9 +1767,9 @@ class environment2_knurr_scheme(snmp_scheme):
 
 
 # US version of Emerson/Liebert MPH Rack 3-Phase PDU
-class current_pdu_emerson_scheme(snmp_scheme):
+class current_pdu_emerson_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "current_pdu_emerson_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "current_pdu_emerson_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 476, 1, 42, 3, 8, 30, 40, 1, 22, 1, 1), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
 
@@ -1765,9 +1790,9 @@ class current_pdu_emerson_scheme(snmp_scheme):
         )
 
 
-class currentLLG_pdu_emerson_scheme(snmp_scheme):
+class currentLLG_pdu_emerson_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "currentLLG_pdu_emerson_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "currentLLG_pdu_emerson_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 476, 1, 42, 3, 8, 40, 20, 1, 130, 1), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
 
@@ -1791,9 +1816,9 @@ class currentLLG_pdu_emerson_scheme(snmp_scheme):
         )
 
 
-class voltageLL_pdu_emerson_scheme(snmp_scheme):
+class voltageLL_pdu_emerson_scheme(RelaySNMPScheme):
     def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "voltageLL_pdu_emerson_scheme", **kwargs)
+        RelaySNMPScheme.__init__(self, "voltageLL_pdu_emerson_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 476, 1, 42, 3, 8, 30, 40, 1, 61, 1, 1), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
 

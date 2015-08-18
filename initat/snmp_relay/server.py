@@ -74,9 +74,9 @@ class server_process(threading_tools.process_pool):
         self.__local_schemes = {}
         glob_keys = dir(snmp_relay_schemes)
         for glob_key in sorted(glob_keys):
-            if glob_key.endswith("_scheme") and glob_key != "snmp_scheme":
+            if glob_key.endswith("_scheme") and glob_key != "RelaySNMPScheme":
                 glob_val = getattr(snmp_relay_schemes, glob_key)
-                if issubclass(glob_val, snmp_relay_schemes.snmp_scheme):
+                if issubclass(glob_val, snmp_relay_schemes.RelaySNMPScheme):
                     self.__local_schemes[glob_key[:-7]] = glob_val
         # add snmp sink schemes
         self.snmp_sink = SNMPSink(self.log)
