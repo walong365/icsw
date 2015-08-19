@@ -66,6 +66,7 @@ set_hoststat () {
     echo $@ >> ${HOSTSTAT_FILE}
     t_mother $@
 }
+
 t_mother () {
     if [ ${motherserver:-0} = "0" ] ; then
         echo ${echo_opt} "Server not set, can't connect to mother"
@@ -73,6 +74,7 @@ t_mother () {
         tell_mother_zmq -i $ipaddr -m $motherserver -p 8000 $@ || echo ${echo_opt} "Connection problem with mother"
     fi
 }
+
 send_info () {
     if [ ${motherserver:-0} = "0" ] ; then
         echo ${echo_opt} "Server not set, can't connect to mother"
@@ -94,6 +96,7 @@ get_conf_str () {
     done
     echo "$num_retries $ret"
 }
+
 err_exit () {
     set_hoststat "Error $@"
     set_hoststat "*Error $@"
@@ -124,8 +127,13 @@ boot_system () {
     rm -rf initrd
     mkdir -v initrd
     [ ! -c /$basedir/dev/console ] && mknod /$basedir/dev/console -m 0640 c 5 1
-    if [ ! -x /$basedir/sbin/init ] ; then
-        err_exit "no executable /sbin/init in node-image" ;
+    if [ -l /$basedir/sbin/init ] ; then
+        init_bin=$(readlink /$basedir/sbin/init)
+    else
+        init_bin=/sbin/init
+    fi
+    if [ ! -x /${basedir}/${init_bin} ] ; then
+        err_exit "no executable ${init_bin} in node-image" ;
     #elif [ ! -f /$basedir/etc/inittab ] ; then
     #    err_exit "no /etc/inittab in node-image" ;
     elif [ ! -c /$basedir/dev/console ] ; then
@@ -234,6 +242,7 @@ alias ..='cd ..'
 alias ...='cd ../..'
 
 mkdir -p /etc/sysconfig/cluster
+mkdir -p /var/run
 
 echo "/dev/ram0 / ext2 rw 0 0 " >> /etc/mtab
 
@@ -372,7 +381,8 @@ if [ -z "$avail_nets" ] ; then
     echo
     echo "PCI list:"
     echo
-    /sbin/lspci
+    [ -x /sbin/lspci ] && /sbin/lspci
+    [ -x /usr/sbin/lspci ] && /usr/sbin/lspci
     for i in $(seq 30) ; do
         echo -n "."
         sleep 1

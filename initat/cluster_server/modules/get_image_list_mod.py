@@ -44,7 +44,13 @@ class get_image_list(cs_base_class.server_com):
                     try:
                         _log_lines, sys_dict = process_tools.fetch_sysinfo(root_dir=t_dir)
                     except:
-                        sys_dict = {}
+                        self.log(
+                            "error fetching sysinfo from {}: {}".format(
+                                t_dir,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
                         sys_dict["bitcount"] = {
                             "i386": 32,
@@ -54,8 +60,8 @@ class get_image_list(cs_base_class.server_com):
                             "x86_64": 64,
                             "alpha": 64,
                             "ia64": 64
-                        }.get(sys_dict.get("arch", "???"), 0)
-                    valid_sys[os.path.basename(t_dir)] = sys_dict
+                        }.get(sys_dict.get("arch", "???"), 64)
+                        valid_sys[os.path.basename(t_dir)] = sys_dict
                 else:
                     dirs_missing = [x for x in NEEDED_IMAGE_DIRS if x not in dirs_found]
                     self.log(

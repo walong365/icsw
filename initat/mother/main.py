@@ -46,7 +46,6 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
-            ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True, help_string="modify /etc/exports [%(default)s]", action="store_true")),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ]
     )
@@ -71,6 +70,7 @@ def main():
             ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
             ("WRITE_DHCP_CONFIG", configfile.bool_c_var(False)),
             ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
+            ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True)),
         ]
     )
     global_config.add_config_entries(

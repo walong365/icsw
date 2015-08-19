@@ -175,7 +175,7 @@ class DHCPConfigMixin(object):
                 ]
             )
             _target_file = None
-            for _tf in ["/etvc/dhcp/dhcpd.conf", "/etc/dhcp3/dhcpd.conf", "/etc/dhcpd.conf"]:
+            for _tf in ["/etc/dhcp/dhcpd.conf", "/etc/dhcp3/dhcpd.conf", "/etc/dhcpd.conf"]:
                 if os.path.isfile(_tf):
                     self.log("found dhcp-config in {}".format(_tf))
                     _target_file = _tf

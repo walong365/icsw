@@ -44,8 +44,6 @@ class partition_overview(View):
         return render_me(
             request,
             "part_overview.html",
-            {
-            }
         )()
 
 
@@ -64,7 +62,13 @@ class validate_partition(View):
         prob_list = cur_part.validate()
         request.xml_response["response"] = E.problems(
             valid="1" if cur_part.valid else "0",
-            *[E.problem(p_str, g_problem="1" if g_problem else "0", level="%d" % (cur_lev)) for cur_lev, p_str, g_problem in prob_list]
+            *[
+                E.problem(
+                    p_str,
+                    g_problem="1" if g_problem else "0",
+                    level="%d" % (cur_lev)
+                ) for cur_lev, p_str, g_problem in prob_list
+            ]
         )
 
 
@@ -74,8 +78,6 @@ class image_overview(View):
         return render_me(
             request,
             "image_overview.html",
-            {
-            }
         )()
 
 

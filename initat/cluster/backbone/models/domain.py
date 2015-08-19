@@ -100,7 +100,8 @@ class domain_name_tree(object):
                     node_postfix="",
                     full_name="{}.{}".format(dom_part, cur_node.full_name),
                     intermediate=False,
-                    depth=cur_node.depth + 1)
+                    depth=cur_node.depth + 1
+                )
                 new_node.save()
                 self.__node_dict[new_node.pk] = new_node
                 cur_node._sub_tree.setdefault(dom_part, []).append(new_node)
@@ -235,7 +236,8 @@ def domain_tree_node_pre_save(sender, **kwargs):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.intermediate:
             if net_ip.objects.filter(Q(domain_tree_node=cur_inst)).count() + device.objects.filter(Q(domain_tree_node=cur_inst)).count():
-                raise ValidationError("cannot set used domain_tree_node as intermediate")
+                cur_inst.intermediate = False
+                # raise ValidationError("cannot set used domain_tree_node as intermediate")
         cur_inst.node_postfix = cur_inst.node_postfix.strip()
         if not cur_inst.node_postfix and valid_domain_re.match(cur_inst.node_postfix):
             raise ValidationError("illegal characters in node postfix '{}'".format(cur_inst.node_postfix))

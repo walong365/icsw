@@ -1517,7 +1517,9 @@ def fetch_sysinfo(root_dir="/"):
             if os.path.isfile(_full):
                 isl.extend([_line.strip().lower() for _line in file(_full, "r").read().split("\n")])
     except:
-        log_lines.append(("error invalid root_path '{}' ?".format(root_dir), logging_tools.LOG_LEVEL_CRITICAL))
+        log_lines.append(
+            ("error invalid root_path '{}' ?".format(root_dir), logging_tools.LOG_LEVEL_CRITICAL)
+        )
     else:
         for what in ["arch", "vendor", "version"]:
             sys_dict[what] = "<UNKNOWN>"
@@ -1648,6 +1650,9 @@ def fetch_sysinfo(root_dir="/"):
                     else:
                         # hack, take first from list
                         sys_dict["version"] = list(set(s_list))[0]
+                        sys_dict["version"] = {
+                            "jessie": "8.1"
+                        }.get(sys_dict["version"], sys_dict["version"])
     return log_lines, sys_dict
 
 
