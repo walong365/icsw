@@ -100,7 +100,7 @@ class handler(SNMPHandler):
                     unit="1/s",
                     base="1",
                     v_type="f",
-                    value=float(sys_dict[7]),
+                    value="{:.3f}".format(float(sys_dict[7])),
                     name="num.interrupts",
                 )
             )
@@ -111,7 +111,7 @@ class handler(SNMPHandler):
                     unit="1/s",
                     base="1",
                     v_type="f",
-                    value=float(sys_dict[8]),
+                    value="{:.3f}".format(float(sys_dict[8])),
                     name="num.context",
                 )
             )
