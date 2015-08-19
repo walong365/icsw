@@ -132,7 +132,7 @@ class ServiceContainer(object):
             self.update_valid_licenses()
         entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools, valid_licenses=self.valid_licenses, models_changed=models_changed)
         if not entry.config_check_ok:
-            self._all_config_checks_ok = False
+            self._config_check_errors.append(entry.name)
 
     def apply_filter(self, service_list, instance_xml):
         check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
@@ -155,14 +155,21 @@ class ServiceContainer(object):
     # main entry point: check_system
     def check_system(self, opt_ns, instance_xml):
         def _get_fp(in_dict):
+            # simple fingerprint
             return ":".join([in_dict[_key] for _key in sorted(in_dict.iterkeys())])
         check_list = self.apply_filter(opt_ns.service, instance_xml)
         self.update_proc_dict()
         self.update_valid_licenses()
-        self._all_config_checks_ok = True
+        self._config_check_errors = []
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True, models_changed=self.__models_changed)
-        if not self._all_config_checks_ok:
+        if self._config_check_errors:
+            self.log(
+                "{} not ok ({}), triggering model check".format(
+                    logging_tools.get_plural("config check", len(self._config_check_errors)),
+                    ", ".join(self._config_check_errors),
+                )
+            )
             if self.__model_md5:
                 if _get_fp(self.__model_md5) != _get_fp(self.get_models_md5()):
                     self.log("models have changed, forcing all services with DB-checks to state dead")

@@ -173,6 +173,7 @@ class Service(object):
                         try:
                             _cr = config_tools.server_check(server_type=_conf_name)
                         except:
+                            # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False
                             # _exc_info = process_tools.exception_info()
                             _cr = None
