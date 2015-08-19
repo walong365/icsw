@@ -128,5 +128,5 @@ class handler(SNMPHandler):
                 self._add_memory(_dict[4], mv_tree)
             if 10 in _dict and 1 in _dict[10] and 3 in _dict[10][1]:
                 self._add_load(_dict[10][1][3], mv_tree)
-            if 13 in _dict:
-                self._add_system(_dict[13], mv_tree)
+            if 11 in _dict:
+                self._add_system(_dict[11], mv_tree)
