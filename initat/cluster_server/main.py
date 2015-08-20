@@ -76,7 +76,12 @@ def main():
             ),
             (
                 "OPTION_KEYS", configfile.array_c_var(
-                    [], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)"
+                    [],
+                    short_options="D",
+                    action="append",
+                    only_commandline=True,
+                    nargs="*",
+                    help_string="optional key:value pairs (command dependent)"
                 )
             ),
             (

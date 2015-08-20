@@ -1,5 +1,3 @@
-#!/usr/bin/python -Ot
-#
 # Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -29,8 +27,7 @@ import tarfile
 import tempfile
 
 from OpenSSL import crypto
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 _KEYS = ["CN", "C", "ST", "O", "emailAddress"]
 
@@ -44,7 +41,16 @@ __all__ = ["openssl_config_mixin", "ca"]
 
 
 def build_subj(sub_dict):
-    return "/{}/".format("/".join(["{}={}".format(_key, sub_dict[_key].replace(" ", r"\ ")) for _key in _KEYS if _key in sub_dict]))
+    return "/{}/".format(
+        "/".join(
+            [
+                "{}={}".format(
+                    _key,
+                    sub_dict[_key].replace(" ", r"\ ")
+                ) for _key in _KEYS if _key in sub_dict
+            ]
+        )
+    )
 
 
 class openssl_config(object):
@@ -280,20 +286,26 @@ class ca(object):
                 _cert_target = "cert_{}".format(_target_mode)
                 _policy_target = "policy_{}".format(_target_mode)
                 _ssl_cnf.set(_ca_target, "x509_extensions", _cert_target)
-                _ssl_cnf.set(_cert_target, [
-                    ("subjectKeyIdentifier", "hash"),
-                    ("issuerAltName", "issuer:copy"),
-                    ("subjectAltName", "email:copy"),
-                    ("nsComment", "openssl_tool generated {} certificate".format(_target_mode)),
-                ])
-                _ssl_cnf.set(_policy_target, [
-                    ("countryName", "optional"),
-                    ("stateOrProvinceName", "optional"),
-                    ("organizationName", "optional"),
-                    ("organizationalUnitName", "optional"),
-                    ("commonName", "supplied"),
-                    ("emailAddress", "optional"),
-                ])
+                _ssl_cnf.set(
+                    _cert_target,
+                    [
+                        ("subjectKeyIdentifier", "hash"),
+                        ("issuerAltName", "issuer:copy"),
+                        ("subjectAltName", "email:copy"),
+                        ("nsComment", "openssl_tool generated {} certificate".format(_target_mode)),
+                    ]
+                )
+                _ssl_cnf.set(
+                    _policy_target,
+                    [
+                        ("countryName", "optional"),
+                        ("stateOrProvinceName", "optional"),
+                        ("organizationName", "optional"),
+                        ("organizationalUnitName", "optional"),
+                        ("commonName", "supplied"),
+                        ("emailAddress", "optional"),
+                    ]
+                )
                 _ssl_cnf.set(_cert_target, _x509_defaults.get(_target_mode, []))
                 _ssl_cnf.set(_ca_target, "policy", _policy_target)
             _ssl_cnf.write()
@@ -322,18 +334,26 @@ class ca(object):
                 self.log("creating {} from {}".format(self.ssl_config_name, _src_file))
                 _cnf = openssl_config(_src_file)
                 _cnf.set(None, "HOME", SSL_DIR)
-                _cnf.set("req_distinguished_name", [
-                    ("countryName_default", "AT"),
-                    ("stateOrProvinceName_default", "Vienna"),
-                    ("0.organizationName_default", "init.at"),
-                    ("emailAddress_default", "cluster@init.at"),
-                ])
+                _cnf.set(
+                    "req_distinguished_name",
+                    [
+                        ("countryName_default", "AT"),
+                        ("stateOrProvinceName_default", "Vienna"),
+                        ("0.organizationName_default", "init.at"),
+                        ("emailAddress_default", "cluster@init.at"),
+                    ]
+                )
                 _cnf.set("req", "default_bits", 4096)
 
                 _cnf.write(self.ssl_config_name)
                 os.chmod(self.ssl_config_name, stat.S_IREAD | stat.S_IWRITE)
             else:
-                self.log("cannot create {}: no src_file found".format(self.ssl_config_name), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "cannot create {}: no src_file found".format(
+                        self.ssl_config_name
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
 
     @ssl_secure(backup=True)
     def new_cert(self, obj_dict, mode, file_name, **kwargs):
@@ -348,13 +368,17 @@ class ca(object):
                 "req", "-batch", "-new", "-key", os.path.join(_cert_temp, "key.pem"),
                 "-subj", build_subj(obj_dict),
                 "-out", os.path.join(_cert_temp, "req.pem"),
-                )
+            )
             if _success:
                 # empty file
                 file(_ext_file, "w").close()
                 if "device" in kwargs:
                     _dev = kwargs["device"]
-                    _add_list = ["DNS:{}".format(_dns) for _dns in _dev.all_dns()] + ["IP:{}".format(_ip) for _ip in _dev.all_ips() if _ip]
+                    _add_list = [
+                        "DNS:{}".format(_dns) for _dns in _dev.all_dns()
+                    ] + [
+                        "IP:{}".format(_ip) for _ip in _dev.all_ips() if _ip
+                    ]
                     if _add_list:
                         file(_ext_file, "w").write("subjectAltName={}".format(",".join(_add_list)))
                 _success, _out = self.call_openssl(
@@ -372,10 +396,20 @@ class ca(object):
                     run_ok = True
                     # copy request and key
                     _serial = "{:x}".format(
-                        crypto.load_certificate(crypto.FILETYPE_PEM, file(os.path.join(_cert_temp, "cert.pem"), "r").read()).get_serial_number()
+                        crypto.load_certificate(
+                            crypto.FILETYPE_PEM,
+                            file(os.path.join(_cert_temp, "cert.pem"), "r").read()
+                        ).get_serial_number()
                     ).upper()
                     for src_file, dst_dir in [("key.pem", "keys"), ("req.pem", "reqs")]:
-                        file(os.path.join(self.ca_dir, dst_dir, "{}.pem".format(_serial)), "w").write(file(os.path.join(_cert_temp, src_file), "r").read())
+                        file(
+                            os.path.join(
+                                self.ca_dir,
+                                dst_dir,
+                                "{}.pem".format(_serial)
+                            ),
+                            "w"
+                        ).write(file(os.path.join(_cert_temp, src_file), "r").read())
                     # create target file
                     _tf = file(file_name, "w")
                     for _fn in ["key.pem", "cert.pem"]:
@@ -397,7 +431,7 @@ class ca(object):
         _success, _out = self.call_openssl(
             "ca",
             "-batch",
-            "-name", self.name,
+            "-name", "ca_ca",
             "-revoke", os.path.join(_ssl_cnf.get(self.name, "new_certs_dir", expand=True), "{}.pem".format(serial)),
             "-passin", "pass:{}".format(self.password),
             "-crl_reason", cause,

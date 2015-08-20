@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014,2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,10 +22,9 @@
 from initat.cluster_server.config import global_config
 from initat.cluster.backbone.models import device
 from django.db.models import Q
+from initat.tools import logging_tools, openssl_tools, server_command
+
 import cs_base_class
-from initat.tools import logging_tools
-from initat.tools import openssl_tools
-from initat.tools import server_command
 
 
 def _build_obj(cur_inst, **kwargs):
@@ -119,6 +118,17 @@ class ca_revoke_cert(cs_base_class.server_com):
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _cert_serial = cur_inst.srv_com["server_key:cert_serial"].text
         _revoke_cause = cur_inst.srv_com["server_key:revoke_cause"].text
+        _CAUSES = [
+            "unspecified", "keyCompromise", "CACompromise", "affiliationChanged",
+            "superseded", "cessationOfOperation", "certificateHold", "removeFromCRL",
+        ]
+        if _revoke_cause not in _CAUSES:
+            raise ValueError(
+                "revocation cause '{}' not in list {}".format(
+                    _revoke_cause,
+                    ", ".join(_CAUSES),
+                )
+            )
         cur_ca = openssl_tools.ca(_name, cur_inst.log)
         if not cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
