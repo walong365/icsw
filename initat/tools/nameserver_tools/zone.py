@@ -53,7 +53,6 @@ class Zone(object):
         nameservers = []
         # mx -> ip
         mx_records = {}
-        spf_record = None
         cname_records = []
         forward_to = []
 
@@ -64,6 +63,7 @@ class Zone(object):
         Zone.zones.append(self)
         self.name = name
         self.origin = name
+        self.spf_record = None
         self.__qname = make_qualified(self.name)
         self.__uname = make_unqualified(self.name)
         self.values = {
@@ -117,10 +117,10 @@ class Zone(object):
                 MX_RECORD.format(pri, make_qualified(name)) for name, pri in self.Meta.mx_records.iteritems()
             ]
         )
-        if self.Meta.spf_record:
+        if self.spf_record:
             # deprecated
-            # content.append(SPF_RECORD.format(self.Meta.spf_record))
-            content.append(TXT_RECORD.format(self.Meta.spf_record))
+            # content.append(SPF_RECORD.format(self.spf_record))
+            content.append(TXT_RECORD.format(self.spf_record))
         used_names = []
         if self.records:
             fwd_domains = []
@@ -335,21 +335,30 @@ class Zone(object):
                 )
                 if master:
                     _z_content.extend(
-                        [
-                            "    server {} {{ keys {}-key; }};".format(
-                                _srv.ip,
-                                _pf,
-                            ) for _srv in Zone.Meta.secondary
-                        ]
+                        sum(
+                            [
+                                [
+                                    "    server {} {{".format(_srv.ip),
+                                    "        keys {}-key;".format(_pf),
+                                    "        transfer-format many-answers;".format(_pf),
+                                    "    };",
+                                ] for _srv in Zone.Meta.secondary
+                            ],
+                            []
+                        )
                     )
                 else:
                     _z_content.extend(
-                        [
-                            "    server {} {{ keys {}-key; }};".format(
-                                _srv.ip,
-                                _pf,
-                            ) for _srv in Zone.Meta.primary
-                        ]
+                        sum(
+                            [
+                                [
+                                    "    server {} {{".format(_srv.ip),
+                                    "        keys {}-key;".format(_pf),
+                                    "    };",
+                                ] for _srv in Zone.Meta.primary
+                            ],
+                            []
+                        )
                     )
                 if private:
                     _addr_list = "; ".join([net.get_src_mask() for net in Network.networks])
@@ -388,6 +397,7 @@ class Zone(object):
                             "    type master;",
                             "    file \"127.0.0.zone\";",
                             "};",
+                            "",
                         ]
                     ]
                 )
