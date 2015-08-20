@@ -1369,9 +1369,12 @@ class NodeControlProcess(threading_tools.process_obj):
             node_id, instance = kwargs.get("src_id").split(":", 1)
             cur_dev = Host.get_device(node_id)
             if cur_dev:
-                ret_str = cur_dev.nodeinfo(node_text, instance)
+                srv_com.set_result(cur_dev.nodeinfo(node_text, instance))
             else:
-                ret_str = "error no node with id '{}' found".format(node_id)
+                srv_com.set_result(
+                    "error no node with id '{}' found".format(node_id),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def loop_post(self):

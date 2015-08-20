@@ -1551,7 +1551,7 @@
                                 Notify on service unknown
                             </label></div>
                         </div>
-                    </div>
+                    <boot/div>
                     <div class="form-group">
                         <div id="div_id_sflapping" class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-7"><label for="id_sflapping"><input class="checkboxinput checkbox" id="id_sflapping" name="sflapping" ng-model="edit_obj.sflapping" type="checkbox"></input>
@@ -2321,8 +2321,7 @@
                 <div class="controls col-sm-7">
                     <select multiple="multiple" class="selectmultiple form-control" id="id_image" name="image"></select>
 
-                    <p id="hint_id_image" class="help-block"> Hold down "Control", or "Command" on a Mac, to select more
-                        than one.</p>
+                    <p id="hint_id_image" class="help-block"> Hold down "Control", or "Command" on a Mac, to select more than one.</p>
                 </div>
             </div>
         </fieldset>
@@ -3358,7 +3357,7 @@
 
                 <div class="col-sm-7">
                     <ui-select ng-model="_edit_obj.target_state">
-                        <ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match>
+                        <ui-select-match placeholder="special target state">{{ $select.selected.info }}</ui-select-match>
                         <ui-select-choices repeat="value.idx as value in special_states">
                             <div ng-bind-html="value.info"></div>
                         </ui-select-choices>
@@ -3480,8 +3479,8 @@
                     <legend>Basic settings</legend>
                     <div id="div_id_devname" class="form-group  ng-class:form_error('devname')">
                         <label for="id_devname" class="control-label col-sm-3 requiredField">
-                            Devname<span class="asteriskField">*</span></label>
-
+                            Devname<span class="asteriskField">*</span>
+                        </label>
                         <div class="controls col-sm-8">
                             <input class="textinput textInput form-control" id="id_devname" maxlength="64" name="devname" ng-model="_edit_obj.devname" placeholder="devicename" required="True" type="text"></input>
                         </div>
@@ -3490,7 +3489,6 @@
                         <label for="id_description" class="control-label col-sm-3">
                             Description
                         </label>
-
                         <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text"></input></div>
                     </div>
                     <div id="div_id_mtu" class="form-group">
@@ -3562,9 +3560,12 @@
                     </div>
                     <div class="form-group">
                         <div id="div_id_inter_device_routing" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_inter_device_routing"><input class="checkboxinput checkbox" id="id_inter_device_routing" name="inter_device_routing" ng-model="_edit_obj.inter_device_routing" type="checkbox"></input>
-                                Inter device routing
-                            </label></div>
+                            <div class="controls col-lg-offset-0 col-sm-8">
+                                <label for="id_inter_device_routing">
+                                    <input class="checkboxinput checkbox" id="id_inter_device_routing" name="inter_device_routing" ng-model="_edit_obj.inter_device_routing" type="checkbox"></input>
+                                    Inter device routing
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </fieldset>

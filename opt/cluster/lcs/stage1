@@ -127,7 +127,7 @@ boot_system () {
     rm -rf initrd
     mkdir -v initrd
     [ ! -c /$basedir/dev/console ] && mknod /$basedir/dev/console -m 0640 c 5 1
-    if [ -l /$basedir/sbin/init ] ; then
+    if [ -L /$basedir/sbin/init ] ; then
         init_bin=$(readlink /$basedir/sbin/init)
     else
         init_bin=/sbin/init
@@ -242,7 +242,13 @@ alias ..='cd ..'
 alias ...='cd ../..'
 
 mkdir -p /etc/sysconfig/cluster
-mkdir -p /var/run
+# create /var/run if it is not a link
+if [ ! -L /var/run ] ; then
+    [ ! -d /var/run ] && mkdir -p /var/run
+else
+# if /var/run is a link, create /run (most likely the target)
+    [ ! -d /run ] && mkdir /run
+fi
 
 echo "/dev/ram0 / ext2 rw 0 0 " >> /etc/mtab
 
@@ -420,6 +426,7 @@ while true ; do
     valid_net="None"
 # check for valid netdevice
     for net in $avail_nets ; do
+
         ifconfig ${net} ${ipaddr} netmask ${netmask} up
         if [ $wait_time -gt 0 ] ; then
             sleep $wait_time
@@ -434,7 +441,7 @@ while true ; do
                 echo ${echo_opt} "${GREEN}Server $motherserver reachable via ping and hoststatus over $net${OFF}" ;
                 valid_net=$net ;
             } || {
-                echo ${echo_opt} "${WARN}Server $motherserver reachable via ping over $net but no response to hoststatus (mother running ?)${OFF}" ;
+                echo ${echo_opt} "${YELLOW}Server $motherserver reachable via ping over $net but no response to hoststatus (mother running ?)${OFF}" ;
             }
         } || {
             echo ${echo_opt} "${RED}Server $motherserver not reachable via ping over $net${OFF}" ;
@@ -447,7 +454,7 @@ while true ; do
 
     if [ "$valid_net" = "None" ] ; then
         wait_time=$(($wait_time + 5))
-        echo ${echo_opt} "${WARN}no response, increasing wait_time for 5 seconds to ${wait_time} seconds, retry...${OFF}"
+        echo ${echo_opt} "${YELLOW}no response, increasing wait_time for 5 seconds to ${wait_time} seconds, retry...${OFF}"
     else
         break
     fi

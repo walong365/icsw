@@ -75,6 +75,14 @@ alias ls-l='ls -l'
 alias ..='cd ..'
 alias ...='cd ../..'
 
+# create /var/run if it is not a link
+if [ ! -L /var/run ] ; then
+    [ ! -d /var/run ] && mkdir -p /var/run
+else
+# if /var/run is a link, create /run (most likely the target)
+    [ ! -d /run ] && mkdir /run
+fi
+
 RW_MOUNTOPTS="-o nolock,rw,tcp,rsize=8192,wsize=8192,noac,vers=3"
 RO_MOUNTOPTS="-o nolock,ro,tcp,rsize=8192,wsize=8192,noac,vers=3"
 MOUNT_RETRIES=10
