@@ -30,7 +30,7 @@ import traceback
 
 import zmq
 
-from .logbase import *
+from .logging_tools import *
 
 
 def get_logger(name, destination, **kwargs):

@@ -76,12 +76,6 @@ NEEDED_PACKAGES_3 = [
     "modules-init",
 ]
 
-COMPRESS_MAP = {
-    "gz": "z",
-    "bz2": "j",
-    "xz": "J"
-}
-
 
 class package_check(object):
     def __init__(self, log_com, img_obj):
@@ -168,9 +162,8 @@ class build_process(threading_tools.process_obj):
             t_size = int(self._call("du -sb {}".format(os.path.join(system_dir, target_dir))).split()[0])
         t_file = os.path.join(
             image_dir,
-            "{}.tar.{}".format(
+            "{}.tar.bz2".format(
                 target_dir,
-                global_config["COMPRESSION"]
             )
         )
         self.log(
@@ -179,28 +172,13 @@ class build_process(threading_tools.process_obj):
                 t_file
             )
         )
-        c_flag = COMPRESS_MAP[global_config["COMPRESSION"]]
-        comp_opt = ""
-        if global_config["COMPRESSION_OPTION"]:
-            if global_config["COMPRESSION"] == "xz":
-                comp_opt = "export XZ_OPT='{}'".format(global_config["COMPRESSION_OPTION"])
-        if global_config["COMPRESSION"] == "bz2":
-            # no direct compression, use external program
-            _com = "cd {} ; tar -cf {} --use-compress-prog=/opt/cluster/bin/pbzip2 --preserve-permissions {} {}".format(
-                system_dir,
-                t_file,
-                " ".join(file_list) if not _dir_mode else target_dir,
-                " ".join(link_list) if not _dir_mode else "",
-            )
-        else:
-            _com = "cd {} ; {} tar -c{}f {} --preserve-permissions {} {}".format(
-                system_dir,
-                "{};".format(comp_opt) if comp_opt else "",
-                c_flag,
-                t_file,
-                " ".join(file_list) if not _dir_mode else target_dir,
-                " ".join(link_list) if not _dir_mode else "",
-            )
+        # no direct compression, use external program
+        _com = "cd {} ; tar -cf {} --use-compress-prog=/opt/cluster/bin/pbzip2 --preserve-permissions {} {}".format(
+            system_dir,
+            t_file,
+            " ".join(file_list) if not _dir_mode else target_dir,
+            " ".join(link_list) if not _dir_mode else "",
+        )
         self._call(_com)
         new_size = os.stat(t_file)[stat.ST_SIZE]
         self.log(
@@ -321,15 +299,14 @@ class server_process(threading_tools.process_pool):
                 self._check_size(cur_img)
             else:
                 self.log("size checking disabled", logging_tools.LOG_LEVEL_WARN)
-            if global_config["BUILD_IMAGE"]:
-                # get image from database (in case something has changed)
-                cur_img = self._get_image()
-                self.log("building image from {}".format(cur_img.source))
-                self._generate_dir_list(cur_img)
-                self._copy_image(cur_img)
-                self._clean_image(cur_img)
-                self._init_compress_image()
-                do_exit = False
+            # get image from database (in case something has changed)
+            cur_img = self._get_image()
+            self.log("building image from {}".format(cur_img.source))
+            self._generate_dir_list(cur_img)
+            self._copy_image(cur_img)
+            self._clean_image(cur_img)
+            self._init_compress_image()
+            do_exit = False
         except:
             self._int_error("build failed: {}".format(process_tools.get_except_info()))
         else:
@@ -355,7 +332,7 @@ class server_process(threading_tools.process_pool):
         self.log("creating tdir file")
         temp_dir = tempfile.mkdtemp()
         self.log("tempdir is '{}'".format(temp_dir))
-        targ_file = os.path.join(self.__image_dir, ".tdir.tar.{}".format(global_config["COMPRESSION"]))
+        targ_file = os.path.join(self.__image_dir, ".tdir.tar.bz2")
         for targ_dir in self.__dir_list:
             t_file = os.path.join(temp_dir, targ_dir)
             s_dir = os.path.join(self.__system_dir, targ_dir)
@@ -364,9 +341,8 @@ class server_process(threading_tools.process_pool):
             os.chown(t_file, os.stat(s_dir)[stat.ST_UID], os.stat(s_dir)[stat.ST_GID])
         self._call(
             None,
-            "cd {} ; tar -c{}f {} *".format(
+            "cd {} ; tar -cjf {} *".format(
                 temp_dir,
-                COMPRESS_MAP[global_config["COMPRESSION"]],
                 targ_file,
             )
         )
@@ -636,8 +612,6 @@ def main():
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("COMPRESSION", configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
-            ("COMPRESSION_OPTION", configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
             ("VERBOSE", configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
             (
                 "MODIFY_IMAGE",
@@ -649,7 +623,6 @@ def main():
             ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("BUILDERS", configfile.int_c_var(4, help_string="numbers of builders [%(default)i]")),
             ("OVERRIDE", configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
-            ("BUILD_IMAGE", configfile.bool_c_var(False, help_string="build (compress) image [%(default)s]", action="store_true", only_commandline=True)),
             ("CHECK_SIZE", configfile.bool_c_var(True, help_string="image size check [%(default)s]", action="store_false")),
         ]
     )

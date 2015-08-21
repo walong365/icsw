@@ -27,8 +27,7 @@ for password-types we need to add some encryption / message digest code via {alg
 import os
 from lxml import etree
 
-from initat.tools import process_tools
-from initat.tools.logging_tools import logbase
+from initat.tools import process_tools, logging_tools
 from lxml.builder import E
 
 CS_NG = """
@@ -135,7 +134,7 @@ class ConfigStore(object):
         self.vars = {}
         self.read()
 
-    def log(self, what, log_level=logbase.LOG_LEVEL_OK):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if not self.__quiet:
             if self.__log_com:
                 self.__log_com(
@@ -146,7 +145,7 @@ class ConfigStore(object):
                     log_level
                 )
             else:
-                print "{} {}".format(logbase.get_log_level_str(log_level), what)
+                print "{} {}".format(logging_tools.get_log_level_str(log_level), what)
 
     @staticmethod
     def exists(name):
@@ -171,7 +170,7 @@ class ConfigStore(object):
                         _read_name,
                         process_tools.get_except_info(),
                     ),
-                    logbase.LOG_LEVEL_ERROR,
+                    logging_tools.LOG_LEVEL_ERROR,
                 )
             else:
                 _ng = etree.RelaxNG(etree.fromstring(CS_NG))
@@ -189,16 +188,16 @@ class ConfigStore(object):
                                 "error creating new var: {}".format(
                                     process_tools.get_except_info(),
                                 ),
-                                logbase.LOG_LEVEL_ERROR,
+                                logging_tools.LOG_LEVEL_ERROR,
                             )
                         else:
                             _parsed += 1
                             self.vars[_new_var.name] = _new_var
                     self.log(
                         "added {} from {} (found {})".format(
-                            logbase.get_plural("variable", _parsed),
+                            logging_tools.get_plural("variable", _parsed),
                             _read_name,
-                            logbase.get_plural("key", _found),
+                            logging_tools.get_plural("key", _found),
                         )
                     )
                 else:
@@ -207,14 +206,14 @@ class ConfigStore(object):
                             _read_name,
                             str(_ng.error_log),
                         ),
-                        logbase.LOG_LEVEL_ERROR
+                        logging_tools.LOG_LEVEL_ERROR
                     )
         else:
             self.log(
                 "ConfigStore '{}' not found".format(
                     _read_name
                 ),
-                logbase.LOG_LEVEL_ERROR
+                logging_tools.LOG_LEVEL_ERROR
             )
 
     def _generate(self):
@@ -240,12 +239,12 @@ class ConfigStore(object):
                         self.file_name,
                         process_tools.get_except_info(),
                     ),
-                    logbase.LOG_LEVEL_ERROR
+                    logging_tools.LOG_LEVEL_ERROR
                 )
             else:
                 self.log("wrote to {}".format(self.file_name))
         else:
-            self.log("tree is not valid", logbase.LOG_LEVEL_ERROR)
+            self.log("tree is not valid", logging_tools.LOG_LEVEL_ERROR)
 
     def __getitem__(self, key):
         if self.tree_valid:
@@ -281,4 +280,3 @@ class ConfigStore(object):
                 (_dst, _obj(_val, database=False, source="ConfigStore"))
             )
         global_config.add_config_entries(_adds)
-

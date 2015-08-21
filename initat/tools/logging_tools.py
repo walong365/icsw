@@ -938,3 +938,19 @@ def struct_to_string(in_struct):
 def reduce_list(in_list, **kwargs):
     _top_join_str = kwargs.pop("top_join_str", ",")
     return _top_join_str.join([struct_to_string(_sub_list) for _sub_list in list_to_struct(in_list, **kwargs)])
+
+
+# delayed access functions to get_logger and other functions
+def get_logger(*args, **kwargs):
+    from .logging_net import get_logger
+    return get_logger(*args, **kwargs)
+
+
+def init_handler_unified(*args, **kwargs):
+    from .logging_net import init_handler_unified
+    return init_handler_unified(*args, **kwargs)
+
+
+def init_handler(*args, **kwargs):
+    from .logging_net import init_handler_unified
+    return init_handler(*args, **kwargs)
