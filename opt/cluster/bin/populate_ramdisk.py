@@ -40,9 +40,8 @@ import commands
 import datetime
 import fnmatch
 import gzip
-from initat.tools.logging_tools import logbase
-from initat.tools import module_dependency_tools, net_tools, process_tools, server_command, \
-    uuid_tools, config_tools
+from initat.tools import logging_tools,  \
+    process_tools, server_command, uuid_tools
 import re
 import shutil
 import stat
@@ -264,7 +263,7 @@ def get_module_dependencies(kern_dir, mod_list):
             loc_fw_lines = [line.split(":")[1].strip() for line in fw_out.split("\n") if line.lower().startswith("firmware:")]
             if loc_fw_lines:
                 print "found {} for module {}: {}".format(
-                    logbase.get_plural("firmware file", len(loc_fw_lines)),
+                    logging_tools.get_plural("firmware file", len(loc_fw_lines)),
                     f_module,
                     ", ".join(loc_fw_lines))
                 fw_lines.extend(loc_fw_lines)
@@ -557,8 +556,8 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                     "{:4d} of {:4d}, {}, {} free, file {}".format(
                         act_file,
                         num_files,
-                        logbase.get_size_str(f_size),
-                        logbase.get_size_str(f_free),
+                        logging_tools.get_size_str(f_size),
+                        logging_tools.get_size_str(f_free),
                         file_name,
                     )
                 )
@@ -617,8 +616,8 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                         "{:4d} of {:4d}, {}, {} free, lib {}{}".format(
                             act_lib,
                             num_libs,
-                            logbase.get_size_str(l_size),
-                            logbase.get_size_str(l_free),
+                            logging_tools.get_size_str(l_size),
+                            logging_tools.get_size_str(l_free),
                             lib_name,
                             " (map to {})".format(target_lib_name) if target_lib_name != lib_name else ""
                         )
@@ -638,7 +637,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         free_after = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
         print(
             "size saved by stripping: {}".format(
-                logbase.get_size_str(free_after - free_before)
+                logging_tools.get_size_str(free_after - free_before)
             )
         )
     # default shell
@@ -1018,6 +1017,7 @@ def main_copy():
 
 
 def rescan_kernels():
+    from initat.tools import net_tools
     srv_com = server_command.srv_command(command="rescan_kernels")
     _conn_str = "tcp://localhost:8000"
     # connection object
@@ -1029,11 +1029,11 @@ def rescan_kernels():
     if result is None:
         res_str, res_state = (
             "got no result (conn_str is {})".format(_conn_str),
-            logbase.LOG_LEVEL_CRITICAL,
+            logging_tools.LOG_LEVEL_CRITICAL,
         )
     else:
         res_str, res_state = result.get_log_tuple()
-    print "[{}] {}".format(logbase.map_log_level_to_log_status(res_state), res_str)
+    print "[{}] {}".format(logging_tools.map_log_level_to_log_status(res_state), res_str)
 
 
 def get_link_target(lib_dir, link_name):
@@ -1097,7 +1097,7 @@ def main_local():
 
 
 def do_show_kernels(dev_assoc):
-    out_list = logbase.new_form_list(none_string="---")
+    out_list = logging_tools.new_form_list(none_string="---")
     if dev_assoc:
         all_kernels = kernel.objects.prefetch_related("new_kernel", "new_kernel__bootnetdevice").all().order_by("name")
         for cur_k in all_kernels:
@@ -1200,6 +1200,7 @@ def copy_stage_file(src_dir, stage_name, stage_dest):
 
 
 def main_normal():
+    from initat.tools import config_tools, module_dependency_tools
     global verbose
     start_time = time.time()
     my_args = arg_parser().parse()
@@ -1245,7 +1246,7 @@ def main_normal():
         print "Host '{}' is a kernel_server (device_idx {:d}), found {}: {}".format(
             short_host_name,
             ks_check.effective_device.pk,
-            logbase.get_plural("mother_server", len(mother_list)),
+            logging_tools.get_plural("mother_server", len(mother_list)),
             ", ".join(["{} [{}]".format(
                 unicode(cur_entry.effective_device),
                 ", ".join(cur_entry.simple_ip_list)) for cur_entry in mother_list]))
@@ -1366,7 +1367,7 @@ def main_normal():
             _extra = [_kvd for _kvd in kverdirs if _kvd != kernel_name]
             print(
                 "    {} found: {}".format(
-                    logbase.get_plural("extra module dir", len(_extra)),
+                    logging_tools.get_plural("extra module dir", len(_extra)),
                     ", ".join(sorted(_extra))
                 )
             )
@@ -1462,12 +1463,12 @@ def main_normal():
             else:
                 act_mods = []
             print "Using module_list from database: {}, {}".format(
-                logbase.get_plural("module", len(act_mods)),
+                logging_tools.get_plural("module", len(act_mods)),
                 ", ".join(act_mods)
             )
         else:
             print "Saving module_list to database: {}, {}".format(
-                logbase.get_plural("module", len(act_mods)),
+                logging_tools.get_plural("module", len(act_mods)),
                 ", ".join(act_mods))
             my_kernel.target_module_list = ",".join(act_mods)
             my_kernel.save()
@@ -1484,10 +1485,10 @@ def main_normal():
         del_mods.sort()
         if not my_args.quiet:
             print "  %s given: %s; %s not found, %s have to be installed" % (
-                logbase.get_plural("kernel module", len(act_mods)),
+                logging_tools.get_plural("kernel module", len(act_mods)),
                 ", ".join(act_mods),
-                logbase.get_plural("module", len(del_mods)),
-                logbase.get_plural("module", len(all_mods)))
+                logging_tools.get_plural("module", len(del_mods)),
+                logging_tools.get_plural("module", len(all_mods)))
         if my_args.verbose and not my_args.quiet:
             for mod in del_mods:
                 print " - (not found) : %s" % (mod)
@@ -1665,9 +1666,9 @@ def main_normal():
             e_time = time.time()
             print(
                 "from {} to {} in {}".format(
-                    logbase.get_size_str(o_s1_size),
-                    logbase.get_size_str(n_s1_size),
-                    logbase.get_diff_time_str(e_time - s_time)
+                    logging_tools.get_size_str(o_s1_size),
+                    logging_tools.get_size_str(n_s1_size),
+                    logging_tools.get_diff_time_str(e_time - s_time)
                 )
             )
         print "Compressing stage2 ............. ",
@@ -1683,9 +1684,9 @@ def main_normal():
         e_time = time.time()
         print(
             "from {} to {} in {}".format(
-                logbase.get_size_str(o_s2_size),
-                logbase.get_size_str(n_s2_size),
-                logbase.get_diff_time_str(e_time - s_time)
+                logging_tools.get_size_str(o_s2_size),
+                logging_tools.get_size_str(n_s2_size),
+                logging_tools.get_diff_time_str(e_time - s_time)
             )
         )
         print "Compressing stageloc ........... ",
@@ -1699,9 +1700,9 @@ def main_normal():
         e_time = time.time()
         print(
             "from {} to {} in {}".format(
-                logbase.get_size_str(o_sl_size),
-                logbase.get_size_str(n_sl_size),
-                logbase.get_diff_time_str(e_time - s_time)
+                logging_tools.get_size_str(o_sl_size),
+                logging_tools.get_size_str(n_sl_size),
+                logging_tools.get_diff_time_str(e_time - s_time)
             )
         )
     if my_kernel:

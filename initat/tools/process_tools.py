@@ -46,7 +46,7 @@ from initat.tools import logging_tools
 
 try:
     import psutil
-except (NotImplementedError, ImportError):
+except (NotImplementedError, ImportError, IOError):
     # handle chrooted calls
     print("cannot import psutil, running chrooted ? setting psutil to None")
     psutil = None

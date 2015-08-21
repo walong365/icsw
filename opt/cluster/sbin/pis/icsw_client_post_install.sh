@@ -27,6 +27,7 @@ OFF="\033[m"
 
 rm -rf /usr/local/sbin/check_scripts.py*
 rm -rf ${ICSW_SBIN}/modules/*.pyo
+rm -rf /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools
 rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
 rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py{c,o}
 
