@@ -18,6 +18,7 @@ class Parser(object):
         self.add_creation_group()
         self.add_update_group()
         self.add_automatic_group()
+        self.add_webfrontend_group()
         if "sqlite" in AVAILABLE_DATABASES:
             self.add_sqlite_group()
 
@@ -89,32 +90,53 @@ class Parser(object):
     def add_update_group(self):
         group = self.parser.add_argument_group("update options")
         group.add_argument(
-            "--only-fixtures", default=False, action="store_true",
+            "--only-fixtures",
+            default=False,
+            action="store_true",
             help="only call create_fixtures"
         )
 
     def add_automatic_group(self):
         group = self.parser.add_argument_group("automatic update options")
         group.add_argument(
-            "--disable-auto-update", default=False, action="store_true",
+            "--disable-auto-update",
+            default=False,
+            action="store_true",
             help="disable automatic update [%(default)s]"
+        )
+
+    def add_webfrontend_group(self):
+        wf = self.parser.add_argument_group("webfrontend options")
+        wf.add_argument(
+            "--init-webfrontend",
+            default=False,
+            action="store_true",
+            help="builds caches for the webfrontend [%(default)s]"
         )
 
     def add_sqlite_group(self):
         group = self.parser.add_argument_group("sqlite database file options")
         group.add_argument(
-            "--db-path", type=str, default="/opt/cluster/db",
+            "--db-path",
+            type=str,
+            default="/opt/cluster/db",
             help="path to sqlite database file directory"
         )
         group.add_argument(
-            "--db-file-owner", type=str, default="wwwrun",
+            "--db-file-owner",
+            type=str,
+            default="wwwrun",
             help="owner of the database file"
         )
         group.add_argument(
-            "--db-file-group", type=str, default="idg",
+            "--db-file-group",
+            type=str,
+            default="idg",
             help="group of the database file"
         )
         group.add_argument(
-            "--db-file-mode", type=str, default="660",
+            "--db-file-mode",
+            type=str,
+            default="660",
             help="database file access mode"
         )

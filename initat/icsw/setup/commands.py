@@ -209,6 +209,33 @@ def enter_data(c_dict, engine_selected, database_selected):
     }[c_dict["_engine"]]
 
 
+def init_webfrontend(opts):
+    for _what, _command, _target in [
+        ("collecting static", "collectstatic --noinput -c", None),
+        ("building url_list", "show_icsw_urls", os.path.join(get_icsw_root(), "initat", "cluster", "frontend", "templates", "all_urls.html")),
+    ]:
+        print(_what)
+        _success, _output = call_manage(_command.split(), output=True)
+        if _success and _target:
+            print(
+                "    writing {} to {}".format(
+                    logging_tools.get_size_str(len(_output), long_format=True),
+                    _target,
+                )
+            )
+            file(_target, "w").write(_output)
+    # already configured; run collectstatic
+    _RELOAD_FLAG = "/opt/cluster/etc/uwsgi/reload/webfrontend.touch"
+    if os.path.exists("/opt/cluster/etc/uwsgi/reload"):
+        print("touching reload flag {}".format(_RELOAD_FLAG))
+        file(_RELOAD_FLAG, "w").write("")
+    else:
+        print("no uwsgi reload-dir found, please (re)start uwsgi-init via")
+        print("")
+        print("icsw service restart uwsgi-init")
+        print("")
+
+
 def create_db_cf(opts):
     c_dict = {
         "host": opts.host,
@@ -620,6 +647,8 @@ def main(args):
     call_create_db = True
     call_migrate_db = False
     call_create_fixtures = False
+    call_init_webfrontend = args.init_webfrontend
+    # FIXME, too many flags ...
     if db_exists:
         if args.only_fixtures:
             setup_db_cf = False
@@ -639,8 +668,9 @@ def main(args):
                     print("DB access file {} already exists, ignoring ...".format(DB_CS_FILENAME))
                     setup_db_cf = True
                 else:
-                    print("DB access file {} already exists, exiting ...".format(DB_CS_FILENAME))
-                    sys.exit(1)
+                    print("DB access file {} already exists, ignoring ...".format(DB_CS_FILENAME))
+                    call_create_db = False
+                    setup_db_cf = False
     else:
         setup_db_cf = True
         if args.use_existing:
@@ -652,7 +682,11 @@ def main(args):
     check_db_rights()
     if call_create_db:
         create_db(args)
+        call_init_webfrontend = True
     if call_migrate_db:
         migrate_db(args)
+        call_init_webfrontend = True
     if call_create_fixtures:
         create_fixtures()
+    if call_init_webfrontend:
+        init_webfrontend(args)
