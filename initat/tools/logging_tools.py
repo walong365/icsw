@@ -944,13 +944,3 @@ def reduce_list(in_list, **kwargs):
 def get_logger(*args, **kwargs):
     from .logging_net import get_logger
     return get_logger(*args, **kwargs)
-
-
-def init_handler_unified(*args, **kwargs):
-    from .logging_net import init_handler_unified
-    return init_handler_unified(*args, **kwargs)
-
-
-def init_handler(*args, **kwargs):
-    from .logging_net import init_handler_unified
-    return init_handler(*args, **kwargs)
