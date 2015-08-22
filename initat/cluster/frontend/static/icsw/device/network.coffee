@@ -133,10 +133,10 @@ angular.module(
 ).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
      "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
-    "icswCallAjaxService", "icswParseXMLResponseService",
+    "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
      $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
-     icswCallAjaxService, icswParseXMLResponseService
+     icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
@@ -147,6 +147,7 @@ angular.module(
         $scope.netdevice_open = true
         $scope.netip_open = false
         $scope.peer_open = false
+        $scope.copy_coms = false
         # mixins
         $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
         $scope.netdevice_edit.create_template = "netdevice.form"
@@ -664,20 +665,35 @@ angular.module(
             if source and dest
                 return if source.device == dest.device then "local" else "remote"
             else
-                return "---"    
+                return "---"
+        $scope.toggle_copy_com = () ->
+            $scope.copy_coms = !$scope.copy_coms
+        $scope.copy_com_class = () ->
+            if $scope.copy_coms
+                return "btn btn-sm btn-success"
+            else
+                return "btn btn-sm btn-default"
+        $scope.copy_com_value = () ->
+            if $scope.copy_coms
+                return "Copy Coms and Schemes"
+            else
+                return "start with empty Coms and Schemes"
         $scope.copy_network = (src_obj, event) ->
-            if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
-                blockUI.start()
-                icswCallAjaxService
-                    url     : ICSW_URLS.NETWORK_COPY_NETWORK
-                    data    : {
-                        "source_dev" : src_obj.idx
-                        "all_devs"   : angular.toJson(@devsel_list)
-                    },
-                    success : (xml) =>
-                        blockUI.stop()
-                        icswParseXMLResponseService(xml)
-                        $scope.reload()
+            icswToolsSimpleModalService("Overwrite all networks with the one from #{src_obj.full_name} ?").then(
+                () ->
+                    blockUI.start()
+                    icswCallAjaxService
+                        url     : ICSW_URLS.NETWORK_COPY_NETWORK
+                        data    : {
+                            "source_dev" : src_obj.idx
+                            "copy_coms"  : $scope.copy_coms
+                            "all_devs"   : angular.toJson($scope.devsel_list)
+                        },
+                        success : (xml) =>
+                            blockUI.stop()
+                            icswParseXMLResponseService(xml)
+                            $scope.reload()
+            )
         $scope.get_bootdevice_info_class = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
             if obj.dhcp_error

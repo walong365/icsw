@@ -95,19 +95,31 @@ class copy_network(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        import pprint
+        pprint.pprint(_post)
         source_dev = device.objects.get(Q(pk=_post["source_dev"]))
-        target_devs = device.objects.exclude(Q(pk=source_dev.pk)).filter(Q(pk__in=json.loads(_post["all_devs"]))).prefetch_related(
+        copy_coms = True if _post["copy_coms"].lower()[0] in ["1", "t", "y"] else False
+        target_devs = device.objects.exclude(
+            Q(pk=source_dev.pk)
+        ).filter(
+            Q(pk__in=json.loads(_post["all_devs"]))
+        ).prefetch_related(
             "netdevice_set",
             "netdevice_set__netdevice_speed",
             "netdevice_set__network_device_type",
             "netdevice_set__net_ip_set",
             "netdevice_set__net_ip_set__network",
-            "netdevice_set__net_ip_set__network__network_type").order_by("name")
+            "netdevice_set__net_ip_set__network__network_type"
+        ).order_by("name")
         if len(target_devs):
             diff_ip = ipvx_tools.ipv4("0.0.0.1")
             logger.info("source device is %s" % (unicode(source_dev)))
-            logger.info("%s: %s" % (logging_tools.get_plural("target device", len(target_devs)),
-                                    ", ".join([unicode(cur_dev) for cur_dev in target_devs])))
+            logger.info(
+                "{}: {}".format(
+                    logging_tools.get_plural("target device", len(target_devs)),
+                    ", ".join([unicode(cur_dev) for cur_dev in target_devs])
+                )
+            )
             # read peer_informations
             src_nds = source_dev.netdevice_set.all().values_list("pk", flat=True)
             peer_dict = {}
@@ -126,9 +138,14 @@ class copy_network(View):
                     peer_dict.setdefault(peer_info.d_netdevice_id, []).append((peer_info.s_netdevice, peer_info.penalty))
             for target_num, target_dev in enumerate(target_devs):
                 offset = target_num + 1
-                logger.info("operating on %s, offset is %d" % (unicode(target_dev), offset))
+                logger.info(
+                    "operating on {}, offset is {:d}".format(
+                        unicode(target_dev),
+                        offset
+                    )
+                )
                 if target_dev.bootnetdevice_id:
-                    logger.info("removing bootnetdevice %s" % (unicode(target_dev.bootnetdevice)))
+                    logger.info("removing bootnetdevice {}".format(unicode(target_dev.bootnetdevice)))
                     target_dev.bootnetdevice = None
                     target_dev.save()
                 # preserve mac/fakemac addresses
@@ -186,16 +203,21 @@ class copy_network(View):
                                 peer_information(
                                     s_netdevice=new_nd,
                                     d_netdevice=new_nd,
-                                    penalty=penalty).save()
+                                    penalty=penalty,
+                                ).save()
                             else:
                                 try:
                                     # remote peer
                                     peer_information(
                                         s_netdevice=new_nd,
                                         d_netdevice=target_nd,
-                                        penalty=penalty).save()
+                                        penalty=penalty,
+                                    ).save()
                                 except IntegrityError:
-                                    request.xml_response.warn("cannot create peer", logger)
+                                    request.xml_response.warn(
+                                        "cannot create peer",
+                                        logger
+                                    )
                 # vlan masters
                 for dst_name, src_name in vlan_master_dict.items():
                     dst_dict[dst_name].master_device = dst_dict[src_name]
@@ -204,7 +226,19 @@ class copy_network(View):
                 for dst_name, src_name in bridge_master_dict.items():
                     dst_dict[dst_name].bridge_device = dst_dict[src_name]
                     dst_dict[dst_name].save()
-            request.xml_response.info("copied network settings", logger)
+                if copy_coms:
+                    target_dev.com_capability_list.clear()
+                    for src_com in source_dev.com_capability_list.all():
+                        target_dev.com_capability_list.add(src_com)
+                    target_dev.snmp_schemes.clear()
+                    for src_scheme in source_dev.snmp_schemes.all():
+                        target_dev.snmp_schemes.add(src_scheme)
+            request.xml_response.info(
+                "copied network settings for {}".format(
+                    logging_tools.get_plural("device", len(target_devs)),
+                ),
+                logger
+            )
         else:
             request.xml_response.error("no target_devices", logger)
 

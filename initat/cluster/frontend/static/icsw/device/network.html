@@ -112,6 +112,7 @@
             <ul class="dropdown-menu">
                 <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
             </ul>
+            <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
         </div>
     </div>
 </script>
