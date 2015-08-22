@@ -26,8 +26,7 @@ import os
 import sys
 import stat
 
-from initat.tools import config_store
-from initat.tools.logging_tools import logbase
+from initat.tools import config_store, logging_tools
 from django.utils.crypto import get_random_string
 
 LS_OLD_FILE = "/etc/sysconfig/cluster/local_settings.py"
@@ -47,10 +46,10 @@ def remove_file(f_name):
             pass
 
 
-def log(what, log_level=logbase.LOG_LEVEL_OK):
+def log(what, log_level=logging_tools.LOG_LEVEL_OK):
     print(
         "[{}] {}".format(
-            logbase.get_log_level_str(log_level),
+            logging_tools.get_log_level_str(log_level),
             what,
         )
     )
