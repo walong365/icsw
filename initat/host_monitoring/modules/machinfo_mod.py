@@ -44,6 +44,7 @@ EXTRA_BLOCK_DEVS = "/etc/sysconfig/host-monitoring.d/extra_block_devs"
 class _general(hm_classes.hm_module):
     def base_init(self):
         self.dmi_bin = process_tools.find_file("dmidecode")
+        self.lstopo_ng_bin = process_tools.find_file("lstopo-no-graphics")
 
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
@@ -2359,6 +2360,17 @@ class cpufreq_info_command(hm_classes.hm_command):
                 )
             )
         return ret_state, ", ".join(ret_f)
+
+
+class lstopo_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        _lstopo_stat, _lstopo_result = commands.getstatusoutput("{} --of xml".format(self.module.lstopo_ng_bin))
+        srv_com["lstopo_dump"] = server_command.compress(_lstopo_result)
+
+    def interpret(self, srv_com, cur_ns):
+        dump = etree.fromstring(server_command.decompress(srv_com["*lstopo_dump"]))
+        # print etree.tostring(dump, pretty_print=True)
+        return limits.nag_STATE_OK, "received lstopo output"
 
 
 class dmiinfo_command(hm_classes.hm_command):
