@@ -58,10 +58,19 @@ class DHCPCommand(object):
 
 
 class DHCPState(object):
-    def __init__(self, name):
+    def __init__(self, syncer, name):
+        self.syncer = syncer
         self.name = name
         # present in DHCP config
         self.set_result({})
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.syncer.log(
+            "[State {}] {}".format(
+                self.name,
+                what
+            )
+        )
 
     def set_result(self, in_dict):
         _uuid = in_dict.get("uuid", None)
@@ -80,6 +89,7 @@ class DHCPState(object):
             if cur_dev:
                 cur_dev.dhcp_written = True
                 cur_dev.dhcp_error = ""
+            self.log("present in leases")
         else:
             _action = "delete"
             self.present = False
@@ -88,6 +98,7 @@ class DHCPState(object):
             if cur_dev:
                 cur_dev.dhcp_written = False
                 cur_dev.dhcp_error = in_dict.get("error", "")
+            self.log("not present in leases")
         if cur_dev is not None:
             if cur_dev.dhcp_error:
                 cur_dev.add_log_entry(
@@ -139,10 +150,16 @@ class DHCPSyncer(object):
 
     def sync(self):
         if self.__raw_input:
-            self.log("input queue has {}".format(logging_tools.get_plural("entry", len(self.__raw_input))))
+            self.log(
+                "input queue has {}".format(
+                    logging_tools.get_plural("entry", len(self.__raw_input))
+                )
+            )
             _input_names = set([_com.name for _com in self.__raw_input])
             _new_names = set(_input_names) - set(self.__state)
-            uuid_lut = {_com.name: _com.uuid for _com in self.__raw_input if _com.name in _new_names}
+            uuid_lut = {
+                _com.name: _com.uuid for _com in self.__raw_input if _com.name in _new_names
+            }
             if _new_names:
                 self.log(
                     "querying DHCP-server for {}{}".format(
@@ -153,10 +170,14 @@ class DHCPSyncer(object):
                 self.__uuid_lut.update(uuid_lut)
                 self._query_devices(_new_names)
                 self.__waiting_queue.extend(
-                    [_com for _com in self.__raw_input if _com.name in _new_names]
+                    [
+                        _com for _com in self.__raw_input if _com.name in _new_names
+                    ]
                 )
                 # remove from raw input queue
-                self.__raw_input = [_com for _com in self.__raw_input if _com.name not in _new_names]
+                self.__raw_input = [
+                    _com for _com in self.__raw_input if _com.name not in _new_names
+                ]
             if self.__raw_input:
                 self._enqueue(self.__raw_input)
                 self.__raw_input = []
@@ -170,7 +191,8 @@ class DHCPSyncer(object):
                 logging_tools.get_plural("entry", len(_transfer))
             )
         )
-        self._enqueue(_transfer)
+        if _transfer:
+            self._enqueue(_transfer)
 
     def _enqueue(self, in_list):
         # max length is 4096, reduce a little
@@ -275,6 +297,10 @@ class DHCPSyncer(object):
                 "open",
                 "remove",
                 "",
+                "new host",
+                "set name = \"{}\"".format(dhcp_com.name),
+                "open",
+                "",
             ]
         )
         return om_array
@@ -327,7 +353,7 @@ class DHCPSyncer(object):
     def omshell_done(self, om_sc):
         cur_out = om_sc.read()
         error_re = re.compile("^.*can't (?P<what>.*) object: (?P<why>.*)$")
-        key_value_re = re.compile("^(?P<key>\S+)\s*=\s*(?P<value>\S+)$")
+        key_value_re = re.compile("^(?P<key>\S+)\s*=\s*(?P<value>.+)$")
         lines = cur_out.split("\n")
         self.log(
             "omshell finished with state {:d} ({}, {})".format(
@@ -337,6 +363,7 @@ class DHCPSyncer(object):
             )
 
         )
+        # print "xxx", "\n".join(lines)
         self.__pending -= 1
         if not self.__pending:
             simple_command.process.set_check_freq(1000)  # @UndefinedVariable
@@ -365,14 +392,21 @@ class DHCPSyncer(object):
                     cur_dict[_key] = _value
                 if line.startswith(">"):
                     if "name" in cur_dict:
-                        _result_dict[cur_dict["name"]] = {_k: _v for _k, _v in cur_dict.iteritems()}
+                        if cur_dict["name"] in _result_dict and cur_dict["name"] in _error_dict:
+                            # do not replace because we already have a record with an (important)
+                            # error message
+                            pass
+                        else:
+                            _result_dict[cur_dict["name"]] = {
+                                _k: _v for _k, _v in cur_dict.iteritems()
+                            }
                     cur_dict = {}
         for _key, _dict in _result_dict.iteritems():
             if _key in _error_dict:
                 _dict["error"] = _error_dict[_key]
                 self.log("device {}: {}".format(_key, _dict["error"]), logging_tools.LOG_LEVEL_ERROR)
             if _key not in self.__state:
-                self.__state[_key] = DHCPState(_key)
+                self.__state[_key] = DHCPState(self, _key)
             _dict["uuid"] = self.__uuid_lut[_key]
             self.__state[_key].set_result(_dict)
         self._check_waiting_queue()

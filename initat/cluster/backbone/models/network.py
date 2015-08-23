@@ -661,7 +661,7 @@ def netdevice_post_save(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.device.bootserver_id:
-            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst.device, cause="netdevice_changed")
+            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst.device, cause="netdevice update")
 
 
 @receiver(signals.post_delete, sender=netdevice)

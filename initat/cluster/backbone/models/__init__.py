@@ -156,6 +156,7 @@ def rcv_bootsettings_changed(*args, **kwargs):
 
 def _insert_bg_job(cmd, cause, obj):
     if getattr(obj, "_no_bg_job", False):
+        # used in boot_views
         return
     # create entry to be handled by the cluster-server
     # get local device, key is defined in routing.py

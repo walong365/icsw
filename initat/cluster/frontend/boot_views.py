@@ -215,6 +215,7 @@ class update_device(APIView):
                     _changed = True
                     _all_update_list |= update_list
                 if _changed:
+                    # temporarily disable background jobs because we send one command to mother
                     cur_dev._no_bg_job = True
                     cur_dev.save()
                     if cur_dev.bootnetdevice:
@@ -233,6 +234,7 @@ class update_device(APIView):
                         srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)) for cur_dev in all_devs
                     ]
                 )
+                print srv_com.pretty_print()
                 _res, _log_lines = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
                 # print "*", _mother_com, _log_lines
                 _lines.extend(_log_lines)

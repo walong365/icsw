@@ -208,7 +208,7 @@ class Host(object):
 
     @staticmethod
     def iterate(com_name, *args, **kwargs):
-        iter_keys = Host.__unique_keys
+        iter_keys = set(Host.__unique_keys)
         if "device_keys" in kwargs:
             iter_keys &= set(kwargs.pop("device_keys", Host.__unique_keys))
         for u_key in iter_keys:
@@ -1339,8 +1339,14 @@ class NodeControlProcess(threading_tools.process_obj):
         if len(args):
             in_com = server_command.srv_command(source=args[0])
             dev_list = map(lambda x: int(x), in_com.xpath(".//ns:device/@pk", smart_strings=False))
-            Host.iterate("refresh_target_kernel", device_keys=dev_list)
-            Host.iterate("handle_mac_command", "alter", device_keys=dev_list)
+            self.log(
+                "got refresh for {}: {}".format(
+                    logging_tools.get_plural("device", len(dev_list)),
+                    ", ".join(["{:d}".format(_pk) for _pk in sorted(dev_list)]),
+                )
+            )
+            Host.iterate("refresh_target_kernel", device_keys=dev_list, refresh=True)
+            Host.iterate("handle_mac_command", "alter", device_keys=dev_list, refresh=True)
             in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
             self.send_pool_message("remote_call_async_result", unicode(in_com))
         else:
@@ -1433,10 +1439,13 @@ class NodeControlProcess(threading_tools.process_obj):
                     if ip_dev.bootserver.pk == self.sc.effective_device.pk:
                         boot_dev = Host.get_device(ip_dev.pk)
                         boot_dev.log(
-                            "parsed: {}".format(
+                            "parsed: {}, send to boot_dev".format(
                                 ", ".join(
                                     [
-                                        "{}={}".format(key, in_dict[key]) for key in sorted(in_dict.keys())
+                                        "{}={}".format(
+                                            key,
+                                            in_dict[key]
+                                        ) for key in sorted(in_dict.keys())
                                     ]
                                 )
                             )
