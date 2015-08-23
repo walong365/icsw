@@ -119,7 +119,7 @@ if ${CST} --store icsw.db.access --mode storeexists ; then
         DB_VALID=0
     fi
 else
-    echo "to create a new database use ${ICSW_BASE}/sbin/icsw setup"
+    echo "to create a new database use ${ICSW_BASE}/sbin/icsw setup --enable-auto-update"
 fi
 
 [ -x /bin/systemctl ] && /bin/systemctl daemon-reload

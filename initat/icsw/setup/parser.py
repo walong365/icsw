@@ -104,6 +104,12 @@ class Parser(object):
             action="store_true",
             help="disable automatic update [%(default)s]"
         )
+        group.add_argument(
+            "--enable-auto-update",
+            default=False,
+            action="store_true",
+            help="enable automatic update [%(default)s]"
+        )
 
     def add_webfrontend_group(self):
         wf = self.parser.add_argument_group("webfrontend options")

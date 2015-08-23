@@ -638,7 +638,7 @@ def main(args):
         cs_store["db.auto.update"] = False
         cs_store.write()
         print("disabled auto_update_flag")
-    else:
+    elif args.enable_auto_update:
         cs_store = config_store.ConfigStore(CS_NAME)
         cs_store["db.auto.update"] = True
         cs_store.write()

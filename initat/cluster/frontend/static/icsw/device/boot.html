@@ -82,38 +82,63 @@
         <icsw-tools-button type="display" size="sm" value="macbootlog" ng-click="toggle_show_mbl()"></icsw-tools-button>
     </form>
     <div ng-show="show_mbl">
-        <h4>Showing {{ mbl_entries.length }} Macbootlog entries</h4>
-        <table class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Device</th>
-                    <th>type</th>
-                    <th>IP</th>
-                    <th>MAC</th>
-                    <th>Action</th>
-                    <th>Logsource</th>
-                    <th>created</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="mbl in mbl_entries" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
-                    <td>{{ mbl.device_name }}</td>
-                    <td>{{ mbl.entry_type }}</td>
-                    <td>{{ mbl.ip_action }}</td>
-                    <td>{{ mbl.macaddr }}</td>
-                    <td>
-                        <span ng-if="mbl.show_ignore">
-                            <icsw-tools-button type="delete" size="xs" value="Ignore Macaddr" ng-click="modify_mbl(mbl, 'ignore')"></icsw-tools-button>
-                        </span>
-                        <span ng-if="mbl.show_unignore">
-                            <icsw-tools-button type="create" size="xs" value="Unignore Macaddr" ng-click="modify_mbl(mbl, 'unignore')"></icsw-tools-button>
-                        </span>
-                    </td>
-                    <td style="white-space:nowrap;">{{ mbl.log_source | follow_fk:this:'log_source_lut':'name' }}</td>
-                    <td>{{ get_mbl_created(mbl) }}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Showing {{ mbl_entries.length }} Macbootlog entries</h4>
+                <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>type</th>
+                            <th>IP</th>
+                            <th>MAC</th>
+                            <th>Ignored</th>
+                            <th>Logsource</th>
+                            <th>created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="mbl in mbl_entries" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
+                            <td>{{ mbl.device_name }}</td>
+                            <td>{{ mbl.entry_type }}</td>
+                            <td>{{ mbl.ip_action }}</td>
+                            <td>{{ mbl.macaddr }}</td>
+                            <td>{{ get_mac_ignored(mbl) }}</td>
+                            <td style="white-space:nowrap;">{{ mbl.log_source | follow_fk:this:'log_source_lut':'name' }}</td>
+                            <td>{{ get_mbl_created(mbl) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h4>Showing {{ mbi_list.length }} unique MACaddresses</h4>
+                <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>MAC</th>
+                            <th>ignored</th>
+                            <th>usecount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="mbl in mbi_list" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
+                            <td>{{ mbl.macaddr }}</td>
+                            <td>{{ mbl.ignore && 'yes' || 'no' }}</td>
+                            <td>{{ mbl.usecount }}</td>
+                            <td>
+                                <span ng-if="!mbl.ignore">
+                                    <icsw-tools-button type="delete" size="xs" value="Ignore Macaddr" ng-click="modify_mbl(mbl, 'ignore')"></icsw-tools-button>
+                                </span>
+                                <span ng-if="mbl.ignore">
+                                    <icsw-tools-button type="create" size="xs" value="Unignore Macaddr" ng-click="modify_mbl(mbl, 'unignore')"></icsw-tools-button>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </script>
 

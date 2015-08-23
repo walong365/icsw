@@ -38,6 +38,8 @@ angular.module(
         $scope.any_type_2_selected = false
         $scope.any_type_3_selected = false
         $scope.device_sel_filter = ""
+        # dict of all macs
+        $scope.mac_dict = {}
         $scope.boot_options = [
             # 1 ... option to modify globally
             # 2 ... local option
@@ -498,29 +500,34 @@ angular.module(
                 }
             ).then(
                 (result) ->
+                    mbl.ignore = !mbl.ignore
+                    for _entry in $scope.mbl_entries
+                        if _entry.macaddr == mbl.macaddr
+                            _entry.ignore = mbl.ignore
             )
             $scope.fetch_macbootlog_entries()
+        $scope.get_mac_ignored = (mbl) ->
+            return if mbl.ignore then "yes" else "---"
         $scope.check_mbl = () ->
-            # not beautiful but working
-            _ignore_list = (_entry.macaddr for _entry in $scope.mbi_entries)
-            _ignored_shown_list = []
-            _unignored_shown_list = []
-            _show_ignore_list = []
+            class mbi_entry
+                constructor: (@macaddr, @ignore) ->
+                    @usecount = 0
+            # reset usecounts
+            for _mbi in _.values($scope.mac_dict)
+                _mbi.usecount = 0
+            for _entry in $scope.mbi_entries
+                if _entry.macaddr not of $scope.mac_dict
+                    $scope.mac_dict[_entry.macaddr] = new mbi_entry(_entry.macaddr, true)
+                $scope.mac_dict[_entry.macaddr].ignore = true
             for _entry in $scope.mbl_entries
-                _entry.show_ignore = false
-                _entry.show_unignore = false
-                _entry.ignore = false
                 if _entry.macaddr.match(/^([a-fA-F\d][a-fA-F\d+]:){5}[a-fA-F\d]+$/)
-                    # only handle real mac addrs
-                    if _entry.macaddr in _ignore_list
-                        _entry.ignore = true
-                        _ignored_shown_list.push(entry.macaddr)
-                        if _entry.macaddr not in _unignored_shown_list
-                            _unignored_shown_list.push(_entry.macaddr)
-                            _entry.show_unignore = true
-                    if _entry.macaddr not in _show_ignore_list and not _entry.ignore
-                        _entry.show_ignore = true
-                        _show_ignore_list.push(_entry.macaddr)
+                    if _entry.macaddr not of $scope.mac_dict
+                        $scope.mac_dict[_entry.macaddr] = new mbi_entry(_entry.macaddr, false)
+                    _entry.ignore = $scope.mac_dict[_entry.macaddr].ignore
+                    $scope.mac_dict[_entry.macaddr].usecount++
+            _keys = _.keys($scope.mac_dict)
+            _keys.sort()
+            $scope.mbi_list = ($scope.mac_dict[_key] for _key in _keys)
         $scope.get_mbl_created = (mbl) ->
             return moment.unix(mbl.created).format(DT_FORM)
 ]).directive("icswDeviceBootTable", ["$templateCache", ($templateCache) ->
