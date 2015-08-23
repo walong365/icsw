@@ -63,7 +63,12 @@ SGE_EXECD_PORT=6445; export SGE_EXECD_PORT
 # wait for SGE_ROOT to become visible
 
 count=0
-while [ ! -d "$SGE_ROOT" -a $count -le 120 ] ; do
+if [ -L "${SGE_ROOT}" ] ; then
+    _SR=$(readlink ${SGE_ROOT})
+else
+    _SR="${SGE_ROOT}"
+fi
+while [ ! -d "${_SR}" -a $count -le 120 ] ; do
     count=`expr $count + 1`
     sleep 1
 done
