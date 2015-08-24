@@ -62,6 +62,14 @@ angular.module(
 ]).directive("icswImageRow", ["$templateCache", ($templateCache) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.row")
+]).directive("icswImageHeadNew", ["$templateCache", ($templateCache) ->
+    # used in new images table
+    restrict: "EA"
+    template: $templateCache.get("icsw.image.head.new")
+]).directive("icswImageRowNew", ["$templateCache", ($templateCache) ->
+    # used in new images table
+    restrict: "EA"
+    template: $templateCache.get("icsw.image.row.new")
 ]).directive("icswImageScanButton",
     ["ICSW_URLS", "blockUI", "icswSimpleAjaxCall",
      (ICSW_URLS, blockUI, icswSimpleAjaxCall) ->
