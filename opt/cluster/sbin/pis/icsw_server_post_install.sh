@@ -108,7 +108,7 @@ fi
 
 chmod a+rwx ${WEBCACHE_DIR}
 
-if [ is_chroot ] ; then
+if is_chroot ; then
     echo "running chrooted, skipping setup and restart"
 else
     DB_VALID=0

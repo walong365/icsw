@@ -83,7 +83,7 @@ if [ -f /etc/debian_version ] ; then
     done
 fi
 
-if [ is_chroot ] ; then
+if is_chroot ; then
     echo "running chrooted, skipping restart"
 else
     [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
