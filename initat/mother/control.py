@@ -1423,7 +1423,8 @@ class NodeControlProcess(threading_tools.process_obj):
                         in_dict["ip"]
                     ),
                     logging_tools.LOG_LEVEL_WARN
-                )                ip_dev = None
+                )
+                ip_dev = None
             except device.MultipleObjectsReturned:
                 self.log(
                     "got {} for multiple ip {}".format(
