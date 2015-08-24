@@ -1,13 +1,13 @@
 <script type="text/ng-template" id="icsw.kernel.head">
     <tr>
-        <th>Display Name</th>
-        <th>Name</th>
-        <th>Version</th>
-        <th>Comment</th>
-        <th>Enabled</th>
-        <th>Ver.Rel</th>
-        <th>Bitcount</th>
-        <th>Usecount</th>
+        <th st-sort="display_name" st-sort-default>Display Name</th>
+        <th st-sort="name">Name</th>
+        <th st-sort="kernel_version">Version</th>
+        <th st-sort="comment">Comment</th>
+        <th st-sort="enabled">Enabled</th>
+        <th st-sort="version">Ver.Rel</th>
+        <th st-sort="bitcount">Bitcount</th>
+        <th st-sort="kerneldevicehistory_set.length">Usecount</th>
         <th colspan="4" class="text-center">action</th>
     </tr>
 </script>
@@ -42,7 +42,7 @@
                class="table table-hover table-condensed table-striped" style="width:auto;">
             <thead icsw-kernel-head></thead>
             <tbody>
-                <tr icsw-kernel-row ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                <tr icsw-kernel-row ng-repeat="obj in entries_displayed"></tr>
             </tbody>
         </table>
     </icsw-tools-rest-table>
