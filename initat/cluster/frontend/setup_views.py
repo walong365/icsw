@@ -147,12 +147,17 @@ class use_image(View):
                             architecture=img_xml.attrib["arch"])
                         img_arch.save()
                     img_source = srv_result.xpath(".//ns:image_list/@image_dir", smart_strings=False)[0]
+                    version_tuple = img_xml.attrib["version"].split(".", 1)
+                    if len(version_tuple) == 2:
+                        sys_version, sys_release = version_tuple
+                    else:
+                        sys_version, sys_release = "", ""
                     new_img = image(
                         name=img_xml.text,
                         source=os.path.join(img_source, img_xml.text),
                         sys_vendor=img_xml.attrib["vendor"],
-                        sys_version=img_xml.attrib["version"].split(".", 1)[0],
-                        sys_release=img_xml.attrib["version"].split(".", 1)[1],
+                        sys_version=sys_version,
+                        sys_release=sys_release,
                         bitcount=img_xml.attrib["bitcount"],
                         architecture=img_arch,
                     )
