@@ -25,6 +25,7 @@ kernel_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).directive("icswKernelOverview", ["$templateCache", ($templateCache) ->
+    controller: "icswKernelOverviewCtrl"
     template: $templateCache.get("icsw.kernel.overview")
 ]).service("icswKernelOverviewService", ["ICSW_URLS", (ICSW_URLS) ->
     return {

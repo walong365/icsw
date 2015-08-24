@@ -24,6 +24,7 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).directive("icswImageOverview", ["$templateCache", ($templateCache) ->
+    controller: "icswImageOverviewCtrl"
     template: $templateCache.get("icsw.image.overview")
 ]).service("icswImageOverviewService", ["ICSW_URLS", (ICSW_URLS) ->
     _scope = undefined

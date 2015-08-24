@@ -2,15 +2,16 @@
 
 {% load i18n %}
 
-{% block title %}{% trans "Image Overview" %}{% endblock %}
+{% block title %}{% trans "Images / Kernels" %}{% endblock %}
 
 {% block content %}
 
-<tabset>
-    <tab heading="Images">
-        <div ng-controller="icswImageOverviewCtrl">
-            <icsw-image-overview></icsw-image-overview>
-        </div>
+<tabset icsw-tools-add-acl-functions>
+    <tab heading="Images" ng-if="has_menu_permission('image.modify_images')">
+        <icsw-image-overview></icsw-image-overview>
+    </tab>
+    <tab heading="Kernels" ng-if="has_menu_permission('kernel.modify_kernels')">
+        <icsw-kernel-overview></icsw-kernel-overview>
     </tab>
 </tabset>
 
