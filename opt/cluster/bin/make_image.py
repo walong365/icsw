@@ -90,8 +90,10 @@ class package_check(object):
             return self.check_zypper(pack_list)
         elif os.path.isfile(os.path.join(self.__image.source, "etc", "redhat-release")):
             return self.check_yum(pack_list)
+        elif os.path.isfile(os.path.join(self.__image.source, "etc", "debian_version")):
+            return self.check_dpkg(pack_list)
         else:
-            self.log("image type not identifier", logging_tools.LOG_LEVEL_ERROR)
+            self.log("image type not identified", logging_tools.LOG_LEVEL_ERROR)
             return set(pack_list)
 
     def check_yum(self, pack_list):
@@ -111,6 +113,13 @@ class package_check(object):
         else:
             all_packs = set(res_xml.xpath(".//solvable[@status='installed' and @kind='package']/@name", smart_strings=False))
         missing_packages = set(pack_list) - all_packs
+        return missing_packages
+
+    def check_dpkg(self, pack_list):
+        self.log("checking image at path {} with dpkg".format(self.__image.source))
+        res_str = self._call("chroot {} dpkg -l".format(self.__image.source))
+        res_set = set([line.strip().split()[1] for line in res_str.split("\n") if line.lower().startswith("i")])
+        missing_packages = set(pack_list) - res_set
         return missing_packages
 
     def _call(self, cmd_string):

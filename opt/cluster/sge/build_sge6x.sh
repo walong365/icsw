@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2007-2009,2012,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2012,2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -70,6 +70,13 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
         echo "  - xorg-x11-devel"
         echo "  - motif-devel (or openmotif-devel)"
         echo "  - ncurses-devel"
+        echo ""
+        echo "or (on debian systems)"
+        echo "  - motif-dev"
+        echo "  - ncurses-dev"
+        echo "  - libpam-dev"
+        echo "  - xorg-dev"
+        echo ""
         echo "is missing"
         exit -1 ;
     }

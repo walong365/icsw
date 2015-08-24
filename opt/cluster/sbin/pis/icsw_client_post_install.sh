@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source $(dirname $0)/icsw_pis_tools.sh
+
 ICSW_BASE=/opt/cluster
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SBIN=${ICSW_BASE}/sbin
@@ -81,23 +83,27 @@ if [ -f /etc/debian_version ] ; then
     done
 fi
 
-[ -x /bin/systemctl ] && /bin/systemctl daemon-reload
+if [ is_chroot ] ; then
+    echo "running chrooted, skipping restart"
+else
+    [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
-# logging-server
-${ICSW_SBIN}/icsw service restart logging-server
-${INIT}/hoststatus restart
+    # logging-server
+    ${ICSW_SBIN}/icsw service restart logging-server
+    ${INIT}/hoststatus restart
 
-if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
-    # start / stop to force restart of all services
-    if [ ! -d /var/lib/meta-server/.srvstate ] ; then
-        NUM_RS=2
-    else
-        NUM_RS=1
+    if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh ] ; then
+        # start / stop to force restart of all services
+        if [ ! -d /var/lib/meta-server/.srvstate ] ; then
+            NUM_RS=2
+        else
+            NUM_RS=1
+        fi
+
+        for idx in $(seq ${NUM_RS} ) ; do
+            echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (client)${OFF}\n"
+            ${ICSW_SBIN}/icsw service stop meta-server
+            ${ICSW_SBIN}/icsw service start meta-server
+        done
     fi
-
-    for idx in $(seq ${NUM_RS} ) ; do
-        echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (client)${OFF}\n"
-        ${ICSW_SBIN}/icsw service stop meta-server
-        ${ICSW_SBIN}/icsw service start meta-server
-    done
 fi

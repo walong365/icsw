@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source $(dirname $0)/icsw_pis_tools.sh
+
 ICSW_BASE=/opt/cluster
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SBIN=${ICSW_BASE}/sbin
@@ -59,7 +61,7 @@ fi
 
 if [ -L /tftpboot ] ; then
     # /tftpboot is a link
-    if [ "$(readlink /tftpboot)" != "${ICSW_TFTP}" ] ; then
+    if [ "$(realpath $(readlink /tftpboot))" != "${ICSW_TFTP}" ] ; then
         echo "/tftpboot is a link but points to $(readlink /tftpboot) instead of ${ICSW_TFTP}"
     fi
 else
@@ -106,43 +108,47 @@ fi
 
 chmod a+rwx ${WEBCACHE_DIR}
 
-DB_VALID=0
-
-if ${CST} --store icsw.db.access --mode storeexists ; then
-    # already installed
-    if [ "$(${CST} --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
-        echo "running auto-update script ${ICSW_BASE}/sbin/icsw setup --migrate"
-        ${ICSW_BASE}/sbin/icsw setup --migrate
-        DB_VALID=1
-    else
-        echo "to update the current database schema via django please use ${ICSW_BASE}/sbin/setup_cluster.py --migrate"
-        DB_VALID=0
-    fi
+if [ is_chroot ] ; then
+    echo "running chrooted, skipping setup and restart"
 else
-    echo "to create a new database use ${ICSW_BASE}/sbin/icsw setup --enable-auto-update"
-fi
+    DB_VALID=0
 
-[ -x /bin/systemctl ] && /bin/systemctl daemon-reload
-
-if [ "${DB_VALID}" = "1" ] ; then
-    # PostInstallScripts
-    [ -x ${ICSW_PIS}/sge_post_install.sh ] && ${ICSW_PIS}/sge_post_install.sh
-
-    echo "Database is valid, restarting software"
-    # start / stop to force restart of all services
-    if [ ! -d /var/lib/meta-server/.srvstate ] ; then
-        NUM_RS=2
+    if ${CST} --store icsw.db.access --mode storeexists ; then
+        # already installed
+        if [ "$(${CST} --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
+            echo "running auto-update script ${ICSW_BASE}/sbin/icsw setup --migrate"
+            ${ICSW_BASE}/sbin/icsw setup --migrate
+            DB_VALID=1
+        else
+            echo "to update the current database schema via django please use ${ICSW_BASE}/sbin/setup_cluster.py --migrate"
+            DB_VALID=0
+        fi
     else
-        NUM_RS=1
+        echo "to create a new database use ${ICSW_BASE}/sbin/icsw setup --enable-auto-update"
     fi
 
-    for idx in $(seq ${NUM_RS} ) ; do
-        echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (server)${OFF}\n"
-        ${ICSW_SBIN}/icsw service stop meta-server
-        ${ICSW_SBIN}/icsw service start meta-server
-    done
-else
-    echo ""
-    echo "Database is not valid, skipping restart"
-    echo ""
+    [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
+
+    if [ "${DB_VALID}" = "1" ] ; then
+        # PostInstallScripts
+        [ -x ${ICSW_PIS}/sge_post_install.sh ] && ${ICSW_PIS}/sge_post_install.sh
+
+        echo "Database is valid, restarting software"
+        # start / stop to force restart of all services
+        if [ ! -d /var/lib/meta-server/.srvstate ] ; then
+            NUM_RS=2
+        else
+            NUM_RS=1
+        fi
+
+        for idx in $(seq ${NUM_RS} ) ; do
+            echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (server)${OFF}\n"
+            ${ICSW_SBIN}/icsw service stop meta-server
+            ${ICSW_SBIN}/icsw service start meta-server
+        done
+    else
+        echo ""
+        echo "Database is not valid, skipping restart"
+        echo ""
+    fi
 fi
