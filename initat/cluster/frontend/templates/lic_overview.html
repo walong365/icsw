@@ -1,19 +1,14 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
+{% load i18n %}
 
 {% block title %}{% trans "License Overview" %}{% endblock %}
 
 {% block content %}
-
-{% verbatim %}
 
 <h2 style="margin-bottom:1em">License Overview</h2>
 <div ng-controller="icswLicenseOverviewCtrl">
     <icsw-license-overview></icsw-license-overview>
 </div>
 
-{% endverbatim %}
-
 {% endblock %}
-

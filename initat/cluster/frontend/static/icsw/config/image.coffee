@@ -26,13 +26,18 @@ angular.module(
 ).directive("icswImageOverview", ["$templateCache", ($templateCache) ->
     template: $templateCache.get("icsw.image.overview")
 ]).service("icswImageOverviewService", ["ICSW_URLS", (ICSW_URLS) ->
+    _scope = undefined
     return {
         rest_url: ICSW_URLS.REST_IMAGE_LIST
         edit_template: "image.form"
         delete_confirm_str: (obj) -> return "Really delete image '#{obj.name}' ?"
+        init_fn: (scope) ->
+            _scope = scope
+        reload_list : () ->
+            _scope.reload()
     }
-]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "icswImageOverviewService",
+    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswSimpleAjaxCall, icswImageOverviewService) ->
         $scope.arch_rest = Restangular.all(ICSW_URLS.REST_ARCHITECTURE_LIST.slice(1))
         $scope.arch_rest.getList().then((response) ->
             $scope.architectures = response
@@ -49,40 +54,42 @@ angular.module(
             return if num_refs == 0 then true else false
         $scope.scan_for_images = () =>
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.SETUP_RESCAN_IMAGES
                 title   : "scanning for new images"
-                success : (xml) =>
-                    new_list = []
-                    if icswParseXMLResponseService(xml)
-                        $(xml).find("found_images found_image").each (idx, new_img) =>
-                            new_img = $(new_img)
-                            new_obj = {
-                                "name"    : new_img.attr("name")
-                                "vendor"  : new_img.attr("vendor")
-                                "version" : new_img.attr("version")
-                                "arch"    : new_img.attr("arch")
-                                "present" : parseInt(new_img.attr("present"))
-                            }
-                            new_list.push(new_obj)
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    $scope.$apply(() ->
-                        $scope.new_entries = new_list
-                    )
+                    new_list = []
+                    $(xml).find("found_images found_image").each (idx, new_img) =>
+                        new_img = $(new_img)
+                        new_obj = {
+                            "name"    : new_img.attr("name")
+                            "vendor"  : new_img.attr("vendor")
+                            "version" : new_img.attr("version")
+                            "arch"    : new_img.attr("arch")
+                            "present" : parseInt(new_img.attr("present"))
+                        }
+                        new_list.push(new_obj)
+                    $scope.new_entries = new_list
+                (error) ->
+                    blockUI.stop()
+            )
         $scope.take_image = (obj) =>
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.SETUP_USE_IMAGE
-                data    : 
+                data    :
                     "img_name" : obj.name
                 title   : "scanning for new images"
-                success : (xml) =>
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    $scope.$apply(() ->
-                        $scope.new_entries = []
-                    )
-                    if icswParseXMLResponseService(xml)
-                        $scope.reload()
+                    $scope.new_entries = []
+                    icswImageOverviewService.reload_list()
+                (error) ->
+                    blockUI.stop()
+            )
 ]).directive("icswImageHead", ["$templateCache", ($templateCache) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.head")

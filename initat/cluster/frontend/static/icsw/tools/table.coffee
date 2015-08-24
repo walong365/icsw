@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 angular.module(
     "icsw.tools.table", [
         "restangular"
@@ -68,10 +69,10 @@ angular.module(
             scope.stItemsByPage = scope.stItemsByPage or 10
             scope.stDisplayedPages = scope.stDisplayedPages or 5
             scope.noNumberOfElements = scope.noNumberOfElements or false
-            scope.Math = Math;
+            scope.Math = Math
             # this is not nice but only needed for a minor thing (see template above)
             # the problem is that we can't access the scope of the outer directive as the st-table directive overwrites the scope
-            scope.table_controller = ctrl;
+            scope.table_controller = ctrl
 
             if attrs.possibleItemsByPage
                 scope.possibleItemsByPage = (parseInt(i) for i in attrs.possibleItemsByPage.split(","))
@@ -82,8 +83,8 @@ angular.module(
             scope.pages = []
 
             redraw = () ->
-                paginationState = ctrl.tableState().pagination;
-                start = 1;
+                paginationState = ctrl.tableState().pagination
+                start = 1
                 scope.currentPage = Math.floor(paginationState.start / paginationState.number) + 1
 
                 start = Math.max(start, scope.currentPage - Math.abs(Math.floor(scope.stDisplayedPages / 2)))
@@ -99,24 +100,24 @@ angular.module(
                 for i in [start..(end-1)]
                     scope.pages.push(i)
 
-            #//table state --> view
+            # table state --> view
             scope.$watch(
                 () -> return ctrl.tableState().pagination,
                 redraw, true)
 
-            #//scope --> table state  (--> view)
+            # scope --> table state  (--> view)
             scope.$watch('stItemsByPage', () ->
                 scope.selectPage(1)
             )
 
             scope.$watch('stDisplayedPages', redraw)
 
-            #//view -> table state
+            # view -> table state
             scope.selectPage = (page) ->
                 if (page > 0 && page <= scope.numPages) 
-                    ctrl.slice((page - 1) * scope.stItemsByPage, scope.stItemsByPage);
+                    ctrl.slice((page - 1) * scope.stItemsByPage, scope.stItemsByPage)
 
-            #//select the first page
+            # select the first page
             ctrl.slice(0, scope.stItemsByPage)
             
             scope.get_range_info = (num) =>

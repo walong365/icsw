@@ -41,10 +41,11 @@ class image_serializer(serializers.ModelSerializer):
         model = image
         # set fields explicitly to get references to history
         fields = (
-            "idx", "name", "enabled", "version", "release",
+            "idx", "name", "enabled", "version", "release", "builds",
             "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
             "new_image", "imagedevicehistory_set",
         )
+        read_only_fields = ("imagedevicehistory_set", "new_image",)
 
 
 class kernel_serializer(serializers.ModelSerializer):

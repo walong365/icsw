@@ -6,6 +6,7 @@
         <th>arch</th>   
         <th>Sysinfo</th>
         <th>Usecount</th>
+        <th>#builds</th>
         <th>Size</th>
         <th colspan="4" class="text-center">action</th>
     </tr>
@@ -18,6 +19,7 @@
     <td>{{ obj.architecture | array_lookup:architectures:'architecture':'---' }}</td>
     <td>{{ obj.sys_vendor }}, {{ obj.sys_version || "?" }}.{{ obj.sys_release || "?" }}</td>
     <td class="text-center">{{ obj.imagedevicehistory_set.length }} / {{ obj.new_image.length }}</td>
+    <td class="text-center">{{ obj.builds }}</td>
     <td class="text-center">{{ obj.size_string }}</td>
     <td>
         <icsw-tools-button type="change" size="xs" value="bump version" ng-click="bump_version(obj)"></icsw-tools-button>
@@ -52,11 +54,14 @@
 <script type="text/ng-template" id="icsw.image.overview">
     <icsw-tools-rest-table target-list="entries" config-service="icswImageOverviewService">
         <h2>Images ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="Scan for images" ng-click="scan_for_images()"/></h2>
-        <table st-table="entries_displayed" st-safe-src="entries"
-               class="table table-hover table-condensed table-striped" style="width:auto;">
+        <table
+            st-table="entries_displayed"
+            st-safe-src="entries"
+            class="table table-hover table-condensed table-striped"
+            style="width:auto;"
+        >
             <thead icsw-image-head></thead>
             <tbody>
-                <!-- <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="8"></td></tr>-->
                 <tr icsw-image-row ng-repeat="obj in entries_displayed"></tr>
             </tbody>
         </table>
