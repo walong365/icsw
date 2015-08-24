@@ -53,7 +53,9 @@
 
 <script type="text/ng-template" id="icsw.image.overview">
     <icsw-tools-rest-table target-list="entries" config-service="icswImageOverviewService">
-        <h2>Images ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="Scan for images" ng-click="scan_for_images()"/></h2>
+        <h2>Images ({{entries.length}} entries),
+            <icsw-tools-button type="search" value="Scan for images" ng-click="scan_for_images()"></icsw-tools-button>
+        </h2>
         <table
             st-table="entries_displayed"
             st-safe-src="entries"

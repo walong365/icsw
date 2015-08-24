@@ -73,6 +73,9 @@ angular.module(
         else if type == "display"
             ret_obj.css_class = "btn-info"
             ret_obj.icon_class = "fa fa-search"
+        else if type == "search"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.icon_class = "fa fa-search"
         else if type == "download"
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = gettextCatalog.getString("download")
