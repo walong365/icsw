@@ -1,13 +1,13 @@
 <script type="text/ng-template" id="icsw.image.head">
     <tr>
-        <th>Name</th>   
-        <th>Version</th>
-        <th>Enabled</th>
-        <th>arch</th>   
-        <th>Sysinfo</th>
-        <th>Usecount</th>
-        <th>#builds</th>
-        <th>Size</th>
+        <th st-sort="name">Name</th>
+        <th st-sort="version">Version</th>
+        <th st-sort="enabled">Enabled</th>
+        <th st-sort="architecture">arch</th>
+        <th st-sort="sys_vendor">Sysinfo</th>
+        <th st-sort="imagedevicehistory_set.length">Usecount</th>
+        <th st-sort="builds">#builds</th>
+        <th st-sort="size_string">Size</th>
         <th colspan="4" class="text-center">action</th>
     </tr>
 </script>
@@ -31,24 +31,6 @@
     <td>
         <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete(obj, $event)"></icsw-tools-button>
     </td>
-</script>
-
-<script type="text/ng-template" id="ics.image.head.new">
-    <tr>
-        <th>Name</th>   
-        <th>SysInfo</th>
-        <th>arch</th>
-        <th>Present</th>
-        <th>action</th>   
-    </tr>
-</script>
-
-<script type="text/ng-template" id="icsw.image.row.new">
-    <td>{{ obj.name }}</td>
-    <td>{{ obj.vendor }}, {{ obj.version }}</td>
-    <td>{{ obj.arch }}</td>
-    <td>{{ obj.present | yesno1 }}
-    <td><input type="button" class="btn btn-primary" value="take" ng-click="take_image(obj)" ng-show="! obj.present"/></td>
 </script>
 
 <script type="text/ng-template" id="icsw.image.overview">
