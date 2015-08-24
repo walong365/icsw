@@ -26,16 +26,19 @@ angular.module(
 ).directive("icswImageOverview", ["$templateCache", ($templateCache) ->
     controller: "icswImageOverviewCtrl"
     template: $templateCache.get("icsw.image.overview")
-]).service("icswImageOverviewService", ["ICSW_URLS", (ICSW_URLS) ->
-    _scope = undefined
+]).service("icswImageOverviewService", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+    rest_handle = Restangular.all(ICSW_URLS.REST_IMAGE_LIST.slice(1)).getList().$object
     return {
-        rest_url: ICSW_URLS.REST_IMAGE_LIST
+        rest_handle: rest_handle
         edit_template: "image.form"
         delete_confirm_str: (obj) -> return "Really delete image '#{obj.name}' ?"
-        init_fn: (scope) ->
-            _scope = scope
         reload_list : () ->
-            _scope.reload()
+            Restangular.all(ICSW_URLS.REST_IMAGE_LIST.slice(1)).getList().then((new_entries) ->
+                # rebuild list
+                rest_handle.length = 0
+                for entry in new_entries
+                    rest_handle.push(entry)
+            )
     }
 ]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "icswImageOverviewService",
     ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswSimpleAjaxCall, icswImageOverviewService) ->
@@ -53,44 +56,6 @@ angular.module(
         $scope.delete_ok = (obj) ->
             num_refs = obj.imagedevicehistory_set.length + obj.new_image.length
             return if num_refs == 0 then true else false
-        $scope.scan_for_images = () =>
-            blockUI.start()
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.SETUP_RESCAN_IMAGES
-                title   : "scanning for new images"
-            ).then(
-                (xml) ->
-                    blockUI.stop()
-                    new_list = []
-                    $(xml).find("found_images found_image").each (idx, new_img) =>
-                        new_img = $(new_img)
-                        new_obj = {
-                            "name"    : new_img.attr("name")
-                            "vendor"  : new_img.attr("vendor")
-                            "version" : new_img.attr("version")
-                            "arch"    : new_img.attr("arch")
-                            "present" : parseInt(new_img.attr("present"))
-                        }
-                        new_list.push(new_obj)
-                    $scope.new_entries = new_list
-                (error) ->
-                    blockUI.stop()
-            )
-        $scope.take_image = (obj) =>
-            blockUI.start()
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.SETUP_USE_IMAGE
-                data    :
-                    "img_name" : obj.name
-                title   : "scanning for new images"
-            ).then(
-                (xml) ->
-                    blockUI.stop()
-                    $scope.new_entries = []
-                    icswImageOverviewService.reload_list()
-                (error) ->
-                    blockUI.stop()
-            )
 ]).directive("icswImageHead", ["$templateCache", ($templateCache) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.head")
@@ -103,4 +68,60 @@ angular.module(
 ]).directive("icswImageRowNew", ["$templateCache", ($templateCache) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.row.new")
+]).directive("icswImageScanButton",
+    ["ICSW_URLS", "blockUI", "icswSimpleAjaxCall",
+     (ICSW_URLS, blockUI, icswSimpleAjaxCall) ->
+         restrict: 'E'
+         template: """
+<icsw-tools-button type="search" value="Scan for images" ng-click="scan_for_images()"></icsw-tools-button>
+"""
+         scope:
+            'new_entries': '=newEntries'
+         link: (scope, el, attrs)  ->
+             scope.scan_for_images = () =>
+                 blockUI.start()
+                 icswSimpleAjaxCall(
+                     url     : ICSW_URLS.SETUP_RESCAN_IMAGES
+                     title   : "scanning for new images"
+                 ).then(
+                     (xml) ->
+                         blockUI.stop()
+                         # update list in-place
+                         scope.new_entries.length = 0
+                         $(xml).find("found_images found_image").each (idx, new_img) =>
+                             new_img = $(new_img)
+                             new_obj = {
+                                 "name"    : new_img.attr("name")
+                                 "vendor"  : new_img.attr("vendor")
+                                 "version" : new_img.attr("version")
+                                 "arch"    : new_img.attr("arch")
+                                 "present" : parseInt(new_img.attr("present"))
+                             }
+                             scope.new_entries.push(new_obj)
+                     (error) ->
+                         blockUI.stop()
+                 )
+]).directive("icswImageNewImages",
+    ["ICSW_URLS", "blockUI", "icswSimpleAjaxCall", "icswImageOverviewService",
+     (ICSW_URLS, blockUI, icswSimpleAjaxCall, icswImageOverviewService) ->
+         restrict: 'E'
+         templateUrl: "icsw.image.new-images"
+         scope:
+            'new_entries': '=newEntries'
+         link: (scope, el, attrs) ->
+             scope.take_image = (obj) =>
+                 blockUI.start()
+                 icswSimpleAjaxCall(
+                     url     : ICSW_URLS.SETUP_USE_IMAGE
+                     data    :
+                         "img_name" : obj.name
+                     title   : "scanning for new images"
+                 ).then(
+                     (xml) ->
+                         blockUI.stop()
+                         scope.new_entries.length = 0
+                         icswImageOverviewService.reload_list()
+                     (error) ->
+                         blockUI.stop()
+                 )
 ])

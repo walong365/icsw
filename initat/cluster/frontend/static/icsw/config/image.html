@@ -54,7 +54,7 @@
 <script type="text/ng-template" id="icsw.image.overview">
     <icsw-tools-rest-table target-list="entries" config-service="icswImageOverviewService">
         <h2>Images ({{entries.length}} entries),
-            <icsw-tools-button type="search" value="Scan for images" ng-click="scan_for_images()"></icsw-tools-button>
+            <icsw-image-scan-button new-entries="new_entries"></icsw-image-scan-button>
         </h2>
         <table
             st-table="entries_displayed"
@@ -68,6 +68,10 @@
             </tbody>
         </table>
     </icsw-tools-rest-table>
+    <icsw-image-new-images new-entries="new_entries"></icsw-image-new-images>
+</script>
+
+<script type="text/ng-template" id="icsw.image.new-images">
     <div ng-show="new_entries.length > 0">
         <h2>Images found ({{ new_entries.length}})</h2>
         <table class="table table-condensed table-hover" style="width:auto;">
