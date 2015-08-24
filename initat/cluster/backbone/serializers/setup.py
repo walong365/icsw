@@ -43,9 +43,9 @@ class image_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "enabled", "version", "release", "builds",
             "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
-            "new_image", "imagedevicehistory_set",
+            "new_image", "imagedevicehistory_set", "build_lock",
         )
-        read_only_fields = ("imagedevicehistory_set", "new_image",)
+        read_only_fields = ("imagedevicehistory_set", "new_image", "build_lock", )
 
 
 class kernel_serializer(serializers.ModelSerializer):

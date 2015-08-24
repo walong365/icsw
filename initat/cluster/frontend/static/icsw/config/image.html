@@ -21,14 +21,17 @@
     <td class="text-center">{{ obj.imagedevicehistory_set.length }} / {{ obj.new_image.length }}</td>
     <td class="text-center">{{ obj.builds }}</td>
     <td class="text-center">{{ obj.size_string }}</td>
-    <td>
+    <td ng-if="obj.build_lock">
+        <i class="glyphicon glyphicon-exclamation-sign"></i> <span class="text-warning">This image is currently being building.</span>
+    </td>
+    <td ng-if="!obj.build_lock">
         <icsw-tools-button type="change" size="xs" value="bump version" ng-click="bump_version(obj)"></icsw-tools-button>
         <icsw-tools-button type="change" size="xs" value="bump release" ng-click="bump_release(obj)"></icsw-tools-button>
     </td>
-    <td>
+    <td ng-if="!obj.build_lock">
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
     </td>
-    <td>
+    <td ng-if="!obj.build_lock">
         <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete(obj, $event)"></icsw-tools-button>
     </td>
 </script>
@@ -46,7 +49,7 @@
         >
             <thead icsw-image-head></thead>
             <tbody>
-                <tr icsw-image-row ng-repeat="obj in entries_displayed"></tr>
+                <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{warning: obj.build_lock}"></tr>
             </tbody>
         </table>
     </icsw-tools-rest-table>
