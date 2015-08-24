@@ -8,7 +8,7 @@
         <th st-sort="imagedevicehistory_set.length">Usecount</th>
         <th st-sort="builds">#builds</th>
         <th st-sort="size_string">Size</th>
-        <th colspan="4" class="text-center">action</th>
+        <th colspan="99" class="text-center">action</th>
     </tr>
 </script>
 
@@ -21,15 +21,18 @@
     <td class="text-center">{{ obj.imagedevicehistory_set.length }} / {{ obj.new_image.length }}</td>
     <td class="text-center">{{ obj.builds }}</td>
     <td class="text-center">{{ obj.size_string }}</td>
-    <td ng-if="obj.build_lock">
+    <td ng-if="obj.build_lock" colspan="99">
         <i class="glyphicon glyphicon-exclamation-sign"></i> <span class="text-warning">This image is currently being building.</span>
     </td>
     <td ng-if="!obj.build_lock">
-        <icsw-tools-button type="change" size="xs" value="bump version" ng-click="bump_version(obj)"></icsw-tools-button>
-        <icsw-tools-button type="change" size="xs" value="bump release" ng-click="bump_release(obj)"></icsw-tools-button>
+        <icsw-tools-button type="bump" size="xs" value="bump version" ng-click="bump_version(obj)"></icsw-tools-button>
+        <icsw-tools-button type="bump" size="xs" value="bump release" ng-click="bump_release(obj)"></icsw-tools-button>
     </td>
     <td ng-if="!obj.build_lock">
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
+    </td>
+    <td ng-if="!obj.build_lock">
+        <icsw-tools-button type="image" size="xs" ng-click="build(obj)"></icsw-tools-button>
     </td>
     <td ng-if="!obj.build_lock">
         <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete(obj, $event)"></icsw-tools-button>

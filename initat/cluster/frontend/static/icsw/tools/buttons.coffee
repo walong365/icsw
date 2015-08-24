@@ -96,6 +96,14 @@ angular.module(
             ret_obj.css_class = "btn-primary"
             ret_obj.button_value = "select devices"
             ret_obj.icon_class = "fa fa-desktop"
+        else if type == "bump"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = "bump"
+            ret_obj.icon_class = "glyphicon glyphicon-arrow-up"
+        else if type == "image"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "build image"
+            ret_obj.icon_class = "glyphicon glyphicon-hdd"
         else
             console.error "Invalid button type: #{type}"
         return ret_obj
