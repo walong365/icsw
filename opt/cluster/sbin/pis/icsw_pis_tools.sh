@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 function is_chroot() {
     p1_inode=$(ls --color=no -di /proc/1/root/ | tr -s " " | cut -d " " -f 1)
