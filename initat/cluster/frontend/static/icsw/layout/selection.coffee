@@ -84,7 +84,18 @@ angular.module(
     return (dev_pk) ->
         defer = $q.defer()
         icswDeviceTreeService.fetch(id).then((new_data) ->
-            defer.resolve(new_data[2][dev_pk])
+            if dev_pk in new_data[2]
+                defer.resolve(new_data[2][dev_pk])
+            else
+                defer.resolve(undefined)
+        )
+        return defer.promise
+]).service("icswSelectionDeviceExists", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
+    id = Math.random()
+    return (dev_pk) ->
+        defer = $q.defer()
+        icswDeviceTreeService.fetch(id).then((new_data) ->
+            defer.resolve(dev_pk in new_data[2])
         )
         return defer.promise
 ]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->

@@ -55,11 +55,16 @@ angular.module(
 ]).directive("icswImageHead", ["$templateCache", ($templateCache) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.head")
-]).directive("icswImageRow", ["$templateCache", "icswSelectionGetDeviceService", "$q", ($templateCache, icswSelectionGetDeviceService, $q) ->
+]).directive("icswImageRow", ["$templateCache", "icswSelectionGetDeviceService", "$q", "icswSelectionDeviceExists", ($templateCache, icswSelectionGetDeviceService, $q, icswSelectionDeviceExists) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.row")
     link: (scope, el, attrs) ->
         scope.$watch('obj', (image)->
+            get_name = (entry) ->
+                if entry
+                    return entry.name
+                else
+                    return "N/R"
             image.usecount_tooltip = ""
 
             promises = [[], []]
@@ -73,12 +78,13 @@ angular.module(
                 [$q.all(promises[0]),
                  $q.all(promises[1])]
             )
-            wait_list.then((results) ->
-                image.usecount_tooltip = ""
-                if results[0].length + results[1].length > 0
-                    image.usecount_tooltip += (pre.name for pre in results[0]).join(', ')
-                    image.usecount_tooltip += " / "
-                    image.usecount_tooltip += (post.name for post in results[1]).join(', ')
+            wait_list.then(
+                (results) ->
+                    image.usecount_tooltip = ""
+                    if results[0].length + results[1].length > 0
+                        image.usecount_tooltip += (get_name(pre) for pre in results[0]).join(', ')
+                        image.usecount_tooltip += " / "
+                        image.usecount_tooltip += (get_name(post) for post in results[1]).join(', ')
             )
         )
 ]).directive("icswImageHeadNew", ["$templateCache", ($templateCache) ->

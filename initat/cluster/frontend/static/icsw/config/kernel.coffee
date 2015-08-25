@@ -69,6 +69,11 @@ kernel_module = angular.module(
         template: $templateCache.get("icsw.kernel.row")
         link: (scope, el, attrs) ->
             scope.$watch('obj', (kernel)->
+                get_name = (entry) ->
+                    if entry
+                        return entry.name
+                    else
+                        return "N/R"
                 kernel.usecount_tooltip = ""
 
                 promises = [[], []]
@@ -85,9 +90,9 @@ kernel_module = angular.module(
                 wait_list.then((results) ->
                     kernel.usecount_tooltip = ""
                     if results[0].length + results[1].length > 0
-                        kernel.usecount_tooltip += (pre.name for pre in results[0]).join(', ')
+                        kernel.usecount_tooltip += (get_name(pre) for pre in results[0]).join(', ')
                         kernel.usecount_tooltip += " / "
-                        kernel.usecount_tooltip += (post.name for post in results[1]).join(', ')
+                        kernel.usecount_tooltip += (get_name(post) for post in results[1]).join(', ')
                 )
             )
 ])

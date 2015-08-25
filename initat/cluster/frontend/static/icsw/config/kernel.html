@@ -40,7 +40,7 @@
 <script type="text/ng-template" id="icsw.kernel.overview">
     <icsw-tools-rest-table target-list="entries" config-service="icswKernelOverviewService">
         <h2>Kernels ({{entries.length}} entries),
-            <icsw-tools-button type="search" value="Scan for kernels" ng-click="scan_for_images()"></icsw-tools-button>
+            <icsw-tools-button type="search" value="Scan for kernels" ng-click="scan_for_kernels(reload)"></icsw-tools-button>
             </h2>
         <table st-table="entries_displayed" st-safe-src="entries"
                class="table table-hover table-condensed table-striped" style="width:auto;">
