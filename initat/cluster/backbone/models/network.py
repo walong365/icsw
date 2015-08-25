@@ -345,6 +345,20 @@ class net_ip(models.Model):
         else:
             return self.netdevice.device.name
 
+    @property
+    def is_valid(self):
+        _valid = True
+        if self.network.enforce_unique_ips:
+            try:
+                present_ip = net_ip.objects.exclude(Q(pk=cur_inst.pk)).get(Q(network=cur_inst.network) & Q(ip=cur_inst.ip))
+            except net_ip.DoesNotExist:
+                pass
+            except net_ip.MultipleObjectsReturned:
+                _valid = False
+            else:
+                _valid = False
+        return _valid
+
     class Meta:
         db_table = u"netip"
         app_label = "backbone"
