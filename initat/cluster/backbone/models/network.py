@@ -350,7 +350,7 @@ class net_ip(models.Model):
         _valid = True
         if self.network.enforce_unique_ips:
             try:
-                present_ip = net_ip.objects.exclude(Q(pk=cur_inst.pk)).get(Q(network=cur_inst.network) & Q(ip=cur_inst.ip))
+                present_ip = net_ip.objects.exclude(Q(pk=self.pk)).get(Q(network=self.network) & Q(ip=self.ip))
             except net_ip.DoesNotExist:
                 pass
             except net_ip.MultipleObjectsReturned:
