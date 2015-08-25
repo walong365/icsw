@@ -18,7 +18,11 @@
     <td>{{ obj.enabled | yesno1 }}</td>
     <td>{{ obj.architecture | array_lookup:architectures:'architecture':'---' }}</td>
     <td>{{ obj.sys_vendor }}, {{ obj.sys_version || "?" }}.{{ obj.sys_release || "?" }}</td>
-    <td class="text-center">{{ obj.imagedevicehistory_set.length }} / {{ obj.new_image.length }}</td>
+    <td class="text-center">
+        <a href="#" tooltip="{{obj.usecount_tooltip}}" tooltip-trigger="mouseenter">
+            {{ obj.imagedevicehistory_set.length }} / {{ obj.new_image.length }}
+        </a>
+    </td>
     <td class="text-center">{{ obj.builds }}</td>
     <td class="text-center">{{ obj.size_string }}</td>
     <td ng-if="obj.build_lock" colspan="99">

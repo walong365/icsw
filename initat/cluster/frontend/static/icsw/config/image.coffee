@@ -29,14 +29,15 @@ angular.module(
         controller: "icswImageOverviewCtrl"
         template: $templateCache.get("icsw.image.overview")
 
-]).service("icswImageOverviewService", ["ICSW_URLS", "Restangular", "$rootScope", (ICSW_URLS, Restangular, $rootScope) ->
+]).service("icswImageOverviewService", ["ICSW_URLS", (ICSW_URLS) ->
     return {
         rest_url: ICSW_URLS.REST_IMAGE_LIST
         edit_template: "image.form"
         delete_confirm_str: (obj) -> return "Really delete image '#{obj.name}' ?"
     }
-]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "icswImageOverviewService",
-    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswSimpleAjaxCall, icswImageOverviewService) ->
+]).controller("icswImageOverviewCtrl",
+    ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS",
+    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS) ->
         $scope.arch_rest = Restangular.all(ICSW_URLS.REST_ARCHITECTURE_LIST.slice(1))
         $scope.arch_rest.getList().then((response) ->
             $scope.architectures = response
@@ -54,9 +55,32 @@ angular.module(
 ]).directive("icswImageHead", ["$templateCache", ($templateCache) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.head")
-]).directive("icswImageRow", ["$templateCache", ($templateCache) ->
+]).directive("icswImageRow", ["$templateCache", "icswSelectionGetDeviceService", "$q", ($templateCache, icswSelectionGetDeviceService, $q) ->
     restrict: "EA"
     template: $templateCache.get("icsw.image.row")
+    link: (scope, el, attrs) ->
+        scope.$watch('obj', (image)->
+            image.usecount_tooltip = ""
+
+            promises = [[], []]
+            for pk in image.imagedevicehistory_set
+                promises[0].push icswSelectionGetDeviceService(pk)
+
+            for pk in image.new_image
+                promises[1].push icswSelectionGetDeviceService(pk)
+
+            wait_list = $q.all(
+                [$q.all(promises[0]),
+                 $q.all(promises[1])]
+            )
+            wait_list.then((results) ->
+                image.usecount_tooltip = ""
+                if results[0].length + results[1].length > 0
+                    image.usecount_tooltip += (pre.name for pre in results[0]).join(', ')
+                    image.usecount_tooltip += " / "
+                    image.usecount_tooltip += (post.name for post in results[1]).join(', ')
+            )
+        )
 ]).directive("icswImageHeadNew", ["$templateCache", ($templateCache) ->
     # used in new images table
     restrict: "EA"

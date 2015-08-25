@@ -79,6 +79,14 @@ angular.module(
             else
                 return load_data(client).promise
     }
+]).service("icswSelectionGetDeviceService", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
+    id = Math.random()
+    return (dev_pk) ->
+        defer = $q.defer()
+        icswDeviceTreeService.fetch(id).then((new_data) ->
+            defer.resolve(new_data[2][dev_pk])
+        )
+        return defer.promise
 ]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
