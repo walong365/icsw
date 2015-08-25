@@ -140,6 +140,10 @@ class Host(object):
             )
 
     @property
+    def is_special(self):
+        return True if self.name.strip() in ["*", ""] else False
+    
+    @property
     def create_record(self):
         return self.force_create_private or self.name.strip() not in ["*"]
 

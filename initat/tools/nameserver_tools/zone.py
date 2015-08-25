@@ -250,7 +250,8 @@ class Zone(object):
 
     @staticmethod
     def feed_host(host, zone):
-        [_nw.feed_host(host, zone) for _nw in Network.networks]
+        if not host.is_special:
+            [_nw.feed_host(host, zone) for _nw in Network.networks]
 
     @staticmethod
     def create_keys():
