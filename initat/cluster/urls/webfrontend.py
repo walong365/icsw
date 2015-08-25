@@ -100,6 +100,7 @@ setup_patterns = patterns(
     url(r"xml/rescan_images", setup_views.scan_for_images.as_view(), name="rescan_images"),
     url(r"xml/use_image", setup_views.use_image.as_view(), name="use_image"),
     url(r"xml/rescan_kernels", setup_views.rescan_kernels.as_view(), name="rescan_kernels"),
+    url(r"BuildImage", setup_views.BuildImage.as_view(), name="BuildImage"),
 )
 
 config_patterns = patterns(

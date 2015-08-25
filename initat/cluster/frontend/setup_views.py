@@ -190,3 +190,15 @@ class rescan_kernels(View):
             log_result=True,
             split_send=False
         )
+
+
+class BuildImage(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        image_pk = int(request.POST["image_pk"])
+        image_obj = image.objects.get(pk=image_pk)
+        image_obj.build_lock = not image_obj.build_lock
+        image_obj.save()
+        request.xml_response.warn("not implemented yet")
+        # request.xml_response.info("building image {}".format(image_obj.name), logger)

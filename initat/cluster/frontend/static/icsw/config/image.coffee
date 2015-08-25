@@ -23,22 +23,17 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).directive("icswImageOverview", ["$templateCache", ($templateCache) ->
-    controller: "icswImageOverviewCtrl"
-    template: $templateCache.get("icsw.image.overview")
-]).service("icswImageOverviewService", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
-    rest_handle = Restangular.all(ICSW_URLS.REST_IMAGE_LIST.slice(1)).getList().$object
+).directive("icswImageOverview",
+    ["$templateCache",
+     ($templateCache) ->
+        controller: "icswImageOverviewCtrl"
+        template: $templateCache.get("icsw.image.overview")
+
+]).service("icswImageOverviewService", ["ICSW_URLS", "Restangular", "$rootScope", (ICSW_URLS, Restangular, $rootScope) ->
     return {
-        rest_handle: rest_handle
+        rest_url: ICSW_URLS.REST_IMAGE_LIST
         edit_template: "image.form"
         delete_confirm_str: (obj) -> return "Really delete image '#{obj.name}' ?"
-        reload_list : () ->
-            Restangular.all(ICSW_URLS.REST_IMAGE_LIST.slice(1)).getList().then((new_entries) ->
-                # rebuild list
-                rest_handle.length = 0
-                for entry in new_entries
-                    rest_handle.push(entry)
-            )
     }
 ]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "icswImageOverviewService",
     ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswSimpleAjaxCall, icswImageOverviewService) ->
@@ -103,13 +98,34 @@ angular.module(
                      (error) ->
                          blockUI.stop()
                  )
+]).directive("icswImageBuildButton",
+    ["ICSW_URLS", "icswSimpleAjaxCall",
+     (ICSW_URLS, icswSimpleAjaxCall) ->
+         restrict: 'E'
+         template: """
+<icsw-tools-button type="image" size="xs" ng-click="build_image()"></icsw-tools-button>
+"""
+         scope:
+             'reload': '='
+             'image': '&'
+         link: (scope, el, attrs) ->
+             scope.build_image = () ->
+                 icswSimpleAjaxCall(
+                     url: ICSW_URLS.SETUP_BUILD_IMAGE
+                     data:
+                         image_pk: scope.image().idx
+                 ).then(
+                     (xml) ->
+                         scope.reload()
+                 )
 ]).directive("icswImageNewImages",
-    ["ICSW_URLS", "blockUI", "icswSimpleAjaxCall", "icswImageOverviewService",
-     (ICSW_URLS, blockUI, icswSimpleAjaxCall, icswImageOverviewService) ->
+    ["ICSW_URLS", "blockUI", "icswSimpleAjaxCall", "icswImageOverviewService", "$interval",
+     (ICSW_URLS, blockUI, icswSimpleAjaxCall, icswImageOverviewService, $interval) ->
          restrict: 'E'
          templateUrl: "icsw.image.new-images"
          scope:
             'new_entries': '=newEntries'
+            'reload': '='
          link: (scope, el, attrs) ->
              scope.take_image = (obj) =>
                  blockUI.start()
@@ -122,8 +138,17 @@ angular.module(
                      (xml) ->
                          blockUI.stop()
                          scope.new_entries.length = 0
-                         icswImageOverviewService.reload_list()
+                         scope.reload()
                      (error) ->
                          blockUI.stop()
                  )
+             update_interval_handle = $interval(
+                 () -> scope.reload()
+                 30000
+             )
+
+             scope.$on(
+                 "$destroy"
+                 () -> $interval.cancel(update_interval_handle)
+             )
 ])

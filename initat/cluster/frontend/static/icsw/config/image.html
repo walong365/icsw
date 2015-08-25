@@ -31,9 +31,11 @@
     <td ng-if="!obj.build_lock">
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
     </td>
+    <!--
     <td ng-if="!obj.build_lock">
-        <icsw-tools-button type="image" size="xs" ng-click="build(obj)"></icsw-tools-button>
+        <icsw-image-build-button image="obj" reload="reload"></icsw-image-build-button>
     </td>
+    -->
     <td ng-if="!obj.build_lock">
         <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete(obj, $event)"></icsw-tools-button>
     </td>
@@ -55,8 +57,8 @@
                 <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{warning: obj.build_lock}"></tr>
             </tbody>
         </table>
+        <icsw-image-new-images new-entries="new_entries" reload="reload"></icsw-image-new-images>
     </icsw-tools-rest-table>
-    <icsw-image-new-images new-entries="new_entries"></icsw-image-new-images>
 </script>
 
 <script type="text/ng-template" id="icsw.image.new-images">
