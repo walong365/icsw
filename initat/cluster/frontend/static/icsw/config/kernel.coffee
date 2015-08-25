@@ -62,7 +62,32 @@ kernel_module = angular.module(
 ]).directive("icswKernelHead", ["$templateCache", ($templateCache) ->
     restrict: "EA"
     template: $templateCache.get("icsw.kernel.head")
-]).directive("icswKernelRow", ["$templateCache", ($templateCache) ->
-    restrict: "EA"
-    template: $templateCache.get("icsw.kernel.row")
+]).directive("icswKernelRow",
+    ["$templateCache", "icswSelectionGetDeviceService", "$q",
+    ($templateCache, icswSelectionGetDeviceService, $q) ->
+        restrict: "EA"
+        template: $templateCache.get("icsw.kernel.row")
+        link: (scope, el, attrs) ->
+            scope.$watch('obj', (kernel)->
+                kernel.usecount_tooltip = ""
+
+                promises = [[], []]
+                for pk in kernel.kerneldevicehistory_set
+                    promises[0].push icswSelectionGetDeviceService(pk)
+
+                for pk in kernel.new_kernel
+                    promises[1].push icswSelectionGetDeviceService(pk)
+
+                wait_list = $q.all(
+                    [$q.all(promises[0]),
+                     $q.all(promises[1])]
+                )
+                wait_list.then((results) ->
+                    kernel.usecount_tooltip = ""
+                    if results[0].length + results[1].length > 0
+                        kernel.usecount_tooltip += (pre.name for pre in results[0]).join(', ')
+                        kernel.usecount_tooltip += " / "
+                        kernel.usecount_tooltip += (post.name for post in results[1]).join(', ')
+                )
+            )
 ])
