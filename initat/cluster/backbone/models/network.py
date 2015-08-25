@@ -346,7 +346,7 @@ class net_ip(models.Model):
             return self.netdevice.device.name
 
     @property
-    def is_valid(self):
+    def is_unique(self):
         _valid = True
         if self.network.enforce_unique_ips:
             try:

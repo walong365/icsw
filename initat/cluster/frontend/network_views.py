@@ -194,7 +194,7 @@ class copy_network(View):
                             for _seq in xrange(offset):
                                 ip_val += diff_ip
                             new_ip.ip = str(ip_val)
-                            while not new_ip.is_valid:
+                            while not new_ip.is_unique:
                                 ip_val += diff_ip
                                 new_ip.ip = str(ip_val)
                         new_ip.save()
