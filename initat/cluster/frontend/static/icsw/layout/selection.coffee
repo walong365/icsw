@@ -84,7 +84,7 @@ angular.module(
     return (dev_pk) ->
         defer = $q.defer()
         icswDeviceTreeService.fetch(id).then((new_data) ->
-            if dev_pk in new_data[2]
+            if dev_pk of new_data[2]
                 defer.resolve(new_data[2][dev_pk])
             else
                 defer.resolve(undefined)
@@ -95,7 +95,7 @@ angular.module(
     return (dev_pk) ->
         defer = $q.defer()
         icswDeviceTreeService.fetch(id).then((new_data) ->
-            defer.resolve(dev_pk in new_data[2])
+            defer.resolve(dev_pk of new_data[2])
         )
         return defer.promise
 ]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
