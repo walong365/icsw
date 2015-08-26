@@ -87,7 +87,6 @@ setup(
                 # tools
                 "opt/cluster/bin/get_cpuid.py",
                 "opt/cluster/bin/user_info.py",
-                "opt/cluster/bin/clog.py",
                 "opt/cluster/bin/load_firmware.sh",
                 "opt/cluster/bin/populate_ramdisk.py",
                 "opt/cluster/bin/make_image.py",

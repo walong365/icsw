@@ -28,44 +28,44 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 from initat.tools import logging_tools
-import argparse
-from initat.cluster.backbone.models import DeviceLogEntry, LogSource, LogLevel, device
+from initat.cluster.backbone.models import DeviceLogEntry, LogLevel, device, LogSource
 from django.db.models import Q
 
 
-def main():
-    my_parser = argparse.ArgumentParser()
+def populate_parser(parser):
     def_source = LogSource.objects.get(Q(identifier="commandline"))
-    my_parser.add_argument(
+    parser.add_argument(
         "--mode",
         type=str,
         default="list",
         choices=["list", "create"],
         help="operation mode [%(default)s]"
     )
-    my_parser.add_argument(
+    parser.add_argument(
         "--level",
         type=str,
         default="",
         choices=LogLevel.objects.values_list("identifier", flat=True),
         help="log status [%(default)s]"
     )
-    my_parser.add_argument(
+    parser.add_argument(
         "--source",
         type=str,
         default="",
         choices=LogSource.objects.values_list("identifier", flat=True),
         help="log source [%(default)s]"
     )
-    my_parser.add_argument(
+    parser.add_argument(
         "--device",
         type=str,
         default="",
         choices=device.objects.all().values_list("name", flat=True).order_by("name"),
         help="device to show logs for [%(default)s]"
     )
-    my_parser.add_argument("text", nargs="*")
-    opts = my_parser.parse_args()
+    parser.add_argument("text", nargs="*")
+
+
+def main(opts):
     ret_code = -1
     if opts.mode == "list":
         def_query = Q()
@@ -115,7 +115,3 @@ def main():
     else:
         print "Uknown mode '{}'".format(opts.mode)
     sys.exit(ret_code)
-
-
-if __name__ == "__main__":
-    main()
