@@ -19,6 +19,35 @@
 #
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
+class logline
+    constructor: (line, log_source_lut, user_lut, log_level_lut) ->
+        # format: pk, device_id, log_source_id, user_id, log_level_id, text, seconds
+        @dt = line[6]
+        @moment = moment.unix(@dt)
+        @abs_dt = @moment.format(DT_FORM)
+        @text = line[5]
+        if line[2] of log_source_lut
+            @source = log_source_lut[line[2]].description
+        else
+            @source = "---"
+        if line[3] of user_lut
+            @user = user_lut[line[3]].admin
+        else
+            @user = "---"
+        if line[4] of log_level_lut
+            @log_level = log_level_lut[line[4]].name
+        else
+            @log_level = "---"
+        if @log_level == "error"
+            @class = "danger"
+        else if @log_level == "warn"
+            @class = "warning"
+        else
+            @class = ""
+
+    get_relative_date: () =>
+        return @moment.fromNow()
+
 angular.module(
     "icsw.device.boot",
     [
@@ -201,12 +230,14 @@ angular.module(
                 for dev in $scope.devices
                     dev.show_log = false
                     dev.selected = false
+                    dev.num_show = 5
                     dev.recvreq_str = "waiting"
                     dev.recvreq_state = "warning"
                     dev.network = "waiting"
                     dev.network_state = "warning"
                     dev.latest_log = 0
-                    dev.num_logs = 0
+                    dev.num_logs = "?"
+                    dev.logs_set = false
                     dev.log_lines = []
                 $scope.log_source_lut = icswTools.build_lut(data[6])
                 $scope.log_level_lut = icswTools.build_lut(data[7])
@@ -347,7 +378,6 @@ angular.module(
                                 $scope.$apply(
                                     $scope.conn_problems++
                                 )
-                                #console.log $scope.conn_problems, xml
                 )
                 if $scope.bo_enabled["l"]
                     send_data = {
@@ -358,14 +388,17 @@ angular.module(
                         data     : send_data
                         dataType : "json"
                         success  : (json) =>
-                            if json.devlog_lines
-                                for entry in json.devlog_lines
-                                    # format: pk, device_id, log_source_id, user_id, log_level_id, text, seconds
-                                    cur_dev = $scope.device_lut[entry[1]]
-                                    cur_dev.num_logs++
-                                    cur_dev.latest_log = Math.max(entry[0], cur_dev.latest_log)
-                                    cur_dev.log_lines.splice(0, 0, entry)
-                                    cur_dev.log_lines = cur_dev.log_lines
+                            if json.dev_logs
+                                for dev_id of json.dev_logs
+                                    cur_dev = $scope.device_lut[dev_id]
+                                    json_dev = json.dev_logs[dev_id]
+                                    cur_dev.num_logs = json_dev["total"]
+                                    cur_dev.logs_set = true
+                                    for line in json_dev["lines"]
+                                        # format: pk, device_id, log_source_id, user_id, log_level_id, text, seconds
+                                        cur_dev.latest_log = Math.max(line[0], cur_dev.latest_log)
+                                        new_line = new logline(line, $scope.log_source_lut, $scope.user_lut, $scope.log_level_lut)
+                                        cur_dev.log_lines.splice(0, 0, new_line)
                                 $scope.$digest()
         $scope.soft_control = (dev, command) ->
             if dev
@@ -678,13 +711,11 @@ angular.module(
 ]).directive("icswDeviceBootLogTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
+        scope:
+            device: "=device"
         template : $templateCache.get("icsw.device.boot.log.table")
         link : (scope, el, attrs) ->
-            scope.num_show = 5
-            scope.get_date = (ts) ->
-                _t = moment.unix(ts)
-                return _t.fromNow()
             scope.get_log_lines = () ->
-                return scope.dev.log_lines[0..scope.num_show]
+                return scope.device.log_lines[0..scope.device.num_show]
     }
 ])

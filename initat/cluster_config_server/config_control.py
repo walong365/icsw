@@ -27,10 +27,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, DeviceBootHistory
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.simple_request import simple_request, var_cache
-from initat.tools import config_tools
-from initat.tools import logging_tools
-from initat.tools import module_dependency_tools
-from initat.tools import process_tools
+from initat.tools import config_tools, logging_tools, module_dependency_tools, process_tools
 
 
 class config_control(object):

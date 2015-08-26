@@ -29,7 +29,7 @@ import time
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
@@ -43,8 +43,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from initat.tools import logging_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, server_command
 
 logger = logging.getLogger("cluster.boot")
 
@@ -234,7 +233,6 @@ class update_device(APIView):
                         srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)) for cur_dev in all_devs
                     ]
                 )
-                print srv_com.pretty_print()
                 _res, _log_lines = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
                 # print "*", _mother_com, _log_lines
                 _lines.extend(_log_lines)
@@ -259,38 +257,52 @@ class get_devlog_info(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        # import pprint
         _pk_log_list = json.loads(_post["sel_list"])
-        lp_dict = dict([(key, latest) for key, latest in _pk_log_list])
+        lp_dict = {key: latest for key, latest in _pk_log_list}
         devs = device.objects.filter(Q(pk__in=lp_dict.keys()))
         oldest_pk = min(lp_dict.values() + [0])
-        logger.info("request devlogs for {}, oldest devlog_pk is {:d}".format(
-            logging_tools.get_plural("device", len(lp_dict)),
-            oldest_pk))
-        _lines = []
-        dev_logs = DeviceLogEntry.objects.filter(
-            Q(pk__gt=oldest_pk) & Q(device__in=devs)
+        logger.info(
+            "request devlogs for {}, oldest devlog_pk is {:d}".format(
+                logging_tools.get_plural("device", len(lp_dict)),
+                oldest_pk
+            )
+        )
+        num_logs = dict(
+            device.objects.filter(Q(pk__in=devs)).annotate(num_logs=Count("devicelogentry")).values_list("pk", "num_logs")
+        )
+        db_logs = DeviceLogEntry.objects.filter(
+            Q(pk__gt=oldest_pk) &
+            Q(device__in=devs)
         ).select_related(
             "source",
             "level",
             "user",
-        ).order_by("pk")
-        logs_transfered = dict([(key, 0) for key in lp_dict.iterkeys()])
-        for dev_log in dev_logs:
-            if dev_log.pk > lp_dict[dev_log.device_id]:
-                logs_transfered[dev_log.device_id] += 1
-                _lines.append(
+        ).order_by("-pk")
+        dev_logs = {
+            key: {
+                "lines": [],
+                "total": num_logs[key],
+                "transfered": 0,
+                "latest": value,
+            } for key, value in lp_dict.iteritems()
+        }
+        for db_log in db_logs:
+            _ds = dev_logs[db_log.device_id]
+            if db_log.pk > _ds["latest"] and _ds["transfered"] < 300:
+                _ds["transfered"] += 1
+                _ds["lines"].insert(
+                    0,
                     [
-                        dev_log.pk,
-                        dev_log.device_id,
-                        dev_log.source_id,
-                        dev_log.user_id,
-                        dev_log.level_id,
-                        dev_log.text,
-                        time.mktime(cluster_timezone.normalize(dev_log.date).timetuple()),
+                        db_log.pk,
+                        db_log.device_id,
+                        db_log.source_id,
+                        db_log.user_id,
+                        db_log.level_id,
+                        db_log.text,
+                        time.mktime(cluster_timezone.normalize(db_log.date).timetuple()),
                     ]
                 )
-        return HttpResponse(json.dumps({"devlog_lines": _lines}), content_type="application/json")
+        return HttpResponse(json.dumps({"dev_logs": dev_logs}), content_type="application/json")
 
 
 class soft_control(View):

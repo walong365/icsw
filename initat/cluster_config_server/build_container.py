@@ -31,8 +31,7 @@ from initat.cluster_config_server.base_objects import new_config_object, dir_obj
 from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
     do_etc_hosts, do_hosts_equiv, do_uuid_old
 from initat.cluster_config_server.partition_setup import partition_setup
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 class tree_node_g(object):

@@ -29,9 +29,9 @@
         </thead>
         <tbody>
             <tr icsw-device-boot-row ng-repeat-start="dev in devices" ng-class="get_row_class(dev)"></tr>
-            <tr ng-repeat-end ng-show="bo_enabled['l'] && dev.show_log">
+            <tr ng-repeat-end ng-show="bo_enabled['l'] && dev.show_log && dev.logs_set">
                 <td colspan="100">
-                    <icsw-device-boot-log-table></icsw-device-boot-log-table>
+                    <icsw-device-boot-log-table device="dev"></icsw-device-boot-log-table>
                 </td>
             </tr>
         </tbody>
@@ -187,31 +187,31 @@
         <icsw-tools-button type="modify" size="xs" ng-click="modify_device(dev, $event)"></icsw-tools-button>
     </td>
     <td ng-show="any_type_3_selected">
-        <input type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"/>
+        <form class="form-inline">
+            <input type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"/>
+            Number of log lines: {{ dev.num_logs }}, show
+            <select ng-model="dev.num_show" class="form-control input-sm" ng-options="value as value for value in [5, 20, 50, 100]">
+            </select>
+        </form>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.boot.log.table">
-    <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <table class="table table-condensed table-hover table-striped" style="width:auto;">
         <tr>
             <th>Source</th>
             <th>User</th>
             <th>Status</th>
-            <th>
-                <form class="form-inline">
-                    Number of log lines: {{ dev.num_logs }}, show
-                    <select ng-model="num_show" class="form-control input-sm" ng-options="value as value for value in [5, 20, 50, 100]">
-                    </select>
-                </form>
-            </th>
-            <th>when</th>
+            <th>Message</th>
+            <th colspan="2">when</th>
         </tr>
         <tr ng-repeat="line in get_log_lines()">
-            <td style="white-space:nowrap;">{{ line[2] | follow_fk:this:'log_source_lut':'name' }}</td>
-            <td style="white-space:nowrap;">{{ line[3] | follow_fk:this:'user_lut':'login':'---' }}</td>
-            <td style="white-space:nowrap;">{{ line[4] | follow_fk:this:'log_level_lut':'name' }}</td>
-            <td>{{ line[5] }}</td>
-            <td style="white-space:nowrap;">{{ get_date(line[6]) }}</td>
+            <td style="white-space:nowrap;">{{ line.source }}</td>
+            <td style="white-space:nowrap;">{{ line.user }}</td>
+            <td style="white-space:nowrap;" ng-class="line.class">{{ line.log_level }}</td>
+            <td ng-class="line.class">{{ line.text }}</td>
+            <td style="white-space:nowrap;">{{ line.get_relative_date() }}</td>
+            <td style="white-space:nowrap;">{{ line.abs_dt }}</td>
         </tr>
     </table>
 </script>
