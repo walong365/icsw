@@ -103,7 +103,7 @@ stage2_dir_dict = {
 stage2_file_dict = {
     0: [
         "inetd", "xinetd", "mkfs.xfs", "mkfs.btrfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
-        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz", "mkfs.reiserfs",
+        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz", "mkfs.reiserfs", "klogd",
     ],
     1: [
         "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
@@ -116,7 +116,7 @@ stage2_file_dict = {
         ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall",
         "head", "tail", "stat",
         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
-        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty",
+        "chown", "wc", ["portmap", "rpcbind"], "arp", "ln", "find", "tftp", "uname", "rsync", "stty",
         "reset", "id", "lspci",
     ]
 }
@@ -135,7 +135,7 @@ stageloc_dir_dict = {
 stageloc_file_dict = {
     0: [
         "inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
-        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "mkfs.reiserfs",
+        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "mkfs.reiserfs", "klogd",
     ],
     1: [
         "awk", "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
@@ -148,7 +148,7 @@ stageloc_file_dict = {
         ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami",
         "killall", "head", "tail",
         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
-        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname",
+        "chown", "wc", ["portmap", "rpcbind"], "arp", "ln", "find", "tftp", "uname",
         "rsync", "stty", "reset", "id", "lspci",
     ]
 }
@@ -512,8 +512,10 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         len(new_libs))
     print "Starting creating of directory-history under '{}' ...".format(temp_dir)
     for orig_dir in [norm_path("/{}".format(x)) for x in dir_list if x]:
-        path_parts = [x for x in orig_dir.split("/") if x]
-        path_walk = ["{}".format(path_parts.pop(0))]
+        path_parts = [_part for _part in orig_dir.split("/") if _part]
+        path_walk = [
+            "{}".format(path_parts.pop(0))
+        ]
         for pp in path_parts:
             path_walk.append("{}/{}".format(path_walk[-1], pp))
         # sys.exit(0)
@@ -524,10 +526,19 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             if not os.path.isdir(eliminate_symlinks(temp_dir, target_dir)):
                 if os.path.islink(orig_path):
                     link_target = os.readlink(orig_path)
-                    # create a link
-                    if verbose > 1:
-                        print "Generating link from {} to {}".format(orig_path, link_target)
-                    os.symlink(link_target, target_dir)
+                    if os.path.islink(target_dir):
+                        # fixme, check target
+                        if verbose > 1:
+                            print "Link from {} to {} already exists".format(orig_path, link_target)
+                    else:
+                        # create a link
+                        if verbose > 1:
+                            print "Generating link from {} to {}".format(orig_path, link_target)
+                        os.symlink(link_target, target_dir)
+                    if not os.path.isdir(os.path.join(temp_dir, link_target)):
+                        if verbose > 1:
+                            print "Creating directory {}".format(link_target)
+                        os.makedirs(os.path.join(temp_dir, link_target))
                 else:
                     if verbose > 1:
                         print "creating directory {}".format(orig_path)

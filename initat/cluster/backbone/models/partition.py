@@ -44,6 +44,7 @@ class partition_fs(models.Model):
     # mix of partition and fs info, not perfect ...
     idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=48)
+    # one of f, e, s, d (filesystem, empty, swap, empty (?))
     identifier = models.CharField(max_length=3)
     descr = models.CharField(max_length=765, blank=True)
     # hexid needed, False for GPFS (for instance)

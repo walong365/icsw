@@ -63,7 +63,6 @@ def main():
             ("TFTP_LINK", configfile.str_c_var("/tftpboot")),
             ("TFTP_DIR", configfile.str_c_var("/opt/cluster/system/tftpboot")),
             ("CLUSTER_DIR", configfile.str_c_var("/opt/cluster")),
-            ("NODE_PORT", configfile.int_c_var(2001)),
             # in 10th of seconds
             ("NODE_BOOT_DELAY", configfile.int_c_var(50)),
             ("FANCY_PXE_INFO", configfile.bool_c_var(False)),

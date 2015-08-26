@@ -79,19 +79,20 @@ class partition_setup(object):
                 else:
                     upper_size = 0
                 parted.append(
-                    "mkpart %s %s %s %s" % (
+                    "mkpart {} {} {} {}".format(
                         fs_name == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
                         {
                             "ext3": "ext2",
                             "ext4": "ext2",
                             "btrfs": "ext2",
                             "xfs": "ext2",
+                            "biosboot": "",
                             "swap": "linux-swap",
                             "lvm": "ext2",
                             "ext": ""
                         }.get(fs_name, fs_name),
-                        "%d" % (lower_size),
-                        fs_name == "ext" and "_" or ("%d" % (upper_size) if upper_size else "_")
+                        "{:d}".format(lower_size),
+                        fs_name == "ext" and "_" or ("{:d}".format(upper_size) if upper_size else "_")
                     )
                 )
                 if fs_name == "lvm":
