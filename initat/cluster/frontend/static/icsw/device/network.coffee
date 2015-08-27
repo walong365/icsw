@@ -1273,13 +1273,12 @@ angular.module(
                 mask_long = ip2long(edit_obj.netmask)
 
                 base_long = ip_long & mask_long
-
-                base_ip = long2ip(base_long)
+                bcast_long = (ip_long & mask_long) | (4294967295 - mask_long)
 
                 # only set if there is no previous value
                 if ! edit_obj.broadcast?
-                    edit_obj.broadcast = base_ip
+                    edit_obj.broadcast = long2ip(bcast_long)
                 if ! edit_obj.gateway?
-                    edit_obj.gateway = base_ip
+                    edit_obj.gateway = long2ip(base_long)
     }
 ])
