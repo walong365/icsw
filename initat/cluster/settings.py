@@ -350,6 +350,7 @@ PIPELINE_CSS = {
             "css/icsw.css",
             "css/toaster.css",
             "css/bootstrap-dialog.css",
+            "css/angular-gridster.min.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }
@@ -383,6 +384,7 @@ PIPELINE_JS = {
             "js/toaster.js",
             "js/angular-gettext.min.js",
             "js/webfrontend_translation.js",
+            "js/angular-gridster.min.js",
         ),
         "output_filename": "pipeline/js/base.js"
     },

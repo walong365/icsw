@@ -175,8 +175,57 @@ dashboard_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.user.index")
         link : (scope, element, attrs) ->
+            scope.gridsterOpts = {
+                columns: 6
+                pushing: true
+                floating: true
+                swapping: false
+                width: 'auto'
+                colWidth: 'auto'
+                rowHeight: '200'
+                margins: [10, 10]
+                outerMargin: true
+                isMobile: false
+                mobileBreakPoint: 600
+                mobileModeEnabled: true
+                minColumns: 1
+                minRows: 2
+                maxRows: 100,
+                defaultSizeX: 2
+                defaultSizeY: 1
+                minSizeX: 1
+                maxSizeX: null
+                minSizeY: 1
+                maxSizeY: null
+                resizable: {
+                   enabled: true,
+                   handles: ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw']
+                },
+                draggable: {
+                   enabled: true
+                   handle: '.my-class'
+                }
+            }
+            scope.elements = [
+                { sizeX: 2, sizeY: 1, row: 0, col: 0, class: "warning", title: "Quick links", "template": "icsw.dashboard.quicklinks" },
+                { sizeX: 2, sizeY: 2, row: 0, col: 2, class: "success", title: "External links", template: "icsw.dashboard.externallinks" },
+                # Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
+                { sizeX: 1, sizeY: 1, row: 0, col: 4, class: "success", title: "Disk usage and Quota info ???", template: "icsw.dashboard.diskquota" },
+                { sizeX: 1, sizeY: 1, row: 0, col: 5, class: "primary", title: "Virtual desktops", template: "icsw.dashboard.virtualdesktops" },
+                { sizeX: 2, sizeY: 1, row: 1, col: 0, class: "success", title: "Job info", template: "icsw.dashboard.jobinfo" },
+            ]
+            scope.get_panel_class = (item) ->
+                return "panel-" + item.class
             access_level_service.install(scope)
             scope.lds = icswUserLicenseDataService
+    }
+]).directive("icswDashboardElement", ["$templateCache", "$compile", ($templateCache, $compile) ->
+    return {
+        restrict: "E"
+        link: (scope, element, attrs) ->
+            if attrs["element"]?
+                _el_name = attrs["element"]
+                element.append($compile($templateCache.get(_el_name))(scope))
     }
 ])
 
