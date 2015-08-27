@@ -1,4 +1,4 @@
-# Django settings for cluster project.
+# Django settings for ICSW
 #
 # -*- coding: utf-8 -*-
 #
@@ -99,13 +99,6 @@ CACHES = {
     }
 }
 
-# Local time zone for this installation. Choices can be found here:
-# http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
-# although not all choices may be available on all operating systems.
-# On Unix systems, a value of None will cause Django to use the same
-# timezone as the operating system.
-# If running in a Windows environment this must be set to the same as your
-# system time zone.
 TIME_ZONE = "Europe/Vienna"
 
 # Language code for this installation. All choices can be found here:
@@ -124,15 +117,10 @@ REL_SITE_ROOT = "cluster"
 SITE_ROOT = "/{}".format(REL_SITE_ROOT)
 LOGIN_URL = "{}/session/login/".format(SITE_ROOT)
 
-# If you set this to False, Django will make some optimizations so as not
-# to load the internationalization machinery.
 USE_I18N = True
 
-# If you set this to False, Django will not format dates, numbers and
-# calendars according to the current locale.
 USE_L10N = True
 
-# If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
@@ -141,11 +129,6 @@ USE_TZ = True
 MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
 MEDIA_URL = "{}/media/".format(SITE_ROOT)
-
-# Absolute path to the directory static files should be collected to.
-# Don't put anything in this directory yourself; store your static files
-# in apps' "static/" subdirectories and in STATICFILES_DIRS.
-# Example: "/home/media/media.lawrence.com/static/"
 
 # where to store static files
 STATIC_ROOT_DEBUG = "/tmp/.icsw/static/"

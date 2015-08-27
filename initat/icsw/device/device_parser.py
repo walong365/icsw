@@ -42,7 +42,7 @@ class Parser(object):
         self._add_graphdump_parser(child_parser)
         self._add_removegraph_parser(child_parser)
         if devicelog:
-            self._add_devicelog_parser(child_parser)
+            devicelog.populate_parser(child_parser)
         return parser
 
     def _add_info_parser(self, sub_parser):
@@ -74,16 +74,9 @@ class Parser(object):
         _parser.add_argument("-g", type=str, dest="groupname", default="", help="name of group [%(default)s]")
         _parser.add_argument("dev", type=str, nargs="*", help="device to query [%(default)s]", default="")
 
-    def _add_devicelog_parser(self, sub_parser):
-        _act = sub_parser.add_parser("log", help="create device log entries")
-        _act.set_defaults(childcom="log")
-        devicelog.populate_parser(_act)
-
     def _execute(self, opt_ns):
         from .main import dev_main, overview_main
-        if opt_ns.childcom in ["log"]:
-            devicelog.main(opt_ns)
-        elif opt_ns.childcom in ["info", "graphdump", "removegraph"]:
+        if opt_ns.childcom in ["info", "graphdump", "removegraph"]:
             dev_main(opt_ns)
         else:
             overview_main(opt_ns)

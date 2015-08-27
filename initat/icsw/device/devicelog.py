@@ -32,37 +32,43 @@ from initat.cluster.backbone.models import DeviceLogEntry, LogLevel, device, Log
 from django.db.models import Q
 
 
-def populate_parser(parser):
-    def_source = LogSource.objects.get(Q(identifier="commandline"))
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default="list",
-        choices=["list", "create"],
-        help="operation mode [%(default)s]"
-    )
-    parser.add_argument(
-        "--level",
-        type=str,
-        default="",
-        choices=LogLevel.objects.values_list("identifier", flat=True),
-        help="log status [%(default)s]"
-    )
-    parser.add_argument(
-        "--source",
-        type=str,
-        default="",
-        choices=LogSource.objects.values_list("identifier", flat=True),
-        help="log source [%(default)s]"
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="",
-        choices=device.objects.all().values_list("name", flat=True).order_by("name"),
-        help="device to show logs for [%(default)s]"
-    )
-    parser.add_argument("text", nargs="*")
+def populate_parser(child_parser):
+    try:
+        def_source = LogSource.objects.get(Q(identifier="commandline"))
+    except:
+        pass
+    else:
+        parser = child_parser.add_parser("log", help="create device log entries")
+        parser.set_defaults(childcom="log", execute=main)
+        parser.add_argument(
+            "--mode",
+            type=str,
+            default="list",
+            choices=["list", "create"],
+            help="operation mode [%(default)s]"
+        )
+        parser.add_argument(
+            "--level",
+            type=str,
+            default="",
+            choices=LogLevel.objects.values_list("identifier", flat=True),
+            help="log status [%(default)s]"
+        )
+        parser.add_argument(
+            "--source",
+            type=str,
+            default="",
+            choices=LogSource.objects.values_list("identifier", flat=True),
+            help="log source [%(default)s]"
+        )
+        parser.add_argument(
+            "--device",
+            type=str,
+            default="",
+            choices=device.objects.all().values_list("name", flat=True).order_by("name"),
+            help="device to show logs for [%(default)s]"
+        )
+        parser.add_argument("text", nargs="*")
 
 
 def main(opts):
