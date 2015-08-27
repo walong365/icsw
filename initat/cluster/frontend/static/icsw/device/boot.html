@@ -188,7 +188,7 @@
     </td>
     <td ng-show="any_type_3_selected">
         <form class="form-inline">
-            <input type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"/>
+            <input ng-show="dev.logs_set" type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"/>
             Number of log lines: {{ dev.num_logs }}, show
             <select ng-model="dev.num_show" class="form-control input-sm" ng-options="value as value for value in [5, 20, 50, 100]">
             </select>
