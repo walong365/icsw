@@ -20,7 +20,6 @@ USRBIN=/usr/bin
 INIT=/etc/init.d
 
 MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
-CST=${ICSW_BIN}/cstoretool.py
 
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static
@@ -113,9 +112,9 @@ if is_chroot ; then
 else
     DB_VALID=0
 
-    if ${CST} --store icsw.db.access --mode storeexists ; then
+    if ${ICSW_SBIN}/icsw cstore --store icsw.db.access --mode storeexists ; then
         # already installed
-        if [ "$(${CST} --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
+        if [ "$(${ICSW_SBIN}/icsw cstore --store icsw.general --mode getkey --key db.auto.update)" = "True" ] ; then
             echo "running auto-update script ${ICSW_BASE}/sbin/icsw setup --migrate"
             ${ICSW_BASE}/sbin/icsw setup --migrate
             DB_VALID=1

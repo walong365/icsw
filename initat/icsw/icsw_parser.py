@@ -26,6 +26,7 @@ import argparse
 
 from .service.service_parser import Parser as ServiceParser
 from .logwatch.logwatch_parser import Parser as LogwatchParser
+from .cstore.cstore_parser import Parser as CStoreParser
 from .lse.lse_parser import Parser as LseParser
 
 try:
@@ -58,6 +59,7 @@ class ICSWParser(object):
             LicenseParser,
             SetupParser,
             DeviceParser,
+            CStoreParser,
         ]:
             if _sp is not None:
                 _sp().link(sub_parser)

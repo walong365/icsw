@@ -17,6 +17,7 @@ setup(
         "initat.icsw.license",
         "initat.icsw.device",
         "initat.icsw.lse",
+        "initat.icsw.cstore",
         "initat.tools",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",
@@ -110,7 +111,6 @@ setup(
                 "opt/cluster/bin/license_progs.py",
                 "opt/cluster/bin/loadsensor.py",
                 "opt/cluster/bin/modify_object.py",
-                "opt/cluster/bin/cstoretool.py",
             ]
         ),
         (

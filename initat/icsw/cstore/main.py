@@ -19,11 +19,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """
-frontend tool to config store
+functions for config store
 """
 
 import sys
-import argparse
 
 from initat.tools.config_store import ConfigStore
 
@@ -32,20 +31,7 @@ def quiet_log(_a, _b):
     pass
 
 
-def main():
-    _ap = argparse.ArgumentParser()
-    _ap.add_argument(
-        "--mode",
-        default="liststores",
-        choices=[
-            "liststores", "getkey", "storeexists", "keyexists"
-        ],
-        type=str,
-        help="Operation mode [%(default)s]"
-    )
-    _ap.add_argument("--store", default="client", type=str, help="ConfigStore name [%(default)s]")
-    _ap.add_argument("--key", default="", type=str, help="Key to show [%(default)s]")
-    opts = _ap.parse_args()
+def main(opts):
     if opts.mode == "liststores":
         print("not implemented")
     elif opts.mode == "storeexists":
@@ -60,7 +46,3 @@ def main():
             sys.exit(0)
         else:
             raise KeyError("unknown key '{}'".format(opts.key))
-
-
-if __name__ == "__main__":
-    main()
