@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,12 +23,13 @@ Checks related to pgpool-II >= 3.0 via SQL interface.
 """
 
 from ConfigParser import SafeConfigParser
+import cPickle
+import os
+
 from initat.host_monitoring import limits
 from initat.host_monitoring.hm_classes import hm_command, hm_module
-from initat.tools import server_command
-import cPickle
-from initat.tools import logging_tools
-import os
+from initat.tools import server_command, logging_tools
+
 try:
     import psycopg2  # @UnresolvedImport
 except:
@@ -61,7 +62,7 @@ NS_DICT = {
 
 
 class _general(hm_module):
-    def init_module(self):
+    def base_init(self):
         if psycopg2:
             self.enabled = True
         else:

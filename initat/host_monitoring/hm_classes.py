@@ -277,6 +277,7 @@ class hm_module(object):
     def __init__(self, name, mod_obj):
         self.name = name
         self.obj = mod_obj
+        self.enabled = True
         self.__commands = {}
         self.base_init()
 

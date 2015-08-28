@@ -38,7 +38,8 @@ for mod_name in __all__:
         new_mod = __import__(mod_name, globals(), locals())
         if hasattr(new_mod, "_general"):
             new_hm_mod = new_mod._general(mod_name, new_mod)
-            _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
+            if new_hm_mod.enabled:
+                _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
     except:
         exc_info = process_tools.exception_info()
         for log_line in exc_info.log_lines:

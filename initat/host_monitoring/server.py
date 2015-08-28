@@ -711,8 +711,10 @@ class server_code(ICSWBasePool):
         self.module_list = modules.module_list
         self.commands = modules.command_dict
         _init_ok = True
-        for call_name, add_self in [("register_server", True),
-                                    ("init_module", False)]:
+        for call_name, add_self in [
+            ("register_server", True),
+            ("init_module", False)
+        ]:
             for cur_mod in modules.module_list:
                 if global_config["VERBOSE"]:
                     self.log(
