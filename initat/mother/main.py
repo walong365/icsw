@@ -69,6 +69,7 @@ def main():
             ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
             ("WRITE_DHCP_CONFIG", configfile.bool_c_var(False)),
             ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
+            ("DHCP_ONLY_BOOT_NETWORKS", configfile.bool_c_var(True)),
             ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True)),
         ]
     )

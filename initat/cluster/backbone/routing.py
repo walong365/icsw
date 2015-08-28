@@ -233,7 +233,7 @@ class srv_type_routing(object):
                                         )
                                     _dev_srv_type_lut.setdefault(_dst_key, []).append(_conf_name)
                                     self.logger.info(
-                                        "adding device '{}' (IP {}, {:d}) to srv_type {} (config {})".format(
+                                        "adding device '{}' (IP {}, EffPK={:d}) to srv_type {} (config {})".format(
                                             _dev.effective_device.full_name,
                                             _first_ip,
                                             _dev.effective_device.pk,

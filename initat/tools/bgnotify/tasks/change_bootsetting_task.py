@@ -35,7 +35,7 @@ class ChangeBootsettingTask(BGInotifyTask):
     def run(self, cur_bg):
         to_run = []
         _src_com = server_command.srv_command(source=cur_bg.command_xml)
-        devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")[0]]))
+        devs = device.objects.filter(Q(pk__in=[int(_pk) for _pk in _src_com.xpath(".//ns:object/@pk")]))
         # split for bootservers
         _boot_dict = {}
         for _dev in devs:

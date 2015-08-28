@@ -10,10 +10,11 @@
 
 <div ng-controller="info_ctrl">
     <h2>Job info ({{ jobs.length }} entries)</h2>
-    <table class="table table-condensed table-hover" style="width:auto;">
+    <table class="table table-condensed table-hover table-striped" style="width:auto;">
         <thead>
             <tr>
                 <th>command</th>
+                <th>result</th>
                 <th>XML</th>
                 <th>created</th>
                 <th>user</th>
@@ -26,9 +27,12 @@
             </tr>
         </thead>
         <tbody>
-            <tr><td colspan="12" paginator entries="jobs" pag_settings="pagSettings" per_page="15"></td></tr>
+            <tr>
+                <td colspan="12" paginator entries="jobs" pag_settings="pagSettings" per_page="15"></td>
+            </tr>
             <tr ng-repeat="job in jobs | paginator:this" ng-class="get_line_class(job)">
                 <td><strong>{{ job.command }}</strong></td>
+                <td>{{ job.result }}</td>
                 <td title="{{ job.command_xml }}">{{ job.command_xml | limit_text:10 }}</td>
                 <td>{{ get_time(job.date) }} ({{ get_diff_time(job.date) }})</td>
                 <td>{{ job.user_name }}</td>

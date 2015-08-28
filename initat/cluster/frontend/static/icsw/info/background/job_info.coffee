@@ -57,6 +57,11 @@ background_job_info_module = angular.module(
             else
                 return "< 1s"
         $scope.get_line_class = (job) ->
-            return ""
+            if job.state == 0
+                return ""
+            else if job.state == 1
+                return "warning"
+            else
+                return "danger"
         $scope.reload()
 ])

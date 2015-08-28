@@ -211,17 +211,20 @@ class Host(object):
         iter_keys = set(Host.__unique_keys)
         if "device_keys" in kwargs:
             iter_keys &= set(kwargs.pop("device_keys", Host.__unique_keys))
-        for u_key in iter_keys:
-            cur_dev = Host.get_device(u_key)
-            if hasattr(cur_dev, com_name):
-                cur_dev.log("call '{}'".format(com_name))
-                getattr(cur_dev, com_name)(*args, **kwargs)
-            else:
-                cur_dev.log(
-                    "call '{}' not defined".format(com_name),
-                    logging_tools.LOG_LEVEL_WARN
-                )
-        Host.dhcp_syncer.sync()
+        if iter_keys:
+            for u_key in iter_keys:
+                cur_dev = Host.get_device(u_key)
+                if hasattr(cur_dev, com_name):
+                    cur_dev.log("call '{}'".format(com_name))
+                    getattr(cur_dev, com_name)(*args, **kwargs)
+                else:
+                    cur_dev.log(
+                        "call '{}' not defined".format(com_name),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+            Host.dhcp_syncer.sync()
+        else:
+            Host.g_log("iterate for {} gave no result".format(com_name), logging_tools.LOG_LEVEL_ERROR)
 
     @staticmethod
     def ping(srv_com):
@@ -397,12 +400,21 @@ class Host(object):
         # bootnet device name
         self.bootnetdevice = None
         nd_list, nd_lut = (set(), {})
+        # bootnetdevices via IP in boot net
         _possible_bnds = []
+        # forced bnd via dhcp_device (force write DHCP)
+        _forced_bnds = []
         for net_dev in self.device.netdevice_set.all():
             nd_list.add(net_dev.pk)
             nd_lut[net_dev.pk] = net_dev
-            if any([_ip.network.network_type.identifier == "b" for _ip in net_dev.net_ip_set.all()]):
+            if any(
+                [
+                    _ip.network.network_type.identifier == "b" for _ip in net_dev.net_ip_set.all()
+                ]
+            ):
                 _possible_bnds.append(net_dev)
+            if net_dev.dhcp_device:
+                _forced_bnds.append(net_dev)
             if self.device.bootnetdevice_id and net_dev.pk == self.device.bootnetdevice.pk:
                 # set bootnetdevice_name
                 self.bootnetdevice = net_dev
@@ -423,8 +435,40 @@ class Host(object):
         else:
             self.log("more than one possible bootnetdevice found ({:d})".format(len(_possible_bnds)), logging_tools.LOG_LEVEL_WARN)
         if self.bootnetdevice is None:
-            self.log("bootnetdevice is none in check_network_settings", logging_tools.LOG_LEVEL_WARN)
-            return
+            if _forced_bnds:
+                self.log(
+                    "bootnetdevice is none in check_network_settings but forced_bnd list is set ({:d})".format(
+                        len(_forced_bnds)
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+                self._forced_bootnetdevice(_forced_bnds)
+            else:
+                self.log(
+                    "bootnetdevice is none in check_network_settings and empty forced_bnd list",
+                    logging_tools.LOG_LEVEL_WARN
+                )
+        else:
+            self._valid_bootnetdevice(nd_list, nd_lut)
+
+    def _forced_bootnetdevice(self, bnd_list):
+        self.log("forced_bnd list has {}".format(logging_tools.get_plural("entry", len(bnd_list))))
+        _ip_list = [
+            b_ip for b_ip in sum(
+                [list(bnd.net_ip_set.all()) for bnd in bnd_list], []
+            ) if b_ip.network.identifier != "l"
+        ]
+        self.log("IP-list: {}".format(", ".join([_ip.ip for _ip in _ip_list])))
+        self.server_ip_dict = {}
+        if _ip_list:
+            _boot_ip = _ip_list[0]
+            self.bootnetdevice = _boot_ip.netdevice
+            self.device.bootnetdevice = self.bootnetdevice
+            self.maint_ip = _boot_ip
+        else:
+            self.maint_ip = None
+
+    def _valid_bootnetdevice(self, nd_list, nd_lut):
         # dict: my net_ip -> dict [identifier, ip] server_net_ip
         server_ip_dict = {}
         # dict: ip -> identifier
@@ -466,9 +510,6 @@ class Host(object):
                     if cur_id == "b" and srv_ips:
                         self.set_maint_ip(cur_ip)
                     if cur_ip.ip not in ip_dict:
-                        # definitely wrong, oh my...
-                        # ip_dict[cur_ip.ip] = ip_dict
-                        # not sure ...
                         ip_dict[cur_ip.ip] = cur_ip
             self.log(
                 "found {}: {}".format(
@@ -494,14 +535,11 @@ class Host(object):
             if self.maint_ip:
                 self.show_boot_netdriver()
             self.process_link_array(link_array)
-            self.log("Setting reachable flag")
-            self.device.reachable = True
         else:
             self.log(
                 "Cannot add device {} (empty ip_list -> cannot reach host)".format(self.name),
                 logging_tools.LOG_LEVEL_WARN
             )
-            self.device.reachable = False
         master_dev_list = device.objects.filter(
             Q(parent_device__child__in=[self.device.pk])
         ).prefetch_related(
@@ -992,15 +1030,21 @@ class Host(object):
                 ip_to_write, ip_to_write_src = (None, "")
         else:
             ip_to_write, ip_to_write_src = (None, "")
-        # om_shell_coms = []
+        # flag to create IP from forced_bnds
+        _force_write = False
         if ip_to_write:
-            mac_to_write = self.device.bootnetdevice.macaddr
-            server_ip = self.server_ip_dict[self.maint_ip.ip]["ip"]
+            if self.server_ip_dict:
+                mac_to_write = self.device.bootnetdevice.macaddr
+                server_ip = self.server_ip_dict[self.maint_ip.ip]["ip"]
+            else:
+                server_ip = "0.0.0.0"
+                mac_to_write = self.bootnetdevice.macaddr
+                _force_write = True
         else:
             mac_to_write = None
             server_ip = None
         if com_name in ["alter", "write"]:
-            if self.device.dhcp_write and ip_to_write:
+            if (_force_write or self.device.dhcp_write) and ip_to_write:
                 om_shell_com = DHCPCommand(self.device.name, self.device.uuid, ip_to_write, mac_to_write, server_ip)
             else:
                 om_shell_com = DHCPCommand(self.device.name, self.device.uuid)

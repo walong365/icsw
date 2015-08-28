@@ -121,7 +121,7 @@ class ServerBackgroundNotifyMixin(object):
             _state
         )
         _run_job = background_job_run.objects.select_related("background_job").get(Q(pk=_id))
-        _run_job.state = _state
+        _run_job.state = server_command.log_level_to_srv_reply(_state)
         _run_job.result = _str
         _run_job.result_xml = unicode(srv_com)
         _run_job.end = cluster_timezone.localize(datetime.datetime.now())
@@ -130,7 +130,7 @@ class ServerBackgroundNotifyMixin(object):
 
     def bg_notify_check_for_bgj_finish(self, cur_bg):
         if not cur_bg.background_job_run_set.filter(Q(result="")).count():
-            cur_bg.set_state("done")
+            cur_bg.set_state("done", result=max(cur_bg.background_job_run_set.all().values_list("state", flat=True)))
             self.log("{} finished".format(unicode(cur_bg)))
 
     def _run_bg_jobs(self, cur_bg, to_run):

@@ -27,6 +27,81 @@ from initat.tools import config_tools, logging_tools
 from .config import global_config
 
 
+class DHCPNetwork(object):
+    def __init__(self, act_net):
+        self.content = []
+        self._generate(act_net)
+
+    @staticmethod
+    def setup(server_check, addon_dict):
+        DHCPNetwork.server_check = server_check
+        DHCPConfigMixin.addon_dict = addon_dict
+
+    def _feed(self, lines):
+        if type(lines) != list:
+            lines = [lines]
+        self.content.extend(lines)
+
+    def comment_content(self):
+        # add comment sign to content
+        _new_c = []
+        for _line in self.content:
+            if _line.strip().startswith("#"):
+                pass
+            else:
+                _line = "    # {}".format(_line[4:])
+            _new_c.append(_line)
+        self.content = _new_c
+
+    def _generate(self, act_net):
+        self._feed(
+            [
+                "",
+                "    # network {} (identifier {})".format(unicode(act_net), act_net.network_type.identifier),
+                "",
+                "    subnet {} netmask {} {{".format(
+                    act_net.network,
+                    act_net.netmask,
+                )
+            ]
+        )
+        if act_net.network_type.identifier == "b":
+            self._feed("        authoritative;")
+        # check for ip in actual net
+        _srv_ip = [
+            _entry for _entry in DHCPNetwork.server_check.identifier_ip_lut[act_net.network_type.identifier] if _entry.network_id == act_net.pk
+        ][0]
+        self._feed(
+            "        next-server {};".format(
+                _srv_ip.ip,
+            )
+        )
+        local_found_dict = DHCPConfigMixin.addon_dict.get(act_net.pk, {})
+        for key in ["domain-name-servers", "ntp-servers", "nis-servers"]:
+            if key in local_found_dict:
+                self._feed(
+                    "        option {} {};".format(
+                        key,
+                        ", ".join(
+                            [
+                                "{}".format(cur_dev.name) for cur_dev, _ip_list in local_found_dict[key]
+                            ]
+                        )
+                    )
+                )
+        self._feed(
+            [
+                "        server-identifier {};".format(
+                    _srv_ip.ip
+                ),
+                "        option domain-name \"{}\";".format(
+                    act_net.name
+                ),
+                "    }",
+            ]
+        )
+
+
 class DHCPConfigMixin(object):
     def write_dhcp_config(self):
         if not global_config["WRITE_DHCP_CONFIG"]:
@@ -115,59 +190,21 @@ class DHCPConfigMixin(object):
                     # "    option routers {};".format(gateway)
                 ]
             )
+            DHCPNetwork.setup(my_c, found_dict)
             for act_net in [boot_ip.network for boot_ip in boot_ips] + add_nets:
-                comment_sign = "" if act_net.network_type.identifier == "b" else "#"
-                dhcpd_c.extend(
-                    [
-                        "",
-                        "    # network {} (identifier {})".format(unicode(act_net), act_net.network_type.identifier),
-                        "",
-                        "    {}subnet {} netmask {} {{".format(
-                            comment_sign,
-                            act_net.network,
+                if act_net.netmask == "0.0.0.0":
+                    self.log(
+                        "refuse network {} with netmask '{}'".format(
+                            unicode(act_net),
                             act_net.netmask,
-                        )
-                    ]
-                )
-                if act_net.network_type.identifier == "b":
-                    dhcpd_c.append("        {}authoritative;".format(comment_sign))
-                # check for ip in actual net
-                _srv_ip = [_entry for _entry in my_c.identifier_ip_lut[act_net.network_type.identifier] if _entry.network_id == act_net.pk][0]
-                dhcpd_c.append(
-                    "    {}    next-server {};".format(
-                        comment_sign,
-                        _srv_ip.ip,
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
                     )
-                )
-                local_found_dict = found_dict.get(act_net.pk, {})
-                for key in ["domain-name-servers", "ntp-servers", "nis-servers"]:
-                    if key in local_found_dict:
-                        dhcpd_c.append(
-                            "    {}    option {} {};".format(
-                                comment_sign,
-                                key,
-                                ", ".join(
-                                    [
-                                        "{}".format(cur_dev.name) for cur_dev, _ip_list in local_found_dict[key]
-                                    ]
-                                )
-                            )
-                        )
-                dhcpd_c.extend(
-                    [
-                        "    {}    server-identifier {};".format(
-                            comment_sign,
-                            _srv_ip.ip
-                        ),
-                        "    {}    option domain-name \"{}\";".format(
-                            comment_sign,
-                            act_net.name
-                        ),
-                        "    {}}}".format(
-                            comment_sign
-                        )
-                    ]
-                )
+                else:
+                    _net = DHCPNetwork(act_net)
+                    if global_config["DHCP_ONLY_BOOT_NETWORKS"] and act_net.network_type.identifier != "b":
+                        _net.comment_content()
+                    dhcpd_c.extend(_net.content)
             dhcpd_c.extend(
                 [
                     "}",

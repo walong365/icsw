@@ -488,7 +488,7 @@ class netdevice(models.Model):
     mtu = models.IntegerField(default=1500)
     # snmp related fields, zero for non-SNMP fetched network devices
     snmp_idx = models.IntegerField(default=0)
-    # force matching th network device types, defaults to True
+    # force matching the network device types, defaults to True
     # also affects MAC-address matching
     force_network_device_type_match = models.BooleanField(default=True)
     # snmp network type
