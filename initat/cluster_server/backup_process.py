@@ -67,7 +67,7 @@ class backup_process(threading_tools.process_obj):
         self.log("starting backup")
         bu_dir = global_config["DATABASE_DUMP_DIR"]
         if not os.path.isdir(bu_dir):
-            self.log("creating bu_dir %s" % (bu_dir))
+            self.log("creating bu_dir {}".format(bu_dir))
             os.mkdir(bu_dir)
         # delete old files
         for entry in os.listdir(bu_dir):

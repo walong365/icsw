@@ -277,3 +277,15 @@ class kernel_log(models.Model):
 
     class Meta:
         db_table = u'kernel_log'
+
+
+class PopulateRamdiskdCmdLine(models.Model):
+    idx = models.AutoField(db_column="kernel_log_idx", primary_key=True)
+    # calling user
+    user = models.CharField(max_length=256, default="")
+    # device
+    machine = models.CharField(max_length=256, default="")
+    # command line
+    cmdline = models.CharField(max_length=1024)
+    kernel = models.ForeignKey("backbone.kernel")
+    date = models.DateTimeField(auto_now_add=True)

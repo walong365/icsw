@@ -76,7 +76,11 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                 self.add_process(capability_process("capability_process"), start=True)
                 self.add_process(LicenseChecker("license_checker"), start=True)
                 connection.close()
-                self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
+                self.register_timer(
+                    self._update,
+                    2 if global_config["DEBUG"] else 30,
+                    instant=True
+                )
 
     def _set_next_backup_time(self, first=False):
         self.__next_backup_dt = datetime.datetime.now().replace(microsecond=0)
@@ -88,9 +92,12 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
         if self.__next_backup_dt:
             while self.__next_backup_dt < datetime.datetime.now():
                 self.__next_backup_dt += datetime.timedelta(days=1)
-        self.log("setting {} backup-time to {}".format(
-            "first" if first else "next",
-            self.__next_backup_dt if self.__next_backup_dt else "now"))
+        self.log(
+            "setting {} backup-time to {}".format(
+                "first" if first else "next",
+                self.__next_backup_dt if self.__next_backup_dt else "now"
+            )
+        )
 
     def _bg_finished(self, *args, **kwargs):
         func_name = args[2]

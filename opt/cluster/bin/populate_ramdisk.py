@@ -34,7 +34,7 @@ else:
     django.setup()
 
     from django.db.models import Q
-    from initat.cluster.backbone.models import kernel, initrd_build
+    from initat.cluster.backbone.models import kernel, initrd_build, PopulateRamdiskCmdLine
 import argparse
 import commands
 import datetime
@@ -45,6 +45,7 @@ from initat.tools import logging_tools,  \
 import re
 import shutil
 import stat
+import getpass
 import statvfs
 import tempfile
 import time
@@ -1287,6 +1288,12 @@ def main_normal():
     else:
         my_build = None
     if my_kernel:
+        PopulateRamdiskCmdLine.objects.create(
+            kernel=my_kernel,
+            user=getpass.getuser(),
+            machine=process_tools.get_machine_name(),
+            cmdline=" ".join(sys.argv),
+        )
         print "Found kernel at path '{}' ({} at {}) in database (kernel_idx is {:d})".format(my_args.kernel_dir, kernel_name, target_path, my_kernel.pk)
         if my_kernel.xen_host_kernel:
             print " - kernel for Xen-hosts"
