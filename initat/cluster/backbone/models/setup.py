@@ -40,6 +40,7 @@ __all__ = [
     "kernel_log",
     "KernelDeviceHistory",
     "ImageDeviceHistory",
+    "PopulateRamdiskCmdLine",
 ]
 
 
@@ -279,7 +280,7 @@ class kernel_log(models.Model):
         db_table = u'kernel_log'
 
 
-class PopulateRamdiskdCmdLine(models.Model):
+class PopulateRamdiskCmdLine(models.Model):
     idx = models.AutoField(db_column="kernel_log_idx", primary_key=True)
     # calling user
     user = models.CharField(max_length=256, default="")
