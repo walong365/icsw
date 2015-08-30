@@ -20,7 +20,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" device information """
+""" device information and modify """
+
+import os
 
 try:
     from . import devicelog
@@ -43,6 +45,7 @@ class Parser(object):
         self._add_removegraph_parser(child_parser)
         if devicelog:
             devicelog.populate_parser(child_parser)
+        self._add_modify_parser(child_parser)
         return parser
 
     def _add_info_parser(self, sub_parser):
@@ -70,6 +73,11 @@ class Parser(object):
         _act.add_argument("--doit", default=False, action="store_true", help="enable deletiong [%(default)s]")
         self._add_many_device_option(_act)
 
+    def _add_modify_parser(self, sub_parser):
+        _act = sub_parser.add_parser("csvmodify", help="modify device(s) via CSV files")
+        _act.set_defaults(childcom="csvmodify")
+        _act.add_argument("--file", type=str, default="", help="CSV input file [%(default)s]")
+
     def _add_many_device_option(self, _parser):
         _parser.add_argument("-g", type=str, dest="groupname", default="", help="name of group [%(default)s]")
         _parser.add_argument("dev", type=str, nargs="*", help="device to query [%(default)s]", default="")
@@ -78,5 +86,12 @@ class Parser(object):
         from .main import dev_main, overview_main
         if opt_ns.childcom in ["info", "graphdump", "removegraph"]:
             dev_main(opt_ns)
+        elif opt_ns.childcom in ["csvmodify"]:
+            from .csvmodify import main
+            if not opt_ns.file:
+                raise ValueError("no CSV-file given")
+            elif not os.path.exists(opt_ns.file):
+                raise SystemError("CSV-File '{}' does not exist".format(opt_ns.file))
+            main(opt_ns)
         else:
             overview_main(opt_ns)
