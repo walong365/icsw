@@ -36,6 +36,14 @@ export SGE_CELL=$(cat /etc/sge_cell)
 echo "/etc/sge_root found, setting environment"
 echo "SGE_ROOT=$SGE_ROOT, SGE_CELL=$SGE_CELL"
 
+if [ -L "${SGE_ROOT}" ] ; then
+    echo "SGE_ROOT ${SGE_ROOT} is a symlink, leaving untouched"
+elif [ ! -d "${SGE_ROOT}" ] ; then
+    echo "creating SGE_ROOT ${SGE_ROOT} ..."
+    mkdir -p ${SGE_ROOT}
+    chown -R sge.sge ${SGE_ROOT}
+fi
+
 if [ ! -d ${SGE_ROOT}/bin ] ; then
     echo "No ${SGE_ROOT}/bin found, compiling SGE ..."
     if [ ! -f aimk ] ; then

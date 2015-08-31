@@ -34,9 +34,7 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import image
 from lxml import etree  # @UnresolvedImports
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import logging_tools, process_tools, threading_tools
+from initat.tools import logging_tools, process_tools, threading_tools, configfile, config_tools
 import stat
 import statvfs
 import subprocess
@@ -227,7 +225,12 @@ class server_process(threading_tools.process_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("compress_done", self._compress_done)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         # log config
         self._log_config()
         self.device = config_tools.server_check(server_type="image_server").effective_device
@@ -313,7 +316,8 @@ class server_process(threading_tools.process_pool):
             self.log("building image from {}".format(cur_img.source))
             self._generate_dir_list(cur_img)
             self._copy_image(cur_img)
-            self._clean_image(cur_img)
+            if not global_config["SKIPCLEANUP"]:
+                self._clean_image(cur_img)
             self._init_compress_image()
             do_exit = False
         except:
@@ -464,6 +468,8 @@ class server_process(threading_tools.process_pool):
         for clean_dir in [
             "/var/lib/meta-server",
             "/etc/zypp/repos.d",
+            "/var/log/cluster/logging-server",
+            "/tmp",
         ]:
             t_dir = os.path.join(self.__system_dir, clean_dir[1:])
             self._clean_directory(t_dir)
@@ -632,6 +638,7 @@ def main():
             ("LOG_NAME", configfile.str_c_var(prog_name)),
             ("BUILDERS", configfile.int_c_var(4, help_string="numbers of builders [%(default)i]")),
             ("OVERRIDE", configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
+            ("SKIPCLEANUP", configfile.bool_c_var(False, help_string="disable cleanup tasks after copy process [%(default)s]", default="store_true")),
             ("CHECK_SIZE", configfile.bool_c_var(True, help_string="image size check [%(default)s]", action="store_false")),
         ]
     )

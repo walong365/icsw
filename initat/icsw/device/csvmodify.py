@@ -86,9 +86,18 @@ class SmartKey(object):
                     _next = _next.filter(**_filter)
                     if len(_next) > 1:
                         print(
-                            "found more than one in list {} ({:d})".format(
+                            "found more than one in list {} of '{}' ({:d})".format(
                                 _prt,
+                                unicode(_obj),
                                 len(_next),
+                            )
+                        )
+                        _obj = None
+                    elif not len(_next):
+                        print(
+                            "list {} of '{}' is empty".format(
+                                _prt,
+                                unicode(_obj),
                             )
                         )
                         _obj = None

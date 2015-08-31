@@ -128,7 +128,9 @@ boot_system () {
     mkdir -v initrd
     [ ! -c /$basedir/dev/console ] && mknod /$basedir/dev/console -m 0640 c 5 1
     if [ -L /$basedir/sbin/init ] ; then
-        init_bin=$(readlink /$basedir/sbin/init)
+        init_bin=$(readlink -f /$basedir/sbin/init)
+        # strip basedir
+        init_bin=${init_bin:${#basedir}}
     else
         init_bin=/sbin/init
     fi
