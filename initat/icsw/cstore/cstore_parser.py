@@ -40,6 +40,7 @@ class Parser(object):
             help="Operation mode [%(default)s]"
         )
         parser.add_argument("--store", default="client", type=str, help="ConfigStore name [%(default)s]")
+        parser.add_argument("--quiet", default=False, action="store_true", help="Enable quiet mode [%(default)s]")
         parser.add_argument("--key", default="", type=str, help="Key to show [%(default)s]")
 
     def _execute(self, opt_ns):

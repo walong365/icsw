@@ -35,19 +35,22 @@ def quiet_log(_a, _b):
 def main(opts):
     if opts.mode == "liststores":
         _names = ConfigStore.get_store_names()
-        print("Found {}:".format(logging_tools.get_plural("CStore", len(_names))))
-        for _name in _names:
-            try:
-                _store = ConfigStore(_name, log_com=quiet_log)
-            except:
-                print(
-                    " ** corrupt store {}: {}".format(
-                        _name,
-                        process_tools.get_except_info(),
+        if opts.quiet:
+            print(" ".join(_names))
+        else:
+            print("Found {}:".format(logging_tools.get_plural("CStore", len(_names))))
+            for _name in _names:
+                try:
+                    _store = ConfigStore(_name, log_com=quiet_log)
+                except:
+                    print(
+                        " ** corrupt store {}: {}".format(
+                            _name,
+                            process_tools.get_except_info(),
+                        )
                     )
-                )
-            else:
-                print("    {:<34s} ({})".format(_name, _store.info))
+                else:
+                    print("    {:<34s} ({})".format(_name, _store.info))
     elif opts.mode == "showstore":
         if ConfigStore.exists(opts.store):
             _store = ConfigStore(opts.store, log_com=quiet_log)
