@@ -1,6 +1,6 @@
 #! /bin/bash
 #
-# Copyright (c) 2003-2005,2011-2014 Andreas Lang-Nevyjel init.at
+# Copyright (c) 2003-2005,2011-2015 Andreas Lang-Nevyjel init.at
 #
 # RedHat stuff
 # chkconfig: 2345 79 21
@@ -28,6 +28,7 @@ fi
 
 META_FILE=/var/lib/meta-server/meta-server
 SERVER_PID=/var/run/meta-server.pid
+SERVER_PID_ERROR=/var/run/meta-server.pid.pid
 
 rc_reset
 
@@ -40,7 +41,7 @@ export ICSW=/opt/cluster/sbin/icsw
 case "$1" in
     start)
         echo -n "Starting meta-server "
-        if [ -f ${SERVER_PID} ] ; then
+        if [ -f ${SERVER_PID} -o -f ${SERVER_PID_ERROR} ] ; then
             echo -n " ... already running"
         else
 	        ${ICSW} service start meta-server
@@ -49,12 +50,12 @@ case "$1" in
     ;;
     stop)
         echo -n "Stopping meta-server "
-        if [ -f ${SERVER_PID} ] ; then
+        if [ -f ${SERVER_PID} -o -f ${SERVER_PID_ERROR} ] ; then
 	        ${ICSW} service stop meta-server
         else
             rc_failed
         fi
-        rm -f ${SERVER_PID} ${META_FILE}
+        rm -f ${SERVER_PID} ${SERVER_PID_ERROR} ${META_FILE}
         rc_status -v
     ;;
     status)

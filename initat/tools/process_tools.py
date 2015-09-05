@@ -995,7 +995,9 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     if name.startswith("/"):
         fname = name
     else:
-        fname = "{}.pid".format(os.path.join(RUN_DIR, name))
+        fname = os.path.join(RUN_DIR, name)
+        if not fname.endswith(".pid"):
+            fname = "{}.pid".format(fname)
     dir_name = os.path.dirname(fname)
     if not os.path.isdir(dir_name):
         try:
@@ -1009,18 +1011,24 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     try:
         open(fname, mode).write("\n".join(mult * ["{:d}".format(cur_p) for cur_p in actp] + [""]))
     except:
-        logging_tools.my_syslog("error {} {} ({}) to {}: {}".format(
-            long_mode,
-            logging_tools.get_plural("pid", len(actp)),
-            ", ".join(["{:d}".format(line) for line in actp]), fname,
-            get_except_info()))
+        logging_tools.my_syslog(
+            "error {} {} ({}) to {}: {}".format(
+                long_mode,
+                logging_tools.get_plural("pid", len(actp)),
+                ", ".join(["{:d}".format(line) for line in actp]), fname,
+                get_except_info()
+            )
+        )
     else:
         try:
             os.chmod(fname, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
         except:
-            logging_tools.my_syslog("error changing mode of {} to 0644: {}".format(
-                fname,
-                get_except_info()))
+            logging_tools.my_syslog(
+                "error changing mode of {} to 0644: {}".format(
+                    fname,
+                    get_except_info()
+                )
+            )
 
 
 def remove_pids(name, pid=None, mult=0):

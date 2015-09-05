@@ -617,7 +617,7 @@ class RemoteCallSignature(object):
         else:
             effective_target_func_name = self.target_process_func or self.func_name
             # print 'effective target name', effective_target_func_name
-            instance.send_to_process(self.target_process, effective_target_func_name,  unicode(_result), src_id=src_id)
+            instance.send_to_process(self.target_process, effective_target_func_name, unicode(_result), src_id=src_id)
 
 
 class RemoteCall(object):

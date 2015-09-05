@@ -145,22 +145,20 @@ class _general(hm_classes.hm_module):
                 self.config = config_store.ConfigStore(CS_NAME, log_com=self.log)
             except:
                 self.log(
-                    "disabled postgres monitoring because error parsing config store {}: {}".format(
+                    "disabled postgres machvector-feed because error parsing config store {}: {}".format(
                         CS_NAME,
                         process_tools.get_except_info(),
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
-                self.enabled = False
                 self.config = None
         else:
             self.log(
-                "disabled postgres monitoring because no config-store {} found".format(
+                "disabled postgres machvector-feed because no config-store {} found".format(
                     CS_NAME,
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            self.enabled = False
             self.config = None
 
     def _get_config(self):
@@ -202,10 +200,11 @@ class _general(hm_classes.hm_module):
 
     def init_machine_vector(self, mv):
         self.databases = {}
-        self.overview = PGOverview(mv)
+        if self.config:
+            self.overview = PGOverview(mv)
 
     def update_machine_vector(self, mv):
-        if not self.enabled:
+        if not self.enabled or not self.config:
             return
         activity = {}
         for _entry in self.query("SELECT * FROM pg_stat_activity;"):
