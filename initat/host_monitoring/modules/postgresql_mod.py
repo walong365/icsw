@@ -23,7 +23,7 @@ import os
 import time
 import pprint
 
-from initat.host_monitoring.hm_classes import hm_module
+from initat.host_monitoring import limits, hm_classes
 
 from initat.tools import logging_tools, process_tools, config_store
 
@@ -120,7 +120,7 @@ class PGStat(object):
             mv.unregister_entry(key)
 
 
-class _general(hm_module):
+class _general(hm_classes.hm_module):
     def init_module(self):
         self.activity = None
         self.pg_settings = None
@@ -128,7 +128,7 @@ class _general(hm_module):
         if psycopg2:
             self.read_config()
         else:
-            self.log("disabled postgres monitoring because no psycopg2 module available")
+            self.log("disabled postgres monitoring because no psycopg2 module available", logging_tools.LOG_LEVEL_ERROR)
             self.enabled = False
         # pprint.pprint(self.query("SELECT * FROM pg_stat_activity;"))
 
@@ -234,3 +234,31 @@ class _general(hm_module):
             activity,
             mv
         )
+
+
+class postgresql_connection_info_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        if self.module.pg_settings:
+            srv_com["max_connections"] = int(self.module.pg_settings["max_connections"]["setting"])
+            srv_com["used_connections"] = sum([len(_val) for _val in self.module.activity.itervalues()])
+
+    def interpret(self, srv_com, cur_ns):
+        if "max_connections" in srv_com:
+            _max, _used = (
+                int(srv_com["*max_connections"]),
+                int(srv_com["*used_connections"]),
+            )
+            _perc = _used * 100. / max(1, _max)
+            if _perc > 85:
+                _state = limits.nag_STATE_CRITICAL
+            elif _perc > 75:
+                _state = limits.nag_STATE_WARNING
+            else:
+                _state = limits.nag_STATE_OK
+            return _state, "connection info: {:d} of {:d} used ({:.2f} %)".format(
+                _used,
+                _max,
+                _perc,
+            )
+        else:
+            return limits.nag_STATE_CRITICAL, "no connection info found"

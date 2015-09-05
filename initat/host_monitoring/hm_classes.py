@@ -412,7 +412,7 @@ class mvect_entry(object):
         if value is None:
             # unknown
             self.value = value
-        elif type(value) == type(self.default):
+        elif isinstance(value, type(self.default)):
             self.value = value
         else:
             try:

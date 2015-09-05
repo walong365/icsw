@@ -62,7 +62,7 @@ NS_DICT = {
 
 
 class _general(hm_module):
-    def base_init(self):
+    def init_module(self):
         if psycopg2:
             self.enabled = True
         else:
@@ -247,7 +247,7 @@ class pgpool_pools_command(PgPoolCommand):
                 pool_count,
                 cur_ns.min,
                 cur_ns.max,
-                )
+            )
         else:
             state = limits.nag_STATE_OK
             text = "pgpool pool count: {:d} in [{:d}, {:d}]".format(
@@ -284,3 +284,4 @@ class pgpool_version_command(PgPoolCommand):
         else:
             state, text = (limits.nag_STATE_CRITICAL, "no target version specified")
         return state, text
+
