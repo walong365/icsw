@@ -192,9 +192,6 @@ install:
 	# /usr/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/bin
 	${LN} -s ${ICSW_BIN}/load_firmware.sh ${DESTDIR}/usr/bin/load_firmware.sh
-	# /opt/cluster/lcs
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BASE}/lcs
-	cp -a opt/cluster/lcs/* ${DESTDIR}${ICSW_BASE}/lcs
 	# mibs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/mibs/cluster
 	${INSTALL} ${INSTALL_OPTS} mibs/powernet385-mib ${DESTDIR}/${ICSW_SHARE}/mibs/cluster

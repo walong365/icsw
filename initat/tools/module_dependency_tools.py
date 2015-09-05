@@ -162,7 +162,9 @@ class dependency_handler(object):
                         logging_tools.LOG_LEVEL_ERROR
                     )
                 else:
-                    loc_fw_lines = [line.split(":")[1].strip() for line in fw_out.split("\n") if line.lower().startswith("firmware:")]
+                    loc_fw_lines = [
+                        line.split(":")[1].strip() for line in fw_out.split("\n") if line.lower().startswith("firmware:")
+                    ]
                     if loc_fw_lines:
                         self.log(
                             "found {} for module {}: {}".format(

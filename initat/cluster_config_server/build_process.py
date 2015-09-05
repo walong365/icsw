@@ -308,7 +308,17 @@ class build_process(threading_tools.process_obj):
                     if act_server:
                         server_ip = routing_info[2][1][0]
                         # map from server_ip to localized name
-                        conf_dict[server_type] = net_ip.objects.get(Q(ip=server_ip)).full_name
+                        try:
+                            conf_dict[server_type] = net_ip.objects.get(Q(ip=server_ip)).full_name
+                        except net_ip.MultipleObjectsReturned:
+                            cur_c.log(
+                                "more than one net_ip found for server_type {} (IP {})".format(
+                                    server_type,
+                                    server_ip,
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                            raise
                         conf_dict["{}_ip".format(server_type)] = server_ip
                         r_type = get_type_from_config(server_type)
                         if r_type:
@@ -369,6 +379,7 @@ class build_process(threading_tools.process_obj):
                     ", ".join([config_dict[pk].name for pk in config_pks]) if config_pks else "no configs",
                 )
             )
+
             # node interfaces
             conf_dict["node_if"] = []
             taken_list, not_taken_list = ([], [])

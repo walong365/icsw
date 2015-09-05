@@ -1,14 +1,23 @@
 # -*- coding: utf-8 -*-
 
-import lsm
-
 from .. import limits
 from ..hm_classes import hm_command, hm_module
 from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
+try:
+    import lsm
+except ImportError:
+    lsm = None
+
 
 class _general(hm_module):
-    pass
+    def init_module(self):
+        self.enabled = True
+        if lsm:
+            pass
+        else:
+            self.log("disabled libstoragemanagement because no lsm module found")
+            self.enabled = False
 
 
 class LibstoragemgmtCheck(LongRunningCheck):

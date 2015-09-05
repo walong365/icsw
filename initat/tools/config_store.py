@@ -132,7 +132,8 @@ class ConfigStore(object):
         self.__quiet = quiet
         self.__log_com = log_com
         self.vars = {}
-        self.read()
+        if read:
+            self.read()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if not self.__quiet:
@@ -261,6 +262,14 @@ class ConfigStore(object):
 
     def __contains__(self, key):
         return key in self.vars
+
+    def get_dict(self, uppercase_keys=False):
+        _dict = {}
+        for _key, _value in self.vars.iteritems():
+            if uppercase_keys:
+                _key = _key.upper()
+            _dict[_key] = _value.get_value()
+        return _dict
 
     def set_type(self, key, _type):
         self.vars[key].set_type(_type)

@@ -22,6 +22,7 @@ setup(
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",
         "initat.tools.nameserver_tools",
+        "initat.tools.prd_tools",
         "initat.rms",
         "initat.cluster",
         "initat.cluster.backbone",
@@ -125,6 +126,14 @@ setup(
                 "opt/cluster/sbin/pis/merge_client_configs.py",
                 "opt/cluster/sbin/pis/check_content_stores.py",
                 "opt/cluster/sbin/pis/icsw_pis_tools.sh",
+            ]
+        ),
+        (
+            "/opt/cluster/lcs",
+            [
+                "opt/cluster/lcs/stage1",
+                "opt/cluster/lcs/stage2",
+                "opt/cluster/lcs/stage3",
             ]
         ),
         (

@@ -23,13 +23,15 @@
 """ IBM Bladecenter fencing tool """
 
 from lxml import etree
-from lxml.builder import E
-from initat.tools import logging_tools, process_tools
 import os
-import paramiko
 import sys
 import time
+
+from lxml.builder import E
+import paramiko
 import zmq
+
+from initat.tools import logging_tools, process_tools
 
 
 class stonith_client(paramiko.SSHClient):
@@ -161,7 +163,12 @@ class stonith_client(paramiko.SSHClient):
         return usage
 
     def process(self):
-        self.log("process, sys.argv ({:d})={}".format(len(sys.argv), ", ".join([str(value) for value in sys.argv])))
+        self.log(
+            "process, sys.argv ({:d})={}".format(
+                len(sys.argv),
+                ", ".join([str(value) for value in sys.argv])
+            )
+        )
         if len(sys.argv) < 2:
             self.log("need at least one commandline argument", logging_tools.LOG_LEVEL_ERROR)
             self.echo(self.usage())
@@ -185,7 +192,12 @@ class stonith_client(paramiko.SSHClient):
                 finally:
                     e_time = time.time()
                     self.log("execution took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
-        self.log("return code is {:d}".format(self.retcode), logging_tools.LOG_LEVEL_OK if not self.retcode else logging_tools.LOG_LEVEL_ERROR)
+        self.log(
+            "return code is {:d}".format(
+                self.retcode
+            ),
+            logging_tools.LOG_LEVEL_OK if not self.retcode else logging_tools.LOG_LEVEL_ERROR
+        )
 
     def set_node_target(self, n_name):
         sys_target = "system:blade[{}]".format(n_name[-1])

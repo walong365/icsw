@@ -705,9 +705,10 @@ class server_code(ICSWBasePool):
         self.log("init commands")
         self.__delayed = []
         from initat.host_monitoring import modules
-        self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
-        for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
-            self.log("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
+        if modules.IMPORT_ERRORS:
+            self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
+            for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
+                self.log("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
         self.module_list = modules.module_list
         self.commands = modules.command_dict
         _init_ok = True
