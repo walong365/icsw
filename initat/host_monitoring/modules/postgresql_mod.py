@@ -200,8 +200,7 @@ class _general(hm_classes.hm_module):
 
     def init_machine_vector(self, mv):
         self.databases = {}
-        if self.config:
-            self.overview = PGOverview(mv)
+        self.overview = PGOverview(mv)
 
     def update_machine_vector(self, mv):
         if not self.enabled or not self.config:
