@@ -37,20 +37,22 @@ from lxml.builder import E  # @UnresolvedImport
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools
 import zmq
+from initat.tools.server_mixins import ICSWBasePool
 
+from initat.host_monitoring.hm_mixins import HMHRMixin
 from .config import global_config
 from .constants import TIME_FORMAT
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 from .hm_inotify import HMInotifyProcess
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
-from initat.tools.server_mixins import ICSWBasePool
+
 
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
 
 
-class server_code(ICSWBasePool):
+class server_code(ICSWBasePool, HMHRMixin):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
@@ -94,6 +96,9 @@ class server_code(ICSWBasePool):
         self.__debug = global_config["DEBUG"]
         if self.objgraph:
             self.register_timer(self._objgraph_run, 30, instant=True)
+        from initat.host_monitoring import modules
+        self.modules = modules
+        self.__delayed = []
         if not self._init_commands():
             self._sigint("error init")
         self.register_timer(self._check_cpu_usage, 30, instant=True)
@@ -694,50 +699,11 @@ class server_code(ICSWBasePool):
             self.log("Config : %s" % (conf))
 
     def loop_end(self):
-        from initat.host_monitoring import modules
-        for cur_mod in modules.module_list:
+        for cur_mod in self.modules.module_list:
             cur_mod.close_module()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-
-    def _init_commands(self):
-        self.log("init commands")
-        self.__delayed = []
-        from initat.host_monitoring import modules
-        if modules.IMPORT_ERRORS:
-            self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
-            for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
-                self.log("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
-        self.module_list = modules.module_list
-        self.commands = modules.command_dict
-        _init_ok = True
-        for call_name, add_self in [
-            ("register_server", True),
-            ("init_module", False)
-        ]:
-            for cur_mod in modules.module_list:
-                if global_config["VERBOSE"]:
-                    self.log(
-                        "calling {} for module '{}'".format(
-                            call_name,
-                            cur_mod.name
-                        )
-                    )
-                try:
-                    if add_self:
-                        getattr(cur_mod, call_name)(self)
-                    else:
-                        getattr(cur_mod, call_name)()
-                except:
-                    exc_info = process_tools.exception_info()
-                    for log_line in exc_info.log_lines:
-                        self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
-                    _init_ok = False
-                    break
-            if not _init_ok:
-                break
-        return _init_ok
 
     def _close_modules(self):
         for cur_mod in self.module_list:

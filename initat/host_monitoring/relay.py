@@ -33,7 +33,6 @@ import resource
 import socket
 import sys
 import time
-from argparse import Namespace
 
 from initat.host_monitoring import limits, hm_classes
 from initat.client_version import VERSION_STRING
@@ -41,20 +40,19 @@ from lxml.builder import E  # @UnresolvedImport
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools
 import zmq
+from initat.tools.server_mixins import ICSWBasePool
+from initat.host_monitoring.modules.network_mod import ping_command
+from initat.host_monitoring.hm_mixins import HMHRMixin
 
 from .config import global_config
-from .constants import MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
-from .discovery import id_discovery
+from .constants import MASTER_FILE_NAME, ICINGA_TOP_DIR
+from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
 from .host_monitoring_struct import HostConnection, host_message
-from .tools import my_cached_file
-from initat.tools.server_mixins import ICSWBasePool
-
-from initat.host_monitoring.modules.network_mod import PingSPStruct, ping_command
 
 
-class relay_code(ICSWBasePool):
+class relay_code(ICSWBasePool, HMHRMixin):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
@@ -94,7 +92,7 @@ class relay_code(ICSWBasePool):
         self.add_process(SocketProcess("socket"), start=True)
         self.add_process(ResolveProcess("resolve"), start=True)
         self.install_signal_handlers()
-        id_discovery.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose, self.__force_resolve)
+        ZMQDiscovery.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose, self.__force_resolve)
         self._init_filecache()
         self._init_msi_block()
         self._change_rlimits()
@@ -160,7 +158,7 @@ class relay_code(ICSWBasePool):
                 self.__client_dict[t_host] = None
                 num_c += 1
         self.log("cleared {}".format(logging_tools.get_plural("state", num_c)))
-        id_discovery.reload_mapping()
+        ZMQDiscovery.reload_mapping()
 
     def _change_rlimits(self):
         for limit_name in ["OFILE"]:
@@ -256,7 +254,7 @@ class relay_code(ICSWBasePool):
             ))
         conn_str = u"tcp://{}:{:d}".format(self.master_ip, self.master_port)
         self.log(u"registered master at {} ({})".format(conn_str, self.master_uuid))
-        id_discovery.set_mapping(conn_str, self.master_uuid)
+        ZMQDiscovery.set_mapping(conn_str, self.master_uuid)
         if not self.__rmt_set:
             self.__rmt_set = True
             # force connection
@@ -267,10 +265,10 @@ class relay_code(ICSWBasePool):
             self.register_timer(self._contact_master, 600, instant=False)
 
     def _init_filecache(self):
-        self.__client_dict = {}
         self.__last_tried = {}
-        if os.path.isfile(MAPPING_FILE_TYPES):
-            self.__client_dict.update({key: "0" for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()})
+        self.__client_dict = {
+            _key: "0" for _key in ZMQDiscovery.get_hm_0mq_addrs()
+        }
         self.__default_0mq = False
 
     def _new_client(self, c_ip, c_port):
@@ -280,7 +278,6 @@ class relay_code(ICSWBasePool):
         self._set_client_state(c_ip, c_port, "T")
 
     def _set_client_state(self, c_ip, c_port, c_type):
-        write_file = False
         check_names = [c_ip]
         if self.__force_resolve:
             if c_ip in self.__ip_lut:
@@ -291,25 +288,19 @@ class relay_code(ICSWBasePool):
             if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
                 self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
                 self.__client_dict[c_name] = c_type
-                write_file = True
-        if write_file:
-            file(MAPPING_FILE_TYPES, "w").write("\n".join([key for key, value in self.__client_dict.iteritems() if value == "0"]))
 
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=4)
-        if True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("collrelay")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
-            msi_block.kill_pids = True
-            # msi_block.heartbeat_timeout = 60
-            msi_block.save_block()
-        else:
-            msi_block = None
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("collrelay")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
+        msi_block.kill_pids = True
+        # msi_block.heartbeat_timeout = 60
+        msi_block.save_block()
         self.__msi_block = msi_block
 
     def process_start(self, src_process, src_pid):
@@ -328,7 +319,7 @@ class relay_code(ICSWBasePool):
             self.__msi_block.save_block()
 
     def _check_timeout(self):
-        HostConnection.check_timeout_global(id_discovery)
+        HostConnection.check_timeout_global(ZMQDiscovery)
         cur_time = time.time()
         # check nhm timeouts
         del_list = []
@@ -397,7 +388,8 @@ class relay_code(ICSWBasePool):
         else:
             self.log(
                 "result for non-existing id '{}' received, discarding".format(src_id),
-                logging_tools.LOG_LEVEL_ERROR)
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def send_result(self, src_id, ret_str):
         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
@@ -848,8 +840,8 @@ class relay_code(ICSWBasePool):
                 _host,
                 int(srv_com["*port"])
             )
-            if id_discovery.has_mapping(conn_str):
-                id_str = id_discovery.get_mapping(conn_str)
+            if ZMQDiscovery.has_mapping(conn_str):
+                id_str = ZMQDiscovery.get_mapping(conn_str)
                 cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
                 cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
                 if com_name in self.modules.command_dict:
@@ -858,13 +850,13 @@ class relay_code(ICSWBasePool):
                     cur_hc.send(cur_mes, com_struct)
                 else:
                     cur_hc.return_error(cur_mes, "command '{}' not defined on relayer".format(com_name))
-            elif id_discovery.is_pending(conn_str):
+            elif ZMQDiscovery.is_pending(conn_str):
                 cur_hc = HostConnection.get_hc_0mq(conn_str)
                 com_name = srv_com["command"].text
                 cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
                 cur_hc.return_error(cur_mes, "0mq discovery in progress")
             else:
-                id_discovery(srv_com, src_id, xml_input)
+                ZMQDiscovery(srv_com, src_id, xml_input)
 
     def _handle_local_ping(self, src_id, srv_com):
         args = srv_com["*arg_list"].strip().split()
@@ -914,7 +906,7 @@ class relay_code(ICSWBasePool):
             srv_com["host"].text,
             int(srv_com["port"].text)
         )
-        if id_discovery.has_mapping(conn_str):
+        if ZMQDiscovery.has_mapping(conn_str):
             connected = conn_str in self.__nhm_connections
             # trigger id discovery
             if not connected:
@@ -926,7 +918,7 @@ class relay_code(ICSWBasePool):
                     self.log(
                         "connected ROUTER client to {} (id={})".format(
                             conn_str,
-                            id_discovery.get_mapping(conn_str),
+                            ZMQDiscovery.get_mapping(conn_str),
                         )
                     )
                     connected = True
@@ -934,10 +926,10 @@ class relay_code(ICSWBasePool):
             if connected:
                 try:
                     if int(srv_com.get("raw_connect", "0")):
-                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
+                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
                         self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)  # @UndefinedVariable
                     else:
-                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
+                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
                         self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)  # @UndefinedVariable
                 except:
                     self._send_result(
@@ -950,13 +942,13 @@ class relay_code(ICSWBasePool):
                     )
                 else:
                     if int(srv_com.get("raw_connect", "0")):
-                        self.__raw_nhm_dict[id_discovery.get_mapping(conn_str)] = (time.time(), srv_com)
+                        self.__raw_nhm_dict[ZMQDiscovery.get_mapping(conn_str)] = (time.time(), srv_com)
                     elif kwargs.get("register", True):
                         self.__nhm_dict[srv_com["identity"].text] = (time.time(), srv_com)
-        elif id_discovery.is_pending(conn_str):
+        elif ZMQDiscovery.is_pending(conn_str):
             self._send_result(src_id, "0mq discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
         else:
-            id_discovery(srv_com, src_id, xml_input)
+            ZMQDiscovery(srv_com, src_id, xml_input)
 
     def _send_result(self, identity, reply_str, reply_state):
         if identity is None:
@@ -1047,7 +1039,7 @@ class relay_code(ICSWBasePool):
                 srv_com.set_result(
                     "caught server exception '{}'".format(process_tools.get_except_info()),
                     server_command.SRV_REPLY_STATE_CRITICAL,
-                    )
+                )
 
     def _show_config(self):
         try:
@@ -1055,11 +1047,17 @@ class relay_code(ICSWBasePool):
                 self.log("Config info : [{:d}] {}".format(log_level, log_line))
         except:
             self.log(
-                "error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
+                "error showing configfile log, old configfile ? ({})".format(
+                    process_tools.get_except_info()
+                ),
                 logging_tools.LOG_LEVEL_ERROR
             )
         conf_info = global_config.get_config_info()
-        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
+        self.log(
+            "Found {}:".format(
+                logging_tools.get_plural("valid configline", len(conf_info))
+            )
+        )
         for conf in conf_info:
             self.log("Config : {}".format(conf))
 
@@ -1081,7 +1079,7 @@ class relay_code(ICSWBasePool):
     def loop_end(self):
         self._close_ipc_sockets()
         self._close_io_sockets()
-        id_discovery.destroy()
+        ZMQDiscovery.destroy()
         from initat.host_monitoring import modules
         for cur_mod in modules.module_list:
             cur_mod.close_module()
@@ -1091,42 +1089,6 @@ class relay_code(ICSWBasePool):
 
     def loop_post(self):
         self.CC.close()
-
-    def _init_commands(self):
-        self.log("init commands")
-        self.module_list = self.modules.module_list
-        self.commands = self.modules.command_dict
-        self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
-        for mod_name, com_name, error_str in self.modules.IMPORT_ERRORS:
-            self.log("{:<24s} {:<32s} {}".format(mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
-        _init_ok = True
-        for call_name, add_self in [
-            ("register_server", True),
-            ("init_module", False)
-        ]:
-            for cur_mod in self.modules.module_list:
-                if self.__verbose:
-                    self.log(
-                        "calling {} for module '{}'".format(
-                            call_name,
-                            cur_mod.name
-                        )
-                    )
-                try:
-                    if add_self:
-                        getattr(cur_mod, call_name)(self)
-                    else:
-                        getattr(cur_mod, call_name)()
-                except:
-                    exc_info = process_tools.exception_info()
-                    for log_line in exc_info.log_lines:
-                        self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
-                    _init_ok = False
-                    break
-            if not _init_ok:
-                break
-        return _init_ok
-    # file handling commands
 
     def _clear_directory(self, srv_com):
         t_dir = srv_com["directory"].text
@@ -1243,8 +1205,13 @@ class relay_code(ICSWBasePool):
                     try:
                         os.makedirs(t_dir)
                     except:
-                        self.log("error creating directory {}: {}".format(t_dir, process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "error creating directory {}: {}".format(
+                                t_dir,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
                         self.log("created directory {}".format(t_dir))
                 try:
