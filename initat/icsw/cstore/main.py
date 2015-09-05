@@ -25,6 +25,7 @@ functions for config store
 import sys
 
 from initat.tools.config_store import ConfigStore
+from initat.tools import logging_tools, process_tools
 
 
 def quiet_log(_a, _b):
@@ -33,7 +34,35 @@ def quiet_log(_a, _b):
 
 def main(opts):
     if opts.mode == "liststores":
-        print("not implemented")
+        _names = ConfigStore.get_store_names()
+        print("Found {}:".format(logging_tools.get_plural("CStore", len(_names))))
+        for _name in _names:
+            try:
+                _store = ConfigStore(_name, log_com=quiet_log)
+            except:
+                print(
+                    " ** corrupt store {}: {}".format(
+                        _name,
+                        process_tools.get_except_info(),
+                    )
+                )
+            else:
+                print("    {:<34s} ({})".format(_name, _store.info))
+    elif opts.mode == "showstore":
+        if ConfigStore.exists(opts.store):
+            _store = ConfigStore(opts.store, log_com=quiet_log)
+            print("Read store {} ({}):".format(opts.store, _store.info))
+            for _key in sorted(_store.keys()):
+                _value = _store[_key]
+                print(
+                    "    {:<30s} ({:<13s}): {}".format(
+                        _key,
+                        str(type(_value)),
+                        str(_value),
+                    )
+                )
+        else:
+            print("unknown store {}".format(opts.store))
     elif opts.mode == "storeexists":
         if ConfigStore.exists(opts.store):
             sys.exit(0)

@@ -60,6 +60,8 @@ CS_NG = """
 </element>
 """
 
+CONFIG_STORE_ROOT = os.path.join("/opt", "cluster", "etc", "cstores.d")
+
 
 class ConfigVar(object):
     def __init__(self, name, val, descr=""):
@@ -154,7 +156,16 @@ class ConfigStore(object):
 
     @staticmethod
     def build_path(name):
-        return os.path.join("/opt", "cluster", "etc", "cstores.d", "{}_config.xml".format(name))
+        return os.path.join(CONFIG_STORE_ROOT, "{}_config.xml".format(name))
+
+    @staticmethod
+    def get_store_names():
+        # return all valid store names
+        return sorted(
+            [
+                entry[:-11] for entry in os.listdir(CONFIG_STORE_ROOT) if entry.endswith("_config.xml")
+            ]
+        )
 
     def read(self, name=None):
         if name is not None:
@@ -229,6 +240,10 @@ class ConfigStore(object):
         if self.tree_valid:
             return etree.tostring(self._generate(), pretty_print=True)
 
+    @property
+    def info(self):
+        return "{} defined".format(logging_tools.get_plural("key", len(self.vars)))
+
     def write(self):
         # dangerous, use with care
         if self.tree_valid:
@@ -246,6 +261,12 @@ class ConfigStore(object):
                 self.log("wrote to {}".format(self.file_name))
         else:
             self.log("tree is not valid", logging_tools.LOG_LEVEL_ERROR)
+
+    def keys(self):
+        if self.tree_valid:
+            return self.vars.keys()
+        else:
+            return []
 
     def __getitem__(self, key):
         if self.tree_valid:

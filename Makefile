@@ -19,7 +19,6 @@ ICSW_SGE=${ICSW_BASE}/sge
 ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_TFTP=/opt/cluster/system/tftpboot
 
-CONFDIR_HM=${SYSCONF}/host-monitoring.d
 LOCALBIN=/usr/local/bin
 LOCALSBIN=/usr/local/sbin
 META_DIR=/var/lib/meta-server
@@ -180,9 +179,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/cluster
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/init-license-server.d
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/licenses
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/logging-server.d
 	cp -a icsw.db.access_config.xml.sample ${DESTDIR}/${ICSW_ETC}/cstores.d
-	touch ${DESTDIR}/${SYSCONF}/logging-server.d/tail
 	${INSTALL} ${INSTALL_OPTS} test_license ${DESTDIR}/${SYSCONF}/init-license-server.d
 	# /usr/local/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/local/bin
@@ -222,8 +219,6 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/lib/logging-server
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/cluster/sockets
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${META_DIR}
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${CONFDIR_HM}
-	${INSTALL} ${INSTALL_OPTS} configs/remote_ping.test ${DESTDIR}/${CONFDIR_HM}
 	# uwsgi
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/

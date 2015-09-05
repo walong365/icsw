@@ -34,7 +34,7 @@ class Parser(object):
             "--mode",
             default="liststores",
             choices=[
-                "liststores", "getkey", "storeexists", "keyexists"
+                "liststores", "showstore", "getkey", "storeexists", "keyexists"
             ],
             type=str,
             help="Operation mode [%(default)s]"
