@@ -27,8 +27,7 @@ import re
 import shutil
 import time
 
-from initat.host_monitoring import hm_classes
-from initat.host_monitoring import limits
+from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
 from lxml.builder import E  # @UnresolvedImports
 from initat.tools import logging_tools, process_tools, server_command
@@ -58,7 +57,8 @@ class _general(hm_classes.hm_module):
 
     def close_module(self):
         if hasattr(self.main_proc, "register_vector_receiver"):
-            self.machine_vector.close()
+            if hasattr(self, "machine_vector"):
+                self.machine_vector.close()
 
     def _init_machine_vector(self):
         self.machine_vector = machine_vector(self)
@@ -157,7 +157,7 @@ class machine_vector(object):
                     ))
         # init MV
         for module in module.main_proc.module_list:
-            if hasattr(module, "init_machine_vector"):
+            if hasattr(module, "init_machine_vector") and module.enabled:
                 if self.__verbosity:
                     self.log("calling init_machine_vector for module '{}'".format(module.name))
                 try:
