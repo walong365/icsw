@@ -240,6 +240,16 @@ class ZMQDiscovery(object):
             # pprint.pprint(ZMQDiscovery.reverse_mapping)
             else:
                 ZMQDiscovery.mapping = {}
+        _prev_maps = ZMQDiscovery.__cur_maps
+        ZMQDiscovery.__cur_maps = set(ZMQDiscovery.mapping.keys())
+        ZMQDiscovery.vanished = _prev_maps - ZMQDiscovery.__cur_maps
+        if ZMQDiscovery.vanished:
+            _log(
+                "{} vanished: {}".format(
+                    logging_tools.get_plural("address", len(ZMQDiscovery.vanished)),
+                    ", ".join(sorted(list(ZMQDiscovery.vanished))),
+                )
+            )
         for key, value in ZMQDiscovery.mapping.iteritems():
             # only use ip-address / hostname from key
             ZMQDiscovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
@@ -254,6 +264,8 @@ class ZMQDiscovery(object):
         ZMQDiscovery.pending = {}
         # last discovery try
         ZMQDiscovery.last_try = {}
+        ZMQDiscovery.__cur_maps = set()
+        ZMQDiscovery.vanished = set()
         ZMQDiscovery.reload_mapping()
 
     @staticmethod

@@ -57,7 +57,6 @@ class ExtReturn(object):
             return ExtReturn(in_val[0], in_val[1])
 
     def unicode(self):
-        print "*"
         return "{} ({:d})".format(self.ret_str, self.ret_state)
 
 
@@ -164,6 +163,10 @@ class HostConnection(object):
         HostConnection.relayer_process.register_poller(new_sock, zmq.POLLIN, HostConnection.get_result)  # @UndefinedVariable
 
     @staticmethod
+    def has_hc_0mq(conn_str, target_id="ms", **kwargs):
+        return (True, conn_str) in HostConnection.hc_dict
+
+    @staticmethod
     def get_hc_0mq(conn_str, target_id="ms", **kwargs):
         if (True, conn_str) not in HostConnection.hc_dict:
             if HostConnection.verbose > 1:
@@ -171,6 +174,8 @@ class HostConnection(object):
             cur_hc = HostConnection(conn_str, zmq_id=target_id, **kwargs)
         else:
             cur_hc = HostConnection.hc_dict[(True, conn_str)]
+            if cur_hc.zmq_id != target_id:
+                cur_hc.zmq_id = target_id
         return cur_hc
 
     @staticmethod
@@ -219,7 +224,7 @@ class HostConnection(object):
     def _open(self):
         if not self.__open:
             try:
-                self.log("connecting")
+                self.log("connecting 0MQ")
                 HostConnection.zmq_socket.connect(self.__conn_str)
             except:
                 raise
@@ -231,7 +236,8 @@ class HostConnection(object):
 
     def _close(self):
         if self.__open:
-            HostConnection.zmq_socket.close()
+            HostConnection.zmq_socket.disconnect(self.__conn_str)
+            self.log("disconnecting")
             self.__open = False
 
     def add_message(self, new_mes):

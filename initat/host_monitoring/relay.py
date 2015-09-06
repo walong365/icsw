@@ -650,10 +650,13 @@ class relay_code(ICSWBasePool, HMHRMixin):
                     srv_com = None
         if srv_com is not None:
             if self.__verbose:
-                self.log("got command '{}' for '{}' (XML: {})".format(
-                    srv_com["command"].text,
-                    srv_com["host"].text,
-                    str(xml_input)))
+                self.log(
+                    "got command '{}' for '{}' (XML: {})".format(
+                        srv_com["command"].text,
+                        srv_com["host"].text,
+                        str(xml_input)
+                    )
+                )
             if "host" in srv_com and "port" in srv_com:
                 # check target host, rewrite to ip
                 t_host = srv_com["host"].text
@@ -663,8 +666,10 @@ class relay_code(ICSWBasePool, HMHRMixin):
                     try:
                         ip_addr = self._resolve_address(t_host)
                     except socket.gaierror:
-                        self.log("resolve error for '{}'".format(t_host),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "resolve error for '{}'".format(t_host),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
                         self.sender_socket.send_unicode("{:d}\0resolve error".format(limits.nag_STATE_CRITICAL))
                     else:
@@ -840,6 +845,11 @@ class relay_code(ICSWBasePool, HMHRMixin):
                 _host,
                 int(srv_com["*port"])
             )
+            if conn_str in ZMQDiscovery.vanished:
+                self.log("{} has vanished, closing connection".format(conn_str), logging_tools.LOG_LEVEL_ERROR)
+                ZMQDiscovery.vanished.remove(conn_str)
+                cur_hc = HostConnection.get_hc_0mq(conn_str, "ignore")
+                cur_hc._close()
             if ZMQDiscovery.has_mapping(conn_str):
                 id_str = ZMQDiscovery.get_mapping(conn_str)
                 cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)

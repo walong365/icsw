@@ -40,7 +40,7 @@ class Parser(object):
             "--mode",
             default="dump",
             choices=[
-                "dump",
+                "dump", "remove",
             ],
             type=str,
             help="Operation mode [%(default)s]"
@@ -56,6 +56,12 @@ class Parser(object):
             default=False,
             action="store_true",
             help="remove unique UUID entries [%(default)s]",
+        )
+        parser.add_argument(
+            "--address",
+            default="",
+            type=str,
+            help="comma-separated list of addresses to remove [%(default)s]",
         )
 
     def _execute(self, opt_ns):

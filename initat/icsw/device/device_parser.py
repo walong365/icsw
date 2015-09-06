@@ -46,6 +46,7 @@ class Parser(object):
         if devicelog:
             devicelog.populate_parser(child_parser)
         self._add_modify_parser(child_parser)
+        self._add_change_uuid_parser(child_parser)
         return parser
 
     def _add_info_parser(self, sub_parser):
@@ -82,9 +83,17 @@ class Parser(object):
         _parser.add_argument("-g", type=str, dest="groupname", default="", help="name of group [%(default)s]")
         _parser.add_argument("dev", type=str, nargs="*", help="device to query [%(default)s]", default="")
 
+    def _add_change_uuid_parser(self, sub_parser):
+        _act = sub_parser.add_parser("changeuuid", help="change the uuid of the local device")
+        _act.set_defaults(childcom="changeuuid")
+        _act.add_argument("--uuid", type=str, default="", help="new UUID [%(default)s], empty the generate a new one")
+
     def _execute(self, opt_ns):
-        from .main import dev_main, overview_main
-        if opt_ns.childcom in ["info", "graphdump", "removegraph"]:
+        if opt_ns.childcom in ["changeuuid"]:
+            from .changeuuid import main
+            main(opt_ns)
+        elif opt_ns.childcom in ["info", "graphdump", "removegraph"]:
+            from .main import dev_main
             dev_main(opt_ns)
         elif opt_ns.childcom in ["csvmodify"]:
             from .csvmodify import main
@@ -94,4 +103,5 @@ class Parser(object):
                 raise SystemError("CSV-File '{}' does not exist".format(opt_ns.file))
             main(opt_ns)
         else:
+            from .main import overview_main
             overview_main(opt_ns)

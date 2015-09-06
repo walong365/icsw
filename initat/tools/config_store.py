@@ -259,6 +259,16 @@ class ConfigStore(object):
                 )
             else:
                 self.log("wrote to {}".format(self.file_name))
+                try:
+                    os.chmod(self.file_name, 0664)
+                except:
+                    self.log(
+                        "cannot change mod of {} to 0664: {}".format(
+                            self.file_name,
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
         else:
             self.log("tree is not valid", logging_tools.LOG_LEVEL_ERROR)
 
@@ -271,6 +281,12 @@ class ConfigStore(object):
     def __getitem__(self, key):
         if self.tree_valid:
             return self.vars[key].get_value()
+        else:
+            raise ValueError("ConfigStore {} not valid".format(self.name))
+
+    def __delitem__(self, key):
+        if self.tree_valid:
+            del self.vars[key]
         else:
             raise ValueError("ConfigStore {} not valid".format(self.name))
 

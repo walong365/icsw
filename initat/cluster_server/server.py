@@ -179,13 +179,6 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
             )
             my_dev.uuid = file_uuid
             my_dev.save()
-        # uuid is also stored as device variable
-        _uuid_var = cluster_location.db_device_variable(
-            global_config["SERVER_IDX"],
-            "device_uuid",
-            description="UUID of device",
-            value=uuid_tools.get_uuid().get_urn()
-        )
         # recognize for which devices i am responsible
         dev_r = cluster_location.device_recognition()
         self.device_r = dev_r
@@ -193,11 +186,16 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
             self.log(
                 " - i am also host for {}: {}".format(
                     logging_tools.get_plural("virtual device", len(dev_r.device_dict.keys())),
-                    ", ".join(sorted([cur_dev.name for cur_dev in dev_r.device_dict.itervalues()]))
+                    ", ".join(
+                        sorted(
+                            [
+                                cur_dev.name for cur_dev in dev_r.device_dict.itervalues()
+                            ]
+                        )
+                    )
                 )
             )
             for cur_dev in dev_r.device_dict.itervalues():
-                cluster_location.db_device_variable(cur_dev, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
                 cluster_location.db_device_variable(cur_dev, "is_virtual", description="Flag set for Virtual Machines", value=1)
 
     def loop_end(self):
@@ -300,7 +298,9 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
             # print srv_com.pretty_print()
             if do_it:
                 try:
-                    found_keys = [key for key in com_obj.Meta.needed_option_keys if "server_key:{}".format(key) in srv_com]
+                    found_keys = [
+                        key for key in com_obj.Meta.needed_option_keys if "server_key:{}".format(key) in srv_com
+                    ]
                 except:
                     srv_com.set_result(
                         "error parsing options_keys: {}".format(process_tools.get_except_info()),
@@ -454,7 +454,12 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                         )
                     )
                 else:
-                    self.log("command {} has no _call function".format(com_name), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "command {} has no _call() function".format(
+                            com_name
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     del_names.append(com_name)
             else:
                 self.log("command {} is disabled".format(com_name))
