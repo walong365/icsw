@@ -18,6 +18,7 @@ setup(
         "initat.icsw.device",
         "initat.icsw.lse",
         "initat.icsw.cstore",
+        "initat.icsw.relay",
         "initat.tools",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",

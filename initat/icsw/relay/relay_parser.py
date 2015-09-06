@@ -19,30 +19,44 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """
-parser for config store
+parser for relay info / modifying
 """
+
+
+from initat.host_monitoring.discovery import CS_NAME
+from initat.tools.config_store import ConfigStore
 
 
 class Parser(object):
     def link(self, sub_parser):
-        return self._add_cstore_parser(sub_parser)
+        # only add parser if relay-cstore exists
+        if ConfigStore.exists(CS_NAME):
+            return self._add_relay_parser(sub_parser)
 
-    def _add_cstore_parser(self, sub_parser):
-        parser = sub_parser.add_parser("cstore", help="configstore tool")
-        parser.set_defaults(subcom="cstore", execute=self._execute)
+    def _add_relay_parser(self, sub_parser):
+        parser = sub_parser.add_parser("relay", help="host-relay tool")
+        parser.set_defaults(subcom="relay", execute=self._execute)
         parser.add_argument(
             "--mode",
-            default="liststores",
+            default="dump",
             choices=[
-                "liststores", "showstore", "getkey", "storeexists", "keyexists"
+                "dump",
             ],
             type=str,
             help="Operation mode [%(default)s]"
         )
-        parser.add_argument("--store", default="client", type=str, help="ConfigStore name [%(default)s]")
-        parser.add_argument("--quiet", default=False, action="store_true", help="Enable quiet mode [%(default)s]")
-        parser.add_argument("--sort-by-value", default=False, action="store_true", help="Sort output by value [%(default)s]")
-        parser.add_argument("--key", default="", type=str, help="Key to show [%(default)s]")
+        parser.add_argument(
+            "--port",
+            default=0,
+            type=int,
+            help="Filter for port [%(default)s]",
+        )
+        parser.add_argument(
+            "--remove-unique",
+            default=False,
+            action="store_true",
+            help="remove unique UUID entries [%(default)s]",
+        )
 
     def _execute(self, opt_ns):
         from .main import main

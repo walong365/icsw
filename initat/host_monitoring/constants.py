@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2011-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,7 +28,6 @@ TIME_FORMAT = "%.3f"
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
 MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
-MAPPING_FILE_TYPES = os.path.join(CONFIG_DIR, "0mq_clients")
 MASTER_FILE_NAME = os.path.join(CONFIG_DIR, "monitor_master")
 
 ICINGA_TOP_DIR = "/opt/icinga"

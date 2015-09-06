@@ -55,7 +55,12 @@ def main(opts):
         if ConfigStore.exists(opts.store):
             _store = ConfigStore(opts.store, log_com=quiet_log)
             print("Read store {} ({}):".format(opts.store, _store.info))
-            for _key in sorted(_store.keys()):
+            _dict = _store.get_dict()
+            if opts.sort_by_value:
+                _keys = [_key for (_value, _key) in sorted([(str(_value), _key) for _key, _value in _dict.iteritems()])]
+            else:
+                _keys = sorted(_dict.keys())
+            for _key in _keys:
                 _value = _store[_key]
                 print(
                     "    {:<30s} ({:<13s}): {}".format(
