@@ -23,6 +23,7 @@
 """ device information and modify """
 
 import os
+import sys
 
 try:
     from . import devicelog
@@ -38,14 +39,14 @@ class Parser(object):
         parser = sub_parser.add_parser("device", help="device information")
         parser.set_defaults(subcom="device", execute=self._execute)
         child_parser = parser.add_subparsers(help="device subcommands")
-        self._add_info_parser(child_parser)
-        self._add_overview_parser(child_parser)
         # self._add_reboot_parser(child_parser)
-        self._add_graphdump_parser(child_parser)
-        self._add_removegraph_parser(child_parser)
         if devicelog:
+            self._add_info_parser(child_parser)
+            self._add_overview_parser(child_parser)
             devicelog.populate_parser(child_parser)
-        self._add_modify_parser(child_parser)
+            self._add_graphdump_parser(child_parser)
+            self._add_removegraph_parser(child_parser)
+            self._add_modify_parser(child_parser)
         self._add_change_uuid_parser(child_parser)
         return parser
 
