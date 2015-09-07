@@ -247,7 +247,7 @@ class _conf_var(object):
         except ValueError:
             raise ValueError("Value Error for value {}".format(str(val)))
         else:
-            if self._choices and r_val not in self._choices:
+            if self._choices and set(r_val) - set(self._choices):
                 print(
                     "ignoring value {} for {} (not in choices: {})".format(
                         r_val,
@@ -372,7 +372,7 @@ class array_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
 
     def check_type(self, val):
-        return type(val) == list
+        return type(val) in [list, str]
 
 
 class dict_c_var(_conf_var):

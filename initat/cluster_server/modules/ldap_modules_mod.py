@@ -302,10 +302,12 @@ class ldap_mixin(object):
             # add default keys to par_dict
             to_create = set(def_dict) - set(par_dict)
             if to_create:
-                self.log("{} to create: {}".format(
-                    logging_tools.get_plural("config_var", len(to_create)),
-                    ", ".join(sorted(to_create)),
-                    ))
+                self.log(
+                    "{} to create: {}".format(
+                        logging_tools.get_plural("config_var", len(to_create)),
+                        ", ".join(sorted(to_create)),
+                    )
+                )
                 for key in to_create:
                     par_dict[key] = def_dict[key][0]
                     config_str.objects.create(
@@ -316,11 +318,13 @@ class ldap_mixin(object):
                     )
             self.log("{} defined in par_dict:".format(logging_tools.get_plural("entry", len(par_dict))))
             for key_num, key in enumerate(sorted(par_dict)):
-                self.log(u" - {:02d} {:<20s} {}".format(
-                    key_num + 1,
-                    key.upper(),
-                    "*" * len(par_dict[key]) if key.upper() in ["ROOT_PASSWD"] else par_dict[key],
-                    ))
+                self.log(
+                    u" - {:02d} {:<20s} {}".format(
+                        key_num + 1,
+                        key.upper(),
+                        "*" * len(par_dict[key]) if key.upper() in ["ROOT_PASSWD"] else par_dict[key],
+                    )
+                )
             # rewrite keys
             for rw_key in ["group_object_classes", "user_object_classes"]:
                 par_dict[rw_key] = [_v for _v in sum([entry.split(",") for entry in par_dict[rw_key].split()], []) if _v and _v.strip()]
@@ -346,7 +350,7 @@ class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
                     cur_inst.srv_com.set_result(
                         "error hashing root-password ({:d}): {}".format(cmd_stat, root_hash),
                         server_command.SRV_REPLY_STATE_ERROR,
-                        )
+                    )
                 else:
                     c_list = [
                         "dn:  olcDatabase={1}bdb,cn=config",

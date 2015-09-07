@@ -514,7 +514,7 @@ class server_process(threading_tools.process_pool):
                 if _mis:
                     self.log("missing packages: {}".format(", ".join(sorted(list(_mis)))), logging_tools.LOG_LEVEL_ERROR)
             if not global_config["IGNORE_ERRORS"]:
-                raise ValueError("packages missing ({})".format(", ".join(sorted(list(missing_1 | missing_2 | missing_3)))))
+                raise ValueError("packages missing ({})".format(", ".join(sorted(list(_mis)))))
         else:
             self.log("all packages installed")
 
