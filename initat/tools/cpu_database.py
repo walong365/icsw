@@ -526,9 +526,13 @@ class global_cpu_info(object):
     def get_send_dict(self, srv_com):
         el_builder = srv_com.builder
         cpu_info = el_builder("cpu_info", version="1")
-        cpu_info.extend([el_builder("kernel_tuple", base64.b64encode(bz2.compress(self.c_out_kernel)), stat="{:d}".format(self.c_stat_kernel)),
-                         el_builder("cpuid_tuple", base64.b64encode(bz2.compress(self.c_out_cpuid)), stat="{:d}".format(self.c_stat_cpuid)),
-                         el_builder("proc_dict", base64.b64encode(bz2.compress(marshal.dumps(self.__proc_dict))))])
+        cpu_info.extend(
+            [
+                el_builder("kernel_tuple", base64.b64encode(bz2.compress(self.c_out_kernel)), stat="{:d}".format(self.c_stat_kernel)),
+                el_builder("cpuid_tuple", base64.b64encode(bz2.compress(self.c_out_cpuid)), stat="{:d}".format(self.c_stat_cpuid)),
+                el_builder("proc_dict", base64.b64encode(bz2.compress(marshal.dumps(self.__proc_dict))))
+            ]
+        )
         srv_com["cpu_info"] = cpu_info
 
     def parse_info(self):
