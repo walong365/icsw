@@ -19,16 +19,15 @@
 #
 """ module for checking current server status and extracting routes to other server """
 
+import array
+import datetime
+import netifaces
+import socket
+
 from django.db.models import Q
 from initat.cluster.backbone.models import device_variable, config, device, config_blob, \
     config_bool, config_int, config_str, net_ip
-import array
-from initat.tools import config_tools
-from initat.tools import configfile
-import datetime
-import netifaces
-from initat.tools import process_tools
-import socket
+from initat.tools import config_tools, configfile, process_tools
 
 _VAR_LUT = {
     "int": config_int,
@@ -44,7 +43,12 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
         host_name = process_tools.get_machine_name()
     g_config.add_config_entries(init_list, database=True)
     if not kwargs.get("dummy_run", False):
-        num_serv, serv_idx, _s_type, _s_str, _config_idx, real_config_name = is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0])
+        num_serv, serv_idx, _s_type, _s_str, _config_idx, real_config_name = is_server(
+            server_type.replace("%", ""),
+            True,
+            False,
+            host_name.split(".")[0]
+        )
         # print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
         if num_serv:
             # dict of local vars without specified host
@@ -62,9 +66,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                         Q(name__in=[var_name for var_name, _var_value in init_list])
                     )
                 for db_rec in src_sql_obj.filter(
-                    (
-                        Q(device=0) | Q(device=None) | Q(device=serv_idx)
-                    ) &
+                    (Q(device=0) | Q(device=None) | Q(device=serv_idx)) &
                     Q(config__name=real_config_name) &
                     Q(config__device_config__device=serv_idx)
                 ).order_by("name"):
@@ -145,14 +147,14 @@ class db_device_variable(object):
         if self.__act_dv:
             self.__act_dv.description = self.__description
             self.__act_dv.var_type = self.__var_type
-            setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_value)
+            setattr(self.__act_dv, "val_{}".format(self.__var_type_name), self.__var_value)
         else:
             self.__act_dv = device_variable(
                 description=self.__description,
                 var_type=self.__var_type,
                 name=self.__var_name,
                 device=self.__device)
-            setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_value)
+            setattr(self.__act_dv, "val_{}".format(self.__var_type_name), self.__var_value)
         self.__act_dv.save()
 
     def is_set(self):
@@ -404,7 +406,8 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
                     "virtual",
                     "virtual '%s'-server via IP-address %s" % (server_info_str, ai),
                     all_ips[ai][1],
-                    all_ips[ai][2])
+                    all_ips[ai][2]
+                )
     if long_mode:
         return num_servers, server_idx, s_type, s_str, config_idx, real_server_name
     else:

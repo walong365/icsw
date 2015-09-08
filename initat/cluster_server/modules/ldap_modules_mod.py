@@ -59,6 +59,8 @@ import cs_base_class
         inherit acls = Yes
         path = /tmp/%S
 
+For a good overview see http://www.server-world.info/en/note?os=CentOS_7&p=openldap
+
 config old .config to new ldap.d base:
 slaptest -f /etc/openldap/slapd.conf -F /etc/openldap/slapd.d
 

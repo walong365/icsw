@@ -18,15 +18,16 @@
 """ handles process affinity """
 
 import commands
-import psutil
 import os
+
+import psutil
 
 if "FAKEROOTKEY" in os.environ:
     MAX_CORES = 2
 else:
     MAX_CORES = psutil.cpu_count(logical=True)
-    MAX_MASK = (1 << MAX_CORES) - 1
 
+MAX_MASK = (1 << MAX_CORES) - 1
 CPU_MASKS = {1 << cpu_num: cpu_num for cpu_num in xrange(MAX_CORES)}
 
 
@@ -66,11 +67,11 @@ def get_process_affinity_mask_from_status_lines(lines):
     return mask
 
 
-class cpu_container(dict):
+class CPUContainer(dict):
     def __init__(self):
         dict.__init__(self)
         for idx in xrange(MAX_CORES):
-            self[idx] = cpu_struct(idx)
+            self[idx] = CPUStruct(idx)
 
     def add_proc(self, cur_s):
         self[cur_s.single_cpu_num].add_proc(cur_s)
@@ -90,7 +91,7 @@ class cpu_container(dict):
             len(self[key].procs)) for key in sorted(self.keys())])
 
 
-class cpu_struct(object):
+class CPUStruct(object):
     __slots__ = ("cpu_num", "procs", "usage")
 
     def __init__(self, cpu_num):
@@ -108,7 +109,7 @@ class cpu_struct(object):
             self.usage[key] += p_struct.usage[key]
 
 
-class proc_struct(object):
+class ProcStruct(object):
     __slots__ = ("pid", "act_mask", "single_cpu_num", "stat", "usage", "name")
 
     def __init__(self, p_struct):  # pid, stat=None, name="not set"):
@@ -127,7 +128,8 @@ class proc_struct(object):
             usage_dict = {
                 key: 100. * float(
                     stat_dict[key] - self.stat[key]
-                ) / diff_time for key in stat_dict.iterkeys()}
+                ) / diff_time for key in stat_dict.iterkeys()
+            }
             usage_dict["t"] = usage_dict["u"] + usage_dict["s"]
             self.stat = stat_dict
             # usage dict is now populated with (u)ser, (s)ystem and (t)otal load in percent

@@ -30,17 +30,17 @@ import time
 
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
-from initat.tools import affinity_tools, logging_tools, process_tools
+from initat.tools import affinity_tools, logging_tools, process_tools, config_store
 import psutil
 
 MIN_UPDATE_TIME = 10
 
 # for affinity
-AFFINITY_FILE = "/etc/sysconfig/host-monitoring.d/affinity_list"
+AFFINITY_CSTORE = "hm.affinity-list"
 HZ = 100
 
 
-class affinity_struct(object):
+class AffinityStruct(object):
     def __init__(self, log_com, af_re):
         self.log_com = log_com
         self.affinity_re = af_re
@@ -70,11 +70,11 @@ class affinity_struct(object):
             self.log(
                 "{}: {}".format(
                     logging_tools.get_plural("new key", len(new_keys)),
-                    ", ".join(["%d" % (new_key) for new_key in sorted(new_keys)])
+                    ", ".join(["{:d}".format(new_key) for new_key in sorted(new_keys)])
                 )
             )
             for new_key in new_keys:
-                new_ps = affinity_tools.proc_struct(p_dict[new_key])
+                new_ps = affinity_tools.ProcStruct(p_dict[new_key])
                 self.dict[new_key] = new_ps
                 if new_ps.single_cpu_set:
                     # clear affinity mask on first run
@@ -105,7 +105,13 @@ class affinity_struct(object):
                 try:
                     cur_ps.feed(p_dict[key], diff_time * HZ)
                 except:
-                    self.log("error updating %d: %s" % (key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error updating {:d}: {}".format(
+                            key,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     cur_ps.clear_usage()
                 else:
                     sched_keys.add(key)
@@ -114,7 +120,7 @@ class affinity_struct(object):
         self.last_update = cur_time
 
     def _reschedule(self, keys):
-        cpu_c = affinity_tools.cpu_container()
+        cpu_c = affinity_tools.CPUContainer()
         unsched = set()
         for key in keys:
             cur_s = self.dict[key]
@@ -125,9 +131,12 @@ class affinity_struct(object):
         # print unsched
         exclude_set = set()
         if unsched:
-            self.log("distribute %s to %s" % (
-                logging_tools.get_plural("process", len(unsched)),
-                logging_tools.get_plural("core", affinity_tools.MAX_CORES)))
+            self.log(
+                "distribute {} to {}".format(
+                    logging_tools.get_plural("process", len(unsched)),
+                    logging_tools.get_plural("core", affinity_tools.MAX_CORES)
+                )
+            )
             for key in unsched:
                 cur_s = self.dict[key]
                 targ_cpu = cpu_c.get_min_usage_cpu(exclude_set)
@@ -140,9 +149,13 @@ class affinity_struct(object):
                         if cur_s.single_cpu_set:
                             cpu_c.add_proc(cur_s)
                 else:
-                    self.log("no free CPU available, too many processes to schedule ({:d} > {:d})".format(
-                        len(unsched),
-                        affinity_tools.MAX_CORES), logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "no free CPU available, too many processes to schedule ({:d} > {:d})".format(
+                            len(unsched),
+                            affinity_tools.MAX_CORES
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
             # log final usage pattern
             self.log("usage pattern: {}".format(cpu_c.get_usage_str()))
         if self.__counter % 50 == 0:
@@ -154,22 +167,25 @@ class _general(hm_classes.hm_module):
     def init_module(self):
         # AFFINITY ist not set for relay mode
         self.check_affinity = self.main_proc.CC.CS["hm.enable.affinity.matcher"]
-        self.log("affinity check is %s" % ("enabled" if self.check_affinity else "disabled"))
+        self.log("affinity check is {}".format("enabled" if self.check_affinity else "disabled"))
         self.__affinity_dict = {}
         if self.check_affinity:
             self.affinity_set = set()
-            if os.path.isfile(AFFINITY_FILE):
-                self.affinity_set = set(
-                    [
-                        line.strip() for line in file(AFFINITY_FILE, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
-                    ]
-                )
+            if config_store.ConfigStore.exists(AFFINITY_CSTORE):
+                _afc = config_store.ConfigStore(AFFINITY_CSTORE, log_com=self.log)
+                for _key in _afc.keys():
+                    self.affinity_set.add(_afc[_key])
             if self.affinity_set:
-                self.log("affinity_set (%d): %s" % (len(self.affinity_set), ",".join(self.affinity_set)))
+                self.log(
+                    "affinity_set ({:d}): {}".format(
+                        len(self.affinity_set),
+                        ",".join(self.affinity_set)
+                    )
+                )
                 affinity_re = re.compile("|".join(["(%s)" % (line) for line in self.affinity_set]))
-                self.af_struct = affinity_struct(self.log, affinity_re)
+                self.af_struct = AffinityStruct(self.log, affinity_re)
             else:
-                self.log("affinity_set is empty (%s not present?)" % (AFFINITY_FILE), logging_tools.LOG_LEVEL_ERROR)
+                self.log("affinity-cstore {} missing".format(AFFINITY_CSTORE), logging_tools.LOG_LEVEL_ERROR)
                 self.check_affinity = False
 
     def init_machine_vector(self, mv):
@@ -320,13 +336,25 @@ class procstat_command(hm_classes.hm_command):
                     logging_tools.get_plural("{} process".format(key), res_dict[key]) for key in [
                         "userspace", "kernel"
                     ] if res_dict[key]
-                ]) or "nothing",
+                ]
+            ) or "nothing",
             ", ".join(sorted(p_names)) if p_names else "all",
             ", {} [{}]".format(
                 logging_tools.get_plural("zombie", res_dict["fail"]),
-                ", ".join(["%s%s" % (key, " (x {:d})".format(zombie_dict[key]) if zombie_dict[key] > 1 else "") for key in sorted(zombie_dict)]),
-                ) if res_dict["fail"] else "",
-            ", {}".format(logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
+                ", ".join(
+                    [
+                        "{}{}".format(
+                            key,
+                            " (x {:d})".format(
+                                zombie_dict[key]
+                            ) if zombie_dict[key] > 1 else ""
+                        ) for key in sorted(zombie_dict)
+                    ]
+                ),
+            ) if res_dict["fail"] else "",
+            ", {}".format(
+                logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])
+            ) if res_dict["zombie_ok"] else "",
             ", cmdRE is {}".format(cur_ns.cmdre) if _cmdre else "",
         )
         return ret_state, ret_str
@@ -475,19 +503,21 @@ class ipckill_command(hm_classes.hm_command):
             try:
                 ipcv_lines = open(ipcv_file, "r").readlines()
             except:
-                cur_typenode.attrib["error"] = "error reading %s: %s" % (ipcv_file, process_tools.get_except_info())
+                cur_typenode.attrib["error"] = "error reading {}: {}".format(ipcv_file, process_tools.get_except_info())
                 self.log(cur_typenode.attrib["error"], logging_tools.LOG_LEVEL_ERROR)
             else:
                 try:
                     ipcv_header = [line.strip().split() for line in ipcv_lines[0:1]][0]
                     ipcv_lines = [[int(part) for part in line.strip().split()] for line in ipcv_lines[1:]]
                 except:
-                    cur_typenode.attrib["error"] = "error parsing %d ipcv_lines: %s" % (len(ipcv_lines),
-                                                                                        process_tools.get_except_info())
+                    cur_typenode.attrib["error"] = "error parsing {}: {}".format(
+                        logging_tools.get_plural("ipcv_line", len(ipcv_lines)),
+                        process_tools.get_except_info()
+                    )
                     self.log(cur_typenode.attrib["error"], logging_tools.LOG_LEVEL_ERROR)
                 else:
                     for ipcv_line in ipcv_lines:
-                        act_dict = dict([(key, value) for key, value in zip(ipcv_header, ipcv_line)])
+                        act_dict = {key: value for key, value in zip(ipcv_header, ipcv_line)}
                         rem_node = srv_com.builder("rem_result", key="%d" % (act_dict[ipc_dict["key_name"]]))
                         if act_dict["uid"] >= cur_ns.min_uid and act_dict["uid"] <= cur_ns.max_uid:
                             key = act_dict[ipc_dict["key_name"]]
@@ -517,9 +547,10 @@ class ipckill_command(hm_classes.hm_command):
             srv_com.xpath(".//ns:rem_result[@error='0']", smart_strings=False),
             srv_com.xpath(".//ns:rem_result[@error='1']", smart_strings=False)
         )
-        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed %s%s" % (
+        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed {}{}".format(
             logging_tools.get_plural("entry", len(ok_list)),
-            ", error for %s" % (logging_tools.get_plural("entry", len(error_list))) if error_list else "")
+            ", error for {}".format(logging_tools.get_plural("entry", len(error_list))) if error_list else ""
+        )
 
 
 class signal_command(hm_classes.hm_command):
@@ -531,7 +562,9 @@ class signal_command(hm_classes.hm_command):
         self.parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
         self.parser.add_argument("--exclude", dest="exclude", type=str, default="")
-        self.__signal_dict = dict([(getattr(signal, name), name) for name in dir(signal) if name.startswith("SIG") and not name.startswith("SIG_")])
+        self.__signal_dict = {
+            getattr(signal, name): name for name in dir(signal) if name.startswith("SIG") and not name.startswith("SIG_")
+        }
 
     def get_signal_string(self, cur_sig):
         return self.__signal_dict.get(cur_sig, "#%d" % (cur_sig))
@@ -550,7 +583,7 @@ class signal_command(hm_classes.hm_command):
                 # do not take leaf and stop iteration
                 return -1
             else:
-                if _uid >= cur_ns.min_uid and _uid <= cur_ns.max_uid:
+                if _uid >= cur_ns.minuid and _uid <= cur_ns.max_uid:
                     # take it
                     return 1
                 else:
@@ -563,7 +596,7 @@ class signal_command(hm_classes.hm_command):
         if not include_list and not exclude_list:
             self.log("refuse to operate without include or exclude list", logging_tools.LOG_LEVEL_ERROR)
         else:
-            sig_str = "signal %d[%s] (uid %d:%d), exclude_list is %s, include_list is %s" % (
+            sig_str = "signal {:d}[{}] (uid {:d}:{:d}), exclude_list is %s, include_list is %s" % (
                 cur_ns.signal,
                 self.get_signal_string(cur_ns.signal),
                 cur_ns.min_uid,
@@ -583,25 +616,40 @@ class signal_command(hm_classes.hm_command):
                     info_str, is_error = (process_tools.get_except_info(), True)
                 else:
                     info_str, is_error = ("sent {:d} to {:d} ({})".format(cur_ns.signal, struct.pid, _name), False)
-                self.log("{:d}: {}".format(struct.pid, info_str), logging_tools.LOG_LEVEL_ERROR if is_error else logging_tools.LOG_LEVEL_OK)
+                self.log(
+                    "{:d}: {}".format(
+                        struct.pid,
+                        info_str
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR if is_error else logging_tools.LOG_LEVEL_OK
+                )
                 srv_com["signal_list"].append(
                     srv_com.builder(
                         "signal",
                         _name,
                         error="1" if is_error else "0",
                         result=info_str,
-                        cmdline=" ".join(_cmdline)))
-        srv_com["signal_list"].attrib.update({"signal": "{:d}".format(cur_ns.signal)})
+                        cmdline=" ".join(_cmdline)
+                    )
+                )
+        srv_com["signal_list"].attrib.update(
+            {
+                "signal": "{:d}".format(cur_ns.signal)
+            }
+        )
 
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(".//ns:signal[@error='0']/text()", smart_strings=False),
-                               srv_com.xpath(".//ns:signal[@error='1']/text()", smart_strings=False))
+        ok_list, error_list = (
+            srv_com.xpath(".//ns:signal[@error='0']/text()", smart_strings=False),
+            srv_com.xpath(".//ns:signal[@error='1']/text()", smart_strings=False)
+        )
         cur_sig = int(srv_com["signal_list"].attrib["signal"])
-        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "sent %d[%s] to %s%s" % (
+        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "sent {:d}[{}] to {}{}".format(
             cur_sig,
             self.get_signal_string(cur_sig),
             logging_tools.get_plural("process", len(ok_list) + len(error_list)),
-            " (%s)" % (logging_tools.get_plural("problem", len(error_list))) if error_list else "")
+            " ({})".format(logging_tools.get_plural("problem", len(error_list))) if error_list else ""
+        )
 
 
 def find_pids(ptree, check):

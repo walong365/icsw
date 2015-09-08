@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<config-store name="hm.affinity-list">
+    <key-list>
+        <key name="match1" type="str">chromium</key>
+    </key-list>
+</config-store>

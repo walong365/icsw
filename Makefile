@@ -180,6 +180,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/init-license-server.d
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${SYSCONF}/licenses
 	cp -a icsw.db.access_config.xml.sample ${DESTDIR}/${ICSW_ETC}/cstores.d
+	cp -a hm.affinity-list_sample_config.xml ${DESTDIR}/${ICSW_ETC}/cstores.d
 	${INSTALL} ${INSTALL_OPTS} test_license ${DESTDIR}/${SYSCONF}/init-license-server.d
 	# /usr/local/bin
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/usr/local/bin
