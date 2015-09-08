@@ -28,8 +28,7 @@ import subprocess
 import sys
 import tempfile
 
-from initat.tools import logging_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, server_command
 
 
 # copy from process_tools
@@ -61,93 +60,6 @@ def correct_cpu_dict(in_dict):
         if s_id in in_dict and t_id not in in_dict:
             in_dict[t_id] = in_dict[s_id]
     return in_dict
-
-
-def get_cpu_info(vendor, family, model):
-    cpu_dict = {
-        "intel": {
-            "5": {
-                "0": ("P5 A-step", "i586"),
-                "1": ("P5", "i586"),
-                "2": ("P54C", "i586"),
-                "3": ("P24T Overdrive", "i586"),
-                "4": ("P55C", "i586"),
-                "7": ("P54C", "i586"),
-                "8": ("P55C (0.25um)", "i586")
-            },
-            "6": {
-                "0": ("P6 A-step", "i686"),
-                "1": ("P6", "i686"),
-                "3": ("P2 (0.28um)", "i686"),
-                "5": ("P2 (0.25um)", "i686"),
-                "6": ("P2 with on-die L2 Cache", "i686"),
-                "7": ("P3 (0.25um)", "i686"),
-                "8": ("P3 (0.18um) with 256 KB on-die L2 Cache", "i686"),
-                "9": ("PM (0.13um) with 1MB on-die L2 Cache", "i686"),
-                "10": ("P3 (0.18um) with 1 or 2MB on-die L2 Cache", "i686"),
-                "11": ("P3 (0.13um) with 256 or 512 KB on-die L2 Cache", "i686"),
-                "13": ("P4 M (0.13um) with 2048 KB on-die L2 Cache", "i686"),
-                "14": ("P4 M (65nm) with 2 MB on-die L2 Cache", "i686"),
-                "15": ("Core 2 DC (65nm) with 4 MB on-die L2 Cache" "x86_64")
-            },
-            "15": {
-                "0": ("P4 (0.18um)", "i686"),
-                "1": ("P4 (0.18um)", "i686"),
-                "2": ("P4 (0.13um)", "i686"),
-                "3": ("P4 (0.09um)", "i686"),
-                "4": ("P4 (0.09um)", "x86_64"),
-                "6": ("P4 (65nm)", "x86_64")
-            },
-            "Itanium 2": {
-                "0": ("McKinley (0.18 um)", "ia64"),
-                "1": ("Madison or Deerfield (0.13 um)", "ia64"),
-                "2": ("Madison 9M (0.13 um)", "ia64")
-            },
-        },
-        "amd": {
-            "5": {
-                "0": ("SSA5 (PR75,PR90,PR100)", "i586"),
-                "1": ("5k86 (PR120, PR133)", "i586"),
-                "2": ("5k86 (PR166)", "i586"),
-                "3": ("5k86 (PR200)", "i586"),
-                "6": ("K6 (0.30um)", "i586"),
-                "7": ("K6 (0.25um)", "i586"),
-                "8": ("K6-2", "i586"),
-                "9": ("K6-III", "i586"),
-                "13": ("K6-2+ or K6-III+ (0.18um)", "i586")
-            },
-            "6": {
-                "1": ("Athlon (0.25um)", "i686"),
-                "2": ("Athlon (0.18um)", "i686"),
-                "3": ("Athlon (SF Core)", "i686"),
-                "4": ("Athlon (TB Core)", "i686"),
-                "6": ("Athlon (PM Core)", "i686"),
-                "7": ("Athlon (MG Core)", "i686"),
-                "8": ("Athlon (TH Core)", "i686"),
-                "10": ("Athlon (BT Core)", "i686")
-            },
-            "15": {
-                "4": ("Athlon64 (0.13um)", "x86_64"),
-                "5": ("Opteron DP (0.13um)", "x86_64"),
-                "15": ("Athlon64/939 (0.13um)", "x86_64"),
-                "31": ("Athlon64/939 (0.13um)", "x86_64")
-            }
-        }
-    }
-    if re.search("intel", vendor.lower()):
-        ven = "intel"
-    elif re.search("amd", vendor.lower()):
-        ven = "amd"
-    else:
-        ven = None
-    long_type, short_type = ("<UNKNOWN>", "<UNKNOWN>")
-    if ven:
-        ven_dict = cpu_dict[ven]
-        if family in ven_dict:
-            fam_dict = ven_dict[family]
-            if model in fam_dict:
-                long_type, short_type = fam_dict[model]
-    return short_type, long_type
 
 
 class cpu_value(object):
@@ -427,9 +339,19 @@ class share_map(object):
         return "share_map for level {:d} cache, {}: {}".format(
             self.cache_level,
             logging_tools.get_plural("cache", self.num_caches),
-            ", ".join(["{:d} [{}]".format(
-                c_num,
-                ":".join(["{:d}".format(core_num) for core_num in self.__cache_lut[c_num]])) for c_num in xrange(self.num_caches)]))
+            ", ".join(
+                [
+                    "{:d} [{}]".format(
+                        c_num,
+                        ":".join(
+                            [
+                                "{:d}".format(core_num) for core_num in self.__cache_lut[c_num]
+                            ]
+                        )
+                    ) for c_num in xrange(self.num_caches)
+                ]
+            )
+        )
 
 
 class cpu_info(object):
@@ -735,9 +657,11 @@ class global_cpu_info(object):
 
         for core_num in sorted(self.__cpu_dict.keys()):
             if self.__cpu_dict[core_num]["online"]:
-                my_layout.add_logical_core(core_num,
-                                           self.__cpu_dict[core_num],
-                                           cs_dict[core_num])
+                my_layout.add_logical_core(
+                    core_num,
+                    self.__cpu_dict[core_num],
+                    cs_dict[core_num]
+                )
         self.layout = my_layout
 
     def _check_proc_dict(self):
@@ -750,9 +674,11 @@ class global_cpu_info(object):
         if in_str.isdigit():
             return int(in_str)
         else:
-            return int(in_str[:-1]) * {"k": 1024,
-                                       "m": 1024 * 1024,
-                                       "g": 1024 * 1024 * 1024}[in_str[-1].lower()]
+            return int(in_str[:-1]) * {
+                "k": 1024,
+                "m": 1024 * 1024,
+                "g": 1024 * 1024 * 1024
+            }[in_str[-1].lower()]
 
     def _parse_proc_value(self, in_val):
         in_val = in_val.strip()
@@ -784,23 +710,33 @@ class global_cpu_info(object):
                         break
                 if act_cpu_lines:
                     act_cpu_dict = {
-                        key.strip().replace(" ", "_"): self._parse_proc_value(value) for key, value in [act_line.split(":", 1) for act_line in act_cpu_lines]
+                        key.strip().replace(" ", "_"): self._parse_proc_value(value) for key, value in [
+                            act_line.split(":", 1) for act_line in act_cpu_lines
+                        ]
                     }
                     act_cpu_dict["online"] = True
                     # check for info from /sys/
                     sys_dict = {}
                     if act_cpu_dict["processor"] in sys_cpus:
-                        cache_dir = "%s/cpu%d/cache" % (sys_base_dir,
-                                                        act_cpu_dict["processor"])
+                        cache_dir = os.path.join(
+                            sys_base_dir,
+                            "cpu{:d}".format(act_cpu_dict["processor"]),
+                            "cache",
+                        )
                         if os.path.isdir(cache_dir):
                             sys_dict["cache"] = {}
                             for act_c_dir in os.listdir(cache_dir):
                                 sys_dict["cache"][act_c_dir] = {}
-                                for entry in os.listdir("%s/%s" % (cache_dir, act_c_dir)):
+                                for entry in os.listdir(os.path.join(cache_dir, act_c_dir)):
                                     try:
-                                        content = open("%s/%s/%s" % (cache_dir,
-                                                                     act_c_dir,
-                                                                     entry), "r").read().strip()
+                                        content = open(
+                                            os.path.join(
+                                                cache_dir,
+                                                act_c_dir,
+                                                entry
+                                            ),
+                                            "r"
+                                        ).read().strip()
                                     except:
                                         # unreadable file (cache_disable_*)
                                         pass
@@ -813,13 +749,16 @@ class global_cpu_info(object):
                                         elif content.isdigit():
                                             content = int(content)
                                         sys_dict["cache"][act_c_dir][entry] = content
-                        topo_dir = "%s/cpu%d/topology" % (sys_base_dir,
-                                                          act_cpu_dict["processor"])
+                        topo_dir = os.path.join(sys_base_dir, "cpu{:d}".format(act_cpu_dict["processor"]), "topology")
                         if os.path.isdir(topo_dir):
                             sys_dict["topology"] = {}
                             for entry in os.listdir(topo_dir):
-                                content = open("%s/%s" % (topo_dir,
-                                                          entry), "r").read().strip()
+                                content = open(
+                                    os.path.join(
+                                        topo_dir,
+                                        entry
+                                    ), "r"
+                                ).read().strip()
                                 if entry.endswith("_siblings"):
                                     # parse not local
                                     pass
@@ -850,8 +789,14 @@ class global_cpu_info(object):
         self.__cpu_dict[key] = value
 
     def __repr__(self):
-        return "CPU info, %s found:\n%s" % (logging_tools.get_plural("core", self.num_cores()),
-                                            "\n".join(["  %s" % (str(self[core_num])) for core_num in sorted(self.cpu_cores())]))
+        return "CPU info, {} found:\n{}".format(
+            logging_tools.get_plural("core", self.num_cores()),
+            "\n".join(
+                [
+                    "  {}".format(str(self[core_num])) for core_num in sorted(self.cpu_cores())
+                ]
+            )
+        )
 
     def num_sockets(self):
         # return number of cpu_sockets
@@ -871,5 +816,7 @@ def get_cpuid():
     first_cpu = gci[gci.cpu_idxs()[0]]
     # full cpuid-string:
     # [VERSION]_[L1SIZE][L2SIZE][L3SIZE]_[CPUID]
-    return "0_%s_%s" % (first_cpu.get_short_cache_info(),
-                        first_cpu["cpu_id"])
+    return "0_{}_{}".format(
+        first_cpu.get_short_cache_info(),
+        first_cpu["cpu_id"]
+    )

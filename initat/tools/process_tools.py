@@ -1533,33 +1533,26 @@ def fetch_sysinfo(root_dir="/"):
             sys_dict[what] = "<UNKNOWN>"
         # architecture
         arch = None
-        if root_dir == "/" and False:
-            # old code, uses installed CPU
-            cpu_dict = cpu_database.correct_cpu_dict(cpu_database.get_cpu_basic_info())
-            if "vendor_id" in cpu_dict and "cpu family" in cpu_dict and "model" in cpu_dict:
-                arch, _long_type = cpu_database.get_cpu_info(cpu_dict["vendor_id"], cpu_dict["cpu family"], cpu_dict["model"])
-                sys_dict["arch"] = arch
+        # new code, uses /bin/ls format
+        ls_path = os.path.join(root_dir, "/bin/ls")
+        if os.path.islink(ls_path):
+            ls_path = os.path.join(root_dir, os.readlink(ls_path))
+        arch_com = "file {}".format(ls_path)
+        c_stat, out = getstatusoutput(arch_com)
+        if c_stat:
+            log_lines.append(("Cannot execute {} ({:d}): {}".format(arch_com, c_stat, out), logging_tools.LOG_LEVEL_ERROR))
         else:
-            # new code, uses /bin/ls format
-            ls_path = os.path.join(root_dir, "/bin/ls")
-            if os.path.islink(ls_path):
-                ls_path = os.path.join(root_dir, os.readlink(ls_path))
-            arch_com = "file {}".format(ls_path)
-            c_stat, out = getstatusoutput(arch_com)
-            if c_stat:
-                log_lines.append(("Cannot execute {} ({:d}): {}".format(arch_com, c_stat, out), logging_tools.LOG_LEVEL_ERROR))
-            else:
-                arch_str = out.split(",")[1].strip().lower()
-                if arch_str.count("386"):
-                    arch = "i586"
-                elif arch_str.count("586"):
-                    arch = "i586"
-                elif arch_str.count("x86-64") or arch_str.count("x86_64") or arch_str.count("amd64"):
-                    arch = "x86_64"
-                elif arch_str.count("alpha"):
-                    arch = "alpha"
-                if arch:
-                    sys_dict["arch"] = arch
+            arch_str = out.split(",")[1].strip().lower()
+            if arch_str.count("386"):
+                arch = "i586"
+            elif arch_str.count("586"):
+                arch = "i586"
+            elif arch_str.count("x86-64") or arch_str.count("x86_64") or arch_str.count("amd64"):
+                arch = "x86_64"
+            elif arch_str.count("alpha"):
+                arch = "alpha"
+            if arch:
+                sys_dict["arch"] = arch
         for arch_str in [line for line in isl if line]:
             if not arch:
                 if arch_str.count("i386"):
