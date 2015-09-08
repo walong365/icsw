@@ -157,117 +157,6 @@ class cpu_info_part(object):
             logging_tools.get_plural("key", len(self.__value_dict.keys())))
 
 
-class old_cpu_info(object):
-    def __init__(self, lines):
-        first_line = lines.pop(0)
-        if first_line.lower() == "cpu:":
-            self.cpu_num = 0
-        else:
-            self.cpu_num = int(first_line.split()[1].split(":")[0])
-        # shift lines
-        l_shift = 0
-        while lines[0][l_shift] == " ":
-            l_shift += 1
-        lines = [line[l_shift:] for line in lines]
-        self.__complex_dict = {"simple": {"brand": "no brand-info found"}}
-        while True:
-            act_line = lines.pop(0)
-            if act_line.endswith(":"):
-                if len(act_line.strip()) > 2:
-                    act_key = act_line[:-1]
-                    info_part = cpu_info_part(act_key)
-                    while info_part.num_key in self.keys():
-                        # key already present, modify num_key
-                        info_part.bump_num_key()
-                    self[info_part.num_key] = info_part
-                    while True:
-                        if lines[0].startswith(" "):
-                            info_part.add_line(lines.pop(0).lstrip())
-                        else:
-                            break
-            else:
-                col_idx, eq_idx = (act_line.find(":"), act_line.find("="))
-                if col_idx < 0:
-                    col_idx = 1000
-                if eq_idx < 0:
-                    eq_idx = 1000
-                split_idx = min(col_idx, eq_idx)
-                key, value = (act_line[:split_idx].strip(), act_line[split_idx + 1:].strip())
-                if value[0] in ["'", '"']:
-                    value = value[1:-1]
-                self.__complex_dict["simple"][key] = value.strip()
-            if not lines:
-                break
-        # correct model according to extended_model
-        if (1, "eax") in self:
-            if "extended model" in self[(1, "eax")] and "model" in self[(1, "eax")]:
-                self[(1, "eax")]["model"] = self[(1, "eax")]["model"].value + 16 * self[(1, "eax")]["extended model"].value
-        self._set_cpu_flags()
-
-    def _set_cpu_flags(self):
-        if 4 in self:
-            # this information is not reliable, hyper_threading is always reported true even when disabled in bios (bignode / Liebherr)
-            self.hyper_threading = self[4]["extra threads sharing this cache"].value > 0
-            self.num_cores = self[4]["extra processor cores on this die"].value + 1
-        else:
-            # opterons do not have key 4, so we imply no hyper-threading and single-core
-            self.hyper_threading, self.num_cores = (0, 1)
-        self.multi_core = self.num_cores > 1
-        self.die_num_threads = self.num_cores * (self.hyper_threading and 2 or 1)
-        self.core_num, self.thread_num = (0, 0)
-        # get cache sizes
-        self.cache_size = dict([(num, 0) for num in range(1, 4)])
-        if 2 in self:
-            for cache_key in self[2].keys():
-                act_value = self[2][cache_key].value
-                if act_value.startswith("L"):
-                    cache_num = int(act_value[1])
-                    cache_size = act_value.split(",")[0].split(":")[1]
-                    pfix = {"k": 1024,
-                            "m": 1024 * 1024,
-                            "g": 1024 * 1024 * 1024}.get(cache_size[-1].lower(), 1)
-                    cache_size = int(cache_size[:-1]) * pfix
-                    self.cache_size[cache_num] += cache_size
-        else:
-            # opterons do not have key 2, try other way
-            l1_key_pf = int("0x80000005", 16)
-            l2_key_pf = int("0x80000006", 16)
-            for key in self.keys():
-                if type(key) == list:
-                    if key[0] == l1_key_pf:
-                        cache_level = 1
-                    elif key[0] == l2_key_pf:
-                        cache_level = 2
-                    else:
-                        cache_level = 0
-                    if cache_level:
-                        for sub_key in self[key].keys():
-                            if sub_key.lower().startswith("size"):
-                                if sub_key.lower().count("kb"):
-                                    self.cache_size[cache_level] += self[key][sub_key].value * 1024
-                                else:
-                                    self.cache_size[cache_level] += self[key][sub_key].value
-        # correct wrong cache-reporting
-        if not self.cache_size[2] and self.cache_size[3]:
-            self.cache_size[2] = self.cache_size[3]
-            self.cache_size[3] = 0
-
-    def has_key(self, key):
-        return key in self.__complex_dict
-
-    def __contains__(self, key):
-        return key in self.__complex_dict
-
-    def keys(self):
-        return self.__complex_dict.keys()
-
-    def __getitem__(self, key):
-        return self.__complex_dict[key]
-
-    def __setitem__(self, key, value):
-        self.__complex_dict[key] = value
-
-
 class cpu_layout(object):
     def __init__(self):
         # cache share
@@ -567,18 +456,6 @@ class global_cpu_info(object):
             self.__cpu_dict[core_idx] = cpu_info(self.__proc_dict[core_idx])
         # helper flags for layouting
         self.__hyper_threading = False
-        if source_kernel and False:
-            cpuid_cpu = old_cpu_info(self.c_out_cpuid.split("\n"))
-            self.__hyper_threading = cpuid_cpu.hyper_threading
-            # replace cache part of kernel-module output (buggy cpuid, latest tested kernel version: 2.6.21.1)
-            kernel_info_valid = True
-            if 2 in cpuid_cpu:
-                for cpu in [self[cpu_idx] for cpu_idx in self.cpu_idxs()]:
-                    if not cpu.has_valid_cache_info():
-                        kernel_info_valid = False
-                if cpu["online"] and not kernel_info_valid:
-                    for cpu_idx in self.cpu_idxs():
-                        self[cpu_idx].set_cache_from_cpuid_info(cpuid_cpu)
         self._check_layout()
 
     def _check_layout(self):
