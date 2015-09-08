@@ -36,7 +36,7 @@ CS_NG = """
     </attribute>
     <zeroOrMore>
         <element name="key-list">
-            <oneOrMore>
+            <zeroOrMore>
                 <element name="key">
                     <attribute name="name">
                     </attribute>
@@ -54,7 +54,7 @@ CS_NG = """
                     </optional>
                     <text/>
                 </element>
-            </oneOrMore>
+            </zeroOrMore>
         </element>
     </zeroOrMore>
 </element>

@@ -138,8 +138,13 @@ class server_code(ICSWBasePool, HMHRMixin):
     def _sighup(self, err_cause):
         self.log("got sighup")
         for cur_mod in self.module_list:
-            self.log("calling reload_module() for {}".format(cur_mod.name))
-            cur_mod.reload()
+            try:
+                _ret_val = cur_mod.reload()
+            except:
+                self.log("error calling reload() for {}: {}".format(cur_mod.name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                if _ret_val != "N/A":
+                    self.log("called reload() for {}".format(cur_mod.name))
 
     def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")

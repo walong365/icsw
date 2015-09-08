@@ -83,3 +83,15 @@ def main(opts):
             sys.exit(0)
         else:
             raise KeyError("unknown key '{}'".format(opts.key))
+    elif opts.mode == "setkey":
+        _store = ConfigStore(opts.store)
+        print("setting key '{}' of store {} to '{}'".format(opts.key, opts.store, opts.value))
+        _store[opts.key] = opts.value
+        _store.write()
+    elif opts.mode == "createstore":
+        if ConfigStore.exists(opts.store):
+            print("CStore {} already exists".format(opts.store))
+        else:
+            _new_c = ConfigStore(opts.store)
+            _new_c.write()
+            print("Createted CStore {}".format(opts.store))

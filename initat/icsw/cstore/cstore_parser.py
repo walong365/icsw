@@ -34,7 +34,7 @@ class Parser(object):
             "--mode",
             default="liststores",
             choices=[
-                "liststores", "showstore", "getkey", "storeexists", "keyexists"
+                "liststores", "showstore", "getkey", "storeexists", "keyexists", "createstore", "setkey",
             ],
             type=str,
             help="Operation mode [%(default)s]"
@@ -43,6 +43,7 @@ class Parser(object):
         parser.add_argument("--quiet", default=False, action="store_true", help="Enable quiet mode [%(default)s]")
         parser.add_argument("--sort-by-value", default=False, action="store_true", help="Sort output by value [%(default)s]")
         parser.add_argument("--key", default="", type=str, help="Key to show [%(default)s]")
+        parser.add_argument("--value", default="", type=str, help="value to set [%(default)s]")
 
     def _execute(self, opt_ns):
         from .main import main

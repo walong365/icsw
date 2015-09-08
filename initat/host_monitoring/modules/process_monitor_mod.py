@@ -170,23 +170,33 @@ class _general(hm_classes.hm_module):
         self.log("affinity check is {}".format("enabled" if self.check_affinity else "disabled"))
         self.__affinity_dict = {}
         if self.check_affinity:
-            self.affinity_set = set()
-            if config_store.ConfigStore.exists(AFFINITY_CSTORE):
-                _afc = config_store.ConfigStore(AFFINITY_CSTORE, log_com=self.log)
-                for _key in _afc.keys():
-                    self.affinity_set.add(_afc[_key])
-            if self.affinity_set:
-                self.log(
-                    "affinity_set ({:d}): {}".format(
-                        len(self.affinity_set),
-                        ",".join(self.affinity_set)
-                    )
+            self.load_store()
+        else:
+            self.feed_affinity = False
+
+    def load_store(self):
+        self.affinity_set = set()
+        if config_store.ConfigStore.exists(AFFINITY_CSTORE):
+            _afc = config_store.ConfigStore(AFFINITY_CSTORE, log_com=self.log)
+            for _key in _afc.keys():
+                self.affinity_set.add(_afc[_key])
+        if self.affinity_set:
+            self.feed_affinity = True
+            self.log(
+                "affinity_set ({:d}): {}".format(
+                    len(self.affinity_set),
+                    ",".join(self.affinity_set)
                 )
-                affinity_re = re.compile("|".join(["(%s)" % (line) for line in self.affinity_set]))
-                self.af_struct = AffinityStruct(self.log, affinity_re)
-            else:
-                self.log("affinity-cstore {} missing".format(AFFINITY_CSTORE), logging_tools.LOG_LEVEL_ERROR)
-                self.check_affinity = False
+            )
+            affinity_re = re.compile("|".join(["(%s)" % (line) for line in self.affinity_set]))
+            self.af_struct = AffinityStruct(self.log, affinity_re)
+        else:
+            self.log("affinity-cstore {} missing".format(AFFINITY_CSTORE), logging_tools.LOG_LEVEL_ERROR)
+            self.feed_affinity = False
+
+    def reload(self):
+        if self.check_affinity:
+            self.load_store()
 
     def init_machine_vector(self, mv):
         mv.register_entry("proc.total", 0, "total number of processes")
@@ -194,8 +204,8 @@ class _general(hm_classes.hm_module):
             mv.register_entry("proc.{}".format(key), 0, value)
 
     def update_machine_vector(self, mv):
-        pdict = process_tools.get_proc_list()  # (add_stat_info=self.check_affinity, add_cmdline=False, add_exe=False)
-        if self.check_affinity:
+        pdict = process_tools.get_proc_list()
+        if self.feed_affinity:
             self.af_struct.feed(pdict)
         pids = pdict.keys()
         n_dict = {key: 0 for key in process_tools.PROC_INFO_DICT.iterkeys()}
@@ -216,13 +226,6 @@ class _general(hm_classes.hm_module):
                     )
             except psutil.NoSuchProcess:
                 pass
-            # if p_stuff.get("name", "") in mem_mon_procs:
-            #    mem_found_procs.setdefault(p_stuff["name"], []).append(p_stuff["pid"])
-# #         print "-"
-# #         if new_mems or del_mems:
-# #             print new_mems, del_mems
-# #             print mem_found_dict["collserver"]
-# #             print mem_found_procs["collserver"]
         for key, value in n_dict.iteritems():
             mv["proc.{}".format(key)] = value
         mv["proc.total"] = len(pids)
