@@ -148,7 +148,8 @@ class ca_index(OrderedDict):
                 # _rev.set_serial(_vals[3])
                 # _rev.set
                 # print _rev
-        # _cert = crypto.load_certificate(crypto.FILETYPE_PEM, file("/opt/cluster/share/openssl/CAs/testca/newcerts/FE54503631DF0F4B.pem", "r").read())
+        # _cert = crypto.load_certificate(crypto.FILETYPE_PEM,
+        # file("/opt/cluster/share/openssl/CAs/testca/newcerts/FE54503631DF0F4B.pem", "r").read())
         # print _cert.get_issuer().der()
         # _cert.get_issuer().CN = "x.y"
         # print _cert.get_issuer().get_components()
@@ -194,7 +195,11 @@ class ssl_secure(object):
                 if not os.path.isdir(_bu_dir):
                     os.mkdir(_bu_dir)
                 os.chmod(_bu_dir, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-                _tar_name = os.path.join(BACKUP_DIR, _self.name, "{}.tar.bz2".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S.%f")))
+                _tar_name = os.path.join(
+                    BACKUP_DIR,
+                    _self.name,
+                    "{}.tar.bz2".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S.%f"))
+                )
                 _tar = tarfile.open(_tar_name, "w:bz2")
                 _tar.add(_self.ca_dir, recursive=True, filter=self._tar_filter)
                 _tar.close()

@@ -31,9 +31,7 @@ import sys
 import time
 
 from lxml.builder import E
-from initat.tools import logging_tools
-from initat.tools import process_tools
-
+from initat.tools import logging_tools, process_tools
 
 SITE_CONF_NAME = "lic_SITES.conf"
 ACT_SITE_NAME = "actual_SITE"
@@ -86,12 +84,18 @@ def get_sge_environment(log_com=None):
 
 
 def get_sge_log_line(sge_dict):
-    return ", ".join(["{} is {}".format(_key, sge_dict[_key]) for _key in sorted(sge_dict.iterkeys())])
+    return ", ".join(
+        [
+            "{} is {}".format(_key, sge_dict[_key]) for _key in sorted(sge_dict.iterkeys())
+        ]
+    )
 
 
 def get_sge_complexes(sge_dict):
     _complex_stat, complex_out = call_command("{} -sc".format(sge_dict["QCONF_BIN"]), 1)
-    defined_complexes = [_line for _line in complex_out.split("\n") if _line.strip() and not _line.strip().startswith("#")]
+    defined_complexes = [
+        _line for _line in complex_out.split("\n") if _line.strip() and not _line.strip().startswith("#")
+    ]
     return defined_complexes, [_line.split()[0] for _line in defined_complexes]
 
 
@@ -242,7 +246,11 @@ class sge_license(object):
             )
             base_lic.append(
                 E.license_servers(
-                    *[E.license_server("{:d}@{}".format(_srv[0], _srv[1]), address=_srv[1], port="{:d}".format(_srv[0])) for _srv in self.__lic_servers]
+                    *[
+                        E.license_server(
+                            "{:d}@{}".format(_srv[0], _srv[1]), address=_srv[1], port="{:d}".format(_srv[0])
+                        ) for _srv in self.__lic_servers
+                    ]
                 )
             )
 
@@ -414,7 +422,13 @@ class text_file(object):
 
     def write(self, content, mode="w"):
         if type(content) == dict:
-            file(self.__name, mode).write("\n".join(["{}={}".format(key, value) for key, value in content.iteritems()] + [""]))
+            file(self.__name, mode).write(
+                "\n".join(
+                    [
+                        "{}={}".format(key, value) for key, value in content.iteritems()
+                    ] + [""]
+                )
+            )
         elif isinstance(content, basestring):
             file(self.__name, mode).write(content)
         else:
@@ -430,7 +444,11 @@ class text_file(object):
     def dict(self):
         if not self.__read:
             self._read_content()
-        return {key.strip(): value.strip() for key, value in [_line.split("=", 1) for _line in self._lines if _line.strip().count("=")]}
+        return {
+            key.strip(): value.strip() for key, value in [
+                _line.split("=", 1) for _line in self._lines if _line.strip().count("=")
+            ]
+        }
 
 
 def read_text_file(tf_name, ignore_hashes=False):
@@ -453,7 +471,9 @@ def build_license_xml(act_site, in_dict):
 
 def handle_complex_licenses(actual_licenses):
     _lines = []
-    comp_keys = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used and _value.license_type == "complex"]
+    comp_keys = [
+        _key for _key, _value in actual_licenses.iteritems() if _value.is_used and _value.license_type == "complex"
+    ]
     for comp_key in sorted(comp_keys):
         _lines.extend(actual_licenses[comp_key].handle_complex(actual_licenses))
     return _lines
@@ -462,7 +482,11 @@ def handle_complex_licenses(actual_licenses):
 def parse_license_lines(lines, act_site, **kwargs):
     new_dict = {}
     # simple license
-    slic_re = re.compile("^lic_{}_(?P<name>\S+)\s+(?P<act_lic_server_setting>\S+)\s+(?P<attribute>\S+)\s+(?P<tot_num>\d+)\s*$".format(act_site))
+    slic_re = re.compile(
+        "^lic_{}_(?P<name>\S+)\s+(?P<act_lic_server_setting>\S+)\s+(?P<attribute>\S+)\s+(?P<tot_num>\d+)\s*$".format(
+            act_site
+        )
+    )
     # complex license
     clic_re = re.compile("^clic_{}_(?P<name>\S+)\s+(?P<attribute>\S+)\s+(?P<eval_str>\S+)\s*$".format(act_site))
     if lines and lines[0].startswith("<"):
@@ -594,7 +618,11 @@ def calculate_usage(actual_licenses):
 def call_command(command, exit_on_fail=0, show_output=False, log_com=None):
     _stat, _out = process_tools.getstatusoutput(command)
     if _stat:
-        _log(log_com, "Something went wrong while calling '{}' (code {:d}):".format(command, _stat), logging_tools.LOG_LEVEL_ERROR)
+        _log(
+            log_com,
+            "Something went wrong while calling '{}' (code {:d}):".format(command, _stat),
+            logging_tools.LOG_LEVEL_ERROR
+        )
         for _line in _out.split("\n"):
             _log(log_com, " * {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
         if exit_on_fail:
@@ -763,7 +791,10 @@ class license_check(object):
                         _e_idx = lparts.index("expiry:")
                         _exp = lparts[_e_idx + 1]
                         if _exp not in ["1-jan-0"]:
-                            cur_lic_version.attrib["expiry"] = datetime.datetime.strptime(_exp, "%d-%b-%Y").strftime(EXPIRY_DT)
+                            cur_lic_version.attrib["expiry"] = datetime.datetime.strptime(
+                                _exp,
+                                "%d-%b-%Y"
+                            ).strftime(EXPIRY_DT)
                         cur_lic_version.attrib["vendor"] = self._strip_string(lparts[_v_idx + 1])
                     else:
                         cur_lic_version.attrib["vendor"] = self._strip_string(lparts[-1])

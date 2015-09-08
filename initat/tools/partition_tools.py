@@ -18,10 +18,10 @@
 """ tools for handling partition tables (LVM and UUID / label stuff) """
 
 import commands
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import re
+
+from initat.tools import logging_tools, process_tools
 
 
 class uuid_label_struct(dict):
@@ -57,7 +57,9 @@ class lvm_object(dict):
                 self[key] = value
             if len(in_dict):
                 self["mount_options"] = {
-                    sub_key: sub_value if sub_key not in ["fsck", "dump"] else int(sub_value) for sub_key, sub_value in in_dict[0].attrib.iteritems()
+                    sub_key: sub_value if sub_key not in [
+                        "fsck", "dump"
+                    ] else int(sub_value) for sub_key, sub_value in in_dict[0].attrib.iteritems()
                 }
 
     def __setitem__(self, key, value):
@@ -123,7 +125,9 @@ class multipath_struct(object):
                 re_dict = {
                     "header1": re.compile("^(?P<name>\S+)\s+\((?P<id>\S+)\)\s+(?P<devname>\S+)\s+(?P<info>.*)$"),
                     "header2": re.compile("^(?P<id>\S+)\s+(?P<devname>dm-\S+)\s+(?P<info>.*)$"),
-                    "feature": re.compile("^size=(?P<size>\S+)\s+features=\'(?P<features>[^\']+)\' hwhandler=\'(?P<hwhandler>\d+)\'\s+(?P<wp_info>\S+)$"),
+                    "feature": re.compile(
+                        "^size=(?P<size>\S+)\s+features=\'(?P<features>[^\']+)\' hwhandler=\'(?P<hwhandler>\d+)\'\s+(?P<wp_info>\S+)$"
+                    ),
                     "policy": re.compile("^.*policy=\'(?P<policy>[^\']+)\'\s+prio=(?P<prio>\d+)\s+status=(?P<status>\S+)$"),
                     "device": re.compile(
                         "^.*(?P<scsiid>\d+:\d+:\d+:\d+)\s+(?P<device>\S+)\s+(?P<major>\d+):(?P<minor>\d+)\s+(?P<active>\S+)\s+(?P<ready>\S+)\s+(?P<running>\S+)$"
@@ -373,7 +377,11 @@ class lvm_struct(object):
 
     def __repr__(self):
         order_list = ["pv", "vg", "lv"]
-        ret_a = ["{}:".format(", ".join(["{}".format(logging_tools.get_plural(k, len(self.lv_dict.get(k, {}).keys()))) for k in order_list]))]
+        ret_a = [
+            "{}:".format(
+                ", ".join(["{}".format(logging_tools.get_plural(k, len(self.lv_dict.get(k, {}).keys()))) for k in order_list])
+            )
+        ]
         for ol in order_list:
             ret_a.append("\n".join([str(x) for x in self.lv_dict.get(ol, {}).values()]))
         return "\n".join(ret_a)

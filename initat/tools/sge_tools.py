@@ -277,7 +277,7 @@ class sge_info(object):
             self._cache_socket = memcache.Client(
                 [
                     "127.0.0.1:{:d}".format(
-                    InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+                        InstanceXML(quiet=True).get_port_dict("memcached", command=True)
                     )
                 ],
                 debug=0
@@ -306,7 +306,10 @@ class sge_info(object):
         r_tree = copy.deepcopy(self.__tree)
         if "file_dict" in kwargs:
             for job_id, file_dict in kwargs["file_dict"].iteritems():
-                job_el = r_tree.xpath(".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(job_id), smart_strings=False)
+                job_el = r_tree.xpath(
+                    ".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(job_id),
+                    smart_strings=False
+                )
                 if len(job_el):
                     job_el = job_el[0]
                     file_info = job_el.find(".//file_info")
@@ -357,7 +360,9 @@ class sge_info(object):
                             )
                         )
                 else:
-                    ext_xml.append(getattr(E, _std_type)(os.path.join(cur_pwd, "{}.{}{}".format(job_name, _short, job_id))))
+                    ext_xml.append(
+                        getattr(E, _std_type)(os.path.join(cur_pwd, "{}.{}{}".format(job_name, _short, job_id)))
+                    )
             self.set_cache(job_key, etree.tostring(ext_xml))  # @UndefinedVariable
         else:
             ext_xml = etree.fromstring(_cache)  # @UndefinedVariable
@@ -450,7 +455,14 @@ class sge_info(object):
         # determine which dicts to update
         if self.__verbose:
             self.log("dicts to update (upd_list): {}".format(", ".join(upd_list) or "none"))
-        dicts_to_update = set([dict_name for dict_name in upd_list if self._check_for_update(dict_name, kwargs.get("force_update", False))])
+        dicts_to_update = set(
+            [
+                dict_name for dict_name in upd_list if self._check_for_update(
+                    dict_name,
+                    kwargs.get("force_update", False)
+                )
+            ]
+        )
         if "qstat" in dicts_to_update:
             dicts_to_update.add("qhost")
         if self.__verbose:
@@ -476,20 +488,23 @@ class sge_info(object):
                 if not self.__0mq_context:
                     self.__0mq_context = zmq.Context(1)
                     client = self.__0mq_context.socket(zmq.DEALER)  # @UndefinedVariable
-                    client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))  # @UndefinedVariable
+                    client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
                     client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
                     _conn_str = "tcp://{}:{:d}".format(srv_name, self.__server_port)
                     try:
                         client.connect(_conn_str)
                     except:
-                        self.log("cannot connect to {}: {}".format(_conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "cannot connect to {}: {}".format(_conn_str, process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         client = None
                     self.__0mq_socket = client
                 client = self.__0mq_socket
             else:
                 zmq_context = zmq.Context(1)
                 client = zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-                client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))  # @UndefinedVariable
+                client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
                 client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
                 client.connect("tcp://{}:{:d}".format(srv_name, self.__server_port))
             if client is not None:
@@ -562,7 +577,8 @@ class sge_info(object):
             )
         # debug trees
         # if self.__counter < 3:
-        #    file("/tmp/rms_tree_{:d}".format(self.__counter), "w").write(etree.tostring(self.__tree, pretty_print=True))
+        #    file("/tmp/rms_tree_{:d}".format(self.__counter), "w").write(
+        # etree.tostring(self.__tree, pretty_print=True))
         # print self.__counter
         # s_time = time.time()
         # hm, fixes the memory issue but not very beautifull ...
@@ -740,7 +756,9 @@ class sge_info(object):
         c_stat, c_out = self._execute_command("{} -sc".format(qconf_com))
         all_complexes = E.complexes()
         if not c_stat:
-            for line_parts in [s_line.strip().split() for s_line in c_out.split("\n") if not s_line.strip().startswith("#")]:
+            for line_parts in [
+                s_line.strip().split() for s_line in c_out.split("\n") if not s_line.strip().startswith("#")
+            ]:
                 if len(line_parts) > 1:
                     all_complexes.append(E.complex(line_parts[0], short=line_parts[1]))
         return all_complexes
@@ -883,7 +901,11 @@ class sge_info(object):
         global_part = c_split.pop(0)
         if has_values:
             if global_part != "NONE":
-                cur_el.extend([E.conf_var(name=s_part.split("=", 1)[0], value=s_part.split("=", 1)[1]) for s_part in global_part.split(",")])
+                cur_el.extend(
+                    [
+                        E.conf_var(name=s_part.split("=", 1)[0], value=s_part.split("=", 1)[1]) for s_part in global_part.split(",")
+                    ]
+                )
         else:
             if global_part != "NONE":
                 cur_el.extend([E.conf_var(name=s_part) for s_part in global_part.split()])
@@ -893,7 +915,15 @@ class sge_info(object):
                 node_part, local_part = node_spec.split("=", 1)
                 s_node = node_part.split(".")[0]
                 if has_values:
-                    cur_el.extend([E.conf_var(host=s_node, name=s_part.split("=", 1)[0], value=s_part.split("=", 1)[1]) for s_part in local_part.split(",")])
+                    cur_el.extend(
+                        [
+                            E.conf_var(
+                                host=s_node,
+                                name=s_part.split("=", 1)[0],
+                                value=s_part.split("=", 1)[1]
+                            ) for s_part in local_part.split(",")
+                        ]
+                    )
                 else:
                     cur_el.extend([E.conf_var(host=s_node, name=s_part) for s_part in local_part.split(",")])
         # remove text
@@ -951,7 +981,11 @@ class sge_info(object):
                     for hg_name in cur_hlist.text.split():
                         if hg_name.startswith("@"):
                             if hg_name in hg_lut:
-                                hosts_el.extend([E.host(str(name)) for name in hg_lut[hg_name].xpath(".//host/text()", smart_strings=False)])
+                                hosts_el.extend(
+                                    [
+                                        E.host(str(name)) for name in hg_lut[hg_name].xpath(".//host/text()", smart_strings=False)
+                                    ]
+                                )
                         else:
                             hosts_el.append(E.host(hg_name))
 
@@ -1046,7 +1080,8 @@ def build_running_list(s_info, options, **kwargs):
             ).append(cur_host.attrib["short_name"])
     host_loads = {
         cur_host.attrib["short_name"]: _load_to_float(
-            cur_host.findtext("hostvalue[@name='load_avg']")) for cur_host in s_info.get_all_hosts() if cur_host.attrib["short_name"] != "global"
+            cur_host.findtext("hostvalue[@name='load_avg']")
+        ) for cur_host in s_info.get_all_hosts() if cur_host.attrib["short_name"] != "global"
     }
     job_list = E.job_list(total="{:d}".format(len(r_jobs)))
     for act_job in r_jobs:
@@ -1350,7 +1385,11 @@ def build_node_list(s_info, options):
                 continue
             if options.show_nonstd:
                 if all([m_queue.findtext("queuevalue[@name='state_string']") not in [""] for m_queue in m_queue_list]):
-                    if all([m_queue.findtext("queuevalue[@name='state_string']") == "a" for m_queue in m_queue_list]) and options.show_nonstd > 1:
+                    if all(
+                        [
+                            m_queue.findtext("queuevalue[@name='state_string']") == "a" for m_queue in m_queue_list
+                        ]
+                    ) and options.show_nonstd > 1:
                         continue
             # check for user filters
             if options.users:
@@ -1480,7 +1519,12 @@ def build_node_list(s_info, options):
                     E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
                 ])
             cur_node.extend([
-                E.load("{:2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))), **{"type": "float", "format": "{:.2f}"}),
+                E.load(
+                    "{:2f}".format(
+                        _load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))
+                    ),
+                    **{"type": "float", "format": "{:.2f}"}
+                ),
                 E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
                 E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
                 E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
