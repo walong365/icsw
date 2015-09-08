@@ -66,7 +66,6 @@ NEEDED_PACKAGES = [
         "icsw-client",
         "modules-init",
     ],
-
     [
         "python-init",
         "icsw-binaries",
@@ -509,12 +508,12 @@ class server_process(threading_tools.process_pool):
         """ check packages in image """
         cur_pc = package_check(self.log, cur_img)
         missing = cur_pc.check(NEEDED_PACKAGES)
-        if not all(missing):
+        if all(missing):
             for _mis in missing:
                 if _mis:
                     self.log("missing packages: {}".format(", ".join(sorted(list(_mis)))), logging_tools.LOG_LEVEL_ERROR)
             if not global_config["IGNORE_ERRORS"]:
-                raise ValueError("packages missing ({})".format(", ".join(sorted(list(_mis)))))
+                raise ValueError("packages missing (see log)")
         else:
             self.log("all packages installed")
 
