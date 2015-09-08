@@ -121,6 +121,7 @@ install:
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/cstores.d
 	${INSTALL} ${INSTALL_OPTS} opt/cluster/etc/servers.d/*.xml ${DESTDIR}/${ICSW_ETC}/servers.d
 	${INSTALL} ${INSTALL_OPTS} opt/cluster/etc/cstores.d/*.xml ${DESTDIR}/${ICSW_ETC}/cstores.d
+	${INSTALL} ${INSTALL_OPTS} opt/cluster/etc/cstores.d/*.xml.sample ${DESTDIR}/${ICSW_ETC}/cstores.d
 	# setup.py
 	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
