@@ -93,7 +93,8 @@ class cpu_value(object):
         return "cpu_value, type {}, value {}{}".format(
             self.v_type,
             self.value,
-            self.add_value and ", {}".format(self.add_value) or "")
+            self.add_value and ", {}".format(self.add_value) or ""
+        )
 
 
 class cpu_info_part(object):
@@ -382,7 +383,8 @@ class cpu_info(object):
                 self["socket_num"],
                 self["ht_core_num"],
                 self.get_cache_info_str(),
-                self["cpu_id"])
+                self["cpu_id"]
+            )
         else:
             print("core info (idx {:d}), offline".format(self.core_num))
 
@@ -476,7 +478,8 @@ class global_cpu_info(object):
                     _num_cores, core_id, physical_id = (
                         cpu_stuff["cpu_cores"],
                         cpu_stuff["core_id"],
-                        cpu_stuff["physical_id"])
+                        cpu_stuff["physical_id"]
+                    )
                     phys_dict.setdefault(physical_id, {}).setdefault(core_id, []).append(cpu_num)
         elif valid_info.get("siblings", 1) > 1:
             # hyperthreading info

@@ -247,7 +247,7 @@ class _conf_var(object):
         except ValueError:
             raise ValueError("Value Error for value {}".format(str(val)))
         else:
-            if self._choices and set(r_val) - set(self._choices):
+            if self._choices and set([r_val]) - set(self._choices):
                 print(
                     "ignoring value {} for {} (not in choices: {})".format(
                         r_val,

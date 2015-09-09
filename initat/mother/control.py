@@ -32,14 +32,8 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
     log_source_lookup, LogSource, DeviceLogEntry, user
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import icmp_class
-from initat.tools import ipvx_tools
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
+from initat.tools import config_tools, configfile, icmp_class, ipvx_tools, logging_tools, \
+    process_tools, server_command, threading_tools
 
 from .command_tools import simple_command
 from .config import global_config
@@ -1482,19 +1476,27 @@ class NodeControlProcess(threading_tools.process_obj):
                 if ip_dev.bootserver:
                     if ip_dev.bootserver.pk == self.sc.effective_device.pk:
                         boot_dev = Host.get_device(ip_dev.pk)
-                        boot_dev.log(
-                            "parsed: {}, send to boot_dev".format(
-                                ", ".join(
-                                    [
-                                        "{}={}".format(
-                                            key,
-                                            in_dict[key]
-                                        ) for key in sorted(in_dict.keys())
-                                    ]
+                        if boot_dev is None:
+                            self.log(
+                                "got no local device for '{}', not bootserver or disabled?".format(
+                                    unicode(ip_dev),
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                        else:
+                            boot_dev.log(
+                                "parsed: {}, send to boot_dev".format(
+                                    ", ".join(
+                                        [
+                                            "{}={}".format(
+                                                key,
+                                                in_dict[key]
+                                            ) for key in sorted(in_dict.keys())
+                                        ]
+                                    )
                                 )
                             )
-                        )
-                        boot_dev.feed_dhcp(in_dict, in_line)
+                            boot_dev.feed_dhcp(in_dict, in_line)
                     else:
                         self.log(
                             "got request {} for {}, not responsible".format(
