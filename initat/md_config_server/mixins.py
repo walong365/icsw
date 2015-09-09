@@ -22,8 +22,7 @@
 from initat.md_config_server.config import global_config
 from initat.tools import cluster_location
 import commands
-from initat.tools import configfile
-from initat.tools import logging_tools
+from initat.tools import configfile, logging_tools
 import os
 import re
 import time

@@ -27,8 +27,7 @@ from lxml.builder import E
 from django.db.models import Q
 from initat.cluster.backbone.models import MachineVector, MVStructEntry
 from initat.rrd_grapher.config import global_config
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 class CompoundEntry(object):

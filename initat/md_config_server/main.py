@@ -119,7 +119,10 @@ def main():
             ("SERVICE_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
             ("HOST_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
             ("SAFE_NAMES", configfile.bool_c_var(False, help_string="convert all command descriptions to safe names (without spaces), [%(default)s]")),
-            ("ENABLE_ICINGA_LOG_PARSING", configfile.bool_c_var(True, help_string="collect icinga logs in the database (required for status history and kpis)")),
+            (
+                "ENABLE_ICINGA_LOG_PARSING",
+                configfile.bool_c_var(True, help_string="collect icinga logs in the database (required for status history and kpis)")
+            ),
         ]
     )
     run_code()

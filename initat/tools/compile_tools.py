@@ -25,11 +25,14 @@ import os
 
 def get_intel_path(src_path, **args):
     for rel_path in ["intel64", "."]:
-        if os.path.isdir("%s/%s" % (src_path,
-                                    rel_path)):
+        if os.path.isdir(
+                os.path.join(
+                    src_path,
+                    rel_path
+                )
+        ):
             break
-    return os.path.normpath("%s/%s" % (src_path,
-                                       rel_path))
+    return os.path.normpath(os.path.join(src_path, rel_path))
 
 
 def get_add_paths_for_intel(intel_path):

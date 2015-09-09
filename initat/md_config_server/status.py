@@ -19,20 +19,17 @@
 #
 """ status process """
 
+import json
+import time
+
 from django.db import connection
 from django.db.models import Q
 from initat.md_config_server.common import live_socket
 from initat.cluster.backbone.models import device
 from initat.md_config_server.config import global_config
-import csv
-import json
-from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
-from initat.tools import server_command
-import socket
-from initat.tools import threading_tools
-import time
+
+from initat.tools import logging_tools, process_tools, server_command, \
+    threading_tools
 
 
 class status_process(threading_tools.process_obj):

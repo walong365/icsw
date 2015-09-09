@@ -22,6 +22,7 @@
 """ mother daemon, main part """
 
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -31,12 +32,9 @@ django.setup()
 from django.conf import settings
 from initat.cluster.backbone.models import LogSource
 from initat.server_version import VERSION_STRING
-from initat.tools import cluster_location
-from initat.tools import configfile
+from initat.tools import cluster_location, configfile, process_tools
 import initat.mother.server
 from initat.mother.config import global_config
-from initat.tools import process_tools
-import sys
 
 
 def main():

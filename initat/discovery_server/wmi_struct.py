@@ -63,7 +63,7 @@ class WmiUtils(object):
             self.wmi_list = wmi_list
 
         def try_parse(self):
-            """Only use if you are sure that every ',' in the input is a item separator"""
+            """Only use if you are sure that every ',' in the input is an item separator"""
             return self.wmi_list.split(",")
 
         @classmethod

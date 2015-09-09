@@ -24,9 +24,8 @@ import shutil
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from initat.tools import logging_tools
-from initat.tools import process_tools
 
+from initat.tools import logging_tools, process_tools
 from .build_container import build_container, generated_tree
 from .config import global_config
 from .partition_setup import partition_setup

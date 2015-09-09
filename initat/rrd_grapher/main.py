@@ -29,8 +29,7 @@ django.setup()
 from django.conf import settings
 from initat.rrd_grapher.config import global_config
 from initat.server_version import VERSION_STRING
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 import sys
 
 

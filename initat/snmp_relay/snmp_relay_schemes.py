@@ -1360,7 +1360,7 @@ class apc_rpdu_load_scheme(RelaySNMPScheme):
             1: limits.nag_STATE_OK,
             2: limits.nag_STATE_OK,
             3: limits.nag_STATE_WARNING,
-            4:  limits.nag_STATE_CRITICAL
+            4: limits.nag_STATE_CRITICAL
         }[act_state]
         return ret_state, "load is %.2f Ampere" % (float(act_load) / 10.)
 

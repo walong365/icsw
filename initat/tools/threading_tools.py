@@ -29,14 +29,13 @@ import sys
 import threading
 import time
 import traceback
-import six
 import setproctitle
 
-from initat.tools import io_stream_helper
-from initat.tools import logging_tools
-from initat.tools import process_tools
+import six
 import psutil
 import zmq
+
+from initat.tools import io_stream_helper, logging_tools, process_tools
 
 
 # default stacksize

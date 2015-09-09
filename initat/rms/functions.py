@@ -21,8 +21,9 @@
 """ rms-server, helper functions """
 
 import commands
-from initat.tools import logging_tools
 import time
+
+from initat.tools import logging_tools
 
 
 def call_command(command, log_com=None):

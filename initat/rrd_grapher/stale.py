@@ -27,10 +27,8 @@ import rrdtool  # @UnresolvedImport
 from django.db import connection
 from initat.cluster.backbone.models import device, MachineVector
 from initat.rrd_grapher.config import global_config
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_mixins
-from initat.tools import threading_tools
+from initat.tools import logging_tools, process_tools, server_mixins, \
+    threading_tools
 
 
 class stale_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):

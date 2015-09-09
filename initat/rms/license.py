@@ -24,12 +24,11 @@
 import commands
 import datetime
 import os
-from pprint import pprint  # @UnusedImport
 import time
 import itertools
 
 from django.db import connection
-from django.db.models import Max, Min, Avg, Q, Count
+from django.db.models import Max, Min, Avg, Count
 from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
     ext_license_version, ext_license_state, ext_license_version_state, ext_license_vendor, \
     ext_license_usage, ext_license_client_version, ext_license_client, ext_license_user, \
@@ -37,15 +36,11 @@ from initat.cluster.backbone.models import ext_license_site, ext_license, ext_li
     ext_license_usage_coarse, duration
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
-from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import sge_license_tools
-from initat.tools import threading_tools
 import zmq
 
+from initat.tools import logging_tools, process_tools, server_command, sge_license_tools, \
+    threading_tools
 
 EL_LUT = {
     "ext_license_site": ext_license_site,
@@ -360,7 +355,7 @@ class license_process(threading_tools.process_obj):
                             change_total = getattr(entry2_start, attribute) - getattr(last_earlier_state, attribute)
                             change_portion = timespan_to_start.total_seconds() / timespan_to_last_earlier.total_seconds()
                             change_to_start = - change_total * change_portion  # minus since we calculate backwards
-                            retval = (first_measured_value + (change_to_start/2)) * relative_weight
+                            retval = (first_measured_value + (change_to_start / 2)) * relative_weight
                         else:
                             # this is the first value, assume we have started at first measurement (usually starts happen some time in the day,
                             # so we assume that in the time before, there just was no activity
@@ -386,7 +381,7 @@ class license_process(threading_tools.process_obj):
                         else:
                             print ("Warning: no state data for lic {} for check {}".format(lic, first_later_time))
                             change_to_end = 0.0
-                        return (last_measured_value + (change_to_end/2)) * relative_weight
+                        return (last_measured_value + (change_to_end / 2)) * relative_weight
 
                     used_start = calc_start('used')
                     used_end = calc_end('used')
@@ -405,7 +400,7 @@ class license_process(threading_tools.process_obj):
 
                 used_approximated = lic_state_data.aggregate(Avg('used')).itervalues().next()
 
-                if abs(used_approximated - used_avg) > max((abs(used_approximated)+abs(used_avg))*0.01, 0.0001):
+                if abs(used_approximated - used_avg) > max((abs(used_approximated) + abs(used_avg)) * 0.01, 0.0001):
                     print 'used divergence: ', used_approximated, " ", used_avg, " at ", start, duration_type
                 print 'approx', used_approximated
                 used_min = lic_state_data.aggregate(Min('used')).itervalues().next()
@@ -437,7 +432,9 @@ class license_process(threading_tools.process_obj):
 
                 freq_sum = 0.0
 
-                for vendor_lic_version in timespan_version_state_data.filter(ext_license_state__ext_license_id=lic_id).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
+                for vendor_lic_version in timespan_version_state_data.filter(
+                        ext_license_state__ext_license_id=lic_id
+                ).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
                     ext_lic_id = vendor_lic_version['ext_license_version']
                     vendor_id = vendor_lic_version['vendor']
 
@@ -446,7 +443,9 @@ class license_process(threading_tools.process_obj):
                     # usage:
                     version_state_usage_data = timespan_usage_data.filter(ext_license_version_state__ext_license_version_id=ext_lic_id,
                                                                           ext_license_version_state__vendor_id=vendor_id)
-                    version_state_usage_data_values = version_state_usage_data.values("ext_license_client", "ext_license_user", "num").annotate(frequency=Count("pk"))
+                    version_state_usage_data_values = version_state_usage_data.values(
+                        "ext_license_client", "ext_license_user", "num"
+                    ).annotate(frequency=Count("pk"))
 
                     # frequency of version_state is not number of entries (this would be the number of checks, where at this license version was involved in)
                     # we are interested in the number of actual usages of this license version, which we only get via the usage table
@@ -476,7 +475,8 @@ class license_process(threading_tools.process_obj):
                                 frequency=usage_data['frequency']
                             )
                         )
-                        # print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
+                        # print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'],
+                        # usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
 
                 # the values calculated above are slightly imprecise, but it is not necessary to have them as exact as the ones above
                 # we however have to scale them
@@ -494,18 +494,22 @@ class license_process(threading_tools.process_obj):
                 soft_limit = max((actual_usages + estimated_usages) * 0.001, 1)
                 hard_limit = max((actual_usages + estimated_usages) * 0.1, 1)
                 if abs(estimated_usages - actual_usages) > soft_limit:
-                    self.log("Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
-                             logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
                 if abs(estimated_usages - actual_usages) > hard_limit:
-                    self.log("Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
 
                 print self, "INFO for license {}  estim: {}, actual: {}".format(lic_id, estimated_usages, actual_usages)
 
-
-            #print 'state freq counted: ', _freq_cnt_sanity
-            #if _freq_cnt_sanity != len(timespan_version_state_data):
-            #    self.log("Warning: Lost version time entries ({}, {}), start: {}, end: {}".format(_freq_cnt_sanity, len(timespan_version_state_data), start, end))
+            #  print 'state freq counted: ', _freq_cnt_sanity
+            #  if _freq_cnt_sanity != len(timespan_version_state_data):
+            #     self.log("Warning: Lost version time entries ({}, {}), start: {}, end:
+            #  {}".format(_freq_cnt_sanity, len(timespan_version_state_data), start, end))
 
         # check which data to collect
         for site in ext_license_site.objects.all():

@@ -26,6 +26,16 @@ from initat.tools import logging_tools, openssl_tools, server_command
 
 import cs_base_class
 
+"""
+create CA for OpenLDAP TLS:
+
+cluster-server.py  -c ca_new -D ca_name:vertex
+cluster-server.py  -c ca_new_cert -D ca_name:vertex ca_mode:server cert_file:vertex.pem add_device:vertex
+
+copy key from CA-Dir to /etc/openldap/certs/server.key
+
+"""
+
 
 def _build_obj(cur_inst, **kwargs):
     obj_dict = {

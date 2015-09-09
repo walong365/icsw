@@ -27,12 +27,10 @@ from initat.snmp.process import snmp_process_container
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay import snmp_relay_schemes
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
 import zmq
+
+from initat.tools import configfile, logging_tools, process_tools, \
+    server_command, threading_tools
 
 
 class server_process(threading_tools.process_pool):

@@ -29,9 +29,8 @@ from initat.cluster.backbone.routing import get_server_uuid, get_type_from_confi
 from initat.cluster_config_server.build_client import build_client
 from initat.cluster_config_server.build_container import generated_tree, build_container
 from initat.cluster_config_server.config import global_config
-from initat.tools import config_tools
-from initat.tools import logging_tools
-from initat.tools import threading_tools
+
+from initat.tools import config_tools, logging_tools, threading_tools
 
 
 def pretty_print(name, obj, offset):
@@ -128,7 +127,7 @@ class build_process(threading_tools.process_obj):
                 b_dev = device.objects.select_related("device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
                     Q(name=cur_c.name.split(".")[0]) &
                     Q(domain_tree_node__full_name=cur_c.name.split(".", 1)[1])
-                    )
+                )
             else:
                 b_dev = device.objects.select_related("device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
                     Q(name=cur_c.name))
@@ -247,7 +246,7 @@ class build_process(threading_tools.process_obj):
             value = u"{CLASS %s} '%s'" % (
                 value.__class__.__name__,
                 unicode(value),
-                )
+            )
         return value
 
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):

@@ -31,10 +31,8 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.md_config_server import constants
 from initat.md_config_server.config import global_config, sync_config
-from initat.tools import config_tools
-from initat.tools import logging_tools
-from initat.tools import server_command
-from initat.tools import threading_tools
+
+from initat.tools import config_tools, logging_tools, server_command, threading_tools
 
 
 class syncer_process(threading_tools.process_obj):

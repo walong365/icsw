@@ -248,7 +248,7 @@ def do_nets(conf):
                 "IPADDR_{}".format(virt): stuff["IPADDR"],
                 "NETMASK_{}".format(virt): stuff["NETMASK"],
                 "NETWORK_{}".format(virt): stuff["NETWORK"],
-                "LABEL_{}".format(virt): virt
+                "LABEL_{}".format(virt): virt,
             }
 
 
@@ -322,20 +322,20 @@ def do_routes(conf):
                 if sys_dict["vendor"] == "suse":
                     if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10):
                         # openSUSE 10.3, >= 11.0
-                        new_co += "%s 0.0.0.0 %s %s" % (cur_nw.network, cur_nw.netmask, net_dev_name)
+                        new_co += "{} 0.0.0.0 {} {}".format(cur_nw.network, cur_nw.netmask, net_dev_name)
                     else:
-                        new_co += "%s 0.0.0.0 %s eth-id-%s" % (cur_nw.network, cur_nw.netmask, cur_nd.macaddr)
+                        new_co += "{} 0.0.0.0 {] eth-id-{}".format(cur_nw.network, cur_nw.netmask, cur_nd.macaddr)
                 elif sys_dict["vendor"] == "redhat" or sys_dict["vendor"].lower().startswith("centos"):
-                    new_co += "any net %s netmask %s dev %s" % (cur_nw.network, cur_nw.netmask, cur_nd.devname)
+                    new_co += "any net {} netmask {} dev {}".format(cur_nw.network, cur_nw.netmask, cur_nd.devname)
         gw_source, def_ip, boot_dev, boot_mac = get_default_gw(conf)
         if def_ip:
             if sys_dict["vendor"] == "suse":
                 new_co += "# from {}".format(gw_source)
                 if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10):
                     # openSUSE 10.3
-                    new_co += "default %s - %s" % (def_ip, boot_dev)
+                    new_co += "default {} - {}".format(def_ip, boot_dev)
                 else:
-                    new_co += "default %s - eth-id-%s" % (def_ip, boot_mac)
+                    new_co += "default {} - eth-id-{}".format(def_ip, boot_mac)
             elif sys_dict["vendor"] == "redhat" or sys_dict["vendor"].lower().startswith("centos"):
                 # redhat-mode
                 act_co = conf.add_file_object("/etc/sysconfig/network", append=True)
@@ -349,7 +349,12 @@ def do_ssh(conf):
     ssh_types = [("rsa1", 1024), ("dsa", 1024), ("rsa", 1024), ("ecdsa", 521)]
     ssh_field_names = []
     for ssh_type, _size in ssh_types:
-        ssh_field_names.extend(["ssh_host_%s_key" % (ssh_type), "ssh_host_%s_key_pub" % (ssh_type)])
+        ssh_field_names.extend(
+            [
+                "ssh_host_{}_key".format(ssh_type),
+                "ssh_host_{}_key_pub".format(ssh_type),
+            ]
+        )
     found_keys_dict = {key: None for key in ssh_field_names}
     for cur_var in device_variable.objects.filter(Q(device=conf_dict["device"]) & Q(name__in=ssh_field_names)):
         try:
@@ -366,14 +371,14 @@ def do_ssh(conf):
     )
     new_keys = []
     for ssh_type, key_size in ssh_types:
-        privfn = "ssh_host_%s_key" % (ssh_type)
-        pubfn = "ssh_host_%s_key_pub" % (ssh_type)
+        privfn = "ssh_host_{}_key".format(ssh_type)
+        pubfn = "ssh_host_{}_key_pub".format(ssh_type)
         if not found_keys_dict[privfn] or not found_keys_dict[pubfn]:
             # delete previous versions
             device_variable.objects.filter(Q(device=conf_dict["device"]) & Q(name__in=[privfn, pubfn])).delete()
-            print "Generating %s keys..." % (privfn)
+            print "Generating {} keys...".format(privfn)
             sshkn = tempfile.mktemp("sshgen")
-            sshpn = "%s.pub" % (sshkn)
+            sshpn = "{}.pub".format(sshkn)
             if ssh_type:
                 _cmd = "ssh-keygen -t {} -q -b {:d} -f {} -N ''".format(ssh_type, key_size, sshkn)
             else:
@@ -392,30 +397,33 @@ def do_ssh(conf):
             new_keys.extend([privfn, pubfn])
     if new_keys:
         new_keys.sort()
-        print "%s to create: %s" % (logging_tools.get_plural("key", len(new_keys)),
-                                    ", ".join(new_keys))
+        print "{} to create: {}".format(
+            logging_tools.get_plural("key", len(new_keys)),
+            ", ".join(new_keys)
+        )
         for new_key in new_keys:
             if found_keys_dict[new_key] is not None:
                 new_dv = device_variable(
                     device=conf_dict["device"],
                     name=new_key,
                     var_type="b",
-                    description="SSH key %s" % (new_key),
-                    val_blob=base64.b64encode(found_keys_dict[new_key]))
+                    description="SSH key {}".format(new_key),
+                    val_blob=base64.b64encode(found_keys_dict[new_key])
+                )
                 new_dv.save()
     for ssh_type, key_size in ssh_types:
-        privfn = "ssh_host_%s_key" % (ssh_type)
-        pubfn = "ssh_host_%s_key_pub" % (ssh_type)
-        _pubfrn = "ssh_host_%s_key.pub" % (ssh_type)
+        privfn = "ssh_host_{}_key".format(ssh_type)
+        pubfn = "ssh_host_{}_key_pub".format(ssh_type)
+        _pubfrn = "ssh_host_{}_key.pub".format(ssh_type)
         for var in [privfn, pubfn]:
             if found_keys_dict[var] is not None:
-                new_co = conf.add_file_object("/etc/ssh/%s" % (var.replace("_pub", ".pub")))
+                new_co = conf.add_file_object("/etc/ssh/{}".format(var.replace("_pub", ".pub")))
                 new_co.bin_append(found_keys_dict[var])
                 if var == privfn:
                     new_co.mode = "0600"
         if ssh_type == "rsa1":
             for var in [privfn, pubfn]:
-                new_co = conf.add_file_object("/etc/ssh/%s" % (var.replace("_rsa1", "").replace("_pub", ".pub")))
+                new_co = conf.add_file_object("/etc/ssh/{}".format(var.replace("_rsa1", "").replace("_pub", ".pub")))
                 new_co.bin_append(found_keys_dict[var])
                 if var == privfn:
                     new_co.mode = "0600"
@@ -463,7 +471,7 @@ def do_etc_hosts(conf):
         cur_dtn = cur_ip.domain_tree_node or tl_dtn
         # override wrong settings for lo
         if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-            out_names.append("%s%s" % (cur_nd.device.name, cur_dtn.node_postfix))
+            out_names.append("{}{}".format(cur_nd.device.name, cur_dtn.node_postfix))
         out_names.extend(cur_ip.alias.strip().split())
         if "localhost" in [entry.split(".")[0] for entry in out_names]:
             out_names = [entry for entry in out_names if entry.split(".")[0] == "localhost"]
@@ -477,7 +485,7 @@ def do_etc_hosts(conf):
         max_len = max(max_len, len(out_names) + 1)
     for pen, stuff in loc_dict.iteritems():
         for l_e in stuff:
-            l_e.extend([""] * (max_len - len(l_e)) + ["#%d" % (pen)])
+            l_e.extend([""] * (max_len - len(l_e)) + ["# %d" % (pen)])
     for p_value in sorted(loc_dict.keys()):
         act_list = sorted(loc_dict[p_value])
         max_len = [0] * len(act_list[0])

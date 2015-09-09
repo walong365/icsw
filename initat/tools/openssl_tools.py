@@ -331,7 +331,7 @@ class ca(object):
     def _create_ssl_config(self):
         if not os.path.exists(self.ssl_config_name):
             _src_file = None
-            for _check in ["/etc/ssl/openssl.cnf"]:
+            for _check in ["/etc/ssl/openssl.cnf", "/etc/pki/tls/openssl.cnf"]:
                 if os.path.exists(_check):
                     _src_file = _check
                     break

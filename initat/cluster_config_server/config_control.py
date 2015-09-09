@@ -374,9 +374,10 @@ class config_control(object):
                 # put low-priority mods to the end of the list
                 unique_mods = [_mod for _mod in unique_mods if _mod not in low_pri_mods] + [_mod for _mod in unique_mods if _mod in low_pri_mods]
                 # unique_mods = sorted(list(set(sum(m_dict.values(), []))))
-                self.log("unique mods: {}: {}".format(
-                    logging_tools.get_plural("module", len(unique_mods)),
-                    ", ".join(unique_mods),
+                self.log(
+                    "unique mods: {}: {}".format(
+                        logging_tools.get_plural("module", len(unique_mods)),
+                        ", ".join(unique_mods),
                     )
                 )
                 return "ok {}".format(" ".join(unique_mods))

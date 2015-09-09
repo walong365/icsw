@@ -223,12 +223,12 @@ class server_process(
                     "sms": {
                         "host": ("", [global_config["HOST_NOTIFY_BY_SMS_LINE01"]]),
                         "service": ("", [global_config["NOTIFY_BY_SMS_LINE01"]]),
-                        },
+                    },
                     "mail": {
                         "host": (
                             global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"],
                             [global_config["HOST_NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
-                            ),
+                        ),
                         "service": (
                             global_config["NOTIFY_BY_EMAIL_SUBJECT"],
                             [global_config["NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
@@ -278,7 +278,7 @@ class server_process(
                                 u'',
                                 u'',
                                 u''
-                                ]
+                            ]
                         ),
                         'service': (
                             u'$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$',
@@ -298,15 +298,16 @@ class server_process(
                                 u'Additional Info:',
                                 u'',
                                 u'$SERVICEOUTPUT$'
-                                ]
-                            )
-                        },
+                            ]
+                        )
+                    },
                     'sms': {
                         'host': (
-                            '', [
+                            '',
+                            [
                                 u'$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)'
-                                ]
-                            ),
+                            ]
+                        ),
                         'service': (
                             '',
                             [

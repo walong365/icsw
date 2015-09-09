@@ -70,7 +70,7 @@ class hc_command(object):
                 ("IPMI_USERNAME", "admin"),
                 ("IPMI_PASSWORD", "admin"),
                 ("IPMI_INTERFACE", ""),
-                ],
+            ],
             "SNMP": [
                 ("SNMP_VERSION", 2),
                 ("SNMP_WRITE_COMMUNITY", "private"),

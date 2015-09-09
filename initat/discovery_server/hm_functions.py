@@ -21,19 +21,15 @@
 
 from django.db import transaction
 from django.db.models import Q
-from initat.cluster.backbone.models import device, partition, partition_disc, \
+from initat.cluster.backbone.models import partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
     netdevice_speed, peer_information
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import config_tools
-from initat.tools import logging_tools
-from initat.tools import net_tools
-from initat.tools import partition_tools
-from initat.tools import process_tools
-from initat.tools import server_command
 
-from .config import global_config
+from initat.tools import logging_tools, net_tools, partition_tools, \
+    process_tools, server_command
+
 
 # removed tun from list to enable adding of FWs from Madar, move to option?
 IGNORE_LIST = ["tap", "vnet"]
@@ -85,7 +81,7 @@ class NDStruct(object):
                 netdevice=cur_nd,
                 ip=cur_ip,
                 domain_tree_node=self.device.domain_tree_node,
-                )
+            )
             new_ip.create_default_network = True
             new_ip.save()
             self.log("added IP {} (network {})".format(new_ip.ip, unicode(new_ip.network)))
@@ -379,11 +375,14 @@ class HostMonitoringMixin(object):
                                         "no fstype found for LV %s (fstype %s)" % (
                                             lv_stuff["name"],
                                             mount_options["fstype"],
-                                            ),
-                                        logging_tools.LOG_LEVEL_ERROR)
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
                             else:
-                                self.log("no fstype found for LV %s" % (lv_stuff["name"]),
-                                         logging_tools.LOG_LEVEL_ERROR)
+                                self.log(
+                                    "no fstype found for LV %s" % (lv_stuff["name"]),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
                     # set partition table
                     self.log(u"set partition_table for '%s'" % (unicode(target_dev)))
                     target_dev.act_partition_table = new_part_table

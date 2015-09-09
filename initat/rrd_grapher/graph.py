@@ -38,10 +38,11 @@ from django.db.models import Q
 from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVValueEntry, system_timezone
+    MVValueEntry
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from lxml.builder import E  # @UnresolvedImport
 import dateutil.parser
+
 from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
 from .config import global_config
 
@@ -634,7 +635,7 @@ class GraphTarget(object):
         return ",".join(
             [
                 dev_id for dev_id, _dev_pk in self.dev_list
-                ]
+            ]
         )
 
     @property
@@ -886,7 +887,7 @@ class RRDGraph(object):
         self.para_dict = {
             "size": "400x200",
             "graph_root": graph_root,
-            "hide_empty":  False,
+            "hide_empty": False,
             "include_zero": False,
             "show_forecast": False,
             "scale_mode": "level",

@@ -19,6 +19,15 @@
 #
 """ build process for md-config-server """
 
+import codecs
+import commands
+import operator
+import json
+import os
+import os.path
+import signal
+import time
+
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
@@ -35,24 +44,10 @@ from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from lxml.builder import E  # @UnresolvedImport
-import codecs
-import commands
-from initat.tools import config_tools
-from initat.tools import configfile
-from initat.tools import logging_tools
-from initat.tools import net_tools
 import networkx
-import operator
-import json
-import time
-import os
-import os.path
-from initat.tools import process_tools
-from initat.tools import server_command
-import signal
-import stat
-from initat.tools import threading_tools
-import time
+
+from initat.tools import config_tools, configfile, logging_tools, net_tools, process_tools, \
+    server_command, threading_tools
 
 
 class build_process(threading_tools.process_obj, version_check_mixin):
@@ -1062,23 +1057,25 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         host,
                                         act_host,
                                         s_check,
-                                        [special_commands.ArgTemplate(
-                                            s_check,
-                                            self._get_cc_name("{}{}{}".format(s_check.get_description(), _bc.join_char, mhc_check.description)),
-                                            arg1=mhc_check.description,
-                                            # arg2="@{:d}:".format(mhc_check.warn_value),
-                                            # arg3="@{:d}:".format(mhc_check.error_value),
-                                            arg2=mhc_check.warn_value,
-                                            arg3=mhc_check.error_value,
-                                            arg4=",".join(["$HOSTSTATEID:{}$".format(_dev_name) for _dev_name in dev_names]),
-                                            arg5=",".join(dev_names),
+                                        [
+                                            special_commands.ArgTemplate(
+                                                s_check,
+                                                self._get_cc_name("{}{}{}".format(s_check.get_description(), _bc.join_char, mhc_check.description)),
+                                                arg1=mhc_check.description,
+                                                # arg2="@{:d}:".format(mhc_check.warn_value),
+                                                # arg3="@{:d}:".format(mhc_check.error_value),
+                                                arg2=mhc_check.warn_value,
+                                                arg3=mhc_check.error_value,
+                                                arg4=",".join(["$HOSTSTATEID:{}$".format(_dev_name) for _dev_name in dev_names]),
+                                                arg5=",".join(dev_names),
                                             )
-                                         ],
+                                        ],
                                         act_def_serv,
                                         serv_cgs,
                                         host_is_actively_checked,
                                         serv_temp,
-                                        cur_gc)
+                                        cur_gc
+                                    )
                                     host_config_list.extend(sub_list)
                                     _counter.ok(len(sub_list))
                                 else:

@@ -22,14 +22,15 @@
 #
 """ logcheck-server (to be run on a syslog_server) """
 
-from initat.cluster.backbone.models import device
-from initat.logcheck_server.config import global_config
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import shutil
 import time
 import subprocess
+
+from initat.cluster.backbone.models import device
+from initat.logcheck_server.config import global_config
+
+from initat.tools import logging_tools, process_tools
 
 
 class machine(object):
