@@ -107,7 +107,9 @@ class main_process(ICSWBasePool):
                             self.log(
                                 "reopening file {} for {}".format(
                                     cur_handle.baseFilename,
-                                    dst))
+                                    dst
+                                )
+                            )
                             cur_handle.stream = cur_handle._open()
                 # print dir(cur_dst)
                 if "src_thread" in kwargs or "src_process" in kwargs:

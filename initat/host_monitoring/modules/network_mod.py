@@ -192,10 +192,12 @@ class _general(hm_classes.hm_module):
             # kill all argus jobs
             kill_procs = [_proc for _proc in psutil.process_iter() if _proc.is_running() and _proc.name() == "argus"]
             if kill_procs:
-                self.log("killing {}: {}".format(
-                    logging_tools.get_plural("argus process", len(kill_procs)),
-                    ", ".join(["{:d}".format(_proc.pid) for _proc in sorted(kill_procs)]),
-                    ))
+                self.log(
+                    "killing {}: {}".format(
+                        logging_tools.get_plural("argus process", len(kill_procs)),
+                        ", ".join(["{:d}".format(_proc.pid) for _proc in sorted(kill_procs)]),
+                    )
+                )
                 [_proc.kill() for _proc in kill_procs]
             self.__bzip2_path = process_tools.find_file("bzip2")
             self.__argus_path = argus_path
@@ -244,10 +246,12 @@ class _general(hm_classes.hm_module):
                     _to_compress = [entry for entry in _files if entry not in _to_delete]
                     _to_delete.extend([entry for entry in _bz2_files if entry[:-4] in _to_compress])
                     if _to_delete:
-                        self.log("%s to delete: %s" % (
-                            logging_tools.get_plural("file", len(_to_delete)),
-                            ", ".join(sorted(_to_delete))
-                            ))
+                        self.log(
+                            "{} to delete: {}".format(
+                                logging_tools.get_plural("file", len(_to_delete)),
+                                ", ".join(sorted(_to_delete))
+                            )
+                        )
                         [os.unlink(os.path.join(ARGUS_TARGET, _file)) for _file in _to_delete]
                     if _to_compress:
                         self.__compress_jobs.extend([compress_job(self, self.__bzip2_path, _file) for _file in _to_compress])
@@ -627,7 +631,7 @@ class net_device(object):
                                 res_dict[(hca_id, cur_port)] = {
                                     "port": cur_port,
                                     "hca_id": hca_id,
-                                    }
+                                }
                             elif cur_port and hca_id:
                                 if value.isdigit():
                                     value = int(value)
@@ -975,19 +979,19 @@ class ping_command(hm_classes.hm_command):
                 else:
                     if mean_time is not None:
                         if mean_time < 0.01:
-                            time_info = "%.2f ms mean time" % (1000 * mean_time)
+                            time_info = "{:.2f} ms mean time".format(1000 * mean_time)
                         else:
-                            time_info = "%.4f s mean time" % (mean_time)
-                        timing_str = "rta=%.6f min=%.6f max=%.6f" % (
+                            time_info = "{:.4f} s mean time".format(mean_time)
+                        timing_str = "rta={:.6f} min={:.6f} max={:.6f}".format(
                             mean_time,
                             min_time,
                             max_time,
-                            )
+                        )
                     else:
                         time_info = "no time info"
                         timing_str = "rta=0.0 min=0.0 max=0.0"
                     ret_f.append(
-                        "%s: %d of %d (%s) | %s sent=%d loss=%d" % (
+                        "{}: {:d} of {:d} ({}) | {} sent={:d} loss={:d}".format(
                             target,
                             num_received,
                             num_sent,
@@ -1487,8 +1491,8 @@ class network_info_command(hm_classes.hm_command):
                         ) if net_stuff["features"] else "none",
                         header="features"
                     )
-                    ]
-                )
+                ]
+            )
             for link_key in sorted(net_stuff["links"]):
                 link_stuff = net_stuff["links"][link_key]
                 if type(link_stuff[0]) == bool:

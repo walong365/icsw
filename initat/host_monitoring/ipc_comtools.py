@@ -17,9 +17,9 @@
 #
 """ ipc communication tools, now using 0MQ as communication layer """
 
-from initat.tools import process_tools
-from initat.tools import server_command
 import time
+
+from initat.tools import process_tools, server_command
 import zmq
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007,2012,2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -32,11 +32,9 @@ class cups_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         lp_stat, lp_out = commands.getstatusoutput("lpstat -p")
         if lp_stat:
-            srv_com["result"].attrib.update(
-                {
-                    "reply": "error getting lpstat info (%d): %s" % (lp_stat, lp_out),
-                    "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR)
-                }
+            srv_com.set_result(
+                "error getting lpstat info ({:d}): {}".format(lp_stat, lp_out),
+                server_command.SRV_REPLY_STATE_ERROR
             )
         else:
             printer_dict = {
@@ -67,5 +65,12 @@ class cups_status_command(hm_classes.hm_command):
             post_time = post_time.strip().replace("  ", " ").replace("  ", " ")
             if not [True for pf in ["idle, enabled", "now printing"] if pre_time.lower().startswith(pf)]:
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-            print_res_dict[p_name] = "%s (since %s)" % (pre_time, post_time)
-        return ret_state, ", ".join(["%s%s" % (multi_printer and "%s: " % (p_name) or "", print_res_dict[p_name]) for p_name in sorted(print_res_dict.keys())])
+            print_res_dict[p_name] = "{} (since {})".format(pre_time, post_time)
+        return ret_state, ", ".join(
+            [
+                "{}{}".format(
+                    multi_printer and "{}: ".format(p_name) or "",
+                    print_res_dict[p_name]
+                ) for p_name in sorted(print_res_dict.keys())
+            ]
+        )

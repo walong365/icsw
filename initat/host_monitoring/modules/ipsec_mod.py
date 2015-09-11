@@ -16,12 +16,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.host_monitoring import limits, hm_classes
 import commands
-from initat.tools import logging_tools
-from initat.tools import process_tools
 import re
 import time
+
+from initat.host_monitoring import limits, hm_classes
+from initat.tools import logging_tools, process_tools
 
 
 class _general(hm_classes.hm_module):
@@ -314,7 +314,8 @@ class ipsec_status_command(hm_classes.hm_command):
                 else:
                     return limits.nag_STATE_CRITICAL, "connection '{}' not found (defined: {})".format(
                         first_arg,
-                        ", ".join(sorted(_con_dict)) or "none")
+                        ", ".join(sorted(_con_dict)) or "none"
+                    )
         else:
             # old strongswans
             if not first_arg:
@@ -343,8 +344,10 @@ class ipsec_status_command(hm_classes.hm_command):
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                 return ret_state, "connection {}: {}".format(
                     first_arg,
-                    ", ".join(ret_list))
+                    ", ".join(ret_list)
+                )
             else:
                 return limits.nag_STATE_CRITICAL, "error connection '{}' not found (defined: {})".format(
                     first_arg,
-                    ", ".join(sorted(con_dict)) or "none")
+                    ", ".join(sorted(con_dict)) or "none"
+                )

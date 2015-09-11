@@ -18,8 +18,7 @@
 
 from initat.host_monitoring import limits, hm_classes
 import commands
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 class _general(hm_classes.hm_module):

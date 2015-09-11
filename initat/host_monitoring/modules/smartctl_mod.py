@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,12 +18,11 @@
 
 """ check smartctl status """
 
+import commands
+
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
-import commands
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, process_tools, server_command
 
 
 class _general(hm_classes.hm_module):
@@ -53,7 +52,10 @@ class _general(hm_classes.hm_module):
                         "device": _dev_name,
                     }
                 except:
-                    self.log("error parsing line '{}': {}".format(line, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error parsing line '{}': {}".format(line, process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
 
     def smcall(self, args):
         cmd_line = "{} {}".format(self.smartctl_bin, args)
@@ -118,8 +120,8 @@ class smartstat_command(hm_classes.hm_command):
                     "{}: {}".format(
                         _dev["device"],
                         "\n".join(_dev["check_output"]) or "OK",
-                        )
                     )
+                )
             ret_str = ", ".join(ret_f)
         else:
             ret_state, ret_str = limits.nag_STATE_WARNING, "no devices found"

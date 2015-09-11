@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,15 +19,15 @@
 #
 """ filesystem tools, also used by cluster-server """
 
-from lxml.builder import E  # @UnresolvedImport
 import codecs
 import base64
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
-from initat.tools import server_command
 import shutil
 import stat
+
+from lxml.builder import E  # @UnresolvedImport
+from initat.tools import logging_tools, process_tools, server_command
+
 
 # max file size to read, can be overridden
 MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -67,9 +67,9 @@ def create_dir(srv_com, log_com):
         "created {}{}".format(
             logging_tools.get_plural("directory", created),
             " ({:d} failed)".format(failed) if failed else "",
-            ),
+        ),
         server_command.SRV_REPLY_STATE_ERROR if failed else server_command.SRV_REPLY_STATE_OK
-        )
+    )
 
 
 def set_file_content(srv_com, log_com):
@@ -88,7 +88,7 @@ def set_file_content(srv_com, log_com):
             _set_attributes(file_entry, log_com)
     srv_com.set_result(
         "stored file contents",
-        )
+    )
 
 
 def get_dir_tree(srv_com, log_com):
@@ -108,12 +108,13 @@ def get_dir_tree(srv_com, log_com):
                     E.file(
                         name=new_file,
                         size="{:d}".format(os.stat(os.path.join(cur_dir, new_file))[stat.ST_SIZE]),
-                        ))
+                    )
+                )
         for cur_idx, cur_el in enumerate(top_el.findall(".//*")):
             cur_el.attrib["idx"] = "{:d}".format(cur_idx)
     srv_com.set_result(
         "read directory tree"
-        )
+    )
 
 
 def remove_dir(srv_com, log_com):

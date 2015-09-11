@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013,2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,9 +18,8 @@
 
 # import pprint
 from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
+from initat.tools import logging_tools, process_tools, server_command
+
 try:
     import memcache
 except ImportError:
@@ -47,12 +46,12 @@ class memcached_status_command(hm_classes.hm_command):
             try:
                 mc_stats = cur_c.get_stats()
             except:
-                srv_com.set_result("cannot get stats: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
+                srv_com.set_result("cannot get stats: {}".format(process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
             else:
                 if mc_stats:
                     srv_com["memcache_stats"] = mc_stats
                 else:
-                    srv_com.set_result("no stats from %s" % (", ".join(target_servers)), server_command.SRV_REPLY_STATE_ERROR)
+                    srv_com.set_result("no stats from {}".format(", ".join(target_servers)), server_command.SRV_REPLY_STATE_ERROR)
         else:
             srv_com.set_result("no memcached module found", server_command.SRV_REPLY_STATE_ERROR)
 
@@ -66,14 +65,16 @@ class memcached_status_command(hm_classes.hm_command):
                 used_bytes, max_bytes = (
                     int(cur_stats["bytes"]),
                     int(cur_stats["limit_maxbytes"]),
-                    )
+                )
                 cur_perc = used_bytes * 100. / max_bytes
-                out_f.append("%s: %s of %s used (%.2f %%)" % (
-                    t_srv.strip(),
-                    logging_tools.get_size_str(used_bytes),
-                    logging_tools.get_size_str(max_bytes),
-                    cur_perc,
-                    ))
+                out_f.append(
+                    "{}: {} of {} used ({:.2f} %)".format(
+                        t_srv.strip(),
+                        logging_tools.get_size_str(used_bytes),
+                        logging_tools.get_size_str(max_bytes),
+                        cur_perc,
+                    )
+                )
                 ret_state = max(ret_state, limits.check_ceiling(cur_perc, cur_ns.warn, cur_ns.crit))
             return ret_state, ", ".join(out_f)
         else:

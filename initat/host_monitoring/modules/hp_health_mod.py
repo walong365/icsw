@@ -55,13 +55,13 @@ class HPDimm(object):
         dimm_list = srv_com["*result"]
         if dimm_list:
             present_dimms = [entry for entry in dimm_list if entry["present"].lower() == "yes"]
-            ret_v = ["found %s" % (logging_tools.get_plural("DIMM", len(present_dimms)))]
+            ret_v = ["found {}".format(logging_tools.get_plural("DIMM", len(present_dimms)))]
             ret_state = limits.nag_STATE_OK
             for entry in dimm_list:
                 if entry["status"].lower() != "ok":
                     ret_state = max(limits.nag_STATE_CRITICAL, ret_state)
                 ret_v.append(
-                    "DIMM module %s (processor %s, %s): %s" % (
+                    "DIMM module {} (processor {}, {}): {}".format(
                         entry["module"],
                         entry["processor"],
                         entry["size"],

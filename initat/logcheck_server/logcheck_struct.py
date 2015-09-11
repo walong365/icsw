@@ -142,24 +142,34 @@ class machine(object):
             self.log("No IPs set")
 
     def generate_syslog_dirs(self):
-        link_array = [("d", "%s/%s" % (global_config["SYSLOG_DIR"], self.name))]
+        link_array = [("d", os.path.join(global_config["SYSLOG_DIR"], self.name))]
         for ip, (nw_postfix, net_type) in self.__ip_dict.iteritems():
             if nw_postfix:
-                link_array.append(("l", "%s/%s%s" % (global_config["SYSLOG_DIR"], self.name, nw_postfix)))
+                link_array.append(
+                    (
+                        "l",
+                        os.path.join(
+                            global_config["SYSLOG_DIR"],
+                            "{}{}".format(self.name, nw_postfix)
+                        )
+                    )
+                )
             if net_type != "l" or (net_type == "l" and self.name == global_config["SERVER_SHORT_NAME"]):
-                link_array.append(("l", "%s/%s" % (global_config["SYSLOG_DIR"], ip)))
+                link_array.append(("l", os.path.join(global_config["SYSLOG_DIR"], ip)))
         self.process_link_array(link_array)
 
     def process_link_array(self, l_array):
         for pt, ps in l_array:
             if pt == "d":
                 if not os.path.isdir(ps):
-                    self.log("pla(): Creating directory %s" % (ps))
+                    self.log("pla(): Creating directory {}".format(ps))
                     try:
                         os.mkdir(ps)
                     except:
-                        self.log("  ...something went wrong for mkdir(): %s" % (process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "  ...something went wrong for mkdir(): {}".format(process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
             elif pt == "l":
                 if isinstance(ps, basestring):
                     dest = self.name
@@ -189,23 +199,29 @@ class machine(object):
                 if create_link:
                     if os.path.exists(ps):
                         try:
-                            self.log("pla(): Unlink %s" % (ps))
+                            self.log("pla(): Unlink {}".format(ps))
                             os.unlink(ps)
                         except:
-                            self.log("  ...something went wrong for unlink(): %s" % (process_tools.get_except_info()),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "  ...something went wrong for unlink(): {}".format(process_tools.get_except_info()),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                         try:
-                            self.log("pla(): rmtree %s" % (ps))
+                            self.log("pla(): rmtree {}".format(ps))
                             shutil.rmtree(ps, 1)
                         except:
-                            self.log("  ...something went wrong for rmtree(): %s" % (process_tools.get_except_info()),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "  ...something went wrong for rmtree(): {}".format(process_tools.get_except_info()),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                     try:
-                        self.log("pla(): symlink from %s to %s" % (ps, dest))
+                        self.log("pla(): symlink from {} to {}".format(ps, dest))
                         os.symlink(dest, ps)
                     except:
-                        self.log("  ...something went wrong for symlink(): %s" % (process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "  ...something went wrong for symlink(): {}".format(process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
 
     def _rotate_logs(self):
         compress_list = []

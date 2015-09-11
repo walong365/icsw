@@ -26,10 +26,7 @@ import stat
 import time
 
 from initat.host_monitoring import hm_classes, limits
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-
+from initat.tools import logging_tools, process_tools, server_command
 
 MIN_UPDATE_TIME = 30
 # load threshold for mailq call
@@ -329,11 +326,15 @@ class _general(hm_classes.hm_module):
                             except:
                                 ret_dict["num_mails"] = 666
                         else:
-                            self.log("need 6 parts for kaspersky format, got %d" % (len(line_parts)),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "need 6 parts for kaspersky format, got %d" % (len(line_parts)),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                     else:
-                        self.log("unknown format_str '%s'" % (format_str),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "unknown format_str '{}'".format(format_str),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
         return ret_dict
 
     def update_machine_vector(self, mv):
@@ -349,7 +350,7 @@ class _general(hm_classes.hm_module):
                 stat_lines = [line.strip() for line in open(stat_file, "r").read().split("\n") if line.strip()]
             except:
                 self.log(
-                    "error reading stat_file %s: %s" % (
+                    "error reading stat_file {}: {}".format(
                         stat_file,
                         process_tools.get_except_info()
                     ),
@@ -380,7 +381,7 @@ class _general(hm_classes.hm_module):
                                         if act_tag:
                                             tag_list.append(act_tag)
                                             act_tag = ""
-                                    act_tag = "%s%s" % (act_tag, char)
+                                    act_tag = "{}{}".format(act_tag, char)
                                     lcase_found = is_lcase
                                 if act_tag:
                                     tag_list.append(act_tag)
@@ -426,8 +427,9 @@ class _general(hm_classes.hm_module):
             stat, out = commands.getstatusoutput(self.__mailq_command)
             if stat:
                 self.log(
-                    "cannot execute mailq (%d): %s" % (stat, out),
-                    logging_tools.LOG_LEVEL_WARN)
+                    "cannot execute mailq ({:d}): {}".format(stat, out),
+                    logging_tools.LOG_LEVEL_WARN
+                )
             else:
                 mail_lines = [_line.rstrip() for _line in out.split("\n") if _line.strip()]
                 if mail_lines:
@@ -496,7 +498,7 @@ class mailq_command(hm_classes.hm_command):
             mc_dict = self.module.get_mailcount()
             builder = srv_com.builder()
             srv_com["mail_dict"] = builder.values(
-                *[builder.count("%d" % (value), info=key) for key, value in mc_dict.iteritems()])
+                *[builder.count("{:d}".format(value), info=key) for key, value in mc_dict.iteritems()])
         else:
             srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_STATE_ERROR)
 
@@ -516,7 +518,7 @@ class mailq_command(hm_classes.hm_command):
         )
         ret_f = []
         if mail_dict.get("queued", 0):
-            ret_f = ["%s queued" % (logging_tools.get_plural("mail", mail_dict["queued"]))]
+            ret_f = ["{} queued".format(logging_tools.get_plural("mail", mail_dict["queued"]))]
             ret_state = max(
                 ret_state,
                 limits.check_ceiling(
@@ -526,7 +528,7 @@ class mailq_command(hm_classes.hm_command):
                 )
             )
         if mail_dict.get("active", 0):
-            ret_f.append("%d active" % (mail_dict["active"]))
+            ret_f.append("{:d} active".format(mail_dict["active"]))
             ret_state = max(
                 ret_state,
                 limits.check_ceiling(
@@ -536,7 +538,7 @@ class mailq_command(hm_classes.hm_command):
                 )
             )
         if mail_dict.get("hold", 0):
-            ret_f.append("%d on hold" % (mail_dict["hold"]))
+            ret_f.append("{:d} on hold".format(mail_dict["hold"]))
             ret_state = max(
                 ret_state,
                 limits.check_ceiling(
@@ -546,7 +548,7 @@ class mailq_command(hm_classes.hm_command):
                 )
             )
         if mail_dict.get("total", 0):
-            ret_f.append("%d total" % (mail_dict["total"]))
+            ret_f.append("{:d} total".format(mail_dict["total"]))
         if not ret_f:
             ret_f = ["mailqueue is empty"]
         return ret_state, ", ".join(ret_f)
@@ -574,8 +576,10 @@ class ext_mailq_commandX(object):  # hm_classes.hmb_command):
         ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
         if not raw_output:
             ret_state, ret_str = lim.check_ceiling(result["num_mails"])
-            result = "%s: %s in queue, format '%s' via '%s'" % (ret_str,
-                                                                logging_tools.get_plural("mail", result["num_mails"]),
-                                                                result["format"],
-                                                                result["command"])
+            result = "{}: {} in queue, format '{}' via '{}'".format(
+                ret_str,
+                logging_tools.get_plural("mail", result["num_mails"]),
+                result["format"],
+                result["command"]
+            )
         return ret_state, result
