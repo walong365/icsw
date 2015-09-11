@@ -206,8 +206,9 @@ class _general(hm_classes.hm_module):
         if not self.enabled or not self.config:
             return
         activity = {}
-        for _entry in self.query("SELECT * FROM pg_stat_activity;"):
-            if _entry is not None:
+        _activity_res = self.query("SELECT * FROM pg_stat_activity;")
+        if _activity_res is not None:
+            for _entry in _activity_res:
                 activity.setdefault(_entry["datname"], []).append(_entry)
         # for monitoring command
         self.activity = activity
@@ -227,12 +228,16 @@ class _general(hm_classes.hm_module):
                 self.log("remove mv for database {}".format(rem_db))
                 self.databases[rem_db].remove(mv)
                 del self.databases[rem_db]
-        self.pg_settings = {_entry["name"]: _entry for _entry in self.query("SELECT * FROM pg_settings;")}
-        self.overview.feed(
-            self.pg_settings,
-            activity,
-            mv
-        )
+        _settings = self.query("SELECT * FROM pg_settings;")
+        if _settings is not None:
+            self.pg_settings = {_entry["name"]: _entry for _entry in _settings}
+            self.overview.feed(
+                self.pg_settings,
+                activity,
+                mv
+            )
+        else:
+            self.pg_settings = {}
 
 
 class postgresql_connection_info_command(hm_classes.hm_command):
