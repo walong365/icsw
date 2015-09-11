@@ -47,48 +47,69 @@ def find_file(file_name, s_path=None):
     else:
         return None
 
-TASKSET_BIN = find_file("taskset")
 
-
-def get_process_affinity_mask(pid):
-    mask = 0
-    if os.path.isfile("/proc/{:d}/status".format(pid)):
-        lines = [line.split() for line in open("/proc/{:d}/status".format(pid), "r").read().lower().split("\n") if line.startswith("cpus_allowed")]
-        if lines:
-            mask = int(lines[0][1], 16)
-    return mask
-
-
-def get_process_affinity_mask_from_status_lines(lines):
-    mask = 0
-    lines = [line.split() for line in lines if line.startswith("cpus_allowed")]
-    if lines:
-        mask = int(lines[0][1], 16)
-    return mask
+class CoreDistribution(object):
+    def __init__(self, cpu_c, num_cpu):
+        self.cpu_container = cpu_c
+        self.num_cpu = num_cpu
+        _stat, _out = self.cpu_container.dist_call("--single --taskset {:d}".format(self.num_cpu))
+        self.taskset = [int(_part, 16) for _part in _out.split("\n")]
+        self.cpunum = [CPU_MASKS[_set] for _set in self.taskset]
 
 
 class CPUContainer(dict):
     def __init__(self):
         dict.__init__(self)
+        self.taskset_bin = find_file("taskset")
+        self.hwloc_distrib_bin = find_file("hwloc-distrib")
         for idx in xrange(MAX_CORES):
             self[idx] = CPUStruct(idx)
+        self._distribution_cache = {}
+
+    def get_distribution_scheme(self, num_cpu):
+        if num_cpu not in self._distribution_cache:
+            self._distribution_cache[num_cpu] = CoreDistribution(self, num_cpu)
+        return self._distribution_cache[num_cpu]
+
+    def get_proc_struct(self, ps):
+        # helper call to automatically add cpu_container
+        return ProcStruct(self, ps)
+
+    def clear_cpu_usage(self):
+        [_value.clear_usage() for _value in self.itervalues()]
 
     def add_proc(self, cur_s):
         self[cur_s.single_cpu_num].add_proc(cur_s)
         # self.usage[cur_s.single_cpu_num] = self.dict[cur_s.single_cpu_num].usage["t"]
 
-    def get_min_usage_cpu(self, excl_list=[]):
-        free_list = list(sorted([(value.usage["t"], key) for key, value in self.iteritems() if key not in excl_list]))
-        if free_list:
-            return free_list[0][1]
-        else:
-            return None
+    def get_min_usage_cpu_list(self, excl_list=[]):
+        free_list = [
+            _entry[1] for _entry in list(
+                sorted(
+                    [
+                        (value.usage["t"], key) for key, value in self.iteritems() if key not in excl_list
+                    ]
+                )
+            )
+        ]
+        return free_list
+
+    def ts_call(self, com_line):
+        return commands.getstatusoutput("{} {}".format(self.taskset_bin, com_line))
+
+    def dist_call(self, com_line):
+        return commands.getstatusoutput("{} {}".format(self.hwloc_distrib_bin, com_line))
 
     def get_usage_str(self):
-        return "|".join(["{:d}:{:-2f}({:d})".format(
-            key,
-            self[key].usage["t"],
-            len(self[key].procs)) for key in sorted(self.keys())])
+        return "|".join(
+            [
+                "{:d}:{:-.2f}({:d})".format(
+                    key,
+                    self[key].usage["t"],
+                    len(self[key].procs)
+                ) for key in sorted(self.keys())
+            ]
+        )
 
 
 class CPUStruct(object):
@@ -96,6 +117,9 @@ class CPUStruct(object):
 
     def __init__(self, cpu_num):
         self.cpu_num = cpu_num
+        self.clear_usage()
+
+    def clear_usage(self):
         self.procs = []
         self.usage = {
             "u": 0.0,
@@ -105,14 +129,15 @@ class CPUStruct(object):
 
     def add_proc(self, p_struct):
         self.procs.append(p_struct)
-        for key in set(["t", "u", "s"]):
+        for key in {"t", "u", "s"}:
             self.usage[key] += p_struct.usage[key]
 
 
 class ProcStruct(object):
-    __slots__ = ("pid", "act_mask", "single_cpu_num", "stat", "usage", "name")
+    __slots__ = ("pid", "act_mask", "single_cpu_num", "stat", "usage", "name", "cpu_container")
 
-    def __init__(self, p_struct):  # pid, stat=None, name="not set"):
+    def __init__(self, cpu_c, p_struct):  # pid, stat=None, name="not set"):
+        self.cpu_container = cpu_c
         self.pid = p_struct.pid
         self.name = p_struct.name()
         self.single_cpu_num = -1
@@ -157,7 +182,11 @@ class ProcStruct(object):
         """
         return the cpus which are actually set in the affinity mask
         """
-        return sorted([value for key, value in CPU_MASKS.iteritems() if self.act_mask & key])
+        return sorted(
+            [
+                value for key, value in CPU_MASKS.iteritems() if self.act_mask & key
+            ]
+        )
 
     def migrate(self, target_cpu):
         self.act_mask = 1 << target_cpu
@@ -173,20 +202,17 @@ class ProcStruct(object):
         self.act_mask = self._get_mask()
 
     def _get_mask(self):
-        c_stat, c_out = self._call("-p {:d}".format(self.pid))
+        c_stat, c_out = self.cpu_container.ts_call("-p {:d}".format(self.pid))
         if c_stat:
             return MAX_MASK
         else:
             return int(c_out.strip().split()[-1], 16)
 
     def _set_mask(self, t_cpu):
-        return self._call("-pc {:d} {:d}".format(t_cpu, self.pid))
+        return self.cpu_container.ts_call("-pc {:d} {:d}".format(t_cpu, self.pid))
 
     def _clear_mask(self):
-        return self._call("-p {:x} {:d}".format(MAX_MASK, self.pid))
-
-    def _call(self, com_line):
-        return commands.getstatusoutput("{} {}".format(TASKSET_BIN, com_line))
+        return self.cpu_container.ts_call("-p {:x} {:d}".format(MAX_MASK, self.pid))
 
     def __unicode__(self):
         return "{} [{:d}]".format(self.name, self.pid)

@@ -72,8 +72,13 @@ def compress_struct(input):
     return base64.b64encode(bz2.compress(json.dumps(input)))
 
 
-def decompress_struct(b64_str):
-    return json.loads(bz2.decompress((base64.b64decode(b64_str))))
+def decompress_struct(b64_str, version=2):
+    if version == 2:
+        return json.loads(bz2.decompress((base64.b64decode(b64_str))))
+    elif version == 1:
+        return marshal.loads(bz2.decompress(base64.b64decode(b64_str)))
+    else:
+        raise ValueError("unknown version {} for decompress_struct".format(version))
 
 
 def getstatusoutput(cmd):
@@ -359,7 +364,7 @@ if psutil is not None:
     }
 
     PROC_INFO_DICT = {
-        psutil.STATUS_RUNNING:  "number of running processes",
+        psutil.STATUS_RUNNING: "number of running processes",
         psutil.STATUS_ZOMBIE: "number of zombie processes",
         psutil.STATUS_DISK_SLEEP: "processes in uninterruptable sleep",
         psutil.STATUS_STOPPED: "processes stopped",
@@ -723,17 +728,20 @@ class meta_server_info(object):
             E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
             E.properties()
-            )
+        )
         for opt, val_type, _dev_val in self.__prop_list:
             prop_val = getattr(self, opt)
             if prop_val is not None:
                 xml_struct.find("properties").append(
-                    E.prop(str(prop_val), **{
-                        "key": opt,
-                        "type": {
-                            "s": "string",
-                            "i": "integer",
-                            "b": "boolean"}[val_type]
+                    E.prop(
+                        str(prop_val),
+                        **{
+                            "key": opt,
+                            "type": {
+                                "s": "string",
+                                "i": "integer",
+                                "b": "boolean"
+                            }[val_type]
                         }
                     )
                 )

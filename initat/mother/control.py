@@ -1356,9 +1356,11 @@ class NodeControlProcess(threading_tools.process_obj):
             os.mkdir(_cfg_dir)
         # setup isos
         _iso_dir = os.path.join(global_config["ETHERBOOT_DIR"], "isos")
-        global_config.add_config_entries([
-            ("ISO_DIR", configfile.str_c_var(_iso_dir)),
-            ])
+        global_config.add_config_entries(
+            [
+                ("ISO_DIR", configfile.str_c_var(_iso_dir)),
+            ]
+        )
         if not os.path.isdir(_iso_dir):
             os.mkdir(_iso_dir)
         for entry in os.listdir(global_config["SHARE_DIR"]):

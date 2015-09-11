@@ -207,7 +207,8 @@ class _general(hm_classes.hm_module):
             return
         activity = {}
         for _entry in self.query("SELECT * FROM pg_stat_activity;"):
-            activity.setdefault(_entry["datname"], []).append(_entry)
+            if _entry is not None:
+                activity.setdefault(_entry["datname"], []).append(_entry)
         # for monitoring command
         self.activity = activity
         res = self.query("SELECT * FROM pg_stat_database;")

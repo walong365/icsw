@@ -20,16 +20,11 @@
 
 import commands
 import os
-import json
-import marshal
-import base64
-import bz2
 import re
 import signal
 import time
 
 from initat.host_monitoring import hm_classes, limits
-from initat.host_monitoring.config import global_config
 from initat.tools import affinity_tools, logging_tools, process_tools, config_store
 import psutil
 
@@ -48,6 +43,7 @@ class AffinityStruct(object):
         self.dict = {}
         # has to be None on first run to detect initial run
         self.last_update = None
+        self.cpu_container = affinity_tools.CPUContainer()
         self.__counter = 0
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -62,7 +58,7 @@ class AffinityStruct(object):
                 if value.is_running() and self.affinity_re.match(value.name()):
                     proc_keys.add(key)
             except psutil.NoSuchProcess:
-                pass
+                self.log("process {:d} has vanished".format(key), logging_tools.LOG_LEVEL_ERROR)
         used_keys = set(self.dict.keys())
         new_keys = proc_keys - used_keys
         old_keys = used_keys - proc_keys
@@ -74,21 +70,35 @@ class AffinityStruct(object):
                 )
             )
             for new_key in new_keys:
-                new_ps = affinity_tools.ProcStruct(p_dict[new_key])
+                new_ps = self.cpu_container.get_proc_struct(p_dict[new_key])
                 self.dict[new_key] = new_ps
                 if new_ps.single_cpu_set:
                     # clear affinity mask on first run
-                    self.log("clearing affinity mask for %s (cpu was %d)" % (unicode(new_ps), new_ps.single_cpu_num))
+                    self.log(
+                        "clearing affinity mask for {} (cpu was {:d})".format(
+                            unicode(new_ps),
+                            new_ps.single_cpu_num
+                        )
+                    )
                     new_ps.clear_mask()
                 if new_ps.single_cpu_set:
-                    self.log("process %s is already pinned to cpu %d" % (unicode(new_ps), new_ps.single_cpu_num))
+                    self.log(
+                        "process {} is already pinned to cpu {:d}".format(
+                            unicode(new_ps),
+                            new_ps.single_cpu_num
+                        )
+                    )
                 else:
-                    self.log("added %s" % (unicode(new_ps)))
+                    self.log("added {}".format(unicode(new_ps)))
         if old_keys:
             self.log(
                 "{}: {}".format(
                     logging_tools.get_plural("old key", len(old_keys)),
-                    ", ".join(["%s" % (unicode(self.dict[old_key])) for old_key in sorted(old_keys)])
+                    ", ".join(
+                        [
+                            "{}".format(unicode(self.dict[old_key])) for old_key in sorted(old_keys)
+                        ]
+                    )
                 )
             )
             for old_key in old_keys:
@@ -120,40 +130,36 @@ class AffinityStruct(object):
         self.last_update = cur_time
 
     def _reschedule(self, keys):
-        cpu_c = affinity_tools.CPUContainer()
-        unsched = set()
+        cpu_c = self.cpu_container
+        cpu_c.clear_cpu_usage()
+        # get core distribution scheme
+        core_d = cpu_c.get_distribution_scheme(len(keys))
+        core_list = [_entry for _entry in core_d.cpunum]
+        resched = set()
         for key in keys:
             cur_s = self.dict[key]
-            if cur_s.single_cpu_set:
-                cpu_c.add_proc(cur_s)
+            if cur_s.single_cpu_set and cur_s.single_cpu_num in core_list:
+                core_list.remove(cur_s.single_cpu_num)
             else:
-                unsched.add(key)
-        # print unsched
-        exclude_set = set()
-        if unsched:
+                resched.add(key)
+        if resched:
             self.log(
-                "distribute {} to {}".format(
-                    logging_tools.get_plural("process", len(unsched)),
-                    logging_tools.get_plural("core", affinity_tools.MAX_CORES)
+                "reschedule {} to {}".format(
+                    logging_tools.get_plural("process", len(resched)),
+                    logging_tools.get_plural("core", len(core_list)),
                 )
             )
-            for key in unsched:
+            for key, targ_cpu in zip(resched, core_list):
                 cur_s = self.dict[key]
-                targ_cpu = cpu_c.get_min_usage_cpu(exclude_set)
-                if targ_cpu is not None:
-                    self.log("usage pattern: {}".format(cpu_c.get_usage_str()))
-                    self.log("pinning process {:d} to cpu {:d}".format(key, targ_cpu))
-                    exclude_set.add(targ_cpu)
-                    if not cur_s.migrate(targ_cpu):
-                        cur_s.read_mask()
-                        if cur_s.single_cpu_set:
-                            cpu_c.add_proc(cur_s)
+                # get optimal CPU (i.e. with lowest load)
+                self.log(u"pinning process {} to core {:d}".format(unicode(cur_s), targ_cpu))
+                if not cur_s.migrate(targ_cpu):
+                    cur_s.read_mask()
+                    if cur_s.single_cpu_set:
+                        cpu_c.add_proc(cur_s)
                 else:
                     self.log(
-                        "no free CPU available, too many processes to schedule ({:d} > {:d})".format(
-                            len(unsched),
-                            affinity_tools.MAX_CORES
-                        ),
+                        "some problem occured while pinning",
                         logging_tools.LOG_LEVEL_WARN
                     )
             # log final usage pattern
@@ -253,7 +259,10 @@ class procstat_command(hm_classes.hm_command):
             try:
                 if value.is_running():
                     _p_dict[key] = value.as_dict(
-                        attrs=["pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity"]
+                        attrs=[
+                            "pid", "ppid", "uids", "gids", "name", "exe",
+                            "cmdline", "status", "ppid", "cpu_affinity",
+                        ]
                     )
             except psutil.NoSuchProcess:
                 pass
@@ -263,7 +272,7 @@ class procstat_command(hm_classes.hm_command):
             if not t_dict and cur_ns.arguments[0] == "cron":
                 t_dict = {key: value for key, value in _p_dict.iteritems() if value["name"] in ["crond"]}
             _p_dict = t_dict
-        srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(_p_dict)))
+        srv_com["process_tree"] = process_tools.compress_struct(_p_dict)
         srv_com["process_tree"].attrib["format"] = "2"
         # print len(srv_com["process_tree"].text)
         # e_time = time.time()
@@ -277,13 +286,10 @@ class procstat_command(hm_classes.hm_command):
             # old version, gives a dict
             _form = 0
         else:
-            _form = int(result.get("format", "1"))
-            if _form == 1:
-                result = marshal.loads(bz2.decompress(base64.b64decode(result.text)))
-            elif _form == 2:
-                result = json.loads(bz2.decompress(base64.b64decode(result.text)))
-            else:
-                return limits.nag_STATE_CRITICAL, "unknown format %d" % (_form)
+            try:
+                _result = process_tools.decompress_struct(result.text, version=int(result.get("format", "1")))
+            except:
+                return limits.nag_STATE_CRITICAL, "cannot decompress: {}".format(process_tools.get_except_info())
             # print result.text
         p_names = cur_ns.arguments
         zombie_ok_list = ["cron"]
@@ -378,16 +384,18 @@ class procstat_command(hm_classes.hm_command):
             zomb_str = ""
             ret_state = limits.check_floor(result["num_ok"], parsed_coms.warn, parsed_coms.crit)
         if result["command"] == "all":
-            rets = "%d processes running%s%s" % (
+            rets = "{:d} processes running{}{}".format(
                 result["num_ok"],
                 zomb_str,
-                shit_str)
+                shit_str
+            )
         else:
-            rets = "proc %s has %s running%s%s" % (
+            rets = "proc {} has {} running{}{}".format(
                 result["name"],
                 logging_tools.get_plural("instance", result["num_ok"]),
                 zomb_str,
-                shit_str)
+                shit_str
+            )
         return ret_state, rets
 
 
@@ -401,13 +409,13 @@ class proclist_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["psutil"] = "yes"
         srv_com["num_cores"] = psutil.cpu_count(logical=True)
-        srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(
+        srv_com["process_tree"] = process_tools.compress_struct(
             process_tools.get_proc_list(
                 attrs=[
                     "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
                 ]
             )
-        )))
+        )
 
     def interpret(self, srv_com, cur_ns):
         _fe = logging_tools.form_entry
@@ -453,7 +461,9 @@ class proclist_command(hm_classes.hm_command):
         if _psutil:
             num_cores = srv_com["*num_cores"]
             # unpack and cast pid to integer
-            result = {int(key): value for key, value in json.loads(bz2.decompress(base64.b64decode(result.text))).iteritems()}
+            result = {
+                int(key): value for key, value in process_tools.decompress_struct(result.text).iteritems()
+            }
             for _val in result.itervalues():
                 _val["state"] = process_tools.PROC_STATUSES_REV[_val["status"]]
         # print etree.tostring(srv_com.tree, pretty_print=True)
@@ -488,7 +498,7 @@ class ipckill_command(hm_classes.hm_command):
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
 
     def __call__(self, srv_com, cur_ns):
-        sig_str = "remove all all shm/msg/sem objects for uid %d:%d" % (
+        sig_str = "remove all all shm/msg/sem objects for uid {:d}:{:d}".format(
             cur_ns.min_uid,
             cur_ns.max_uid,
         )
@@ -524,7 +534,7 @@ class ipckill_command(hm_classes.hm_command):
                         rem_node = srv_com.builder("rem_result", key="%d" % (act_dict[ipc_dict["key_name"]]))
                         if act_dict["uid"] >= cur_ns.min_uid and act_dict["uid"] <= cur_ns.max_uid:
                             key = act_dict[ipc_dict["key_name"]]
-                            rem_com = "/usr/bin/ipcrm -%s %d" % (ipc_dict["ipcrm_opt"], key)
+                            rem_com = "/usr/bin/ipcrm -{} {:d}".format(ipc_dict["ipcrm_opt"], key)
                             rem_stat, rem_out = commands.getstatusoutput(rem_com)
                             # stat, out = (1, "???")
                             if rem_stat:
@@ -599,7 +609,7 @@ class signal_command(hm_classes.hm_command):
         if not include_list and not exclude_list:
             self.log("refuse to operate without include or exclude list", logging_tools.LOG_LEVEL_ERROR)
         else:
-            sig_str = "signal {:d}[{}] (uid {:d}:{:d}), exclude_list is %s, include_list is %s" % (
+            sig_str = "signal {:d}[{}] (uid {:d}:{:d}), exclude_list is {}, include_list is {}".format(
                 cur_ns.signal,
                 self.get_signal_string(cur_ns.signal),
                 cur_ns.min_uid,
