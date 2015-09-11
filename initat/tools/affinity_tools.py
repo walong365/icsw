@@ -60,11 +60,21 @@ class CoreDistribution(object):
 class CPUContainer(dict):
     def __init__(self):
         dict.__init__(self)
+        # index of current distribution scheme
+        self.__cds = 0
         self.taskset_bin = find_file("taskset")
         self.hwloc_distrib_bin = find_file("hwloc-distrib")
         for idx in xrange(MAX_CORES):
             self[idx] = CPUStruct(idx)
         self._distribution_cache = {}
+
+    def cds_changed(self, num_cpu):
+        # return True if core distribution scheme has changed
+        if num_cpu != self.__cds:
+            self.__cds = num_cpu
+            return True
+        else:
+            return False
 
     def get_distribution_scheme(self, num_cpu):
         if num_cpu not in self._distribution_cache:

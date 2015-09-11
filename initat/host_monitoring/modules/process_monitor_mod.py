@@ -135,13 +135,19 @@ class AffinityStruct(object):
         # get core distribution scheme
         core_d = cpu_c.get_distribution_scheme(len(keys))
         core_list = [_entry for _entry in core_d.cpunum]
-        resched = set()
-        for key in keys:
-            cur_s = self.dict[key]
-            if cur_s.single_cpu_set and cur_s.single_cpu_num in core_list:
-                core_list.remove(cur_s.single_cpu_num)
-            else:
-                resched.add(key)
+        if cpu_c.cds_changed(len(keys)):
+            # reschedule all processes if the number of processes has changed
+            self.log("rescheduling all processes", logging_tools.LOG_LEVEL_WARN)
+            resched = set(keys)
+        else:
+            resched = set()
+            for key in keys:
+                cur_s = self.dict[key]
+                if cur_s.single_cpu_set and cur_s.single_cpu_num in core_list:
+                    cpu_c[cur_s.single_cpu_num].add_proc(cur_s)
+                    core_list.remove(cur_s.single_cpu_num)
+                else:
+                    resched.add(key)
         if resched:
             self.log(
                 "reschedule {} to {}".format(
