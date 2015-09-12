@@ -963,8 +963,8 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         act_pk, {
                             "export": None,
                             "import": None,
-                            "create_autofs": True,
                             "node_postfix": "",
+                            "create_automount_entries": True,
                             "options": "-soft"
                         }
                     )
@@ -973,7 +973,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                             ei_dict[dev_name][act_pk][c_str.name] = c_str.value.replace("%h", dev_name)
                 for mach, aeid_d in ei_dict.iteritems():
                     for _aeid_idx, aeid in aeid_d.iteritems():
-                        if aeid["export"] and aeid["import"]:
+                        if aeid["export"] and aeid["import"] and aeid["create_automount_entries"]:
                             export_dict[aeid["import"]] = (
                                 aeid["options"],
                                 "{}{}:{}".format(mach, aeid["node_postfix"], aeid["export"])
@@ -987,7 +987,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         home_stuff = home_exp_dict[user_stuff.export_id]
                         _ignore_cause = ""
                         if group_stuff.homestart and group_stuff.homestart not in ["/None", "/none"] and user_stuff.home:
-                            if home_stuff["create_autofs"]:
+                            if home_stuff["create_automount_entries"]:
                                 export_dict[
                                     os.path.normpath(
                                         os.path.join(group_stuff.homestart, user_stuff.home.strip())
@@ -1001,7 +1001,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                     )
                                 )
                             else:
-                                _ignore_cause = "create_autofs is False"
+                                _ignore_cause = "create_automount_entries is False"
                         else:
                             _ignore_cause = "empty or invalid homestart in group {}".format(unicode(group_stuff))
                         if _ignore_cause:

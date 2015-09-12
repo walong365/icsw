@@ -228,10 +228,14 @@ class home_export_list(object):
                 "node_postfix": "",
                 "createdir": "",
                 "options": "-soft",
+                "create_automount_entries": True,
             }
             for c_str in entry.config.config_str_set.all():
                 if c_str.name in home_exp_dict[act_pk]:
                     home_exp_dict[act_pk][c_str.name] = c_str.value
+            for c_bool in entry.config.config_bool_set.all():
+                if c_bool.name in home_exp_dict[act_pk]:
+                    home_exp_dict[act_pk][c_bool.name] = c_bool.value
         # remove invalid exports (with no homeexport-entry)
         invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
         for ihk in invalid_home_keys:

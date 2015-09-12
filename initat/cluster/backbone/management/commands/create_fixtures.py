@@ -642,6 +642,19 @@ Used for automounter maps
             ac_description="options",
             ac_value="-soft,tcp,soft,rsize=1048576,wsize=1048576,ac,vers=4,port=2049",
         )
+        factories.ConfigVarHint(
+            config_hint=export_cfg,
+            var_name="create_automount_entries",
+            help_text_short="create automount entries",
+            help_text_html="""
+<h3>Control creation of automounter entries in YP / LDAP</h3>
+Used for automounter maps for normal exports
+""",
+            ac_flag=True,
+            ac_type="bool",
+            ac_description="autofs creation",
+            ac_value=True,
+        )
         # home export entries
         homedir_export_cfg = factories.ConfigHint(
             config_name="homedir_export",
@@ -696,11 +709,11 @@ Used for automounter maps
         )
         factories.ConfigVarHint(
             config_hint=homedir_export_cfg,
-            var_name="create_autofs",
-            help_text_short="create autofs entries",
+            var_name="create_automount_entries",
+            help_text_short="create automount entries",
             help_text_html="""
 <h3>Control creation of automounter entries in YP / LDAP</h3>
-Used for automounter maps
+Used for automounter maps (for homedir exports)
 """,
             ac_flag=True,
             ac_type="bool",
