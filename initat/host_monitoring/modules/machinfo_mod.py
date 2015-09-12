@@ -1138,7 +1138,7 @@ class df_command(hm_classes.hm_command):
             part_str = "%s%s" % (
                 result["part"],
                 " (%s)" % (", ".join(other_keys)) if other_keys else "",
-                )
+            )
             if "btrfs_info" in result:
                 # check for btrfs info
                 btrfs_dict = result["btrfs_info"]
@@ -1171,7 +1171,7 @@ class df_command(hm_classes.hm_command):
                         inode_perc,
                         result["i_size"] - result["i_avail"],
                         result["i_size"],
-                        )
+                    )
                 else:
                     inode_str = "no info"
             else:
@@ -1479,7 +1479,7 @@ class sysinfo_command(hm_classes.hm_command):
         srv_com["sysinfo"] = sys_dict
 
     def interpret(self, srv_com, cur_ns):
-        need_keys = set(["vendor", "version", "arch"])
+        need_keys = {"vendor", "version", "arch"}
         miss_keys = [key for key in need_keys if not "sysinfo:%s" % (key) in srv_com]
         if miss_keys:
             return limits.nag_STATE_CRITICAL, "%s missing : %s" % (logging_tools.get_plural("key", len(miss_keys)), ", ".join(miss_keys))
