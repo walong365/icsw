@@ -293,7 +293,8 @@ class procstat_command(hm_classes.hm_command):
             _form = 0
         else:
             try:
-                _result = process_tools.decompress_struct(result.text, version=int(result.get("format", "1")))
+                _form = int(result.get("format", "1"))
+                result = process_tools.decompress_struct(result.text, version=_form)
             except:
                 return limits.nag_STATE_CRITICAL, "cannot decompress: {}".format(process_tools.get_except_info())
             # print result.text

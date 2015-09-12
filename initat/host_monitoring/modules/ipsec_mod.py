@@ -43,7 +43,7 @@ class _general(hm_classes.hm_module):
                 com, out = (None, "")
         if com:
             c_stat, out = commands.getstatusoutput(com)
-            if c_stat:
+            if c_stat and out:
                 self.log(
                     "cannot execute {} ({:d}): {}".format(
                         com, c_stat, out or "<NO OUTPUT>"
