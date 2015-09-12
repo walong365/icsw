@@ -694,6 +694,19 @@ Used for automounter maps
             ac_description="options",
             ac_value="-soft,tcp,soft,rsize=1048576,wsize=1048576,ac,vers=4,port=2049",
         )
+        factories.ConfigVarHint(
+            config_hint=homedir_export_cfg,
+            var_name="create_autofs",
+            help_text_short="create autofs entries",
+            help_text_html="""
+<h3>Control creation of automounter entries in YP / LDAP</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="bool",
+            ac_description="autofs creation",
+            ac_value=True,
+        )
         ldap_server_cfg = factories.ConfigHint(
             config_name="ldap_server",
             config_description="LDAP Server",

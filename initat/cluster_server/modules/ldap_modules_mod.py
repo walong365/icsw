@@ -963,6 +963,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         act_pk, {
                             "export": None,
                             "import": None,
+                            "create_autofs": True,
                             "node_postfix": "",
                             "options": "-soft"
                         }
@@ -973,7 +974,10 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 for mach, aeid_d in ei_dict.iteritems():
                     for _aeid_idx, aeid in aeid_d.iteritems():
                         if aeid["export"] and aeid["import"]:
-                            export_dict[aeid["import"]] = (aeid["options"], "%s%s:%s" % (mach, aeid["node_postfix"], aeid["export"]))
+                            export_dict[aeid["import"]] = (
+                                aeid["options"],
+                                "{}{}:{}".format(mach, aeid["node_postfix"], aeid["export"])
+                            )
                 # home-exports
                 home_exp_dict = home_export_list().exp_dict
                 # now we have all automount-maps in export_dict, form is mountpoint: (options, source)
@@ -981,20 +985,30 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     group_stuff = all_groups[user_stuff.group_id]
                     if user_stuff.export_id in home_exp_dict.keys():
                         home_stuff = home_exp_dict[user_stuff.export_id]
+                        _ignore_cause = ""
                         if group_stuff.homestart and group_stuff.homestart not in ["/None", "/none"] and user_stuff.home:
-                            export_dict[
-                                os.path.normpath(
-                                    os.path.join(group_stuff.homestart, user_stuff.home.strip())
+                            if home_stuff["create_autofs"]:
+                                export_dict[
+                                    os.path.normpath(
+                                        os.path.join(group_stuff.homestart, user_stuff.home.strip())
+                                    )
+                                ] = (
+                                    home_stuff["options"],
+                                    "{}{}:{}".format(
+                                        home_stuff["name"],
+                                        home_stuff["node_postfix"],
+                                        os.path.join(home_stuff["homeexport"], user_stuff.home.strip())
+                                    )
                                 )
-                            ] = (
-                                home_stuff["options"],
-                                "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home.strip())
-                            )
+                            else:
+                                _ignore_cause = "create_autofs is False"
                         else:
+                            _ignore_cause = "empty or invalid homestart in group {}".format(unicode(group_stuff))
+                        if _ignore_cause:
                             self.log(
-                                "ignoring export for user {} because of empty or invalid homestart in group {}".format(
+                                "ignoring export for user {}: {}".format(
                                     unicode(user_stuff),
-                                    unicode(group_stuff),
+                                    _ignore_cause,
                                 ),
                                 logging_tools.LOG_LEVEL_WARN
                             )
