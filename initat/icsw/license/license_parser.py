@@ -30,7 +30,7 @@ from initat.icsw.license.register_cluster import register_cluster
 
 
 class Parser(object):
-    def link(self, sub_parser):
+    def link(self, sub_parser, **kwargs):
         def run_with_db(fun):
             def decorated_fun(*args, **kwargs):
                 # don't do this in global scope, we might not have a database on this machine

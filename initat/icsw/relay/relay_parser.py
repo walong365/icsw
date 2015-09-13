@@ -28,7 +28,7 @@ from initat.tools.config_store import ConfigStore
 
 
 class Parser(object):
-    def link(self, sub_parser):
+    def link(self, sub_parser, **kwargs):
         # only add parser if relay-cstore exists
         if ConfigStore.exists(CS_NAME):
             return self._add_relay_parser(sub_parser)

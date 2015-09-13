@@ -20,19 +20,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-import django
-django.setup()
+import re
+import datetime
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group
 from initat.cluster.backbone.models.functions import to_system_tz
 from initat.tools import logging_tools
-import re
-import datetime
 
 
 class JoinedLogs(object):

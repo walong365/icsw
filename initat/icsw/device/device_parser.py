@@ -25,22 +25,18 @@
 import os
 import sys
 
-try:
-    from . import devicelog
-except:
-    devicelog = None
-
 
 class Parser(object):
-    def link(self, sub_parser):
-        return self._add_dev_parser(sub_parser)
+    def link(self, sub_parser, **kwargs):
+        return self._add_dev_parser(sub_parser, server_mode=kwargs["server_mode"])
 
-    def _add_dev_parser(self, sub_parser):
+    def _add_dev_parser(self, sub_parser, server_mode):
         parser = sub_parser.add_parser("device", help="device information")
         parser.set_defaults(subcom="device", execute=self._execute)
         child_parser = parser.add_subparsers(help="device subcommands")
         # self._add_reboot_parser(child_parser)
-        if devicelog:
+        if server_mode:
+            from . import devicelog
             self._add_info_parser(child_parser)
             self._add_overview_parser(child_parser)
             devicelog.populate_parser(child_parser)

@@ -22,19 +22,8 @@
 #
 """ create image """
 
-import sys
 import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-import django
-django.setup()
-
-from django.db import connection
-from django.db.models import Q
-from initat.cluster.backbone.models import image
-from lxml import etree  # @UnresolvedImports
-from initat.tools import logging_tools, process_tools, threading_tools, configfile, config_tools
+from lxml import etree
 import stat
 import statvfs
 import subprocess
@@ -42,9 +31,13 @@ import tempfile
 import time
 import shutil
 
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import image
+from initat.tools import logging_tools, process_tools, threading_tools, configfile, config_tools
 
-VERSION_STRING = "1.3"
+global_config = configfile.get_global_config("build_image")
+
 SLASH_NAME = "SLASH"
 
 NEEDED_PACKAGES = [
@@ -230,7 +223,7 @@ class server_process(threading_tools.process_pool):
         # log config
         self._log_config()
         self.device = config_tools.server_check(server_type="image_server").effective_device
-        if not self.device and not global_config["FORCE_SERVER"]:
+        if not self.device:
             self.log("not an image server", logging_tools.LOG_LEVEL_ERROR)
             self._int_error("not an image server")
         elif not process_tools.find_file("xmllint"):
@@ -476,8 +469,6 @@ class server_process(threading_tools.process_pool):
                     full_path = os.path.join(self.__system_dir, "boot", cur_entry)
                     self.log("removing {}".format(full_path))
                     os.unlink(full_path)
-        # call SuSEconfig, FIXME
-        # check init-scripts, FIXME
 
     def _check_size(self, cur_img):
         """ check size of target directory """
@@ -615,42 +606,18 @@ class server_process(threading_tools.process_pool):
         return result
 
 
-def main():
-    prog_name = global_config.name()
-    all_imgs = sorted(image.objects.all().values_list("name", flat=True))
+def build_main(opt_ns):
     global_config.add_config_entries(
         [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("VERBOSE", configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
-            ("IGNORE_ERRORS", configfile.bool_c_var(False, short_options="i", help_string="ignore image errors [%(default)s]", action="store_true")),
-            ("FORCE_SERVER", configfile.bool_c_var(False, short_options="f", help_string="force being an image server [%(default)s]", action="store_true")),
+            ("VERBOSE", configfile.bool_c_var(opt_ns.verbose)),
+            ("IGNORE_ERRORS", configfile.bool_c_var(opt_ns.ignore_errors)),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-            ("LOG_NAME", configfile.str_c_var(prog_name)),
-            ("BUILDERS", configfile.int_c_var(4, help_string="numbers of builders [%(default)i]")),
-            ("OVERRIDE", configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
-            ("SKIPCLEANUP", configfile.bool_c_var(False, help_string="disable cleanup tasks after copy process [%(default)s]", action="store_true")),
-            ("CHECK_SIZE", configfile.bool_c_var(True, help_string="image size check [%(default)s]", action="store_false")),
+            ("LOG_NAME", configfile.str_c_var("build_image")),
+            ("BUILDERS", configfile.int_c_var(4)),
+            ("OVERRIDE", configfile.bool_c_var(opt_ns.override)),
+            ("SKIPCLEANUP", configfile.bool_c_var(opt_ns.skip_cleanup)),
+            ("CHECK_SIZE", configfile.bool_c_var(True)),
+            ("IMAGE_NAME", configfile.str_c_var(opt_ns.image)),
         ]
     )
-    if all_imgs:
-        global_config.add_config_entries(
-            [
-                ("IMAGE_NAME", configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
-            ]
-        )
-        process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
-        _options = global_config.handle_commandline(
-            description="{}, version is {}".format(
-                prog_name,
-                VERSION_STRING
-            ),
-            positional_arguments=False
-        )
-        ret_state = server_process().loop()
-        sys.exit(ret_state)
-    else:
-        print("No images found")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+    return server_process().loop()

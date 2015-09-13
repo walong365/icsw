@@ -22,6 +22,16 @@
 
 """ parser for icsw command """
 
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+try:
+    import django
+    django.setup()
+except:
+    django = None
+
 import argparse
 
 from .service.service_parser import Parser as ServiceParser
@@ -45,12 +55,18 @@ try:
 except ImportError:
     DeviceParser = None
 
+try:
+    from .image.image_parser import Parser as ImageParser
+except ImportError:
+    ImageParser = None
+
 
 class ICSWParser(object):
     def __init__(self):
         self._parser = argparse.ArgumentParser(prog="icsw")
         self._parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
         sub_parser = self._parser.add_subparsers(help="sub-command help")
+        server_mode = True if django is not None else False
         # ServiceParser().link(sub_parser)
         # LogwatchParser().link(sub_parser)
         for _sp in [
@@ -62,9 +78,10 @@ class ICSWParser(object):
             DeviceParser,
             CStoreParser,
             RelayParser,
+            ImageParser,
         ]:
             if _sp is not None:
-                _sp().link(sub_parser)
+                _sp().link(sub_parser, server_mode=server_mode)
 
     def parse_args(self):
         opt_ns = self._parser.parse_args()

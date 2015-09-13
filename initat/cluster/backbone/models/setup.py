@@ -22,13 +22,13 @@
 """ setup models (kernel, image, architecture) for NOCTUA and CORVUS """
 
 import datetime
+import os
 
 from django.db import models
-from django.db.models import signals
+from django.db.models import signals, Q
 from django.dispatch import receiver
 from initat.tools import logging_tools
 from initat.cluster.backbone.models.functions import cluster_timezone
-
 
 __all__ = [
     "architecture",
@@ -132,6 +132,58 @@ class image(models.Model):
         permissions = (
             ("modify_images", "modify images", False),
         )
+
+    @staticmethod
+    def take_image(xml_wrapper, srv_result, img_name, logger=None):
+        if srv_result is None:
+            xml_wrapper.error("invalid server response")
+            return
+        try:
+            _cur_img = image.objects.get(Q(name=img_name))
+        except image.DoesNotExist:
+            img_xml = srv_result.xpath(".//ns:image[text() = '{}']".format(img_name), smart_strings=False)
+            if len(img_xml):
+                img_xml = img_xml[0]
+                if "arch" not in img_xml.attrib:
+                    xml_wrapper.error(
+                        "no architecture-attribute found in image",
+                        logger
+                    )
+                else:
+                    try:
+                        img_arch = architecture.objects.get(Q(architecture=img_xml.attrib["arch"]))
+                    except architecture.DoesNotExist:
+                        img_arch = architecture(
+                            architecture=img_xml.attrib["arch"])
+                        img_arch.save()
+                    img_source = srv_result.xpath(".//ns:image_list/@image_dir", smart_strings=False)[0]
+                    version_tuple = img_xml.attrib["version"].split(".", 1)
+                    if len(version_tuple) == 2:
+                        sys_version, sys_release = version_tuple
+                    else:
+                        sys_version, sys_release = "", ""
+                    new_img = image(
+                        name=img_xml.text,
+                        source=os.path.join(img_source, img_xml.text),
+                        sys_vendor=img_xml.attrib["vendor"],
+                        sys_version=sys_version,
+                        sys_release=sys_release,
+                        bitcount=img_xml.attrib["bitcount"],
+                        architecture=img_arch,
+                    )
+                    try:
+                        new_img.save()
+                    except:
+                        xml_wrapper.error(
+                            "cannot create image: {}".format(process_tools.get_except_info()),
+                            logger
+                        )
+                    else:
+                        xml_wrapper.info("image taken", logger)
+            else:
+                xml_wrapper.error("image has vanished ?", logger)
+        else:
+            xml_wrapper.error("image already exists", logger)
 
     def __unicode__(self):
         return "Image {} ({}, arch={})".format(self.name, self.full_version, unicode(self.architecture))

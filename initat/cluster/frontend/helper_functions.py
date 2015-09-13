@@ -30,9 +30,9 @@ from lxml.builder import E  # @UnresolvedImports
 from initat.tools import logging_tools, net_tools
 
 
-class xml_response(object):
+class XMLWrapper(object):
     """
-    provides the xml response
+    provides a wrapper for XML-based response objects
     """
     def __init__(self):
         self.reset()
@@ -42,9 +42,11 @@ class xml_response(object):
         sets the xml response to the start state
         """
         self.log_buffer = []
+        self.max_log_level = logging_tools.LOG_LEVEL_OK
         self.val_dict = {}
 
     def log(self, log_level, log_str, logger=None):
+        self.max_log_level = max(self.max_log_level, log_level)
         self.log_buffer.append((log_level, log_str))
         if logger:
             logger.log(log_level, log_str)
@@ -107,17 +109,19 @@ class xml_response(object):
         checks the logging status, if OK
         """
         if self.log_buffer:
-            return True if max([log_lev for log_lev, _log_str in self.log_buffer]) == logging_tools.LOG_LEVEL_OK else False
+            return self.max_log_level == logging_tools.LOG_LEVEL_OK
         else:
             return True
 
     def _get_value_xml(self, key, value):
         if type(value) == list:
-            ret_val = E.value_list(**{
-                "name": key,
-                "num": "{:d}".format(len(value)),
-                "type": "list",
-            })
+            ret_val = E.value_list(
+                **{
+                    "name": key,
+                    "num": "{:d}".format(len(value)),
+                    "type": "list",
+                }
+            )
             for _val_num, sub_val in enumerate(value):
                 ret_val.append(self._get_value_xml(key, sub_val))
         else:
@@ -183,6 +187,20 @@ class xml_response(object):
         """
         return etree.tostring(self.build_response(), encoding=unicode)  # @UndefinedVariable
 
+    def show(self, logger=None):
+        def _log(what, log_level=logging_tools.LOG_LEVEL_OK):
+            if logger is None:
+                print("[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
+        # log status to logger or stdout
+        _log(
+            "overal state is {}, {} defined:".format(
+                logging_tools.get_log_level_str(self.max_log_level),
+                logging_tools.get_plural("log message", len(self.log_buffer)),
+            )
+        )
+        for _log_level, _log_str in self.log_buffer:
+            _log(_log_str, _log_level)
+
     def create_response(self):
         """
         creates a new xml response
@@ -204,7 +222,7 @@ class xml_wrapper(object):
 
     def __call__(self, *args, **kwargs):
         request = args[0]
-        request.xml_response = xml_response()
+        request.xml_response = XMLWrapper()
         ret_value = self._func(*args, **kwargs)
         if ret_value is None:
             return request.xml_response.create_response()

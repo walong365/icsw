@@ -8,7 +8,7 @@ class Parser(object):
     def __init__(self):
         pass
 
-    def link(self, parser):
+    def link(self, parser, **kwargs):
         self.parser = parser.add_parser(
             "setup", help="Create database and perform initial setup"
         )

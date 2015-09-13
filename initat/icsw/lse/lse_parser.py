@@ -32,7 +32,7 @@ LOGSERVER_ROOT = "/var/log/cluster/logging-server"
 
 
 class Parser(object):
-    def link(self, sub_parser):
+    def link(self, sub_parser, **kwargs):
         return self._add_lw_parser(sub_parser)
 
     def _add_lw_parser(self, sub_parser):

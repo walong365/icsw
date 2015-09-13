@@ -23,17 +23,16 @@
 """ setup views """
 
 import logging
-import os
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import partition_table, image, architecture
+from initat.cluster.backbone.models import partition_table, image
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.render import render_me
 from lxml.builder import E  # @UnresolvedImport
-from initat.tools import process_tools, server_command
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.setup")
 
@@ -124,56 +123,10 @@ class use_image(View):
     def post(self, request):
         _post = request.POST
         img_name = _post["img_name"]
-        logger.info("use_image called, image_name %s" % (img_name))
-        try:
-            _cur_img = image.objects.get(Q(name=img_name))
-        except image.DoesNotExist:
-            srv_com = server_command.srv_command(command="get_image_list")
-            srv_result = contact_server(request, "server", srv_com, timeout=10, log_result=False)
-            img_xml = srv_result.xpath(".//ns:image[text() = '%s']" % (img_name), smart_strings=False)
-            if len(img_xml):
-                img_xml = img_xml[0]
-                print img_xml.attrib
-                if "arch" not in img_xml.attrib:
-                    request.xml_response.error(
-                        "no architecture-attribute found in image",
-                        logger
-                    )
-                else:
-                    try:
-                        img_arch = architecture.objects.get(Q(architecture=img_xml.attrib["arch"]))
-                    except architecture.DoesNotExist:
-                        img_arch = architecture(
-                            architecture=img_xml.attrib["arch"])
-                        img_arch.save()
-                    img_source = srv_result.xpath(".//ns:image_list/@image_dir", smart_strings=False)[0]
-                    version_tuple = img_xml.attrib["version"].split(".", 1)
-                    if len(version_tuple) == 2:
-                        sys_version, sys_release = version_tuple
-                    else:
-                        sys_version, sys_release = "", ""
-                    new_img = image(
-                        name=img_xml.text,
-                        source=os.path.join(img_source, img_xml.text),
-                        sys_vendor=img_xml.attrib["vendor"],
-                        sys_version=sys_version,
-                        sys_release=sys_release,
-                        bitcount=img_xml.attrib["bitcount"],
-                        architecture=img_arch,
-                    )
-                    try:
-                        new_img.save()
-                    except:
-                        request.xml_response.error(
-                            "cannot create image: {}".format(process_tools.get_except_info()),
-                            logger
-                        )
-                    else:
-                        request.xml_response.info("image taken", logger)
-            else:
-                request.xml_response.error("image has vanished ?", logger)
-        else:
-            request.xml_response.error("image already exists", logger)
+        logger.info("use_image called, image_name {}".format(img_name))
+        srv_com = server_command.srv_command(command="get_image_list")
+        srv_result = contact_server(request, "server", srv_com, timeout=10, log_result=False)
+        image.take_image(request.xml_response, srv_result, img_name, logger=logger)
 
 
 class rescan_kernels(View):

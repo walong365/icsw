@@ -24,7 +24,7 @@ import argparse
 
 
 class Parser(object):
-    def link(self, sub_parser):
+    def link(self, sub_parser, **kwargs):
         self._add_service_parser(sub_parser)
         self._add_state_parser(sub_parser)
 
