@@ -81,7 +81,11 @@ class ICSWParser(object):
             ImageParser,
         ]:
             if _sp is not None:
-                _sp().link(sub_parser, server_mode=server_mode)
+                try:
+                    _sp().link(sub_parser, server_mode=server_mode)
+                except TypeError:
+                    # happens when switching to kwarg-expecting parsers
+                    pass
 
     def parse_args(self):
         opt_ns = self._parser.parse_args()
