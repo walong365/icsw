@@ -119,12 +119,23 @@ def main(options):
         print("{} does not exist".format(err_file_name))
         sys.exit(1)
     if options.clear:
-        new_file_name = "{}_{}.tar.bz2".format(
+        new_file_name = "{}_{}.tar".format(
             err_file_name,
             time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         )
-        print("taring {} to {} ...".format(err_file_name, new_file_name))
-        c_stat, out = commands.getstatusoutput("tar cpjf {} {}".format(new_file_name, err_file_name))
+        if process_tools.find_file("xz"):
+            _pf = ".xz"
+            _compr = "J"
+            c_stat, out = commands.getstatusoutput("tar cpJf {}{} {}".format(new_file_name, _pf, err_file_name))
+        elif process_tools.find_file("bzip2"):
+            _pf = ".bz2"
+            _compr = "j"
+            c_stat, out = commands.getstatusoutput("tar cpjf {}{} {}".format(new_file_name, _pf, err_file_name))
+        else:
+            _pf = ""
+            _compr = ""
+        print("taring {} to {}{} ...".format(err_file_name, new_file_name, _pf))
+        c_stat, out = commands.getstatusoutput("tar cp{}f {}{} {}".format(_compr, new_file_name, _pf, err_file_name))
         if c_stat:
             print("*** error (%d): %s" % (c_stat, out))
         else:

@@ -404,7 +404,7 @@ class ext_license_check_coarse(models.Model):
     def get_display_date(self):
         klass = duration_types.get_class(self.duration_type)
         # border values easily create problems with timezones etc, hence use central values
-        return klass.get_display_date(self.start_date + ((self.end_date - self.start_date)/2))  # @IgnorePep8
+        return klass.get_display_date(self.start_date + ((self.end_date - self.start_date) / 2))  # @IgnorePep8
 
     class Meta:
         app_label = "backbone"

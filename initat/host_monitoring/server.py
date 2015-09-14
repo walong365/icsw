@@ -224,21 +224,33 @@ class server_code(ICSWBasePool, HMHRMixin):
                                 try:
                                     cur_pages = int(file(pages_file, "r").read().strip())
                                 except:
-                                    self.log("cannot read pages from {}: {}".format(
-                                        pages_file,
-                                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                    self.log(
+                                        "cannot read pages from {}: {}".format(
+                                            pages_file,
+                                            process_tools.get_except_info()
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
                                 else:
                                     if cur_pages:
-                                        self.log("current pages set to {:d}, skipping set to {:d}".format(
-                                            cur_pages, num_pages), logging_tools.LOG_LEVEL_WARN)
+                                        self.log(
+                                            "current pages set to {:d}, skipping set to {:d}".format(
+                                                cur_pages, num_pages
+                                            ),
+                                            logging_tools.LOG_LEVEL_WARN
+                                        )
                                     else:
                                         try:
                                             file(pages_file, "w").write("{:d}\n".format(num_pages))
                                         except:
-                                            self.log("cannot write {:d} to {}: {}".format(
-                                                num_pages,
-                                                pages_file,
-                                                process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                            self.log(
+                                                "cannot write {:d} to {}: {}".format(
+                                                    num_pages,
+                                                    pages_file,
+                                                    process_tools.get_except_info()
+                                                ),
+                                                logging_tools.LOG_LEVEL_ERROR
+                                            )
                                         else:
                                             self.log("wrote {:d} to {}".format(num_pages, pages_file))
             else:
@@ -343,26 +355,22 @@ class server_code(ICSWBasePool, HMHRMixin):
                 else:
                     self.log("0MQ id from cluster ({}) matches host-monitoring 0MQid".format(my_0mq_id))
         if create_0mq:
-            self.log("creating host-monitoring 0MQ id file {}".format(zmq_id_name))
-            zmq_id_xml = E.bind_info(
-                E.zmq_id(my_0mq_id, bind_address="*"))
-            file(zmq_id_name, "w").write(etree.tostring(zmq_id_xml, pretty_print=True, xml_declaration=True, encoding="utf-8"))  # @UndefinedVariable
-        my_0mq_id = file(zmq_id_name, "r").read().strip()
-        rewrite = False
-        if my_0mq_id.startswith("<?xml"):
-            zmq_id_xml = etree.fromstring(my_0mq_id)  # @UndefinedVariable
-            for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]", smart_strings=False):
-                if cur_el.text is None:
-                    rewrite = True
-                    cur_el.text = uuid.uuid1().get_urn()
-        else:
-            zmq_id_xml = E.bind_info(
-                E.zmq_id(my_0mq_id, bind_address="*"))
-            rewrite = True
-        if rewrite:
-            file(zmq_id_name, "w").write(etree.tostring(zmq_id_xml, pretty_print=True, xml_declaration=True, encoding="utf-8"))  # @UndefinedVariable
-        my_0mq_id = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']/text()", smart_strings=False)
-        my_0mq_id = my_0mq_id[0]
+            _zmq_dir_name = os.path.dirname(zmq_id_name)
+            if os.path.isdir(_zmq_dir_name):
+                self.log("creating host-monitoring 0MQ id file {}".format(zmq_id_name))
+                zmq_id_xml = E.bind_info(
+                    E.zmq_id(my_0mq_id, bind_address="*")
+                )
+                file(zmq_id_name, "w").write(
+                    etree.tostring(
+                        zmq_id_xml,
+                        pretty_print=True,
+                        xml_declaration=True,
+                        encoding="utf-8"
+                    )
+                )
+            else:
+                self.log("no 0MQ-directory {} found".format(_zmq_dir_name), logging_tools.LOG_LEVEL_ERROR)
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         ipv4_dict = {
             cur_if_name: [ip_tuple["addr"] for ip_tuple in value[2]][0] for cur_if_name, value in [
@@ -515,7 +523,8 @@ class server_code(ICSWBasePool, HMHRMixin):
                 call_proc,
                 func_name,
                 src_id,
-                unicode(srv_com))
+                unicode(srv_com)
+            )
         else:
             srv_com.set_result(
                 "got unknown command {}".format(srv_com["command"].text),

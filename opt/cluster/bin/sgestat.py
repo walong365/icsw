@@ -51,7 +51,7 @@ def sjs(s_info, opt_dict):
     s_info.build_luts()
     # running jobs
     r_out_list = logging_tools.new_form_list()
-    left_justified = set(["id", "task", "nodelist"])
+    left_justified = {"id", "task", "nodelist"}
     run_list = sge_tools.build_running_list(s_info, opt_dict)
     for run_job in run_list:
         r_out_list.append([logging_tools.form_entry(cur_el.text, header=cur_el.tag, left=cur_el.tag in left_justified) for cur_el in run_job])
@@ -96,12 +96,10 @@ def sns(s_info, opt_dict):
     ret_list = [time.ctime()]
     s_info.build_luts()
     node_list = sge_tools.build_node_list(s_info, opt_dict)
-    left_justified = set(
-        [
-            "host", "queue", "queues", "node", "seqno", "state", "type",
-            "complex", "pe_list", "userlists", "projects", "jobs"
-        ]
-    )
+    left_justified = {
+        "host", "queue", "queues", "node", "seqno", "state", "type",
+        "complex", "pe_list", "userlists", "projects", "jobs"
+    }
     short_dict = {
         "slots_used": "su",
         "slots_reserved": "sr",
@@ -407,8 +405,12 @@ def main():
                                 "q",
                                 dt_node(
                                     None,
-                                    action="close"))])
+                                    action="close"
+                                )
+                            )
+                        ]
                     )
+                )
             ).loop()
         else:
             sjs(act_si, options)

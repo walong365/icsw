@@ -22,8 +22,14 @@
 from initat.cluster_server import main
 import sys
 
-if not any([_check in sys.argv for _check in ["-c", "-h", "--help", "--show-commands", "--show_commands",
-                                              "--backup-database", "--backup_database"]]):
+if not any(
+    [
+        _check in sys.argv for _check in [
+            "-c", "-h", "--help", "--show-commands", "--show_commands",
+            "--backup-database", "--backup_database"
+        ]
+    ]
+):
     print("need command (specified via -c)")
     sys.exit(-1)
 sys.exit(main.main())

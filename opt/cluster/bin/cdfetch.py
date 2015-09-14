@@ -27,7 +27,6 @@ import time
 
 import memcache
 import zmq
-
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.tools import logging_tools, process_tools, server_command
 from initat.icsw.service.instance import InstanceXML
@@ -230,7 +229,15 @@ class key_list_com(base_com):
                     num_key += 1
                     if entry[0] == 0:
                         # simple format
-                        cur_mv = mvect_entry(entry[1], info=entry[2], unit=entry[3], v_type=entry[4], value=entry[5], base=entry[6], factor=entry[7])
+                        cur_mv = mvect_entry(
+                            entry[1],
+                            info=entry[2],
+                            unit=entry[3],
+                            v_type=entry[4],
+                            value=entry[5],
+                            base=entry[6],
+                            factor=entry[7]
+                        )
                     out_f.append([logging_tools.form_entry(v_dict[h_uuid][1], header="device")] + cur_mv.get_form_entry(num_key))
         print unicode(out_f)
         # print v_list
@@ -247,7 +254,7 @@ class key_list_com(base_com):
                     host.attrib["uuid"],
                     int(host.attrib["keys"]),
                     time.ctime(int(host.attrib["last_update"]))
-                    )
+                )
                 for num_key, key_el in enumerate(host):
                     cur_mv = mvect_entry(key_el.attrib.pop("name"), info="", **key_el.attrib)
                     out_f.append([logging_tools.form_entry(host.attrib["name"], header="device")] + cur_mv.get_form_entry(num_key + 1))
@@ -300,6 +307,7 @@ def main():
     else:
         cur_com.fetch()
     sys.exit(cur_com.ret_state)
+
 
 if __name__ == "__main__":
     main()

@@ -89,11 +89,13 @@ class get_mvector_command(hm_classes.hm_command):
         else:
             vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
-            ret_array = ["Machinevector id {}, {}, {} shown:".format(
-                cur_vector.attrib["version"],
-                logging_tools.get_plural("key", len(vector_keys)),
-                logging_tools.get_plural("key", len(used_keys)),
-                )]
+            ret_array = [
+                "Machinevector id {}, {}, {} shown:".format(
+                    cur_vector.attrib["version"],
+                    logging_tools.get_plural("key", len(vector_keys)),
+                    logging_tools.get_plural("key", len(used_keys)),
+                )
+            ]
             out_list = logging_tools.new_form_list()
             for mv_num, mv_key in enumerate(vector_keys):
                 if mv_key in used_keys:
@@ -150,11 +152,13 @@ class machine_vector(object):
             else:
                 def_value = self.vector_flags[key]
                 self.vector_flags[key] = True if int(cur_val.attrib["enabled"]) else False
-                self.log("  {:<10s} : {} (from config{})".format(
-                    key,
-                    "enabled" if self.vector_flags[key] else "disabled",
-                    ", changed" if self.vector_flags[key] != def_value else "",
-                    ))
+                self.log(
+                    "  {:<10s} : {} (from config{})".format(
+                        key,
+                        "enabled" if self.vector_flags[key] else "disabled",
+                        ", changed" if self.vector_flags[key] != def_value else "",
+                    )
+                )
         # init MV
         for module in module.main_proc.module_list:
             if hasattr(module, "init_machine_vector") and module.enabled:
@@ -177,18 +181,21 @@ class machine_vector(object):
         self.conf_name = os.path.join("/etc/sysconfig/host-monitoring.d", MACHVECTOR_NAME)
         if not os.path.isfile(self.conf_name):
             self._create_default_config()
-        try:
-            xml_struct = etree.fromstring(file(self.conf_name, "r").read())  # @UndefinedVariable
-        except:
-            self.log(
-                "cannot read {}: {}".format(
-                    self.conf_name,
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            xml_struct = None
+        if os.path.isfile(self.conf_name):
+            try:
+                xml_struct = etree.fromstring(file(self.conf_name, "r").read())  # @UndefinedVariable
+            except:
+                self.log(
+                    "cannot read {}: {}".format(
+                        self.conf_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                xml_struct = None
         else:
+            xml_struct = None
+        if xml_struct is not None:
             send_id = 0
             p_pool = self.module.main_proc
             for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']", smart_strings=False):
@@ -265,35 +272,39 @@ class machine_vector(object):
             self.log("stored MVector config to {}".format(self.conf_name))
 
     def _create_default_config(self):
-        self.log("create {}".format(self.conf_name))
-        # create default file
-        def_xml = E.mv_targets(
-            E.mv_target(
-                # enabled or disabled
-                enabled="0",
-                # target (== server)
-                target="127.0.0.1",
-                # target port
-                port="8002",
-                # name used for sending, if unset use process_tools.get_machine_name()
-                send_name="",
-                # send every X seconds
-                send_every="30",
-                # every Y iteration send a full dump
-                full_info_every="10",
-                # send immediately
-                immediate="0",
-                # format, json or xml
-                format="xml",
+        conf_dir = os.path.dirname(self.conf_name)
+        if os.path.isdir(conf_dir):
+            self.log("create {}".format(self.conf_name))
+            # create default file
+            def_xml = E.mv_targets(
+                E.mv_target(
+                    # enabled or disabled
+                    enabled="0",
+                    # target (== server)
+                    target="127.0.0.1",
+                    # target port
+                    port="8002",
+                    # name used for sending, if unset use process_tools.get_machine_name()
+                    send_name="",
+                    # send every X seconds
+                    send_every="30",
+                    # every Y iteration send a full dump
+                    full_info_every="10",
+                    # send immediately
+                    immediate="0",
+                    # format, json or xml
+                    format="xml",
+                )
             )
-        )
-        file(self.conf_name, "w").write(
-            etree.tostring(
-                def_xml,
-                pretty_print=True,
-                xml_declaration=True
+            file(self.conf_name, "w").write(
+                etree.tostring(
+                    def_xml,
+                    pretty_print=True,
+                    xml_declaration=True
+                )
             )
-        )
+        else:
+            self.log("no directory {} found".format(conf_dir), logging_tools.LOG_LEVEL_ERROR)
 
     def _send_vector(self, *args, **kwargs):
         cur_xml = self.__xml_struct.find(".//mv_target[@send_id='{:d}']".format(args[0]))
@@ -451,11 +462,24 @@ class machine_vector(object):
                     new_list.append([entry[0], [entry[1:]]])
                 else:
                     new_list.append([entry[0], []])
-        new_list = [[entry[0], self._optimize_list(entry[1])] if len(entry) > 1 else entry for entry in new_list]
+        new_list = [
+            [
+                entry[0], self._optimize_list(entry[1])
+            ] if len(entry) > 1 else entry for entry in new_list
+        ]
         return new_list
 
     def _beautify_list(self, in_list):
-        return ",".join(["{}{}".format(entry[0], ".({})".format(self._beautify_list(entry[1])) if entry[1] else "") for entry in in_list])
+        return ",".join(
+            [
+                "{}{}".format(
+                    entry[0],
+                    ".({})".format(
+                        self._beautify_list(entry[1])
+                    ) if entry[1] else ""
+                ) for entry in in_list
+            ]
+        )
 
     def optimize_list(self, in_list):
         in_list = [entry.split(".") for entry in sorted(in_list)]

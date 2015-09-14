@@ -124,8 +124,9 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics, cur_used)
                 "reporting {:d} free of {:d} for {}".format(
                     free_lics,
                     act_lic.total,
-                    configured_lic)
+                    configured_lic
                 )
+            )
         lines.append("global:{}:{:d}".format(configured_lic, free_lics))
     lines.append("end")
     return lines, rep_dict
