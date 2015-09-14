@@ -30,16 +30,15 @@ import netifaces
 import os
 import sys
 import time
-import uuid
 from multiprocessing import Queue
 
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import configfile, logging_tools, process_tools, \
-    server_command, threading_tools, uuid_tools
+    server_command, threading_tools, uuid_tools, config_store
 import zmq
 from initat.tools.server_mixins import ICSWBasePool
-
 from initat.host_monitoring.hm_mixins import HMHRMixin
+
 from .config import global_config
 from .constants import TIME_FORMAT
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
@@ -50,6 +49,7 @@ from .hm_resolve import ResolveProcess
 
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
+ZMQ_ID_MAP_STORE = "icsw.hm.0mq-mapping"
 
 
 class server_code(ICSWBasePool, HMHRMixin):
@@ -322,69 +322,69 @@ class server_code(ICSWBasePool, HMHRMixin):
     def _init_network_sockets(self):
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
         my_0mq_id = uuid_tools.get_uuid().get_urn()
-        create_0mq = False
-        if not os.path.isfile(zmq_id_name):
-            create_0mq = True
-        else:
-            # compare 0mq from cluster with host-monitoring 0mq_id
-            my_0mq_id = uuid_tools.get_uuid().get_urn()
-            _etfs = etree.fromstring  # @UndefinedVariable
-            try:
-                hm_0mq_id = _etfs(file(zmq_id_name, "r").read()).xpath(
-                    ".//zmq_id[@bind_address='*']",
-                    smart_strings=False
-                )[0].text
-            except:
-                self.log(
-                    "error reading from  {}: {}".format(
-                        zmq_id_name,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                create_0mq = True
-            else:
-                if my_0mq_id != hm_0mq_id:
+        if not config_store.ConfigStore.exists(ZMQ_ID_MAP_STORE):
+            create_0mq_cs = True
+            if os.path.exists(zmq_id_name):
+                try:
+                    zmq_id_dict = {
+                        cur_el.attrib["bind_address"]: (
+                            cur_el.text, True if "virtual" in cur_el.attrib else False
+                        ) for cur_el in etree.fromstring(
+                            file(zmq_id_name, "r").read()
+                        ).xpath(".//zmq_id[@bind_address]", smart_strings=False)
+                    }
+                except:
                     self.log(
-                        "0MQ id from cluster ({}) differs from host-monitoring 0MQ id ({})".format(
-                            my_0mq_id,
-                            hm_0mq_id
-                        )
+                        "error reading from  {}: {}".format(
+                            zmq_id_name,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
                     )
-                    create_0mq = True
-                else:
-                    self.log("0MQ id from cluster ({}) matches host-monitoring 0MQid".format(my_0mq_id))
-        if create_0mq:
-            _zmq_dir_name = os.path.dirname(zmq_id_name)
-            if os.path.isdir(_zmq_dir_name):
-                self.log("creating host-monitoring 0MQ id file {}".format(zmq_id_name))
-                zmq_id_xml = E.bind_info(
-                    E.zmq_id(my_0mq_id, bind_address="*")
-                )
-                file(zmq_id_name, "w").write(
-                    etree.tostring(
-                        zmq_id_xml,
-                        pretty_print=True,
-                        xml_declaration=True,
-                        encoding="utf-8"
-                    )
-                )
+                    zmq_id_dict = {}
             else:
-                self.log("no 0MQ-directory {} found".format(_zmq_dir_name), logging_tools.LOG_LEVEL_ERROR)
+                zmq_id_dict = {}
+            if "*" not in zmq_id_dict:
+                zmq_id_dict["*"] = (my_0mq_id, False)
+            _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, read=False)
+            for _idx, _key in enumerate(["*"] + sorted([_key for _key in zmq_id_dict.keys() if _key not in ["*"]])):
+                _bind_key = "bind_{:d}".format(_idx)
+                _cs["{}_address".format(_bind_key)] = _key
+                _cs["{}_uuid".format(_bind_key)] = zmq_id_dict[_key][0]
+                _cs["{}_virtual".format(_bind_key)] = zmq_id_dict[_key][1]
+        else:
+            # read from cs
+            _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log)
+            create_0mq_cs = False
+        if "bind_0_address" not in _cs:
+            _cs["bind_0_address"] = "*"
+            _cs["bind_0_virtual"] = False
+            _cs["bind_0_uuid"] = my_0mq_id
+        if _cs["bind_0_uuid"] != my_0mq_id:
+            self.log(
+                "0MQ id from cluster ({}) differs from host-monitoring 0MQ id ({})".format(
+                    my_0mq_id,
+                    _cs["bind_0_uuid"],
+                )
+            )
+            _cs["bind_0_uuid"] = my_0mq_id
+            create_0mq_cs = True
+        if create_0mq_cs:
+            _cs.write()
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
+        _binds = set(["_".join(key.split("_", 2)[:2]) for key in _cs.keys()])
+        zmq_id_dict = {}
+        for _bind in _binds:
+            zmq_id_dict[_cs.get("{}_address".format(_bind), "*")] = (
+                _cs.get("{}_uuid".format(_bind), my_0mq_id),
+                _cs.get("{}_virtual".format(_bind), False),
+            )
         ipv4_dict = {
             cur_if_name: [ip_tuple["addr"] for ip_tuple in value[2]][0] for cur_if_name, value in [
                 (if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()
             ] if 2 in value}
         # ipv4_lut = dict([(value, key) for key, value in ipv4_dict.iteritems()])
         ipv4_addresses = ipv4_dict.values()
-        zmq_id_dict = dict([
-            (
-                cur_el.attrib["bind_address"], (
-                    cur_el.text, True if "virtual" in cur_el.attrib else False
-                )
-            ) for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]", smart_strings=False)
-        ])
         if zmq_id_dict.keys() == ["*"]:
             # wildcard bind
             pass

@@ -30,9 +30,10 @@ import time
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
 from lxml.builder import E  # @UnresolvedImports
-from initat.tools import logging_tools, process_tools, server_command
+from initat.tools import logging_tools, process_tools, server_command, config_store
 
 MACHVECTOR_NAME = "machvector.xml"
+MACHVECTOR_CS_NAME = "icsw.hm.machvector"
 COLLECTOR_PORT = 8002
 
 

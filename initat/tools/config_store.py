@@ -284,6 +284,15 @@ class ConfigStore(object):
         else:
             raise ValueError("ConfigStore {} not valid".format(self.name))
 
+    def get(self, key, default):
+        if self.tree_valid:
+            if key in self.vars:
+                return self.vars[key].get_value()
+            else:
+                return default
+        else:
+            raise ValueError("ConfigStore {} not valid".format(self.name))
+
     def __delitem__(self, key):
         if self.tree_valid:
             del self.vars[key]
