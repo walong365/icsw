@@ -1848,6 +1848,26 @@
                     </div>
                 </div>
             </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_flap_detection_enabled" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_flap_detection_enabled"><input class="checkboxinput checkbox" id="id_change_flap_detection_enabled" name="change_flap_detection_enabled" ng-model="edit_obj.change_flap_detection_enabled" type="checkbox"></input>
+                                FlapdetectionFlag
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="form-group">
+                        <div id="div_id_flap_detection_enabled" class="checkbox" ng_show="edit_obj.change_flap_detection_enabled">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_flap_detection_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
+                                Enable flap detection
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </fieldset>
         <div class="form-actions"><input type="submit" name="submit" value="Modify many" class="btn btn-primary primaryAction" id="submit-id-submit"></input></div>
     </form>
