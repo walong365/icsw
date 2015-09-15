@@ -40,7 +40,7 @@ from initat.tools.server_mixins import ICSWBasePool
 from initat.host_monitoring.hm_mixins import HMHRMixin
 
 from .config import global_config
-from .constants import TIME_FORMAT
+from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 from .hm_inotify import HMInotifyProcess
 from .hm_direct import SocketProcess
@@ -49,7 +49,6 @@ from .hm_resolve import ResolveProcess
 
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
-ZMQ_ID_MAP_STORE = "icsw.hm.0mq-mapping"
 
 
 class server_code(ICSWBasePool, HMHRMixin):
@@ -348,41 +347,51 @@ class server_code(ICSWBasePool, HMHRMixin):
                 zmq_id_dict["*"] = (my_0mq_id, False)
             _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, read=False)
             for _idx, _key in enumerate(["*"] + sorted([_key for _key in zmq_id_dict.keys() if _key not in ["*"]])):
-                _bind_key = "bind_{:d}".format(_idx)
-                _cs["{}_address".format(_bind_key)] = _key
-                _cs["{}_uuid".format(_bind_key)] = zmq_id_dict[_key][0]
-                _cs["{}_virtual".format(_bind_key)] = zmq_id_dict[_key][1]
+                _cs["{:d}".format(_idx)] = {
+                    "address": _key,
+                    "uuid": zmq_id_dict[_key][0],
+                    "virtual": zmq_id_dict[_key][1]
+                }
         else:
             # read from cs
-            _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log)
+            _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
+            # set prefix, needed for migrating from non-prefix based cstores to prefix based
+            _cs.prefix = "bind"
             create_0mq_cs = False
-        if "bind_0_address" not in _cs:
-            _cs["bind_0_address"] = "*"
-            _cs["bind_0_virtual"] = False
-            _cs["bind_0_uuid"] = my_0mq_id
-        if _cs["bind_0_uuid"] != my_0mq_id:
+
+        if "0" not in _cs:
+            _cs["0"] = {
+                "address": "*",
+                "virtual": False,
+                "uuid": my_0mq_id,
+            }
+        if _cs["0"]["uuid"] != my_0mq_id:
             self.log(
                 "0MQ id from cluster ({}) differs from host-monitoring 0MQ id ({})".format(
                     my_0mq_id,
                     _cs["bind_0_uuid"],
                 )
             )
-            _cs["bind_0_uuid"] = my_0mq_id
+            # code snippet to update value
+            _cur = _cs["0"]
+            _cs["uuid"] = my_0mq_id
+            _cs["0"] = _cur
             create_0mq_cs = True
         if create_0mq_cs:
             _cs.write()
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
-        _binds = set(["_".join(key.split("_", 2)[:2]) for key in _cs.keys()])
         zmq_id_dict = {}
-        for _bind in _binds:
-            zmq_id_dict[_cs.get("{}_address".format(_bind), "*")] = (
-                _cs.get("{}_uuid".format(_bind), my_0mq_id),
-                _cs.get("{}_virtual".format(_bind), False),
+        for _idx in _cs.keys():
+            _bind = _cs[_idx]
+            zmq_id_dict[_bind["address"]] = (
+                _bind["uuid"],
+                _bind["virtual"],
             )
         ipv4_dict = {
             cur_if_name: [ip_tuple["addr"] for ip_tuple in value[2]][0] for cur_if_name, value in [
                 (if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()
-            ] if 2 in value}
+            ] if 2 in value
+        }
         # ipv4_lut = dict([(value, key) for key, value in ipv4_dict.iteritems()])
         ipv4_addresses = ipv4_dict.values()
         if zmq_id_dict.keys() == ["*"]:
@@ -398,10 +407,13 @@ class server_code(ICSWBasePool, HMHRMixin):
         self.zeromq_id = zmq_id_dict[ref_id][0].split(":")[-1]
         self.log("0MQ bind info (global 0MQ id is {})".format(self.zeromq_id))
         for key in sorted(zmq_id_dict.iterkeys()):
-            self.log("bind address %-15s: %s%s" % (
-                key,
-                zmq_id_dict[key][0],
-                " is virtual" if zmq_id_dict[key][1] else ""))
+            self.log(
+                "bind address {:<15s}: {}{}".format(
+                    key,
+                    zmq_id_dict[key][0],
+                    " is virtual" if zmq_id_dict[key][1] else ""
+                )
+            )
         self.zmq_id_dict = zmq_id_dict
         self._bind_external()
         sock_list = [
@@ -705,8 +717,10 @@ class server_code(ICSWBasePool, HMHRMixin):
             for log_line, log_level in global_config.get_log():
                 self.log("Config info : [%d] %s" % (log_level, log_line))
         except:
-            self.log("error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         conf_info = global_config.get_config_info()
         self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:

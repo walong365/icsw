@@ -117,7 +117,8 @@ class _general(hm_classes.hm_module):
         )
 
     def set_machine_vector_flags(self, mv):
-        mv.vector_flags["detailed_cpu_statistics"] = False
+        if "detailed_cpu_statistics" not in mv.cs:
+            mv.cs["detailed_cpu_statistics"] = False
 
     def init_machine_vector(self, mv):
         mv.register_entry("load.1", 0., "load average of the last $2 minute")
@@ -144,7 +145,7 @@ class _general(hm_classes.hm_module):
         for what in stat_list:
             mv.register_entry("vms.{}".format(what), 0., "percentage of time spent for $2 (total)", "%")
         self.cpu_list = ["{:d}".format(_cpu_idx) for _cpu_idx in xrange(psutil.cpu_count(logical=True))]
-        if mv.vector_flags["detailed_cpu_statistics"]:
+        if mv.cs["detailed_cpu_statistics"]:
             if not self.cpu_list:
                 self.cpu_list = ["0"]
             if len(self.cpu_list) > 1:
@@ -293,7 +294,7 @@ class _general(hm_classes.hm_module):
                 stat_dict["intr"] = long(line[1])
         # use psutil
         stat_dict["cpu"] = psutil.cpu_times()
-        if mvect.vector_flags["detailed_cpu_statistics"]:
+        if mvect.cs["detailed_cpu_statistics"]:
             for cpu_num, cpu_stat in enumerate(psutil.cpu_times(percpu=True)):
                 stat_dict["cpu{}".format(self.cpu_list[cpu_num])] = cpu_stat
         if os.path.isfile("/proc/vmstat"):
@@ -479,7 +480,7 @@ class _general(hm_classes.hm_module):
             if "ctxt" in stat_dict and "ctxt" in self.vmstat_dict:
                 mvect["num.context"] = int((stat_dict["ctxt"] - self.vmstat_dict["ctxt"]) / tdiff)
             _cpu_update_list = [("cpu", "")]
-            if mvect.vector_flags["detailed_cpu_statistics"]:
+            if mvect.cs["detailed_cpu_statistics"]:
                 _cpu_update_list.extend([("cpu{}".format(cpu_idx), ".p{}".format(cpu_idx)) for cpu_idx in self.cpu_list] if len(self.cpu_list) > 1 else [])
             _correction = 1.0
             for cpu_str, name_p in _cpu_update_list:
@@ -1062,8 +1063,9 @@ class df_command(hm_classes.hm_command):
                             "mountpoint": n_dict[disk]["mountpoint"],
                             "perc": n_dict[disk]["b_free_perc"],
                             "used": n_dict[disk]["b_used"],
-                            "total": n_dict[disk]["b_size"]} for disk in n_dict.keys()
-                        }
+                            "total": n_dict[disk]["b_size"]
+                        } for disk in n_dict.keys()
+                    }
                 else:
                     store_info = True
                     if mapped_disk not in n_dict:
@@ -1302,13 +1304,13 @@ class status_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "status is %s" % (srv_com["status_str"].text)
+            return limits.nag_STATE_OK, "status is {}".format(srv_com["status_str"].text)
         except:
             return limits.nag_STATE_CRITICAL, "status unknown"
 
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
-        return act_state, "status is %s" % (result)
+        return act_state, "status is {}".format(result)
 
 
 class get_uuid_command(hm_classes.hm_command):
@@ -1323,7 +1325,7 @@ class get_uuid_command(hm_classes.hm_command):
 
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
-        return act_state, "uuid is %s" % (result.split()[1])
+        return act_state, "uuid is {}".format(result.split()[1])
 
 
 class swap_command(hm_classes.hm_command):
@@ -1352,21 +1354,23 @@ class swap_command(hm_classes.hm_command):
         else:
             swap = 100 * float(swap_total - swap_free) / swap_total
             ret_state = limits.check_ceiling(swap, cur_ns.warn, cur_ns.crit)
-            return ret_state, "swapinfo: %d %% of %s swap" % (
+            return ret_state, "swapinfo: {:.2f} % of {} swap".format(
                 swap,
                 logging_tools.get_size_str(swap_total * _fac, strip_spaces=True),
             )
 
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
-        swaptot, swapfree = (int(result["swaptotal"]),
-                             int(result["swapfree"]))
+        swaptot, swapfree = (
+            int(result["swaptotal"]),
+            int(result["swapfree"])
+        )
         if swaptot == 0:
-            return limits.nag_STATE_CRITICAL, "%s: no swap space found" % (limits.get_state_str(limits.nag_STATE_CRITICAL))
+            return limits.nag_STATE_CRITICAL, "no swap space found"
         else:
             swap = 100 * (swaptot - swapfree) / swaptot
             ret_state = limits.check_ceiling(swap, parsed_coms.warn, parsed_coms.crit)
-            return ret_state, "swapinfo: %d %% of %s swap" % (
+            return ret_state, "swapinfo: {:.2f} % of {} swap".format(
                 swap,
                 logging_tools.get_size_str(swaptot * 1024, strip_spaces=True),
             )

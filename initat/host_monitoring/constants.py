@@ -31,3 +31,5 @@ MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
 MASTER_FILE_NAME = os.path.join(CONFIG_DIR, "monitor_master")
 
 ICINGA_TOP_DIR = "/opt/icinga"
+ZMQ_ID_MAP_STORE = "icsw.hm.0mq-mapping"
+MACHVECTOR_CS_NAME = "icsw.hm.machvector"

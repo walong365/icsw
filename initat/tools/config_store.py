@@ -34,6 +34,15 @@ CS_NG = """
 <element name="config-store" xmlns="http://relaxng.org/ns/structure/1.0">
     <attribute name="name">
     </attribute>
+    <optional>
+        <!-- now optional, no longer used -->
+        <attribute name="dictstyle">
+        </attribute>
+    </optional>
+    <optional>
+        <attribute name="prefix">
+        </attribute>
+    </optional>
     <zeroOrMore>
         <element name="key-list">
             <zeroOrMore>
@@ -127,9 +136,11 @@ class ConfigVar(object):
 
 
 class ConfigStore(object):
-    def __init__(self, name, log_com=None, read=True, quiet=False):
+    def __init__(self, name, log_com=None, read=True, quiet=False, prefix=None):
         self.file_name = ConfigStore.build_path(name)
         self.tree_valid = True
+        # if prefix is set all keys starting with prefix will act as dictionary lookup keys
+        self.prefix = prefix
         self.name = name
         self.__quiet = quiet
         self.__log_com = log_com
@@ -190,6 +201,7 @@ class ConfigStore(object):
                 if _valid:
                     self.tree_valid = True
                     self.name = _tree.get("name", "")
+                    self.prefix = _tree.get("prefix", "")
                     _found, _parsed = (0, 0)
                     for _key in _tree.xpath(".//key", smart_strings=False):
                         _found += 1
@@ -230,6 +242,12 @@ class ConfigStore(object):
 
     def _generate(self):
         _root = E("config-store", name=self.name)
+        if self.prefix:
+            _root.attrib.update(
+                {
+                    "prefix": self.prefix,
+                }
+            )
         _kl = E("key-list")
         for _key in sorted(self.vars.iterkeys()):
             _kl.append(self.vars[_key].get_element())
@@ -274,13 +292,33 @@ class ConfigStore(object):
 
     def keys(self):
         if self.tree_valid:
-            return self.vars.keys()
+            if self.prefix:
+                _keys = set()
+                for _key in self.vars.keys():
+                    if _key.startswith("{}_".format(self.prefix)) and _key.count("_") > 1:
+                        _keys.add(_key.split("_")[1])
+                    else:
+                        _keys.add(_key)
+                return list(_keys)
+            else:
+                return self.vars.keys()
         else:
             return []
 
     def __getitem__(self, key):
         if self.tree_valid:
-            return self.vars[key].get_value()
+            if self.prefix and key not in self.vars:
+                _r_dict = {}
+                _pf = "{}_{}_".format(self.prefix, key)
+                for _key in self.vars.iterkeys():
+                    if _key.startswith(_pf):
+                        _r_dict[_key[len(_pf):]] = self.vars[_key].get_value()
+                if _r_dict:
+                    return _r_dict
+                else:
+                    raise ValueError("no dict-type structure with key {} found".format(key))
+            else:
+                return self.vars[key].get_value()
         else:
             raise ValueError("ConfigStore {} not valid".format(self.name))
 
@@ -300,14 +338,29 @@ class ConfigStore(object):
             raise ValueError("ConfigStore {} not valid".format(self.name))
 
     def __setitem__(self, key, value):
-        if key in self:
-            _descr = self.vars[key].description
+        if isinstance(value, dict):
+            if self.prefix:
+                for _skey, _svalue in value.iteritems():
+                    _full_key = "{}_{}_{}".format(
+                        self.prefix,
+                        key,
+                        _skey,
+                    )
+                    self.vars[_full_key] = ConfigVar(_full_key, _svalue)
+            else:
+                raise ValueError("prefix needed to set dict-type values ({} -> {})".format(key, str(value)))
         else:
-            _descr = ""
-        self.vars[key] = ConfigVar(key, value, descr=_descr)
+            if key in self:
+                _descr = self.vars[key].description
+            else:
+                _descr = ""
+            self.vars[key] = ConfigVar(key, value, descr=_descr)
 
     def __contains__(self, key):
-        return key in self.vars
+        if self.prefix:
+            return key in self.keys()
+        else:
+            return key in self.vars
 
     def get_dict(self, uppercase_keys=False):
         _dict = {}
@@ -335,3 +388,16 @@ class ConfigStore(object):
                 (_dst, _obj(_val, database=False, source="ConfigStore"))
             )
         global_config.add_config_entries(_adds)
+
+
+if __name__ == "__main__":
+    # some test code
+    cs = ConfigStore("test", prefix="a", read=False)
+    cs["awqe"] = {
+        "ab": 4,
+        "c": True,
+    }
+    cs["x"] = "la"
+    print cs.show()
+    print cs["awqe"]
+    print cs.keys()

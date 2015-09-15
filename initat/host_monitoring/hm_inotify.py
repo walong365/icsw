@@ -501,16 +501,12 @@ class HMInotifyProcess(threading_tools.process_obj):
         args = {key.replace("-", "_"): value for key, value in args.iteritems()}
         found_keys = set(args.keys())
         needed_keys = {
-            "register_file_watch": set(
-                [
-                    "send_id", "mode", "target_server", "target_port", "dir", "match"
-                ]
-            ),
-            "unregister_file_watch": set(
-                [
-                    "id"
-                ]
-            ),
+            "register_file_watch": {
+                "send_id", "mode", "target_server", "target_port", "dir", "match"
+            },
+            "unregister_file_watch": {
+                "id",
+            },
         }.get(in_com, set())
         if needed_keys & found_keys == needed_keys:
             # set default return value
