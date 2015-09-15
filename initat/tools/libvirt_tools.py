@@ -18,7 +18,6 @@
 
 from lxml import etree  # @UnresolvedImport
 import os
-import sys
 import time
 
 from initat.tools import logging_tools, process_tools
@@ -138,7 +137,9 @@ class net_info(object):
                     ("write", 4)
                 ]:
                     for rel_offset, rel_key in enumerate(["bytes", "packets", "errs", "drops"]):
-                        self.stats[key][rel_key] = (args[offset + rel_offset] - self.__prev_args[offset + rel_offset]) / diff_time
+                        self.stats[key][rel_key] = (
+                            args[offset + rel_offset] - self.__prev_args[offset + rel_offset]
+                        ) / diff_time
             except:
                 self._clear_stats()
         self.__prev_args, self.__feed_time = (args, act_time)
@@ -162,9 +163,12 @@ class virt_instance(object):
         self.xml_desc = etree.fromstring(self.dom_handle.XMLDesc(0))  # @UndefinedVariable
         self.memory = int(self.xml_desc.xpath(".//currentMemory", smart_strings=False)[0].text) * 1024
         self.vcpus = int(self.xml_desc.xpath(".//vcpu", smart_strings=False)[0].text)
-        self.log("memory is {}, {}".format(
-            logging_tools.get_size_str(self.memory),
-            logging_tools.get_plural("CPU", self.vcpus)))
+        self.log(
+            "memory is {}, {}".format(
+                logging_tools.get_size_str(self.memory),
+                logging_tools.get_plural("CPU", self.vcpus)
+            )
+        )
         self.disk_dict, self.net_dict = ({}, {})
         self.vnc_port = None
         vnc_entry = self.xml_desc.xpath(".//graphics[@type='vnc']", smart_strings=False)
@@ -227,7 +231,12 @@ class libvirt_connection(object):
             try:
                 self.__conn.close()
             except:
-                self.log("error closing connection: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error closing connection: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             del self.__conn
             self.__conn = None
 
@@ -241,18 +250,27 @@ class libvirt_connection(object):
                     self.__conn = None
                     self.log(
                         "error in openReadOnly(None): {}".format(
-                            process_tools.get_except_info()),
-                        logging_tools.LOG_LEVEL_CRITICAL)
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
                 else:
                     if os.getuid():
                         self.log(
                             "not running as root ({:d} != 0)".format(
-                                os.getuid()),
-                            logging_tools.LOG_LEVEL_ERROR)
+                                os.getuid()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
             else:
                 if not self.__missing_logged:
                     self.__missing_logged = True
-                    self.log("no libvirt defined or socket {} not found".format(LIBVIRT_RO_SOCK_NAME), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "no libvirt defined or socket {} not found".format(
+                            LIBVIRT_RO_SOCK_NAME
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 self.__conn = None
         return self.__conn
 
@@ -267,7 +285,13 @@ class libvirt_connection(object):
             try:
                 res = getattr(conn, call_name)(*args, **kwargs)
             except:
-                self.log("error calling {}: {}".format(call_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error calling {}: {}".format(
+                        call_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 self._close_con()
                 if retry:
                     raise
@@ -294,14 +318,18 @@ class libvirt_connection(object):
                     self.log(
                         "{} found: {}".format(
                             logging_tools.get_plural("ID", len(new_ids)),
-                            ", ".join(["{:d}".format(cur_id) for cur_id in sorted(new_ids)])))
+                            ", ".join(["{:d}".format(cur_id) for cur_id in sorted(new_ids)])
+                        )
+                    )
                     for new_id in new_ids:
                         self.add_domain(virt_instance(new_id, self.log, conn))
                 if old_ids:
                     self.log(
                         "{} lost: {}".format(
                             logging_tools.get_plural("ID", len(old_ids)),
-                            ", ".join(["{:d}".format(cur_id) for cur_id in sorted(old_ids)])))
+                            ", ".join(["{:d}".format(cur_id) for cur_id in sorted(old_ids)])
+                        )
+                    )
                     for old_id in old_ids:
                         self.remove_domain(old_id)
                 for same_id in cur_ids & present_ids:
@@ -369,16 +397,3 @@ class libvirt_connection(object):
             r_dict = {}
         return r_dict
 
-
-def _monitor_test():
-    cur_con = libvirt_connection(log_com="stdout")
-    while True:
-        cur_con.update()
-        time.sleep(30)
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "monitor":
-            _monitor_test()
-    print "Loadable module, exiting"
-    sys.exit(0)

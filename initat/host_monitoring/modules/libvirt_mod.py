@@ -16,13 +16,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.host_monitoring import limits, hm_classes
 from lxml import etree  # @UnresolvedImport
 import commands
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-import sys  # @UnusedImport
+
+from initat.host_monitoring import limits, hm_classes
+from initat.tools import logging_tools, process_tools, server_command
+
 try:
     from initat.tools import libvirt_tools
 except:
