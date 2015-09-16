@@ -846,17 +846,17 @@
         <fieldset>
             <legend>Base data</legend>
             <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
+                <label for="id_name" class="control-label col-sm-3 requiredField" title="Device template name">
                     Name<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" title="Device template name"></input></div>
             </div>
             <div id="div_id_mon_service_templ" class="form-group">
-                <label for="id_mon_service_templ" class="control-label col-sm-3 requiredField">
-                    Monitoring service template<span class="asteriskField">*</span></label>
+                <label for="id_mon_service_templ" class="control-label col-sm-3 requiredField" title="Choose monitoring service template">
+                    Service template<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Choose monitoring service template">
                         <ui-select-match placeholder="please select a service template">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
@@ -869,11 +869,11 @@
         <fieldset>
             <legend>Check</legend>
             <div id="div_id_host_check_command" class="form-group">
-                <label for="id_host_check_command" class="control-label col-sm-3 requiredField">
+                <label for="id_host_check_command" class="control-label col-sm-3 requiredField" title="Choose host check command">
                     Host check command<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.host_check_command" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.host_check_command" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Choose host check command">
                         <ui-select-match placeholder="please select a host check command">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.host_check_command | orderBy:'name'| props_filter:{name:$select.search}">
@@ -883,11 +883,11 @@
                 </div>
             </div>
             <div id="div_id_mon_period" class="form-group">
-                <label for="id_mon_period" class="control-label col-sm-3 requiredField">
+                <label for="id_mon_period" class="control-label col-sm-3 requiredField" title="Monitoring check is sctive during this period">
                     Monitoring period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.mon_period" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Monitoring check is sctive during this period">
                         <ui-select-match placeholder="please select a time period">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
@@ -899,33 +899,33 @@
         </fieldset>
         <div class="form-actions">
             <div id="div_id_check_interval" class="form-group">
-                <label for="id_check_interval" class="control-label col-sm-3 requiredField">
+                <label for="id_check_interval" class="control-label col-sm-3 requiredField" title="Normal check interval in minutes">
                     Check interval<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="1"></input></div>
-            </div>
-            <div id="div_id_retry_interval" class="form-group">
-                <label for="id_retry_interval" class="control-label col-sm-3 requiredField">
-                    Retry interval<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="1"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="1" title="Normal check interval in minutes"></input></div>
             </div>
             <div id="div_id_max_attempts" class="form-group">
-                <label for="id_max_attempts" class="control-label col-sm-3">
+                <label for="id_max_attempts" class="control-label col-sm-3" title="Number of attempts until switching from soft state into hard state">
                     Max attempts
                 </label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_max_attempts" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" type="number" value="1"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_max_attempts" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" type="number" value="1" title="Number of attempts until switching from soft state into hard state"></input></div>
+            </div>
+            <div id="div_id_retry_interval" class="form-group">
+                <label for="id_retry_interval" class="control-label col-sm-3 requiredField" title="Check interval in minutes during soft state">
+                    Retry interval<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="1" title="Check interval in minutes during soft state"></input></div>
             </div>
         </div>
         <fieldset>
             <legend>Notification</legend>
             <div id="div_id_not_period" class="form-group">
-                <label for="id_not_period" class="control-label col-sm-3 requiredField">
+                <label for="id_not_period" class="control-label col-sm-3 requiredField" title="Notification is active during this period">
                     Notification period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.not_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.not_period" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Notification is active during this period">
                         <ui-select-match placeholder="please select a time period">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
@@ -935,50 +935,50 @@
                 </div>
             </div>
             <div id="div_id_ninterval" class="form-group">
-                <label for="id_ninterval" class="control-label col-sm-3 requiredField">
+                <label for="id_ninterval" class="control-label col-sm-3 requiredField" title="Hard state notification interval in minutes">
                     Notification interval<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1" title="Hard state notification interval in minutes"></input></div>
             </div>
         </fieldset>
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="form-group">
                     <div id="div_id_nrecovery" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
-                            Notify on recovery
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery" title="Notify in case of host state is recovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
+                            recovery
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_ndown" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ndown"><input class="checkboxinput checkbox" id="id_ndown" name="ndown" ng-model="edit_obj.ndown" type="checkbox"></input>
-                            Notify when down
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ndown" title="Notify in case of host state is down"><input class="checkboxinput checkbox" id="id_ndown" name="ndown" ng-model="edit_obj.ndown" type="checkbox"></input>
+                            down
                         </label></div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="form-group">
                     <div id="div_id_nunreachable" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunreachable"><input class="checkboxinput checkbox" id="id_nunreachable" name="nunreachable" ng-model="edit_obj.nunreachable" type="checkbox"></input>
-                            Notify when unreachable
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunreachable" title="Notify in case of host state is unreachable"><input class="checkboxinput checkbox" id="id_nunreachable" name="nunreachable" ng-model="edit_obj.nunreachable" type="checkbox"></input>
+                            unreachable
                         </label></div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="form-group">
                     <div id="div_id_nflapping" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
-                            Notify when flapping
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping" title="Notify in case of host state is flapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
+                            flapping
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_nplanned_downtime" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
-                            Notify for planned downtime
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime" title="Notify in case of host state is planned downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
+                            planned downtime
                         </label></div>
                     </div>
                 </div>
@@ -988,23 +988,23 @@
             <legend>Freshness settings</legend>
             <div class="form-group">
                 <div id="div_id_check_freshness" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_check_freshness"><input class="checkboxinput checkbox" id="id_check_freshness" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"></input>
+                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_check_freshness" title="Ensure whether passive check is fresh or not"><input class="checkboxinput checkbox" id="id_check_freshness" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"></input>
                         Check freshness
                     </label></div>
                 </div>
             </div>
             <div id="div_id_freshness_threshold" class="form-group" ng_show="edit_obj.check_freshness">
-                <label for="id_freshness_threshold" class="control-label col-sm-3 requiredField">
+                <label for="id_freshness_threshold" class="control-label col-sm-3 requiredField" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale">
                     Freshness threshold<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale"></input></div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Flap settings</legend>
             <div class="form-group">
                 <div id="div_id_flap_detection_enabled" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detection_enabled"><input class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
+                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detection_enabled" title="Enable detection of flapping states"><input class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
                         Flap detection enabled
                     </label></div>
                 </div>
@@ -1012,30 +1012,30 @@
         </fieldset>
         <div class="form-actions">
             <div id="div_id_low_flap_threshold" class="form-group" ng_show="edit_obj.flap_detection_enabled">
-                <label for="id_low_flap_threshold" class="control-label col-sm-3 requiredField">
+                <label for="id_low_flap_threshold" class="control-label col-sm-3 requiredField" title="Lower percent limit, if value falls below it, flapping stops">
                     Low flap threshold<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" title="Lower percent limit, if value falls below it, flapping stops"></input></div>
             </div>
             <div id="div_id_high_flap_threshold" class="form-group" ng_show="edit_obj.flap_detection_enabled">
-                <label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField">
+                <label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField" title="Higher percent limit, if value exceeds it, flapping starts">
                     High flap threshold<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds it, flapping starts"></input></div>
             </div>
         </div>
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
                     <div id="div_id_flap_detect_up" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_up"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_up" name="flap_detect_up" ng-model="edit_obj.flap_detect_up" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_up" title="Flapping detection for state up"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_up" name="flap_detect_up" ng-model="edit_obj.flap_detect_up" type="checkbox"></input>
                             Flap detect up
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_flap_detect_down" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_down"><input class="checkboxinput checkbox" id="id_flap_detect_down" name="flap_detect_down" ng-model="edit_obj.flap_detect_down" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_down" title="Flapping detection for state down"><input class="checkboxinput checkbox" id="id_flap_detect_down" name="flap_detect_down" ng-model="edit_obj.flap_detect_down" type="checkbox"></input>
                             Flap detect down
                         </label></div>
                     </div>
@@ -1044,7 +1044,7 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <div id="div_id_flap_detect_unreachable" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_unreachable"><input class="checkboxinput checkbox" id="id_flap_detect_unreachable" name="flap_detect_unreachable" ng-model="edit_obj.flap_detect_unreachable" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_unreachable" title="Flapping detection for state unreachable"><input class="checkboxinput checkbox" id="id_flap_detect_unreachable" name="flap_detect_unreachable" ng-model="edit_obj.flap_detect_unreachable" type="checkbox"></input>
                             Flap detect unreachable
                         </label></div>
                     </div>
@@ -4607,24 +4607,24 @@
                 <div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" title="Lower percent limit, if value falls below, flapping stops"></input></div>
             </div>
             <div id="div_id_high_flap_threshold" class="form-group" ng_show="edit_obj.flap_detection_enabled">
-                <label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField"  title="Higher percent limit, if value exceeds flapping starts">
+                <label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField"  title="Higher percent limit, if value exceeds, flapping starts">
                     High flap threshold<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds flapping starts"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds, flapping starts"></input></div>
             </div>
         </div>
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
                     <div id="div_id_flap_detect_ok" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_ok" title="Flap detection for ok states"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_ok" name="flap_detect_ok" ng-model="edit_obj.flap_detect_ok" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_ok" title="Flapping detection for ok states"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_ok" name="flap_detect_ok" ng-model="edit_obj.flap_detect_ok" type="checkbox"></input>
                             Flap detect ok
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_flap_detect_warn" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_warn" title="Flap detection for warning states"><input class="checkboxinput checkbox" id="id_flap_detect_warn" name="flap_detect_warn" ng-model="edit_obj.flap_detect_warn" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_warn" title="Flapping detection for warning states"><input class="checkboxinput checkbox" id="id_flap_detect_warn" name="flap_detect_warn" ng-model="edit_obj.flap_detect_warn" type="checkbox"></input>
                             Flap detect warn
                         </label></div>
                     </div>
@@ -4633,14 +4633,14 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <div id="div_id_flap_detect_critical" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_critical" title="Flap detection for critical states"><input class="checkboxinput checkbox" id="id_flap_detect_critical" name="flap_detect_critical" ng-model="edit_obj.flap_detect_critical" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_critical" title="Flapping detection for critical states"><input class="checkboxinput checkbox" id="id_flap_detect_critical" name="flap_detect_critical" ng-model="edit_obj.flap_detect_critical" type="checkbox"></input>
                             Flap detect critical
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_flap_detect_unknown" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_unknown" title="Flap detection for unknown states"><input class="checkboxinput checkbox" id="id_flap_detect_unknown" name="flap_detect_unknown" ng-model="edit_obj.flap_detect_unknown" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_unknown" title="Flapping detection for unknown states"><input class="checkboxinput checkbox" id="id_flap_detect_unknown" name="flap_detect_unknown" ng-model="edit_obj.flap_detect_unknown" type="checkbox"></input>
                             Flap detect unknown
                         </label></div>
                     </div>
