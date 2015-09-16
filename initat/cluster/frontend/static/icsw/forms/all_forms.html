@@ -4577,23 +4577,23 @@
             <legend>Freshness settings</legend>
             <div class="form-group">
                 <div id="div_id_check_freshness" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_check_freshness"><input class="checkboxinput checkbox" id="id_check_freshness" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"></input>
+                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_check_freshness" title="Ensure whether passive check is fresh or not"><input class="checkboxinput checkbox" id="id_check_freshness" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"></input>
                         Check freshness
                     </label></div>
                 </div>
             </div>
             <div id="div_id_freshness_threshold" class="form-group" ng_show="edit_obj.check_freshness">
-                <label for="id_freshness_threshold" class="control-label col-sm-3 requiredField">
+                <label for="id_freshness_threshold" class="control-label col-sm-3 requiredField" title="Time in seconds passive check is fresh enough. If check is older than threshold it will be stale">
                     Freshness threshold<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" title="Time in seconds passive check is fresh enough. If check is older than threshold it will be stale"></input></div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Flap settings</legend>
             <div class="form-group">
                 <div id="div_id_flap_detection_enabled" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detection_enabled"><input class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
+                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detection_enabled" title="Enable detection of flapping states"><input class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
                         Flap detection enabled
                     </label></div>
                 </div>
@@ -4601,30 +4601,30 @@
         </fieldset>
         <div class="form-actions">
             <div id="div_id_low_flap_threshold" class="form-group" ng_show="edit_obj.flap_detection_enabled">
-                <label for="id_low_flap_threshold" class="control-label col-sm-3 requiredField">
+                <label for="id_low_flap_threshold" class="control-label col-sm-3 requiredField" title="Lower percent limit, if value falls below, flapping stops">
                     Low flap threshold<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" title="Lower percent limit, if value falls below, flapping stops"></input></div>
             </div>
             <div id="div_id_high_flap_threshold" class="form-group" ng_show="edit_obj.flap_detection_enabled">
-                <label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField">
+                <label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField"  title="Higher percent limit, if value exceeds flapping starts">
                     High flap threshold<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds flapping starts"></input></div>
             </div>
         </div>
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
                     <div id="div_id_flap_detect_ok" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_ok"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_ok" name="flap_detect_ok" ng-model="edit_obj.flap_detect_ok" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_ok" title="Flap detection for ok states"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_ok" name="flap_detect_ok" ng-model="edit_obj.flap_detect_ok" type="checkbox"></input>
                             Flap detect ok
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_flap_detect_warn" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_warn"><input class="checkboxinput checkbox" id="id_flap_detect_warn" name="flap_detect_warn" ng-model="edit_obj.flap_detect_warn" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_warn" title="Flap detection for warning states"><input class="checkboxinput checkbox" id="id_flap_detect_warn" name="flap_detect_warn" ng-model="edit_obj.flap_detect_warn" type="checkbox"></input>
                             Flap detect warn
                         </label></div>
                     </div>
@@ -4633,14 +4633,14 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <div id="div_id_flap_detect_critical" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_critical"><input class="checkboxinput checkbox" id="id_flap_detect_critical" name="flap_detect_critical" ng-model="edit_obj.flap_detect_critical" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_critical" title="Flap detection for critical states"><input class="checkboxinput checkbox" id="id_flap_detect_critical" name="flap_detect_critical" ng-model="edit_obj.flap_detect_critical" type="checkbox"></input>
                             Flap detect critical
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_flap_detect_unknown" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_unknown"><input class="checkboxinput checkbox" id="id_flap_detect_unknown" name="flap_detect_unknown" ng-model="edit_obj.flap_detect_unknown" type="checkbox"></input>
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_unknown" title="Flap detection for unknown states"><input class="checkboxinput checkbox" id="id_flap_detect_unknown" name="flap_detect_unknown" ng-model="edit_obj.flap_detect_unknown" type="checkbox"></input>
                             Flap detect unknown
                         </label></div>
                     </div>
