@@ -49,9 +49,9 @@
         </icsw-tools-rest-table>
     </tab>
 
-    <tab heading="Notifications">
+    <tab heading="Notification templates">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringNotificationService">
-            <h2>Notifications ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+            <h2>Notification templates ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-condensed table-hover" style="width:auto;">
                     <thead>
@@ -82,69 +82,6 @@
                         </tr>
                     </tbody>
                 </table>
-        </icsw-tools-rest-table>
-    </tab>
-
-    <tab heading="Contacts">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactService">
-            <h2>Contacts ({{entries.length}} entries),
-                <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                   style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                   ng-click="create($event)"></icsw-tools-button>
-            </h2>
-            <table st-table="entries_displayed" st-safe-src="entries"
-                   class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th st-sort="user" st-sort-default="true">User</th>
-                        <th st-sort="snperiod">Service:</th>
-                        <th st-sort="snrecovery">rec</th>
-                        <th st-sort="sncritical">crit</th>
-                        <th st-sort="snwarning">warn</th>
-                        <th st-sort="snunknown">unkn</th>
-                        <th st-sort="sflapping">flap</th>
-                        <th st-sort="splanned_downtime">planned</th>
-                        <th st-sort="hnperiod">Host:</th>
-                        <th st-sort="hnrecovery">rec</th>
-                        <th st-sort="hndown">down</th>
-                        <th st-sort="hnunreachable">unrch</th>
-                        <th st-sort="hflapping">flap</th>
-                        <th st-sort="hplanned_downtime">planned</th>
-                        <th st-sort="notifications">Notifications</th>
-                        <th st-sort="alias">Alias</th>
-                        <th colspan="2" class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="obj in entries_displayed">
-                        <td>{{ obj.user | array_lookup:config_service.user | show_user }}</td>
-                        <td>{{ obj.snperiod | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.snrecovery | yesno1 }}</td>
-                        <td>{{ obj.sncritical | yesno1 }}</td>
-                        <td>{{ obj.snwarning | yesno1 }}</td>
-                        <td>{{ obj.snunknown | yesno1 }}</td>
-                        <td>{{ obj.sflapping | yesno1 }}</td>
-                        <td>{{ obj.splanned_downtime | yesno1 }}</td>
-                        <td>{{ obj.hnperiod | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.hnrecovery | yesno1 }}</td>
-                        <td>{{ obj.hndown | yesno1 }}</td>
-                        <td>{{ obj.hnunreachable | yesno1 }}</td>
-                        <td>{{ obj.hflapping | yesno1 }}</td>
-                        <td>{{ obj.hplanned_downtime | yesno1 }}</td>
-                        <td>{{ obj.notifications | resolve_n2m:config_service.mon_notification:'name':'no notifications' }}
-                        </td>
-                        <td>{{ obj.alias || "---" }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
-                    </tr>
-                </tbody>
-            </table>
         </icsw-tools-rest-table>
     </tab>
 
@@ -328,7 +265,70 @@
             </table>
         </icsw-tools-rest-table>
     </tab>
-
+    
+    <tab heading="Contacts">
+        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactService">
+            <h2>Contacts ({{entries.length}} entries),
+                <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                                   style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
+                                   ng-click="create($event)"></icsw-tools-button>
+            </h2>
+            <table st-table="entries_displayed" st-safe-src="entries"
+                   class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="user" st-sort-default="true">User</th>
+                        <th st-sort="snperiod">Service:</th>
+                        <th st-sort="snrecovery">rec</th>
+                        <th st-sort="sncritical">crit</th>
+                        <th st-sort="snwarning">warn</th>
+                        <th st-sort="snunknown">unkn</th>
+                        <th st-sort="sflapping">flap</th>
+                        <th st-sort="splanned_downtime">planned</th>
+                        <th st-sort="hnperiod">Host:</th>
+                        <th st-sort="hnrecovery">rec</th>
+                        <th st-sort="hndown">down</th>
+                        <th st-sort="hnunreachable">unrch</th>
+                        <th st-sort="hflapping">flap</th>
+                        <th st-sort="hplanned_downtime">planned</th>
+                        <th st-sort="notifications">Notifications</th>
+                        <th st-sort="alias">Alias</th>
+                        <th colspan="2" class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="obj in entries_displayed">
+                        <td>{{ obj.user | array_lookup:config_service.user | show_user }}</td>
+                        <td>{{ obj.snperiod | array_lookup:config_service.mon_period:'name' }}</td>
+                        <td>{{ obj.snrecovery | yesno1 }}</td>
+                        <td>{{ obj.sncritical | yesno1 }}</td>
+                        <td>{{ obj.snwarning | yesno1 }}</td>
+                        <td>{{ obj.snunknown | yesno1 }}</td>
+                        <td>{{ obj.sflapping | yesno1 }}</td>
+                        <td>{{ obj.splanned_downtime | yesno1 }}</td>
+                        <td>{{ obj.hnperiod | array_lookup:config_service.mon_period:'name' }}</td>
+                        <td>{{ obj.hnrecovery | yesno1 }}</td>
+                        <td>{{ obj.hndown | yesno1 }}</td>
+                        <td>{{ obj.hnunreachable | yesno1 }}</td>
+                        <td>{{ obj.hflapping | yesno1 }}</td>
+                        <td>{{ obj.hplanned_downtime | yesno1 }}</td>
+                        <td>{{ obj.notifications | resolve_n2m:config_service.mon_notification:'name':'no notifications' }}
+                        </td>
+                        <td>{{ obj.alias || "---" }}</td>
+                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </icsw-tools-rest-table>
+    </tab>
+    
     <tab heading="Contactgroups">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactgroupService">
                 <h2>Contactgroups ({{entries.length}} entries),  <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>

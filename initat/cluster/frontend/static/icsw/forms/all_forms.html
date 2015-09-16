@@ -853,7 +853,7 @@
             </div>
             <div id="div_id_mon_service_templ" class="form-group">
                 <label for="id_mon_service_templ" class="control-label col-sm-3 requiredField">
-                    Mon service templ<span class="asteriskField">*</span></label>
+                    Monitoring service template<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
@@ -884,7 +884,7 @@
             </div>
             <div id="div_id_mon_period" class="form-group">
                 <label for="id_mon_period" class="control-label col-sm-3 requiredField">
-                    Mon period<span class="asteriskField">*</span></label>
+                    Monitoring period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.mon_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
@@ -922,7 +922,7 @@
             <legend>Notification</legend>
             <div id="div_id_not_period" class="form-group">
                 <label for="id_not_period" class="control-label col-sm-3 requiredField">
-                    Not period<span class="asteriskField">*</span></label>
+                    Notification period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.not_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
@@ -936,7 +936,7 @@
             </div>
             <div id="div_id_ninterval" class="form-group">
                 <label for="id_ninterval" class="control-label col-sm-3 requiredField">
-                    Ninterval<span class="asteriskField">*</span>
+                    Notification interval<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1"></input></div>
             </div>
@@ -4466,11 +4466,11 @@
         <fieldset>
             <legend>Check</legend>
             <div id="div_id_nsc_period" class="form-group">
-                <label for="id_nsc_period" class="control-label col-sm-3 requiredField">
-                    Nsc period<span class="asteriskField">*</span></label>
+                <label for="id_nsc_period" class="control-label col-sm-3 requiredField" title="Monitoring check is active during this period">
+                    Monitoring period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.nsc_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.nsc_period" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Monitoring check is active during this period">
                         <ui-select-match placeholder="please select a time period">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
@@ -4481,33 +4481,33 @@
             </div>
         </fieldset>
         <div class="form-actions">
-            <div id="div_id_max_attempts" class="form-group">
-                <label for="id_max_attempts" class="control-label col-sm-3 requiredField">
-                    Max attempts<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_max_attempts" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" required="True" type="number" value="1"></input></div>
-            </div>
             <div id="div_id_check_interval" class="form-group">
-                <label for="id_check_interval" class="control-label col-sm-3 requiredField">
+                <label for="id_check_interval" class="control-label col-sm-3 requiredField" title="Normal check interval in minutes">
                     Check interval<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="5"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" style="max-width:400px; min-width:100px;" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="5" title="Normal check interval in minutes"></input></div>
+            </div>
+            <div id="div_id_max_attempts" class="form-group">
+                <label for="id_max_attempts" class="control-label col-sm-3 requiredField" title="Number of attempts until switching from soft state into hard state">
+                    Max attempts<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_max_attempts" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" required="True" type="number" value="1" title="Number of attempts until switching from soft state into hard state"></input></div>
             </div>
             <div id="div_id_retry_interval" class="form-group">
-                <label for="id_retry_interval" class="control-label col-sm-3 requiredField">
+                <label for="id_retry_interval" class="control-label col-sm-3 requiredField" title="Check interval in minutes during soft state">
                     Retry interval<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="10"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="10" title="Check interval in minutes during soft state"></input></div>
             </div>
         </div>
         <fieldset>
             <legend>Notification</legend>
             <div id="div_id_nsn_period" class="form-group">
-                <label for="id_nsn_period" class="control-label col-sm-3 requiredField">
-                    Nsn period<span class="asteriskField">*</span></label>
+                <label for="id_nsn_period" class="control-label col-sm-3 requiredField" title="Notification is active during this period">
+                    Notification period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.nsn_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.nsn_period" style="max-width:400px; min-width:100px;" ng-disabled="false" title="Notification is active during this period">
                         <ui-select-match placeholder="please select a time period">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
@@ -4517,57 +4517,57 @@
                 </div>
             </div>
             <div id="div_id_ninterval" class="form-group">
-                <label for="id_ninterval" class="control-label col-sm-3 requiredField">
-                    Ninterval<span class="asteriskField">*</span>
+                <label for="id_ninterval" class="control-label col-sm-3 requiredField" title="Hard state notification interval in minutes">
+                    Notification interval<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="5"></input></div>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="5" title="Hard state notification interval in minutes"></input></div>
             </div>
         </fieldset>
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-sm-3">
                 <div class="form-group">
                     <div id="div_id_nrecovery" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
-                            Notify on recovery
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery" title="Notify in case of service state is recovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
+                            recovery
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_ncritical" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ncritical"><input class="checkboxinput checkbox" id="id_ncritical" name="ncritical" ng-model="edit_obj.ncritical" type="checkbox"></input>
-                            Notify when critical
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ncritical" title="Notify in case of service state is critical"><input class="checkboxinput checkbox" id="id_ncritical" name="ncritical" ng-model="edit_obj.ncritical" type="checkbox"></input>
+                            critical
                         </label></div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-sm-3">
                 <div class="form-group">
                     <div id="div_id_nwarning" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nwarning"><input class="checkboxinput checkbox" id="id_nwarning" name="nwarning" ng-model="edit_obj.nwarning" type="checkbox"></input>
-                            Notify when warning
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nwarning" title="Notify in case of service state is warning"><input class="checkboxinput checkbox" id="id_nwarning" name="nwarning" ng-model="edit_obj.nwarning" type="checkbox"></input>
+                            warning
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_nunknown" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunknown"><input class="checkboxinput checkbox" id="id_nunknown" name="nunknown" ng-model="edit_obj.nunknown" type="checkbox"></input>
-                            Notify when unknown
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunknown" title="Notify in case of service state is unknown"><input class="checkboxinput checkbox" id="id_nunknown" name="nunknown" ng-model="edit_obj.nunknown" type="checkbox"></input>
+                            unknown
                         </label></div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-sm-3">
                 <div class="form-group">
                     <div id="div_id_nflapping" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
-                            Notify when flapping
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping" title="Notify in case of service state is flapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
+                            flapping
                         </label></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div id="div_id_nplanned_downtime" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
-                            Notify when planned downtime
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime" title="Notify in case of service state is planned downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
+                            planned downtime
                         </label></div>
                     </div>
                 </div>
