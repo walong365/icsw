@@ -36,16 +36,15 @@ def find_file(file_name, s_path=None):
         s_path = []
     elif type(s_path) != list:
             s_path = [s_path]
-    s_path.extend(["/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"])
-    found = False
+    s_path.extend(
+        [
+            "/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"
+        ]
+    )
     for cur_path in s_path:
         if os.path.isfile(os.path.join(cur_path, file_name)):
-            found = True
-            break
-    if found:
-        return os.path.join(cur_path, file_name)
-    else:
-        return None
+            return os.path.join(cur_path, file_name)
+    return None
 
 
 class CoreDistribution(object):

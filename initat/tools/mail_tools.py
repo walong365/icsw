@@ -22,7 +22,14 @@
 
 import email  # @UnusedImport
 import email.mime  # @UnusedImport
-from email.header import Header  # @UnusedImport
+import mimetypes
+import os
+import socket
+import smtplib
+import sys
+
+from initat.tools import logging_tools, process_tools
+
 try:
     import email.MIMEMultipart
     import email.MIMEImage
@@ -32,18 +39,11 @@ except ImportError:
     # not present for python3
     pass
 import email.utils  # @UnusedImport
-from initat.tools import logging_tools
-import mimetypes
-import os
-from initat.tools import process_tools
-import socket
 try:
     import email.Encoders
 except ImportError:
     # not present for python3
     pass
-import smtplib
-import sys
 
 if sys.version_info[0] == 3:
     unicode = str  # @ReservedAssignment
@@ -83,13 +83,13 @@ class mail(object):
     def add_to_address(self, trg):
         if isinstance(trg, basestring):
             self.to_addrs.append(trg)
-        elif type(trg) == list:
+        elif isinstance(trg, list):
             self.to_addrs.extend(trg)
-        elif type(trg) == type(set()):
+        elif isinstance(trg, set):
             for add_addr in trg:
                 self.to_addrs.append(add_addr)
         else:
-            print("unknown type for add_to_address: %s" % (str(type(trg))))
+            print("unknown type for add_to_address: {}".format(str(type(trg))))
 
     def init_text(self):
         self.text = []
@@ -109,10 +109,12 @@ class mail(object):
         stat, ret_f = (
             0,
             [
-                "trying to send an email with %s to %s (%sfrom %s via %s)" % (
+                "trying to send an email with {} to {} ({}from {} via {})".format(
                     logging_tools.get_plural("line", len(self.text)),
                     ", ".join(self.to_addrs),
-                    "bcc to %s, " % (", ".join(self.bcc_list)) if self.bcc_list else "",
+                    "bcc to {}, ".format(
+                        ", ".join(self.bcc_list)
+                    ) if self.bcc_list else "",
                     self.from_addr,
                     self.server
                 )
@@ -123,27 +125,62 @@ class mail(object):
         if gen_msgs:
             stat = 1
         else:
-            ret_f.append("message has %d bytes after encoding" % (len(self.msg.as_string())))
+            ret_f.append("message has {:d} bytes after encoding".format(len(self.msg.as_string())))
         err_str = None
         try:
             server = smtplib.SMTP(self.server)
         except socket.gaierror:
-            stat, err_str = (1, "cannot connect to SMTP-Server '%s': socket.gaierror (%s)" % (self.server, sys.exc_info()[0]))
+            stat, err_str = (
+                1,
+                "cannot connect to SMTP-Server '{}': socket.gaierror ({})".format(
+                    self.server,
+                    sys.exc_info()[0]
+                )
+            )
         except socket.error:
-            stat, err_str = (1, "cannot connect to SMTP-Server '%s': socket.error (%s)" % (self.server, sys.exc_info()[0]))
+            stat, err_str = (
+                1,
+                "cannot connect to SMTP-Server '{}': socket.error ({})".format(
+                    self.server,
+                    sys.exc_info()[0]
+                )
+            )
         except:
-            stat, err_str = (1, "cannot connect to SMTP-Server '%s': connection refused (%s)" % (self.server, sys.exc_info()[0]))
+            stat, err_str = (
+                1,
+                "cannot connect to SMTP-Server '{}': connection refused ({})".format(
+                    self.server,
+                    sys.exc_info()[0]
+                )
+            )
         else:
             server.helo(self.server_helo)
             try:
                 # print self.msg.as_string()
                 server.sendmail(self.from_addr, self.to_addrs + self.bcc_list, self.msg.as_string())
             except smtplib.SMTPSenderRefused:
-                stat, err_str = (1, "SMTPError: Sender '%s' refused (%s)" % (self.from_addr, sys.exc_info()[0]))
+                stat, err_str = (
+                    1,
+                    "SMTPError: Sender '{}' refused ({})".format(
+                        self.from_addr,
+                        sys.exc_info()[0]
+                    )
+                )
             except smtplib.SMTPRecipientsRefused:
-                stat, err_str = (1, "SMTPError: Recipients '%s' refused (%s)" % (self.to_addrs, sys.exc_info()[0]))
+                stat, err_str = (
+                    1,
+                    "SMTPError: Recipients '{}' refused ({})".format(
+                        self.to_addrs,
+                        sys.exc_info()[0]
+                    )
+                )
             except:
-                stat, err_str = (1, "SMTPError: Unknown error %s" % (sys.exc_info()[0]))
+                stat, err_str = (
+                    1,
+                    "SMTPError: Unknown error {}".format(
+                        sys.exc_info()[0]
+                    )
+                )
             else:
                 err_str = "Sending mail successfull"
             server.quit()
@@ -167,14 +204,20 @@ class mail(object):
                     while not lines[0]:
                         lines.pop(0)
                 new_text.append("\n".join(lines))
-            if type(new_text[0]) != type(u""):
+            if not isinstance(new_text[0], unicode):
                 new_text = [unicode(new_text[0], "utf-8")]
             self.msg = email.MIMEText.MIMEText(new_text[0].encode("utf-8"), "html", "utf-8")
             self.msg.set_charset("utf-8")
         else:
             self.msg = email.MIMEMultipart.MIMEMultipart("utf-8")
             self.msg.preamble = "This is a multi-part message in MIME-format."
-            self.msg.attach(email.MIMEText.MIMEText("\n".join([line.encode("utf-8") for line in self.text] + [""]), "plain", "utf-8"))
+            self.msg.attach(
+                email.MIMEText.MIMEText(
+                    "\n".join([line.encode("utf-8") for line in self.text] + [""]),
+                    "plain",
+                    "utf-8"
+                )
+            )
         self.msg["Subject"] = self.subject
         self.msg["From"] = self.from_addr
         self.msg["To"] = ", ".join(self.to_addrs)
@@ -194,8 +237,12 @@ class mail(object):
                     try:
                         self.msg.attach(email.MIMEImage.MIMEImage(file(obj, "rb").read()))
                     except:
-                        msgs.append("error reading image file '%s' : %s" % (obj,
-                                                                            process_tools.get_except_info()))
+                        msgs.append(
+                            "error reading image file '{}' : {}".format(
+                                obj,
+                                process_tools.get_except_info()
+                            )
+                        )
                 else:
                     try:
                         new_msg = email.MIMEBase.MIMEBase(maintype, subtype)
@@ -204,10 +251,14 @@ class mail(object):
                         new_msg.add_header("Content-Disposition", "attachment", filename=os.path.basename(obj))
                         self.msg.attach(new_msg)
                     except:
-                        msgs.append("error reading file '%s' : %s" % (obj,
-                                                                      process_tools.get_except_info()))
+                        msgs.append(
+                            "error reading file '{}' : {}".format(
+                                obj,
+                                process_tools.get_except_info()
+                            )
+                        )
             else:
-                msgs.append("error file '%s' not found" % (obj))
+                msgs.append("error file '{}' not found".format(obj))
         return msgs
 
 
@@ -229,8 +280,3 @@ def expand_html_body(body_str, **args):
             new_lines.append(line)
     new_text = "\n".join(new_lines)
     return new_text
-
-
-if __name__ == "__main__":
-    print("Loadable module, exiting...")
-    sys.exit(0)

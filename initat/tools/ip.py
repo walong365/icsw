@@ -5,11 +5,12 @@
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 
 
-from initat.tools import inet
 import socket
 import struct
 import string
 import os
+
+from initat.tools import inet
 
 IPVERSION = 4
 IP_DF = 0x4000
@@ -94,7 +95,7 @@ class Packet:
             self.data = ''
 
     def __repr__(self):
-        begin = "<IPv%d id=%d proto=%d src=%s dst=%s datalen=%d " % (
+        begin = "<IPv{:d} id={:d} proto={:d} src={} dst={} datalen={:d} ".format(
             self.v,
             self.id,
             self.p,
@@ -105,13 +106,13 @@ class Packet:
         if len(self.data) == 0:
             rep = begin + "\'\'>"
         elif len(self.data) < 10:
-            rep = begin + "%s>" % repr(self.data)
+            rep = begin + "{}>".format(repr(self.data))
         else:
-            rep = begin + "%s>" % repr(self.data[:10] + '...')
+            rep = begin + "{}>".format(repr(self.data[:10] + '...'))
         return rep
 
     def assemble(self, cksum=0):
-        "Get a packet suitable for sending over an IP socket."
+        """  Get a packet suitable for sending over an IP socket. """
         # make sure all the data is ready
         self.len = self.hl * 4 + len(self.data)
         self.__parse_addrs()
@@ -129,12 +130,13 @@ class Packet:
             chr(self.p & 0xff)
         )
         if cksum:
-            self.sum = inet.cksum(header + '\000\000' + self.__src +
-                                  self.__dst)
+            self.sum = inet.cksum(
+                header + '\000\000' + self.__src + self.__dst
+            )
             packet = header + struct.pack('h', self.sum) + self.__src + self.__dst
         else:
             packet = header + '\000\000' + self.__src + self.__dst
-        packet = packet + self.data
+        packet += self.data
 
         self.__packet = inet.iph2net(packet)
         return self.__packet
@@ -168,7 +170,7 @@ class Packet:
         self.v = (b1 >> 4) & 0x0f
         self.hl = b1 & 0x0f
         if self.v != IPVERSION:
-            raise ValueError("cannot handle IPv%d packets" % (self.v))
+            raise ValueError("cannot handle IPv{:d} packets".format(self.v))
         hl = self.hl * 4
 
         # verify the checksum

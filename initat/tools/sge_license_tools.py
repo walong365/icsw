@@ -662,7 +662,7 @@ class license_check(object):
             if self.server_addr.startswith("/"):
                 self.server_addr = file(self.server_addr, "r").read().strip().split()[0]
             self.server_port = kwargs.get("port", "1055")
-            if type(self.server_port) not in [int, long]:
+            if not isinstance(self.server_port, int) and not isinstance(self.server_port, long):
                 if self.server_port.startswith("/"):
                     self.server_port = file(self.server_port, "r").read().strip().split()[0]
                 self.server_port = int(self.server_port)

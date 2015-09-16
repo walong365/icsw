@@ -55,7 +55,9 @@ def get_pci_dicts(fname=None):
                     vendormatch = vendorline.match(line)
                     if vendormatch:
                         actvendor = vendormatch.group(1)
-                        vdict[actvendor] = {"name": vendormatch.group(2).strip()}
+                        vdict[actvendor] = {
+                            "name": vendormatch.group(2).strip()
+                        }
                     else:
                         devmatch = devline.match(line)
                         if devmatch:
@@ -64,7 +66,9 @@ def get_pci_dicts(fname=None):
                 classmatch = classline.match(line)
                 if classmatch:
                     actclass = classmatch.group(1)
-                    cdict[actclass] = {"name": classmatch.group(2).strip()}
+                    cdict[actclass] = {
+                        "name": classmatch.group(2).strip()
+                    }
                 else:
                     subclassmatch = subclassline.match(line)
                     if subclassmatch:

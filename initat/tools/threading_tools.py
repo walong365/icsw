@@ -404,7 +404,7 @@ class poller_obj(object):
             if sock in self._socket_lut:
                 sock = self._socket_lut[sock]
             if sock in self.poller_handler:
-                for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):  # @UndefinedVariable
+                for r_type in {zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR}:  # @UndefinedVariable
                     if c_type & r_type:
                         # the socket could vanish
                         if r_type in self.poller_handler.get(sock, []):

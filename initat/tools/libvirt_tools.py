@@ -16,15 +16,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from lxml import etree  # @UnresolvedImport
+from lxml import etree
 import os
 import time
 
 from initat.tools import logging_tools, process_tools
 
 try:
-    import libvirt  # @UnresolvedImport
-except:
+    import libvirt
+except ImportError:
     libvirt = None
 
 LIBVIRT_RO_SOCK_NAME = "/var/run/libvirt/libvirt-sock-ro"
@@ -95,7 +95,7 @@ class disk_info(object):
                     for rel_offset, rel_key in enumerate(["reqs", "bytes"]):
                         self.stats[key][rel_key] = (
                             args[offset + rel_offset] - self.__prev_args[offset + rel_offset]
-                            ) / diff_time
+                        ) / diff_time
             except:
                 self._clear_stats()
         self.__prev_args, self.__feed_time = (args, act_time)
@@ -157,9 +157,12 @@ class virt_instance(object):
 
     def _update_xml(self):
         self.name = self.dom_handle.name()
-        self.log("Instance name is '{}', ID is {}".format(
-            self.name,
-            self.inst_id))
+        self.log(
+            "Instance name is '{}', ID is {}".format(
+                self.name,
+                self.inst_id
+            )
+        )
         self.xml_desc = etree.fromstring(self.dom_handle.XMLDesc(0))  # @UndefinedVariable
         self.memory = int(self.xml_desc.xpath(".//currentMemory", smart_strings=False)[0].text) * 1024
         self.vcpus = int(self.xml_desc.xpath(".//vcpu", smart_strings=False)[0].text)
@@ -219,7 +222,12 @@ class libvirt_connection(object):
             self.log_com("[lvc] {}".format(what), log_level)
 
     def stdout_log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "[{:<5s}] {}".format(logging_tools.get_log_level_str(log_level), what)
+        print(
+            "[{:<5s}] {}".format(
+                logging_tools.get_log_level_str(log_level),
+                what
+            )
+        )
 
     def close(self, **kwargs):
         self._close_con()
@@ -281,6 +289,7 @@ class libvirt_connection(object):
         return self.__inst_dict[key]
 
     def conn_call(self, conn, call_name, *args, **kwargs):
+        res = None
         for retry in [0, 1]:
             try:
                 res = getattr(conn, call_name)(*args, **kwargs)
@@ -396,4 +405,3 @@ class libvirt_connection(object):
         else:
             r_dict = {}
         return r_dict
-

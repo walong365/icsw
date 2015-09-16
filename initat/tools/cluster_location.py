@@ -77,7 +77,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                         var_global = True
                         local_host_name, var_name = (host_name, db_rec.name)
                     source = "{}_table::{}".format(short, db_rec.pk)
-                    if type(db_rec.value) == type(array.array("b")):
+                    if isinstance(db_rec.value, array.array):
                         new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
                     elif short == "int":
                         new_val = configfile.int_c_var(int(db_rec.value), source=source)
@@ -153,7 +153,8 @@ class db_device_variable(object):
                 description=self.__description,
                 var_type=self.__var_type,
                 name=self.__var_name,
-                device=self.__device)
+                device=self.__device
+            )
             setattr(self.__act_dv, "val_{}".format(self.__var_type_name), self.__var_value)
         self.__act_dv.save()
 
@@ -179,11 +180,11 @@ class db_device_variable(object):
         if not type_ok:
             if isinstance(value, basestring):
                 v_type = "s"
-            elif type(value) in [type(0), type(0L)]:
+            elif isinstance(value, int) or isinstance(value, long):
                 v_type = "i"
-            elif type(value) == type(datetime.datetime(2007, 3, 8)):
+            elif isinstance(value, datetime.datetime):
                 v_type = "d"
-            elif type(value) == type(datetime.time()):
+            elif isinstance(value, datetime.time):
                 v_type = "t"
             else:
                 v_type = "b"
@@ -260,13 +261,14 @@ def write_config(server_type, g_config, **kwargs):
                             srv_info.config_name,
                             full_host_name,
                         )
-                    var_obj(
+                    _new_var = var_obj(
                         name=real_k_name,
                         description=description,
                         config=srv_info.config,
                         device=None,
                         value=g_config[key],
-                    ).save()
+                    )
+                    _new_var.save()
                 else:
                     # print key, cur_var.value, g_config.help_string(key), g_config.get_type(key)
                     if g_config[key] != cur_var.value:

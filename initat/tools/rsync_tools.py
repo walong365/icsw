@@ -18,8 +18,9 @@
 """ rsync tools """
 
 import commands
-from initat.tools import logging_tools
 import time
+
+from initat.tools import logging_tools
 
 
 class rsync_call(object):
@@ -49,29 +50,37 @@ class rsync_call(object):
     def rsync(self):
         log_lines = []
         self["start_time"] = time.time()
-        self["rsync_com"] = "rsync --stats -a --delete %s %s" % (self["source_path"],
-                                                                 self["dest_path"])
+        self["rsync_com"] = "rsync --stats -a --delete {} {}".format(
+            self["source_path"],
+            self["dest_path"]
+        )
         if self["verbose"]:
-            self.log("rsync target is %s" % (self["dest_path"]))
-            self.log("starting rsync-command '%s' ..." % (self["rsync_com"]))
+            self.log("rsync target is {}".format(self["dest_path"]))
+            self.log("starting rsync-command '{}' ...".format(self["rsync_com"]))
         sync_stat, sync_out = commands.getstatusoutput(self["rsync_com"])
         self["call_stat"] = sync_stat
         self["call_log"] = sync_out.split("\n")
         e_time = time.time()
         self["run_time"] = e_time - self["start_time"]
         if self["verbose"]:
-            self.log("syncing took %s" % (logging_tools.get_diff_time_str(self["run_time"])))
+            self.log(
+                "syncing took {}".format(
+                    logging_tools.get_diff_time_str(self["run_time"])
+                )
+            )
         self._interpret_output()
-        log_str = "rsync state is %s, %s of output, took %s" % (self._interpret_call_stat(self["call_stat"]),
-                                                                logging_tools.get_plural("line", len(self["call_log"])),
-                                                                logging_tools.get_diff_time_str(self["run_time"]))
+        log_str = "rsync state is {}, {} of output, took {}".format(
+            self._interpret_call_stat(self["call_stat"]),
+            logging_tools.get_plural("line", len(self["call_log"])),
+            logging_tools.get_diff_time_str(self["run_time"])
+        )
         log_lines.append(log_str)
         self.log(log_str,
                  logging_tools.LOG_LEVEL_ERROR if self["call_stat"] else logging_tools.LOG_LEVEL_OK)
         if self["verbose"]:
             for line in self["call_log"]:
                 log_lines.append(line)
-                self.log(" - %s" % (line))
+                self.log(" - {}".format(line))
         # show it
         # pprint.pprint(self.__v_dict)
         return log_lines
@@ -102,18 +111,33 @@ class rsync_call(object):
         }
         # left and right call stat
         l_cs, r_cs = (cs >> 8, cs & 255)
-        return "[%s]" % (", ".join(["%s (%d)" % (r_str_dict.get(act_cs, "unknown code %d" % (act_cs)), act_cs) for act_cs in [l_cs, r_cs]]))
+        return "[{}]".format(
+            ", ".join(
+                [
+                    "{} ({:d})".format(
+                        r_str_dict.get(act_cs, "unknown code {:d}".format(act_cs)),
+                        act_cs
+                    ) for act_cs in [l_cs, r_cs]
+                ]
+            )
+        )
 
     def _interpret_output(self):
-        key_list = ["number of files",
-                    "number of files transferred",
-                    "total file size",
-                    "total transferred file size",
-                    "total bytes sent",
-                    "total bytes received"]
-        key_lut = dict([(key, "".join([part[0] for part in key.split()]))for key in key_list])
-        key_dict = dict([(key_lut[key], 0) for key in key_list])
-        for line in [s_line for s_line in [line.strip() for line in self["call_log"]] if s_line and not s_line.startswith("rsync")]:
+        key_list = [
+            "number of files",
+            "number of files transferred",
+            "total file size",
+            "total transferred file size",
+            "total bytes sent",
+            "total bytes received"
+        ]
+        key_lut = {key: "".join([part[0] for part in key.split()]) for key in key_list}
+        key_dict = {key_lut[key]: 0 for key in key_list}
+        for line in [
+            s_line for s_line in [
+                line.strip() for line in self["call_log"]
+            ] if s_line and not s_line.startswith("rsync")
+        ]:
             if line.count(":"):
                 key, value = line.split(":", 1)
                 if key.lower() in key_list:

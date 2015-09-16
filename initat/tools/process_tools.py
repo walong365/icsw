@@ -1323,11 +1323,18 @@ def kill_running_processes(p_name=None, **kwargs):
         if not p_name:
             log_lines.append("cannot extract process name from cmdline '{}'".format(" ".join(my_proc.cmdline())))
     if p_name:
-        log_lines.append("my_pid is {:d}, searching for process '{}' to kill, kill_signal is {:d}, exclude_list is {}".format(
-            my_pid,
-            p_name,
-            kill_sig,
-            "empty" if not exclude_pids else ", ".join(["{:d}".format(exc_pid) for exc_pid in sorted(exclude_pids)])))
+        log_lines.append(
+            "my_pid is {:d}, searching for process '{}' to kill, kill_signal is {:d}, exclude_list is {}".format(
+                my_pid,
+                p_name,
+                kill_sig,
+                "empty" if not exclude_pids else ", ".join(
+                    [
+                        "{:d}".format(exc_pid) for exc_pid in sorted(exclude_pids)
+                    ]
+                )
+            )
+        )
         kill_dict = build_kill_dict(p_name, exclude_pids)
         any_killed = False
         if kill_dict:
@@ -1338,7 +1345,8 @@ def kill_running_processes(p_name=None, **kwargs):
                         my_pid,
                         pid,
                         name,
-                        kill_sig)
+                        kill_sig
+                    )
                     try:
                         # print log_str
                         os.kill(pid, kill_sig)
@@ -1373,7 +1381,7 @@ def fd_change(uid_gid_tuple, d_name, files):
 
 def fix_directories(user, group, f_list):
     try:
-        if type(user) != str:
+        if not isinstance(user, basestring):
             named_uid = user
         else:
             named_uid = pwd.getpwnam(user)[2]
@@ -1381,7 +1389,7 @@ def fix_directories(user, group, f_list):
         named_uid = 0
         logging_tools.my_syslog("Cannot find user '{}', using root (0)".format(user))
     try:
-        if type(group) != str:
+        if not isinstance(group, basestring):
             named_gid = group
         else:
             named_gid = grp.getgrnam(group)[2]
@@ -1391,11 +1399,11 @@ def fix_directories(user, group, f_list):
     if isinstance(f_list, basestring):
         f_list = [f_list]
     for act_dir in f_list:
-        if type(act_dir) == dict:
+        if isinstance(act_dir, dict):
             dir_name = act_dir["name"]
             dir_mode = act_dir.get("dir_mode", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
             walk_dir = act_dir.get("walk_dir", True)
-        elif type(act_dir) == set:
+        elif isinstance(act_dir, set):
             dir_name, dir_mode = act_dir
             walk_dir = True
         else:
@@ -1405,13 +1413,24 @@ def fix_directories(user, group, f_list):
             try:
                 os.makedirs(dir_name)
             except:
-                logging_tools.my_syslog("Error creating directory '{}', except in walking : {}".format(dir_name, get_except_info()))
+                logging_tools.my_syslog(
+                    "Error creating directory '{}', except in walking : {}".format(
+                        dir_name,
+                        get_except_info()
+                    )
+                )
                 try_walk = False
         if try_walk and walk_dir:
             try:
                 os.chmod(dir_name, dir_mode)
             except OSError:
-                logging_tools.my_syslog("Error changing mode of directory '{}', to {:d} : {}".format(dir_name, dir_mode, get_except_info()))
+                logging_tools.my_syslog(
+                    "Error changing mode of directory '{}', to {:d} : {}".format(
+                        dir_name,
+                        dir_mode,
+                        get_except_info()
+                    )
+                )
             try:
                 os.path.walk(dir_name, fd_change, (named_uid, named_gid))
             except:
@@ -1524,7 +1543,6 @@ def _read_issue_file(f_name):
 
 def fetch_sysinfo(root_dir="/"):
     # late import due to strange build problem on Debian (once again) systems
-    from initat.tools import cpu_database
     log_lines, sys_dict = ([], {})
     try:
         isl = []
@@ -1534,7 +1552,10 @@ def fetch_sysinfo(root_dir="/"):
                 isl.extend([_line.strip().lower() for _line in file(_full, "r").read().split("\n")])
     except:
         log_lines.append(
-            ("error invalid root_path '{}' ?".format(root_dir), logging_tools.LOG_LEVEL_CRITICAL)
+            (
+                "error invalid root_path '{}' ?".format(root_dir),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
         )
     else:
         for what in ["arch", "vendor", "version"]:
@@ -1668,29 +1689,35 @@ def fetch_sysinfo(root_dir="/"):
 def find_file(file_name, s_path=None, exception_on_error=False):
     if not s_path:
         s_path = []
-    elif type(s_path) != list:
+    elif not isinstance(s_path, list):
         s_path = [s_path]
-    s_path.extend(["/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"])
-    found = False
+    s_path.extend(
+        [
+            "/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"
+        ]
+    )
     for cur_path in s_path:
         if os.path.isfile(os.path.join(cur_path, file_name)):
-            found = True
-            break
-    if found:
-        return os.path.join(cur_path, file_name)
+            return os.path.join(cur_path, file_name)
+    if exception_on_error:
+        raise RuntimeError("Failed to find {} (not present any of: {})".format(file_name, s_path))
     else:
-        if exception_on_error:
-            raise RuntimeError("Failed to find {} (not present any of: {})".format(file_name, s_path))
-        else:
-            return None
+        return None
 
 
 def create_password(**kwargs):
     def_chars = "".join([chr(asc) for asc in range(ord("a"), ord("z") + 1)])
-    chars = kwargs.get("chars", "{}{}{}".format(
-        def_chars,
-        def_chars.upper(),
-        "".join(["{:d}".format(idx) for idx in range(0, 10)])))
+    chars = kwargs.get(
+        "chars", "{}{}{}".format(
+            def_chars,
+            def_chars.upper(),
+            "".join(
+                [
+                    "{:d}".format(idx) for idx in xrange(0, 10)
+                ]
+            )
+        )
+    )
     if kwargs.get("special_characters", False):
         chars = "{}!§$%&/()[]#+*~".format(chars)
     length = kwargs.get("length", 8)

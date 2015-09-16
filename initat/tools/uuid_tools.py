@@ -42,7 +42,7 @@ def get_uuid(renew=False):
                 the_uuid = uuid.uuid4()
             try:
                 os.unlink(OLD_UUID_NAME)
-            except:
+            except IOError:
                 pass
         else:
             the_uuid = uuid.uuid4()
@@ -67,7 +67,7 @@ def get_uuid(renew=False):
     if _write:
         try:
             file(NEW_UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
-        except:
+        except IOError:
             pass
     return the_uuid
 

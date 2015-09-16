@@ -95,7 +95,7 @@ class JSVBase(object):
                 elif jsv_line[0] == "PARAM":
                     self.handle_param_command(jsv_line[1], jsv_line[2])
                 elif jsv_line[0] == "ENV":
-                    jsv_data = re.split('\s*', jsv_line[2], maxsplits=2)
+                    jsv_data = re.split('\s*', jsv_line[2], maxsplit=2)
                     self.handle_env_command(jsv_line[1], jsv_data[0], jsv_data[1])
                 elif jsv_line[0] == "START":
                     self.handle_start_command()

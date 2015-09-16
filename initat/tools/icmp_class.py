@@ -42,7 +42,7 @@ def _checksum(data):
     cur_sum = sum([word & 0xffff for word in array.array("h", data)])
     hi, lo = (cur_sum >> 16, cur_sum & 0xffff)
     cur_sum = hi + lo
-    cur_sum = cur_sum + (cur_sum >> 16)
+    cur_sum += cur_sum >> 16
     return (~cur_sum) & 0xffff
 
 
@@ -63,9 +63,9 @@ class ip_packet(object):
 
         flags_fragment = 0x0000
         if dont_fragment:
-            flags_fragment = flags_fragment + 0x4000
+            flags_fragment += 0x4000
         if more_fragments:
-            flags_fragment = flags_fragment + 0x2000
+            flags_fragment += 0x2000
         self.flags_fragment = flags_fragment + (frag_offset & 0x1FFF)
 
         self.ttl = ttl
@@ -100,7 +100,7 @@ class ip_packet(object):
         return data
 
     def __repr__(self):
-        return "<ip_packet: %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s>" % (
+        return "<ip_packet: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}>".format(
             self.ihlversion,
             self.tos,
             self.tot_len,
@@ -120,7 +120,7 @@ def _parse_ip_packet(data):
     (
         ihlversion, tos, _tot_len,
         ident, flags_fragment, ttl,
-        protocol, _checksum,
+        protocol, checksum,
         src_addr, dst_addr
     ) = struct.unpack("!BBHHHBBH4s4s", data[:20])
     src_addr = socket.inet_ntoa(src_addr)
@@ -163,18 +163,30 @@ class icmp_datagram(object):
     def calc_checksum(self, data=""):
         if not data:
             self.checksum = 0
-            data = struct.pack("!BBH%ds" % (len(self.data)), self.packet_type, self.code, self.checksum, self.data)
+            data = struct.pack(
+                "!BBH{:d}s".format(
+                    len(self.data)
+                ),
+                self.packet_type,
+                self.code,
+                self.checksum,
+                self.data
+            )
             self.checksum = _checksum(data)
         else:
             return _checksum(data)
 
     def packed(self):
         self.calc_checksum()
-        return struct.pack("!BBH%ds" % (len(self.data)),
-                           self.packet_type,
-                           self.code,
-                           socket.htons(self.checksum),
-                           self.data)
+        return struct.pack(
+            "!BBH{:d}s".format(
+                len(self.data)
+            ),
+            self.packet_type,
+            self.code,
+            socket.htons(self.checksum),
+            self.data
+        )
 
     def unpack(self):
         pass
@@ -197,7 +209,14 @@ class icmp_echo(icmp_datagram):
         if unpack:
             icmp_datagram.__init__(self, code, checksum, data, unpack)
         else:
-            payload = struct.pack("!hh%ds" % (len(data)), self.ident, self.seqno, data)
+            payload = struct.pack(
+                "!hh{:d}s".formatd(
+                    len(data)
+                ),
+                self.ident,
+                self.seqno,
+                data
+            )
             icmp_datagram.__init__(self, code, checksum, payload, unpack)
 
     def unpack(self):
@@ -239,7 +258,7 @@ class icmp_destination_unreachable(icmp_datagram):
     }
 
     def __repr__(self):
-        return self.code_dict.get(self.code, "Unknown error code '%s'" % (self.code))
+        return self.code_dict.get(self.code, "Unknown error code '{}'".format(self.code))
 
     def unpack(self):
         self.original_ippacket = _parse_ip_packet(self.data[4:])
@@ -274,14 +293,14 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
 
     def received(self, dgram, **kwargs):
         """ to be overwritten """
-        print "received datagram", dgram
+        print("received datagram", dgram)
 
     def parse_datagram(self, datagram):
         packet = _parse_ip_packet(datagram)
         header = packet.payload[:4]
         data = packet.payload[4:]
         packet_type, code, checksum = struct.unpack("!BBH", header)
-        chkdata = struct.pack("!BBH%ds" % (len(data)), packet_type, code, 0, data)
+        chkdata = struct.pack("!BBH{:d}s".format(len(data)), packet_type, code, 0, data)
         chk = socket.htons(_checksum(chkdata))
         # init dgram
         if checksum != chk:

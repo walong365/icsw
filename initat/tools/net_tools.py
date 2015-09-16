@@ -37,7 +37,8 @@ def get_except_info(exc_info=None):
         exc_info = sys.exc_info()
     return "{} ({})".format(
         str(exc_info[0]),
-        str(exc_info[1]))
+        str(exc_info[1])
+    )
 
 
 class zmq_connection(object):

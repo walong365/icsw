@@ -179,7 +179,8 @@ def sec_to_str(in_sec):
                 diff_d and "{:2d}:".format(diff_d) or "",
                 diff_h,
                 diff_m,
-                dt)
+                dt
+            )
         else:
             out_f = "????"
     return out_f
@@ -1107,8 +1108,11 @@ def build_running_list(s_info, options, **kwargs):
         if options.show_memory:
             master_h = s_info.get_host(act_job.findtext("queue_name").split("@")[-1])
             cur_job.extend(
-                [E.virtual_total(master_h.findtext("resourcevalue[@name='virtual_total']")),
-                 E.virtual_free(master_h.findtext("resourcevalue[@name='virtual_free']"))])
+                [
+                    E.virtual_total(master_h.findtext("resourcevalue[@name='virtual_total']")),
+                    E.virtual_free(master_h.findtext("resourcevalue[@name='virtual_free']"))
+                ]
+            )
         cur_job.extend([
             getattr(E, "complex")(",".join(sorted(i_reqs)) or "---"),
             E.queue_name(queue_name)])
@@ -1260,7 +1264,9 @@ def build_waiting_list(s_info, options, **kwargs):
             E.requested_pe(
                 "{}({})".format(
                     act_job.find("requested_pe").attrib["name"],
-                    act_job.findtext("requested_pe")) if len(act_job.findall("requested_pe")) else "-"),
+                    act_job.findtext("requested_pe")
+                ) if len(act_job.findall("requested_pe")) else "-"
+            ),
             E.owner(act_job.findtext("JB_owner")),
             E.state(act_job.findtext("state_long" if options.long_status else "state")),
             getattr(E, "complex")(",".join(i_reqs) or "---"),
@@ -1268,11 +1274,13 @@ def build_waiting_list(s_info, options, **kwargs):
         )
         if not options.suppress_times:
             submit_time = datetime.datetime.fromtimestamp(int(act_job.attrib["submit_time"]))
-            cur_job.extend([
-                E.queue_time(logging_tools.get_relative_dt(submit_time)),
-                E.wait_time(s_info.get_run_time(submit_time)),
-                E.runtime(s_info.get_h_rt_time(act_job.findtext("hard_request[@name='h_rt']"))),
-            ])
+            cur_job.extend(
+                [
+                    E.queue_time(logging_tools.get_relative_dt(submit_time)),
+                    E.wait_time(s_info.get_run_time(submit_time)),
+                    E.runtime(s_info.get_h_rt_time(act_job.findtext("hard_request[@name='h_rt']"))),
+                ]
+            )
             _exec_time = act_job.find(".//execution_time")
             if _exec_time is None:
                 cur_job.append(E.exec_time(""))
@@ -1280,14 +1288,18 @@ def build_waiting_list(s_info, options, **kwargs):
                 _exec_time = datetime.datetime.fromtimestamp(int(_exec_time.text))
                 cur_job.append(E.exec_time(logging_tools.get_relative_dt(_exec_time)))
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
-        cur_job.extend([
-            E.prio(act_job.findtext("JAT_prio")),
-            E.priority(act_job.findtext("JB_priority")),
-            E.depends(
-                "{:d}: {}".format(
-                    len(dep_list),
-                    ",".join(dep_list)) if dep_list else ""),
-        ])
+        cur_job.extend(
+            [
+                E.prio(act_job.findtext("JAT_prio")),
+                E.priority(act_job.findtext("JB_priority")),
+                E.depends(
+                    "{:d}: {}".format(
+                        len(dep_list),
+                        ",".join(dep_list)
+                    ) if dep_list else ""
+                ),
+            ]
+        )
         cur_job.append(create_action_field(act_job, user))
         job_list.append(cur_job)
     return job_list
@@ -1514,26 +1526,32 @@ def build_node_list(s_info, options):
                     )
                 )
             if options.show_memory:
-                cur_node.extend([
-                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
-                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
-                ])
-            cur_node.extend([
-                E.load(
-                    "{:2f}".format(
-                        _load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))
+                cur_node.extend(
+                    [
+                        E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
+                        E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
+                    ]
+                )
+            cur_node.extend(
+                [
+                    E.load(
+                        "{:2f}".format(
+                            _load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))
+                        ),
+                        **{"type": "float", "format": "{:.2f}"}
                     ),
-                    **{"type": "float", "format": "{:.2f}"}
-                ),
-                E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
-                E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
-                E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
-            ])
+                    E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
+                    E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
+                    E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
+                ]
+            )
             if options.show_acl:
                 acl_str_dict = {}
                 for act_q in act_q_list:
-                    for ref_name, header_name in [("user_list", "userlists"),
-                                                  ("project", "projects")]:
+                    for ref_name, header_name in [
+                        ("user_list", "userlists"),
+                        ("project", "projects")
+                    ]:
                         pos_list = " or ".join(act_q.xpath(".//{}s/conf_var[not(@host) or @host='{}']/@name".format(
                             ref_name,
                             act_h.get("short_name")), smart_strings=False))
@@ -1555,18 +1573,31 @@ def build_node_list(s_info, options):
             for q_name in q_list:
                 type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
                 cur_dict = {job_id: s_info.get_job(job_id) for job_id in sorted(type_dict.keys())}
-                qstat_info = ", ".join(["{}{} {} ({:d}) {}{}".format(
-                    "[" if "s" in cur_dict[key].findtext("state").lower() else "",
-                    key,
-                    cur_dict[key].findtext("JB_owner"),
-                    int(cur_dict[key].findtext("granted_pe") or "1"),
-                    (", ".join([
-                        "{}{}".format(
-                            ("{:d} x ".format(type_dict[key].count(s_key)) if type_dict[key].count(s_key) > 1 else ""),
-                            s_key) for
-                        s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
-                    "]" if "s" in cur_dict[key].findtext("state").lower() else "",
-                ) for key in sorted(type_dict.keys()) if cur_dict.get(key, None) is not None])
+                qstat_info = ", ".join(
+                    [
+                        "{}{} {} ({:d}) {}{}".format(
+                            "[" if "s" in cur_dict[key].findtext("state").lower() else "",
+                            key,
+                            cur_dict[key].findtext("JB_owner"),
+                            int(cur_dict[key].findtext("granted_pe") or "1"),
+                            (
+                                ", ".join(
+                                    [
+                                        "{}{}".format(
+                                            (
+                                                "{:d} x ".format(
+                                                    type_dict[key].count(s_key)
+                                                ) if type_dict[key].count(s_key) > 1 else ""
+                                            ),
+                                            s_key
+                                        ) for s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]
+                                    ]
+                                ) + "."
+                            ).replace("MASTER.", "SINGLE.")[:-1],
+                            "]" if "s" in cur_dict[key].findtext("state").lower() else "",
+                        ) for key in sorted(type_dict.keys()) if cur_dict.get(key, None) is not None
+                    ]
+                )
                 if qstat_info.strip():
                     job_list.append("{}::{}".format(q_name, qstat_info))
             cur_node.append(E.jobs("/".join(job_list)))

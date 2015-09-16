@@ -146,7 +146,7 @@ class package_parser(argparse.ArgumentParser):
         opts = argparse.ArgumentParser.parse_args(self)
         # read pre / post scripts
         for _scr_name in SCRIPT_TYPES:
-            _scr_name = "%s_script" % (_scr_name)
+            _scr_name = "{}_script".format(_scr_name)
             if getattr(opts, _scr_name):
                 try:
                     setattr(opts, _scr_name, file(getattr(opts, _scr_name), "r").read())
@@ -154,7 +154,7 @@ class package_parser(argparse.ArgumentParser):
                     print "error handling {} : {}".format(
                         _scr_name,
                         process_tools.get_except_info()
-                        )
+                    )
                     sys.exit(1)
         return opts
 
@@ -217,18 +217,37 @@ class build_package(object):
         if os.getuid() == 0:
             if not os.path.isdir(self.rpm_base_dir):
                 os.mkdir(self.rpm_base_dir)
-            for file_n in ["SPECS", "SOURCES", "RPMS", "BUILD", "SRPMS", "RPMS/i386", "RPMS/i586", "RPMS/noarch", "RPMS/i686"]:
-                t_dir = "%s/%s" % (self.rpm_base_dir, file_n)
+            for file_n in [
+                "SPECS", "SOURCES", "RPMS", "BUILD", "SRPMS", "RPMS/i386", "RPMS/i586", "RPMS/noarch", "RPMS/i686"
+            ]:
+                t_dir = os.path.join(self.rpm_base_dir, file_n)
                 if not os.path.isdir(t_dir):
-                    print "  Generating directory %s ... " % (t_dir)
+                    print("  Generating directory {} ... ".format(t_dir))
                     os.mkdir(t_dir)
 
     def _set_package_file_names(self):
-        self.spec_file_name = "%s/SPECS/%s.spec" % (self.rpm_base_dir, self["name"])
-        self.tgz_file_name = "%s/SOURCES/%s.tgz" % (self.rpm_base_dir, self["name"])
-        self.short_package_name = "%s-%s-%s.%s.rpm" % (self["name"], self["version"], self["release"], self["arch"])
-        self.long_package_name = "%s/RPMS/%s/%s" % (self.rpm_base_dir, self["arch"], self.short_package_name)
-        self.src_package_name = "%s/SRPMS/%s-%s-%s.src.rpm" % (self.rpm_base_dir, self["name"], self["version"], self["release"])
+        self.spec_file_name = os.path.join(
+            self.rpm_base_dir,
+            "SPECS",
+            "{}.spec".format(self["name"])
+        )
+        self.tgz_file_name = os.path.join(
+            self.rpm_base_dir,
+            "SOURCES",
+            "{}.tgz".format(self["name"])
+        )
+        self.short_package_name = "{}-{}-{}.{}.rpm".format(self["name"], self["version"], self["release"], self["arch"])
+        self.long_package_name = os.path.join(
+            self.rpm_base_dir,
+            "RPMS",
+            self["arch"],
+            self.short_package_name
+        )
+        self.src_package_name = os.path.join(
+            self.rpm_base_dir,
+            "SRPMS",
+            "{}-{}-{}.src.rpm".format(self["name"], self["version"], self["release"])
+        )
 
     def write_specfile(self, content):
         print "Generating specfile ..."
@@ -288,16 +307,22 @@ class build_package(object):
             # print "***", src_link, dest_link
             if src_link.endswith("/"):
                 # directory link
-                spec_contents.extend(["linktarget=\"${RPM_BUILD_ROOT}/%s\"" % (self._str_rep(src_link[:-1])),
-                                      "mkdir -p $(dirname \"${linktarget}\")",
-                                      "ln -sf \"%s\" \"$linktarget\"" % (self._str_rep(dest_link)),
-                                      ])
+                spec_contents.extend(
+                    [
+                        "linktarget=\"${RPM_BUILD_ROOT}/%s\"" % (self._str_rep(src_link[:-1])),
+                        "mkdir -p $(dirname \"${linktarget}\")",
+                        "ln -sf \"%s\" \"$linktarget\"" % (self._str_rep(dest_link)),
+                    ]
+                )
             else:
                 # file link
-                spec_contents.extend(["linktarget=\"${RPM_BUILD_ROOT}/%s\"" % (self._str_rep(src_link)),
-                                      "mkdir -p $(dirname \"${linktarget}\")",
-                                      "ln -sf \"%s\" \"$linktarget\"" % (self._str_rep(dest_link)),
-                                      ])
+                spec_contents.extend(
+                    [
+                        "linktarget=\"${RPM_BUILD_ROOT}/%s\"" % (self._str_rep(src_link)),
+                        "mkdir -p $(dirname \"${linktarget}\")",
+                        "ln -sf \"%s\" \"$linktarget\"" % (self._str_rep(dest_link)),
+                    ]
+                )
             dest_files.append(src_link)
         for script_type in SCRIPT_TYPES:
             script_key = "%s_script" % (script_type)
@@ -305,23 +330,33 @@ class build_package(object):
                 script_content = self[script_key]
                 if isinstance(script_content, basestring):
                     script_content = script_content.split("\n")
-                spec_contents.extend(["",
-                                      "%%%s" % (script_type),
-                                      ] + script_content +
-                                     [""])
-        spec_contents.extend(["%clean",
-                              "rm -rf \"$RPM_BUILD_ROOT\"",
-                              "%files",
-                              "%%defattr(-,%s,%s)" % (self["user"],
-                                                      self["group"])])
+                spec_contents.extend(
+                    [
+                        "",
+                        "%{}".format(script_type),
+                    ] + script_content + [
+                        ""
+                    ]
+                )
+        spec_contents.extend(
+            [
+                "%clean",
+                "rm -rf \"$RPM_BUILD_ROOT\"",
+                "%files",
+                "%defattr(-,{},{})".format(
+                    self["user"],
+                    self["group"]
+                )
+            ]
+        )
         for df in dest_files:
             # file_dirs = os.path.dirname(df).split("/")
             # if [x for x in file_dirs if x in self["doc_dirs"]]:
             #    spec_contents.append("%%doc \"%s\"" % (df))
-            spec_contents.append("\"%s\"" % (df))
+            spec_contents.append("\"{}\"".format(df))
             # spec_contents.extend(["%%dir \"%s\"" % (act_dir) for act_dir in dest_dirs])
         for _src_dir, dest_dir in content.get_types("d"):
-            spec_contents.append("%%dir %s" % (dest_dir))
+            spec_contents.append("%dir {}".format(dest_dir))
         file(self.spec_file_name, "wb").write("\n".join(spec_contents + [""]))
         # spec_file.close()
 
@@ -360,12 +395,19 @@ class build_package(object):
             "%s --target %s-init.at\\\\\ Informationstechnologie\\\\\ GmbH-Linux -ba %s" % (
                 self.rpm_build_com,
                 self["arch"],
-                self.spec_file_name))
+                self.spec_file_name
+            )
+        )
         if stat:
             out_lines = out.split("\n")
-            print "Some error occured (%d), %s:" % (stat, logging_tools.get_plural("line", len(out_lines)))
+            print(
+                "Some error occured ({:d}), {}:".format(
+                    stat,
+                    logging_tools.get_plural("line", len(out_lines))
+                )
+            )
             for line in out_lines:
-                print "    %s" % (line.rstrip())
+                print("    {}".format(line.rstrip()))
         else:
             self.build_ok = True
 
@@ -380,22 +422,30 @@ class file_content_list(object):
         for s_point in s_points:
             # expand
             if s_point[0] in ["!"]:
-                exclude_paths.update(set([part.strip() for part in s_point[1:].split(",")]))
+                exclude_paths.update({part.strip() for part in s_point[1:].split(",")})
             else:
                 if s_point.startswith("*"):
-                    start_points.update(set([s_point[1:].strip()]))
+                    start_points.update({s_point[1:].strip()})
                 else:
-                    start_points.update(set([part.strip() for part in s_point.split(",")]))
+                    start_points.update({part.strip() for part in s_point.split(",")})
         # print start_points, exclude_paths
         # check for exclude paths
         if exclude_paths:
             exclude_paths = [os.path.realpath(part) for part in exclude_paths]
-            print "%s: %s" % (logging_tools.get_plural("exclude path", len(exclude_paths)),
-                              ", ".join(sorted(exclude_paths)))
+            print(
+                "{}: {}".format(
+                    logging_tools.get_plural("exclude path", len(exclude_paths)),
+                    ", ".join(sorted(exclude_paths))
+                )
+            )
             exclude_not_ok = [part for part in exclude_paths if not os.path.exists(part)]
             if exclude_not_ok:
-                print "Error, %s: %s" % (logging_tools.get_plural("nonexisting exclude path", len(exclude_not_ok)),
-                                         ", ".join(exclude_not_ok))
+                print(
+                    "Error, {}: {}".format(
+                        logging_tools.get_plural("nonexisting exclude path", len(exclude_not_ok)),
+                        ", ".join(exclude_not_ok)
+                    )
+                )
                 sys.exit(-1)
         exc_dir_names = set(args.get("exclude_dir_names", []))
         # iterate over start_points
@@ -406,8 +456,12 @@ class file_content_list(object):
             }
             files_found = []
             if start_point.count(":") > 1:
-                print "Error, need a source- and an optional destination path (%s), found too many (%d) colons" % (start_point,
-                                                                                                                   start_point.count(":"))
+                print(
+                    "Error, need a source- and an optional destination path ({}), found too many ({:d}) colons".format(
+                        start_point,
+                        start_point.count(":")
+                    )
+                )
                 sys.exit(-1)
             if start_point.count(":"):
                 source_part, dest_part = start_point.split(":", 1)
@@ -417,10 +471,10 @@ class file_content_list(object):
             if os.path.islink(source_part):
                 link_target = os.readlink(source_part)
                 if link_target.startswith("/"):
-                    print "  Absolute Link %s -> %s" % (source_part, link_target)
+                    print("  Absolute Link {} -> {}".format(source_part, link_target))
                     self._add_absolute_link_to_content(source_part, link_target, source_part, dest_part)
                 else:
-                    print "  Relative Link %s -> %s" % (source_part, link_target)
+                    print("  Relative Link {] -> {}".format(source_part, link_target))
                     self._add_relative_link_to_content(source_part, link_target, source_part, dest_part)
             else:
                 source_part = os.path.realpath(source_part)
@@ -442,11 +496,11 @@ class file_content_list(object):
                         else:
                             for rem_dir in [act_dir for act_dir in dir_names if act_dir in exc_dir_names]:
                                 # print "+++ removing directory %s/%s from walk" % (dir_path, rem_dir)
-                                excl_dict["dirs"].append("%s/%s" % (dir_path, rem_dir))
+                                excl_dict["dirs"].append(os.path.join(dir_path, rem_dir))
                                 dir_names.remove(rem_dir)
                             self._add_dir_to_content(dir_path, source_part, dest_part)
                             for entry in dir_names + file_names:
-                                full_path = os.path.normpath("%s/%s" % (dir_path, entry))
+                                full_path = os.path.normpath(os.path.join(dir_path, entry))
                                 if [True for part in exclude_paths if full_path.startswith(part)]:
                                     # exclude
                                     excl_dict["files"].append(full_path)
@@ -454,25 +508,52 @@ class file_content_list(object):
                                     if os.path.islink(full_path):
                                         link_target = os.readlink(full_path)
                                         if link_target.startswith("/"):
-                                            print "  Absolute Link %s -> %s" % (full_path, link_target)
+                                            print(
+                                                "  Absolute Link {} -> {}".format(
+                                                    full_path,
+                                                    link_target
+                                                )
+                                            )
                                             self._add_absolute_link_to_content(full_path, link_target, source_part, dest_part)
                                         else:
-                                            print "  Relative Link %s -> %s" % (full_path, link_target)
+                                            print(
+                                                "  Relative Link {} -> {}".format(
+                                                    full_path,
+                                                    link_target
+                                                )
+                                            )
                                             self._add_relative_link_to_content(full_path, link_target, source_part, dest_part)
                                     elif os.path.isfile(full_path):
                                         self._add_file_to_content(full_path, source_part, dest_part)
                                         files_found.append(self._get_file_info(full_path))
                 else:
-                    print "*** startpoint %s is neither file nor dir ..." % (source_part)
+                    print(
+                        "*** startpoint {} is neither file nor dir ...".format(
+                            source_part
+                        )
+                    )
             if files_found:
-                print "%s: added %s (total %s)" % (
-                    start_point,
-                    logging_tools.get_plural("file", len(files_found)),
-                    logging_tools.get_size_str(sum(files_found), long_format=True))
+                print(
+                    "{}: added {} (total {})".format(
+                        start_point,
+                        logging_tools.get_plural("file", len(files_found)),
+                        logging_tools.get_size_str(sum(files_found), long_format=True)
+                    )
+                )
             if sum([len(e_list) for e_list in excl_dict.values()]):
-                print "\nexclude info for %s: %s\n" % (
-                    start_point,
-                    ", ".join(["%s: %d" % (key, len(value)) for key, value in excl_dict.iteritems()]))
+                print(
+                    "\nexclude info for {}: {}\n".format(
+                        start_point,
+                        ", ".join(
+                            [
+                                "{}: {:d}".format(
+                                    key,
+                                    len(value)
+                                ) for key, value in excl_dict.iteritems()
+                            ]
+                        )
+                    )
+                )
         # pprint.pprint(self.__content_list)
 
     def _remove_leading_slash(self, path):
@@ -498,7 +579,7 @@ class file_content_list(object):
         self.__content_list.append(("lr", os.path.normpath(link_src), link_dst))
 
     def _get_file_info(self, f_name):
-        return os.stat("/%s" % (f_name))[stat.ST_SIZE]
+        return os.stat("/{}".format(f_name))[stat.ST_SIZE]
 
     def show_content(self):
         # print "Passt"
@@ -510,19 +591,31 @@ class file_content_list(object):
             sorted(dir_dict.keys())
         )
         if file_keys:
-            print "Content of file-list (source -> dest, %s):" % (logging_tools.get_plural("entry", len(file_keys)))
+            print(
+                "Content of file-list (source -> dest, {}):".format(
+                    logging_tools.get_plural("entry", len(file_keys))
+                )
+            )
             for sf in file_keys:
-                print "  %-40s -> %s" % (sf, file_dict[sf])
+                print("  {:<40s} -> {}".format(sf, file_dict[sf]))
         if dir_keys:
-            print "Content of dir-list (source -> dest, %s):" % (logging_tools.get_plural("entry", len(dir_keys)))
+            print(
+                "Content of dir-list (source -> dest, {}):".format(
+                    logging_tools.get_plural("entry", len(dir_keys))
+                )
+            )
             for sd in dir_keys:
-                print "  %-40s -> %s" % (sd, dir_dict[sd])
+                print("  {:<40s} -> {}".format(sd, dir_dict[sd]))
 
     def __ne__(self):
         return True if self.__content_list else False
 
     def get_types(self, s_type):
-        return [(src, dst) for e_type, src, dst in self.__content_list if e_type == s_type]
+        return [
+            (src, dst) for e_type, src, dst in self.__content_list if e_type == s_type
+        ]
 
     def get_tgz_files(self):
-        return ["\"/%s\"" % (src) for e_type, src, _dst in self.__content_list if e_type == "f"]
+        return [
+            "\"/{}\"".format(src) for e_type, src, _dst in self.__content_list if e_type == "f"
+        ]

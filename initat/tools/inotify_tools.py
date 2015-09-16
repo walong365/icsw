@@ -93,7 +93,10 @@ class InotifyWatcher(pyinotify.Notifier):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
-            self.__log_com(u"[inw] {}".format(what), log_level)
+            self.__log_com(
+                u"[inw] {}".format(what),
+                log_level
+            )
 
     def add_watcher(self, ext_id, name, mask=ALL_EVENTS, process_events=None):
         if name not in self.__watch_dict:

@@ -14,16 +14,16 @@ from socket import htons, ntohs
 
 def cksum(s):
     if len(s) & 1:
-        s = s + '\0'
+        s += '\0'
     words = array.array('h', s)
-    sum = 0
+    _sum = 0
     for word in words:
-        sum = sum + (word & 0xffff)
-    hi = sum >> 16
-    lo = sum & 0xffff
-    sum = hi + lo
-    sum = sum + (sum >> 16)
-    return (~sum) & 0xffff
+        _sum += word & 0xffff
+    hi = _sum >> 16
+    lo = _sum & 0xffff
+    _sum = hi + lo
+    _sum += _sum >> 16
+    return (~_sum) & 0xffff
 
 # Should generalize from the *h2net patterns
 
@@ -41,28 +41,28 @@ def mks(h):
 
 
 def iph2net(s):
-    len = htons(gets(s[2:4]))
-    id = htons(gets(s[4:6]))
+    _len = htons(gets(s[2:4]))
+    _id = htons(gets(s[4:6]))
     off = htons(gets(s[6:8]))
-    return s[:2] + mks(len) + mks(id) + mks(off) + s[8:]
+    return s[:2] + mks(_len) + mks(_id) + mks(off) + s[8:]
 
 
 def net2iph(s):
-    len = ntohs(gets(s[2:4]))
-    id = ntohs(gets(s[4:6]))
+    _len = ntohs(gets(s[2:4]))
+    _id = ntohs(gets(s[4:6]))
     off = ntohs(gets(s[6:8]))
-    return s[:2] + mks(len) + mks(id) + mks(off) + s[8:]
+    return s[:2] + mks(_len) + mks(_id) + mks(off) + s[8:]
 
 
 def udph2net(s):
     sp = htons(gets(s[0:2]))
     dp = htons(gets(s[2:4]))
-    len = htons(gets(s[4:6]))
-    return mks(sp) + mks(dp) + mks(len) + s[6:]
+    _len = htons(gets(s[4:6]))
+    return mks(sp) + mks(dp) + mks(_len) + s[6:]
 
 
 def net2updh(s):
     sp = ntohs(gets(s[0:2]))
     dp = ntohs(gets(s[2:4]))
-    len = ntohs(gets(s[4:6]))
-    return mks(sp) + mks(dp) + mks(len) + s[6:]
+    _len = ntohs(gets(s[4:6]))
+    return mks(sp) + mks(dp) + mks(_len) + s[6:]

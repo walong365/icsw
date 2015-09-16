@@ -28,7 +28,13 @@ class ipv4(object):
             in_value = list(in_value)
         if isinstance(in_value, basestring):
             # value is a string
-            if len([x for x in [int(y) for y in in_value.strip().split(".") if y.isdigit()] if x >= 0 and x <= 255]) == 4:
+            if len(
+                [
+                    x for x in [
+                        int(y) for y in in_value.strip().split(".") if y.isdigit()
+                    ] if x >= 0 and x <= 255
+                ]
+            ) == 4:
                 self.parts = [int(y) for y in in_value.strip().split(".")]
                 self.inv_parts = [x for x in self.parts]
                 self.inv_parts.reverse()
@@ -49,7 +55,7 @@ class ipv4(object):
             self.inv_parts = []
             for _idx in range(4):
                 self.inv_parts.append(in_value & 255)
-                in_value = in_value >> 8
+                in_value >>= 8
             self.parts = [x for x in self.inv_parts]
             self.parts.reverse()
         self._update_rep()
@@ -62,16 +68,16 @@ class ipv4(object):
         bin_ip, mult = (0, 1)
         for idx in range(4):
             bin_ip += self.inv_parts[idx] * mult
-            mult = mult * 256
+            mult *= 256
         return bin_ip
 
     def netmask_bits(self):
         bin_mask = self.value()
         if bin_mask:
             bits = 32
-            while (not (bin_mask & 1)) and bin_mask:
+            while not (bin_mask & 1) and bin_mask:
                 bits -= 1
-                bin_mask = bin_mask / 2
+                bin_mask /= 2
         else:
             bits = 0
         return bits

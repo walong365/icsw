@@ -88,7 +88,8 @@ class KernelHelper(object):
                     self.log(
                         "error reading config from {}: {}".format(
                             self.__config_path,
-                            process_tools.get_except_info()),
+                            process_tools.get_except_info()
+                        ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
                 else:

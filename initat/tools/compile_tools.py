@@ -24,12 +24,13 @@ import os
 
 
 def get_intel_path(src_path, **args):
+    rel_path = None
     for rel_path in ["intel64", "."]:
         if os.path.isdir(
-                os.path.join(
-                    src_path,
-                    rel_path
-                )
+            os.path.join(
+                src_path,
+                rel_path
+            )
         ):
             break
     return os.path.normpath(os.path.join(src_path, rel_path))
@@ -44,13 +45,15 @@ def get_add_paths_for_intel(intel_path):
 
 
 def get_short_version_for_intel(intel_path, command):
-    stat, icom_out = commands.getstatusoutput("%s/%s -V" % (
-        get_intel_path("%s/bin" % (intel_path)),
-        command,
-    ))
+    stat, icom_out = commands.getstatusoutput(
+        "{}/{} -V".format(
+            get_intel_path(os.path.join(intel_path, "bin")),
+            command,
+        )
+    )
     if stat:
         raise ValueError(
-            "Cannot get Version from %s (%d): %s" % (
+            "Cannot get Version from {} ({:d}): {}".format(
                 command,
                 stat,
                 icom_out,
@@ -71,10 +74,12 @@ def get_short_version_for_intel(intel_path, command):
         else:
             small_version = first_line.split()[-1]
     if small_version.count(" "):
-        print "Small_version '%s' contains spaces (from first line '%s' of %s -V, exiting" % (
-            small_version,
-            first_line,
-            command,
+        print(
+            "Small_version '{}' contains spaces (from first line '{}' of {} -V, exiting".format(
+                small_version,
+                first_line,
+                command,
+            )
         )
         small_version = ""
     else:
@@ -85,7 +90,7 @@ def get_short_version_for_intel(intel_path, command):
             for path_part in intel_path.split("/"):
                 if take_part:
                     take_part = False
-                    small_version = "%s.%s" % (
+                    small_version = "{}.{}".format(
                         small_version,
                         path_part
                     )
