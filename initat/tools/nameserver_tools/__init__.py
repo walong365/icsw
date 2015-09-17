@@ -24,3 +24,4 @@ from .zone import Zone
 from .host import Host
 from .network import Network
 from .parser import parse_options
+from .monitoring import Monitoring
