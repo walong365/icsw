@@ -883,7 +883,7 @@
                 </div>
             </div>
             <div id="div_id_mon_period" class="form-group">
-                <label for="id_mon_period" class="control-label col-sm-3 requiredField" title="Monitoring check is sctive during this period">
+                <label for="id_mon_period" class="control-label col-sm-3 requiredField" title="Monitoring check is active during this period">
                     Monitoring period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
@@ -1462,7 +1462,7 @@
 
 <script type="text/ng-template" id="mon.contact.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Monitoring Contact</h2>
+        <h2>Contacts</h2>
         <fieldset>
             <legend>Base data</legend>
             <div id="div_id_user" class="form-group">
@@ -1479,12 +1479,12 @@
                 </div>
             </div>
             <div id="div_id_notifications" class="form-group">
-                <label for="id_notifications" class="control-label col-sm-3">
-                    Notifications
+                <label for="id_notifications" class="control-label col-sm-3" title="Used notification templates">
+                    Notification templates
                 </label>
 
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.notifications" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select multiple="multiple" ng-model="edit_obj.notifications" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Used notification templates">
                         <ui-select-match placeholder="Select one or more notifications">{{$item.name}}</ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_notification | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
@@ -1503,11 +1503,11 @@
         <fieldset>
             <legend>Service settings</legend>
             <div id="div_id_snperiod" class="form-group">
-                <label for="id_snperiod" class="control-label col-sm-3 requiredField">
+                <label for="id_snperiod" class="control-label col-sm-3 requiredField" title="Notification service period">
                     Service period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.snperiod" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.snperiod" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Notification service period">
                         <ui-select-match placeholder="please select a time period">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
@@ -1522,21 +1522,21 @@
                 <div class="form-actions">
                     <div class="form-group">
                         <div id="div_id_snrecovery" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snrecovery"><input class="checkboxinput checkbox" id="id_snrecovery" name="snrecovery" ng-model="edit_obj.snrecovery" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snrecovery" title="Receive notification in case service recovers"><input class="checkboxinput checkbox" id="id_snrecovery" name="snrecovery" ng-model="edit_obj.snrecovery" type="checkbox"></input>
                                 Notify on service recovery
                             </label></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div id="div_id_sncritical" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_sncritical"><input class="checkboxinput checkbox" id="id_sncritical" name="sncritical" ng-model="edit_obj.sncritical" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_sncritical" title="Receive notification in case service state is critical"><input class="checkboxinput checkbox" id="id_sncritical" name="sncritical" ng-model="edit_obj.sncritical" type="checkbox"></input>
                                 Notify on service critical
                             </label></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div id="div_id_snwarning" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snwarning"><input class="checkboxinput checkbox" id="id_snwarning" name="snwarning" ng-model="edit_obj.snwarning" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snwarning" title="Receive notification in case service state is warning"><input class="checkboxinput checkbox" id="id_snwarning" name="snwarning" ng-model="edit_obj.snwarning" type="checkbox"></input>
                                 Notify on service warning
                             </label></div>
                         </div>
@@ -1547,21 +1547,21 @@
                 <div class="form-actions">
                     <div class="form-group">
                         <div id="div_id_snunknown" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snunknown"><input class="checkboxinput checkbox" id="id_snunknown" name="snunknown" ng-model="edit_obj.snunknown" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snunknown" title="Receive notification in case service state is unknown"><input class="checkboxinput checkbox" id="id_snunknown" name="snunknown" ng-model="edit_obj.snunknown" type="checkbox"></input>
                                 Notify on service unknown
                             </label></div>
                         </div>
-                    <boot/div>
+                    </div>
                     <div class="form-group">
                         <div id="div_id_sflapping" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_sflapping"><input class="checkboxinput checkbox" id="id_sflapping" name="sflapping" ng-model="edit_obj.sflapping" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_sflapping" title="Receive notification in case service state is flapping"><input class="checkboxinput checkbox" id="id_sflapping" name="sflapping" ng-model="edit_obj.sflapping" type="checkbox"></input>
                                 Notify on service flapping
                             </label></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div id="div_id_splanned_downtime" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_splanned_downtime"><input class="checkboxinput checkbox" id="id_splanned_downtime" name="splanned_downtime" ng-model="edit_obj.splanned_downtime" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_splanned_downtime" title="Receive notification in case service state is planned downtime"><input class="checkboxinput checkbox" id="id_splanned_downtime" name="splanned_downtime" ng-model="edit_obj.splanned_downtime" type="checkbox"></input>
                                 Notify on service planned downtime
                             </label></div>
                         </div>
@@ -1572,11 +1572,11 @@
         <fieldset>
             <legend>Host settings</legend>
             <div id="div_id_hnperiod" class="form-group">
-                <label for="id_hnperiod" class="control-label col-sm-3 requiredField">
+                <label for="id_hnperiod" class="control-label col-sm-3 requiredField" title="Notification host period">
                     Host period<span class="asteriskField">*</span></label>
 
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.hnperiod" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.hnperiod" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Notification host period">
                         <ui-select-match placeholder="please select a time period">{{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
@@ -1591,21 +1591,21 @@
                 <div class="form-actions">
                     <div class="form-group">
                         <div id="div_id_hnrecovery" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hnrecovery"><input class="checkboxinput checkbox" id="id_hnrecovery" name="hnrecovery" ng-model="edit_obj.hnrecovery" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hnrecovery" title="Receive notification in case host recovers"><input class="checkboxinput checkbox" id="id_hnrecovery" name="hnrecovery" ng-model="edit_obj.hnrecovery" type="checkbox"></input>
                                 Notify on host recovery
                             </label></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div id="div_id_hndown" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hndown"><input class="checkboxinput checkbox" id="id_hndown" name="hndown" ng-model="edit_obj.hndown" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hndown" title="Receive notification in case host state is down"><input class="checkboxinput checkbox" id="id_hndown" name="hndown" ng-model="edit_obj.hndown" type="checkbox"></input>
                                 Notify on host down
                             </label></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div id="div_id_hnunreachable" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hnunreachable"><input class="checkboxinput checkbox" id="id_hnunreachable" name="hnunreachable" ng-model="edit_obj.hnunreachable" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hnunreachable" title="Receive notification in case host state is unreachable"><input class="checkboxinput checkbox" id="id_hnunreachable" name="hnunreachable" ng-model="edit_obj.hnunreachable" type="checkbox"></input>
                                 Notify on host unreachable
                             </label></div>
                         </div>
@@ -1616,14 +1616,14 @@
                 <div class="form-actions">
                     <div class="form-group">
                         <div id="div_id_hflapping" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hflapping"><input class="checkboxinput checkbox" id="id_hflapping" name="hflapping" ng-model="edit_obj.hflapping" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hflapping" title="Receive notification in case host state is flapping"><input class="checkboxinput checkbox" id="id_hflapping" name="hflapping" ng-model="edit_obj.hflapping" type="checkbox"></input>
                                 Notify on host flapping
                             </label></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div id="div_id_hplanned_downtime" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hplanned_downtime"><input class="checkboxinput checkbox" id="id_hplanned_downtime" name="hplanned_downtime" ng-model="edit_obj.hplanned_downtime" type="checkbox"></input>
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hplanned_downtime" title="Receive notification in case host state is planned downtime"><input class="checkboxinput checkbox" id="id_hplanned_downtime" name="hplanned_downtime" ng-model="edit_obj.hplanned_downtime" type="checkbox"></input>
                                 Notify on host planned downtime
                             </label></div>
                         </div>
