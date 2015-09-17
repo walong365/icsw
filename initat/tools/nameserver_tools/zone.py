@@ -200,15 +200,26 @@ class Zone(object):
                     "    type master;",
                     "    notify yes;",
                     "    allow-update { none; } ;",
-                    "    allow-transfer {{ key {}-key; !key {}-key; {}; }};".format(
+                    "    allow-transfer {{ key {}-key; !key {}-key; {}}};".format(
                         _pf,
                         _npf,
-                        "; ".join([str(_s.ip) for _s in self.Meta.secondary]),
+                        "{}; ".format(
+                            "; ".join([str(_s.ip) for _s in self.Meta.secondary]),
+                        ) if self.Meta.secondary else "",
                     ),
-                    "    also-notify {{ {} ; }};".format("; ".join([str(_s.ip) for _s in self.Meta.secondary])),
-                    "};",
-                    "",
                 ]
+                if self.Meta.secondary:
+                    p_content.extend(
+                        [
+                            "    also-notify {{ {} ; }};".format("; ".join([str(_s.ip) for _s in self.Meta.secondary])),
+                        ]
+                    )
+                p_content.extend(
+                    [
+                        "};",
+                        "",
+                    ]
+                )
                 s_content = [
                     "zone \"{}\" IN {{".format(to_idna(self.origin)),
                     "    file \"{}\";".format(self.zone_file_name(private)),

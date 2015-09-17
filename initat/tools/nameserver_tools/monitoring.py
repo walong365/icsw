@@ -19,6 +19,10 @@
 #
 """ monitoring for nsX.init.at """
 
+import os
+from .zone import Zone
+from .host import Host
+
 
 class Monitoring(object):
     def __init__(self, opts):
@@ -38,7 +42,7 @@ class Monitoring(object):
     def _resolve_ns(self):
         from django.db.models import Q
         self.ns = []
-        for _ns in ZoneObject.Meta.nameservers:
+        for _ns in Zone.Meta.nameservers:
             self.ns.append(
                 self.device.objects.get(
                     Q(name=_ns.name.split(".")[0]) &
