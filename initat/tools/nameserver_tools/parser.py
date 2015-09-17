@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007-2009,2012-2015 Andreas Lang-Nevyjel
@@ -55,7 +54,7 @@ def parse_options(**kwargs):
         "--secondary",
         type=str,
         default=kwargs.get("secondary_ns", "im.init.at:192.168.1.60"),
-        help="comma-separated list of secodary nameserver(s) [%(default)s]"
+        help="comma-separated list of secondary nameserver(s) [%(default)s]"
     )
     _parser.add_argument("--deploy", default=False, action="store_true", help="deploy config to configured nameservers [%(default)s]")
     _parser.add_argument("--restart", default=False, action="store_true", help="restart nameservers instead of simple reload [%(default)s]")

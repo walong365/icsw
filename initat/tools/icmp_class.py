@@ -210,7 +210,7 @@ class icmp_echo(icmp_datagram):
             icmp_datagram.__init__(self, code, checksum, data, unpack)
         else:
             payload = struct.pack(
-                "!hh{:d}s".formatd(
+                "!hh{:d}s".format(
                     len(data)
                 ),
                 self.ident,
