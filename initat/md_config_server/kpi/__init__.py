@@ -27,8 +27,7 @@ import django.utils.timezone
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import Kpi, License
 from initat.md_config_server.kpi.kpi_data import KpiData
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiOperation, KpiGlobals
-from initat.md_config_server.kpi.kpi_utils import print_tree
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiGlobals
 from initat.tools import logging_tools, process_tools, server_command, threading_tools
 
 
@@ -214,7 +213,9 @@ class KpiProcess(threading_tools.process_obj):
         # build function such that return works in the kpi function
         eval_formula = u"def _kpi():\n"
         # indent
-        eval_formula += u"\n".join(((u"    " + line) for line in kpi_db.formula.split(u"\n"))) + u"\n"
+        eval_formula += u"\n".join(
+            (u"    {}".format(line.replace("\t", "    ")) for line in kpi_db.formula.split(u"\n"))
+        ) + u"\n"
         eval_formula += u"kpi = _kpi()\n"
         try:
             # KpiGlobals are used for evaluation, but not exposed to kpi user
@@ -258,8 +259,10 @@ class KpiProcess(threading_tools.process_obj):
                     # there are objects which can be serialized but not deserialized, e.g. enums
                     json.loads(result_str)
                 except ValueError:
-                    self.log("result string can be serialized but not deserialized: {}".format(result_str),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "result string can be serialized but not deserialized: {}".format(result_str),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     result_str = None
         finally:
             KpiGlobals.current_kpi = None

@@ -20,7 +20,7 @@
 
 """ rms-server, monitoring process """
 
-from lxml import etree  # @UnresolvedImport @UnusedImport
+from lxml import etree
 import commands
 import os
 import time
@@ -314,7 +314,7 @@ class rms_mon_process(threading_tools.process_obj):
                 ]
             )
             try:
-                self.collectd_socket.send_unicode(etree.tostring(mach_vect), zmq.DONTWAIT)  # @UndefinedVariable
+                self.collectd_socket.send_unicode(etree.tostring(mach_vect), zmq.DONTWAIT)
             except:
                 self.log(
                     "error sending rms-slot info regarding {} to collectd: {}".format(

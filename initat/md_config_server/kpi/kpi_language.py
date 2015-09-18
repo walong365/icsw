@@ -34,9 +34,7 @@ from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
 from initat.tools import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_raw_host_alert_data
-from initat.cluster.backbone.models import mon_check_command, device, \
-    cluster_timezone
-
+from initat.cluster.backbone.models import mon_check_command, device
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
 
@@ -265,8 +263,9 @@ class KpiRRDObject(KpiObject):
         self.rrd_value = rrd_value
 
     def __repr__(self, child_repr=""):
-        return super(KpiRRDObject, self).__repr__(child_repr=child_repr +
-                                                  "rrd:{}:{}".format(self.rrd_id, self.rrd_value))
+        return super(KpiRRDObject, self).__repr__(
+            child_repr=child_repr + "rrd:{}:{}".format(self.rrd_id, self.rrd_value)
+        )
 
     def matches_id(self, ident):
         try:
@@ -817,15 +816,25 @@ class KpiSet(object):
         :param method: 'at least' or 'at most'
         """
         if ratio_ok > 1.0:
-            raise ValueError("ratio_ok is greater than 1.0: {}. ".format(ratio_ok) +
-                             "Please specify ratio_ok as floating point number between 0.0 and 1.0.")
+            raise ValueError(
+                "ratio_ok is greater than 1.0: {}. ".format(ratio_ok) +
+                "Please specify ratio_ok as floating point number between 0.0 and 1.0."
+            )
         if ratio_warn is not None and ratio_warn > 1.0:
-            raise ValueError("ratio_warn is greater than 1.0: {}. ".format(ratio_warn) +
-                             "Please specify ratio_warn as floating point number between 0.0 and 1.0.")
-        origin = KpiOperation(KpiOperation.Type.evaluate_historic,
-                              arguments={'ratio_ok': ratio_ok, 'ratio_warn': ratio_warn, 'result': unicode(result),
-                                         'method': method},
-                              operands=[self])
+            raise ValueError(
+                "ratio_warn is greater than 1.0: {}. ".format(ratio_warn) +
+                "Please specify ratio_warn as floating point number between 0.0 and 1.0."
+            )
+        origin = KpiOperation(
+            KpiOperation.Type.evaluate_historic,
+            arguments={
+                'ratio_ok': ratio_ok,
+                'ratio_warn': ratio_warn,
+                'result': unicode(result),
+                'method': method
+            },
+            operands=[self]
+        )
         if not self.time_line_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:

@@ -29,16 +29,20 @@ import sys
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         if kwargs["server_mode"]:
-            return self._add_image_parser(sub_parser)
+            try:
+                from initat.cluster.backbone.models import image
+                images = [_img.name for _img in image.objects.all().order_by("name")]
+            except:
+                pass
+            else:
+                return self._add_image_parser(sub_parser, images)
 
-    def _add_image_parser(self, sub_parser):
+    def _add_image_parser(self, sub_parser, images):
         parser = sub_parser.add_parser("image", help="image information and modification")
         parser.set_defaults(subcom="image", execute=self._execute)
-        from initat.cluster.backbone.models import image
-        _images = [_img.name for _img in image.objects.all().order_by("name")]
-        if len(_images):
+        if len(images):
             parser.add_argument("--mode", default="list", type=str, choices=["list", "build", "scan", "take"], help="image action [%(default)s]")
-            parser.add_argument("--image", default=_images[0], type=str, choices=_images, help="image to operate on [%(default)s]")
+            parser.add_argument("--image", default=images[0], type=str, choices=images, help="image to operate on [%(default)s]")
             parser.add_argument("--verbose", default=False, action="store_true", help="be verbose [%(default)s]")
             parser.add_argument("--ignore-errors", "-i", default=False, action="store_true", help="ignore missing packages [%(default)s]")
             parser.add_argument("--override", default=False, action="store_true", help="override build lock [%(default)s]")
@@ -50,7 +54,6 @@ class Parser(object):
         return parser
 
     def _execute(self, opt_ns):
-        print opt_ns
         if not hasattr(opt_ns, "mode"):
             print("No images defined")
             # sys.exit(0)

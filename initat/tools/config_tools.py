@@ -395,7 +395,7 @@ def get_config_var_list(config_obj, config_dev):
             else:
                 var_global = True
                 _local_host_name, var_name = (config_dev.name, db_rec.name)
-            if type(db_rec.value) == type(array.array("b")):
+            if isinstance(db_rec.value, array.array):
                 new_val = configfile.str_c_var(db_rec.value.tostring(), source="{}_table".format(short))
             elif short == "int":
                 new_val = configfile.int_c_var(int(db_rec.value), source="{}_table".format(short))
@@ -690,8 +690,8 @@ class server_check(object):
                             )
                 else:
                     if kwargs.get("allow_route_to_other_networks", False):
-                        for src_id in set(source_ip_lut.iterkeys()) & set(["p", "o"]):
-                            for dst_id in set(dest_ip_lut.iterkeys()) & set(["p", "o"]):
+                        for src_id in set(source_ip_lut.iterkeys()) & {"p", "o"}:
+                            for dst_id in set(dest_ip_lut.iterkeys()) & {"p", "o"}:
                                 add_actual = True
                                 if filter_ip:
                                     if filter_ip not in source_ip_lut[src_id] and filter_ip not in dest_ip_lut[dst_id]:
@@ -710,7 +710,7 @@ class server_check(object):
             r_list = sorted(r_list)
         if kwargs.get("prefer_production_net", False):
             r_list = self.prefer_production_net(r_list)
-        if "cache" in kwargs:
+        if "cache" in kwargs and self.device is not None and other.device is not None:
             kwargs["cache"][(self.device.pk, other.device.pk)] = r_list
         return r_list
 

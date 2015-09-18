@@ -60,6 +60,7 @@ class CompoundEntry(object):
 
     def _match_single(self, in_list):
         # returns a list of matching keys
+        _res = None
         _success = False
         if self.__re_list:
             _res = []

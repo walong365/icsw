@@ -193,8 +193,9 @@ class machine_vector(object):
             if xml_struct is not None:
                 # rewrite current config
                 _cs = config_store.ConfigStore(MACHVECTOR_CS_NAME, log_com=self.log, prefix="mv", read=False)
-                for mv_idx, mv_target in enumerate(xml_struct.xpath(".//mv_target[@enabled='1']", smart_strings=False)):
+                for mv_idx, mv_target in enumerate(xml_struct.xpath(".//mv_target", smart_strings=False)):
                     _attr = mv_target.attrib
+                    self.log("migrating old machvector {:d} ({})".format(mv_idx, str(_attr)))
                     _dict = {
                         "target": _attr.get("target", "localhost"),
                         "send_every": int(_attr.get("send_every", "30")),
