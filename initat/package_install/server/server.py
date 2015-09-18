@@ -31,7 +31,7 @@ from initat.tools.server_mixins import RemoteCall
 
 from .config import global_config
 from .repository_process import RepoProcess
-from .package_install_server_structs import Client
+from .structs import Client
 
 
 @server_mixins.RemoteCallProcess
@@ -154,7 +154,7 @@ class server_process(
             _ok = False
         return _ok
 
-    def _send_command(self, command, dev_list=[], **kwargs):
+    def _send_command(self, command, dev_list=None, **kwargs):
         send_list = dev_list or Client.name_set
         self.log(
             "send command {} to {} ({})".format(

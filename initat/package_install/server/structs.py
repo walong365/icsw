@@ -34,10 +34,10 @@ from initat.cluster.backbone.serializers import package_device_connection_wp_ser
     package_repo_serializer
 from lxml.builder import E  # @UnresolvedImport
 from rest_framework.renderers import XMLRenderer
-from initat.tools import logging_tools, process_tools, server_command
+from initat.tools import logging_tools, process_tools, server_command, config_store
 
 from .config import global_config
-from .constants import CONFIG_NAME, PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
+from .constants import CLIENT_CS_NAME, PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
 
 
 class Repository(object):
@@ -119,7 +119,7 @@ class RepoTypeRpmYum(RepoType):
                 new_repos.append(cur_repo)
             repo_enabled = True if _dict.get("status", "disabled").lower() == "enabled" else False
             found_repos.append(cur_repo)
-            old_repos -= set([cur_repo.name])
+            old_repos -= {cur_repo.name}
             # print repo_name, repo_enabled, repo_info
             cur_repo.alias = _dict["name"]
             cur_repo.enabled = repo_enabled
@@ -251,7 +251,7 @@ class RepoTypeRpmZypper(RepoType):
                 cur_repo = package_repo(name=repo.attrib["name"])
                 new_repos.append(cur_repo)
             found_repos.append(cur_repo)
-            old_repos -= set([cur_repo.name])
+            old_repos -= {cur_repo.name}
             cur_repo.alias = repo.attrib["alias"]
             cur_repo.repo_type = repo.attrib.get("type", "")
             if "priority" in repo.attrib:
@@ -471,15 +471,31 @@ class Client(object):
 
     @staticmethod
     def init(srv_process):
+        OLD_CONFIG_NAME = "/etc/sysconfig/cluster/package_server_clients.xml"
         Client.srv_process = srv_process
         Client.uuid_set = set()
         Client.name_set = set()
         Client.lut = {}
-        if not os.path.exists(CONFIG_NAME):
-            file(CONFIG_NAME, "w").write(etree.tostring(E.package_clients(), pretty_print=True))  # @UndefinedVariable
-        Client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())  # @UndefinedVariable
-        for client_el in Client.xml.xpath(".//package_client", smart_strings=False):
-            Client.register(client_el.text, client_el.attrib["name"])
+        if not config_store.ConfigStore.exists(CLIENT_CS_NAME):
+            _create = True
+            _cs = config_store.ConfigStore(CLIENT_CS_NAME, log_com=Client.srv_process.log, read=False, prefix="client")
+            if os.path.exists(OLD_CONFIG_NAME):
+                _xml = etree.fromstring(file(OLD_CONFIG_NAME, "r").read())
+                for _idx, _entry in enumerate(_xml.findall(".//package_client")):
+                    _cs["{:d}".format(_idx)] = {
+                        "name": _entry.attrib["name"],
+                        "uuid": _entry.text,
+                    }
+            Client.CS = _cs
+        else:
+            Client.CS = config_store.ConfigStore(CLIENT_CS_NAME, log_com=Client.srv_process.log, prefix="client")
+            _create = False
+        if _create:
+            Client.CS.write()
+            _cs.write()
+        for client_num in Client.CS.keys():
+            _stuff = Client.CS[client_num]
+            Client.register(_stuff["uuid"], _stuff["name"])
 
     @staticmethod
     def full_uuid(in_uuid):
@@ -522,16 +538,27 @@ class Client(object):
                 Client.lut[name] = new_client
                 Client.lut[name.split(".")[0]] = new_client
                 Client.srv_process.log("added client {} ({})".format(name, uid))
-                cur_el = Client.xml.xpath(".//package_client[@name='{}']".format(name), smart_strings=False)
-                _rewrite = False
-                if not len(cur_el):
-                    Client.xml.append(E.package_client(uid, name=name))
-                    _rewrite = True
-                elif cur_el[0].text != uid:
-                    cur_el[0].text = uid
-                    _rewrite = True
-                if _rewrite:
-                    file(CONFIG_NAME, "w").write(etree.tostring(Client.xml, pretty_print=True))  # @UndefinedVariable
+                found = False
+                _keys = Client.CS.keys()
+                for _key in _keys:
+                    _client = Client.CS[_key]
+                    if _client["name"] == name:
+                        found = True
+                        if _client["uuid"] != uid:
+                            _client["uuid"] = uid
+                            Client.CS[key] = _client
+                            Client.CS.write()
+                        break
+                if not found:
+                    if len(_keys):
+                        _new_idx = "{:d}".format(max([int(_val) for _val in _keys]) + 1)
+                    else:
+                        _new_idx = "0"
+                    Client.CS[_new_idx] = {
+                        "name": name,
+                        "uuid": uid,
+                    }
+                    Client.CS.write()
 
     def close(self):
         if self.__log_template is not None:
@@ -669,10 +696,12 @@ class Client(object):
     def _get_repo_list(self, srv_com):
         repo_list = package_repo.objects.filter(Q(publish_to_nodes=True))
         send_ok = [cur_repo for cur_repo in repo_list if cur_repo.distributable]
-        self.log("{}, {:d} to send".format(
-            logging_tools.get_plural("publish repo", len(repo_list)),
-            len(send_ok),
-            ))
+        self.log(
+            "{}, {:d} to send".format(
+                logging_tools.get_plural("publish repo", len(repo_list)),
+                len(send_ok),
+            )
+        )
         if self.__client_gen == 1:
             resp = etree.fromstring(XMLRenderer().render(package_repo_serializer(send_ok, many=True).data))  # @UndefinedVariable
         else:

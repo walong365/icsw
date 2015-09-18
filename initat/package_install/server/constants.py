@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
@@ -28,4 +26,4 @@ LAST_CONTACT_VAR_NAME = "package_server_last_contact"
 PACKAGE_VERSION_VAR_NAME = "package_client_version"
 DIRECT_MODE_VAR_NAME = "package_client_direct_mode"
 
-CONFIG_NAME = "/etc/sysconfig/cluster/package_server_clients.xml"
+CLIENT_CS_NAME = "icsw.ps.clients"
