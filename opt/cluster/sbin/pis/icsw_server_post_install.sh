@@ -77,7 +77,7 @@ fi
 
 if [ -L /tftpboot ] ; then
     # /tftpboot is a link
-    if [ "$(realpath $(readlink /tftpboot))" != "${ICSW_TFTP}" ] ; then
+    if [ "$(readlink -f /tftpboot)" != "${ICSW_TFTP}" ] ; then
         echo "/tftpboot is a link but points to $(readlink /tftpboot) instead of ${ICSW_TFTP}"
     fi
 else

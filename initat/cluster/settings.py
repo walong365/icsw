@@ -211,7 +211,7 @@ INSTALLED_APPS = (
 )
 
 if _cs["mode.is.slave"]:
-    INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
+    INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS)])
 
 
 ICSW_WEBCACHE = "/opt/cluster/share/webcache"
