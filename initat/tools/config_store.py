@@ -290,7 +290,8 @@ class ConfigStore(object):
         else:
             self.log("tree is not valid", logging_tools.LOG_LEVEL_ERROR)
 
-    def keys(self):
+    def keys(self, **kwargs):
+        only_dict = kwargs.get("only_dict", False)
         if self.tree_valid:
             if self.prefix:
                 _keys = set()
@@ -298,7 +299,8 @@ class ConfigStore(object):
                     if _key.startswith("{}_".format(self.prefix)) and _key.count("_") > 1:
                         _keys.add(_key.split("_")[1])
                     else:
-                        _keys.add(_key)
+                        if not only_dict:
+                            _keys.add(_key)
                 return list(_keys)
             else:
                 return self.vars.keys()

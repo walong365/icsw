@@ -374,7 +374,7 @@ class server_code(ICSWBasePool, HMHRMixin):
             )
             # code snippet to update value
             _cur = _cs["0"]
-            _cs["uuid"] = my_0mq_id
+            _cur["uuid"] = my_0mq_id
             _cs["0"] = _cur
             create_0mq_cs = True
         if create_0mq_cs:
