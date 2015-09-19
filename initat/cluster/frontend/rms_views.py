@@ -356,7 +356,6 @@ class get_file_content(View):
                 *[srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.iterkeys()]
             )
             result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
-            print result.pretty_print()
             if result is not None:
                 if result.get_result()[1] > server_command.SRV_REPLY_STATE_WARN:
                     request.xml_response.error(result.get_log_tuple()[0], logger)
