@@ -54,6 +54,8 @@ __all__ = [
     "ext_license_state_coarse",
     "ext_license_usage_coarse",
     "RMSJobVariable",
+    "RMSJobVariableAction",
+    "RMSJobVariableActionRun"
 ]
 
 
@@ -299,10 +301,10 @@ class ext_license(ext_license_base):
 
 
 class ext_license_version(ext_license_base):
-    '''
+    """
     License version as reported by server (different from what is used and reported by client.)
     This is probably the import one.
-    '''
+    """
     ext_license = models.ForeignKey("backbone.ext_license")
     version = models.CharField(max_length=64, default="")
 
@@ -530,3 +532,23 @@ def rms_job_variable_pre_save(sender, **kwargs):
         else:
             cur_var.parsed_type = "f"
             cur_var.parsed_float = _float
+
+
+class RMSJobVariableAction(models.Model):
+    # code to call when a variable changes
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(default="", max_length=255, unique=True)
+    # this code gets called
+    code = models.TextField(default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class RMSJobVariableActionRun(models.Model):
+    idx = models.AutoField(primary_key=True)
+    rms_job = models.ForeignKey("backbone.rms_job")
+    rms_job_variable_action_run = models.ForeignKey("backbone.RMSJobVariableAction")
+    run_time = models.FloatField(default=0.0)
+    success = models.BooleanField(default=False)
+    vars_created = models.IntegerField(default=0)
+    triggered_run = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)

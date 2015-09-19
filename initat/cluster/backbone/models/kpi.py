@@ -52,12 +52,12 @@ class _KpiManager(models.Manager):
             start, end = get_duration_class_start_end(
                 duration.Day,
                 django.utils.timezone.now() - datetime.timedelta(days=1),
-                )
+            )
         elif time_range == 'last week':
             start, end = get_duration_class_start_end(
                 duration.Week,
                 django.utils.timezone.now() - datetime.timedelta(days=7),
-                )
+            )
         elif time_range == 'last month':
             start, end = get_duration_class_start_end(
                 duration.Month,
