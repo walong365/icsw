@@ -25,7 +25,7 @@ import operator
 import sys
 import time
 
-from initat.tools import process_tools, server_command
+from initat.tools import process_tools, server_command, logging_tools
 import zmq
 
 

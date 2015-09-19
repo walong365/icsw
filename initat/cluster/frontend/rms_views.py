@@ -354,51 +354,55 @@ class get_file_content(View):
             srv_com["file_list"] = srv_com.builder(
                 "file_list",
                 *[srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.iterkeys()]
-                )
+            )
             result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
+            print result.pretty_print()
             if result is not None:
-                for cur_file in result.xpath(".//ns:file", smart_strings=False):
-                    # print etree.tostring(cur_file)
-                    if cur_file.attrib.get("error", "1") == "1":
-                        request.xml_response.error(
-                            "error reading {} (job {}): {}".format(
-                                cur_file.attrib["name"],
-                                job_id,
-                                cur_file.attrib["error_str"]
-                            ),
-                            logger
-                        )
-                    else:
-                        # ie freezes if it displays too much text
-                        text = cur_file.text
-                        magic_limit = 350000
-                        if int(_post.get("is_ie", "0")) and text and len(text) > magic_limit:
-                            request.xml_response.info("file is too large, truncating beginning")
-                            # return some first lines and mostly last lines such that in total,
-                            # we transfer about $magic_limit
-
-                            # also include first 200 lines
-                            # this is needed for some people to identify the job
-                            # (200 is an arbitrary number. there is relevant information from ansys around line 135)
-
-                            lines = text.split("\n")
-                            first_lines, last_lines = (lines[:200], lines[201:])
-                            new_text = u""
-                            while len(new_text) < magic_limit and last_lines:
-                                new_text = last_lines.pop() + u"\n" + new_text
-
-                            cut_marker = u"\n\n[cut off output since file is too large]\n\n"
-                            text = u"\n".join(first_lines) + cut_marker + new_text
-
-                        _resp_list.append(
-                            E.file_info(
-                                text or "",
-                                id=fetch_lut[cur_file.attrib["name"]],
-                                name=cur_file.attrib["name"],
-                                lines=cur_file.attrib["lines"],
-                                size_str=logging_tools.get_size_str(int(cur_file.attrib["size"]), True),
+                if result.get_result()[1] > server_command.SRV_REPLY_STATE_WARN:
+                    request.xml_response.error(result.get_log_tuple()[0], logger)
+                else:
+                    for cur_file in result.xpath(".//ns:file", smart_strings=False):
+                        # print etree.tostring(cur_file)
+                        if cur_file.attrib.get("error", "0") == "1":
+                            request.xml_response.error(
+                                "error reading {} (job {}): {}".format(
+                                    cur_file.attrib["name"],
+                                    job_id,
+                                    cur_file.attrib["error_str"]
+                                ),
+                                logger
                             )
-                        )
+                        else:
+                            # ie freezes if it displays too much text
+                            text = cur_file.text
+                            magic_limit = 350000
+                            if int(_post.get("is_ie", "0")) and text and len(text) > magic_limit:
+                                request.xml_response.info("file is too large, truncating beginning")
+                                # return some first lines and mostly last lines such that in total,
+                                # we transfer about $magic_limit
+
+                                # also include first 200 lines
+                                # this is needed for some people to identify the job
+                                # (200 is an arbitrary number. there is relevant information from ansys around line 135)
+
+                                lines = text.split("\n")
+                                first_lines, last_lines = (lines[:200], lines[201:])
+                                new_text = u""
+                                while len(new_text) < magic_limit and last_lines:
+                                    new_text = last_lines.pop() + u"\n" + new_text
+
+                                cut_marker = u"\n\n[cut off output since file is too large]\n\n"
+                                text = u"\n".join(first_lines) + cut_marker + new_text
+
+                            _resp_list.append(
+                                E.file_info(
+                                    text or "",
+                                    id=fetch_lut[cur_file.attrib["name"]],
+                                    name=cur_file.attrib["name"],
+                                    lines=cur_file.attrib["lines"],
+                                    size_str=logging_tools.get_size_str(int(cur_file.attrib["size"]), True),
+                                )
+                            )
             if len(_resp_list):
                 request.xml_response["response"] = _resp_list
         else:
@@ -407,7 +411,7 @@ class get_file_content(View):
                     logging_tools.get_plural("job", len(file_id_list))
                 ),
                 logger
-            )  # %s not found for job %s" % (std_type, job_id), logger)
+            )
 
 
 class set_user_setting(View):

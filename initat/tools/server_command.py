@@ -164,6 +164,13 @@ class srv_command(object):
             }
         )
 
+    def get_result(self):
+        if "result" not in self:
+            return ("no result node found", SRV_REPLY_STATE_CRITICAL)
+        else:
+            _attrib = self["result"].attrib
+            return (_attrib.get("reply", "no reply-string set"), int(_attrib.get("state", "{:d}".format(SRV_REPLY_STATE_OK))))
+
     def builder(self, tag_name=None, *args, **kwargs):
         if tag_name is None:
             return self.__builder
