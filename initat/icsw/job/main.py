@@ -43,7 +43,10 @@ def _parse_environ(opts):
             opts.job_id = os.environ["JOB_ID"]
     if not opts.task_id:
         if "SGE_TASK_ID" in os.environ:
-            opts.task_id = int(os.environ["SGE_TASK_ID"])
+            try:
+                opts.task_id = int(os.environ["SGE_TASK_ID"])
+            except:
+                opts.task_id = 0
     if opts.task_id:
         opts.full_job_id = "{}.{:d}".format(opts.job_id, opts.task_id)
     else:
