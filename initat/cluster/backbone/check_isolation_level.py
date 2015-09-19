@@ -25,5 +25,6 @@ def main():
             print("")
             raise ImproperlyConfigured("wrong transaction-isolation level used (found: {}, need: {})".format(global_tx, TARGET_IL))
 
+
 if __name__ == "__main__":
     main()

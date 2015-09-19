@@ -103,7 +103,8 @@ class LicenseFileReader(object):
         return set(elem.get('id') for elem in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP))
 
     def get_license_state(self, license, parameters=None):
-        """Returns a LicenseState for the local cluster_id and the given license combination
+        """
+        Returns a LicenseState for the local cluster_id and the given license combination
         for the current point in time, or LicenseState.none if no license exists.
 
         NOTE: Does not consider license violations. This is handled by the db (i.e. License).
@@ -182,8 +183,10 @@ class LicenseFileReader(object):
                 'date': pack_xml.findtext("icsw:package-meta/icsw:package-date", namespaces=ICSW_XML_NS_MAP),
                 'customer': package_customer_map[pack_xml].findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
                 'type_name': pack_xml.findtext("icsw:package-meta/icsw:package-type-name", namespaces=ICSW_XML_NS_MAP),
-                'cluster_licenses': {cluster_xml.get("id"): extract_cluster_data(cluster_xml) for cluster_xml in
-                                     pack_xml.xpath("icsw:cluster-id", namespaces=ICSW_XML_NS_MAP)}
+                'cluster_licenses': {
+                    cluster_xml.get("id"): extract_cluster_data(cluster_xml) for cluster_xml in
+                    pack_xml.xpath("icsw:cluster-id", namespaces=ICSW_XML_NS_MAP)
+                }
             }
 
         def extract_cluster_data(cluster_xml):
@@ -194,15 +197,19 @@ class LicenseFileReader(object):
                     return None
 
             def parse_parameters(parameters_xml):
-                return {LicenseParameterTypeEnum.id_string_to_user_name(param_xml.get('id')): int_or_none(param_xml.text)
-                        for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)}
+                return {
+                    LicenseParameterTypeEnum.id_string_to_user_name(param_xml.get('id')): int_or_none(param_xml.text)
+                    for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)
+                }
 
-            return [{
-                'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
-                'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
-                'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
-                'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
-            } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)]
+            return [
+                {
+                    'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
+                    'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
+                    'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                    'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
+                } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
+            ]
 
         return [extract_package_data(pack_xml) for pack_xml in package_uuid_map.itervalues()]
 

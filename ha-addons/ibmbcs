@@ -43,10 +43,9 @@ class stonith_client(paramiko.SSHClient):
             "uds:/var/lib/logging-server/py_log_zmq",
             zmq=True,
             context=self.zmq_context)
-        self._required_cmds = \
-            "reset gethosts status getconfignames getinfo-devid " \
-            "getinfo-devname getinfo-devdescr getinfo-devurl " \
-            "getinfo-xml"
+        self._required_cmds = "reset gethosts status getconfignames " \
+            "getinfo-devid getinfo-devname getinfo-devdescr " \
+            "getinfo-devurl getinfo-xml"
         # definitions for the external stonith plugin api
         self._optional_cmds = "on off"
         self._required_cmds_list = self._required_cmds.split()
@@ -72,7 +71,9 @@ class stonith_client(paramiko.SSHClient):
             "session to {} ({}@{})".format(
                 host,
                 passwd,
-                user))
+                user
+            )
+        )
         self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         paramiko.SSHClient.connect(self, host, 22, user, passwd)
         self.shell = self.invoke_shell()
@@ -186,8 +187,10 @@ class stonith_client(paramiko.SSHClient):
                     func = getattr(self, cmd, self._not_implemented)
                     self.retcode = func()
                 except:
-                    self.log("error calling func(): {}".format(process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log(
+                        "error calling func(): {}".format(process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
                     self.retcode = 1
                 finally:
                     e_time = time.time()

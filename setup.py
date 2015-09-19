@@ -20,6 +20,7 @@ setup(
         "initat.icsw.cstore",
         "initat.icsw.relay",
         "initat.icsw.image",
+        "initat.icsw.job",
         "initat.tools",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",

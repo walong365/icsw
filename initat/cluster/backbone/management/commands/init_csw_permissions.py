@@ -112,7 +112,7 @@ class Command(BaseCommand):
                                 name=name,
                                 content_type=cur_ct,
                                 valid_for_object_level=valid_for_object_level,
-                                )
+                            )
                             p_dict[(new_perm.content_type.app_label, new_perm.codename)] = new_perm
                             full_dict[(new_perm.content_type.app_label, new_perm.codename, new_perm.content_type.model)] = new_perm
                             created += 1
@@ -122,7 +122,7 @@ class Command(BaseCommand):
                                 print "Change valid_for_object_level to {} for {}".format(
                                     unicode(valid_for_object_level),
                                     unicode(p_dict[(app_label, code_name)])
-                                    )
+                                )
                                 p_dict[(app_label, code_name)].valid_for_object_level = valid_for_object_level
                                 p_dict[(app_label, code_name)].save()
                 if created:
@@ -145,6 +145,6 @@ class Command(BaseCommand):
             print "Removing {}: {}".format(
                 logging_tools.get_plural("old permission", len(old_perms)),
                 ", ".join(sorted(["{}.{}".format(app_label, code_name) for app_label, code_name in sorted(old_perms)]))
-                )
+            )
             for app_label, code_name in old_perms:
                 csw_permission.objects.get(Q(codename=code_name)).delete()

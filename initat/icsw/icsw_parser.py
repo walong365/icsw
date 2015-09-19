@@ -60,6 +60,11 @@ try:
 except ImportError:
     ImageParser = None
 
+try:
+    from .job.job_parser import Parser as JobParser
+except ImportError:
+    JobParser = None
+
 
 class ICSWParser(object):
     def __init__(self):
@@ -79,6 +84,7 @@ class ICSWParser(object):
             CStoreParser,
             RelayParser,
             ImageParser,
+            JobParser,
         ]:
             if _sp is not None:
                 try:
