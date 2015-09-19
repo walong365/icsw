@@ -78,23 +78,7 @@ from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
 import initat.cluster.backbone.models.model_history
 
 
-# attention: this list is used in create_fixtures.py
-LICENSE_CAPS = [
-    ("monitor", "Monitoring services", ["md-config"]),
-    ("monext", "Extended monitoring services", ["md-config"]),
-    ("boot", "boot/config facility for nodes", ["mother"]),
-    ("package", "Package installation", ["package"]),
-    ("rms", "Resource Management system", ["rms"]),
-    ("docu", "show documentation", []),
-]
-
-ALL_LICENSES = [name for name, _descr, _srv in LICENSE_CAPS]
-
-
-def get_license_descr(name):
-    return [_descr for _name, _descr, _srv in LICENSE_CAPS if name == _name][0]
-
-ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
+# ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
 logger = logging.getLogger(__name__)
 
@@ -634,7 +618,7 @@ class device(models.Model):
         sel_configs = set(self.device_config_set.filter(
             Q(config__name__in=["monitor_server", "monitor_master", "monitor_slave"])).values_list("config__name", flat=True)
         )
-        if set(["monitor_master", "monitor_server"]) & sel_configs:
+        if {"monitor_master", "monitor_server"} & sel_configs:
             return "master"
         elif sel_configs:
             return "slave"

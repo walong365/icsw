@@ -53,6 +53,7 @@ __all__ = [
     "ext_license_version_state_coarse",
     "ext_license_state_coarse",
     "ext_license_usage_coarse",
+    "RMSJobVariable",
 ]
 
 
@@ -361,9 +362,9 @@ class ext_license_version_state(models.Model):
 
 
 class ext_license_client_version(ext_license_base):
-    '''
+    """
     License version as reported by client (different from what is used and reported by server.)
-    '''
+    """
     ext_license = models.ForeignKey("backbone.ext_license")
     client_version = models.CharField(default="", max_length=64)
 
@@ -387,10 +388,10 @@ class ext_license_usage(models.Model):
         backup = False
 
 
-'''
+"""
 The models above are too fine-grained for fast access, so we use the ones
 below for displaying them. Here, the data is aggregated using dynamic durations.
-'''
+"""
 
 
 class ext_license_check_coarse(models.Model):
@@ -475,3 +476,57 @@ class ext_license_usage_coarse(models.Model):
 
     class CSW_Meta:
         backup = False
+
+
+class RMSJobVariable(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # link to job
+    rms_job = models.ForeignKey("backbone.rms_job")
+    name = models.CharField(max_length=255, default="")
+    raw_value = models.TextField(default="")
+    parsed_type = models.CharField(
+        max_length=2,
+        choices=[
+            ("i", "Integer"),
+            ("f", "Float"),
+            ("s", "String"),
+        ],
+        default="s",
+    )
+    parsed_integer = models.IntegerField(default=None, null=True)
+    parsed_float = models.FloatField(default=None, null=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def value(self):
+        if self.parsed_type == "i":
+            return self.parsed_integer
+        elif self.parsed_type == "f":
+            return self.parsed_float
+        else:
+            return self.raw_value
+
+    class Meta:
+        unique_together = (
+            ("name", "rms_job"),
+        )
+
+
+@receiver(signals.pre_save, sender=RMSJobVariable)
+def rms_job_variable_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_var = kwargs["instance"]
+        cur_var.parsed_float, cur_var.parsed_int = (None, None)
+        try:
+            _float = float(cur_var.raw_value.replace(",", ".").strip())
+        except:
+            try:
+                _int = int(cur_var.strip())
+            except:
+                cur_var.parsed_type = "s"
+            else:
+                cur_var.parsed_type = "i"
+                cur_var.parsed_int = _int
+        else:
+            cur_var.parsed_type = "f"
+            cur_var.parsed_float = _float
