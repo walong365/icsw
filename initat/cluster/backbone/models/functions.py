@@ -308,7 +308,7 @@ class duration(object):
 
         @classmethod
         def get_end_time_for_start(cls, starttime):
-            return starttime + datetime.timedelta(seconds=60*60)
+            return starttime + datetime.timedelta(seconds=60 * 60)
 
         @classmethod
         def get_display_date(cls, timepoint):
@@ -422,28 +422,28 @@ bytebit = [01, 02, 04, 010, 020, 040, 0100, 0200]  # VNC version
 
 
 bigbyte = [
-    0x800000L,    0x400000L,    0x200000L,    0x100000L,
-    0x80000L,    0x40000L,    0x20000L,    0x10000L,
-    0x8000L,    0x4000L,    0x2000L,    0x1000L,
-    0x800L,     0x400L,     0x200L,     0x100L,
-    0x80L,    0x40L,        0x20L,        0x10L,
-    0x8L,        0x4L,        0x2L,        0x1L
+    0x800000L, 0x400000L, 0x200000L, 0x100000L,
+    0x80000L, 0x40000L, 0x20000L, 0x10000L,
+    0x8000L, 0x4000L, 0x2000L, 0x1000L,
+    0x800L, 0x400L, 0x200L, 0x100L,
+    0x80L, 0x40L, 0x20L, 0x10L,
+    0x8L, 0x4L, 0x2L, 0x1L
 ]
 
 # Use the key schedule specified in the Standard (ANSI X3.92-1981).
 
 pc1 = [
-    56, 48, 40, 32, 24, 16,  8,     0, 57, 49, 41, 33, 25, 17,
-    9,  1, 58, 50, 42, 34, 26,    18, 10,  2, 59, 51, 43, 35,
-    62, 54, 46, 38, 30, 22, 14,     6, 61, 53, 45, 37, 29, 21,
-    13,  5, 60, 52, 44, 36, 28,    20, 12,  4, 27, 19, 11,  3
+    56, 48, 40, 32, 24, 16, 8, 0, 57, 49, 41, 33, 25, 17,
+    9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35,
+    62, 54, 46, 38, 30, 22, 14, 6, 61, 53, 45, 37, 29, 21,
+    13, 5, 60, 52, 44, 36, 28, 20, 12, 4, 27, 19, 11, 3
 ]
 
 totrot = [1, 2, 4, 6, 8, 10, 12, 14, 15, 17, 19, 21, 23, 25, 27, 28]
 
 pc2 = [
-    13, 16, 10, 23,  0,  4,  2, 27, 14,  5, 20,  9,
-    22, 18, 11,  3, 25,  7, 15,  6, 26, 19, 12,  1,
+    13, 16, 10, 23, 0, 4, 2, 27, 14, 5, 20, 9,
+    22, 18, 11, 3, 25, 7, 15, 6, 26, 19, 12, 1,
     40, 51, 30, 36, 46, 54, 29, 39, 50, 44, 32, 47,
     43, 48, 38, 55, 33, 52, 45, 41, 49, 35, 28, 31
 ]
@@ -452,9 +452,9 @@ pc2 = [
 def deskey(key, decrypt):      # Thanks to James Gillogly & Phil Karn!
     key = unpack('8B', key)
 
-    pc1m = [0]*56
-    pcr = [0]*56
-    kn = [0L]*32
+    pc1m = [0] * 56
+    pcr = [0] * 56
+    kn = [0L] * 32
   
     for j in range(56):
         l = pc1[j]
@@ -486,7 +486,7 @@ def deskey(key, decrypt):      # Thanks to James Gillogly & Phil Karn!
         for j in range(24):
             if pcr[pc2[j]]:
                 kn[m] |= bigbyte[j]
-            if pcr[pc2[j+24]]:
+            if pcr[pc2[j + 24]]:
                 kn[n] |= bigbyte[j]
 
     return cookey(kn)
@@ -495,7 +495,7 @@ def deskey(key, decrypt):      # Thanks to James Gillogly & Phil Karn!
 def cookey(raw):
     key = []
     for i in range(0, 32, 2):
-        (raw0, raw1) = (raw[i], raw[i+1])
+        (raw0, raw1) = (raw[i], raw[i + 1])
         k = (raw0 & 0x00fc0000L) << 6
         k |= (raw0 & 0x00000fc0L) << 10
         k |= (raw1 & 0x00fc0000L) >> 10
@@ -689,19 +689,19 @@ def desfunc(block, keys):
         fval |= SP5[(work >> 8) & 0x3fL]
         fval |= SP3[(work >> 16) & 0x3fL]
         fval |= SP1[(work >> 24) & 0x3fL]
-        work = right ^ keys[i+1]
+        work = right ^ keys[i + 1]
         fval |= SP8[work & 0x3fL]
         fval |= SP6[(work >> 8) & 0x3fL]
         fval |= SP4[(work >> 16) & 0x3fL]
         fval |= SP2[(work >> 24) & 0x3fL]
         leftt ^= fval
         work = (leftt << 28) | (leftt >> 4)
-        work ^= keys[i+2]
+        work ^= keys[i + 2]
         fval = SP7[work & 0x3fL]
         fval |= SP5[(work >> 8) & 0x3fL]
         fval |= SP3[(work >> 16) & 0x3fL]
         fval |= SP1[(work >> 24) & 0x3fL]
-        work = leftt ^ keys[i+3]
+        work = leftt ^ keys[i + 3]
         fval |= SP8[work & 0x3fL]
         fval |= SP6[(work >> 8) & 0x3fL]
         fval |= SP4[(work >> 16) & 0x3fL]
@@ -732,7 +732,7 @@ def desfunc(block, keys):
 
 
 def get_vnc_enc(password):
-    passpadd = (password + '\x00'*8)[:8]
+    passpadd = (password + '\x00' * 8)[:8]
     strkey = ''.join([chr(x) for x in vnckey])
     ekey = deskey(strkey, False)
 

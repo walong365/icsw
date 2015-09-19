@@ -132,7 +132,8 @@ def show_database_calls(**kwargs):
                         sql_str = u"{} FROM {} :: {}".format(
                             oper_str,
                             ", ".join(sorted(list(out_list))),
-                            sql_str)
+                            sql_str
+                        )
                     out_str = sql_str[0:cur_width - 8]
                 output(
                     u"{:6.2f} {}".format(

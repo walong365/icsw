@@ -201,7 +201,7 @@ class package_search_result(models.Model):
             package_repo=self.package_repo,
             always_latest=not exact,
             target_repo=target_repo,
-            )
+        )
         try:
             new_p.save()
         except:
@@ -277,7 +277,8 @@ def package_pre_save(sender, **kwargs):
             Q(name=cur_inst.name) &
             Q(always_latest=cur_inst.always_latest) &
             Q(version=cur_inst.version) &
-            Q(arch=cur_inst.arch))
+            Q(arch=cur_inst.arch)
+        )
         if len(cur_pack):
             raise ValidationError("Package already exists")
 
@@ -300,11 +301,15 @@ class package_device_connection(models.Model):
     force_flag = models.BooleanField(default=False)
     nodeps_flag = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
-    response_type = models.CharField(max_length=16, choices=(
-        ("zypper_xml", "zypper_xml"),
-        ("yum_flat", "yum_flat"),
-        ("unknown", "unknown"),
-        ), default="zypper_xml")
+    response_type = models.CharField(
+        max_length=16,
+        choices=(
+            ("zypper_xml", "zypper_xml"),
+            ("yum_flat", "yum_flat"),
+            ("unknown", "unknown"),
+        ),
+        default="zypper_xml"
+    )
     response_str = models.TextField(max_length=65535, default="")
     # install time of package
     install_time = models.IntegerField(default=0)

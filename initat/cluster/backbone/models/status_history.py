@@ -181,12 +181,14 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_OK = "O"
     STATE_WARNING = "W"
     STATE_CRITICAL = "C"
-    STATE_CHOICES = [(STATE_OK, "OK"),
-                     (STATE_WARNING, "WARNING"),
-                     (mon_icinga_log_raw_base.STATE_UNKNOWN, mon_icinga_log_raw_base.STATE_UNKNOWN_LONG),
-                     (STATE_CRITICAL, "CRITICAL"),
-                     (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG),
-                     (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG)]
+    STATE_CHOICES = [
+        (STATE_OK, "OK"),
+        (STATE_WARNING, "WARNING"),
+        (mon_icinga_log_raw_base.STATE_UNKNOWN, mon_icinga_log_raw_base.STATE_UNKNOWN_LONG),
+        (STATE_CRITICAL, "CRITICAL"),
+        (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG),
+        (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG),
+    ]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     objects = raw_service_alert_manager()
@@ -694,13 +696,22 @@ class AlertList(object):
 
         model = mon_icinga_log_raw_host_alert_data if is_host else mon_icinga_log_raw_service_alert_data
 
-        self.alerts = model.objects.calc_alerts(start_time=start_time, end_time=end_time,
-                                                additional_filter=alert_filter)
-        self.last_before = model.objects.calc_limit_alerts(time=start_time, mode='last before',
-                                                           additional_filter=alert_filter)
+        self.alerts = model.objects.calc_alerts(
+            start_time=start_time,
+            end_time=end_time,
+            additional_filter=alert_filter
+        )
+        self.last_before = model.objects.calc_limit_alerts(
+            time=start_time,
+            mode='last before',
+            additional_filter=alert_filter
+        )
         if calc_first_after:
-            self.first_after = model.objects.calc_limit_alerts(time=end_time, mode='first after',
-                                                               additional_filter=alert_filter)
+            self.first_after = model.objects.calc_limit_alerts(
+                time=end_time,
+                mode='first after',
+                additional_filter=alert_filter
+            )
 
         # handle downtimes
         downtime_model = mon_icinga_log_raw_host_downtime_data if is_host else mon_icinga_log_raw_service_downtime_data

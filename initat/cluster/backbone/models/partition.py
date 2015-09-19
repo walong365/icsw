@@ -318,18 +318,29 @@ class partition_table(models.Model):
         unique_mps = set(all_mps)
         for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
             prob_list.append(
-                (logging_tools.LOG_LEVEL_ERROR, "mountpoint '{}' is not unique ({:d})".format(
-                    non_unique_mp,
-                    all_mps.count(name),
-                ), True)
+                (
+                    logging_tools.LOG_LEVEL_ERROR,
+                    "mountpoint '{}' is not unique ({:d})".format(
+                        non_unique_mp,
+                        all_mps.count(name),
+                    ),
+                    True
                 )
+            )
         if u"/" not in all_mps:
             prob_list.append(
-                (logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint defined", True)
+                (
+                    logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint defined", True
                 )
-        new_valid = not any([log_level in [
-            logging_tools.LOG_LEVEL_ERROR,
-            logging_tools.LOG_LEVEL_CRITICAL] for log_level, _what, _is_global in prob_list])
+            )
+        new_valid = not any(
+            [
+                log_level in [
+                    logging_tools.LOG_LEVEL_ERROR,
+                    logging_tools.LOG_LEVEL_CRITICAL
+                ] for log_level, _what, _is_global in prob_list
+            ]
+        )
         # validate
         if new_valid != self.valid:
             self.valid = new_valid
