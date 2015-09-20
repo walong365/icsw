@@ -78,8 +78,6 @@ from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
 import initat.cluster.backbone.models.model_history
 
 
-# ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
-
 logger = logging.getLogger(__name__)
 
 

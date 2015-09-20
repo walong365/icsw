@@ -29,8 +29,7 @@ import sys
 import time
 
 import zmq
-from initat.tools import logging_tools
-from initat.tools import sge_license_tools
+from initat.tools import logging_tools, sge_license_tools
 
 
 class error(Exception):

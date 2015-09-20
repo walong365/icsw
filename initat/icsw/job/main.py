@@ -28,8 +28,9 @@ import datetime
 import os
 import sys
 import time
+import argparse
 
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, net_tools, server_command
 
 
 def _parse_environ(opts):
@@ -47,6 +48,10 @@ def _parse_environ(opts):
                 opts.task_id = int(os.environ["SGE_TASK_ID"])
             except:
                 opts.task_id = 0
+    if not opts.server_port:
+        from initat.icsw.service import instance
+        _inst = instance.InstanceXML()
+        opts.server_port = _inst.get_port_dict("rms-server", ptype="command")
     if opts.task_id:
         opts.full_job_id = "{}.{:d}".format(opts.job_id, opts.task_id)
     else:
@@ -58,6 +63,39 @@ def show_info(opts):
     print("              JOB_ID: {}".format(opts.full_job_id or "---"))
     print("  RMS_SERVER_ADDRESS: {}".format(opts.server_address or "---"))
     print("     RMS_SERVER_PORT: {:d}".format(opts.server_port or 0))
+
+
+def set_variable(opts):
+    if not opts.name or not opts.value:
+        print("Need variable name and value")
+        sys.exit(1)
+    _def_args = net_tools.SendCommandDefaults()
+    _def_args.port = opts.server_port
+    _def_args.host = opts.server_address
+    my_com = net_tools.SendCommand(_def_args)
+    my_com.init_connection()
+    srv_com = server_command.srv_command(
+        command="set_job_variable",
+        jobid=opts.full_job_id,
+        varname=opts.name,
+        varvalue=opts.value,
+    )
+    # print srv_com.pretty_print()
+    if my_com.connect():
+        _reply = my_com.send_and_receive(srv_com)
+        _ret_str, _ret_state = _reply.get_log_tuple()
+        if _ret_state == logging_tools.LOG_LEVEL_OK:
+            print(_ret_str)
+        else:
+            print(
+                "a problem occured: [{}]: {}".format(
+                    logging_tools.get_log_level_str(_ret_state),
+                    _ret_str,
+                )
+            )
+    else:
+        print("unable to connect")
+    my_com.close()
 
 
 def main(options):

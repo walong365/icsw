@@ -8,31 +8,27 @@
                 </tr>
                 <tr>
                     <td>
-                        <div class="input-group-btn">
-                            <div class="btn-group" ng-show="any_valid_devs(dev, false)">
-                                <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
-                                    is master for <span class="caret"></span>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li ng-repeat="pk in get_valid_devs(dev, false)">
-                                        <a href="#" ng-click="create_master(dev, pk)">{{ get_device_info(pk) }}</a>
-                                    </li>
-                                </ul>
-                            </div>
+                        <div class="btn-group" ng-show="any_valid_devs(dev, false)">
+                            <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
+                                is master for <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="pk in get_valid_devs(dev, false)">
+                                    <a href="#" ng-click="create_master(dev, pk)">{{ get_device_info(pk) }}</a>
+                                </li>
+                            </ul>
                         </div>
                     </td>
                     <td>
-                        <div class="input-group-btn">
-                            <div class="btn-group" ng-show="any_valid_devs(dev, true)">
-                                <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
-                                    is slave of <span class="caret"></span>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li ng-repeat="pk in get_valid_devs(dev, true)">
-                                        <a href="#" ng-click="create_slave(dev, pk)">{{ get_device_info(pk) }}</a>
-                                    </li>
-                                </ul>
-                            </div>
+                        <div class="btn-group" ng-show="any_valid_devs(dev, true)">
+                            <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
+                                is slave of <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="pk in get_valid_devs(dev, true)">
+                                    <a href="#" ng-click="create_slave(dev, pk)">{{ get_device_info(pk) }}</a>
+                                </li>
+                            </ul>
                         </div>
                     </td>
                 </tr>

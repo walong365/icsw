@@ -22,8 +22,9 @@
 """ network middleware """
 
 import operator
-import sys
 import time
+import os
+import argparse
 
 from initat.tools import process_tools, server_command, logging_tools
 import zmq
@@ -170,11 +171,35 @@ class zmq_connection(object):
             self.context = None
 
 
+def SendCommandDefaults():
+    _def = argparse.Namespace(
+        arguments=[],
+        timeout=10,
+        port=2001,
+        protocoll="tcp",
+        host="localhost",
+        verbose=False,
+        identity_string="sc_default_{}_{:d}".format(
+            os.uname()[1],
+            os.getpid()
+        ),
+        iterations=1,
+        raw=False,
+        kv=[],
+        kva=[],
+        kv_path="",
+        split=False,
+        only_send=False,
+        quiet=True,
+    )
+    return _def
+
+
 class SendCommand(object):
     def __init__(self, args):
         self.ret_state = 0
         self.args = args
-        self.command = self.args.arguments.pop(0)
+        self.command = None
         self.other_args = self.args.arguments
         self.zmq_context = zmq.Context(1)
 
@@ -200,7 +225,13 @@ class SendCommand(object):
         else:
             conn_str = "{}://{}:{:d}".format(self.args.protocoll, self.args.host, self.args.port)
         if self.args.split:
-            recv_conn_str = "{}".format(process_tools.get_zmq_ipc_name(self.args.split, s_name=self.args.server_name, connect_to_root_instance=self.args.root))
+            recv_conn_str = "{}".format(
+                process_tools.get_zmq_ipc_name(
+                    self.args.split,
+                    s_name=self.args.server_name,
+                    connect_to_root_instance=self.args.root
+                )
+            )
             recv_sock = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
             recv_sock.setsockopt(zmq.IDENTITY, self.identity_str)  # @UndefinedVariable
             recv_sock.setsockopt(zmq.LINGER, self.args.timeout)  # @UndefinedVariable
@@ -252,19 +283,25 @@ class SendCommand(object):
             self.recv_sock = None
         self.zmq_context.term()
 
-    def send_and_receive(self):
+    def send_and_receive(self, srv_com=None):
+        _reply = None
         for cur_iter in xrange(self.args.iterations):
             self.verbose("iteration {:d}".format(cur_iter))
-            srv_com = self._build_com()
+            if srv_com is None:
+                srv_com = self._build_com()
             self.send(srv_com)
             if not self.args.only_send:
                 _timeout, _recv_id, _recv_str = self.receive()
                 if not _timeout:
-                    self._handle_return(_recv_id, _recv_str)
+                    _reply = self._handle_return(_recv_id, _recv_str)
+                    break
             else:
                 break
+        return _reply
 
     def _build_com(self):
+        if not self.command:
+            self.command = self.args.arguments.pop(0)
         if self.args.raw:
             srv_com = self.command
         else:
@@ -347,6 +384,7 @@ class SendCommand(object):
         except:
             print("cannot interpret reply: {}".format(process_tools.get_except_info()))
             print("reply was: {}".format(recv_str))
+            srv_reply = None
             self.ret_state = 1
         else:
             self.verbose("\nXML response (id: '{}'):\n{}\n".format(recv_id, srv_reply.pretty_print()))
@@ -361,3 +399,4 @@ class SendCommand(object):
             else:
                 print("no result node found in reply")
                 self.ret_state = 2
+        return srv_reply
