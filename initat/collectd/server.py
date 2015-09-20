@@ -857,6 +857,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgro
         _read = True
         s_time = time.time()
         _content = ""
+        _errcount = 0
         _com_error = False
         while _read:
             if settings.DEBUG:

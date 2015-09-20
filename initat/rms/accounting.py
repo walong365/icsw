@@ -571,23 +571,28 @@ class AccountingProcess(threading_tools.process_obj):
 
     def _set_job_variable(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
-        job_id, task_id = self._parse_job_id(srv_com)
         try:
-            _job = self._get_job(job_id, task_id)
+            job_id, task_id = self._parse_job_id(srv_com)
         except:
-            self.log("no matching job found: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-            srv_com.set_result("unable to find matching job", server_command.SRV_REPLY_STATE_ERROR)
+            self.log("cannot parse job_id: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            srv_com.set_result("cannot parse job_id", server_command.SRV_REPLY_STATE_ERROR)
         else:
-            _name, _value = (srv_com["*varname"], srv_com["*varvalue"])
-            _var = self._get_job_variable(_job, _name)
-            new_var = False if _var.pk else True
-            _var.raw_value = _value
-            _var.save()
-            srv_com.set_result(
-                "{} job variable '{}'".format(
-                    "created" if new_var else "updated",
-                    _var.name,
-                ),
-                server_command.SRV_REPLY_STATE_OK
-            )
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+            try:
+                _job = self._get_job(job_id, task_id)
+            except:
+                self.log("no matching job found: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                srv_com.set_result("unable to find matching job", server_command.SRV_REPLY_STATE_ERROR)
+            else:
+                _name, _value = (srv_com["*varname"], srv_com["*varvalue"])
+                _var = self._get_job_variable(_job, _name)
+                new_var = False if _var.pk else True
+                _var.raw_value = _value
+                _var.save()
+                srv_com.set_result(
+                    "{} job variable '{}'".format(
+                        "created" if new_var else "updated",
+                        _var.name,
+                    ),
+                    server_command.SRV_REPLY_STATE_OK
+                )
+            self.send_pool_message("remote_call_async_result", unicode(srv_com))
