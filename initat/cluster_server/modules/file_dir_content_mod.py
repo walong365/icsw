@@ -18,6 +18,7 @@
 """ fetches informations from files or directories """
 
 from initat.host_monitoring import filesys_tools
+
 import cs_base_class
 
 

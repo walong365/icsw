@@ -89,7 +89,7 @@ class repo(dict):
                                 name="{}_{}".format(self["name"], new_repo),
                                 # to no migrate to devel repos
                                 baseurl=os.path.join(self["baseurl"], new_repo),
-                                )
+                            )
                     elif rest and target_pf and not rest.endswith(target_pf):
                         repo_m = REPO_RE.match(rest)
                         new_url = "{}/{}{}".format(b_url[:-(len(rest) + 1)], repo_m.group("name"), target_pf)
@@ -99,7 +99,7 @@ class repo(dict):
                             self._emit(
                                 self.name,
                                 baseurl=new_url,
-                                )
+                            )
                             print "    emit() done"
 
     def _to_dict(self):

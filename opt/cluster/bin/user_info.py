@@ -170,6 +170,7 @@ def get_pass(prompt=">"):
     new = termios.tcgetattr(fd)
     new[3] = new[3] & ~termios.ECHO
     termios.tcsetattr(fd, termios.TCSADRAIN, new)
+    passwd = None
     while True:
         try:
             passwd = raw_input(prompt)
@@ -251,58 +252,7 @@ def main():
     else:
         ret_code = 1
     sys.exit(ret_code)
-    print(options)
-    # get name of directory server
-    ds_file_name = "/etc/sysconfig/cluster/directory_server"
-    if not os.path.isfile(ds_file_name):
-        print("No directory server specified in '%s', please contact your admin" % (ds_file_name))
-        sys.exit(1)
-    print("functionality not ready, please send a short note to cluster@init.at")
-    sys.exit(0)
-#         else:
-#             print "Change password"
-#             if os.getuid():
-#                 # ask old password if not root
-#                 old_passwd = get_pass("please enter old password>")
-#                 if crypt.crypt(old_passwd, user_stuff["password"]) != user_stuff["password"]:
-#                     print "Wrong password, exiting ..."
-#                     sys.exit(1)
-#             ok = False
-#             while not ok:
-#                 new_passwd = get_pass("please enter new password>")
-#                 if len(new_passwd) < 6:
-#                     print "minimum 6 characters"
-#                 else:
-#                     ok = True
-#             new_passwd_check = get_pass("please enter new password again>")
-#             if new_passwd != new_passwd_check:
-#                 print "The passwords do not match, exiting ..."
-#                 sys.exit(1)
-#             new_hash = crypt.crypt(new_passwd,
-#                                    "".join([chr(random.randint(97, 122)) for x in range(16)]))
-#             print "Updating database..."
-#             dc.execute("UPDATE user SET password=%s WHERE login=%s", (new_hash,
-#                                                                       user_name))
-#             print "Signaling server..."
-#             if ds_type == "yp":
-#                 send_com = server_command.server_command(command="write_yp_config")
-#             elif ds_type == "ldap":
-#                 send_com = server_command.server_command(command="sync_ldap_config")
-#             else:
-#                 print "Unknown directory_server_type '%s'" % (ds_type)
-#                 errnum = 1
-#                 send_com = None
-#             if send_com:
-#                 errnum, data = net_tools.single_connection(host=ds_name,
-#                                                            port=8004,
-#                                                            command=send_com).iterate()
-#                 try:
-#                     server_reply = server_command.server_reply(data)
-#                 except ValueError:
-#                     print "Error: got no valid server_reply (got: '%s')" % (data)
-#                 else:
-#                     errnum, result = server_reply.get_state_and_result()
-#                     print "Got [%d]: %s" % (errnum, result)
+
 
 if __name__ == "__main__":
     main()

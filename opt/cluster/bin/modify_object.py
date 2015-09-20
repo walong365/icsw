@@ -39,7 +39,8 @@ class rest_client(object):
             self.options.host,
             self.options.port,
             self.options.path,
-            self.options.model)
+            self.options.model
+        )
         self._auth_obj = requests.auth.HTTPBasicAuth(self.options.user, self.options.password)
         # search cache
         self.__search_cache = {}
@@ -61,7 +62,11 @@ class rest_client(object):
         return "%s%d/?format=%s" % (self.base_url, self.options.pk, self.options.format)
 
     def build_data_dict(self):
-        return dict([(key, value) for key, value in [cur_part.split(":", 1) for cur_part in (self.options.data or [])]])
+        return {
+            key: value for key, value in [
+                cur_part.split(":", 1) for cur_part in (self.options.data or [])
+            ]
+        }
 
     def list(self, **kwargs):
         to_xml = kwargs.pop("xml", False)

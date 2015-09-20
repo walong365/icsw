@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007-2008,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,11 +21,10 @@
 #
 """ reads raw data from bonnie_runs and shows them """
 
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
-from initat.tools import server_command
 import sys
+
+from initat.tools import logging_tools, process_tools, server_command
 
 
 class aggreg(object):

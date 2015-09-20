@@ -17,17 +17,15 @@
 #
 """ modifies password for a given user """
 
+import base64
+import bz2
+
 from django.db.models import Q
 from django.contrib.auth import authenticate
 from initat.cluster.backbone.models import user
-from initat.cluster_server.config import global_config
-from initat.tools import config_tools
-import base64
-import bz2
-import cs_base_class
-import os
-from initat.tools import process_tools
 from initat.tools import server_command
+
+import cs_base_class
 
 
 class modify_password(cs_base_class.server_com):
