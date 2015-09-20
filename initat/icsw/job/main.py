@@ -83,16 +83,19 @@ def set_variable(opts):
     # print srv_com.pretty_print()
     if my_com.connect():
         _reply = my_com.send_and_receive(srv_com)
-        _ret_str, _ret_state = _reply.get_log_tuple()
-        if _ret_state == logging_tools.LOG_LEVEL_OK:
-            print(_ret_str)
+        if _reply is None:
+            print("Nothing returned from server")
         else:
-            print(
-                "a problem occured: [{}]: {}".format(
-                    logging_tools.get_log_level_str(_ret_state),
-                    _ret_str,
+            _ret_str, _ret_state = _reply.get_log_tuple()
+            if _ret_state == logging_tools.LOG_LEVEL_OK:
+                print(_ret_str)
+            else:
+                print(
+                    "a problem occured: [{}]: {}".format(
+                        logging_tools.get_log_level_str(_ret_state),
+                        _ret_str,
+                    )
                 )
-            )
     else:
         print("unable to connect")
     my_com.close()

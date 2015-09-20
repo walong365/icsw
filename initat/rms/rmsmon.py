@@ -21,7 +21,6 @@
 """ rms-server, monitoring process """
 
 from lxml import etree
-import commands
 import os
 import time
 import uuid
@@ -31,39 +30,16 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.host_monitoring import hm_classes
-from initat.rms.config import global_config
 from lxml.builder import E  # @UnresolvedImport
 import zmq
-
 from initat.tools import logging_tools, process_tools, server_command, \
     sge_tools, threading_tools
 
-
-def call_command(command, log_com=None):
-    start_time = time.time()
-    stat, out = commands.getstatusoutput(command)
-    end_time = time.time()
-    log_lines = ["calling '{}' took {}, result (stat {:d}) is {} ({})".format(
-        command,
-        logging_tools.get_diff_time_str(end_time - start_time),
-        stat,
-        logging_tools.get_plural("byte", len(out)),
-        logging_tools.get_plural("line", len(out.split("\n"))))]
-    if log_com:
-        for log_line in log_lines:
-            log_com(" - {}".format(log_line))
-        if stat:
-            for log_line in out.split("\n"):
-                log_com(" - {}".format(log_line))
-        return stat, out
-    else:
-        if stat:
-            # append output to log_lines if error
-            log_lines.extend([" - {}".format(line) for line in out.split("\n")])
-        return stat, out, log_lines
+from .config import global_config
+from .functions import call_command
 
 
-class queue_info(object):
+class QueueInfo(object):
     def __init__(self):
         self.used = 0
         self.total = 0
@@ -99,7 +75,7 @@ class queue_info(object):
         )
 
 
-class rms_mon_process(threading_tools.process_obj):
+class RMSMonProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -207,7 +183,7 @@ class rms_mon_process(threading_tools.process_obj):
         _s_time = time.time()
         _host_stats = {}
         # queue dict
-        _queues = {"total": queue_info()}
+        _queues = {"total": QueueInfo()}
         for _node in _res.findall(".//node"):
             _host = _node.findtext("host")
             _queue = _node.findtext("queue")
@@ -221,10 +197,10 @@ class rms_mon_process(threading_tools.process_obj):
             _state = _node.findtext("state")
             _queues["total"].feed(_st, _sr, _su, _state)
             if _queue not in _queues:
-                _queues[_queue] = queue_info()
+                _queues[_queue] = QueueInfo()
             _queues[_queue].feed(_st, _sr, _su, _state)
             if _host not in _host_stats:
-                _host_stats[_host] = queue_info()
+                _host_stats[_host] = QueueInfo()
             _host_stats[_host].feed(_st, _sr, _su, _state)
         # print _res
         # vector socket
@@ -331,8 +307,7 @@ class rms_mon_process(threading_tools.process_obj):
         self._update()
 
     def _get_config(self, *args, **kwargs):
-        src_id, srv_com_str = args
-        srv_com = server_command.srv_command(source=srv_com_str)
+        srv_com = server_command.srv_command(source=args[0])
         if "needed_dicts" in srv_com:
             needed_dicts = srv_com["*needed_dicts"]
         else:
@@ -342,15 +317,14 @@ class rms_mon_process(threading_tools.process_obj):
         # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update(update_list=needed_dicts)
         srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
-        self.send_pool_message("command_result", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
         del srv_com
 
     def _get_sge_bin(self, name):
         return os.path.join(global_config["SGE_ROOT"], "bin", global_config["SGE_ARCH"], name)
 
     def _job_control(self, *args, **kwargs):
-        src_id, srv_com_str = args
-        srv_com = server_command.srv_command(source=srv_com_str)
+        srv_com = server_command.srv_command(source=args[0])
         job_action = srv_com["action"].text
         job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id", smart_strings=False)[0]
         self.log("job action '{}' for job '{}'".format(job_action, job_id))
@@ -383,17 +357,16 @@ class rms_mon_process(threading_tools.process_obj):
             )
         else:
             srv_com.set_result(
-                "unknown job_action %s" % (job_action),
+                "unknown job_action {}".format(job_action),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-        self.send_pool_message("command_result", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _queue_control(self, *args, **kwargs):
-        src_id, srv_com_str = args
-        srv_com = server_command.srv_command(source=srv_com_str)
+        srv_com = server_command.srv_command(source=args[0])
         queue_action = srv_com["action"].text
         queue_spec = srv_com.xpath(".//ns:queue_list/ns:queue/@queue_spec", smart_strings=False)[0]
-        self.log("queue action '%s' for job '%s'" % (queue_action, queue_spec))
+        self.log("queue action '{}' for job '{}'".format(queue_action, queue_spec))
         if queue_action in ["enable", "disable", "clear_error"]:
             cur_stat, cur_out = call_command(
                 "{} {} {}".format(
@@ -413,21 +386,20 @@ class rms_mon_process(threading_tools.process_obj):
             )
         else:
             srv_com.set_result(
-                "unknown job_action %s" % (queue_action),
+                "unknown job_action {}".format(queue_action),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-        self.send_pool_message("command_result", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _file_watch_content(self, *args, **kwargs):
-        _src_id, srv_src = args
-        srv_com = server_command.srv_command(source=srv_src)
+        srv_com = server_command.srv_command(source=args[0])
         job_id = srv_com["send_id"].text.split(":")[0]
         file_name = srv_com["name"].text
         # in case of empty file
         content = srv_com["content"].text or ""
         last_update = int(float(srv_com["update"].text))
         self.log(
-            "got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
+            u"got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
                 file_name,
                 job_id,
                 len(content),

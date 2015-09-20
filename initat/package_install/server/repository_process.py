@@ -71,7 +71,11 @@ class RepoProcess(threading_tools.process_obj):
 
     def _check_delayed(self):
         if len(self.__background_commands):
-            self.log("%s running in background" % (logging_tools.get_plural("command", len(self.__background_commands))))
+            self.log(
+                "{} running in background".format(
+                    logging_tools.get_plural("command", len(self.__background_commands))
+                )
+            )
         cur_time = time.time()
         new_list = []
         for cur_del in self.__background_commands:
@@ -144,7 +148,7 @@ class RepoProcess(threading_tools.process_obj):
         for cur_search in package_search.objects.filter(Q(deleted=False) & Q(current_state__in=["ini", "wait"])):
             search_list.append((self.repo_type.search_package(cur_search.search_string), cur_search))
         if search_list:
-            self.log("%s found" % (logging_tools.get_plural("search", len(search_list))))
+            self.log("{} found".format(logging_tools.get_plural("search", len(search_list))))
             self.__background_commands.append(
                 SubprocessStruct(
                     self,

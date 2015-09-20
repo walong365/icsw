@@ -27,7 +27,7 @@ django.setup()
 
 from initat.rms.functions import call_command
 from initat.rms.config import global_config
-from initat.rms.server import server_process
+from initat.rms.server import ServerProcess
 from initat.server_version import VERSION_STRING
 from initat.tools import cluster_location, configfile, process_tools, sge_license_tools
 import sys
@@ -79,9 +79,9 @@ def main():
             ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
             ("FROM_ADDR", configfile.str_c_var("rms_server")),
             ("TO_ADDR", configfile.str_c_var("cluster@init.at")),
-            ("SGE_ARCH", configfile.str_c_var(sge_dict["SGE_ARCH"])),  # , fixed=True)),
-            ("SGE_ROOT", configfile.str_c_var(sge_dict["SGE_ROOT"])),  # , fixed=True)),
-            ("SGE_CELL", configfile.str_c_var(sge_dict["SGE_CELL"])),  # , fixed=True)),
+            ("SGE_ARCH", configfile.str_c_var(sge_dict["SGE_ARCH"])),
+            ("SGE_ROOT", configfile.str_c_var(sge_dict["SGE_ROOT"])),
+            ("SGE_CELL", configfile.str_c_var(sge_dict["SGE_CELL"])),
             ("TRACE_FAIRSHARE", configfile.bool_c_var(False)),
             ("CLEAR_ITERATIONS", configfile.int_c_var(1)),
             ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300)),
@@ -93,7 +93,7 @@ def main():
     )
     # check modify_sge_global flag and set filesystem flag accordingly
     sge_license_tools.handle_license_policy(global_config["LICENSE_BASE"], global_config["MODIFY_SGE_GLOBAL"])
-    server_process().loop()
+    ServerProcess().loop()
     configfile.terminate_manager()
     # exit
     os._exit(0)

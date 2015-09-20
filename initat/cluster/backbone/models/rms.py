@@ -508,6 +508,9 @@ class RMSJobVariable(models.Model):
         else:
             return self.raw_value
 
+    def __unicode__(self):
+        return "RMSJobVariable '{}'".format(self.name)
+
     class Meta:
         unique_together = (
             ("name", "rms_job"),

@@ -20,18 +20,20 @@
 
 """ rms-server, process definitions """
 
-from initat.cluster.backbone.routing import get_server_uuid
-from initat.rms.accounting import accounting_process
+from initat.rms.accounting import AccountingProcess
 from initat.rms.config import global_config
-from initat.rms.license import license_process
-from initat.rms.rmsmon import rms_mon_process
+from initat.rms.license import LicenseProcess
+from initat.rms.rmsmon import RMSMonProcess
 from django.db import connection
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
-    server_command, threading_tools, server_mixins
-import zmq
+    threading_tools, server_mixins
 
 
-class server_process(server_mixins.ICSWBasePool):
+@server_mixins.RemoteCallProcess
+class ServerProcess(
+    server_mixins.ICSWBasePool,
+    server_mixins.RemoteCallMixin,
+):
     def __init__(self):
         threading_tools.process_pool.__init__(
             self,
@@ -52,10 +54,9 @@ class server_process(server_mixins.ICSWBasePool):
         # dc.release()
         self._init_network_sockets()
         # self.add_process(db_verify_process("db_verify"), start=True)
-        self.add_process(rms_mon_process("rms_mon"), start=True)
-        self.add_process(accounting_process("accounting"), start=True)
-        self.add_process(license_process("license"), start=True)
-        self.register_func("command_result", self._com_result)
+        self.add_process(RMSMonProcess("rms_mon"), start=True)
+        self.add_process(AccountingProcess("accounting"), start=True)
+        self.add_process(LicenseProcess("license"), start=True)
 
     def _log_config(self):
         self.log("Config info:")
@@ -102,97 +103,56 @@ class server_process(server_mixins.ICSWBasePool):
         return msi_block
 
     def _init_network_sockets(self):
-        my_0mq_id = get_server_uuid("rms")
-        self.bind_id = my_0mq_id
-        client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, self.bind_id)
-        client.setsockopt(zmq.RCVHWM, 256)
-        client.setsockopt(zmq.SNDHWM, 256)
-        client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-        client.setsockopt(zmq.RECONNECT_IVL, 200)
-        client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        try:
-            client.bind("tcp://*:{:d}".format(global_config["COMMAND_PORT"]))
-        except zmq.ZMQError:
-            self.log(
-                "error binding to {:d}: {}".format(
-                    global_config["COMMAND_PORT"],
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
-            raise
-        else:
-            self.log("connected to tcp://*:{:d} (via ID {})".format(global_config["COMMAND_PORT"], self.bind_id))
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
-            self.com_socket = client
+        self.network_bind(
+            server_type="rms",
+            need_all_binds=False,
+            pollin=self.remote_call,
+        )
 
-    def _recv_command(self, zmq_sock):
-        data = []
-        while True:
-            data.append(zmq_sock.recv_unicode())
-            more = zmq_sock.getsockopt(zmq.RCVMORE)
-            if not more:
-                break
-        if len(data) == 2:
-            # print data
-            src_id, xml_input = data
-            srv_com = server_command.srv_command(source=xml_input)
-            in_com_text = srv_com["command"].text
-            if in_com_text not in ["get_config"]:
-                self.log("got command '{}' from {}".format(srv_com["command"].text, src_id))
-            srv_com.update_source()
-            # set dummy result
-            srv_com["result"] = None
-            cur_com = srv_com["command"].text
-            if cur_com == "get_config":
-                self.send_to_process("rms_mon", "get_config", src_id, unicode(srv_com))
-            elif cur_com == "job_control":
-                self.send_to_process("rms_mon", "job_control", src_id, unicode(srv_com))
-            elif cur_com == "queue_control":
-                self.send_to_process("rms_mon", "queue_control", src_id, unicode(srv_com))
-            elif cur_com == "get_0mq_id":
-                srv_com["zmq_id"] = self.bind_id
-                srv_com.set_result("0MQ_ID is {}".format(self.bind_id))
-                self._send_result(src_id, srv_com)
-            elif cur_com == "status":
-                srv_com.set_result(
-                    "up and running",
-                    server_command.SRV_REPLY_STATE_OK)
-                self._send_result(src_id, srv_com)
-            elif cur_com == "get_license_usage":
-                self.send_to_process("license", "get_license_usage", src_id, unicode(srv_com))
-            elif cur_com == "file_watch_content":
-                self.send_to_process("rms_mon", "file_watch_content", src_id, unicode(srv_com))
-            elif cur_com in ["pe_start", "pe_end", "job_start", "job_end"]:
-                self.send_to_process("accounting", "job_ss_info", cur_com, src_id, unicode(srv_com))
-                srv_com.set_result("got it")
-                self._send_result(src_id, srv_com)
-            else:
-                # print srv_com.pretty_print()
-                srv_com.set_result(
-                    "unknown command {}".format(cur_com),
-                    server_command.SRV_REPLY_STATE_ERROR,
-                )
-                self._send_result(src_id, srv_com)
-        else:
-            self.log(
-                "received wrong data (len() = {:d} != 2)".format(len(data)),
-                logging_tools.LOG_LEVEL_ERROR,
-            )
+    @server_mixins.RemoteCall(target_process="rms_mon")
+    def get_config(self, srv_com, **kwargs):
+        return srv_com
 
-    def _send_result(self, src_id, srv_com):
-        self.com_socket.send_unicode(src_id, zmq.SNDMORE)
-        self.com_socket.send_unicode(unicode(srv_com))
+    @server_mixins.RemoteCall(target_process="rms_mon")
+    def job_control(self, srv_com, **kwargs):
+        return srv_com
 
-    def _com_result(self, src_proc, proc_id, src_id, srv_com):
-        self._send_result(src_id, srv_com)
+    @server_mixins.RemoteCall(target_process="rms_mon")
+    def queue_control(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="accounting")
+    def set_job_variable(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall()
+    def get_0mq_id(self, srv_com, **kwargs):
+        srv_com["zmq_id"] = kwargs["bind_id"]
+        srv_com.set_result("0MQ_ID is {}".format(kwargs["bind_id"]))
+        return srv_com
+
+    @server_mixins.RemoteCall()
+    def status(self, srv_com, **kwargs):
+        return self.server_status(srv_com, self.__msi_block, global_config)
+
+    @server_mixins.RemoteCall(target_process="license")
+    def get_license_usage(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="license")
+    def license(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="rms_mon", send_async_return=False)
+    def file_watch_content(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="accounting", send_async_return=False, target_process_func="job_ss_info")
+    def job_start(self, srv_com, **kwargs):
+        return srv_com
 
     def loop_post(self):
-        if self.com_socket:
-            self.log("closing socket")
-            self.com_socket.close()
+        self.network_unbind()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()

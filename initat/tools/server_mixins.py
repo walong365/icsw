@@ -88,11 +88,17 @@ class ConfigCheckObject(object):
             )
         )
         _opts = [
-            ("PID_NAME", configfile.str_c_var(self._inst_xml.get_pid_file_name(self._instance), source="instance", database=False)),
+            (
+                "PID_NAME",
+                configfile.str_c_var(self._inst_xml.get_pid_file_name(self._instance), source="instance", database=False)
+            ),
         ]
         for _name, _value in self._inst_xml.get_port_dict(self._instance).iteritems():
             _opts.append(
-                ("{}_PORT".format(_name.upper()), configfile.int_c_var(_value, source="instance", database=False)),
+                (
+                    "{}_PORT".format(_name.upper()),
+                    configfile.int_c_var(_value, source="instance", database=False)
+                ),
             )
         if not client:
             sql_info = None
@@ -107,15 +113,25 @@ class ConfigCheckObject(object):
                 # set values
                 _opts.extend(
                     [
-                        ("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False, source="instance")),
-                        ("EFFECTIVE_DEVICE_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False, source="instance")),
                         (
-                            "LOG_SOURCE_IDX", configfile.int_c_var(
+                            "SERVER_IDX",
+                            configfile.int_c_var(sql_info.device.pk, database=False, source="instance")
+                        ),
+                        (
+                            "EFFECTIVE_DEVICE_IDX",
+                            configfile.int_c_var(sql_info.effective_device.pk, database=False, source="instance")
+                        ),
+                        (
+                            "LOG_SOURCE_IDX",
+                            configfile.int_c_var(
                                 LogSource.new(self.srv_type, device=sql_info.effective_device).pk,
                                 source="instance",
                             )
                         ),
-                        ("MEMCACHE_PORT", configfile.int_c_var(self._inst_xml.get_port_dict("memcached", command=True), source="instance")),
+                        (
+                            "MEMCACHE_PORT",
+                            configfile.int_c_var(self._inst_xml.get_port_dict("memcached", command=True), source="instance")
+                        ),
                     ]
                 )
         self.global_config.add_config_entries(_opts)
@@ -210,7 +226,13 @@ class NetworkBindMixin(object):
         pollin = kwargs.get("pollin", None)
         ext_call = kwargs.get("ext_call", False)
         immediate = kwargs.get("immediate", True)
-        bind_port = kwargs["bind_port"]
+        if "bind_port" in kwargs:
+            bind_port = kwargs["bind_port"]
+        elif "server_type" in kwargs:
+            _inst = InstanceXML(log_com=self.log)
+            bind_port = _inst.get_port_dict(kwargs["server_type"], ptype="command")
+        else:
+            raise KeyError("neither bind_port nor server_type defined in kwargs")
         main_socket_name = kwargs.get("main_socket_name", "main_socket")
         virtual_sockets_name = kwargs.get("virtual_sockets_name", "virtual_sockets")
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
@@ -503,6 +525,7 @@ class RemoteCallMixin(object):
                         _reply = srv_com
                     self._send_remote_call_reply(zmq_sock, src_id, _reply, msg_type)
         else:
+            msg_type = RemoteCallMessageType.unknown
             self.log(
                 "unable to handle message type '{}' (# of data frames: {:d})".format(
                     com_type,
@@ -571,6 +594,7 @@ class RemoteCallMixin(object):
 class RemoteCallMessageType(IntEnum):
     xml = 1
     flat = 2
+    unknown = 99
 
 
 class RemoteCallSignature(object):
@@ -605,7 +629,13 @@ class RemoteCallSignature(object):
         return self.func.__name__
 
     def link(self, lut, id_filter_dict):
-        lut.setdefault(self.com_type, {}).setdefault(self.msg_type, {})[self.func_name] = self
+        lut.setdefault(
+            self.com_type,
+            {}
+        ).setdefault(
+            self.msg_type,
+            {}
+        )[self.func_name] = self
         if self.id_filter:
             id_filter_dict[re.compile(self.id_filter)] = self
 

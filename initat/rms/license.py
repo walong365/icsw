@@ -21,7 +21,6 @@
 """ rms-server, license monitoring part """
 
 # from initat.cluster.backbone.models.functions import cluster_timezone
-import commands
 import datetime
 import os
 import time
@@ -35,12 +34,12 @@ from initat.cluster.backbone.models import ext_license_site, ext_license, ext_li
     ext_license_check_coarse, ext_license_version_state_coarse, ext_license_state_coarse, \
     ext_license_usage_coarse, duration
 from initat.host_monitoring import hm_classes
-from initat.rms.config import global_config
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import zmq
-
 from initat.tools import logging_tools, process_tools, server_command, sge_license_tools, \
     threading_tools
+
+from .config import global_config
 
 EL_LUT = {
     "ext_license_site": ext_license_site,
@@ -61,31 +60,7 @@ def pairwise(iterable):
     return itertools.izip(a, b)
 
 
-def call_command(command, log_com=None):
-    start_time = time.time()
-    stat, out = commands.getstatusoutput(command)
-    end_time = time.time()
-    log_lines = ["calling '{}' took {}, result (stat {:d}) is {} ({})".format(
-        command,
-        logging_tools.get_diff_time_str(end_time - start_time),
-        stat,
-        logging_tools.get_plural("byte", len(out)),
-        logging_tools.get_plural("line", len(out.split("\n"))))]
-    if log_com:
-        for log_line in log_lines:
-            log_com(" - {}".format(log_line))
-        if stat:
-            for log_line in out.split("\n"):
-                log_com(" - {}".format(log_line))
-        return stat, out
-    else:
-        if stat:
-            # append output to log_lines if error
-            log_lines.extend([" - {}".format(line) for line in out.split("\n")])
-        return stat, out, log_lines
-
-
-class license_process(threading_tools.process_obj):
+class LicenseProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -238,8 +213,7 @@ class license_process(threading_tools.process_obj):
             self.log("no actual site defined, no license tracking", logging_tools.LOG_LEVEL_ERROR)
 
     def get_license_usage(self, *args, **kwargs):
-        src_id, srv_com_str = args
-        srv_com = server_command.srv_command(source=srv_com_str)
+        srv_com = server_command.srv_command(source=args[0])
         if self.__elo_obj:
             srv_com["server_usage"] = self._update_lic(self.__elo_obj)
             srv_com["license_usage"] = E.license_overview(
@@ -253,7 +227,7 @@ class license_process(threading_tools.process_obj):
                 "no elo object defined",
                 server_command.SRV_REPLY_STATE_ERROR
             )
-        self.send_pool_message("command_result", src_id, unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
         del srv_com
 
     def _update_coarse_data(self):

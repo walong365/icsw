@@ -150,7 +150,7 @@ def main():
         xml_doc = xml.dom.minidom.parseString(out)
         # find job_info entity
         sge_node = xml_doc.getElementsByTagName("job_info")[0]
-        queue_info = sge_node.getElementsByTagName("queue_info")[0]
+        queue_info = sge_node.getElementsByTagName("QueueInfo")[0]
         queue_list = []
         job_run_list, job_wait_list = ([], [])
         for queue_info in queue_info.getElementsByTagName("Queue-List"):

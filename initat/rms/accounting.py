@@ -34,10 +34,11 @@ import time
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
-    rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone
+    rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone, \
+    RMSJobVariable
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
-from initat.tools import logging_tools, server_command, threading_tools
+from initat.tools import logging_tools, server_command, threading_tools, process_tools
 
 _OBJ_DICT = {
     "rms_queue": rms_queue,
@@ -47,7 +48,7 @@ _OBJ_DICT = {
 }
 
 
-class accounting_process(threading_tools.process_obj):
+class AccountingProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -60,6 +61,7 @@ class accounting_process(threading_tools.process_obj):
         self._init_environ()
         # job stop/start info
         self.register_func("job_ss_info", self._job_ss_info)
+        self.register_func("set_job_variable", self._set_job_variable)
         self.register_timer(self._check_accounting, 600)
         # full scan done ?
         self.__full_scan_done = False
@@ -465,13 +467,13 @@ class accounting_process(threading_tools.process_obj):
         return _dev
 
     def _job_ss_info(self, *args, **kwargs):
-        _com, _id, _sc_text = args
-        srv_com = server_command.srv_command(source=_sc_text)
+        # _com, _id, _sc_text = args
+        srv_com = server_command.srv_command(source=args[0])
         _config = srv_com["config"]
+        _com = srv_com["*command"]
         self.log(
-            "got {} (job_id {}, {} in config)".format(
+            "got {} ({} in config)".format(
                 _com,
-                _id,
                 logging_tools.get_plural("key", len(_config))
             )
         )
@@ -540,3 +542,52 @@ class accounting_process(threading_tools.process_obj):
                             hostname=_parts[0],
                             slots=_slots,
                         )
+
+    def _parse_job_id(self, srv_com):
+        _id = srv_com["*jobid"]
+        if _id.count("."):
+            jobid, taskid = _id.split(".")
+            jobid = int(jobid)
+            taskid = int(taskid)
+        else:
+            jobid, taskid = (int(_id), None)
+        return jobid, taskid
+
+    def _get_job_variable(self, job, varname):
+        try:
+            cur_var = RMSJobVariable.objects.get(Q(rms_job=job) & Q(name=varname))
+        except RMSJobVariable.DoesNotExist:
+            cur_var = RMSJobVariable(
+                rms_job=job,
+                name=varname,
+            )
+            self.log(
+                "creating {} for job {}".format(
+                    unicode(cur_var),
+                    unicode(job)
+                )
+            )
+        return cur_var
+
+    def _set_job_variable(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        job_id, task_id = self._parse_job_id(srv_com)
+        try:
+            _job = self._get_job(job_id, task_id)
+        except:
+            self.log("no matching job found: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            srv_com.set_result("unable to find matching job", server_command.SRV_REPLY_STATE_ERROR)
+        else:
+            _name, _value = (srv_com["*varname"], srv_com["*varvalue"])
+            _var = self._get_job_variable(_job, _name)
+            new_var = False if _var.pk else True
+            _var.raw_value = _value
+            _var.save()
+            srv_com.set_result(
+                "{} job variable '{}'".format(
+                    "created" if new_var else "updated",
+                    _var.name,
+                ),
+                server_command.SRV_REPLY_STATE_OK
+            )
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
