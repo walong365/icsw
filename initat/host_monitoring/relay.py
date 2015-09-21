@@ -698,6 +698,10 @@ class relay_code(ICSWBasePool, HMHRMixin):
                             }[self.__last_tried[t_host]]
                             c_state = self.__last_tried[t_host]
                         con_mode = c_state
+                        full_con_mode = {
+                            "0": "zeromMQ",
+                            "T": "TCP",
+                        }
                         # con_mode = "0"
                         # decide which code to use
                         if self.__verbose:
@@ -705,7 +709,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
                                 "connection to '{}:{:d}' via {}".format(
                                     t_host,
                                     int(srv_com["port"].text),
-                                    con_mode
+                                    full_con_mode
                                 )
                             )
                         if int(srv_com["port"].text) != 2001:

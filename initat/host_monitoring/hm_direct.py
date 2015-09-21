@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2011-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -71,10 +71,12 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
         _to_del = [key for key, value in self.__work_dict.iteritems() if abs(value["start"] - cur_time) > 60]
         if _to_del:
             _unhandled = [key for key in _to_del if key not in self.__handled]
-            self.log("removing {} ({:d} unhandled)".format(
-                logging_tools.get_plural("ping", len(_to_del)),
-                len(_unhandled),
-                ))
+            self.log(
+                "removing {} ({:d} unhandled)".format(
+                    logging_tools.get_plural("ping", len(_to_del)),
+                    len(_unhandled),
+                )
+            )
             for _del in _to_del:
                 if _del in _unhandled:
                     pass

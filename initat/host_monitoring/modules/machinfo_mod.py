@@ -30,9 +30,10 @@ import json
 import tempfile
 import time
 
+from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, process_tools, \
-    server_command, uuid_tools
+    server_command, uuid_tools, config_store
 import psutil
 from initat.client_version import VERSION_STRING
 
@@ -1263,37 +1264,16 @@ class version_command(hm_classes.hm_command):
 
 class get_0mq_id_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
-        if os.path.isfile(zmq_id_name):
-            zmq_id_xml = etree.fromstring(file(zmq_id_name, "r").read())  # @UndefinedVariable
-            id_node = None
-            if "target_ip" in srv_com:
-                target_ip = srv_com["target_ip"].text
-            else:
-                target_ip = "*"
-            self.log("target_ip for get_0mq_id is %s" % (target_ip))
-            if target_ip != "*":
-                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='%s']" % (target_ip), smart_strings=False)
-                id_node = id_node[0] if len(id_node) else None
-            if id_node is None:
-                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']", smart_strings=False)
-                id_node = id_node[0] if len(id_node) else None
-            if id_node is not None:
-                srv_com["zmq_id"] = id_node.text
-            else:
-                srv_com.set_result(
-                    "no matching 0MQ id found for ip %s" % (target_ip),
-                    server_command.SRV_REPLY_STATE_ERROR
-                )
+        _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
+        if "target_ip" in srv_com:
+            target_ip = srv_com["target_ip"].text
         else:
-            srv_com.set_result(
-                "no 0MQ_id file found",
-                server_command.SRV_REPLY_STATE_ERROR
-            )
+            target_ip = "0"
+        srv_com["zmq_id"] = _cs["0"]["uuid"]
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "0MQ id is %s" % (srv_com["zmq_id"].text)
+            return limits.nag_STATE_OK, "0MQ id is {}".format(srv_com["zmq_id"].text)
         except:
             return limits.nag_STATE_CRITICAL, "version not found"
 
