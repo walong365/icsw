@@ -304,10 +304,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if dev_cache_modes:
             dev_cache_mode = dev_cache_modes[0]
             dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")]
-            self.log("starting single build with {}, cache mode is {}: {}".format(
-                logging_tools.get_plural("device", len(dev_names)),
-                dev_cache_mode,
-                ", ".join(sorted(dev_names))))
+            self.log(
+                "starting single build with {}, cache mode is {}: {}".format(
+                    logging_tools.get_plural("device", len(dev_names)),
+                    dev_cache_mode,
+                    ", ".join(sorted(dev_names))
+                )
+            )
             srv_com["result"] = self._rebuild_config(*dev_names, cache_mode=dev_cache_mode)
             srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         else:
@@ -397,14 +400,17 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 device=cdg,
                 is_public=False,
                 name="_SYS_GAUGE_",
-                description="mon config rebuild on {}".format(self.__gen_config.monitor_server.full_name if self.__gen_config else "unknown"),
-                var_type="i")
+                description="mon config rebuild on {}".format(
+                    self.__gen_config.monitor_server.full_name if self.__gen_config else "unknown"
+                ),
+                var_type="i"
+            )
             # bump version
             if int(time.time()) > self.version:
                 self.version = int(time.time())
             else:
                 self.version += 1
-            self.log("config_version for full build is %d" % (self.version))
+            self.log("config_version for full build is {:d}".format(self.version))
             self.send_pool_message("build_info", "start_build", self.version, target="syncer")
         # fetch SNMP-stuff from cluster and initialise var cache
         rebuild_gen_config = False
@@ -529,7 +535,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         nd_dict = {}
         for dev_pk, nd_pk in netdevice.objects.filter(Q(enabled=True)).values_list("device", "pk"):
             nd_dict.setdefault(dev_pk, set()).add(nd_pk)
-        nd_lut = {value[0]: value[1] for value in netdevice.objects.filter(Q(enabled=True)).values_list("pk", "device") if value[1] in dm_dict.keys()}
+        nd_lut = {
+            value[0]: value[1] for value in netdevice.objects.filter(
+                Q(enabled=True)
+            ).values_list("pk", "device") if value[1] in dm_dict.keys()
+        }
         for cur_dev in dm_dict.itervalues():
             # set 0 for root_node, -1 for all other devices
             cur_dev.md_dist_level = 0 if cur_dev.pk == root_node.pk else -1
@@ -542,10 +552,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # iterate until all nodes have a valid dist_level set
             src_nodes = set([key for key, value in dm_dict.iteritems() if value.md_dist_level >= 0])
             dst_nodes = all_pks - src_nodes
-            self.log("dm_run {:3d}, {}, {}".format(
-                cur_iter,
-                logging_tools.get_plural("source node", len(src_nodes)),
-                logging_tools.get_plural("dest node", len(dst_nodes))))
+            self.log(
+                "dm_run {:3d}, {}, {}".format(
+                    cur_iter,
+                    logging_tools.get_plural("source node", len(src_nodes)),
+                    logging_tools.get_plural("dest node", len(dst_nodes))
+                )
+            )
             src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes if key in nd_dict], set())
             # dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
             # build list of src_nd, dst_nd tuples
@@ -579,7 +592,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     max_level = max(max_level, dst_dev.md_dist_level)
                     run_again = True
                 else:
-                    self.log("dropping link ({:d}, {:d}), devices disabled?".format(src_nd, dst_nd), logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "dropping link ({:d}, {:d}), devices disabled?".format(
+                            src_nd,
+                            dst_nd
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
             if not run_again:
                 break
         self.log("max distance level: {:d}".format(max_level))
@@ -599,7 +618,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     len([True for value in dm_dict.itervalues() if value.md_dist_level == level]),
                 )
             )
-        return {key: value.md_dist_level for key, value in dm_dict.iteritems()}, ur_pks
+        return {
+            key: value.md_dist_level for key, value in dm_dict.iteritems()
+        }, ur_pks
 
     def _create_general_config(self, write_entries=None):
         self.__gen_config_built = True
@@ -617,7 +638,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             for cur_conf in config_list:
                 # restore to previous value
                 cur_conf.allow_write_entries = prev_awc
-        self.log("creating the total general config took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
+        self.log(
+            "creating the total general config took {}".format(
+                logging_tools.get_diff_time_str(end_time - start_time)
+            )
+        )
 
     def _create_gen_config_files(self, gc_list):
         for cur_gc in gc_list:
@@ -664,7 +689,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if base_names:
             stat, out = commands.getstatusoutput("file {}".format(" ".join([os.path.join(logos_dir, "{}.png".format(entry)) for entry in base_names])))
             if stat:
-                self.log("error getting filetype of {}".format(logging_tools.get_plural("logo", len(base_names))), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error getting filetype of {}".format(
+                        logging_tools.get_plural("logo", len(base_names))
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 base_names = set()
                 for logo_name, logo_data in [
@@ -754,7 +784,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.__cached_mach_name = host.full_name
         # cache logs
         _write_logs = False
-        self.mach_log("-------- {} ---------".format("master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)), single_build=_bc.single_build)
+        self.mach_log(
+            "-------- {} ---------".format(
+                "master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)
+            ),
+            single_build=_bc.single_build
+        )
         glob_log_str = "device {:<48s}{} ({}), d={:>3s}".format(
             host.full_name[:48],
             "*" if len(host.name) > 48 else " ",
@@ -941,7 +976,14 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         if host.automap_root_nagvis and cur_gc.master:
                             # with or without .cfg ? full path ?
                             act_host["_nagvis_map"] = "{}".format(host.full_name.encode("ascii", errors="ignore"))
-                            map_file = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps", "{}.cfg".format(host.full_name.encode("ascii", errors="ignore")))
+                            map_file = os.path.join(
+                                self.gc["NAGVIS_DIR"],
+                                "etc",
+                                "maps",
+                                "{}.cfg".format(
+                                    host.full_name.encode("ascii", errors="ignore")
+                                )
+                            )
                             map_dict = {
                                 "sources": "automap",
                                 "alias": host.comment or host.full_name,
@@ -1281,14 +1323,18 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     else:
                         self.mach_log("Host {} is disabled".format(host.full_name))
             else:
-                self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
+                self.mach_log(
+                    "No valid IPs found or no default_device_template found",
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         info_str = "{:3d} ok, {:3d} w, {:3d} e ({:3d} {}) in {}".format(
             _counter.num_ok,
             _counter.num_warning,
             _counter.num_error,
             self.get_num_mach_logs(),
             "l " if _counter.num_error == 0 else "lw",
-            logging_tools.get_diff_time_str(time.time() - start_time))
+            logging_tools.get_diff_time_str(time.time() - start_time)
+        )
         glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
@@ -1493,9 +1539,17 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             ).prefetch_related(
                 "device_config_set",
                 "device_config_set__config"
-            ).select_related("device_group")}
+            ).select_related("device_group")
+        }
         all_configs = {}
-        for cur_dev in device.objects.filter(ac_filter).select_related("domain_tree_node").prefetch_related("device_config_set", "device_config_set__config"):
+        for cur_dev in device.objects.filter(
+            ac_filter
+        ).select_related(
+            "domain_tree_node"
+        ).prefetch_related(
+            "device_config_set",
+            "device_config_set__config"
+        ):
             loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
             if cur_dev.device_group_id in meta_devices:
                 loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
@@ -1696,7 +1750,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 self.log(
                                     "error removing {}: {}".format(
                                         full_name,
-                                        process_tools.get_except_info()),
+                                        process_tools.get_except_info()
+                                    ),
                                     logging_tools.LOG_LEVEL_ERROR
                                 )
                 if skipped_customs:
@@ -1708,11 +1763,15 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 self.log("creating maps for {}".format(logging_tools.get_plural("device group", len(dev_groups))))
                 for dev_group in dev_groups:
                     map_name = os.path.join(nagvis_map_dir, "{}.cfg".format(dev_group.name.replace(" ", "_")))
-                    file(map_name, "w").write("\n".join([
-                        "define global {",
-                        "    alias=Group {}".format(dev_group.name),
-                        "}",
-                    ]))
+                    file(map_name, "w").write(
+                        "\n".join(
+                            [
+                                "define global {",
+                                "    alias=Group {}".format(dev_group.name),
+                                "}",
+                            ]
+                        )
+                    )
             cache_dir = os.path.join(self.gc["NAGVIS_DIR"], "var")
             if os.path.isdir(cache_dir):
                 rem_ok, rem_failed = (0, 0)
@@ -1815,7 +1874,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["high_flap_threshold"] = serv_temp.high_flap_threshold
                 n_field = []
                 for short, f_name in [("o", "ok"), ("w", "warn"), ("c", "critical"), ("u", "unknown")]:
-                    if getattr(serv_temp, "flap_detect_%s" % (f_name)):
+                    if getattr(serv_temp, "flap_detect_{}".format(f_name)):
                         n_field.append(short)
                 if not n_field:
                     n_field.append("o")

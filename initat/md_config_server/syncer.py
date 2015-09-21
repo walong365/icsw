@@ -100,7 +100,13 @@ class syncer_process(threading_tools.process_obj):
                 self.__slave_configs[cur_dev.pk] = _slave_c
                 self.__slave_lut[cur_dev.full_name] = cur_dev.pk
                 self.__slave_lut[cur_dev.uuid] = cur_dev.pk
-                self.log("  slave {} (IP {}, {})".format(_slave_c.monitor_server.full_name, _slave_c.slave_ip, _slave_c.monitor_server.uuid))
+                self.log(
+                    "  slave {} (IP {}, {})".format(
+                        _slave_c.monitor_server.full_name,
+                        _slave_c.slave_ip,
+                        _slave_c.monitor_server.uuid
+                    )
+                )
                 if _slave_c.slave_ip:
                     self.send_pool_message("register_slave", _slave_c.slave_ip, _slave_c.monitor_server.uuid)
                 else:
@@ -128,7 +134,8 @@ class syncer_process(threading_tools.process_obj):
                 host="DIRECT",
                 port="0",
                 master_ip=master_ip,
-                master_port="{:d}".format(constants.SERVER_COM_PORT))
+                master_port="{:d}".format(constants.SERVER_COM_PORT)
+            )
             self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_srv), master_ip, _srv.uuid))
             self.send_command(_srv.uuid, unicode(srv_com))
 

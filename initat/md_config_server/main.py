@@ -62,9 +62,10 @@ def main():
         ]
     )
     _options = global_config.handle_commandline(
-        description="%s, version is %s" % (
+        description="{}, version is {}".format(
             prog_name,
-            VERSION_STRING),
+            VERSION_STRING
+        ),
         positional_arguments=False
     )
     # enable connection debugging

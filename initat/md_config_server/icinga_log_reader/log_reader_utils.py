@@ -60,9 +60,12 @@ class host_service_id_util(object):
             check_command_pk = None
             special_check_command_pk = None
 
-        return cls.create_host_service_description_direct(host_pk, check_command_pk,
-                                                          special_check_command_pk=special_check_command_pk,
-                                                          info=info)
+        return cls.create_host_service_description_direct(
+            host_pk,
+            check_command_pk,
+            special_check_command_pk=special_check_command_pk,
+            info=info
+        )
 
     @classmethod
     def create_host_service_description_direct(cls, host_pk, check_command_pk=None,

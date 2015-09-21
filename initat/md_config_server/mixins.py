@@ -19,13 +19,13 @@
 #
 """ mixins for md-config-server """
 
-from initat.md_config_server.config import global_config
-from initat.tools import cluster_location
 import commands
-from initat.tools import configfile, logging_tools
 import os
 import re
 import time
+
+from initat.md_config_server.config import global_config
+from initat.tools import configfile, logging_tools, cluster_location
 
 
 class version_check_mixin(object):
@@ -37,7 +37,9 @@ class version_check_mixin(object):
             if os.path.isfile("/etc/debian_version"):
                 cstat, cout = commands.getstatusoutput("dpkg -s {}".format(t_daemon))
                 if not cstat:
-                    deb_version = [y for y in [x.strip() for x in cout.split("\n")] if y.startswith("Version")]
+                    deb_version = [
+                        y for y in [x.strip() for x in cout.split("\n")] if y.startswith("Version")
+                    ]
                     if deb_version:
                         md_version = deb_version[0].split(":")[1].strip()
                     else:
@@ -61,15 +63,17 @@ class version_check_mixin(object):
                 break
         # save to local config
         if md_version[0].isdigit():
-            global_config.add_config_entries([
-                ("MD_TYPE", configfile.str_c_var(md_type)),
-                ("MD_VERSION", configfile.int_c_var(int(md_version.split(".")[0]))),
-                ("MD_RELEASE", configfile.int_c_var(int(md_version.split(".")[1]))),
-                ("MD_VERSION_STRING", configfile.str_c_var(md_version)),
-                ("MD_BASEDIR", configfile.str_c_var(os.path.join("/opt", md_type))),
-                ("MAIN_CONFIG_NAME", configfile.str_c_var(md_type)),
-                ("MD_LOCK_FILE", configfile.str_c_var("{}.lock".format(md_type))),
-            ])
+            global_config.add_config_entries(
+                [
+                    ("MD_TYPE", configfile.str_c_var(md_type)),
+                    ("MD_VERSION", configfile.int_c_var(int(md_version.split(".")[0]))),
+                    ("MD_RELEASE", configfile.int_c_var(int(md_version.split(".")[1]))),
+                    ("MD_VERSION_STRING", configfile.str_c_var(md_version)),
+                    ("MD_BASEDIR", configfile.str_c_var(os.path.join("/opt", md_type))),
+                    ("MAIN_CONFIG_NAME", configfile.str_c_var(md_type)),
+                    ("MD_LOCK_FILE", configfile.str_c_var("{}.lock".format(md_type))),
+                ]
+            )
         # device_variable local to the server
         _dv = cluster_location.db_device_variable(
             global_config["SERVER_IDX"],
@@ -104,5 +108,9 @@ class version_check_mixin(object):
     def _check_relay_version(self):
         from initat.client_version import VERSION_STRING as relay_version
         relay_split = [int(value) for value in relay_version.split("-")[0].split(".")]
-        global_config.add_config_entries([("HAS_SNMP_RELAYER", configfile.bool_c_var(True))])
+        global_config.add_config_entries(
+            [
+                ("HAS_SNMP_RELAYER", configfile.bool_c_var(True))
+            ]
+        )
         self.log("host-relay version {}".format(relay_version))

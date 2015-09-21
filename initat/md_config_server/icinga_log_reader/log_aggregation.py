@@ -85,8 +85,12 @@ class icinga_log_aggregator(object):
                             earliest_date2 = mon_icinga_log_raw_service_alert_data.objects.earliest("date").date
                             earliest_date = min(earliest_date1, earliest_date2)
                             next_start_time = duration_type.get_time_frame_start(earliest_date)
-                            self.log("no archive data for duration type {}, starting new data at {}"
-                                     .format(duration_type.__name__, next_start_time))
+                            self.log(
+                                "no archive data for duration type {}, starting new data at {}".format(
+                                    duration_type.__name__,
+                                    next_start_time
+                                )
+                            )
                         except (mon_icinga_log_raw_host_alert_data.DoesNotExist,
                                 mon_icinga_log_raw_service_alert_data.DoesNotExist):
                             self.log("no log data, hence nothing to aggregate")
@@ -97,14 +101,23 @@ class icinga_log_aggregator(object):
                     while do_loop:
                         next_end_time = duration_type.get_end_time_for_start(next_start_time)
                         last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
-                        if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(last_read_obj.timestamp,
-                                                                                             cluster_timezone):
+                        if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(
+                            last_read_obj.timestamp,
+                            cluster_timezone
+                        ):
                             # have sufficient data
-                            self.log("creating entry for {} starting at {}".format(duration_type.__name__,
-                                                                                   next_start_time))
-                            next_last_service_alert_cache =\
-                                self._create_timespan_entry(next_start_time, next_end_time, duration_type,
-                                                            next_last_service_alert_cache)
+                            self.log(
+                                "creating entry for {} starting at {}".format(
+                                    duration_type.__name__,
+                                    next_start_time
+                                )
+                            )
+                            next_last_service_alert_cache = self._create_timespan_entry(
+                                next_start_time,
+                                next_end_time,
+                                duration_type,
+                                next_last_service_alert_cache
+                            )
                         else:
                             # self.log("not sufficient data for entry from {} to {}".format(next_start_time,
                             # next_end_time))
@@ -148,12 +161,21 @@ class icinga_log_aggregator(object):
         try:
             # create from scratch for smallest unit and incrementally for all higher ones
             if duration_type == duration.Hour:
-                next_last_service_alert_cache =\
-                    self._create_timespan_entry_from_raw_data(timespan_db, start_time, end_time, duration_type,
-                                                              next_last_service_alert_cache)
+                next_last_service_alert_cache = self._create_timespan_entry_from_raw_data(
+                    timespan_db,
+                    start_time,
+                    end_time,
+                    duration_type,
+                    next_last_service_alert_cache
+                )
             else:
-                self._create_timespan_entry_incrementally(timespan_db, start_time, end_time,
-                                                          duration_type, next_last_service_alert_cache)
+                self._create_timespan_entry_incrementally(
+                    timespan_db,
+                    start_time,
+                    end_time,
+                    duration_type,
+                    next_last_service_alert_cache
+                )
                 next_last_service_alert_cache = None  # we don't get this here, but also don't need it
         except Exception as e:
             self.log("Exception while creating timespan entry: {}".format(e))
@@ -175,8 +197,12 @@ class icinga_log_aggregator(object):
             # no earlier date
             pass
         dump_times.extend(
-            mon_icinga_log_full_system_dump.objects.filter(date__range=(start_time, end_time)).values_list('date',
-                                                                                                           flat=True)
+            mon_icinga_log_full_system_dump.objects.filter(
+                date__range=(start_time, end_time)
+            ).values_list(
+                'date',
+                flat=True
+            )
         )
 
         if not dump_times:
@@ -196,12 +222,24 @@ class icinga_log_aggregator(object):
 
         dump_times_filters = build_dump_times_filters(dump_times)
 
-        timespan_hosts = mon_icinga_log_raw_host_alert_data.objects.filter(dump_times_filters, device_independent=False)\
-            .distinct("device_id")\
-            .values_list("device_id", flat=True)
-        timespan_services = mon_icinga_log_raw_service_alert_data.objects.filter(dump_times_filters, device_independent=False)\
-            .distinct("device_id", "service_id", "service_info")\
-            .values_list("device_id", "service_id", "service_info")
+        timespan_hosts = mon_icinga_log_raw_host_alert_data.objects.filter(
+            dump_times_filters, device_independent=False
+        ).distinct(
+            "device_id"
+        ).values_list(
+            "device_id", flat=True
+        )
+        timespan_services = mon_icinga_log_raw_service_alert_data.objects.filter(
+            dump_times_filters, device_independent=False
+        ).distinct(
+            "device_id",
+            "service_id",
+            "service_info"
+        ).values_list(
+            "device_id",
+            "service_id",
+            "service_info"
+        )
 
         return timespan_hosts, timespan_services
 
@@ -215,30 +253,39 @@ class icinga_log_aggregator(object):
         # get flappings of timespan (can't use db in inner loop)
         # TODO: possibly extract keys in cache
         preprocess_start_stop_data = StatusHistoryUtils.preprocess_start_stop_data
-        service_flapping_cache = preprocess_start_stop_data(self._service_flapping_cache,
-                                                            lambda flap_data: (flap_data.device_id,
-                                                                               flap_data.service_id,
-                                                                               flap_data.service_info),
-                                                            'flapping_state',
-                                                            start_time,
-                                                            end_time)
-        host_flapping_cache = preprocess_start_stop_data(self._host_flapping_cache,
-                                                         lambda flap_data: flap_data.device_id,
-                                                         'flapping_state',
-                                                         start_time,
-                                                         end_time)
+        service_flapping_cache = preprocess_start_stop_data(
+            self._service_flapping_cache,
+            lambda flap_data: (
+                flap_data.device_id,
+                flap_data.service_id,
+                flap_data.service_info
+            ),
+            'flapping_state',
+            start_time,
+            end_time
+        )
+        host_flapping_cache = preprocess_start_stop_data(
+            self._host_flapping_cache,
+            lambda flap_data: flap_data.device_id,
+            'flapping_state',
+            start_time,
+            end_time
+        )
 
         if next_last_service_alert_cache:
             last_service_alert_cache = next_last_service_alert_cache
         else:
             last_service_alert_cache = mon_icinga_log_raw_service_alert_data.objects.calc_limit_alerts(start_time)
             # only need cache format here:
-            last_service_alert_cache =\
-                {k: (v['state'], v['state_type']) for k, v in last_service_alert_cache.iteritems()}
+            last_service_alert_cache = {
+                k: (v['state'], v['state_type']) for k, v in last_service_alert_cache.iteritems()
+            }
 
         last_host_alert_cache = mon_icinga_log_raw_host_alert_data.objects.calc_limit_alerts(start_time)
         # only need cache format again
-        last_host_alert_cache = {k: (v['state'], v['state_type']) for k, v in last_host_alert_cache.iteritems()}
+        last_host_alert_cache = {
+            k: (v['state'], v['state_type']) for k, v in last_host_alert_cache.iteritems()
+        }
 
         # regular changes in time span
         def calc_weighted_states(relevant_entries, state_description_before, start_in_planned_downtime, debug=False):
@@ -251,12 +298,20 @@ class icinga_log_aggregator(object):
 
                 weighted_states[(raw_entry1.state, raw_entry1.state_type)] += entry_weight
                 if debug:
-                    self.log("from {} to {} in state {} {}; weight: {}"
-                             .format(raw_entry1.date, raw_entry2.date, raw_entry1.state,
-                                     raw_entry1.state_type, entry_weight))
+                    self.log(
+                        "from {} to {} in state {} {}; weight: {}".format(
+                            raw_entry1.date,
+                            raw_entry2.date,
+                            raw_entry1.state,
+                            raw_entry1.state_type,
+                            entry_weight
+                        )
+                    )
 
-            actual_state_description_before = state_description_before if not start_in_planned_downtime else  \
-                (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN)
+            actual_state_description_before = state_description_before if not start_in_planned_downtime else (
+                mon_icinga_log_raw_base.STATE_PLANNED_DOWN,
+                mon_icinga_log_raw_base.STATE_PLANNED_DOWN
+            )
 
             # first/last
             if not relevant_entries:
@@ -306,13 +361,15 @@ class icinga_log_aggregator(object):
             StatusHistoryUtils.get_key_fun(is_host=False),
             'downtime_state',
             start_time,
-            end_time)
+            end_time
+        )
         host_downtimes = StatusHistoryUtils.preprocess_start_stop_data(
             self._host_downtime_cache,
             StatusHistoryUtils.get_key_fun(is_host=True),
             'downtime_state',
             start_time,
-            end_time)
+            end_time
+        )
 
         def process_service_alerts():
             next_last_service_alert_cache = {}
@@ -324,30 +381,35 @@ class icinga_log_aggregator(object):
                 # need to find last state
                 state_description_before = last_service_alert_cache.get((device_id, service_id, service_info), None)
                 if not state_description_before:
-                    state_description_before =\
-                        mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
+                    state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
                 serv_key = (device_id, service_id, service_info)
 
                 downtime_list = service_downtimes.get(serv_key, [])
-                service_alerts[serv_key] = \
-                    AlertList.add_downtimes_to_alerts(service_alerts[serv_key],
-                                                      state_description_before,
-                                                      downtime_list=downtime_list)
+                service_alerts[serv_key] = AlertList.add_downtimes_to_alerts(
+                    service_alerts[serv_key],
+                    state_description_before,
+                    downtime_list=downtime_list
+                )
                 start_in_planned_downtime = bool(AlertList.get_downtime_entry(downtime_list, start_time))
                 # state_description_before is always state without considering downtimes
                 # (this is necessary to keep track of state before downtime)
 
-                weighted_states, last_state_description =\
-                    calc_weighted_states(service_alerts[serv_key],
-                                         state_description_before,
-                                         start_in_planned_downtime=start_in_planned_downtime)
+                weighted_states, last_state_description = calc_weighted_states(
+                    service_alerts[serv_key],
+                    state_description_before,
+                    start_in_planned_downtime=start_in_planned_downtime
+                )
                 next_last_service_alert_cache[(device_id, service_id, service_info)] = last_state_description
 
                 flapping_ratio = calc_flapping_ratio(service_flapping_cache, (device_id, service_id, service_info))
                 if flapping_ratio != 0.0:
-                    weighted_states[(mon_icinga_log_aggregated_service_data.STATE_FLAPPING,
-                                     mon_icinga_log_aggregated_service_data.STATE_FLAPPING)] = flapping_ratio
+                    weighted_states[
+                        (
+                            mon_icinga_log_aggregated_service_data.STATE_FLAPPING,
+                            mon_icinga_log_aggregated_service_data.STATE_FLAPPING
+                        )
+                    ] = flapping_ratio
 
                 for ((state, state_type), value) in weighted_states.iteritems():
                     service_db_rows.append(
@@ -362,13 +424,19 @@ class icinga_log_aggregator(object):
                         )
                     )
 
-                essential_weighted_states =\
-                    sum(val for (state, state_type), val in weighted_states.iteritems()
-                        if state != mon_icinga_log_aggregated_service_data.STATE_FLAPPING)
+                essential_weighted_states = sum(
+                    val for (state, state_type), val in weighted_states.iteritems() if state != mon_icinga_log_aggregated_service_data.STATE_FLAPPING
+                )
                 if abs(essential_weighted_states - 1.0) > 0.01:
-                    self.log("missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}"
-                             .format(device_id, start_time, end_time, duration_type.__name__,
-                                     essential_weighted_states))
+                    self.log(
+                        "missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}".format(
+                            device_id,
+                            start_time,
+                            end_time,
+                            duration_type.__name__,
+                            essential_weighted_states
+                        )
+                    )
             mon_icinga_log_aggregated_service_data.objects.bulk_create(service_db_rows)
             return next_last_service_alert_cache
 
@@ -379,23 +447,29 @@ class icinga_log_aggregator(object):
             for device_id in timespan_hosts:
                 state_description_before = last_host_alert_cache.get(device_id, None)
                 if not state_description_before:
-                    state_description_before =\
-                        mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
+                    state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
                 downtime_list = host_downtimes.get(device_id, [])
-                host_alerts[device_id] = \
-                    AlertList.add_downtimes_to_alerts(host_alerts[device_id],
-                                                      state_description_before,
-                                                      downtime_list=downtime_list)
+                host_alerts[device_id] = AlertList.add_downtimes_to_alerts(
+                    host_alerts[device_id],
+                    state_description_before,
+                    downtime_list=downtime_list
+                )
                 start_in_planned_downtime = bool(AlertList.get_downtime_entry(downtime_list, start_time))
 
-                weighted_states, last_state_description =\
-                    calc_weighted_states(host_alerts[device_id], state_description_before,
-                                         start_in_planned_downtime=start_in_planned_downtime)
+                weighted_states, last_state_description = calc_weighted_states(
+                    host_alerts[device_id],
+                    state_description_before,
+                    start_in_planned_downtime=start_in_planned_downtime
+                )
                 flapping_ratio = calc_flapping_ratio(host_flapping_cache, device_id)
                 if flapping_ratio != 0.0:
-                    weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING,
-                                     mon_icinga_log_aggregated_host_data.STATE_FLAPPING)] = flapping_ratio
+                    weighted_states[
+                        (
+                            mon_icinga_log_aggregated_host_data.STATE_FLAPPING,
+                            mon_icinga_log_aggregated_host_data.STATE_FLAPPING
+                        )
+                    ] = flapping_ratio
 
                 for ((state, state_type), value) in weighted_states.iteritems():
                     host_db_rows.append(
@@ -408,12 +482,19 @@ class icinga_log_aggregator(object):
                         )
                     )
 
-                essential_weighted_states_sum = sum(val for (state, state_type), val in weighted_states.iteritems() if
-                                                    state != mon_icinga_log_aggregated_host_data.STATE_FLAPPING)
+                essential_weighted_states_sum = sum(
+                    val for (state, state_type), val in weighted_states.iteritems() if state != mon_icinga_log_aggregated_host_data.STATE_FLAPPING
+                )
                 if abs(essential_weighted_states_sum - 1.0) > 0.01:
-                    self.log("missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}"
-                             .format(device_id, start_time, end_time, duration_type.__name__,
-                                     essential_weighted_states_sum))
+                    self.log(
+                        "missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}".format(
+                            device_id,
+                            start_time,
+                            end_time,
+                            duration_type.__name__,
+                            essential_weighted_states_sum
+                        )
+                    )
 
             mon_icinga_log_aggregated_host_data.objects.bulk_create(host_db_rows)
 
@@ -431,9 +512,10 @@ class icinga_log_aggregator(object):
 
         def create_host_entries_incrementally():
             host_entries = []
-            db_entries = mon_icinga_log_aggregated_host_data.objects\
-                .filter(timespan__duration_type=shorter_duration.ID,
-                        timespan__start_date__range=(start_time, end_time_minus_epsilon))
+            db_entries = mon_icinga_log_aggregated_host_data.objects.filter(
+                timespan__duration_type=shorter_duration.ID,
+                timespan__start_date__range=(start_time, end_time_minus_epsilon)
+            )
             # check no of time spans:
             number_of_source_timespans = db_entries.distinct('timespan').count()
             # self.log("got {} values for host ".format(number_of_source_timespans))
@@ -442,17 +524,20 @@ class icinga_log_aggregator(object):
             data_sum = defaultdict(lambda: 0.0)
             # check how many timespan entries we have for each service (to detect added/removed services)
             data_timespans = defaultdict(lambda: set())
-            for (timespan_id, device_id, state, state_type, value) in \
-                    db_entries.values_list("timespan_id", "device_id", "state", "state_type", "value"):
+            for (timespan_id, device_id, state, state_type, value) in db_entries.values_list(
+                "timespan_id", "device_id", "state", "state_type", "value"
+            ):
                 data_sum[device_id, state, state_type] += value
                 data_timespans[device_id].add(timespan_id)
 
             for device_id, timespan_entries in data_timespans.iteritems():
                 for i in xrange(len(timespan_entries), number_of_source_timespans):
                     # add undetermined entry for each iteration here
-                    data_sum[device_id,
-                             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
-                             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED] += 1.0
+                    data_sum[
+                        device_id,
+                        mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+                        mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED
+                    ] += 1.0
 
             for ((device_id, state, state_type), value_sum) in data_sum.iteritems():
                 host_entries.append(
@@ -468,9 +553,10 @@ class icinga_log_aggregator(object):
 
         def create_service_entries_incrementally():
             serv_entries = []
-            db_entries = mon_icinga_log_aggregated_service_data.objects\
-                .filter(timespan__duration_type=shorter_duration.ID,
-                        timespan__start_date__range=(start_time, end_time_minus_epsilon))
+            db_entries = mon_icinga_log_aggregated_service_data.objects.filter(
+                timespan__duration_type=shorter_duration.ID,
+                timespan__start_date__range=(start_time, end_time_minus_epsilon)
+            )
             number_of_source_timespans = db_entries.distinct('timespan').count()
 
             # dict for summing up

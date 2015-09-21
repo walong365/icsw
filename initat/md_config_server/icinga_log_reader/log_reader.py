@@ -29,9 +29,8 @@ import time
 import codecs
 
 import pytz
-from initat.tools import logging_tools
 import psutil
-from initat.tools import threading_tools
+from initat.tools import threading_tools, logging_tools
 from django.db import connection
 from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file, \
@@ -42,6 +41,7 @@ from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
+
 
 # separated to enable flawless import from webfrontend
 
@@ -112,11 +112,12 @@ class icinga_log_reader(threading_tools.process_obj):
     def update(self):
         '''Called periodically. Only method to be called from outside of this class'''
         if global_config["ENABLE_ICINGA_LOG_PARSING"]:
-            self._historic_service_map =\
-                {description.replace(" ", "_").lower(): pk
-                 for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
-            self._historic_host_map =\
-                {entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')}
+            self._historic_service_map = {
+                description.replace(" ", "_").lower(): pk for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')
+            }
+            self._historic_host_map = {
+                entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')
+            }
 
             # logs might contain ids which are not present any more.
             # we discard such data (i.e. ids not present in these sets:)
@@ -147,8 +148,12 @@ class icinga_log_reader(threading_tools.process_obj):
             self.log("last icinga read until: {}".format(self._parse_timestamp(last_read.timestamp)))
         else:
             self.log("no earlier icinga log read, reading archive")
-            files = glob.glob(os.path.join(icinga_log_reader.get_icinga_log_archive_dir(),
-                                           "{}*".format(global_config['MD_TYPE'])))
+            files = glob.glob(
+                os.path.join(
+                    icinga_log_reader.get_icinga_log_archive_dir(),
+                    "{}*".format(global_config['MD_TYPE'])
+                )
+            )
             last_read_timestamp = self.parse_archive_files(files)
             if last_read_timestamp:
                 last_read = self._update_last_read(0, last_read_timestamp)
@@ -159,8 +164,9 @@ class icinga_log_reader(threading_tools.process_obj):
                 # so assume there is none
                 last_read = mon_icinga_log_last_read()
                 # safe time in past, but not too far cause we check logs of each day
-                last_read.timestamp = int(((datetime.datetime.now() - datetime.timedelta(days=1)) -
-                                           datetime.datetime(1970, 1, 1)).total_seconds())
+                last_read.timestamp = int(
+                    ((datetime.datetime.now() - datetime.timedelta(days=1)) - datetime.datetime(1970, 1, 1)).total_seconds()
+                )
                 last_read.position = 0
 
         try:
@@ -210,11 +216,15 @@ class icinga_log_reader(threading_tools.process_obj):
                     format_num = lambda num: "{:02d}".format(num)
 
                     day_files = glob.glob(
-                        os.path.join(icinga_log_reader.get_icinga_log_archive_dir(),
-                                     "{}-{}-{}-{}-*".format(global_config['MD_TYPE'],
-                                                            format_num(missed_log_day.month),
-                                                            format_num(missed_log_day.day),
-                                                            format_num(missed_log_day.year)))
+                        os.path.join(
+                            icinga_log_reader.get_icinga_log_archive_dir(),
+                            "{}-{}-{}-{}-*".format(
+                                global_config['MD_TYPE'],
+                                format_num(missed_log_day.month),
+                                format_num(missed_log_day.day),
+                                format_num(missed_log_day.year)
+                            )
+                        )
                     )
                     files_to_check.extend(day_files)
 
@@ -322,7 +332,8 @@ class icinga_log_reader(threading_tools.process_obj):
                             cur_line.kind == self.constants.icinga_current_service_state,
                             cur_line.kind == self.constants.icinga_initial_service_state,
                             logfilepath,
-                            logfile_db)
+                            logfile_db
+                        )
                         if entry:
                             stats['service alerts'] += 1
                             service_states.append(entry)
@@ -333,7 +344,8 @@ class icinga_log_reader(threading_tools.process_obj):
                             cur_line.kind == self.constants.icinga_current_host_state,
                             cur_line.kind == self.constants.icinga_initial_host_state,
                             logfilepath,
-                            logfile_db)
+                            logfile_db
+                        )
                         if entry:
                             stats['host alerts'] += 1
                             host_states.append(entry)
@@ -447,8 +459,10 @@ class icinga_log_reader(threading_tools.process_obj):
             try:
                 logfile = codecs.open(actual_logfilepath, "r", "utf-8", errors='replace')
             except IOError as e:
-                self.log(u"failed to open archive log file {} : {}".format(logfilepath, e),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    u"failed to open archive log file {} : {}".format(logfilepath, e),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
                 if retval is None:
@@ -470,8 +484,10 @@ class icinga_log_reader(threading_tools.process_obj):
             self._warnings[unicode(exception)] += 1
         else:
             # log right away
-            self.log(u"in file {} line {}: {}".format(logfilepath, cur_line_no, exception),
-                     logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                u"in file {} line {}: {}".format(logfilepath, cur_line_no, exception),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def create_host_alert_entry(self, cur_line, log_rotation_state, initial_state, logfilepath, logfile_db=None):
         retval = None
@@ -755,8 +771,10 @@ class icinga_log_reader(threading_tools.process_obj):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        state = {"STARTED": mon_icinga_log_raw_base.START,
-                 "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[2], None)  # format as in db table
+        state = {
+            "STARTED": mon_icinga_log_raw_base.START,
+            "STOPPED": mon_icinga_log_raw_base.STOP
+        }.get(data[2], None)  # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry(u"Malformed service downtime state entry: {} (error #2)".format(info))
 
@@ -773,8 +791,10 @@ class icinga_log_reader(threading_tools.process_obj):
         if len(data) != 3:
             raise self.malformed_icinga_log_entry(u"Malformed host downtime entry: {} (error #1)".format(info))
         host = self._resolve_host(data[0])
-        state = {"STARTED": mon_icinga_log_raw_base.START,
-                 "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[1], None)  # format as in db table
+        state = {
+            "STARTED": mon_icinga_log_raw_base.START,
+            "STOPPED": mon_icinga_log_raw_base.STOP
+        }.get(data[1], None)  # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry(u"Malformed host downtime state entry: {} (error #2)".format(info))
         msg = data[2]
@@ -835,7 +855,10 @@ class icinga_log_reader(threading_tools.process_obj):
         if not state:
             raise self.malformed_icinga_log_entry(u"Malformed state entry: {} (error #6)".format(info))
 
-        state_type = {"SOFT": "S", "HARD": "H"}.get(data[3], None)  # format as in db table
+        state_type = {
+            "SOFT": "S",
+            "HARD": "H"
+        }.get(data[3], None)  # format as in db table
         if not state_type:
             raise self.malformed_icinga_log_entry(u"Malformed host entry: {} (error #5)".format(info))
 

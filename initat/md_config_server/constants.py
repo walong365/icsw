@@ -42,7 +42,7 @@ SERVER_COM_PORT = 8010
 TEMPLATE_NAME = "t"
 
 # maps to transfer for single_build
-SINGLE_BUILD_MAPS = set(["device.d", "command"])
+SINGLE_BUILD_MAPS = {"device.d", "command"}
 
 IDOMOD_PROCESS_PROCESS_DATA = 2 ** 0
 IDOMOD_PROCESS_TIMED_EVENT_DATA = 2 ** 1

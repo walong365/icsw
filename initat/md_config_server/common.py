@@ -24,7 +24,7 @@ import socket
 from initat.md_config_server.config import global_config
 
 
-class live_query(object):
+class LiveQuery(object):
     def __init__(self, conn, resource):
         self._conn = conn
         self._resource = resource
@@ -65,7 +65,7 @@ class live_socket(object):
         self.peer = peer_name
 
     def __getattr__(self, name):
-        return live_query(self, name)
+        return LiveQuery(self, name)
 
     def call(self, request, columns=None):
         s = None

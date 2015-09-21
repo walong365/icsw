@@ -160,10 +160,16 @@ class status_process(threading_tools.process_obj):
             for line in exc_info.log_lines:
                 self.log(u" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
             self._close()
-            srv_com.set_result("exception during fetch", server_command.SRV_REPLY_STATE_CRITICAL)
+            srv_com.set_result(
+                "exception during fetch",
+                server_command.SRV_REPLY_STATE_CRITICAL
+            )
         else:
-            self.log("queried {} in {} ({})".format(
-                logging_tools.get_plural("device", len(dev_names)),
-                logging_tools.get_diff_time_str(time.time() - s_time),
-                u", ".join(sorted(dev_names))))
+            self.log(
+                "queried {} in {} ({})".format(
+                    logging_tools.get_plural("device", len(dev_names)),
+                    logging_tools.get_diff_time_str(time.time() - s_time),
+                    u", ".join(sorted(dev_names))
+                )
+            )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))

@@ -103,26 +103,34 @@ class server_process(
                 try:
                     result = cur_s.hosts.columns("name", "state").call()
                 except:
-                    self.log("cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log(
+                        "cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
                 else:
                     q_list = [int(value["state"]) for value in result]
-                    res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
-                        ("unknown", constants.NAG_HOST_UNKNOWN),
-                        ("up", constants.NAG_HOST_UP),
-                        ("down", constants.NAG_HOST_DOWN)]])
+                    res_dict = {
+                        s_name: q_list.count(value) for s_name, value in [
+                            ("unknown", constants.NAG_HOST_UNKNOWN),
+                            ("up", constants.NAG_HOST_UP),
+                            ("down", constants.NAG_HOST_DOWN),
+                        ]
+                    }
                     res_dict["tot"] = sum(res_dict.values())
                 # cur_s.peer.close()
                 del cur_s
             else:
                 self.log("no MD_TYPE set, skipping livecheck", logging_tools.LOG_LEVEL_WARN)
         if res_dict:
-            self.log("{} status is: {:d} up, {:d} down, {:d} unknown ({:d} total)".format(
-                global_config["MD_TYPE"],
-                res_dict["up"],
-                res_dict["down"],
-                res_dict["unknown"],
-                res_dict["tot"]))
+            self.log(
+                "{} status is: {:d} up, {:d} down, {:d} unknown ({:d} total)".format(
+                    global_config["MD_TYPE"],
+                    res_dict["up"],
+                    res_dict["down"],
+                    res_dict["unknown"],
+                    res_dict["tot"]
+                )
+            )
             drop_com = server_command.srv_command(command="set_vector")
             add_obj = drop_com.builder("values")
             mv_list = [
