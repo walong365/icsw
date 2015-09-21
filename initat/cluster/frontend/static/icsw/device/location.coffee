@@ -393,8 +393,8 @@ angular.module(
                 )
                 scope.add_symbols = (centers) ->
                     centers.append("circle").attr
-                        "r" : (n) -> return 18
-                        "fill" : (d) -> return if d.locked then "white" else "#ff8888"
+                        "r" : (n) -> return 50
+                        "fill" : (d) -> return if d.locked then "#00ff00" else "#ffff00"
                         "stroke" : "black"
                         "stroke-width" : "1"
                     centers.append("text")

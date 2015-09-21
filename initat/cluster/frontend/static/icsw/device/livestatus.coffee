@@ -1345,7 +1345,7 @@ angular.module(
                     if scope.cur_page >= scope.location_gfx_list.length
                         scope.cur_page = 0
                     scope.location_gfx_list[scope.cur_page].active = true
-                    rte = $timeout(_activate_rotation, 4000)
+                    rte = $timeout(_activate_rotation, 8000)
                 _deactivate_rotation = () ->
                     if rte
                         $timeout.cancel(rte)
