@@ -55,7 +55,7 @@ ARGUS_MAX_AGE = 3600 * 24 * 7 * 4
 ARGUS_MAX_FILE_SIZE = 32 * 1024 * 1024
 
 
-class argus_proc(object):
+class ArgusProcess(object):
     def __init__(self, proc, interface, arg_path):
         self.interface = interface
         _now = datetime.datetime.now()
@@ -67,7 +67,7 @@ class argus_proc(object):
         self.start_time = time.time()
         # if not a popen call
         self.terminated = False
-        self.log("commandline is '%s'" % (self.command))
+        self.log("commandline is '{}'".format(self.command))
         self.run()
 
     def check_file_size(self):
@@ -94,7 +94,7 @@ class argus_proc(object):
         return _wrap
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.proc.log("[ar %s] %s" % (self.interface, what), log_level)
+        self.proc.log("[ar {}] {}".format(self.interface, what), log_level)
 
     def run(self):
         self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -121,13 +121,13 @@ class argus_proc(object):
 class compress_job(object):
     def __init__(self, proc, cmd, f_name):
         self.f_name = f_name
-        self.command = "%s %s" % (cmd, os.path.join(ARGUS_TARGET, f_name))
+        self.command = "{} {}".format(cmd, os.path.join(ARGUS_TARGET, f_name))
         self.proc = proc
         self.log("start")
         self.run()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.proc.log("[compress %s] %s" % (self.f_name, what), log_level)
+        self.proc.log("[compress {}] {}".format(self.f_name, what), log_level)
 
     def run(self):
         self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -160,7 +160,7 @@ class _general(hm_classes.hm_module):
         # search ethtool
         ethtool_path = process_tools.find_file("ethtool")
         if ethtool_path:
-            self.log("ethtool found at %s" % (ethtool_path))
+            self.log("ethtool found at {}".format(ethtool_path))
         else:
             self.log("no ethtool found", logging_tools.LOG_LEVEL_WARN)
         self.ethtool_path = ethtool_path
@@ -169,20 +169,20 @@ class _general(hm_classes.hm_module):
             s_path = s_path + ["/usr/ofed/sbin", "/opt/ofed/bin"]
         ibv_devinfo_path = process_tools.find_file("ibv_devinfo", s_path=s_path)
         if ibv_devinfo_path:
-            self.log("ibv_devinfo found at %s" % (ibv_devinfo_path))
+            self.log("ibv_devinfo found at {}".format(ibv_devinfo_path))
         else:
             self.log("no ibv_devinfo found", logging_tools.LOG_LEVEL_WARN)
         self.ibv_devinfo_path = ibv_devinfo_path
         iptables_path = process_tools.find_file("iptables")
         if iptables_path:
-            self.log("iptables found at %s" % (iptables_path))
+            self.log("iptables found at {}".format(iptables_path))
         else:
             self.log("no iptables found", logging_tools.LOG_LEVEL_WARN)
         self.iptables_path = iptables_path
         # check for argus
         argus_path = process_tools.find_file("argus")
         if argus_path:
-            self.log("argus found at %s" % (argus_path))
+            self.log("argus found at {}".format(argus_path))
         else:
             self.log("no argus found", logging_tools.LOG_LEVEL_WARN)
         if self.main_proc.CC.CS["hm.run.argus"] and argus_path:
@@ -256,7 +256,12 @@ class _general(hm_classes.hm_module):
                     if _to_compress:
                         self.__compress_jobs.extend([compress_job(self, self.__bzip2_path, _file) for _file in _to_compress])
             except:
-                self.log("error handling compressed / old files: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error handling compressed / old files: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
 
     def stop_module(self):
         for _cur_if, _struct in self.__argus_map.iteritems():
@@ -285,7 +290,7 @@ class _general(hm_classes.hm_module):
             for new_if in _new_if:
                 _operstate = "/sys/class/net/{}/operstate".format(new_if)
                 if os.path.isfile(_operstate) and file(_operstate, "r").read().strip() not in ["down"]:
-                    self.__argus_map[new_if] = argus_proc(self, new_if, self.__argus_path)
+                    self.__argus_map[new_if] = ArgusProcess(self, new_if, self.__argus_path)
                     self.__argus_interfaces.add(new_if)
         _failed = set()
         for cur_if, _struct in self.__argus_map.iteritems():
@@ -353,7 +358,7 @@ class _general(hm_classes.hm_module):
         if self.iptables_path:
             for t_type in ["filter", "nat", "mangle", "raw", "security"]:
                 if not req_chain or req_chain.startswith(t_type):
-                    c_com = "%s -t %s -L -n" % (self.iptables_path, t_type)
+                    c_com = "{} -t {} -L -n".format(self.iptables_path, t_type)
                     t_dict = {}
                     res_dict[t_type] = t_dict
                     for line in subprocess.check_output(c_com, shell=True).split("\n"):
@@ -460,14 +465,14 @@ class _general(hm_classes.hm_module):
         if os.path.isdir(virt_dir):
             # check for bridges in virt_dir
             for ent in os.listdir(virt_dir):
-                if os.path.isdir("%s/%s/bridge" % (virt_dir, ent)):
-                    loc_dir = "%s/%s" % (virt_dir, ent)
+                if os.path.isdir(os.path.join(virt_dir, ent, "bridge")):
+                    loc_dir = os.path.join(virt_dir, ent)
                     bdir_dict[ent] = loc_dir
         elif os.path.isdir(net_dir):
             # check for bridges in net_dir
             for ent in os.listdir(net_dir):
-                if os.path.isdir("%s/%s/bridge" % (net_dir, ent)):
-                    bdir_dict[ent] = "%s/%s" % (net_dir, ent)
+                if os.path.isdir(os.path.join(net_dir, ent, "bridge")):
+                    bdir_dict[ent] = os.path.join(net_dir, ent)
         for ent, loc_dir in bdir_dict.iteritems():
             b_dict[ent] = {"interfaces": os.listdir(os.path.join(loc_dir, "brif"))}
             for key in ["address", "addr_len", "features", "flags", "mtu"]:
@@ -521,7 +526,7 @@ class _general(hm_classes.hm_module):
                         }
                         n_dict[act_net_name.strip()] = dev_dict
                     else:
-                        self.log("cannot parse line %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                        self.log("cannot parse line {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                         dev_dict = {}
                 else:
                     if dev_dict:
@@ -545,7 +550,7 @@ class net_device(object):
         self.nd_mapping = mapping
         self.ethtool_path = ethtool_path
         self.ibv_devinfo_path = ibv_devinfo_path
-        self.nd_keys = set(self.nd_mapping) - set([None])
+        self.nd_keys = set(self.nd_mapping) - {None}
         self.invalidate()
         self.__history = []
         self.__driver_info = None
@@ -578,10 +583,13 @@ class net_device(object):
         line_dict = {key: long(value) for key, value in zip(self.nd_mapping, cur_line.split()) if key}
         if self.ibv_results and self.perfquery_path:
             if "port_lid" in self.ibv_results and "port_lid" in self.ibv_results:
-                p_stat, p_out = commands.getstatusoutput("%s -x %d %d" % (
-                    self.perfquery_path,
-                    self.ibv_results["port_lid"],
-                    self.ibv_results["port"]))
+                p_stat, p_out = commands.getstatusoutput(
+                    "{} -x {:d} {:d}".format(
+                        self.perfquery_path,
+                        self.ibv_results["port_lid"],
+                        self.ibv_results["port"]
+                    )
+                )
                 if not p_stat:
                     for line in p_out.split("\n"):
                         if line.count(":"):
@@ -614,7 +622,7 @@ class net_device(object):
         if cur_time > self.last_update + 30:
             res_dict = {}
             if self.__check_ibv_devinfo and self.ibv_devinfo_path:
-                ib_stat, ib_out = commands.getstatusoutput("%s -v" % (self.ibv_devinfo_path))
+                ib_stat, ib_out = commands.getstatusoutput("{} -v".format(self.ibv_devinfo_path))
                 cur_port, hca_id = (None, None)
                 if not ib_stat:
                     for line in ib_out.split("\n"):
@@ -644,7 +652,7 @@ class net_device(object):
             if res_dict:
                 port_spec = None
                 # get address from sys to evaluate ib-port
-                addr_file = "/sys/class/net/%s/address" % (self.name)
+                addr_file = "/sys/class/net/{}/address".format(self.name)
                 if os.path.isfile(addr_file):
                     ib_addr = file(addr_file, "r").read().strip().replace(":", "").lower()[-8:]
                     for ref_spec, struct in res_dict.iteritems():
@@ -665,7 +673,7 @@ class net_device(object):
             res_dict = {}
             if self.__check_ethtool and self.ethtool_path:
                 if not self.__driver_info:
-                    ce_stat, ce_out = commands.getstatusoutput("%s -i %s" % (self.ethtool_path, self.name))
+                    ce_stat, ce_out = commands.getstatusoutput("{} -i {}".format(self.ethtool_path, self.name))
                     if not ce_stat:
                         res_dict = {
                             key.lower(): value.strip() for key, value in [
@@ -674,7 +682,7 @@ class net_device(object):
                         self.__driver_info = res_dict.get("driver", "driver unknown")
                     else:
                         self.__driver_info = "driver unknown"
-                ce_stat, ce_out = commands.getstatusoutput("%s %s" % (self.ethtool_path, self.name))
+                ce_stat, ce_out = commands.getstatusoutput("{} {}".format(self.ethtool_path, self.name))
                 if not ce_stat:
                     res_dict = {
                         key.lower(): value.strip() for key, value in [
@@ -688,7 +696,7 @@ class net_device(object):
     def get_xml(self, srv_com):
         cur_speed = self.get_speed()
         result = srv_com.builder(
-            "device_%s" % (self.name),
+            "device_{}".format(self.name),
             srv_com.builder(
                 "values",
                 *[
@@ -718,7 +726,7 @@ class net_device(object):
             # add bonding info if present
             try:
                 result.append(
-                    srv_com.builder("bond_info", file("/proc/net/bonding/%s" % (self.name), "r").read())
+                    srv_com.builder("bond_info", file("/proc/net/bonding/{}".format(self.name), "r").read())
                 )
             except:
                 pass
@@ -839,13 +847,13 @@ class PingSPStruct(hm_classes.subprocess_struct):
                     ]
                 ),
                 target=self.target_spec[0],
-                num_sent="%d" % (num_sent),
-                num_received="%d" % (num_received)
+                num_sent="{:d}".format(num_sent),
+                num_received="{:d}".format(num_received)
             )
         else:
             # multi host ping
             _id_str, res_list = args
-            res_el = cur_b("ping_results", num_hosts="%d" % (len(self.target_spec)))
+            res_el = cur_b("ping_results", num_hosts="{:d}".format(len(self.target_spec)))
             for t_host, num_sent, num_received, time_field, error_str in res_list:
                 host_el = cur_b(
                     "ping_result",
@@ -857,8 +865,8 @@ class PingSPStruct(hm_classes.subprocess_struct):
                         ]
                     ),
                     target=t_host,
-                    num_sent="%d" % (num_sent),
-                    num_received="%d" % (num_received)
+                    num_sent="{:d}".format(num_sent),
+                    num_received="{:d}".format(num_received)
                 )
                 res_el.append(host_el)
             self.srv_com["result"] = res_el
@@ -885,7 +893,7 @@ class argus_status_command(hm_classes.hm_command):
         arg_list = srv_com["*argus_interfaces"]
         proc_l = limits.limits(cur_ns.warn, cur_ns.crit)
         ret_state, _str = proc_l.check_floor(len(arg_list))
-        return ret_state, "%s running: %s" % (
+        return ret_state, "{} running: {}".format(
             logging_tools.get_plural("argus process", len(arg_list)),
             ", ".join(sorted(arg_list))
         )
@@ -911,7 +919,7 @@ class ping_command(hm_classes.hm_command):
             target_host = args[0]
             num_pings, timeout = (3, 5.0)
         else:
-            srv_com.set_result("wrong number of arguments (%d)" % (len(args)), server_command.SRV_REPLY_STATE_ERROR)
+            srv_com.set_result("wrong number of arguments ({:d})".format(len(args)), server_command.SRV_REPLY_STATE_ERROR)
             cur_sps, target_host = (None, None)
         if target_host:
             num_pings, timeout = (
@@ -941,18 +949,21 @@ class ping_command(hm_classes.hm_command):
             target = ping_res.attrib["target"]
             if ping_res.text:
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                ret_f.append("%s: %s" % (target, ping_res.text))
+                ret_f.append("{}: {}".format(target, ping_res.text))
             else:
                 time_f = map(float, srv_com.xpath("ns:times/ns:time/text()", start_el=ping_res, smart_strings=False))
                 if time_f:
                     max_time, min_time, mean_time = (
                         max(time_f),
                         min(time_f),
-                        sum(time_f) / len(time_f))
+                        sum(time_f) / len(time_f)
+                    )
                 else:
                     max_time, min_time, mean_time = (None, None, None)
-                num_sent, num_received = (int(ping_res.attrib["num_sent"]),
-                                          int(ping_res.attrib["num_received"]))
+                num_sent, num_received = (
+                    int(ping_res.attrib["num_sent"]),
+                    int(ping_res.attrib["num_received"])
+                )
                 w_rta, w_loss = self._interpret_wc(cur_ns.warn, (100000, num_sent - 1), num_sent)
                 c_rta, c_loss = self._interpret_wc(cur_ns.crit, (100000, num_sent), num_sent)
                 num_loss = num_sent - num_received
@@ -969,7 +980,7 @@ class ping_command(hm_classes.hm_command):
                         ret_state = max(ret_state, limits.nag_STATE_WARNING)
                 if num_received == 0:
                     ret_f.append(
-                        "%s: no reply (%s sent) | rta=0.0 min=0.0 max=0.0 sent=%d loss=%d" % (
+                        "{}: no reply ({} sent) | rta=0.0 min=0.0 max=0.0 sent={:d} loss={:d}".format(
                             target,
                             logging_tools.get_plural("packet", num_sent),
                             num_sent,
@@ -1029,7 +1040,7 @@ class net_command(hm_classes.hm_command):
                 srv_com["device"] = self.module.act_nds[net_device].get_xml(srv_com)
             else:
                 srv_com.set_result(
-                    "netdevice %s not found" % (net_device),
+                    "netdevice {} not found".format(net_device),
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
 
@@ -1041,7 +1052,7 @@ class net_command(hm_classes.hm_command):
         elif in_dup.lower()[0] == "h":
             return "half"
         else:
-            raise ValueError("Cannot parse duplex_string '%s'" % (in_dup))
+            raise ValueError("Cannot parse duplex_string '{}'".format(in_dup))
 
     def _parse_speed_str(self, in_str):
         in_str_l = in_str.lower().strip()
@@ -1067,7 +1078,11 @@ class net_command(hm_classes.hm_command):
             elif post in ["b", "bit", "bits", "baud", ""]:
                 mult = 1
             else:
-                raise ValueError("Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or "")))
+                raise ValueError(
+                    "Cannot parse postfix '{}' of target_speed".format(
+                        "{}{}{}".format(pfix, post, per_sec and "/s" or "")
+                    )
+                )
             targ_speed = {
                 "": 1,
                 "k": 1000,
@@ -1079,30 +1094,30 @@ class net_command(hm_classes.hm_command):
         elif in_str_l.startswith("unkn") or in_str_l == "-":
             return -1
         else:
-            raise ValueError("Cannot parse target_speed '%s'" % (in_str))
+            raise ValueError("Cannot parse target_speed '{}'".format(in_str))
 
     def beautify_speed(self, i_val):
         f_val = float(i_val)
         if f_val < 500.:
-            return "%.0f B/s" % (f_val)
+            return "{:.0f} B/s".format(float(f_val))
         f_val /= 1000.
         if f_val < 500.:
-            return "%.2f kB/s" % (f_val)
+            return "{:.2f} kB/s".format(float(f_val))
         f_val /= 1000.
         if f_val < 500.:
-            return "%.2f MB/s" % (f_val)
+            return "{:.2f} MB/s".format(float(f_val))
         f_val /= 1000.
-        return "%.2f GB/s" % (f_val)
+        return "{:.2f} GB/s".format(float(f_val))
 
     def interpret(self, srv_com, cur_ns):
         dev_name = srv_com["arguments:arg0"].text
-        value_tree = srv_com["device:device_%s:values" % (dev_name)]
+        value_tree = srv_com["device:device_{}:values".format(dev_name)]
         try:
-            ethtool_tree = srv_com["device:device_%s:ethtool" % (dev_name)]
+            ethtool_tree = srv_com["device:device_{}:ethtool".format(dev_name)]
         except:
             ethtool_tree = []
         try:
-            ibv_tree = srv_com["device:device_%s:ibv" % (dev_name)]
+            ibv_tree = srv_com["device:device_{}:ibv".format(dev_name)]
         except:
             ibv_tree = []
         value_dict = {el.tag.split("}")[-1]: float(el.text) for el in value_tree}
@@ -1138,7 +1153,9 @@ class net_command(hm_classes.hm_command):
             if not any([dev_name.startswith(prefix) for prefix in ETHTOOL_DEVICES]):
                 # not a ethtool-capable device
                 if dev_name.startswith("bond"):
-                    bond_info = srv_com["device:device_%s" % (dev_name)].findtext(".//ns0:bond_info", namespaces={"ns0": server_command.XML_NS})
+                    bond_info = srv_com[
+                        "device:device_{}".format(dev_name)
+                    ].findtext(".//ns0:bond_info", namespaces={"ns0": server_command.XML_NS})
                     if bond_info:
                         bond_dict = {}
                         cur_dict = bond_dict
@@ -1160,8 +1177,12 @@ class net_command(hm_classes.hm_command):
                                         value = self._parse_duplex_str(value)
                                     cur_dict[key] = value
                         if "slaves" in bond_dict:
-                            add_oks.append("%s found: %s" % (logging_tools.get_plural("slave", len(bond_dict["slaves"])),
-                                                             ", ".join(sorted(bond_dict["slaves"].keys()))))
+                            add_oks.append(
+                                "{} found: {}".format(
+                                    logging_tools.get_plural("slave", len(bond_dict["slaves"])),
+                                    ", ".join(sorted(bond_dict["slaves"].keys()))
+                                )
+                            )
                             for slave_name in sorted(bond_dict["slaves"]):
                                 slave_dict = bond_dict["slaves"][slave_name]
                                 ret_state = self._check_speed(slave_name, cur_ns, slave_dict["speed"], add_oks, add_errors, ret_state)
@@ -1200,32 +1221,32 @@ class net_command(hm_classes.hm_command):
             else:
                 add_errors.append("IB state: {}".format(cur_state))
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-        return ret_state, "%s, %s rx; %s tx%s%s | rx=%d tx=%d" % (
+        return ret_state, "{}, {} rx; {} tx{}{} | rx={:d} tx={:d}".format(
             dev_name,
             self.beautify_speed(value_dict["rx"]),
             self.beautify_speed(value_dict["tx"]),
-            add_oks and "; %s" % ("; ".join(add_oks)) or "",
-            add_errors and "; %s" % ("; ".join(add_errors)) or "",
-            value_dict["rx"],
-            value_dict["tx"],
+            add_oks and "; {}".format("; ".join(add_oks)) or "",
+            add_errors and "; {}".format("; ".join(add_errors)) or "",
+            int(value_dict["rx"]),
+            int(value_dict["tx"]),
         )
 
     def _check_speed(self, dev_name, cur_ns, dev_str, add_oks, add_errors, ret_state):
-        str_prefix = "%s: " % (dev_name) if dev_name else ""
+        str_prefix = "{}: ".format(dev_name) if dev_name else ""
         target_speed = self._parse_speed_str(cur_ns.speed)
         if dev_str != -1:
             ret_state = self._compare_speed(str_prefix, add_oks, add_errors, ret_state, target_speed, dev_str)
         else:
-            add_errors.append("%sCannot check target_speed: no ethtool information" % (str_prefix))
+            add_errors.append("{}Cannot check target_speed: no ethtool information".format(str_prefix))
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state
 
     def _compare_speed(self, str_prefix, add_oks, add_errors, ret_state, target_speed, dev_speed):
         if target_speed == dev_speed:
-            add_oks.append("%starget_speed %s" % (str_prefix, self.beautify_speed(dev_speed)))
+            add_oks.append("{}target_speed {}".format(str_prefix, self.beautify_speed(dev_speed)))
         else:
             add_errors.append(
-                "%starget_speed differ: %s (target) != %s (measured)" % (
+                "{}target_speed differ: {} (target) != {} (measured)".format(
                     str_prefix,
                     self.beautify_speed(target_speed),
                     self.beautify_speed(dev_speed)
@@ -1235,17 +1256,25 @@ class net_command(hm_classes.hm_command):
         return ret_state
 
     def _check_duplex(self, dev_name, cur_ns, duplex_str, add_oks, add_errors, ret_state):
-        str_prefix = "%s: " % (dev_name) if dev_name else ""
+        str_prefix = "{}: ".format(dev_name) if dev_name else ""
         if duplex_str is not None:
             ethtool_duplex = self._parse_duplex_str(duplex_str)
             target_duplex = self._parse_duplex_str(cur_ns.duplex)
             if target_duplex == ethtool_duplex:
-                add_oks.append("%sduplex is %s" % (str_prefix, target_duplex))
+                add_oks.append("{}duplex is {}".format(str_prefix, target_duplex))
             else:
-                add_errors.append("%sduplex differs: %s (target) != %s (measured)" % (str_prefix, target_duplex, ethtool_duplex))
+                add_errors.append(
+                    "{}duplex differs: {} (target) != {} (measured)".format(
+                        str_prefix,
+                        target_duplex,
+                        ethtool_duplex
+                    )
+                )
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         else:
-            add_errors.append("%sCannot check duplex mode: not present in ethtool information" % (str_prefix))
+            add_errors.append(
+                "{}Cannot check duplex mode: not present in ethtool information".format(str_prefix)
+            )
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state
 
@@ -1253,27 +1282,27 @@ class net_command(hm_classes.hm_command):
         def b_str(i_val):
             f_val = float(i_val)
             if f_val < 500.:
-                return "%.0f B/s" % (f_val)
+                return "{:.0f} B/s".format(float(f_val))
             f_val /= 1000.
             if f_val < 500.:
-                return "%.2f kB/s" % (f_val)
+                return "{:.2f} kB/s".format(float(f_val))
             f_val /= 1000.
             if f_val < 500.:
-                return "%.2f MB/s" % (f_val)
+                return "{:.2f} MB/s".format(float(f_val))
             f_val /= 1000.
-            return "%.2f GB/s" % (f_val)
+            return "{:.2f} GB/s".format(float(f_val))
 
         def bit_str(i_val):
             if i_val < 500:
-                return "%d B/s" % (i_val)
+                return "{:d} B/s".format(int(i_val))
             i_val /= 1000
             if i_val < 500:
-                return "%d kB/s" % (i_val)
+                return "{:d} kB/s".format(int(i_val))
             i_val /= 1000
             if i_val < 500:
-                return "%d MB/s" % (i_val)
+                return "{:d} MB/s".format(int(i_val))
             i_val /= 1000
-            return "%d GB/s" % (i_val)
+            return "{:d} GB/s".format(int(i_val))
 
         def parse_ib_speed_bit(in_str):
             # parse speed for ib rate and return bits/sec
@@ -1286,7 +1315,7 @@ class net_command(hm_classes.hm_command):
                     "k": 1000
                 }.get(parts[0][0].lower(), 1)
             except:
-                raise ValueError("Cannot parse ib_speed '%s'" % (in_str))
+                raise ValueError("Cannot parse ib_speed '{}'".format(in_str))
             return pfix
 
         def parse_speed_bit(in_str):
@@ -1310,7 +1339,15 @@ class net_command(hm_classes.hm_command):
                 elif post in ["b", "bit", "bits", "baud", ""]:
                     mult = 1
                 else:
-                    raise ValueError("Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or "")))
+                    raise ValueError(
+                        "Cannot parse postfix '{}' of target_speed".format(
+                            "{}{}{}".format(
+                                pfix,
+                                post,
+                                per_sec and "/s" or ""
+                            )
+                        )
+                    )
                 targ_speed = {
                     "": 1,
                     "k": 1000,
@@ -1332,7 +1369,7 @@ class net_command(hm_classes.hm_command):
             elif in_dup.lower()[0] == "h":
                 return "half"
             else:
-                raise ValueError("Cannot parse duplex_string '%s'" % (in_dup))
+                raise ValueError("Cannot parse duplex_string '{}'".format(in_dup))
         result = hm_classes.net_to_sys(result[3:])
         if "rx" in result:
             rx_str, tx_str = ("rx", "tx")
@@ -1358,20 +1395,25 @@ class net_command(hm_classes.hm_command):
                         try:
                             targ_speed_bit = parse_speed_bit(parsed_coms.speed)
                         except ValueError:
-                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (
+                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '{}' for net: {}".format(
                                 parsed_coms.speed,
                                 process_tools.get_except_info())
                         else:
                             if "rate" in ethtool_stuff:
                                 if targ_speed_bit == parse_ib_speed_bit(ethtool_stuff["rate"]):
-                                    add_oks.append("target_speed %s" % (ethtool_stuff["rate"]))
+                                    add_oks.append("target_speed {}".format(ethtool_stuff["rate"]))
                                 else:
-                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["rate"]))
+                                    add_errors.append(
+                                        "target_speed differ: {} (target) != {} (measured)".format(
+                                            bit_str(targ_speed_bit),
+                                            ethtool_stuff["rate"]
+                                        )
+                                    )
                             else:
                                 add_errors.append("no rate entry found")
                                 ret_state = limits.nag_STATE_CRITICAL
                     else:
-                        add_errors.append("Link has wrong state (%s)" % (ethtool_stuff["state"]))
+                        add_errors.append("Link has wrong state ({})".format(ethtool_stuff["state"]))
                         ret_state = limits.nag_STATE_CRITICAL
                 else:
                     # no state, cannot check if up or down
@@ -1389,12 +1431,17 @@ class net_command(hm_classes.hm_command):
                                 process_tools.get_except_info())
                         else:
                             if targ_speed_bit == parse_speed_bit(ethtool_stuff["speed"]):
-                                add_oks.append("target_speed %s" % (ethtool_stuff["speed"]))
+                                add_oks.append("target_speed {}".format(ethtool_stuff["speed"]))
                             else:
                                 if parse_speed_bit(ethtool_stuff["speed"]) == -1:
                                     connected = False
                                 else:
-                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["speed"]))
+                                    add_errors.append(
+                                        "target_speed differ: {} (target) != {} (measured)".format(
+                                            bit_str(targ_speed_bit),
+                                            ethtool_stuff["speed"]
+                                        )
+                                    )
                                 ret_state = limits.nag_STATE_CRITICAL
                     else:
                         add_errors.append("Cannot check target_speed: no ethtool information")
@@ -1411,7 +1458,7 @@ class net_command(hm_classes.hm_command):
                         )
                     else:
                         if targ_duplex == parse_duplex_str(ethtool_stuff["duplex"]):
-                            add_oks.append("duplex_mode is %s" % (ethtool_stuff["duplex"]))
+                            add_oks.append("duplex_mode is {}".format(ethtool_stuff["duplex"]))
                         else:
                             if connected:
                                 if parse_duplex_str(ethtool_stuff["duplex"]) == "unknown":
@@ -1432,7 +1479,7 @@ class net_command(hm_classes.hm_command):
             b_str(result[tx_str]),
             add_oks and "; {}".format("; ".join(add_oks)) or "",
             add_errors and "; {}".format("; ".join(add_errors)) or "",
-            report_device != device and "; reporting device is %s" % (report_device) or "",
+            report_device != device and "; reporting device is {}".format(report_device) or "",
         )
 
 
@@ -1458,7 +1505,7 @@ class bridge_info_command(hm_classes.hm_command):
                     ", ".join(sorted(br_stuff["interfaces"]))
                 )
             )
-        return limits.nag_STATE_OK, "%s" % ("\n".join(out_f))
+        return limits.nag_STATE_OK, "{}".format("\n".join(out_f))
 
 
 class network_info_command(hm_classes.hm_command):
@@ -1499,11 +1546,22 @@ class network_info_command(hm_classes.hm_command):
                     link_str = ""
                 else:
                     link_str = " ".join(link_stuff)
-                out_list.append([logging_tools.form_entry("  - link/%s%s" % (link_key, ": %s" % (link_str) if link_str else ""))])
+                out_list.append(
+                    [
+                        logging_tools.form_entry(
+                            "  - link/{}{}".format(
+                                link_key,
+                                ": {}".format(link_str) if link_str else ""
+                            )
+                        )
+                    ]
+                )
             for net in net_stuff["inet"]:
-                out_list.append([logging_tools.form_entry("  - inet %s" % (net))])
-        return limits.nag_STATE_OK, "found %s:\n%s" % (logging_tools.get_plural("network device", len(net_names)),
-                                                       str(out_list))
+                out_list.append([logging_tools.form_entry("  - inet {}".format(net))])
+        return limits.nag_STATE_OK, "found {}:\n{}".format(
+            logging_tools.get_plural("network device", len(net_names)),
+            str(out_list)
+        )
 
 
 class iptables_info_command(hm_classes.hm_command):
@@ -1525,7 +1583,10 @@ class iptables_info_command(hm_classes.hm_command):
         res_dict = srv_com["rules_stat"]
         detail_level, required_chain = (res_dict.pop("detail_level"), res_dict.pop("required_chain"))
         if not res_dict:
-            return limits.nag_STATE_CRITICAL, "No chains found according to filter (%s, %d)" % (required_chain, detail_level)
+            return limits.nag_STATE_CRITICAL, "No chains found according to filter ({}, {.d})".format(
+                required_chain,
+                int(detail_level)
+            )
         else:
             ret_state = limits.nag_STATE_OK
             all_chains = sum([c_dict.keys() for c_dict in res_dict.itervalues()], [])
@@ -1536,7 +1597,7 @@ class iptables_info_command(hm_classes.hm_command):
                 ret_state = max(ret_state, limits.nag_STATE_WARNING)
             return ret_state, "{}{} ({}, {:d}): {}".format(
                 logging_tools.get_plural("chain", len(all_chains)),
-                " (%s)" % (all_chains[0]) if len(all_chains) == 1 else "",
+                " ({})".format(all_chains[0]) if len(all_chains) == 1 else "",
                 required_chain or "ALL",
                 detail_level,
                 logging_tools.get_plural("rule", num_lines)
@@ -1558,12 +1619,12 @@ class ntpq_struct(hm_classes.subprocess_struct):
         )
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[ntpq] %s" % (what), level)
+        self.__log_com("[ntpq] {}".format(what), level)
 
     def process(self):
         if self.run_info["result"]:
             self.srv_com.set_result(
-                "error (%d): %s" % (self.run_info["result"], self.read().strip()),
+                "error ({:d}): {}s".format(self.run_info["result"], self.read().strip()),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         else:
@@ -1603,7 +1664,7 @@ class ntp_status_command(hm_classes.hm_command):
                 good_peers = set(_peer_types["+"])
             else:
                 good_peers = set()
-            ignored_peers = set(_peers) - (good_peers | set([primary_peer]))
+            ignored_peers = set(_peers) - (good_peers | {primary_peer})
             return ret_state, "{} defined, {}".format(
                 logging_tools.get_plural("peer", len(_peers)),
                 ", ".join(

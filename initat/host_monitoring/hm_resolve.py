@@ -31,7 +31,7 @@ from initat.tools import logging_tools, process_tools, threading_tools
 CACHE_TIMEOUT = 10
 
 
-class cache_entry(object):
+class CacheEntry(object):
     def __init__(self, source, result):
         self.source = source
         self.result = result
@@ -79,7 +79,7 @@ class ResolveProcess(threading_tools.process_obj):
             except:
                 self.log("cannot resolve {}: {}".format(addr, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 result = None
-            self.__cache[addr] = cache_entry(addr, result)
+            self.__cache[addr] = CacheEntry(addr, result)
         return result
 
     def _resolve(self, r_list):

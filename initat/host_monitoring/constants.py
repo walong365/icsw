@@ -26,9 +26,9 @@ import os
 
 TIME_FORMAT = "%.3f"
 
-CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
-MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
-MASTER_FILE_NAME = os.path.join(CONFIG_DIR, "monitor_master")
+_CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
+MAPPING_FILE_IDS = os.path.join(_CONFIG_DIR, "collrelay_0mq_mapping")
+MASTER_FILE_NAME = os.path.join(_CONFIG_DIR, "monitor_master")
 
 ICINGA_TOP_DIR = "/opt/icinga"
 ZMQ_ID_MAP_STORE = "icsw.hm.0mq-mapping"
