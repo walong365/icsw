@@ -34,10 +34,10 @@ class ExtReturn(object):
     # extended return, for results where more than nag_state / nag_str
     # has to be returned (passive results for instance)
     # __slots__ = []
-    def __init__(self, ret_state, ret_str, passive_results=[], ascii_chunk=""):
+    def __init__(self, ret_state, ret_str, passive_results=None, ascii_chunk=""):
         self.ret_state = ret_state
         self.ret_str = ret_str
-        self.passive_results = passive_results
+        self.passive_results = passive_results or []
         self.ascii_chunk = ascii_chunk
 
     @staticmethod

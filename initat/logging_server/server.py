@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" logging server, central logging facility, server-part"""
+""" logging server, central logging facility, server-part """
 
 import grp
 import logging
@@ -490,9 +490,10 @@ class main_process(ICSWBasePool):
         # create logger_name
         logger_name = "{}.{}".format(record_host, record_name)
         if h_name in self.__handles:
-            if not (set([record_process, record_parent_process]) &
-                    set([self.__handles[h_name].process_id,
-                         self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
+            if not (
+                {record_process, record_parent_process} &
+                {self.__handles[h_name].process_id, self.__handles[h_name].parent_process_id}
+            ) and not self.__handles[h_name].ignore_process_id:
                 self.log(
                     "access mismatch detected for {}".format(
                         h_name,
