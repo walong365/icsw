@@ -45,7 +45,6 @@ from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from lxml.builder import E  # @UnresolvedImport
 import networkx
-
 from initat.tools import config_tools, configfile, logging_tools, net_tools, process_tools, \
     server_command, threading_tools
 

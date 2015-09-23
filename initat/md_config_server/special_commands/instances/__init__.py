@@ -17,10 +17,10 @@
 #
 """ importer for special modules """
 
-
 import os
-from initat.tools import process_tools
 import inspect
+
+from initat.tools import process_tools
 from initat.md_config_server.special_commands.base import SpecialBase
 
 _inst_list = [

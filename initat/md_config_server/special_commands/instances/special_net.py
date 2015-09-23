@@ -62,10 +62,12 @@ class special_net(SpecialBase):
                 else:
                     cur_temp["duplex"] = "-"
                     cur_temp["s"] = "-"
-                self.log(" - netdevice {} with {}: {}".format(
-                    name_with_descr,
-                    logging_tools.get_plural("option", len(cur_temp.argument_names)),
-                    ", ".join(cur_temp.argument_names))
+                self.log(
+                    " - netdevice {} with {}: {}".format(
+                        name_with_descr,
+                        logging_tools.get_plural("option", len(cur_temp.argument_names)),
+                        ", ".join(cur_temp.argument_names)
+                    )
                 )
                 sc_array.append(cur_temp)
                 # sc_array.append((name_with_descr, eth_opts))

@@ -103,11 +103,14 @@ class special_disc(SpecialBase):
                     "{:d}".format(warn_level if warn_level else 85),
                     "{:d}".format(crit_level if crit_level else 95)
                 )
-                part_list.append((
-                    "{} (LVM)".format(lvm_part.mountpoint),
-                    "/dev/mapper/{}-{}".format(lvm_part.lvm_vg.name, lvm_part.name),
-                    warn_level_str,
-                    crit_level_str))
+                part_list.append(
+                    (
+                        "{} (LVM)".format(lvm_part.mountpoint),
+                        "/dev/mapper/{}-{}".format(lvm_part.lvm_vg.name, lvm_part.name),
+                        warn_level_str,
+                        crit_level_str
+                    )
+                )
         # manual setting-dict for df
         sc_array = []
         for info_name, p_name, w_lev, c_lev in part_list:

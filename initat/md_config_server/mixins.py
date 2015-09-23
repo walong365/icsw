@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -99,9 +99,19 @@ class version_check_mixin(object):
             force_update=True
         )
         if md_version == "unknown":
-            self.log("No installed monitor-daemon found (version set to {})".format(md_version), logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "No installed monitor-daemon found (version set to {})".format(
+                    md_version
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
         else:
-            self.log("Discovered installed monitor-daemon {}, version {}".format(md_type, md_version))
+            self.log(
+                "Discovered installed monitor-daemon {}, version {}".format(
+                    md_type,
+                    md_version
+                )
+            )
         end_time = time.time()
         self.log("monitor-daemon version discovery took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
