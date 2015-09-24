@@ -31,6 +31,8 @@ import os
 import sys
 import time
 from multiprocessing import Queue
+# import exceptions
+from Queue import Empty
 
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import configfile, logging_tools, process_tools, \
@@ -98,22 +100,38 @@ class server_code(ICSWBasePool, HMHRMixin):
         from initat.host_monitoring import modules
         self.modules = modules
         self.__delayed = []
+        # Datastructure for managing long running checks:
+        # A tuple of (Process, queue, zmq_socket, src_id, srv_com)
+        self.long_running_checks = []
         if not self._init_commands():
             self._sigint("error init")
         self.register_timer(self._check_cpu_usage, 30, instant=True)
         # self["exit_requested"] = True
 
-        # Datastructure for managing long running checks:
-        # A tuple of (Process, queue, zmq_socket, src_id, srv_com)
-        self.long_running_checks = []
-        self.register_timer(self.long_running_checks_timer, 10)
-
     def long_running_checks_timer(self):
-        checks = enumerate(self.long_running_checks)
-        for i, (process, queue, zmq_sock, src_id, srv_com) in checks:
+        new_checks = []
+        for _idx, _stuff in enumerate(self.long_running_checks):
+            process, queue, zmq_sock, src_id, srv_com, buffer = _stuff
+            if process.is_alive():
+                try:
+                    _queue_get = queue.get(False)
+                except Empty:
+                    pass
+                else:
+                    buffer = "{}{}".format(buffer, _queue_get)
             if not process.is_alive():
+                # check again in case the queue.get triggered a process.exit()
                 if process.exitcode == 0:
-                    srv_com[LONG_RUNNING_CHECK_RESULT_KEY] = queue.get()
+                    try:
+                        _result = queue.get(False)
+                    except Empty:
+                        _result = buffer
+                    else:
+                        _result = "{}{}".format(buffer, _result)
+                    try:
+                        srv_com = server_command.srv_command(source=_result)
+                    except:
+                        srv_com[LONG_RUNNING_CHECK_RESULT_KEY] = _result
                     self._send_return(zmq_sock, src_id, srv_com)
                     self.log("Long running check {!r} finished".format(process.name))
                 else:
@@ -126,7 +144,12 @@ class server_code(ICSWBasePool, HMHRMixin):
                         "Long running check {!r} failed".format(process.name),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-                del self.long_running_checks[i]
+            else:
+                new_checks.append((process, queue, zmq_sock, src_id, srv_com, buffer))
+        self.long_running_checks = new_checks
+        if not self.long_running_checks:
+            self.unregister_timer(self.long_running_checks_timer)
+            self.set_loop_granularity()
 
     def _sigint(self, err_cause):
         if self["exit_requested"]:
@@ -191,7 +214,11 @@ class server_code(ICSWBasePool, HMHRMixin):
     def _check_huge(self):
         if self.CC.CS["hm.enable.hugepages"]:
             huge_dir = "/sys/kernel/mm/hugepages/"
-            mem_total = int([line for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")][0].split()[1]) * 1024
+            mem_total = int(
+                [
+                    line for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")
+                ][0].split()[1]
+            ) * 1024
             mem_to_map = mem_total * self.CC.CS["hm.hugepage.percentage"] / 100
             self.log("memory to use for hugepages ({:d} %): {} (of {})".format(
                 global_config["HUGEPAGES"],
@@ -209,7 +236,13 @@ class server_code(ICSWBasePool, HMHRMixin):
                         elif local_size.endswith("gb"):
                             local_size = int(local_size[:-2]) * 1024 * 1024 * 1024
                         else:
-                            self.log("cannot interpret {} ({})".format(local_size, full_subdir), logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "cannot interpret {} ({})".format(
+                                    local_size,
+                                    full_subdir
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                             local_size = None
                         if local_size:
                             num_pages = int(mem_to_map / local_size)
@@ -579,21 +612,26 @@ class server_code(ICSWBasePool, HMHRMixin):
                 rest_el = srv_com.xpath(".//ns:arguments/ns:rest", smart_strings=False)
                 if rest_el:
                     rest_str = rest_el[0].text or u""
+                elif len(srv_com.xpath(".//ns:arguments/ns:arg0")):
+                    # no rest given but there are arguments
+                    rest_str = u" ".join([_el.text for _el in srv_com.xpath(".//ns:arguments")[0]])
                 else:
                     rest_str = u""
             # is a delayed command
             delayed = False
             cur_com = srv_com["command"].text
             srv_com.set_result("ok")
-            srv_com["result"].attrib.update({
-                "start_time": TIME_FORMAT % (time.time())
-            })
+            srv_com["result"].attrib.update(
+                {
+                    "start_time": TIME_FORMAT.format(time.time())
+                }
+            )
             if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, cur_ns, rest_str)
             else:
                 c_matches = difflib.get_close_matches(cur_com, self.commands.keys())
                 if c_matches:
-                    cm_str = "close matches: %s" % (", ".join(c_matches))
+                    cm_str = "close matches: {}".format(", ".join(c_matches))
                 else:
                     cm_str = "no matches found"
                 srv_com.set_result(
@@ -603,8 +641,10 @@ class server_code(ICSWBasePool, HMHRMixin):
             if isinstance(delayed, LongRunningCheck):
                 queue = Queue()
                 process = delayed.start(queue)
+                if not self.long_running_checks:
+                    self.register_timer(self.long_running_checks_timer, 1.0)
                 self.long_running_checks.append(
-                    (process, queue, zmq_sock, src_id, srv_com)
+                    (process, queue, zmq_sock, src_id, srv_com, "")
                 )
             elif delayed:
                 # delayed is a subprocess_struct
@@ -623,7 +663,6 @@ class server_code(ICSWBasePool, HMHRMixin):
                 else:
                     if not self.__delayed:
                         self.register_timer(self._check_delayed, 0.1)
-                        self.loop_granularity = 10.0
                     if delayed.Meta.direct:
                         if not self["exit_requested"]:
                             self.send_to_process(
@@ -633,6 +672,7 @@ class server_code(ICSWBasePool, HMHRMixin):
                     else:
                         delayed.run()
                     self.__delayed.append(delayed)
+            self.set_loop_granularity()
             if not delayed:
                 self._send_return(zmq_sock, src_id, srv_com)
         else:
@@ -641,18 +681,30 @@ class server_code(ICSWBasePool, HMHRMixin):
                 logging_tools.LOG_LEVEL_ERROR
             )
 
+    def set_loop_granularity(self):
+        _cur_lg = self.loop_granularity
+        if self.__delayed or self.long_running_checks:
+            _new_lg = 50
+        else:
+            _new_lg = IDLE_LOOP_GRANULARITY
+        if _new_lg != _cur_lg:
+            self.log("changing loop-granularity from {:.2f} to {:.2f} msecs".format(_cur_lg, _new_lg))
+            self.loop_granularity = _new_lg
+
     def _send_return(self, zmq_sock, src_id, srv_com):
         c_time = time.time()
-        srv_com["result"].attrib["end_time"] = TIME_FORMAT % c_time
-        info_str = "got command '%s' from '%s', took %s" % (
+        srv_com["result"].attrib["end_time"] = TIME_FORMAT.format(c_time)
+        info_str = "got command '{}' from '{}', took {}".format(
             srv_com["command"].text,
             srv_com["source"].attrib["host"],
-            logging_tools.get_diff_time_str(abs(c_time - float(srv_com["result"].attrib["start_time"]))))
+            logging_tools.get_diff_time_str(abs(c_time - float(srv_com["result"].attrib["start_time"])))
+        )
         if int(srv_com["result"].attrib["state"]) != server_command.SRV_REPLY_STATE_OK:
             info_str = "{}, result is {} ({})".format(
                 info_str,
                 srv_com["result"].attrib["reply"],
-                srv_com["result"].attrib["state"])
+                srv_com["result"].attrib["state"]
+            )
             log_level = logging_tools.LOG_LEVEL_WARN
         else:
             log_level = logging_tools.LOG_LEVEL_OK
@@ -682,8 +734,8 @@ class server_code(ICSWBasePool, HMHRMixin):
                     new_list.append(cur_del)
         self.__delayed = new_list
         if not self.__delayed:
-            self.loop_granularity = IDLE_LOOP_GRANULARITY
             self.unregister_timer(self._check_delayed)
+            self.set_loop_granularity()
 
     def _handle_module_command(self, srv_com, cur_ns, rest_str):
         cur_com = self.commands[srv_com["command"].text]
@@ -710,7 +762,10 @@ class server_code(ICSWBasePool, HMHRMixin):
                 cur_del.process(*args)
                 found = True
         if not found:
-            self.log("got ping_reply with unknown id '{}'".format(ping_id), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "got ping_reply with unknown id '{}'".format(ping_id),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def _show_config(self):
         try:
@@ -718,13 +773,13 @@ class server_code(ICSWBasePool, HMHRMixin):
                 self.log("Config info : [%d] %s" % (log_level, log_line))
         except:
             self.log(
-                "error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
+                "error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
                 logging_tools.LOG_LEVEL_ERROR
             )
         conf_info = global_config.get_config_info()
-        self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
+        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
 
     def loop_end(self):
         for cur_mod in self.modules.module_list:
@@ -736,7 +791,7 @@ class server_code(ICSWBasePool, HMHRMixin):
     def _close_modules(self):
         for cur_mod in self.module_list:
             if hasattr(cur_mod, "stop_module"):
-                self.log("calling stop_module() for %s" % (cur_mod.name))
+                self.log("calling stop_module() for {}".format(cur_mod.name))
                 try:
                     cur_mod.stop_module()
                 except:

@@ -24,7 +24,7 @@
 
 import os
 
-TIME_FORMAT = "%.3f"
+TIME_FORMAT = "{:.3f}"
 
 _CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
 MAPPING_FILE_IDS = os.path.join(_CONFIG_DIR, "collrelay_0mq_mapping")

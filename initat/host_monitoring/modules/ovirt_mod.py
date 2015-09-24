@@ -17,37 +17,310 @@
 #
 """ monitor ovirt instances """
 
-from lxml import etree  # @UnresolvedImport
-import commands
-import requests
+from lxml import etree
+from lxml.builder import E
+import copy
 
+import requests
+from requests_futures.sessions import FuturesSession
 from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools, process_tools, server_command
+from initat.tools import process_tools, server_command, logging_tools
+from initat.host_monitoring.long_running_checks import LongRunningCheck
 
 
 class _general(hm_classes.hm_module):
     def init_module(self):
-        pass
+        requests.packages.urllib3.disable_warnings()
 
 
-class ovort_status_command(hm_classes.hm_command):
-    def __call__(self, srv_com, cur_ns):
-        pass
-
-    def interpret(self, srv_com, cur_ns):
-        return limits.nag_STATE_CRITICAL, "not implemented"
-
-
-def test_code():
-    print("test code")
-    r = requests.get(
-        "https://192.168.1.44/api/vms",
-        auth=("admin@internal", "init4u"),
-        verify=False,
-    )
-    _resp = etree.fromstring(r.content)
-    print etree.tostring(_resp.findall("vm")[0], pretty_print=True)
+class FilterList(list):
+    """ A list class that adds support for basic filtering. Currently only
+    AND and equality are supported. """
+    def filter(self, **kwargs):
+        for i in self:
+            for name, given_value in kwargs.items():
+                actual_value = getattr(i, name)
+                if actual_value == given_value:
+                    yield i
 
 
-if __name__ == "__main__":
-    test_code()
+class XpathPropertyMeta(type):
+    """ Create properties based on xpath expressions provided in the
+    xpath_properties attribute of the class. """
+    def __new__(cls, cls_name, bases, attrs):
+        for name, (xpath, post_func) in attrs["xpath_properties"].items():
+            # This forces a new environment for the closure
+            def outer(xpath, post_func):
+                return lambda x: post_func(x.xml.xpath(xpath))
+            attrs[name] = property(outer(xpath, post_func))
+        return super(XpathPropertyMeta, cls).__new__(cls, cls_name, bases, attrs)
+
+
+class APIClient(object):
+    def __init__(self, url, ignore_ssl_warnings, cacert, username, password):
+        self.url = url
+        self.ignore_ssl_warnings = ignore_ssl_warnings
+        self.cacert = cacert
+        self.username = username
+        self.password = password
+        self._fus = None
+
+    def get_delayed(self, url, cb_func=None):
+        full_url = self.url + url
+        if not self._fus:
+            self._fus = FuturesSession(max_workers=10)
+        return self._fus.get(full_url, background_callback=cb_func, **self._get_kwargs())
+
+    def _get_kwargs(self):
+        _kwargs = {
+            "auth": (self.username, self.password),
+        }
+        if self.ignore_ssl_warnings:
+            _kwargs["verify"] = False
+        else:
+            _kwargs["verify"] = self.cacert
+        return _kwargs
+
+    def get(self, url):
+        full_url = self.url + url
+        _result = requests.get(
+            full_url,
+            **self._get_kwargs()
+        )
+
+        if _result.status_code != 200:
+            raise requests.HTTPError(
+                "status code is not OK: {} ({})".format(
+                    str(_result),
+                    _result.reason,
+                )
+            )
+        return _result
+
+
+class APIObject(object):
+    """ A basic ovirt API object """
+    def __init__(self, xml, client):
+        self.xml = copy.deepcopy(xml)
+        self.client = client
+
+    @staticmethod
+    def zero_text_strip(x):
+        return x[0].text.strip()
+
+    def get_elements(self, url_xpath):
+        return self.client.get_delayed(
+            self.xml.xpath(url_xpath)[0].strip(),
+            cb_func=self._cb_func
+        )
+
+    def _cb_func(self, sess, resp):
+        resp.xml = etree.fromstring(resp.content)
+
+    def elements_to_list(self, url_xpath, xpath, klass):
+        # todo: handle this in the background
+        elements_xml = self.get_elements(url_xpath).result().xml
+        elements = FilterList()
+        for element in elements_xml.xpath(xpath):
+            elements.append(klass(element, self.client))
+        return elements
+
+
+class Statistic(APIObject):
+    xpath_properties = {
+        "name": ("/statistic/name", APIObject.zero_text_strip),
+        "value": ("/statistic/values/value/datum", APIObject.zero_text_strip),
+        "unit": ("/statistic/unit", APIObject.zero_text_strip),
+    }
+    __metaclass__ = XpathPropertyMeta
+
+
+class Disk(APIObject):
+    xpath_properties = {
+        "name": ("/disk/name", APIObject.zero_text_strip),
+    }
+    __metaclass__ = XpathPropertyMeta
+
+    @property
+    def statistics(self):
+        return self.elements_to_list(
+            "/disk/link[@rel='statistics']/@href",
+            "/statistics/statistic",
+            Statistic
+        )
+
+
+class NIC(APIObject):
+    xpath_properties = {
+        "name": ("/nic/name", APIObject.zero_text_strip),
+    }
+    __metaclass__ = XpathPropertyMeta
+
+    @property
+    def statistics(self):
+        return self.elements_to_list(
+            "/nic/link[@rel='statistics']/@href",
+            "/statistics/statistic",
+            Statistic
+        )
+
+
+class VM(APIObject):
+    xpath_properties = {
+        "name": ("/vm/name", APIObject.zero_text_strip),
+        "status": ("/vm/status/state", APIObject.zero_text_strip),
+    }
+    __metaclass__ = XpathPropertyMeta
+
+    def __init__(self, xml, client):
+        super(VM, self).__init__(xml, client)
+        self.url = self.xml.xpath("/vm/@href")[0].strip()
+
+    def __unicode__(self):
+        return self.name
+
+    @property
+    def send_data(self):
+        return process_tools.compress_struct(etree.tostring(self.xml))
+
+    @property
+    def is_up(self):
+        return self.status == "up"
+
+    @property
+    def disks(self):
+        return self.elements_to_list(
+            "/vm/link[@rel='disks']/@href", "/disks/disk", Disk
+        )
+
+    @property
+    def nics(self):
+        return self.elements_to_list(
+            "/vm/link[@rel='nics']/@href", "/nics/nic", NIC
+        )
+
+
+class OvirtAPI(object):
+    """ The ovirt API entry point """
+    def __init__(self, schema, address, port, ignore_ssl_warnings, ca_cert, username, password):
+        self.base_url = "{}://{}:{:d}/".format(
+            schema,
+            address,
+            port,
+        )
+        self.client = APIClient(
+            self.base_url,
+            ignore_ssl_warnings,
+            ca_cert,
+            username,
+            password
+        )
+        self._xml = None
+
+    @property
+    def vms(self):
+        if self._xml is None:
+            self.response = self.client.get("/api/vms")
+            self._xml = etree.fromstring(self.response.content)
+        vms = FilterList()
+        for vm in self._xml.xpath("/vms/vm"):
+            # print etree.tostring(vm, pretty_print=True)
+            vms.append(VM(vm, self.client))
+        return vms
+
+
+class OvirtCheck(LongRunningCheck):
+    def __init__(self, api, srv_com):
+        self.api = api
+        self.srv_com = srv_com
+
+    def perform_check(self, queue):
+        try:
+            _vms = self.api.vms
+        except:
+            self.srv_com.set_result(
+                "error getting VMs: {}".format(
+                    process_tools.get_except_info(),
+                ),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
+        else:
+
+            for _idx, _vm in enumerate(_vms):
+                self.srv_com["vms:vm{:d}".format(_idx)] = _vm.send_data
+            # print len(unicode(self.srv_com))
+            self.srv_com.set_result("found {}".format(logging_tools.get_plural("VM", len(_vms))))
+        queue.put(unicode(self.srv_com))
+
+
+class ovirt_overview_command(hm_classes.hm_command):
+    def __init__(self, name):
+        super(ovirt_command, self).__init__(
+            name, positional_arguments=True
+        )
+        self.parser.add_argument(
+            "--schema",
+            default="https",
+            help="default schema [%(default)s]",
+        )
+        self.parser.add_argument(
+            "--port",
+            default=443,
+            type=int,
+            help="connection port [%(default)s]",
+        )
+        self.parser.add_argument(
+            "--address",
+            help="The address the ovirt installation [%(default)s]",
+        )
+        self.parser.add_argument(
+            "--username",
+            help="The username [%(default)s]",
+            default="admin@internal",
+        )
+        self.parser.add_argument(
+            "--password",
+            help="The password [%(default)s]",
+            default="not_set",
+        )
+        self.parser.add_argument(
+            "--ignore-ssl-warnings",
+            default=False,
+            action="store_true",
+            help="ignore SSL connection warnings [%(default)s]",
+        )
+        self.parser.add_argument(
+            "--ca-cert",
+            help="The CA of the ovirt installation [%(default)s]",
+            default="",
+        )
+
+    def __call__(self, srv_command_obj, arguments):
+        api = OvirtAPI(
+            arguments.schema,
+            arguments.address,
+            arguments.port,
+            arguments.ignore_ssl_warnings,
+            arguments.ca_cert,
+            arguments.username,
+            arguments.password
+        )
+        return OvirtCheck(api, srv_command_obj)
+
+    def interpret(self, srv_com, *args, **kwargs):
+        _vms = E.vms()
+        for _entry in srv_com.xpath(".//ns:vms")[0]:
+            _vms.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+        _num_vms = len(_vms)
+        _states = _vms.xpath(".//vm/status/state/text()", smart_strings=False)
+        _state_dict = {_state: _states.count(_state) for _state in set(_states)}
+        if set(_state_dict.keys()) - {"up", "down"}:
+            ret_state = limits.nag_STATE_WARNING
+        else:
+            ret_state = limits.nag_STATE_OK
+        return limits.nag_STATE_OK, "{}, {}".format(
+            logging_tools.get_plural("VM", _num_vms),
+            ", ".join(
+                ["{:d} {}".format(_state_dict[_key], _key) for _key in sorted(_state_dict)]
+            )
+        )
