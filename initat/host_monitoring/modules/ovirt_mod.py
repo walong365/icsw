@@ -255,8 +255,9 @@ class OvirtCheck(LongRunningCheck):
 
 class ovirt_overview_command(hm_classes.hm_command):
     def __init__(self, name):
-        super(ovirt_command, self).__init__(
-            name, positional_arguments=True
+        super(ovirt_overview_command, self).__init__(
+            name,
+            positional_arguments=True
         )
         self.parser.add_argument(
             "--schema",
@@ -272,6 +273,7 @@ class ovirt_overview_command(hm_classes.hm_command):
         self.parser.add_argument(
             "--address",
             help="The address the ovirt installation [%(default)s]",
+            default="localhost",
         )
         self.parser.add_argument(
             "--username",
