@@ -78,7 +78,7 @@ class rpmlist_command(hm_classes.hm_command):
         in_format = srv_com["format"].text
         out_f = logging_tools.new_form_list()
         keys = sorted(r_dict.keys())
-        header_line = "%s found, system is %s (at %s)" % (
+        header_line = "{} found, system is {} (root is {})".format(
             logging_tools.get_plural("package", len(keys)),
             in_format,
             root_dir,
@@ -117,27 +117,31 @@ class rpmlist_command(hm_classes.hm_command):
                         d_flag, s_flag, e_flag = value["flags"]
                         ver, rel = (value["version"], value["release"])
                         summary = value["summary"]
-                        out_f.append([
-                            logging_tools.form_entry(key, header="name"),
-                            logging_tools.form_entry_right(d_flag, header="d_flag"),
-                            logging_tools.form_entry_right(s_flag, header="s_flag"),
-                            logging_tools.form_entry_right(e_flag, header="e_flag"),
-                            logging_tools.form_entry_right(ver, header="version"),
-                            logging_tools.form_entry(rel, header="release"),
-                            logging_tools.form_entry(summary, header="summary"),
-                        ])
+                        out_f.append(
+                            [
+                                logging_tools.form_entry(key, header="name"),
+                                logging_tools.form_entry_right(d_flag, header="d_flag"),
+                                logging_tools.form_entry_right(s_flag, header="s_flag"),
+                                logging_tools.form_entry_right(e_flag, header="e_flag"),
+                                logging_tools.form_entry_right(ver, header="version"),
+                                logging_tools.form_entry(rel, header="release"),
+                                logging_tools.form_entry(summary, header="summary"),
+                            ]
+                        )
                         out_f.add_line((key, d_flag, s_flag, e_flag, ver, rel, summary))
-            return limits.nag_STATE_OK, "%s\n%s" % (header_line, str(out_f))
+            return limits.nag_STATE_OK, "{}\n{}".format(header_line, str(out_f))
         else:
-            return limits.nag_STATE_CRITICAL, "%s, nothing found" % (header_line)
+            return limits.nag_STATE_CRITICAL, "{}, nothing found".format(header_line)
 
 
 def rpmlist_int(rpm_root_dir, re_strs, is_debian):
     if is_debian:
         log_list = ["doing dpkg -l command in dir %s" % (rpm_root_dir)]
         if rpm_root_dir:
-            rpm_coms = ['chroot %s dpkg -l' % (rpm_root_dir),
-                        'dpkg --root=%s -l' % (rpm_root_dir)]
+            rpm_coms = [
+                'chroot %s dpkg -l' % (rpm_root_dir),
+                'dpkg --root=%s -l' % (rpm_root_dir)
+            ]
         else:
             rpm_coms = ['dpkg -l']
         for rpm_com in rpm_coms:
@@ -177,8 +181,10 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
         namere = re.compile("^(?P<name>\S+)\s+(?P<version>\S+)\s+(?P<release>\S+)\s+(?P<size>\S+)\s+(?P<arch>\S+)\s+(?P<summary>.*)$")
         log_list = ["doing rpm-call in dir %s, mode is %s" % (rpm_root_dir, "via rpm-command")]
         if rpm_root_dir:
-            rpm_coms = ['chroot %s rpm -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{SUMMARY}\n" ' % (rpm_root_dir),
-                        'rpm --root=%s -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{SUMMARY}\n" ' % (rpm_root_dir)]
+            rpm_coms = [
+                'chroot %s rpm -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{SUMMARY}\n" ' % (rpm_root_dir),
+                'rpm --root=%s -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{SUMMARY}\n" ' % (rpm_root_dir)
+            ]
         else:
             rpm_coms = ['rpm -qa --queryformat="%{NAME} %{VERSION} %{RELEASE} %{SIZE} %{ARCH} %{SUMMARY}\n" ']
         for rpm_com in rpm_coms:

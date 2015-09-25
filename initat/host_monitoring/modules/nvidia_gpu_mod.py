@@ -356,6 +356,7 @@ class _general(hm_classes.hm_module):
         self.__smi_command = process_tools.find_file("true" if _DEBUG else COM_NAME)
 
     def _exec_command(self, com):
+        out = ""
         if com.startswith("."):
             if self.__smi_command:
                 com = "{} {}".format(self.__smi_command, com[1:])
@@ -411,7 +412,13 @@ class _general(hm_classes.hm_module):
                     out = self._exec_command(". -q -x")
                 _tree = etree.fromstring(out)  # @UndefinedVariable
             except:
-                self.log("error parsing {}: {}".format(out, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error parsing {}: {}".format(
+                        out,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 for _idx, _gpu in self.__gpus.iteritems():
                     _cur_tree = _tree.xpath(".//gpu[uuid[text()='{}']]".format(_gpu.uuid))
