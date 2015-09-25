@@ -79,6 +79,7 @@ def set_variable(opts):
         jobid=opts.full_job_id,
         varname=opts.name,
         varvalue=opts.value,
+        varunit=opts.unit,
     )
     # print srv_com.pretty_print()
     if my_com.connect():

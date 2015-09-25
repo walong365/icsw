@@ -584,9 +584,14 @@ class AccountingProcess(threading_tools.process_obj):
                 srv_com.set_result("unable to find matching job", server_command.SRV_REPLY_STATE_ERROR)
             else:
                 _name, _value = (srv_com["*varname"], srv_com["*varvalue"])
+                if "varunit" in srv_com:
+                    _unit = srv_com["*varunit"]
+                else:
+                    _unit = ""
                 _var = self._get_job_variable(_job, _name)
                 new_var = False if _var.pk else True
                 _var.raw_value = _value
+                _var.unit = _unit
                 _var.save()
                 srv_com.set_result(
                     "{} job variable '{}'".format(

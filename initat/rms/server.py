@@ -151,6 +151,18 @@ class ServerProcess(
     def job_start(self, srv_com, **kwargs):
         return srv_com
 
+    @server_mixins.RemoteCall(target_process="accounting", send_async_return=False, target_process_func="job_ss_info")
+    def job_end(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="accounting", send_async_return=False, target_process_func="job_ss_info")
+    def pe_start(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="accounting", send_async_return=False, target_process_func="job_ss_info")
+    def pe_end(self, srv_com, **kwargs):
+        return srv_com
+
     def loop_post(self):
         self.network_unbind()
         process_tools.delete_pid(self.__pid_name)

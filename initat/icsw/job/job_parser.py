@@ -44,6 +44,7 @@ class Parser(object):
         parser.add_argument("--mode", default="info", type=str, choices=["info", "setvar"], help="job subcommand [%(default)s]")
         parser.add_argument("--name", default="", type=str, help="variable name [%(default)s]")
         parser.add_argument("--value", default="", type=str, help="variable value [%(default)s]")
+        parser.add_argument("--unit", default="", type=str, help="variable unit [%(default)s]")
         return parser
 
     def _execute(self, opt_ns):

@@ -497,6 +497,7 @@ class RMSJobVariable(models.Model):
     )
     parsed_integer = models.IntegerField(default=None, null=True)
     parsed_float = models.FloatField(default=None, null=True)
+    unit = models.CharField(max_length=16, default="")
     date = models.DateTimeField(auto_now_add=True)
 
     @property
