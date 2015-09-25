@@ -594,9 +594,11 @@ class AccountingProcess(threading_tools.process_obj):
                 _var.unit = _unit
                 _var.save()
                 srv_com.set_result(
-                    "{} job variable '{}'".format(
+                    "{} job variable '{}' ({} {})".format(
                         "created" if new_var else "updated",
                         _var.name,
+                        str(_var.value),
+                        _var.unit,
                     ),
                     server_command.SRV_REPLY_STATE_OK
                 )
