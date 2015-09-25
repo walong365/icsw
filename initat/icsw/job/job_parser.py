@@ -31,17 +31,21 @@ from initat.tools import process_tools
 
 class Parser(object):
     def link(self, sub_parser, **kwargs):
-        return self._add_job_parser(sub_parser)
+        return self._add_job_parser(sub_parser, server_mode=kwargs["server_mode"])
 
-    def _add_job_parser(self, sub_parser):
+    def _add_job_parser(self, sub_parser, server_mode):
         _mach_name = process_tools.get_machine_name(short=True)
         parser = sub_parser.add_parser("job", help="job helper commands")
+        if server_mode:
+            _choices = ["info", "setvar", "listvars"]
+        else:
+            _choices = ["info", "setvar"]
         parser.set_defaults(subcom="job", execute=self._execute)
         parser.add_argument("--job-id", default="", type=str, help="job ID (gets evaluated automatically via environ) [%(default)s]")
         parser.add_argument("--task-id", default=0, type=int, help="task ID (gets evaluated automatically via environ) [%(default)d]")
         parser.add_argument("--server-address", default="", type=str, help="RMS server address [%(default)s]")
         parser.add_argument("--server-port", default=8009, type=int, help="RMS server address [%(default)d]")
-        parser.add_argument("--mode", default="info", type=str, choices=["info", "setvar"], help="job subcommand [%(default)s]")
+        parser.add_argument("--mode", default="info", type=str, choices=_choices, help="job subcommand [%(default)s]")
         parser.add_argument("--name", default="", type=str, help="variable name [%(default)s]")
         parser.add_argument("--value", default="", type=str, help="variable value [%(default)s]")
         parser.add_argument("--unit", default="", type=str, help="variable unit [%(default)s]")

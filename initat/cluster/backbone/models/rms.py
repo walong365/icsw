@@ -509,6 +509,10 @@ class RMSJobVariable(models.Model):
         else:
             return self.raw_value
 
+    @property
+    def var_type(self):
+        return self.get_parsed_type_display()
+
     def __unicode__(self):
         return "RMSJobVariable '{}'".format(self.name)
 

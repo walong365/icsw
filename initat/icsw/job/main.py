@@ -102,11 +102,34 @@ def set_variable(opts):
     my_com.close()
 
 
+def list_vars(opts):
+    from initat.cluster.backbone.models import rms_job, RMSJobVariable
+    from django.db.models import Q
+    try:
+        _job = rms_job.objects.get(Q(jobid=int(opts.job_id)))
+    except rms_job.DoesNotExist:
+        print("No job with SGE_ID '{}' found".format(opts.job_id))
+        sys.exit(3)
+    _vars = RMSJobVariable.objects.filter(Q(rms_job=_job)).order_by("name")
+    print("Found {} for {}".format(logging_tools.get_plural("variable", len(_vars)), unicode(_job)))
+    for _var in _vars:
+        print(
+            "{:<50s} ({:10s}): {:>30s} {}".format(
+                _var.name,
+                _var.var_type,
+                str(_var.value),
+                _var.unit,
+            )
+        )
+
+
 def main(options):
     _parse_environ(options)
     if options.mode == "info":
         show_info(options)
     elif options.mode == "setvar":
         set_variable(options)
+    elif options.mode == "listvars":
+        list_vars(options)
     else:
         print("Unknown job mode '{}'".format(opts.mode))
