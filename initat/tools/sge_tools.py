@@ -1233,6 +1233,7 @@ def get_done_headers():
         E.exit_status(),
         E.failed(span="2"),
         E.nodelist(),
+        E.jobvars(),
     )
 
 

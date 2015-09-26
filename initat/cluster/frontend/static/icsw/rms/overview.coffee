@@ -751,6 +751,19 @@ rms_module = angular.module(
             scope.get_display_data = (data) ->
                 return scope[scope.struct_name].display_data(data)
     }
+]).directive("icswRmsJobVarInfo", ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.job.var.info")
+        scope:
+            job: "=job"
+        link : (scope, el, attrs) ->
+            info_text = ["<div class='text-left'>"]
+            for jvar in scope.job.rmsjobvariable_set
+                info_text.push("#{jvar.name}: #{jvar.raw_value} #{jvar.unit}<br>")
+            info_text.push("</div>")
+            scope.info_text = info_text.join("")
+    }
 ]).directive("icswRmsJobRunLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
         restrict : "EA"

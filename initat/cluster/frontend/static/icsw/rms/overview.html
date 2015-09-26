@@ -282,6 +282,23 @@
     <td ng-show="done_struct.toggle['nodelist']">
         {{ show_pe_info(data) }}
     </td>
+    <td ng-show="done_struct.toggle['jobvars']">
+        <icsw-rms-job-var-info job="data"></icsw-rms-job-var-info>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.job.var.info">
+    <div ng-if="job.rmsjobvariable_set.length">
+        <button type="button" class="btn btn-xs btn-success pull-right"
+            tooltip-placement="bottom"
+            tooltip-html-unsafe="{{ info_text }}"
+        >
+            Vars: {{ job.rmsjobvariable_set.length }}
+        </button>
+    </div>
+    <div ng-if="!job.rmsjobvariable_set.length">
+        ---
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.job.wait.line">

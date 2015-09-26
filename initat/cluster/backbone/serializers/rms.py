@@ -57,6 +57,26 @@ __all__ = [
 ]
 
 
+class RMSJobVariableSerializer(serializers.ModelSerializer):
+    value = serializers.Field(source="get_value")
+
+    class Meta:
+        model = RMSJobVariable
+        fields = (
+            "rms_job", "rms_job_run", "name", "raw_value", "parsed_type", "unit", "value",
+        )
+
+
+class RMSJobVariableActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RMSJobVariableAction
+
+
+class RMSJobVariableActionRunSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RMSJobVariableActionRun
+
+
 class rms_project_serializer(serializers.ModelSerializer):
     class Meta:
         model = rms_project
@@ -109,6 +129,7 @@ class rms_job_run_serializer(serializers.ModelSerializer):
     queue_time = serializers.Field(source="get_queue_time")
     start_time_py = serializers.Field(source="get_start_time_py")
     end_time_py = serializers.Field(source="get_end_time_py")
+    rmsjobvariable_set = RMSJobVariableSerializer(many=True)
 
     class Meta:
         model = rms_job_run
@@ -116,7 +137,7 @@ class rms_job_run_serializer(serializers.ModelSerializer):
             "rms_job", "rms_queue", "rms_project", "rms_department", "rms_pe", "rms_pe_info",
             "start_time", "end_time", "start_time_py", "end_time_py", "device", "hostname",
             "granted_pe", "slots", "priority", "account", "failed", "exit_status", "rms_queue",
-            "queue_time",
+            "queue_time", "rmsjobvariable_set",
         )
 
 
@@ -187,17 +208,3 @@ class ext_license_version_state_coarse_serializer(serializers.ModelSerializer):
     class Meta:
         model = ext_license_version_state_coarse
 
-
-class RMSJobVariableSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RMSJobVariable
-
-
-class RMSJobVariableActionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RMSJobVariableAction
-
-
-class RMSJobVariableActionRunSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RMSJobVariableActionRun

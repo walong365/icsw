@@ -231,6 +231,8 @@ class get_rms_json(View):
             "rms_job",
             "rms_project",
             "rms_pe",
+        ).prefetch_related(
+            "rmsjobvariable_set",
         ).order_by(
             "-rms_job__jobid",
             "rms_job__taskid",

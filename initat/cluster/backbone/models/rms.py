@@ -214,6 +214,9 @@ class rms_job_run(models.Model):
     def get_end_time_py(self):
         return time.mktime(cluster_timezone.normalize(self.end_time_py).timetuple()) if self.end_time_py else ""
 
+    def get_rms_job_variables(self):
+        return self.rmsjobvariable_set.all()
+
     def __unicode__(self):
         return "run for {} in {}".format(
             unicode(self.rms_job),
@@ -500,6 +503,9 @@ class RMSJobVariable(models.Model):
     parsed_float = models.FloatField(default=None, null=True)
     unit = models.CharField(max_length=16, default="")
     date = models.DateTimeField(auto_now_add=True)
+
+    def get_value(self):
+        return self.value
 
     @property
     def value(self):
