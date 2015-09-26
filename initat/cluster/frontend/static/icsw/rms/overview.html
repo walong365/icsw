@@ -289,11 +289,15 @@
 
 <script type="text/ng-template" id="icsw.rms.job.var.info.template">
     <div width="500px">
-        <table class="table table-condensed table-hover" style="width:auto;">
+        <table class="table table-condensed table-hover table-striped" style="width:auto;">
             <tbody>
-                <tr ng-repeat="var in job.rmsjobvariable_set">
-                    <td>{{ var.name }}</td>
-                    <td class="text-right"><small>{{ var.value}}</small></td><td class="text-left"">&nbsp;{{ var.unit }}</td>
+                <tr ng-repeat="var_tuple in new_vars">
+                    <td>{{ var_tuple[0].name }}</td>
+                    <td class="text-right"><small>{{ var_tuple[0].value}}</small></td>
+                    <td class="text-left"">&nbsp;{{ var_tuple[0].unit }}</td>
+                    <td>{{ var_tuple[1].name }}</td>
+                    <td class="text-right"><small>{{ var_tuple[1].value}}</small></td>
+                    <td class="text-left"">&nbsp;{{ var_tuple[1].unit }}</td>
                 </tr>
             </tbody>
         </table>

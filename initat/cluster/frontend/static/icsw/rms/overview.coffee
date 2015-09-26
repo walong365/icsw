@@ -761,11 +761,17 @@ rms_module = angular.module(
             scope.popover =
                 title: "Jobvars vor Job " + scope.job.rms_job.jobid
                 template: "icsw.rms.job.var.info.template"
-            info_text = ["<div class='text-left'><table><tbody>"]
-            for jvar in scope.job.rmsjobvariable_set
-                info_text.push("<tr><td>#{jvar.name}</td><td>#{jvar.raw_value} #{jvar.unit}</td></tr>")
-            info_text.push("</tbody></table></div>")
-            scope.popover.content = info_text.join("")
+            _len = parseInt((scope.job.rmsjobvariable_set.length + 1) / 2)
+            _vars = scope.job.rmsjobvariable_set
+            _new_vars = []
+            for _idx in [0.._len - 1]
+                _new_vars.push(
+                  [
+                      _vars[_idx],
+                      _vars[_idx + _len]
+                  ]
+                )
+            scope.new_vars = _new_vars
     }
 ]).directive("icswRmsJobRunLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
