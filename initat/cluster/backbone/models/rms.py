@@ -484,6 +484,7 @@ class RMSJobVariable(models.Model):
     idx = models.AutoField(primary_key=True)
     # link to job
     rms_job = models.ForeignKey("backbone.rms_job")
+    rms_job_run = models.ForeignKey("backbone.rms_job_run", null=True)
     name = models.CharField(max_length=255, default="")
     raw_value = models.TextField(default="")
     parsed_type = models.CharField(

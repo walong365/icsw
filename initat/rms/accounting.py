@@ -375,7 +375,7 @@ class AccountingProcess(threading_tools.process_obj):
     def _add_job_from_qacct(self, _job_id, in_dict):
         self.__jobs_added += 1
         if not self.__jobs_added % 100:
-            self.log("added {:d} jobs".format(self.__jobs_added))
+            self.log("added {}".format(logging_tools.get_plural("job", self.__jobs_added)))
         _job = self._get_job(
             in_dict["jobnumber"],
             in_dict["taskid"],
@@ -553,12 +553,13 @@ class AccountingProcess(threading_tools.process_obj):
             jobid, taskid = (int(_id), None)
         return jobid, taskid
 
-    def _get_job_variable(self, job, varname):
+    def _get_job_variable(self, job, job_run, varname):
         try:
-            cur_var = RMSJobVariable.objects.get(Q(rms_job=job) & Q(name=varname))
+            cur_var = RMSJobVariable.objects.get(Q(rms_job=job) & Q(rms_job_run=job_run) & Q(name=varname))
         except RMSJobVariable.DoesNotExist:
             cur_var = RMSJobVariable(
                 rms_job=job,
+                rms_job_run=job_run,
                 name=varname,
             )
             self.log(
@@ -583,23 +584,29 @@ class AccountingProcess(threading_tools.process_obj):
                 self.log("no matching job found: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 srv_com.set_result("unable to find matching job", server_command.SRV_REPLY_STATE_ERROR)
             else:
-                _name, _value = (srv_com["*varname"], srv_com["*varvalue"])
-                if "varunit" in srv_com:
-                    _unit = srv_com["*varunit"]
+                try:
+                    _job_run = _job.rms_job_run_set.all().order_by("-pk")[0]
+                except:
+                    self.log("no matching job_run found: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    srv_com.set_result("unable to find matching job_run", server_command.SRV_REPLY_STATE_ERROR)
                 else:
-                    _unit = ""
-                _var = self._get_job_variable(_job, _name)
-                new_var = False if _var.pk else True
-                _var.raw_value = _value
-                _var.unit = _unit
-                _var.save()
-                srv_com.set_result(
-                    "{} job variable '{}' ({} {})".format(
-                        "created" if new_var else "updated",
-                        _var.name,
-                        str(_var.value),
-                        _var.unit,
-                    ),
-                    server_command.SRV_REPLY_STATE_OK
-                )
+                    _name, _value = (srv_com["*varname"], srv_com["*varvalue"])
+                    if "varunit" in srv_com:
+                        _unit = srv_com["*varunit"]
+                    else:
+                        _unit = ""
+                    _var = self._get_job_variable(_job, _job_run, _name)
+                    new_var = False if _var.pk else True
+                    _var.raw_value = _value
+                    _var.unit = _unit
+                    _var.save()
+                    srv_com.set_result(
+                        "{} job variable '{}' ({} {})".format(
+                            "created" if new_var else "updated",
+                            _var.name,
+                            str(_var.value),
+                            _var.unit,
+                        ),
+                        server_command.SRV_REPLY_STATE_OK
+                    )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
