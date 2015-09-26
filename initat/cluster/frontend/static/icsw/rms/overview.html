@@ -287,11 +287,26 @@
     </td>
 </script>
 
+<script type="text/ng-template" id="icsw.rms.job.var.info.template">
+    <div width="500px">
+        <table class="table table-condensed table-hover" style="width:auto;">
+            <tbody>
+                <tr ng-repeat="var in job.rmsjobvariable_set">
+                    <td>{{ var.name }}</td>
+                    <td class="text-right"><small>{{ var.value}}</small></td><td class="text-left"">&nbsp;{{ var.unit }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.rms.job.var.info">
     <div ng-if="job.rmsjobvariable_set.length">
         <button type="button" class="btn btn-xs btn-success pull-right"
-            tooltip-placement="bottom"
-            tooltip-html-unsafe="{{ info_text }}"
+            popover-title="{{ popover.title }}"
+            popover-template="popover.template"
+            popover-append-to-body="1"
+            popover-placement="left"
         >
             Vars: {{ job.rmsjobvariable_set.length }}
         </button>

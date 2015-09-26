@@ -334,7 +334,6 @@ PIPELINE_CSS = {
     "part1": {
         "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
-            "css/main.css",
             "css/ui.fancytree.css",
             "css/jqModal.css",
             "css/codemirror.css",
@@ -351,6 +350,7 @@ PIPELINE_CSS = {
             "css/toaster.css",
             "css/bootstrap-dialog.css",
             "css/angular-gridster.min.css",
+            "css/main.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }

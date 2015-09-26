@@ -533,6 +533,7 @@ class RMSJobVariable(models.Model):
 def rms_job_variable_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_var = kwargs["instance"]
+        cur_var.unit = cur_var.unit or ""
         cur_var.parsed_float, cur_var.parsed_int = (None, None)
         try:
             _float = float(cur_var.raw_value.replace(",", ".").strip())

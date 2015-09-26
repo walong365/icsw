@@ -17,6 +17,10 @@ ul.dynatree-container span.ip_ok {
     font-weight : bold;
 }
 
+.popover {
+    max-width: 100% !important;
+}
+
 /* for sidebar */
 .noborder {
     border : none;
