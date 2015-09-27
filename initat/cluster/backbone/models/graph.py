@@ -170,7 +170,7 @@ class MVValueEntry(models.Model):
             date=self.date
         )
         for _key, _value in mod_dict.iteritems():
-            if _key not in set(["key", "full_key"]):
+            if _key not in {"key", "full_key"}:
                 setattr(new_mv, _key, _value)
         return new_mv
 

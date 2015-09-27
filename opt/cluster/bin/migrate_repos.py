@@ -39,13 +39,13 @@ from initat.tools import process_tools
 
 REPO_DIR = "/etc/zypp/repos.d"
 KV_RE = re.compile("^\s*(?P<key>\S+)\s*=\s*(?P<value>.*)\s*$")
-NEW_REPOS = set(["cluster", "extra"])
-NO_SUB_REPOS = set(["extra"])
+NEW_REPOS = {"cluster", "extra"}
+NO_SUB_REPOS = {"extra"}
 URL_RE = re.compile("^(http|dir)://.*(www.initat.org|local/packages).*/RPMs/(?P<dist>[^/]+)($|/(?P<rest>.*?)/*$)")
 REPO_RE = re.compile("^(?P<name>.*?)(-(?P<version>[^-]+))*$")
 
 
-class repo(dict):
+class Repo(dict):
     def __init__(self, name, opts):
         super(dict, self).__init__()
         self.opts = opts
@@ -128,7 +128,7 @@ def main():
     # transform repos
     for r_name in os.listdir(REPO_DIR):
         try:
-            _cur_repo = repo(os.path.join(REPO_DIR, r_name), opts)
+            _cur_repo = Repo(os.path.join(REPO_DIR, r_name), opts)
         except:
             print "error handling repo {}: {}".format(
                 r_name,

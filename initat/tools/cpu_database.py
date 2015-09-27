@@ -315,7 +315,7 @@ class cpu_info(object):
     def _get_cache_share_info(self, c_num):
         if c_num in self.cache_info.get("share_dict", {}):
             share_info = self.cache_info["share_dict"][c_num]
-            if share_info == set([self["core_num"]]):
+            if share_info == {self["core_num"]}:
                 return "excl"
             else:
                 return "shared by {}".format(", ".join(["{:d}".format(core) for core in sorted(share_info)]))

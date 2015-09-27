@@ -111,23 +111,23 @@ class server_code(ICSWBasePool, HMHRMixin):
     def long_running_checks_timer(self):
         new_checks = []
         for _idx, _stuff in enumerate(self.long_running_checks):
-            process, queue, zmq_sock, src_id, srv_com, buffer = _stuff
+            process, queue, zmq_sock, src_id, srv_com, c_buffer = _stuff
             if process.is_alive():
                 try:
                     _queue_get = queue.get(False)
                 except Empty:
                     pass
                 else:
-                    buffer = "{}{}".format(buffer, _queue_get)
+                    c_buffer = "{}{}".format(c_buffer, _queue_get)
             if not process.is_alive():
                 # check again in case the queue.get triggered a process.exit()
                 if process.exitcode == 0:
                     try:
                         _result = queue.get(False)
                     except Empty:
-                        _result = buffer
+                        _result = c_buffer
                     else:
-                        _result = "{}{}".format(buffer, _result)
+                        _result = "{}{}".format(c_buffer, _result)
                     try:
                         srv_com = server_command.srv_command(source=_result)
                     except:
@@ -145,7 +145,7 @@ class server_code(ICSWBasePool, HMHRMixin):
                         logging_tools.LOG_LEVEL_ERROR
                     )
             else:
-                new_checks.append((process, queue, zmq_sock, src_id, srv_com, buffer))
+                new_checks.append((process, queue, zmq_sock, src_id, srv_com, c_buffer))
         self.long_running_checks = new_checks
         if not self.long_running_checks:
             self.unregister_timer(self.long_running_checks_timer)

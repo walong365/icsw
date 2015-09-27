@@ -60,7 +60,7 @@ class ca_new(cs_base_class.server_com):
     def _call(self, cur_inst):
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _obj_dict = _build_obj(cur_inst, cn="{}_ca".format(global_config["SERVER_FULL_NAME"]))
-        cur_ca = openssl_tools.ca(_name, cur_inst.log)
+        cur_ca = openssl_tools.CA(_name, cur_inst.log)
         if cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
                 "CA '{}' already present".format(_name),
@@ -99,7 +99,7 @@ class ca_new_cert(cs_base_class.server_com):
         else:
             _dev = None
         _obj_dict = _build_obj(cur_inst, cn=_cn)
-        cur_ca = openssl_tools.ca(_name, cur_inst.log)
+        cur_ca = openssl_tools.CA(_name, cur_inst.log)
         if not cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
                 "CA '{}' is not valid".format(_name),
@@ -139,7 +139,7 @@ class ca_revoke_cert(cs_base_class.server_com):
                     ", ".join(_CAUSES),
                 )
             )
-        cur_ca = openssl_tools.ca(_name, cur_inst.log)
+        cur_ca = openssl_tools.CA(_name, cur_inst.log)
         if not cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
                 "CA '{}' is not valid".format(_name),
@@ -163,7 +163,7 @@ class ca_list_certs(cs_base_class.server_com):
 
     def _call(self, cur_inst):
         _name = cur_inst.srv_com["server_key:ca_name"].text
-        cur_ca = openssl_tools.ca(_name, cur_inst.log)
+        cur_ca = openssl_tools.CA(_name, cur_inst.log)
         if cur_ca.ca_ok:
             _certs = cur_ca.db
             cur_inst.srv_com.set_result(

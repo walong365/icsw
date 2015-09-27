@@ -70,16 +70,16 @@ class outcar(target_file):
         file(t_name, "w").write(etree.tostring(res, pretty_print=True))
 
 
-class vasprun(target_file):
+class VASPRun(target_file):
     def __init__(self, f_name):
         src_xml = etree.fromstring(file(f_name, "r").read())
         self._transform(src_xml)
         t_name = self.get_file_name("vasp_run")
-        print "saving to %s" % (t_name)
+        print("saving to {}".format(t_name))
         file(t_name, "w").write(etree.tostring(src_xml, pretty_print=True))
 
     def _transform(self, in_xml):
-        split_to_xyz = set(["v", "r"])
+        split_to_xyz = {"v", "r"}
         for node in in_xml.xpath(".//*"):
             if node.text is not None:
                 node.text = node.text.strip()
@@ -97,11 +97,11 @@ def main():
     if os.path.isfile(outcar_name):
         outcar(outcar_name)
     else:
-        print "cannot find '%s'" % (outcar_name)
+        print("cannot find '{}'".format(outcar_name))
     if os.path.isfile(vasprun_name):
-        vasprun(vasprun_name)
+        VASPRun(vasprun_name)
     else:
-        print "cannot find '%s'" % (vasprun_name)
+        print("cannot find '{}'".format(vasprun_name))
 
 if __name__ == "__main__":
     main()

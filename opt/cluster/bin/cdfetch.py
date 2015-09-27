@@ -32,7 +32,7 @@ from initat.tools import logging_tools, process_tools, server_command
 from initat.icsw.service.instance import InstanceXML
 
 
-class base_com(object):
+class BaseCom(object):
     def __init__(self, options, *args):
         self.options = options
         self.args = args
@@ -70,9 +70,12 @@ class base_com(object):
         # tcp (0MQ) mode
         conn_str = "tcp://{}:{:d}".format(self.options.host, self.options.port)
         if self.options.verbose:
-            print "Identity_string is '{}', connection_string is '{}'".format(
-                self.srv_com["identity"].text,
-                conn_str)
+            print(
+                "Identity_string is '{}', connection_string is '{}'".format(
+                    self.srv_com["identity"].text,
+                    conn_str
+                )
+            )
         client.connect(conn_str)
         s_time = time.time()
 
@@ -110,15 +113,15 @@ class base_com(object):
         try:
             srv_reply = server_command.srv_command(source=recv_str)
         except:
-            print "cannot interpret reply: {}".format(process_tools.get_except_info())
-            print "reply was: {}".format(recv_str)
+            print("cannot interpret reply: {}".format(process_tools.get_except_info()))
+            print("reply was: {}".format(recv_str))
             self.ret_state = 1
         else:
             if self.options.verbose:
                 print
-                print "XML response (id: '{}'):".format(recv_id)
+                print("XML response (id: '{}'):".format(recv_id))
                 print
-                print srv_reply.pretty_print()
+                print(srv_reply.pretty_print())
                 print
             if "result" in srv_reply:
                 if hasattr(self, "_interpret"):
@@ -133,7 +136,7 @@ class base_com(object):
                 self.ret_state = 2
 
 
-class host_list_com(base_com):
+class HostListCom(BaseCom):
     class Meta:
         command = "host_list"
 
@@ -194,7 +197,7 @@ class host_list_com(base_com):
             self.ret_state = 1
 
 
-class key_list_com(base_com):
+class KeyListCom(BaseCom):
     class Meta:
         command = "key_list"
 
@@ -266,9 +269,14 @@ class key_list_com(base_com):
 
 def main():
     parser = argparse.ArgumentParser("query the datastore of collectd servers")
-    com_list = [key[:-4] for key in globals().keys() if key.endswith("_com") if key not in ["base_com"]]
-    parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command (one of {})".format(
-        ", ".join(sorted(com_list))))
+    com_list = [key[:-3] for key in globals().keys() if key.endswith("Com") if key not in ["BaseCom"]]
+    parser.add_argument(
+        "arguments",
+        nargs="+",
+        help="additional arguments, first one is command (one of {})".format(
+            ", ".join(sorted(com_list))
+        )
+    )
     parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
     parser.add_argument("-p", help="port [%(default)d]", default=8008, dest="port", type=int)
     parser.add_argument("-H", help="host [%(default)s] or server", default="localhost", dest="host")

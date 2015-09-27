@@ -53,7 +53,7 @@ def build_subj(sub_dict):
     )
 
 
-class openssl_config(object):
+class OpenSSLConfig(object):
     def __init__(self, name):
         # lines without part, form is (key, value)
         self._filename = name
@@ -129,7 +129,7 @@ class openssl_config(object):
         self._pdicts[dst_part] = OrderedDict([(key, value) for key, value in self._pdicts[src_part].iteritems()])
 
 
-class ca_index(OrderedDict):
+class CAIndex(OrderedDict):
     def __init__(self, f_name):
         OrderedDict.__init__(self)
         for _line in file(f_name, "r").read().split("\n"):
@@ -175,7 +175,7 @@ class ca_index(OrderedDict):
             return ""
 
 
-class ssl_secure(object):
+class SSLSecure(object):
     def __init__(self, *args, **kwargs):
         self.__backup = kwargs.get("backup", False)
 
@@ -211,7 +211,7 @@ class ssl_secure(object):
         return tar_info
 
 
-class ca(object):
+class CA(object):
     def __init__(self, name, log_com):
         self.log_com = log_com
         self.name = name
@@ -249,7 +249,7 @@ class ca(object):
     def ca_cert(self):
         return os.path.join(self.ca_dir, "cacert.pem")
 
-    @ssl_secure(backup=True)
+    @SSLSecure(backup=True)
     def create(self, obj_dict):
         os.mkdir(self.ca_dir)
         for _dirs in ["certs", "crl", "newcerts", "private", "keys", "reqs"]:
@@ -265,7 +265,7 @@ class ca(object):
             "-passout", "pass:{}".format(self.password),
         )
         if _success:
-            _ssl_cnf = openssl_config(self.ssl_config_name)
+            _ssl_cnf = OpenSSLConfig(self.ssl_config_name)
             _x509_defaults = {
                 "ca": [
                     ("authorityKeyIdentifier", "keyid:always,issuer:always"),
@@ -337,7 +337,7 @@ class ca(object):
                     break
             if _src_file:
                 self.log("creating {} from {}".format(self.ssl_config_name, _src_file))
-                _cnf = openssl_config(_src_file)
+                _cnf = OpenSSLConfig(_src_file)
                 _cnf.set(None, "HOME", SSL_DIR)
                 _cnf.set(
                     "req_distinguished_name",
@@ -360,7 +360,7 @@ class ca(object):
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
 
-    @ssl_secure(backup=True)
+    @SSLSecure(backup=True)
     def new_cert(self, obj_dict, mode, file_name, **kwargs):
         if mode in ["ca"]:
             raise KeyError("mode '{}' not allowed".format(mode))
@@ -424,14 +424,14 @@ class ca(object):
         shutil.rmtree(_cert_temp)
         return run_ok
 
-    @ssl_secure()
+    @SSLSecure()
     def _read_certs(self):
-        _ssl_cnf = openssl_config(self.ssl_config_name)
-        self.db = ca_index(_ssl_cnf.get("ca_ca", "database", expand=True))
+        _ssl_cnf = OpenSSLConfig(self.ssl_config_name)
+        self.db = CAIndex(_ssl_cnf.get("ca_ca", "database", expand=True))
 
-    @ssl_secure(backup=True)
+    @SSLSecure(backup=True)
     def revoke_cert(self, serial, cause):
-        _ssl_cnf = openssl_config(self.ssl_config_name)
+        _ssl_cnf = OpenSSLConfig(self.ssl_config_name)
         _cert = self.db[serial]
         _success, _out = self.call_openssl(
             "ca",

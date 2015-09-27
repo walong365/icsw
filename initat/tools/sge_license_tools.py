@@ -666,7 +666,12 @@ class license_check(object):
                 if self.server_port.startswith("/"):
                     self.server_port = file(self.server_port, "r").read().strip().split()[0]
                 self.server_port = int(self.server_port)
-        self.log("license server {} (port {:d})".format(self.server_addr, self.server_port))
+        self.log(
+            "license server {} (port {:d})".format(
+                self.server_addr,
+                self.server_port
+            )
+        )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if log_level == logging_tools.LOG_LEVEL_OK and not self.verbose:
