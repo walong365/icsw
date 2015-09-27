@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" SNMP schemes for SNMP relayer """
+""" knurr schemes for SNMP relayer """
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
@@ -83,12 +83,7 @@ class humidity_knurr_scheme(SNMPRelayScheme):
             cur_val)
 
 
-class environment_knurr_scheme(SNMPRelayScheme):
-    def __init__(self, **kwargs):
-        SNMPRelayScheme.__init__(self, "environment_knurr_scheme", **kwargs)
-        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 2, 4), cache=True, cache_timeout=10)
-        self.parse_options(kwargs["options"])
-
+class environment_knurr_base(object):
     def process_return(self):
         new_dict = self._simplify_keys(
             {
@@ -111,36 +106,27 @@ class environment_knurr_scheme(SNMPRelayScheme):
         }
         return cur_state, ", ".join(
             [
-                "{}: {}".format(info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(new_dict.keys())
+                "{}: {}".format(
+                    info_dict[key],
+                    {
+                        0: "OK",
+                        1: "failed"
+                    }[new_dict[key]]
+                ) for key in sorted(new_dict.keys())
             ]
         )
 
 
+class environment_knurr_scheme(SNMPRelayScheme, environment_knurr_base):
+    def __init__(self, **kwargs):
+        SNMPRelayScheme.__init__(self, "environment_knurr_scheme", **kwargs)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 2, 4), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+
+
 # new version of Emerson/Knuerr CoolCon rack (APP 1.15.10, HMI 1.15.10)
-class environment2_knurr_scheme(SNMPRelayScheme):
+class environment2_knurr_scheme(SNMPRelayScheme, environment_knurr_base):
     def __init__(self, **kwargs):
         SNMPRelayScheme.__init__(self, "environment2_knurr_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 9, 1), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
-
-    def process_return(self):
-        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
-        del new_dict[4]
-        if max(new_dict.values()) == 0:
-            cur_state = limits.nag_STATE_OK
-        else:
-            cur_state = limits.nag_STATE_CRITICAL
-        info_dict = {
-            1: "fan1",
-            2: "fan2",
-            3: "fan3",
-            5: "water",
-            6: "smoke",
-            7: "PSA",
-            8: "PSB",
-        }
-        return cur_state, ", ".join(
-            [
-                "%s: %s" % (info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(info_dict.keys())
-            ]
-        )

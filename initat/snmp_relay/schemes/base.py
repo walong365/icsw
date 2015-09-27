@@ -47,7 +47,7 @@ class SNMPNetObject(object):
         # partially taken from collectd / background
         self.value_cache = value_cache()
         log_com(
-            "init new host_object ({}, {}, {:d})".format(
+            "init new SNMPNetObject ({}, {}, {:d})".format(
                 self.name,
                 self.snmp_community,
                 self.snmp_version
@@ -60,7 +60,7 @@ class SNMPNetObject(object):
     def get_pending_requests(self, in_set, log_com):
         pend_reqs = self.__pending_requests & in_set
         if self.__verbose_level > 1:
-            self.log(log_com, "%s pending" % (logging_tools.get_plural("request", len(pend_reqs))))
+            self.log(log_com, "{} pending".format(logging_tools.get_plural("request", len(pend_reqs))))
         return pend_reqs
 
     def add_to_pending_requests(self, in_set):
@@ -76,7 +76,7 @@ class SNMPNetObject(object):
     def cache_still_hot_enough(self, oid_set, log_com):
         he_reqs = set([key for key in oid_set if key in self.__cache_tree and self.__cache_tree[key]["refresh"] > time.time()])
         if self.__verbose_level > 1:
-            self.log(log_com, "%s hot enough" % (logging_tools.get_plural("request", len(he_reqs))))
+            self.log(log_com, "{} hot enough".format(logging_tools.get_plural("request", len(he_reqs))))
         return he_reqs
 
     def save_snmp_tree(self, oid, tree):

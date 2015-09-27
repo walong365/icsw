@@ -186,7 +186,7 @@ class server_process(threading_tools.process_pool):
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="snmp-relay")
             file_name = sock_name[5:]
             self.log(
-                "init %s ipc_socket '%s' (HWM: %d)" % (
+                "init {} ipc_socket '{}' (HWM: {:d})".format(
                     short_sock_name,
                     sock_name,
                     hwm_size

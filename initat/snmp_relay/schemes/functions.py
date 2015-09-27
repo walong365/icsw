@@ -21,9 +21,9 @@
 def k_str(i_val):
     f_val = float(i_val)
     if f_val < 1024:
-        return "%0.f kB" % (f_val)
+        return "{:.2f} kB".format(f_val)
     f_val /= 1024.
     if f_val < 1024.:
-        return "%.2f MB" % (f_val)
+        return "{:.2f} MB".format(f_val)
     f_val /= 1024.
-    return "%.2f GB" % (f_val)
+    return "{:.2f} GB".format(f_val)

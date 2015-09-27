@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" SNMP schemes for SNMP relayer """
+""" emerson PDU schemes for SNMP relayer """
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
@@ -41,7 +41,10 @@ class current_pdu_emerson_scheme(SNMPRelayScheme):
         }
         return cur_state, ", ".join(
             [
-                "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())
+                "{}: {}A".format(
+                    info_dict[key],
+                    float(new_dict[key]) * 0.01
+                ) for key in sorted(info_dict.keys())
             ]
         )
 
@@ -67,7 +70,10 @@ class currentLLG_pdu_emerson_scheme(SNMPRelayScheme):
         }
         return cur_state, ", ".join(
             [
-                "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())
+                "{}: {}A".format(
+                    info_dict[key],
+                    float(new_dict[key]) * 0.01
+                ) for key in sorted(info_dict.keys())
             ]
         )
 
@@ -90,6 +96,9 @@ class voltageLL_pdu_emerson_scheme(SNMPRelayScheme):
         }
         return cur_state, ", ".join(
             [
-                "%s: %sV" % (info_dict[key], float(new_dict[key]) * 0.1) for key in sorted(info_dict.keys())
+                "{}: {}V".format(
+                    info_dict[key],
+                    float(new_dict[key]) * 0.1
+                ) for key in sorted(info_dict.keys())
             ]
         )
