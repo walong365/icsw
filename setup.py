@@ -69,6 +69,8 @@ setup(
         "initat.snmp.process",
         "initat.snmp.sink",
         "initat.snmp_relay",
+        "initat.snmp_relay.schemes",
+        "initat.snmp_relay.schemes.instances",
         "initat.meta_server",
         "initat.host_monitoring",
         "initat.host_monitoring.modules",

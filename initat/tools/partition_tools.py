@@ -38,7 +38,7 @@ class uuid_label_struct(dict):
                     _dict = dict([_part.split("=", 1) for _part in _rest.strip().split()])
                     _dict = {key: value[1:-1] if value.startswith('"') else value for key, value in _dict.iteritems()}
                     _dict["part"] = part
-                    for key in set(_dict) & set(["UUID"]):
+                    for key in set(_dict) & {"UUID"}:
                         self[_dict[key]] = _dict
 
 

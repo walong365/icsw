@@ -32,10 +32,10 @@ class ipv4(object):
                 [
                     x for x in [
                         int(y) for y in in_value.strip().split(".") if y.isdigit()
-                    ] if x >= 0 and x <= 255
+                    ] if 0 <= x <= 255
                 ]
             ) == 4:
-                self.parts = [int(y) for y in in_value.strip().split(".")]
+                self.parts = map(int, in_value.strip().split("."))
                 self.inv_parts = [x for x in self.parts]
                 self.inv_parts.reverse()
                 # print "+",in_value, self.parts, self.inv_parts, "*<br>"

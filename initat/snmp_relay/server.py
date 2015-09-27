@@ -25,7 +25,7 @@ import time
 from initat.host_monitoring import limits
 from initat.snmp.process import snmp_process_container
 from initat.snmp.sink import SNMPSink
-from initat.snmp_relay import snmp_relay_schemes
+from initat.snmp_relay.schemes import SNMPRelayScheme, SNMPNetObject, SNMPGeneralScheme, snmp_schemes, import_errors
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 import zmq
 
@@ -70,12 +70,15 @@ class server_process(threading_tools.process_pool):
 
     def _check_schemes(self):
         self.__local_schemes = {}
-        glob_keys = dir(snmp_relay_schemes)
-        for glob_key in sorted(glob_keys):
-            if glob_key.endswith("_scheme") and glob_key != "RelaySNMPScheme":
-                glob_val = getattr(snmp_relay_schemes, glob_key)
-                if issubclass(glob_val, snmp_relay_schemes.RelaySNMPScheme):
-                    self.__local_schemes[glob_key[:-7]] = glob_val
+        if import_errors:
+            self.log("{}:".format(logging_tools.get_plural("import error", len(import_errors))), logging_tools.LOG_LEVEL_ERROR)
+            for _mod_name, _where, _line in import_errors:
+                self.log("    {} ({}): {}".format(_mod_name, _where, _line), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no scheme import errors")
+        self.log("found {}".format(logging_tools.get_plural("scheme", len(snmp_schemes))))
+        for _name, _obj in snmp_schemes:
+            self.__local_schemes[_name] = _obj
         # add snmp sink schemes
         self.snmp_sink = SNMPSink(self.log)
         _mon_handlers = [_handler for _handler in self.snmp_sink.handlers if _handler.Meta.mon_check]
@@ -132,7 +135,7 @@ class server_process(threading_tools.process_pool):
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
         if host_tuple not in self.__host_objects:
-            self.__host_objects[host_tuple] = snmp_relay_schemes.net_object(self.log, self.__verbose, host_name, snmp_community, snmp_version)
+            self.__host_objects[host_tuple] = SNMPNetObject(self.log, self.__verbose, host_name, snmp_community, snmp_version)
         return self.__host_objects[host_tuple]
 
     def _log_config(self):
@@ -446,7 +449,7 @@ class server_process(threading_tools.process_pool):
                                 timeout=timeout,
                             )
                         else:
-                            act_scheme = snmp_relay_schemes.SNMPGenScheme(
+                            act_scheme = SNMPGeneralScheme(
                                 net_obj=host_obj,
                                 envelope=envelope,
                                 options=comline_split,

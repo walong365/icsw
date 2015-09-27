@@ -456,7 +456,7 @@ class KernelHelper(object):
                     ] if os.path.isdir(_key)
                 }
                 _weak_dirs = [
-                    _key for _key, _value in _sub_dirs.iteritems() if not set(_value) - set(["extra"])
+                    _key for _key, _value in _sub_dirs.iteritems() if not set(_value) - {"extra"}
                 ]
                 self.log("weak dirs: {}".format(", ".join(_weak_dirs)))
                 _left = list(set(_sub_dirs.keys()) - set(_weak_dirs))
