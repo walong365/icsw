@@ -27,7 +27,7 @@ from django.db.models import Q, signals
 from django.apps import apps
 from django.dispatch import receiver
 from enum import enum
-from initat.cluster.backbone.models.functions import _check_integer, _check_empty_string
+from initat.cluster.backbone.models.functions import check_integer, check_empty_string
 
 __all__ = [
     "config_catalog",
@@ -129,7 +129,10 @@ class config(models.Model):
         permissions = (
             ("modify_config", "modify global configurations", False),
         )
-        fk_ignore_list = ["config_str", "config_int", "config_script", "config_bool", "config_blob", "mon_check_command"]
+        fk_ignore_list = [
+            "config_str", "config_int", "config_script",
+            "config_bool", "config_blob", "mon_check_command"
+        ]
 
 
 @receiver(signals.pre_save, sender=config)
@@ -137,9 +140,9 @@ def config_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.description = cur_inst.description or ""
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         # priority
-        _check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
+        check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
         if cur_inst.system_config and not cur_inst.config_catalog.system_catalog:
             raise ValidationError("System config '{}' has to reside in the system config_catalog".format(cur_inst.name))
 
@@ -225,7 +228,7 @@ class config_str(models.Model):
 def config_str_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         all_var_names = list(cur_inst.config.config_str_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
             list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
@@ -258,7 +261,7 @@ class config_blob(models.Model):
 def config_blob_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
@@ -293,7 +296,7 @@ class config_bool(models.Model):
 def config_bool_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
@@ -340,14 +343,14 @@ class config_int(models.Model):
 def config_int_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_int_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
             raise ValidationError("name '{}' already used".format(cur_inst.name))
-        _check_integer(cur_inst, "value")
+        check_integer(cur_inst, "value")
 
 
 class config_script(models.Model):
@@ -382,5 +385,5 @@ def config_script_pre_save(sender, **kwargs):
             raise ValidationError("value is empty")
         if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name '{}' already used".format(cur_inst.name))
-        _check_integer(cur_inst, "priority")
+        check_integer(cur_inst, "priority")
         cur_inst.error_text = cur_inst.error_text or ""

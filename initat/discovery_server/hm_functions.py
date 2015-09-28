@@ -26,6 +26,8 @@ from initat.cluster.backbone.models import partition, partition_disc, \
     netdevice_speed, peer_information
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.snmp.snmp_struct import ResultNode
+from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
+    NoMatchingNetworkFoundError
 
 from initat.tools import logging_tools, net_tools, partition_tools, \
     process_tools, server_command
@@ -389,7 +391,7 @@ class HostMonitoringMixin(object):
                     target_dev.partdev = ""
                     target_dev.save(update_fields=["act_partition_table", "partdev"])
                 res_node.ok(
-                    u"%s: %s, %s, %s and %s" % (
+                    u"{}: {}, {}, {} and {}".format(
                         target_dev,
                         logging_tools.get_plural("disc", len(dev_dict.keys())),
                         logging_tools.get_plural("sys_partition", len(sys_dict.keys())),
@@ -475,6 +477,7 @@ class HostMonitoringMixin(object):
                         self.log("removing current network devices")
                         target_dev.netdevice_set.all().delete()
                         all_ok = True
+                        exc_dict = {}
                         _all_devs = set(networks)
                         _br_devs = set(bridges)
                         NDStruct.setup(self, target_dev, default_nds)
@@ -487,10 +490,16 @@ class HostMonitoringMixin(object):
                             cur_nd = NDStruct(dev_name, _struct, bridges.get(dev_name, None))
                             try:
                                 cur_nd.create()
+                            except (NoMatchingNetworkDeviceTypeFoundError, NoMatchingNetworkFoundError) as exc:
+                                _name = exc.__class__.__name__
+                                self.log("caught {} for {}".format(_name, dev_name), logging_tools.LOG_LEVEL_ERROR)
+                                exc_dict.setdefault(_name, []).append(dev_name)
+                                all_ok = False
                             except:
                                 err_str = "error creating netdevice {}: {}".format(
                                     dev_name,
-                                    process_tools.get_except_info())
+                                    process_tools.get_except_info()
+                                )
                                 if strict_mode:
                                     res_node.error(err_str)
                                 for _log in process_tools.exception_info().log_lines:
@@ -503,6 +512,14 @@ class HostMonitoringMixin(object):
                                 for _peer in _old_peer_dict[cur_nd.nd.devname]:
                                     _new_peer = peer_information.create_from_store(_peer, cur_nd.nd)
                                 del _old_peer_dict[cur_nd.nd.devname]
+                        if exc_dict:
+                            for key in sorted(exc_dict.keys()):
+                                res_node.error(
+                                    "{} for {}: {}".format(
+                                        key,
+                                        logging_tools.get_plural("netdevice", len(exc_dict[key])),
+                                        ", ".join(sorted(exc_dict[key])))
+                                )
                         if _old_peer_dict.keys():
                             _err_str = "not all peers migrated: {}".format(", ".join(_old_peer_dict.keys()))
                             if strict_mode:

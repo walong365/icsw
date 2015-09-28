@@ -31,6 +31,7 @@ setup(
         "initat.cluster.backbone",
         "initat.cluster.backbone.0800_models",
         "initat.cluster.backbone.models",
+        "initat.cluster.backbone.exceptions",
         "initat.cluster.backbone.migrations",
         "initat.cluster.backbone.serializers",
         "initat.cluster.backbone.management",

@@ -8,7 +8,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseParameterTypeEnum, LicenseEnum, \
     LicenseLockListDeviceService
-from initat.cluster.backbone.models.functions import _check_empty_string
+from initat.cluster.backbone.models.functions import check_empty_string
 from lxml.builder import E  # @UnresolvedImport
 
 
@@ -16,8 +16,8 @@ __all__ = [
     "package_repo",
     "package_search",
     "package_search_result",
-    "package",  # "package_serializer",
-    "package_device_connection",  # "package_device_connection_serializer",
+    "package",
+    "package_device_connection",
     "package_service",
 ]
 
@@ -169,7 +169,7 @@ class package_search(models.Model):
 def package_search_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "search_string")
+        check_empty_string(cur_inst, "search_string")
         if not cur_inst.deleted:
             num_ss = package_search.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(search_string=cur_inst.search_string) & Q(deleted=False)).count()
             if num_ss:
@@ -180,10 +180,14 @@ class package_search_result(models.Model):
     idx = models.AutoField(primary_key=True)
     package_search = models.ForeignKey(package_search)
     name = models.CharField(max_length=128, default="")
-    kind = models.CharField(max_length=16, default="package", choices=(
-        ("package", "Package"),
-        ("patch", "Patch"),
-    ))
+    kind = models.CharField(
+        max_length=16,
+        default="package",
+        choices=(
+            ("package", "Package"),
+            ("patch", "Patch"),
+        )
+    )
     arch = models.CharField(max_length=32, default="")
     # version w. release
     version = models.CharField(max_length=128, default="")
@@ -220,10 +224,14 @@ class package(models.Model):
     idx = models.AutoField(db_column="package_idx", primary_key=True)
     name = models.CharField(max_length=128)
     version = models.CharField(max_length=128)
-    kind = models.CharField(max_length=16, default="package", choices=(
-        ("package", "Package"),
-        ("patch", "Patch"),
-    ))
+    kind = models.CharField(
+        max_length=16,
+        default="package",
+        choices=(
+            ("package", "Package"),
+            ("patch", "Patch"),
+        )
+    )
     always_latest = models.BooleanField(default=False)
     arch = models.CharField(max_length=32, default="")
     # hard to determine ...
@@ -265,7 +273,9 @@ class package(models.Model):
 
     class Meta:
         db_table = u'package'
-        unique_together = (("name", "version", "arch", "kind", "target_repo",),)
+        unique_together = (
+            ("name", "version", "arch", "kind", "target_repo",),
+        )
         app_label = "backbone"
 
 
@@ -289,15 +299,25 @@ class package_device_connection(models.Model):
     package = models.ForeignKey("backbone.package")
     # target state
 
-    target_state = models.CharField(max_length=8, choices=(
-        ("keep", "keep"),
-        ("install", "install"),
-        ("upgrade", "upgrade"),
-        ("erase", "erase")), default="keep")
-    installed = models.CharField(max_length=8, choices=(
-        ("u", "unknown"),
-        ("y", "yes"),
-        ("n", "no")), default="u")
+    target_state = models.CharField(
+        max_length=8,
+        choices=(
+            ("keep", "keep"),
+            ("install", "install"),
+            ("upgrade", "upgrade"),
+            ("erase", "erase")
+        ),
+        default="keep"
+    )
+    installed = models.CharField(
+        max_length=8,
+        choices=(
+            ("u", "unknown"),
+            ("y", "yes"),
+            ("n", "no")
+        ),
+        default="u"
+    )
     force_flag = models.BooleanField(default=False)
     nodeps_flag = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)

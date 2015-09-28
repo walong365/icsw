@@ -26,7 +26,7 @@ from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
 from enum import enum
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
+from initat.cluster.backbone.models.functions import check_empty_string, check_integer
 from collections import defaultdict
 import json
 from initat.cluster.backbone.models.license import LicenseUsage

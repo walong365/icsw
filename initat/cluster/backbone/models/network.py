@@ -1,17 +1,40 @@
-# from lxml.builder import E  # @UnresolvedImport
+# Copyright (C) 2011-2015 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# -*- coding: utf-8 -*-
+#
+
+import logging
+import re
+
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import _check_empty_string, \
-    _check_integer
+from initat.cluster.backbone.models.functions import check_empty_string, \
+    check_integer
 from initat.cluster.backbone.signals import bootsettings_changed
-from initat.tools import ipvx_tools
-import logging
-from initat.tools import logging_tools
-from initat.tools import process_tools
-import re
+from initat.tools import ipvx_tools, logging_tools, process_tools
+
+from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
+    NoMatchingNetworkDeviceTypeFoundError
 
 __all__ = [
     "network",
@@ -56,7 +79,8 @@ class network_device_type(models.Model):
         return u"{} ({} [{:d}])".format(
             self.identifier,
             self.description,
-            self.mac_bytes)
+            self.mac_bytes
+        )
 
 
 @receiver(signals.post_init, sender=network_device_type)
@@ -93,7 +117,7 @@ def network_device_type_pre_save(sender, **kwargs):
                     process_tools.get_except_info()
                 )
             )
-        _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
+        check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
 
 
 class network_type(models.Model):
@@ -105,7 +129,9 @@ class network_type(models.Model):
             ("p", "prod"),
             ("s", "slave"),
             ("o", "other"),
-            ("l", "local")))
+            ("l", "local")
+        )
+    )
     description = models.CharField(max_length=192, blank=False)
     date = models.DateTimeField(auto_now_add=True)
 
@@ -116,7 +142,8 @@ class network_type(models.Model):
     def __unicode__(self):
         return u"{} ({})".format(
             self.description,
-            self.identifier)
+            self.identifier
+        )
 
 
 class _NetworkManager(models.Manager):
@@ -246,7 +273,7 @@ def network_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         # what was the changed attribute
         change_attr = getattr(cur_inst, "change_attribute", None)
-        _check_integer(cur_inst, "penalty", min_val=-100, max_val=100)
+        check_integer(cur_inst, "penalty", min_val=-100, max_val=100)
         nw_type = cur_inst.network_type.identifier
         if cur_inst.rel_master_network.all().count() and nw_type != "p":
             raise ValidationError("slave networks exists, cannot change type")
@@ -392,13 +419,13 @@ def net_ip_pre_save(sender, **kwargs):
                     )
                 cur_inst.network = default_nw
             else:
-                raise ValidationError("no matching network found for '{}'".format(cur_inst.ip))
+                raise NoMatchingNetworkFoundError("no matching network found for '{}'".format(cur_inst.ip))
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:
                 cur_inst.network = match_list[0][1]
             else:
-                raise ValidationError("no maching network found for '{}'".format(cur_inst.ip))
+                raise NoMatchingNetworkFoundError("no maching network found for '{}'".format(cur_inst.ip))
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", "network_id")
         if (cur_inst.ip, cur_inst.network_id) in dev_ips:
             raise ValidationError("Address {} already used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
@@ -595,11 +622,6 @@ class netdevice(models.Model):
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
     pass
-    # if "instance" in kwargs:
-    #    cur_inst = kwargs["instance"]
-    #    for cur_dev in get_model("backbone", "device").objects.filter(Q(bootnetdevice=cur_inst.pk)):
-    #        cur_dev.bootnetdevice = None
-    #        cur_dev.save(update_fields=["bootnetdevice"])
 
 
 @receiver(signals.pre_save, sender=netdevice)
@@ -608,8 +630,8 @@ def netdevice_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if cur_inst.devname:
             cur_inst.devname = cur_inst.devname[:63]
-        _check_empty_string(cur_inst, "devname")
-        _check_integer(cur_inst, "mtu", min_val=0, max_val=65536)
+        check_empty_string(cur_inst, "devname")
+        check_integer(cur_inst, "mtu", min_val=0, max_val=65536)
         all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
         if cur_inst.devname in all_nd_names:
             raise ValidationError("devname '{}' already used".format(cur_inst.devname))
@@ -617,16 +639,16 @@ def netdevice_pre_save(sender, **kwargs):
         if cur_inst.force_network_device_type_match:
             nd_type = cur_inst.find_matching_network_device_type()
             if not nd_type:
-                raise ValidationError("no matching network_device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
+                raise NoMatchingNetworkDeviceTypeFoundError("no matching network_device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
             cur_inst.network_device_type = nd_type
         else:
             if not cur_inst.network_device_type_id:
                 # take the first one which is not used for matching
                 cur_inst.network_device_type = network_device_type.objects.filter(Q(for_matching=False))[0]
         # fix None as vlan_id
-        _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
+        check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
         # penalty
-        _check_integer(cur_inst, "penalty", min_val=1)
+        check_integer(cur_inst, "penalty", min_val=1)
         # mac address matching (if needed)
         if cur_inst.force_network_device_type_match:
             # check mac address
@@ -723,7 +745,8 @@ class netdevice_speed(models.Model):
         return u"{}, {} duplex, {}".format(
             _speed_str,
             "full" if self.full_duplex else "half",
-            "check via ethtool" if self.check_via_ethtool else "no check")
+            "check via ethtool" if self.check_via_ethtool else "no check"
+        )
 
 
 @receiver(signals.pre_save, sender=network_type)
@@ -821,7 +844,7 @@ def peer_information_pre_save(sender, **kwargs):
                         unicode(cur_inst.d_netdevice.device),
                     )
                 )
-        _check_integer(cur_inst, "penalty", min_val=1)
+        check_integer(cur_inst, "penalty", min_val=1)
 
 
 @receiver(signals.post_save, sender=peer_information)

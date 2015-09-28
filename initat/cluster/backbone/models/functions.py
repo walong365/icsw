@@ -39,7 +39,7 @@ system_timezone = pytz.timezone(time.tzname[0])
 
 
 # helper functions
-def _check_integer(inst, attr_name, **kwargs):
+def check_integer(inst, attr_name, **kwargs):
     cur_val = getattr(inst, attr_name)
     min_val, max_val = (
         kwargs.get("min_val", None),
@@ -85,7 +85,7 @@ def _check_integer(inst, attr_name, **kwargs):
         return cur_val
 
 
-def _check_float(inst, attr_name):
+def check_float(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     try:
         cur_val = float(cur_val)
@@ -94,7 +94,7 @@ def _check_float(inst, attr_name):
     setattr(inst, attr_name, cur_val)
 
 
-def _check_empty_string(inst, attr_name, **kwargs):
+def check_empty_string(inst, attr_name, **kwargs):
     _strip = kwargs.get("strip", False)
     cur_val = getattr(inst, attr_name)
     if cur_val is None:
@@ -106,7 +106,7 @@ def _check_empty_string(inst, attr_name, **kwargs):
         setattr(inst, attr_name, cur_val.strip())
 
 
-def _check_non_empty_string(inst, attr_name):
+def check_non_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     if cur_val.strip():
         raise ValidationError("{} must be empty".format(attr_name))
@@ -147,7 +147,13 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
                     if related_objects is not None:
                         rel_obj.ref_list = ref_list
                         related_objects.append(rel_obj)
-                    _lock_list.append("{} -> {} ({:d})".format(rel_field_name, _rel_name, len(ref_list)))
+                    _lock_list.append(
+                        "{} -> {} ({:d})".format(
+                            rel_field_name,
+                            _rel_name,
+                            len(ref_list)
+                        )
+                    )
                     if detail:
                         used_objs.extend(ref_list)
                     else:

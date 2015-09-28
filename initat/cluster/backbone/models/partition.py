@@ -25,7 +25,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import _check_integer
+from initat.cluster.backbone.models.functions import check_integer
 from initat.tools import logging_tools
 import re
 
@@ -111,12 +111,12 @@ class lvm_lv(models.Model):
 def lvm_lv_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
-        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
+        check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
+        check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
         # fs_freq
-        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
+        check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
         # fs_passno
-        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
+        check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
 
 
 class lvm_vg(models.Model):
@@ -193,17 +193,17 @@ def partition_pre_save(sender, **kwargs):
             raise ValidationError("partition number already used")
         cur_inst.pnum = p_num
         # size
-        _check_integer(cur_inst, "size", min_val=0)
-        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
-        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
+        check_integer(cur_inst, "size", min_val=0)
+        check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
+        check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
         # mountpoint
         if cur_inst.partition_fs.need_mountpoint():
             if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
                 raise ValidationError("mountpoint must start with '/'")
         # fs_freq
-        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
+        check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
         # fs_passno
-        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
+        check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
         if cur_inst.partition_fs_id:
             if cur_inst.partition_fs.name == "swap":
                 cur_inst.mountpoint = "swap"

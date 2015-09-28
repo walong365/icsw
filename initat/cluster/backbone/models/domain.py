@@ -10,8 +10,8 @@ from django.core.urlresolvers import reverse
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import _check_empty_string, _check_non_empty_string, \
-    _check_float, get_related_models
+from initat.cluster.backbone.models.functions import check_empty_string, check_non_empty_string, \
+    check_float, get_related_models
 import StringIO
 import os
 from initat.tools import process_tools
@@ -19,7 +19,8 @@ import re
 import uuid
 
 __all__ = [
-    "domain_name_tree", "valid_domain_re",
+    "domain_name_tree",
+    "valid_domain_re",
     "domain_tree_node",
     "category_tree",
     "category",
@@ -35,12 +36,12 @@ TOP_LOCATION_CATEGORY = "/location"
 TOP_CONFIG_CATEGORY = "/config"
 TOP_DEVICE_CATEGORY = "/device"
 
-TOP_LOCATIONS = set([
+TOP_LOCATIONS = {
     TOP_MONITORING_CATEGORY,
     TOP_LOCATION_CATEGORY,
     TOP_CONFIG_CATEGORY,
     TOP_DEVICE_CATEGORY,
-])
+}
 
 # validation regexps
 valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
@@ -215,7 +216,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
                             write_nameserver_config=cur_inst.write_nameserver_config,
                             comment="autocreated intermediate",
                             node_postfix="",
-                            )
+                        )
                         _parent.save()
                     except:
                         raise ValidationError("cannot create parent: {}".format(process_tools.get_except_info()))
@@ -242,7 +243,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
         if not cur_inst.node_postfix and valid_domain_re.match(cur_inst.node_postfix):
             raise ValidationError("illegal characters in node postfix '{}'".format(cur_inst.node_postfix))
         if cur_inst.depth:
-            _check_empty_string(cur_inst, "name")
+            check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
             new_full_name = "{}{}".format(
                 cur_inst.name,
@@ -260,8 +261,8 @@ def domain_tree_node_pre_save(sender, **kwargs):
             if cur_inst.name in used_names:
                 raise ValidationError("name '{}' already used here".format(cur_inst.name))
         else:
-            _check_non_empty_string(cur_inst, "name")
-            _check_non_empty_string(cur_inst, "node_postfix")
+            check_non_empty_string(cur_inst, "name")
+            check_non_empty_string(cur_inst, "node_postfix")
 
 
 @receiver(signals.post_save, sender=domain_tree_node)
@@ -278,7 +279,7 @@ def _migrate_mon_type(cat_tree):
     mon_check_command = apps.get_model("backbone", "mon_check_command")
     mon_check_command_type = apps.get_model("backbone", "mon_check_command_type")
     cur_cats = set(mon_check_command.objects.all().values_list("categories", flat=True))
-    if cur_cats == set([None]):
+    if cur_cats == {None}:
         all_mon_ct = {
             pk: "{}/{}".format(
                 TOP_MONITORING_CATEGORY,
@@ -535,8 +536,8 @@ def category_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.name = cur_inst.name.strip()
-        _check_float(cur_inst, "latitude")
-        _check_float(cur_inst, "longitude")
+        check_float(cur_inst, "latitude")
+        check_float(cur_inst, "longitude")
         if cur_inst.name and cur_inst.name.count("/"):
             parts = [entry for entry in cur_inst.name.split("/") if entry.strip()]
             cur_parent = cur_inst.parent
@@ -549,7 +550,7 @@ def category_pre_save(sender, **kwargs):
                             name=cur_part,
                             parent=cur_parent,
                             comment="autocreated intermediate",
-                            )
+                        )
                         _parent.save()
                     except:
                         raise ValidationError("cannot create parent: {}".format(process_tools.get_except_info()))
@@ -569,7 +570,7 @@ def category_pre_save(sender, **kwargs):
         if cur_inst.depth and not valid_category_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.depth:
-            _check_empty_string(cur_inst, "name")
+            check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
             new_full_name = "{}/{}".format(
                 parent_node.full_name,
@@ -584,7 +585,7 @@ def category_pre_save(sender, **kwargs):
             if cur_inst.name in used_names:
                 raise ValidationError("name '{}' already used here".format(cur_inst.name))
         else:
-            _check_non_empty_string(cur_inst, "name")
+            check_non_empty_string(cur_inst, "name")
 
 
 @receiver(signals.post_save, sender=category)

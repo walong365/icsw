@@ -41,7 +41,7 @@ from initat.tools import config_store
 from django.dispatch import receiver
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
-from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
+from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     virtual_desktop_user_setting_changed
@@ -851,12 +851,12 @@ def user_perms_changed(sender, *args, **kwargs):
 def user_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "uid", min_val=100, max_val=65535)
-        _check_empty_string(cur_inst, "login", strip=True)
-        _check_empty_string(cur_inst, "password")
+        check_integer(cur_inst, "uid", min_val=100, max_val=65535)
+        check_empty_string(cur_inst, "login", strip=True)
+        check_empty_string(cur_inst, "password")
         if not cur_inst.home:
             cur_inst.home = cur_inst.login
-        _check_empty_string(cur_inst, "home", strip=True)
+        check_empty_string(cur_inst, "home", strip=True)
         if cur_inst.aliases is None:
             cur_inst.aliases = ""
         elif cur_inst.aliases in ["None"]:
@@ -996,8 +996,8 @@ class group(models.Model):
 def group_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "groupname")
-        _check_integer(cur_inst, "gid", min_val=100, max_val=65535)
+        check_empty_string(cur_inst, "groupname")
+        check_integer(cur_inst, "gid", min_val=100, max_val=65535)
         if cur_inst.homestart and not cur_inst.homestart.startswith("/"):
             raise ValidationError("homestart has to start with '/'")
         my_pk = cur_inst.pk
@@ -1116,7 +1116,7 @@ class login_history(models.Model):
 def user_variable_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         cur_inst.to_db_format()
 
 
