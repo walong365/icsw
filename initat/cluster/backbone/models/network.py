@@ -28,8 +28,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import _check_empty_string, \
-    _check_integer
+from initat.cluster.backbone.models.functions import check_empty_string, \
+    check_integer
 from initat.cluster.backbone.signals import bootsettings_changed
 from initat.tools import ipvx_tools, logging_tools, process_tools
 
@@ -79,7 +79,8 @@ class network_device_type(models.Model):
         return u"{} ({} [{:d}])".format(
             self.identifier,
             self.description,
-            self.mac_bytes)
+            self.mac_bytes
+        )
 
 
 @receiver(signals.post_init, sender=network_device_type)
@@ -116,7 +117,7 @@ def network_device_type_pre_save(sender, **kwargs):
                     process_tools.get_except_info()
                 )
             )
-        _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
+        check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
 
 
 class network_type(models.Model):
@@ -128,7 +129,9 @@ class network_type(models.Model):
             ("p", "prod"),
             ("s", "slave"),
             ("o", "other"),
-            ("l", "local")))
+            ("l", "local")
+        )
+    )
     description = models.CharField(max_length=192, blank=False)
     date = models.DateTimeField(auto_now_add=True)
 
@@ -139,7 +142,8 @@ class network_type(models.Model):
     def __unicode__(self):
         return u"{} ({})".format(
             self.description,
-            self.identifier)
+            self.identifier
+        )
 
 
 class _NetworkManager(models.Manager):
@@ -269,7 +273,7 @@ def network_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         # what was the changed attribute
         change_attr = getattr(cur_inst, "change_attribute", None)
-        _check_integer(cur_inst, "penalty", min_val=-100, max_val=100)
+        check_integer(cur_inst, "penalty", min_val=-100, max_val=100)
         nw_type = cur_inst.network_type.identifier
         if cur_inst.rel_master_network.all().count() and nw_type != "p":
             raise ValidationError("slave networks exists, cannot change type")
@@ -626,8 +630,8 @@ def netdevice_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if cur_inst.devname:
             cur_inst.devname = cur_inst.devname[:63]
-        _check_empty_string(cur_inst, "devname")
-        _check_integer(cur_inst, "mtu", min_val=0, max_val=65536)
+        check_empty_string(cur_inst, "devname")
+        check_integer(cur_inst, "mtu", min_val=0, max_val=65536)
         all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
         if cur_inst.devname in all_nd_names:
             raise ValidationError("devname '{}' already used".format(cur_inst.devname))
@@ -642,9 +646,9 @@ def netdevice_pre_save(sender, **kwargs):
                 # take the first one which is not used for matching
                 cur_inst.network_device_type = network_device_type.objects.filter(Q(for_matching=False))[0]
         # fix None as vlan_id
-        _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
+        check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
         # penalty
-        _check_integer(cur_inst, "penalty", min_val=1)
+        check_integer(cur_inst, "penalty", min_val=1)
         # mac address matching (if needed)
         if cur_inst.force_network_device_type_match:
             # check mac address
@@ -741,7 +745,8 @@ class netdevice_speed(models.Model):
         return u"{}, {} duplex, {}".format(
             _speed_str,
             "full" if self.full_duplex else "half",
-            "check via ethtool" if self.check_via_ethtool else "no check")
+            "check via ethtool" if self.check_via_ethtool else "no check"
+        )
 
 
 @receiver(signals.pre_save, sender=network_type)
@@ -839,7 +844,7 @@ def peer_information_pre_save(sender, **kwargs):
                         unicode(cur_inst.d_netdevice.device),
                     )
                 )
-        _check_integer(cur_inst, "penalty", min_val=1)
+        check_integer(cur_inst, "penalty", min_val=1)
 
 
 @receiver(signals.post_save, sender=peer_information)

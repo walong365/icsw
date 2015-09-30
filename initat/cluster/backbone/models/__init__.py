@@ -35,8 +35,8 @@ from initat.tools.bgnotify.create import create_bg_job, notify_command
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.tools import config_store
-from initat.cluster.backbone.models.functions import _check_empty_string, \
-    _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
+from initat.cluster.backbone.models.functions import check_empty_string, \
+    check_float, check_integer, check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone, duration, \
     system_timezone
 from lxml import etree  # @UnresolvedImport
@@ -368,7 +368,7 @@ def device_variable_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.device_id:
-            _check_empty_string(cur_inst, "name")
+            check_empty_string(cur_inst, "name")
             if cur_inst.var_type == "?":
                 # guess type
                 _val = cur_inst.val_str
@@ -380,10 +380,10 @@ def device_variable_pre_save(sender, **kwargs):
                     cur_inst.var_type = "s"
                     cur_inst.val_str = _val
             if cur_inst.var_type == "s":
-                _check_empty_string(cur_inst, "val_str")
+                check_empty_string(cur_inst, "val_str")
             if cur_inst.var_type == "i":
-                _check_integer(cur_inst, "val_int")
-            _check_empty_string(cur_inst, "var_type")
+                check_integer(cur_inst, "val_int")
+            check_empty_string(cur_inst, "var_type")
             all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
             if cur_inst.name in all_var_names:
                 raise ValidationError(
@@ -793,7 +793,7 @@ _ICSW_CS = config_store.ConfigStore("icsw.general", quiet=True)
 def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         if cur_inst.name.count("."):
             short_name, dom_name = cur_inst.name.split(".", 1)
             try:
@@ -830,7 +830,7 @@ def device_pre_save(sender, **kwargs):
                 cur_inst.name = cur_inst.name.replace(" ", "_")
         if int(cur_inst.md_cache_mode) == 0:
             cur_inst.md_cache_mode = 1
-        _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
+        check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
         if not cur_inst.uuid:
             cur_inst.uuid = str(uuid.uuid4())
         # check for uniqueness of UUID
@@ -881,7 +881,7 @@ def cd_connection_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         for par_idx in xrange(1, 5):
-            _check_integer(cur_inst, "parameter_i{:d}".format(par_idx), min_val=0, max_val=256)
+            check_integer(cur_inst, "parameter_i{:d}".format(par_idx), min_val=0, max_val=256)
         try:
             cd_connection.objects.get(Q(parent=cur_inst.parent_id) & Q(child=cur_inst.child_id))
         except cd_connection.DoesNotExist:

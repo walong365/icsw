@@ -25,7 +25,7 @@ from django.db import models
 from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
+from initat.cluster.backbone.models.functions import check_empty_string, check_integer
 from collections import defaultdict
 import json
 from initat.cluster.backbone.models.license import LicenseUsage
@@ -198,12 +198,12 @@ class mon_host_cluster(models.Model):
 def mon_host_cluster_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         for attr_name, min_val, max_val in [
             ("warn_value", 0, 128),
             ("error_value", 0, 128)
         ]:
-            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
 class mon_service_cluster(models.Model):
@@ -232,12 +232,12 @@ class mon_service_cluster(models.Model):
 def mon_service_cluster_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
         for attr_name, min_val, max_val in [
             ("warn_value", 0, 128),
             ("error_value", 0, 128)
         ]:
-            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
 class host_check_command(models.Model):
@@ -604,7 +604,7 @@ class mon_contactgroup(models.Model):
 def mon_contactgroup_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
+        check_empty_string(cur_inst, "name")
 
 
 class mon_device_templ(models.Model):
@@ -664,7 +664,7 @@ def mon_device_templ_pre_save(sender, **kwargs):
             ("retry_interval", 1, 60),
             ("freshness_threshold", 10, 24 * 3600 * 365),
         ]:
-            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
 class mon_device_esc_templ(models.Model):
@@ -700,7 +700,7 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
             ("last_notification", 1, 10),
             ("ninterval", 0, 60 * 24 * 7)
         ]:
-            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
 class mon_host_dependency_templ(models.Model):
@@ -751,7 +751,7 @@ class mon_host_dependency_templ(models.Model):
 def mon_host_dependency_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "priority", min_val=-128, max_val=128)
+        check_integer(cur_inst, "priority", min_val=-128, max_val=128)
         if not cur_inst.name.strip():
             raise ValidationError("name must not be empty")
 
@@ -843,7 +843,7 @@ class mon_service_dependency_templ(models.Model):
 def mon_service_dependency_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "priority", min_val=-128, max_val=128)
+        check_integer(cur_inst, "priority", min_val=-128, max_val=128)
         if not cur_inst.name.strip():
             raise ValidationError("name must not be empty")
 
@@ -1043,7 +1043,7 @@ def mon_service_templ_pre_save(sender, **kwargs):
             ("high_flap_threshold", 0, 100),
             ("freshness_threshold", 10, 24 * 3600 * 365),
         ]:
-            _cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            _cur_val = check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
 class mon_service_esc_templ(models.Model):
@@ -1079,7 +1079,7 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             ("last_notification", 1, 10),
             ("ninterval", 0, 60),
         ]:
-            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
 class MonitoringHintEnabledManager(models.Manager):

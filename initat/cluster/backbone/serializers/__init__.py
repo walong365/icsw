@@ -29,8 +29,8 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
-from initat.cluster.backbone.models.functions import _check_empty_string, \
-    _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
+from initat.cluster.backbone.models.functions import check_empty_string, \
+    check_float, check_integer, check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
