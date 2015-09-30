@@ -21,10 +21,8 @@
 #
 """ models for NOCTUA and CORVUS, master file """
 
-from django.apps import apps
-from django.conf import settings
 from django.core.cache import cache
-from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.exceptions import ValidationError
 from django.core.signals import request_finished, request_started
 from django.db import models
 from django.db.models import Q, signals
@@ -39,21 +37,16 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
     check_float, check_integer, check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone, duration, \
     system_timezone
-from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt
-import collections
 import datetime
 import json
 import logging
-import marshal
-import pytz
 import random
-import re
 import time
 import uuid
 
-from initat.tools import ipvx_tools, logging_tools, net_tools, process_tools, server_command
+from initat.tools import logging_tools, net_tools, process_tools
 
 from initat.cluster.backbone.models.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport

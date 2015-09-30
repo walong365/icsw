@@ -26,7 +26,7 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
     group_object_permission, user_permission, user_object_permission, user_quota_setting, \
     group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, virtual_desktop_user_setting, \
-    window_manager
+    window_manager, UserLogEntry
 
 __all__ = [
     "csw_permission_serializer",
@@ -44,6 +44,7 @@ __all__ = [
     "virtual_desktop_user_setting_serializer",
     "virtual_desktop_protocol_serializer",
     "window_manager_serializer",
+    "UserLogEntrySerializer",
 ]
 
 
@@ -190,3 +191,8 @@ class virtual_desktop_protocol_serializer(serializers.ModelSerializer):
 class window_manager_serializer(serializers.ModelSerializer):
     class Meta:
         model = window_manager
+
+
+class UserLogEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserLogEntry

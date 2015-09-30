@@ -35,17 +35,19 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
+from django.utils.encoding import force_text
 from django.apps import apps
 from django.db.models import Q, signals
-from initat.tools import config_store
 from django.dispatch import receiver
+import django.core.serializers
+
+from initat.tools import config_store
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     virtual_desktop_user_setting_changed
-import django.core.serializers
 
 __all__ = [
     "csw_permission",
@@ -69,6 +71,7 @@ __all__ = [
     "virtual_desktop_user_setting",
     "window_manager",
     "login_history",
+    "UserLogEntry",
 ]
 
 
@@ -1331,4 +1334,16 @@ class window_manager(models.Model):
 
     # devices where this is available
     devices = models.ManyToManyField("backbone.device")
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class UserLogEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    user = models.ForeignKey("backbone.user")
+    devices = models.ManyToManyField("backbone.device")
+    sent_via_digest = models.BooleanField(default=False)
+    viewed_via_webfrontend = models.BooleanField(default=False)
+    level = models.ForeignKey("LogLevel")
+    source = models.ForeignKey("LogSource")
+    text = models.CharField(max_length=765, default="")
     date = models.DateTimeField(auto_now_add=True)
