@@ -8,7 +8,7 @@ from django.conf import settings
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backbone', '0860_remove_device_log'),
+        ('backbone', '0859_rmsjobvariable_rms_job_run'),
     ]
 
     operations = [

@@ -1038,6 +1038,42 @@ class DeviceLogEntry(models.Model):
         )
 
 
+class devicelog(models.Model):
+    idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
+    device = models.ForeignKey("device", null=True, blank=True)
+    log_source = models.ForeignKey("log_source", null=True)
+    user = models.ForeignKey("user", null=True)
+    log_status = models.ForeignKey("log_status", null=True)
+    text = models.CharField(max_length=765, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    # @staticmethod
+    # def new_log(cur_dev, log_src, log_stat, text, **kwargs):
+    # if log_src and type(log_src) in [int, long]:
+    #    log_src = log_source_lookup(log_src)
+    # if log_stat and type(log_stat) in [int, long]:
+    #    log_stat = log_status_lookup(log_stat)
+    # cur_log = devicelog.objects.create(
+    #    device=cur_dev,
+    #    log_source=log_src or cluster_log_source,
+    #    user=kwargs.get("user", None),
+    #    log_status=log_stat,
+    #    text=text,
+    # )
+    # return cur_log
+
+    def __unicode__(self):
+        return u"DEPRECATED, {} ({}, {}:{:d})".format(
+            self.text,
+            self.log_source.name,
+            self.log_status.identifier,
+            self.log_status.log_level
+        )
+
+    class Meta:
+        db_table = u'devicelog'
+
+
 @lru_cache()
 def log_source_lookup(identifier, device=None):
     if type(identifier) in [int, long]:
