@@ -219,7 +219,11 @@ class lvm_struct(object):
         }
         self.__lvm_bin_dict = {}
         for bn, bn_opts in lvm_bins.iteritems():
-            path_found = [entry for entry in [os.path.join(name, "{}s".format(bn)) for name in lvm_path] if os.path.isfile(entry)]
+            path_found = [
+                entry for entry in [
+                    os.path.join(name, "{}s".format(bn)) for name in lvm_path
+                ] if os.path.isfile(entry)
+            ]
             if path_found:
                 self.__lvm_bin_dict[bn] = (path_found[0], bn_opts)
 

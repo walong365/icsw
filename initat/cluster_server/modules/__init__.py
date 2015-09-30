@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,8 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.cluster_server.modules import cs_base_class
 import os
+
+from initat.cluster_server.modules import cs_base_class
 from initat.tools import process_tools
 
 imp_dir = os.path.dirname(__file__)
@@ -41,6 +42,7 @@ for mod_name in __all__:
 
 error_log = []
 command_dict = {}
+
 for hm in _new_hm_list:
     try:
         command_dict[hm.__name__] = hm()

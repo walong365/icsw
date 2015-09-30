@@ -39,6 +39,7 @@ from .logwatch.logwatch_parser import Parser as LogwatchParser
 from .cstore.cstore_parser import Parser as CStoreParser
 from .relay.relay_parser import Parser as RelayParser
 from .lse.lse_parser import Parser as LseParser
+from .info.info_parser import Parser as InfoParser
 
 try:
     from .license.license_parser import Parser as LicenseParser
@@ -76,6 +77,7 @@ class ICSWParser(object):
         # LogwatchParser().link(sub_parser)
         for _sp in [
             LseParser,
+            InfoParser,
             ServiceParser,
             LogwatchParser,
             LicenseParser,

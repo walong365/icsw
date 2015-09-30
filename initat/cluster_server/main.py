@@ -29,7 +29,6 @@ from initat.tools import cluster_location
 from initat.tools import configfile
 from initat.tools import process_tools
 from initat.cluster_server.config import global_config
-import sys
 
 from initat.server_version import VERSION_STRING
 
@@ -37,14 +36,6 @@ from initat.server_version import VERSION_STRING
 def run_code(options):
     from initat.cluster_server.server import server_process
     server_process(options).loop()
-
-
-def show_commands():
-    import initat.cluster_server.modules
-    _coms = initat.cluster_server.modules.command_names
-    print("possible commands ({:d}):".format(len(_coms)))
-    for _com in sorted(_coms):
-        print("  {}".format(_com))
 
 
 def main():
@@ -59,13 +50,7 @@ def main():
             (
                 "COMMAND", configfile.str_c_var(
                     "", short_options="c",  # choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True,
-                    help_string="command to execute, for list of all commands use --show-commands"
-                )
-            ),
-            (
-                "SHOW_COMMANDS",
-                configfile.bool_c_var(
-                    False, only_commandline=True, help_string="show all possible commands",
+                    help_string="command to execute",
                 )
             ),
             (
@@ -100,9 +85,6 @@ def main():
     )
     # enable connection debugging
     settings.DEBUG = global_config["DATABASE_DEBUG"]
-    if global_config["SHOW_COMMANDS"]:
-        show_commands()
-        sys.exit(0)
     cluster_location.read_config_from_db(
         global_config,
         "server",

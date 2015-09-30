@@ -18,9 +18,10 @@
 """ load all defined commands """
 
 import os
+import inspect
 
 from initat.tools import process_tools
-
+from initat.host_monitoring.hm_classes import hm_command
 
 __all__ = [
     cur_entry for cur_entry in [
@@ -50,7 +51,13 @@ _new_hm_list.sort(reverse=True)
 for _pri, new_hm_mod in sorted(_new_hm_list, reverse=True):
     new_mod = new_hm_mod.obj
     module_list.append(new_hm_mod)
-    loc_coms = [entry for entry in dir(new_mod) if entry.endswith("_command")]
+    loc_coms = [
+        entry for entry in dir(new_mod) if entry.endswith("_command") and inspect.isclass(
+            getattr(new_mod, entry)
+        ) and issubclass(
+            getattr(new_mod, entry), hm_command
+        )
+    ]
     for loc_com in loc_coms:
         try:
             new_hm_mod.add_command(loc_com, getattr(new_mod, loc_com))

@@ -1,4 +1,28 @@
-# from lxml.builder import E  # @UnresolvedImport
+# Copyright (C) 2011-2015 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# -*- coding: utf-8 -*-
+#
+
+import logging
+import re
+
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -7,11 +31,10 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
 from initat.cluster.backbone.signals import bootsettings_changed
-from initat.tools import ipvx_tools
-import logging
-from initat.tools import logging_tools
-from initat.tools import process_tools
-import re
+from initat.tools import ipvx_tools, logging_tools, process_tools
+
+from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
+    NoMatchingNetworkDeviceTypeFoundError
 
 __all__ = [
     "network",
@@ -392,13 +415,13 @@ def net_ip_pre_save(sender, **kwargs):
                     )
                 cur_inst.network = default_nw
             else:
-                raise ValidationError("no matching network found for '{}'".format(cur_inst.ip))
+                raise NoMatchingNetworkFoundError("no matching network found for '{}'".format(cur_inst.ip))
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:
                 cur_inst.network = match_list[0][1]
             else:
-                raise ValidationError("no maching network found for '{}'".format(cur_inst.ip))
+                raise NoMatchingNetworkFoundError("no maching network found for '{}'".format(cur_inst.ip))
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", "network_id")
         if (cur_inst.ip, cur_inst.network_id) in dev_ips:
             raise ValidationError("Address {} already used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
@@ -595,11 +618,6 @@ class netdevice(models.Model):
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
     pass
-    # if "instance" in kwargs:
-    #    cur_inst = kwargs["instance"]
-    #    for cur_dev in get_model("backbone", "device").objects.filter(Q(bootnetdevice=cur_inst.pk)):
-    #        cur_dev.bootnetdevice = None
-    #        cur_dev.save(update_fields=["bootnetdevice"])
 
 
 @receiver(signals.pre_save, sender=netdevice)
@@ -617,7 +635,7 @@ def netdevice_pre_save(sender, **kwargs):
         if cur_inst.force_network_device_type_match:
             nd_type = cur_inst.find_matching_network_device_type()
             if not nd_type:
-                raise ValidationError("no matching network_device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
+                raise NoMatchingNetworkDeviceTypeFoundError("no matching network_device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
             cur_inst.network_device_type = nd_type
         else:
             if not cur_inst.network_device_type_id:
