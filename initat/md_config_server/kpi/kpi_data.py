@@ -33,7 +33,7 @@ from initat.tools import logging_tools
 import pprint
 
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
-from initat.md_config_server.common import live_socket
+from initat.md_config_server.common import LiveSocket
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject, KpiSet
 
@@ -170,7 +170,7 @@ class KpiData(object):
     def _load_data(self):
 
         try:
-            self.icinga_socket = live_socket.get_icinga_live_socket()
+            self.icinga_socket = LiveSocket.get_icinga_live_socket()
         except IOError as e:
             self.log(u"error when opening icinga socket: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
             raise

@@ -24,7 +24,7 @@ import time
 
 from django.db import connection
 from django.db.models import Q
-from initat.md_config_server.common import live_socket
+from initat.md_config_server.common import LiveSocket
 from initat.cluster.backbone.models import device
 from initat.md_config_server.config import global_config
 
@@ -32,7 +32,7 @@ from initat.tools import logging_tools, process_tools, server_command, \
     threading_tools
 
 
-class status_process(threading_tools.process_obj):
+class StatusProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -60,7 +60,7 @@ class status_process(threading_tools.process_obj):
     def _open(self):
         if self.__socket is None:
             try:
-                self.__socket = live_socket.get_icinga_live_socket()
+                self.__socket = LiveSocket.get_icinga_live_socket()
             except Exception as e:
                 self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket

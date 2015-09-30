@@ -60,7 +60,7 @@ class LiveQuery(object):
         return self
 
 
-class live_socket(object):
+class LiveSocket(object):
     def __init__(self, peer_name):
         self.peer = peer_name
 
@@ -90,6 +90,6 @@ class live_socket(object):
     def get_icinga_live_socket(cls):
         sock_name = "/opt/{}/var/live".format(global_config["MD_TYPE"])
         if os.path.exists(sock_name):
-            return live_socket(sock_name)
+            return LiveSocket(sock_name)
         else:
             raise IOError("socket '{}' does not exist".format(sock_name))

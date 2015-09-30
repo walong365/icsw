@@ -35,7 +35,18 @@ from initat.md_config_server.config import global_config, sync_config
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
 
 
-class syncer_process(threading_tools.process_obj):
+class RemoteSlave(object):
+    def __init__(self, uuid, ip, port):
+        self.ip = ip
+        self.port = port
+        self.conn_str = "tcp://{}:{:d}".format(self.ip, self.port)
+        self.uuid = uuid
+
+    def __unicode__(self):
+        return u"RemoteSlave at {} [{}]".format(self.conn_str, self.uuid)
+
+
+class SyncerProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

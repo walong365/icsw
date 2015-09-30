@@ -34,9 +34,9 @@ from initat.md_config_server import constants
 from initat.md_config_server.build import build_process
 from initat.md_config_server.config import global_config
 from initat.md_config_server.mixins import version_check_mixin
-from initat.md_config_server.status import status_process, live_socket
-from initat.md_config_server.syncer import syncer_process
-from initat.md_config_server.dynconfig import dynconfig_process
+from initat.md_config_server.status import StatusProcess, LiveSocket
+from initat.md_config_server.syncer import SyncerProcess, RemoteSlave
+from initat.md_config_server.dynconfig import DynConfigProcess
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, server_command, \
@@ -79,9 +79,9 @@ class server_process(
             self.__external_cmd_file = None
             self.register_func("external_cmd_file", self._set_external_cmd_file)
 
-            self.add_process(status_process("status"), start=True)
-            self.add_process(syncer_process("syncer"), start=True)
-            self.add_process(dynconfig_process("dynconfig"), start=True)
+            self.add_process(StatusProcess("status"), start=True)
+            self.add_process(SyncerProcess("syncer"), start=True)
+            self.add_process(DynConfigProcess("dynconfig"), start=True)
             self.add_process(icinga_log_reader("icinga_log_reader"), start=True)
             self.add_process(KpiProcess("KpiProcess"), start=True)
             # wait for the processes to start
@@ -99,7 +99,7 @@ class server_process(
         if self.__enable_livestatus:
             if "MD_TYPE" in global_config:
                 sock_name = os.path.join("/opt", global_config["MD_TYPE"], "var", "live")
-                cur_s = live_socket(sock_name)
+                cur_s = LiveSocket(sock_name)
                 try:
                     result = cur_s.hosts.columns("name", "state").call()
                 except:
@@ -374,14 +374,11 @@ class server_process(
 
     def _register_slave(self, *args, **kwargs):
         _src_proc, _src_id, slave_ip, slave_uuid = args
-        conn_str = "tcp://{}:{:d}".format(
-            slave_ip,
-            2004
-        )
-        if conn_str not in self.__slaves:
-            self.log("connecting to slave on {} ({})".format(conn_str, slave_uuid))
-            self.main_socket.connect(conn_str)
-            self.__slaves[conn_str] = slave_uuid
+        if slave_uuid not in self.__slaves:
+            rs = RemoteSlave(slave_uuid, slave_ip, 2004)
+            self.log("connecting to {}".format(unicode(rs)))
+            self.main_socket.connect(rs.conn_str)
+            self.__slaves[slave_uuid] = rs
 
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
@@ -436,9 +433,22 @@ class server_process(
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
-        self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
-        self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-        self.main_socket.send_unicode(srv_com)
+        try:
+            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(srv_com)
+        except:
+            self.log(
+                "cannot send {:d} bytes to {}: {}".format(
+                    len(srv_com),
+                    full_uuid,
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            if full_uuid in self.__slaves:
+                self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
+        else:
+            self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
     def _set_external_cmd_file(self, *args, **kwargs):
         _src_proc, _src_id, ext_name = args
@@ -458,8 +468,8 @@ class server_process(
         self.__slaves = {}
 
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        vector_socket = self.zmq_context.socket(zmq.PUSH)
+        vector_socket.setsockopt(zmq.LINGER, 0)
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
 
