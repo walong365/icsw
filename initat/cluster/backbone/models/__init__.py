@@ -1047,21 +1047,6 @@ class devicelog(models.Model):
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    # @staticmethod
-    # def new_log(cur_dev, log_src, log_stat, text, **kwargs):
-    # if log_src and type(log_src) in [int, long]:
-    #    log_src = log_source_lookup(log_src)
-    # if log_stat and type(log_stat) in [int, long]:
-    #    log_stat = log_status_lookup(log_stat)
-    # cur_log = devicelog.objects.create(
-    #    device=cur_dev,
-    #    log_source=log_src or cluster_log_source,
-    #    user=kwargs.get("user", None),
-    #    log_status=log_stat,
-    #    text=text,
-    # )
-    # return cur_log
-
     def __unicode__(self):
         return u"DEPRECATED, {} ({}, {}:{:d})".format(
             self.text,
