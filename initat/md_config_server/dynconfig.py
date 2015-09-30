@@ -260,7 +260,9 @@ class DynConfigProcess(threading_tools.process_obj):
                         "w": "warn",
                         "c": "crit"
                     }[_key[1]]
-                ): float(_val.attrib[_key]) for _key in ["lc", "uc", "lw", "uw"] if _key in _val.attrib
+                ): float(_val.attrib[_key]) for _key in [
+                    "lc", "uc", "lw", "uw"
+                ] if _key in _val.attrib
             }
             _value = _val.get("value")
             if _val.get("v_type") == "f":
@@ -288,7 +290,9 @@ class DynConfigProcess(threading_tools.process_obj):
             ocsp_lines.append(ocsp_line)
         # experimental: delete all hints with correct m_type
         if len(mon_info) and _used_types:
-            _del_keys = [key for key, value in cur_hints.iteritems() if key not in _present_keys and key[0] in _used_types and not value.persistent]
+            _del_keys = [
+                key for key, value in cur_hints.iteritems() if key not in _present_keys and key[0] in _used_types and not value.persistent
+            ]
             if _del_keys:
                 self.log(
                     "{} / {}: {} to delete".format(
@@ -325,7 +329,10 @@ class DynConfigProcess(threading_tools.process_obj):
                 _errors.append(
                     "{} {} threshold {}".format(
                         "below lower" if _lower else "above upper",
-                        {"w": "warning", "c": "critical"}[s_key[1]],
+                        {
+                            "w": "warning",
+                            "c": "critical"
+                        }[s_key[1]],
                         form_str.format(c_val),
                     )
                 )
