@@ -22,16 +22,13 @@
 """ database definitions for licenses """
 import collections
 import logging
+import operator
 
-# noinspection PyUnresolvedReferences
-from lxml import etree
 from dateutil import relativedelta
-
 from django.db.models import signals, Q, Count
 from django.db import models, transaction, IntegrityError
 from django.dispatch import receiver
 import enum
-import operator
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models.rms import ext_license
@@ -66,16 +63,22 @@ class InitProduct(enum.Enum):
 
 _PRODUCT_FAMILY_MATRIX = collections.OrderedDict(  # ordered dict so we know which is last
     [
-        ("2.5", {
-            InitProduct.CORVUS: u"Corvus hawaiiensis",  # Hawaiikraehe
-            InitProduct.NOCTUA: u"Strigidae occidentalis",  # Fleckenkauz
-            InitProduct.NESTOR: u"Nestor notabilis",  # Kea
-        }),
-        ("3.0", {
-            InitProduct.CORVUS: u"Corvus splendens",  # Glanzkraehe
-            InitProduct.NOCTUA: u"Strigidae rufipes",  # Rostfusskauz
-            InitProduct.NESTOR: u"Nestor meridionalis",  # Kaka (Waldpapagei)
-        })
+        (
+            "2.5",
+            {
+                InitProduct.CORVUS: u"Corvus hawaiiensis",  # Hawaiikraehe
+                InitProduct.NOCTUA: u"Strigidae occidentalis",  # Fleckenkauz
+                InitProduct.NESTOR: u"Nestor notabilis",  # Kea
+            }
+        ),
+        (
+            "3.0",
+            {
+                InitProduct.CORVUS: u"Corvus splendens",  # Glanzkraehe
+                InitProduct.NOCTUA: u"Strigidae rufipes",  # Rostfusskauz
+                InitProduct.NESTOR: u"Nestor meridionalis",  # Kaka (Waldpapagei)
+            }
+        )
     ]
 )
 

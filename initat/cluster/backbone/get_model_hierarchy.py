@@ -72,10 +72,16 @@ def sort_dependencies(app_list):
             else:
                 skipped.append((model, deps))
         if not changed:
-            raise SyntaxError("Can't resolve dependencies for %s in serialized app list." %
-                              ', '.join('%s.%s' % (model._meta.app_label, model._meta.object_name)
-                                        for model, deps in sorted(skipped, key=lambda obj: obj[0].__name__))
-                              )
+            raise SyntaxError(
+                "Can't resolve dependencies for {} in serialized app list.".format(
+                    ', '.join(
+                        '{}.{}'.format(
+                            model._meta.app_label,
+                            model._meta.object_name
+                        ) for model, deps in sorted(skipped, key=lambda obj: obj[0].__name__)
+                    )
+                )
+            )
         model_dependencies = skipped
     return model_list
 

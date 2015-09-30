@@ -998,7 +998,10 @@ class _general(hm_classes.hm_module):
                                                     "fsck": fsck
                                                 }
                                             else:
-                                                self.log("lv_name '{}' not found in lv_dict".format(lv_name), logging_tools.LOG_LEVEL_CRITICAL)
+                                                self.log(
+                                                    "lv_name '{}' not found in lv_dict".format(lv_name),
+                                                    logging_tools.LOG_LEVEL_CRITICAL
+                                                )
                             else:
                                 dev, part_num = part_lut[part]
                                 dev_dict[dev][part_num]["mountpoint"] = mp
@@ -1054,7 +1057,7 @@ class df_command(hm_classes.hm_command):
                 n_dict = self.module._df_int()
             except:
                 srv_com.set_result(
-                    "error reading mtab: %s" % (process_tools.get_except_info()),
+                    "error reading mtab: {}".format(process_tools.get_except_info()),
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
             else:
@@ -1111,7 +1114,12 @@ class df_command(hm_classes.hm_command):
                             "fs": cur_fs,
                         }
                         if cur_fs == "btrfs" and self.module.btrfs_path:
-                            cur_stat, cur_out = commands.getstatusoutput("%s fi df %s" % (self.module.btrfs_path, mapped_info["mountpoint"]))
+                            cur_stat, cur_out = commands.getstatusoutput(
+                                "{} fi df {}".format(
+                                    self.module.btrfs_path,
+                                    mapped_info["mountpoint"]
+                                )
+                            )
                             if not cur_stat:
                                 btrfs_info = {}
                                 for line in cur_out.lower().strip().split("\n"):
@@ -1138,9 +1146,9 @@ class df_command(hm_classes.hm_command):
             for key in ["mapped_disk", "orig_disk"]:
                 if key in result and result[key] != result["part"]:
                     other_keys.append(result[key])
-            part_str = "%s%s" % (
+            part_str = "{}{}".format(
                 result["part"],
-                " (%s)" % (", ".join(other_keys)) if other_keys else "",
+                " ({})".format(", ".join(other_keys)) if other_keys else "",
             )
             if "btrfs_info" in result:
                 # check for btrfs info
@@ -1253,7 +1261,7 @@ class version_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "version is %s" % (srv_com["version"].text)
+            return limits.nag_STATE_OK, "version is {}".format(srv_com["version"].text)
         except:
             return limits.nag_STATE_CRITICAL, "version not found"
 
@@ -2306,7 +2314,7 @@ class cpufreq_info_command(hm_classes.hm_command):
                 )
             )
         if cur_ns.governor:
-            if all_govs == set([cur_ns.governor]):
+            if all_govs == {cur_ns.governor}:
                 ret_f.append("governor is {}".format(cur_ns.governor))
             else:
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
@@ -2325,7 +2333,7 @@ class cpufreq_info_command(hm_classes.hm_command):
                 )
             )
         if cur_ns.driver:
-            if all_drivers == set([cur_ns.driver]):
+            if all_drivers == {cur_ns.driver}:
                 ret_f.append("driver is {}".format(cur_ns.driver))
             else:
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)

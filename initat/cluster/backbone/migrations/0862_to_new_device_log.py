@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-
+from initat.tools import logging_tools
 from django.db import models, migrations
 from django.db.models import Q
 
@@ -29,6 +29,22 @@ def to_new_log_format(apps, schema_editor):
                 device=_ls.device,
             )
             _ls_dict[_ls.pk].save()
+        # create new LogLevels
+        for _id, _level, _name in [
+            ("c", logging_tools.LOG_LEVEL_CRITICAL, "critical"),
+            ("e", logging_tools.LOG_LEVEL_ERROR, "error"),
+            ("w", logging_tools.LOG_LEVEL_WARN, "warning"),
+            ("o", logging_tools.LOG_LEVEL_OK, "ok"),
+        ]:
+            try:
+                _lev = LogLevel.objects.get(Q(identifier=_id))
+            except LogLevel.DoesNotExist:
+                _lev = LogLevel(
+                    identifier=_id,
+                    level=_level,
+                    name=_name,
+                )
+                _lev.save()
         # old to new log_status (Level) dict
         _ll_dict = {}
         for _ls in log_status.objects.all():

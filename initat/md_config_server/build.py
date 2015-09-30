@@ -32,7 +32,7 @@ from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
-    mon_contactgroup, netdevice, network_type, user, config, \
+    mon_contactgroup, netdevice, network_type, user, config, config_catalog, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command
 from initat.md_config_server import special_commands, constants
@@ -328,15 +328,15 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
 
     def _check_for_snmp_container(self):
-        _co = config.objects  # @UndefinedVariable
         try:
-            _container = _co.get(Q(name="SNMP container"))  # @UndefinedVariable
-        except config.DoesNotExist:  # @UndefinedVariable
+            _container = config.objects.get(Q(name="SNMP container"))
+        except config.DoesNotExist:
             self.log("created SNMP container class")
-            _container = _co.create(
+            _container = config.objects.create(
                 name="SNMP container",
                 system_config=True,
                 server_config=True,
+                config_catalog=config_catalog.objects.get(Q(system_catalog=True)),
                 enabled=False,
                 description="container for all SNMP checks",
             )

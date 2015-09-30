@@ -546,7 +546,7 @@ class Client(object):
                         found = True
                         if _client["uuid"] != uid:
                             _client["uuid"] = uid
-                            Client.CS[key] = _client
+                            Client.CS[_key] = _client
                             Client.CS.write()
                         break
                 if not found:

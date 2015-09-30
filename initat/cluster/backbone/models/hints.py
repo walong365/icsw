@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -56,10 +56,15 @@ class config_var_hint(models.Model):
     help_text_html = models.TextField(default="")
     # should the var be created automatically ?
     ac_flag = models.BooleanField(default=False)
-    ac_type = models.CharField(default="str", max_length=64, choices=[
-        ("str", "string var"),
-        ("int", "int var"),
-        ("bool", "bool var")])
+    ac_type = models.CharField(
+        default="str",
+        max_length=64,
+        choices=[
+            ("str", "string var"),
+            ("int", "int var"),
+            ("bool", "bool var")
+        ]
+    )
     ac_description = models.CharField(default="description", max_length=128)
     # will be casted to int, bool
     ac_value = models.TextField(default="")

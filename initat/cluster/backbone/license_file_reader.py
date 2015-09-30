@@ -26,15 +26,14 @@ import glob
 from lxml import etree
 import datetime
 import logging
+
 import M2Crypto
 import pytz
-
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
     LicenseUsage
 from initat.cluster.settings import TIME_ZONE
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.tools import process_tools
-
 
 logger = logging.getLogger("cluster.license_file_reader")
 
@@ -116,8 +115,10 @@ class LicenseFileReader(object):
         license_parameter_check = ""
         if parameters is not None:
             for lic_param_type, value in parameters.iteritems():
-                license_parameter_check +=\
-                    "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(lic_param_type.name, value)
+                license_parameter_check += "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(
+                    lic_param_type.name,
+                    value
+                )
 
         from initat.cluster.backbone.models import device_variable
 
@@ -167,10 +168,14 @@ class LicenseFileReader(object):
             for pack_xml in packages_xml:
                 uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
                 if uuid in package_uuid_map:
-                    map_version = int(package_uuid_map[uuid].findtext("icsw:package-meta/icsw:package-version",
-                                                                      namespaces=ICSW_XML_NS_MAP))
-                    new_version = int(pack_xml.findtext("icsw:package-meta/icsw:package-version",
-                                                        namespaces=ICSW_XML_NS_MAP))
+                    map_version = int(package_uuid_map[uuid].findtext(
+                        "icsw:package-meta/icsw:package-version",
+                        namespaces=ICSW_XML_NS_MAP)
+                    )
+                    new_version = int(pack_xml.findtext(
+                        "icsw:package-meta/icsw:package-version",
+                        namespaces=ICSW_XML_NS_MAP)
+                    )
                     if new_version > map_version:
                         package_uuid_map[uuid] = pack_xml
                 else:
@@ -262,10 +267,13 @@ class LicenseFileReader(object):
         def dict_to_str(d):
             return u";".join(u"{}:{}".format(k, v) for k, v in d.iteritems())
         return u"_".join(
-            (u"{}/{}/{}".format(el.tag,
-                                dict_to_str(el.attrib),
-                                el.text.strip() if el.text is not None else u"")
-             for el in content.iter())
+            (
+                u"{}/{}/{}".format(
+                    el.tag,
+                    dict_to_str(el.attrib),
+                    el.text.strip() if el.text is not None else u""
+                ) for el in content.iter()
+            )
         )
 
     def __repr__(self):
