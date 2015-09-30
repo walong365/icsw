@@ -1038,27 +1038,6 @@ class DeviceLogEntry(models.Model):
         )
 
 
-class devicelog(models.Model):
-    idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
-    device = models.ForeignKey("device", null=True, blank=True)
-    log_source = models.ForeignKey("log_source", null=True)
-    user = models.ForeignKey("user", null=True)
-    log_status = models.ForeignKey("log_status", null=True)
-    text = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return u"DEPRECATED, {} ({}, {}:{:d})".format(
-            self.text,
-            self.log_source.name,
-            self.log_status.identifier,
-            self.log_status.log_level
-        )
-
-    class Meta:
-        db_table = u'devicelog'
-
-
 @lru_cache()
 def log_source_lookup(identifier, device=None):
     if type(identifier) in [int, long]:
@@ -1130,57 +1109,6 @@ class LogLevel(models.Model):
         return "{} ({:d})".format(self.name, self.level)
 
 
-class log_source(models.Model):
-    idx = models.AutoField(db_column="log_source_idx", primary_key=True)
-    # server_type or user
-    identifier = models.CharField(max_length=192)
-    # name (Cluster Server, webfrontend, ...)
-    name = models.CharField(max_length=192)
-    # link to device or None
-    device = models.ForeignKey("device", null=True)
-    # long description
-    description = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-
-    @staticmethod
-    def create_log_source_entry(identifier, name, **kwargs):
-        ls_dev = kwargs.get("device", None)
-        sources = log_source.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
-        if len(sources) > 1:
-            print("Too many log_source_entries present ({}), exiting".format(", ".join([identifier, name])))
-            cur_source = None
-        elif not len(sources):
-            if ls_dev is not None:
-                new_source = log_source(
-                    identifier=identifier,
-                    name=name,
-                    description=u"{} on {}".format(name, unicode(ls_dev)),
-                    device=kwargs["device"]
-                )
-                new_source.save()
-            else:
-                new_source = log_source(
-                    identifier=identifier,
-                    name=name,
-                    description=kwargs.get("description", "{} (id {})".format(name, identifier))
-                )
-                new_source.save()
-            cur_source = new_source
-        else:
-            cur_source = sources[0]
-        return cur_source
-
-    def __unicode__(self):
-        return "{} ({}), {}".format(
-            self.name,
-            self.identifier,
-            self.description)
-
-    class Meta:
-        db_table = u'log_source'
-        verbose_name = u"Log source (old)"
-
-
 class log_status(models.Model):
     idx = models.AutoField(db_column="log_status_idx", primary_key=True)
     identifier = models.CharField(max_length=12, blank=True)
@@ -1208,7 +1136,6 @@ class macbootlog(models.Model):
     entry_type = models.CharField(max_length=96, db_column="type", default="???")
     ip_action = models.CharField(max_length=96, db_column="ip", default="0.0.0.0")
     macaddr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
-    log_source = models.ForeignKey("log_source", null=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def get_created(self):
