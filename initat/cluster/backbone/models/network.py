@@ -31,7 +31,8 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import check_empty_string, \
     check_integer
 from initat.cluster.backbone.signals import bootsettings_changed
-from initat.tools import ipvx_tools, logging_tools, process_tools
+from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
+from initat.constants import GEN_CS_NAME
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
     NoMatchingNetworkDeviceTypeFoundError
@@ -405,7 +406,8 @@ def net_ip_pre_save(sender, **kwargs):
             if len(match_list):
                 cur_inst.network = match_list[0][1]
         if not cur_inst.network_id:
-            if getattr(cur_inst, "create_default_network", False):
+            _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
+            if _cs["create.default.network"]:
                 try:
                     default_nw = network.objects.get(Q(network="0.0.0.0"))
                 except network.DoesNotExist:
@@ -428,16 +430,27 @@ def net_ip_pre_save(sender, **kwargs):
                 raise NoMatchingNetworkFoundError("no maching network found for '{}'".format(cur_inst.ip))
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", "network_id")
         if (cur_inst.ip, cur_inst.network_id) in dev_ips:
-            raise ValidationError("Address {} already used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
+            raise ValidationError(
+                "Address {} already used, device {}".format(
+                    cur_inst.ip,
+                    unicode(cur_inst.netdevice.device)
+                )
+            )
         if cur_inst.network.enforce_unique_ips:
             try:
                 present_ip = net_ip.objects.exclude(Q(pk=cur_inst.pk)).get(Q(network=cur_inst.network) & Q(ip=cur_inst.ip))
             except net_ip.DoesNotExist:
                 pass
             except net_ip.MultipleObjectsReturned:
-                raise ValidationError("IP already used more than once in network (force_unique_ips == True)")
+                raise ValidationError(
+                    "IP already used more than once in network (force_unique_ips == True)"
+                )
             else:
-                raise ValidationError("IP already used for {} (enforce_unique_ips == True)".format(unicode(present_ip.netdevice.device)))
+                raise ValidationError(
+                    "IP already used for {} (enforce_unique_ips == True)".format(
+                        unicode(present_ip.netdevice.device)
+                    )
+                )
 
 
 @receiver(signals.pre_delete, sender=net_ip)
@@ -632,14 +645,26 @@ def netdevice_pre_save(sender, **kwargs):
             cur_inst.devname = cur_inst.devname[:63]
         check_empty_string(cur_inst, "devname")
         check_integer(cur_inst, "mtu", min_val=0, max_val=65536)
-        all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
+        all_nd_names = netdevice.objects.exclude(
+            Q(pk=cur_inst.pk)
+        ).filter(
+            Q(device=cur_inst.device_id)
+        ).values_list(
+            "devname",
+            flat=True
+        )
         if cur_inst.devname in all_nd_names:
             raise ValidationError("devname '{}' already used".format(cur_inst.devname))
         # change network_device_type
         if cur_inst.force_network_device_type_match:
             nd_type = cur_inst.find_matching_network_device_type()
             if not nd_type:
-                raise NoMatchingNetworkDeviceTypeFoundError("no matching network_device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
+                raise NoMatchingNetworkDeviceTypeFoundError(
+                    "no matching network_device_type found for '{}' ({})".format(
+                        unicode(cur_inst),
+                        cur_inst.pk or "new nd"
+                    )
+                )
             cur_inst.network_device_type = nd_type
         else:
             if not cur_inst.network_device_type_id:

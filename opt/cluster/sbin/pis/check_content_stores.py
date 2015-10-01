@@ -27,15 +27,14 @@ import sys
 import stat
 
 from initat.tools import config_store, logging_tools
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
 from django.utils.crypto import get_random_string
 
 LS_OLD_FILE = "/etc/sysconfig/cluster/local_settings.py"
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
-CS_NAME = "icsw.general"
 SATELLITE_FLAG = "/etc/sysconfig/cluster/is_satellite"
 SLAVE_FLAG = "/etc/sysconfig/cluster/is_slave"
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
-DB_CS_NAME = "icsw.db.access"
 
 
 def remove_file(f_name):
@@ -103,9 +102,9 @@ def migrate_uuid():
 
 
 def migrate_db_cf():
-    if not config_store.ConfigStore.exists(DB_CS_NAME) and os.path.exists(DB_FILE):
+    if not config_store.ConfigStore.exists(DB_ACCESS_CS_NAME) and os.path.exists(DB_FILE):
         _src_stat = os.stat(DB_FILE)
-        _cs = config_store.ConfigStore(DB_CS_NAME)
+        _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME)
         sql_dict = {
             key.split("_")[1]: value for key, value in [
                 line.strip().split("=", 1) for line in file(DB_FILE, "r").read().split(
@@ -131,13 +130,13 @@ def migrate_db_cf():
 
 
 def main():
-    if not config_store.ConfigStore.exists(CS_NAME):
+    if not config_store.ConfigStore.exists(GEN_CS_NAME):
         # migrate
-        new_store = config_store.ConfigStore(CS_NAME)
+        new_store = config_store.ConfigStore(GEN_CS_NAME)
         for _key, _value in get_old_local_settings().iteritems():
             new_store[_key] = _value
         new_store.write()
-    new_store = config_store.ConfigStore(CS_NAME)
+    new_store = config_store.ConfigStore(GEN_CS_NAME)
     if "db.auto.update" not in new_store:
         if os.path.exists(AUTO_FLAG):
             new_store["db.auto.update"] = True
@@ -154,6 +153,10 @@ def main():
         remove_file(SLAVE_FLAG)
     else:
         new_store["mode.is.slave"] = False
+    if "create.default.network" not in new_store:
+        new_store["create.default.network"] = True
+    if "create.network.device.types" not in new_store:
+        new_store["create.network.device.types"] = True
     new_store.write()
     remove_file(LS_OLD_FILE)
     migrate_uuid()

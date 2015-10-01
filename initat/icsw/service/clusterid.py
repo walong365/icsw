@@ -23,6 +23,7 @@
 """ return ClusterID if DB is present """
 
 from initat.tools import config_store
+from initat.constants import GEN_CS_NAME
 
 
 def get_cluster_id():
@@ -36,7 +37,7 @@ def get_cluster_id():
         pass
     else:
         from django.db import connection
-        _cs = config_store.ConfigStore("icsw.general", quiet=True)
+        _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
         try:
             _sm = _cs["mode.is.satellite"]
         except:

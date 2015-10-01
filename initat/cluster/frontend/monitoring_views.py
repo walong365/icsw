@@ -25,7 +25,6 @@ import collections
 import datetime
 from lxml import etree
 import base64
-import itertools
 import json
 import logging
 import socket
@@ -34,7 +33,6 @@ import uuid
 from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
-from django.db.models.query import Prefetch
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
@@ -42,6 +40,10 @@ from django.views.generic import View
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from django.core.cache import cache
+
+from lxml.builder import E
+import cairosvg
+
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
@@ -55,12 +57,8 @@ from initat.cluster.backbone.models.status_history import mon_icinga_log_aggrega
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from lxml.builder import E  # @UnresolvedImports
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-import cairosvg
+from initat.tools import logging_tools, process_tools, server_command
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -70,8 +68,7 @@ class setup(permission_required_mixin, View):
 
     def get(self, request):
         return render_me(
-            request, "monitoring_setup.html", {
-                }
+            request, "monitoring_setup.html", {}
         )()
 
 
@@ -80,8 +77,7 @@ class setup_cluster(permission_required_mixin, View):
 
     def get(self, request):
         return render_me(
-            request, "monitoring_setup_cluster.html", {
-                }
+            request, "monitoring_setup_cluster.html", {}
         )()
 
 
@@ -90,8 +86,7 @@ class build_info(permission_required_mixin, View):
 
     def get(self, request):
         return render_me(
-            request, "monitoring_build_info.html", {
-                }
+            request, "monitoring_build_info.html", {}
         )()
 
 
@@ -100,8 +95,7 @@ class setup_escalation(permission_required_mixin, View):
 
     def get(self, request):
         return render_me(
-            request, "monitoring_setup_escalation.html", {
-                }
+            request, "monitoring_setup_escalation.html", {}
         )()
 
 
@@ -140,7 +134,10 @@ class create_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode=request.POST.get("cache_mode", "DYNAMIC"))
+        srv_com = server_command.srv_command(
+            command="rebuild_host_config",
+            cache_mode=request.POST.get("cache_mode", "DYNAMIC")
+        )
         result = contact_server(request, "md-config", srv_com, connection_id="wf_mdrc")
         if result:
             request.xml_response["result"] = E.devices()
@@ -222,7 +219,12 @@ class get_node_config(View):
             pk_list = request.POST.getlist("pks[]")
         srv_com = server_command.srv_command(command="get_host_config")
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="{:d}".format(int(cur_pk)), mode=request.POST["mode"]) for cur_pk in pk_list]
+            *[
+                E.device(
+                    pk="{:d}".format(int(cur_pk)),
+                    mode=request.POST["mode"]
+                ) for cur_pk in pk_list
+            ]
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
@@ -244,7 +246,11 @@ class get_node_status(View):
         srv_com = server_command.srv_command(command="get_node_status")
         # noinspection PyUnresolvedReferences
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="{:d}".format(int(cur_pk))) for cur_pk in pk_list if cur_pk]
+            *[
+                E.device(
+                    pk="{:d}".format(int(cur_pk))
+                ) for cur_pk in pk_list if cur_pk
+            ]
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
@@ -317,16 +323,14 @@ class livestatus(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "monitoring_livestatus.html", {
-                }
+            request, "monitoring_livestatus.html", {}
         )()
 
 
 class StatusHistory(permission_required_mixin, View):
     def get(self, request):
         return render_me(
-            request, "monitoring_status_history.html", {
-            }
+            request, "monitoring_status_history.html", {}
         )()
 
 
@@ -342,8 +346,7 @@ class overview(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "monitoring_overview.html", {
-                }
+            request, "monitoring_overview.html", {}
         )()
 
 
@@ -456,7 +459,7 @@ class create_device(permission_required_mixin, View):
                     name=device_data["device_group"],
                     domain_tree_node=dnt.get_domain_tree_node(""),
                     description="auto created device group {}".format(device_data["device_group"]),
-                    )
+                )
             except:
                 request.xml_response.error(
                     u"cannot create new device group: {}".format(
@@ -525,7 +528,7 @@ class create_device(permission_required_mixin, View):
                         devname="eth0",
                         device=cur_dev,
                         routing=device_data["routing_capable"],
-                        )
+                    )
                     if device_data["peer"]:
                         peer_information.objects.create(
                             s_netdevice=cur_nd,
@@ -540,7 +543,6 @@ class create_device(permission_required_mixin, View):
                         ip=device_data["ip"],
                         domain_tree_node=dnt_node,
                     )
-                    cur_ip.create_default_network = True
                     try:
                         cur_ip.save()
                     except:
@@ -567,8 +569,10 @@ class _device_status_history_util(object):
         start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
 
         try:
-            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID,
-                                                                  start_date__range=(start, end - datetime.timedelta(seconds=1)))
+            return mon_icinga_log_aggregated_timespan.objects.get(
+                duration_type=duration_type.ID,
+                start_date__range=(start, end - datetime.timedelta(seconds=1))
+            )
         except mon_icinga_log_aggregated_timespan.DoesNotExist:
             return None
 

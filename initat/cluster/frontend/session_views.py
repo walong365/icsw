@@ -26,7 +26,6 @@ import base64
 import json
 import logging
 
-from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
 from django.core.exceptions import ValidationError
 from django.http.response import HttpResponse
@@ -37,11 +36,13 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
+import django
+
 from initat.tools import config_store
+from initat.constants import GEN_CS_NAME
 from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper
-import django
 
 logger = logging.getLogger("cluster.setup")
 
@@ -131,7 +132,7 @@ class login_addons(View):
         _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
         _next_url = cache.get(_ckey)
         cache.delete(_ckey)
-        _cs = config_store.ConfigStore("icsw.general", quiet=True)
+        _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
         request.xml_response["login_hints"] = json.dumps(_get_login_hints())
         request.xml_response["login_screen_type"] = _cs["login.screen.type"]
         request.xml_response["django_version"] = ".".join(_vers)
@@ -212,7 +213,7 @@ class sess_login(View):
             ) for login_name, al_list in _all_users.values_list(
                 "login", "aliases"
             ) if al_list is not None and al_list.strip()
-            ]
+        ]
         rev_dict = {}
         all_logins = [login_name for login_name, al_list in all_aliases]
         for pk, al_list in all_aliases:

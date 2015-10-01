@@ -151,7 +151,7 @@ def config_pre_save(sender, **kwargs):
                     raise ValidationError("no System catalog available")
                 else:
                     cur_inst.config_catalog = sys_cc
-            if cur_inst.config_catalog.system_catalog:
+            if not cur_inst.config_catalog.system_catalog:
                 raise ValidationError(
                     "System config '{}' has to reside inside the system config_catalog".format(
                         cur_inst.name,

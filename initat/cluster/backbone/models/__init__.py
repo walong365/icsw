@@ -32,7 +32,8 @@ from django.utils.crypto import get_random_string
 from initat.tools.bgnotify.create import create_bg_job, notify_command
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
-from initat.tools import config_store
+from initat.tools import config_store, logging_tools, net_tools, process_tools
+from initat.constants import GEN_CS_NAME
 from initat.cluster.backbone.models.functions import check_empty_string, \
     check_float, check_integer, check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone, duration, \
@@ -45,8 +46,6 @@ import logging
 import random
 import time
 import uuid
-
-from initat.tools import logging_tools, net_tools, process_tools
 
 from initat.cluster.backbone.models.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
@@ -779,7 +778,7 @@ def _get_top_level_dtn():
         top_level_dn = None
     return top_level_dn
 
-_ICSW_CS = config_store.ConfigStore("icsw.general", quiet=True)
+_ICSW_CS = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
 
 
 @receiver(signals.pre_save, sender=device)

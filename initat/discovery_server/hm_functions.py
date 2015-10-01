@@ -84,7 +84,6 @@ class NDStruct(object):
                 ip=cur_ip,
                 domain_tree_node=self.device.domain_tree_node,
             )
-            new_ip.create_default_network = True
             new_ip.save()
             self.log("added IP {} (network {})".format(new_ip.ip, unicode(new_ip.network)))
 

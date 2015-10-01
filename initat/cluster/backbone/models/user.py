@@ -42,6 +42,7 @@ from django.dispatch import receiver
 import django.core.serializers
 
 from initat.tools import config_store
+from initat.constants import GEN_CS_NAME
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
@@ -875,7 +876,7 @@ def user_pre_save(sender, **kwargs):
         else:
             cur_inst.lm_password = smbpasswd.lmhash(passwd)
             cur_inst.nt_password = smbpasswd.nthash(passwd)
-            pw_gen_1 = config_store.ConfigStore("icsw.general", quiet=True)["password.hash.function"]
+            pw_gen_1 = config_store.ConfigStore(GEN_CS_NAME, quiet=True)["password.hash.function"]
             if pw_gen_1 == "CRYPT":
                 salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in xrange(4))
                 cur_pw = "{}:{}".format(pw_gen_1, crypt.crypt(passwd, salt))

@@ -32,11 +32,11 @@ import sys
 import time
 import subprocess
 
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
 from .utils import generate_password, DirSave, get_icsw_root
 from .connection_tests import test_psql, test_mysql, test_sqlite
 
-CS_NAME = "icsw.general"
 ICSW_ROOT = get_icsw_root()
 CMIG_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone", "migrations")
 MIGRATION_DIRS = [
@@ -87,8 +87,8 @@ else:
     except IndexError:
         DEFAULT_ENGINE = ""
 
-DB_CS_NAME = "icsw.db.access"
-DB_CS_FILENAME = config_store.ConfigStore.build_path(DB_CS_NAME)
+DB_CS_FILENAME = config_store.ConfigStore.build_path(DB_ACCESS_CS_NAME)
+
 # DB_FILE = "/etc/sysconfig/cluster/db.cf"
 
 
@@ -299,7 +299,7 @@ def create_db_cf(opts):
             print("cannot connect, please check your settings and / or the setup of your database:")
             test_obj.show_config()
     # content
-    _cs = config_store.ConfigStore(DB_CS_NAME)
+    _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME)
     for _key in sorted(c_dict):
         if not _key.startswith("_"):
             _cs["db.{}".format(_key.lower())] = c_dict[_key]
@@ -309,7 +309,7 @@ def create_db_cf(opts):
         _cs.write()
     except:
         print("cannot create {}: {}".format(DB_CS_FILENAME, process_tools.get_except_info()))
-        print("content of {}:".format(DB_CS_NAME))
+        print("content of {}:".format(DB_ACCESS_CS_NAME))
         print("")
         print(_cs.show())
         print("")
@@ -637,16 +637,16 @@ def main(args):
 
     # flag: setup db_cf data
     if args.disable_auto_update:
-        cs_store = config_store.ConfigStore(CS_NAME)
+        cs_store = config_store.ConfigStore(GEN_CS_NAME)
         cs_store["db.auto.update"] = False
         cs_store.write()
         print("disabled auto_update_flag")
     elif args.enable_auto_update:
-        cs_store = config_store.ConfigStore(CS_NAME)
+        cs_store = config_store.ConfigStore(GEN_CS_NAME)
         cs_store["db.auto.update"] = True
         cs_store.write()
         print("enabled auto_update_flag")
-    db_exists = config_store.ConfigStore.exists(DB_CS_NAME)
+    db_exists = config_store.ConfigStore.exists(DB_ACCESS_CS_NAME)
     call_create_db = True
     call_migrate_db = False
     call_create_fixtures = False
@@ -668,19 +668,19 @@ def main(args):
                 setup_db_cf = False
             else:
                 if args.ignore_existing:
-                    print("DB access file {} already exists, ignoring ...".format(DB_CS_FILENAME))
+                    print("DB access file {} already exists, ignoring ...".format(DB_ACCESS_CS_NAME))
                     setup_db_cf = True
                 else:
-                    print("DB access file {} already exists, ignoring ...".format(DB_CS_FILENAME))
+                    print("DB access file {} already exists, ignoring ...".format(DB_ACCESS_CS_NAME))
                     call_create_db = False
                     setup_db_cf = False
     else:
         setup_db_cf = True
         if args.use_existing:
-            print("DB access file {} does not exist ...".format(DB_CS_FILENAME))
+            print("DB access file {} does not exist ...".format(DB_ACCESS_CS_NAME))
     if setup_db_cf:
         if not create_db_cf(args):
-            print("Creation of {} not successfull, exiting".format(DB_CS_FILENAME))
+            print("Creation of {} not successfull, exiting".format(DB_ACCESS_CS_NAME))
             sys.exit(3)
     check_db_rights()
     if call_create_db:

@@ -28,6 +28,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from initat.tools import logging_tools, config_store
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
 from initat.icsw.service.instance import InstanceXML
 
 # set unified name
@@ -71,8 +72,8 @@ DATABASES = {
 DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
 
 # config stores
-_cs = config_store.ConfigStore("icsw.general", quiet=True)
-_ps = config_store.ConfigStore("icsw.db.access", quiet=True)
+_cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
+_ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True)
 
 # validate settings
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:

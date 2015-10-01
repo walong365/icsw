@@ -26,8 +26,8 @@ import os
 import time
 import hashlib
 
+from initat.constants import GEN_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
-
 from .service import Service
 from .constants import *
 
@@ -41,7 +41,7 @@ except:
     License = None
 else:
     from django.db import connection, OperationalError, DatabaseError, InterfaceError
-    _cs = config_store.ConfigStore("icsw.general", quiet=True)
+    _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
     try:
         _sm = _cs["mode.is.satellite"]
     except:
