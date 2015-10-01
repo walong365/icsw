@@ -21,7 +21,6 @@
 #
 """ shows all URLS """
 
-import functools
 import re
 from optparse import make_option
 
@@ -110,7 +109,7 @@ class Command(BaseCommand):
                 if options.get('traceback', None):
                     import traceback
                     traceback.print_exc()
-                print(style.ERROR("Error occurred while trying to load %s: %s" % (settings_mod.ROOT_URLCONF, str(e))))
+                print("Error occurred while trying to load %s: %s" % (settings_mod.ROOT_URLCONF, str(e)))
                 continue
 
             view_functions = extract_views_from_urlpatterns(urlconf.urlpatterns)

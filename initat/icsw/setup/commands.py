@@ -33,7 +33,6 @@ import time
 import subprocess
 
 from initat.tools import logging_tools, process_tools, config_store
-
 from .utils import generate_password, DirSave, get_icsw_root
 from .connection_tests import test_psql, test_mysql, test_sqlite
 
@@ -149,6 +148,7 @@ def _input(in_str, default, **kwargs):
         print("possible choices for {}: {}".format(in_str, _choice_str))
     if len(_choices) == 1:
         return _choices[0]
+    _cur_inp = None
     while True:
         try:
             _cur_inp = raw_input(
@@ -300,9 +300,9 @@ def create_db_cf(opts):
             test_obj.show_config()
     # content
     _cs = config_store.ConfigStore(DB_CS_NAME)
-    for key in sorted(c_dict):
-        if not key.startswith("_"):
-            _cs["db.{}".format(key.lower())] = c_dict[key]
+    for _key in sorted(c_dict):
+        if not _key.startswith("_"):
+            _cs["db.{}".format(_key.lower())] = c_dict[_key]
     _cs.set_type("db.passwd", "password")
     print("The file {} should be readable for root and the uwsgi processes".format(DB_CS_FILENAME))
     try:
@@ -579,7 +579,12 @@ def _check_dirs():
         if not os.path.isdir(_dir):
             _missing_dirs.append(_dir)
     if _missing_dirs:
-        print("{} missing: {}".format(logging_tools.get_plural("directory", len(_missing_dirs)), ", ".join(sorted(_missing_dirs))))
+        print(
+            "{} missing: {}".format(
+                logging_tools.get_plural("directory", len(_missing_dirs)),
+                ", ".join(sorted(_missing_dirs))
+            )
+        )
         sys.exit(6)
 
 

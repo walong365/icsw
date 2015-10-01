@@ -143,7 +143,7 @@ else:
 if not os.path.isdir(STATIC_ROOT_DEBUG):
     try:
         os.makedirs(STATIC_ROOT_DEBUG)
-    except:
+    except IOError:
         pass
 
 # use X-Forwarded-Host header
@@ -437,7 +437,15 @@ SSI_ROOTS = []
 SSI_FILES = []
 SSI_ROOT_DICT = {}
 for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
-    _SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", _local_ssi_root, "static", "icsw"))
+    _SSI_ROOT = os.path.normpath(
+        os.path.join(
+            __file__,
+            "..",
+            _local_ssi_root,
+            "static",
+            "icsw"
+        )
+    )
     SSI_ROOT_DICT[_local_ssi_root] = _SSI_ROOT
     # print _SSI_ROOT
     if os.path.exists(_SSI_ROOT):

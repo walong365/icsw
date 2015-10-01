@@ -51,9 +51,6 @@ class tree_node(object):
                 self.sub_nodes[last_part] = tree_node(last_part, depth=self.depth + 1)
             return self.sub_nodes[last_part].feed_name(".".join(name_parts[:-1]), cur_net)
 
-    def show_tree(self):
-        return "\n".join(["{}{}".format("    " * self.depth, unicode(self))] + [value.show_tree() for _key, value in self.sub_nodes.iteritems()])
-
     def create_db_entries(self, top_node=None):
         full_name = self.name
         if top_node and top_node.name:
@@ -79,9 +76,6 @@ class tree_node(object):
         cur_db.save()
         self.db_obj = cur_db
         [value.create_db_entries(top_node=self) for value in self.sub_nodes.itervalues()]
-
-    def __unicode__(self):
-        return "{} (PF '{}', {:d})".format(self.name or "TOP NODE", self.postfix, self.depth)
 
 
 class Command(BaseCommand):
