@@ -19,22 +19,22 @@ if DB_DEBUG:
 
 from threading import local
 
-_thread_local = local()
+thread_local_obj = local()
 
 
 class thread_local_middleware(object):
     def process_request(self, request):
-        _thread_local.request = request
-        _thread_local.test = "test"
-        _thread_local.user = getattr(request, "user", None)
+        thread_local_obj.request = request
+        thread_local_obj.test = "test"
+        thread_local_obj.user = getattr(request, "user", None)
 
     @property
     def user(self):
-        return getattr(_thread_local, "user", None)
+        return getattr(thread_local_obj, "user", None)
 
     @property
     def request(self):
-        return getattr(_thread_local, "request", None)
+        return getattr(thread_local_obj, "request", None)
 
 REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
 

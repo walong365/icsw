@@ -1175,9 +1175,12 @@
                 </div>
                 <div class="form-group">
                     <div id="div_id_dhcp_write" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-9"><label for="id_dhcp_write"><input class="checkboxinput checkbox" id="id_dhcp_write" name="dhcp_write" ng-model="_edit_obj.dhcp_write" type="checkbox"></input>
-                            write DHCP address (when valid)
-                        </label></div>
+                        <div class="controls col-lg-offset-0 col-sm-9">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="_edit_obj.dhcp_write" type="checkbox"></input>
+                                write DHCP address (when valid)
+                            </label>
+                        </div>
                     </div>
                 </div>
             </fieldset>
@@ -4041,52 +4044,6 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="network.device.type.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Network device type</h2>
-        <fieldset>
-            <legend>Base data</legend>
-            <div id="div_id_identifier" class="form-group  ng-class:form_error('identifier')">
-                <label for="id_identifier" class="control-label col-sm-3 requiredField">
-                    Identifier<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_identifier" maxlength="48" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_description" class="form-group  ng-class:form_error('description')">
-                <label for="id_description" class="control-label col-sm-3 requiredField">
-                    Description<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_name_re" class="form-group  ng-class:form_error('name_re')">
-                <label for="id_name_re" class="control-label col-sm-3 requiredField">
-                    Name re<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name_re" maxlength="128" name="name_re" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$"></input></div>
-            </div>
-            <div id="div_id_mac_bytes" class="form-group">
-                <label for="id_mac_bytes" class="control-label col-sm-3 requiredField">
-                    Mac bytes<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <input class="numberinput form-control" id="id_mac_bytes" max="24" min="6" name="mac_bytes" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"></input>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Flags</legend>
-            <div class="form-group">
-                <div id="div_id_allow_virtual_interfaces" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_allow_virtual_interfaces"><input checked="checked" class="checkboxinput checkbox" id="id_allow_virtual_interfaces" name="allow_virtual_interfaces" ng-model="edit_obj.allow_virtual_interfaces" type="checkbox"></input>
-                        Allow virtual interfaces
-                    </label></div>
-                </div>
-            </div>
-        </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
-    </form>
-</script>
-
 <script type="text/ng-template" id="group.detail.form">
     <form id="form" class="form-horizontal" ng-submit="group_edit.modify(this)" name="form">
         <h2>Details for group '{{ _edit_obj.groupname }}'</h2>
@@ -5280,34 +5237,38 @@
             <tab heading="Settings">
                 <fieldset>
                     <legend>Basic settings</legend>
-                    <div id="div_id_name" class="form-group  ng-class:form_error('name')">
-                        <label for="id_name" class="control-label col-sm-3 requiredField">
-                            Name<span class="asteriskField">*</span></label>
-
+                    <div class="form-group  ng-class:form_error('name')">
+                        <label class="control-label col-sm-3 requiredField">
+                            Name<span class="asteriskField">*</span>
+                        </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"></input>
+                            <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"/>
                         </div>
                     </div>
-                    <div id="div_id_description" class="form-group">
-                        <label for="id_description" class="control-label col-sm-3 requiredField">
-                            Description<span class="asteriskField">*</span></label>
-
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text"></input></div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3 requiredField">
+                            Description<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text"/>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="control-label col-sm-3">Value</label>
-
                         <div class="controls col-sm-7">
-                            <input type="button" ng-class='edit_obj.value &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm"' ng-click="edit_obj.value = 1 - edit_obj.value" ng-value='edit_obj.value &amp;&amp; "true" || "false"'></input>
+                            <input type="button" ng-class='edit_obj.value &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm"' ng-click="edit_obj.value = 1 - edit_obj.value" ng-value='edit_obj.value &amp;&amp; "true" || "false"'/>
                         </div>
                     </div>
                 </fieldset>
                 <div ng-bind-html="show_config_var_help()"></div>
             </tab>
             <tab heading="History">
-                <icsw-history-model-history style="config" model="'config_bool'" object-id="edit_obj.idx"></icsw-history-model-history>
+                <icsw-history-model-history style="config" model="'config_bool'" object-id="edit_obj.idx">
+                </icsw-history-model-history>
             </tab>
         </tabset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
+        <div class="form-actions">
+            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
+        </div>
     </form>
 </script>

@@ -28,7 +28,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.middleware import thread_local_middleware, \
-    _thread_local
+    thread_local_obj
 from initat.cluster.backbone.models.functions import check_empty_string, \
     check_float, check_integer, check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone

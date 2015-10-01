@@ -130,7 +130,7 @@ boot_system () {
     if [ -L /$basedir/sbin/init ] ; then
         init_bin=$(readlink -f /$basedir/sbin/init)
         # strip basedir
-        init_bin=${init_bin:${#basedir}}
+        init_bin=${init_bin:$((${#basedir} + 1))}
     else
         init_bin=/sbin/init
     fi

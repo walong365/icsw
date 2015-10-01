@@ -31,7 +31,7 @@ from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
 from initat.tools.bgnotify.create import create_bg_job, notify_command
 from initat.cluster.backbone.middleware import thread_local_middleware, \
-    _thread_local
+    thread_local_obj
 from initat.tools import config_store, logging_tools, net_tools, process_tools
 from initat.constants import GEN_CS_NAME
 from initat.cluster.backbone.models.functions import check_empty_string, \
@@ -73,32 +73,18 @@ import initat.cluster.backbone.models.model_history
 logger = logging.getLogger(__name__)
 
 
-class cs_timer(object):
-    def __init__(self):
-        self.start_time = time.time()
-
-    def __call__(self, what):
-        cur_time = time.time()
-        log_str = "{} in {}".format(
-            what,
-            logging_tools.get_diff_time_str(cur_time - self.start_time)
-        )
-        self.start_time = cur_time
-        return log_str
-
-
 @receiver(request_started)
 def bg_req_started(*args, **kwargs):
     # init number of background jobs created
-    _thread_local.num_bg_jobs = 0
+    thread_local_obj.num_bg_jobs = 0
 
 
 @receiver(request_finished)
 def bg_req_finished(*args, **kwargs):
     # check number of background jobs and signal localhost
-    if getattr(_thread_local, "num_bg_jobs", 0):
-        _thread_local.num_bg_jobs = 0
-        _signal_localhost()
+    if getattr(thread_local_obj, "num_bg_jobs", 0):
+        thread_local_obj.num_bg_jobs = 0
+        signal_localhost()
 
 
 @receiver(user_changed)
@@ -151,26 +137,22 @@ def _insert_bg_job(cmd, cause, obj):
     if _local_pk and thread_local_middleware().user and isinstance(thread_local_middleware().user, user):
         create_bg_job(_local_pk, thread_local_middleware().user, cmd, cause, obj)
         # init if not already done
-        if not hasattr(_thread_local, "num_bg_jobs"):
-            _thread_local.num_bg_jobs = 1
+        if not hasattr(thread_local_obj, "num_bg_jobs"):
+            thread_local_obj.num_bg_jobs = 1
         else:
-            _thread_local.num_bg_jobs += 1
+            thread_local_obj.num_bg_jobs += 1
     else:
         if not _local_pk:
             logger.error("cannot identify local device")
 
 
-def _signal_localhost():
+def signal_localhost():
     # signal clusterserver running on localhost
     _sender = net_tools.zmq_connection("wf_server_notify")
     # only send no receive
     _sender.add_connection("tcp://localhost:8004", notify_command(), multi=True)
     # close connection / terminate context
     _sender.close()
-
-
-def boot_uuid(cur_uuid):
-    return "{}-boot".format(cur_uuid[:-5])
 
 
 class home_export_list(object):
@@ -402,7 +384,7 @@ class device_config(models.Model):
 
 
 @receiver(signals.post_save, sender=device_config)
-def _device_config_post_save(sender, instance, raw, **kwargs):
+def device_config_post_save(sender, instance, raw, **kwargs):
     if not raw:
         log_usage_data = collections.defaultdict(lambda: [])
 
@@ -616,7 +598,7 @@ class device(models.Model):
             return "---"
 
     def get_boot_uuid(self):
-        return boot_uuid(self.uuid)
+        return "{}-boot".format(self.uuid[:-5])
 
     def add_log_entry(self, **kwargs):
         return DeviceLogEntry.new(device=self, **kwargs)  # source=log_src, levlog_stat, text, **kwargs)
@@ -624,8 +606,8 @@ class device(models.Model):
     def get_simple_xml(self):
         return E.device(
             unicode(self),
-            pk="%d" % (self.pk),
-            key="dev__%d" % (self.pk),
+            pk="{:d}".format(self.pk),
+            key="dev__{:d}".format(self.pk),
             name=self.name
         )
 
@@ -778,8 +760,6 @@ def _get_top_level_dtn():
         top_level_dn = None
     return top_level_dn
 
-_ICSW_CS = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
-
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -791,8 +771,9 @@ def device_pre_save(sender, **kwargs):
             try:
                 cur_dnt = domain_tree_node.objects.get(Q(full_name=dom_name))
             except domain_tree_node.DoesNotExist:
+                _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
                 # create new domain
-                if _ICSW_CS["auto.create.new.domains"]:
+                if _cs["auto.create.new.domains"]:
                     cur_inst.domain_tree_node = domain_name_tree().add_domain(dom_name)
                     cur_inst.name = short_name
                 else:
@@ -813,7 +794,6 @@ def device_pre_save(sender, **kwargs):
                         else:
                             # no meta device (i am the new meta device, ignore)
                             pass
-            # raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
             # check if we can simple fix it
             if not valid_domain_re.match(cur_inst.name.replace(" ", "_")):
