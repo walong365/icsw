@@ -248,12 +248,13 @@ class network(models.Model):
     @staticmethod
     def get_unique_identifier():
         _all_ids = network.objects.all().values_list("identifier", flat=True)
-        gen_idx = 1
+        gen_idx = 0
         while True:
-            if "autogen{:d}".format(gen_idx) not in _all_ids:
-                break
             gen_idx += 1
-        return "autogen{:d}".format(gen_idx)
+            _name = "autogen{:d}".format(gen_idx)
+            if _name not in _all_ids:
+                break
+        return _name
 
     def get_identifier(self):
         return self.network_type.identifier
@@ -275,7 +276,11 @@ class network(models.Model):
             self.network_type.get_identifier_display(),
             self.identifier,
             logging_tools.get_plural("slave network", len(all_slaves)),
-            ": {}".format([cur_slave.identifier for cur_slave in all_slaves]) if all_slaves else "",
+            ": {}".format(
+                [
+                    cur_slave.identifier for cur_slave in all_slaves
+                ]
+            ) if all_slaves else "",
         )
         return log_str
 
@@ -458,7 +463,14 @@ def net_ip_pre_save(sender, **kwargs):
                 cur_inst.network = match_list[0][1]
             else:
                 raise NoMatchingNetworkFoundError("nothing found for '{}'".format(cur_inst.ip))
-        dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", "network_id")
+        dev_ips = net_ip.objects.exclude(
+            Q(pk=cur_inst.pk)
+        ).filter(
+            Q(netdevice__device=cur_inst.netdevice.device)
+        ).values_list(
+            "ip",
+            "network_id"
+        )
         if (cur_inst.ip, cur_inst.network_id) in dev_ips:
             raise ValidationError(
                 "Address {} already used, device {}".format(
@@ -717,8 +729,18 @@ def netdevice_pre_save(sender, **kwargs):
             if cur_inst.fake_macaddr:
                 cur_inst.fake_macaddr = cur_inst.fake_macaddr.replace("-", ":").lower()
             dummy_mac, mac_re_str = (
-                ":".join(["00"] * cur_inst.network_device_type.mac_bytes),
-                "^{}$".format(":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes)),
+                ":".join(
+                    [
+                        "00"
+                    ] * cur_inst.network_device_type.mac_bytes
+                ),
+                "^{}$".format(
+                    ":".join(
+                        [
+                            "[0-9a-f]{2}"
+                        ] * cur_inst.network_device_type.mac_bytes
+                    )
+                ),
             )
             mac_re = re.compile(mac_re_str)
             # set empty if not set

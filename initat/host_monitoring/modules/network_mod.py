@@ -1233,12 +1233,15 @@ class net_command(hm_classes.hm_command):
 
     def _check_speed(self, dev_name, cur_ns, dev_str, add_oks, add_errors, ret_state):
         str_prefix = "{}: ".format(dev_name) if dev_name else ""
-        target_speed = self._parse_speed_str(cur_ns.speed)
-        if dev_str != -1:
-            ret_state = self._compare_speed(str_prefix, add_oks, add_errors, ret_state, target_speed, dev_str)
+        if cur_ns.speed:
+            target_speed = self._parse_speed_str(cur_ns.speed)
+            if dev_str != -1:
+                ret_state = self._compare_speed(str_prefix, add_oks, add_errors, ret_state, target_speed, dev_str)
+            else:
+                add_errors.append("{}Cannot check target_speed: no ethtool information".format(str_prefix))
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         else:
-            add_errors.append("{}Cannot check target_speed: no ethtool information".format(str_prefix))
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = limits.nag_STATE_OK
         return ret_state
 
     def _compare_speed(self, str_prefix, add_oks, add_errors, ret_state, target_speed, dev_speed):
@@ -1257,25 +1260,28 @@ class net_command(hm_classes.hm_command):
 
     def _check_duplex(self, dev_name, cur_ns, duplex_str, add_oks, add_errors, ret_state):
         str_prefix = "{}: ".format(dev_name) if dev_name else ""
-        if duplex_str is not None:
-            ethtool_duplex = self._parse_duplex_str(duplex_str)
-            target_duplex = self._parse_duplex_str(cur_ns.duplex)
-            if target_duplex == ethtool_duplex:
-                add_oks.append("{}duplex is {}".format(str_prefix, target_duplex))
+        if cur_ns.duplex:
+            if duplex_str is not None:
+                ethtool_duplex = self._parse_duplex_str(duplex_str)
+                target_duplex = self._parse_duplex_str(cur_ns.duplex)
+                if target_duplex == ethtool_duplex:
+                    add_oks.append("{}duplex is {}".format(str_prefix, target_duplex))
+                else:
+                    add_errors.append(
+                        "{}duplex differs: {} (target) != {} (measured)".format(
+                            str_prefix,
+                            target_duplex,
+                            ethtool_duplex
+                        )
+                    )
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
                 add_errors.append(
-                    "{}duplex differs: {} (target) != {} (measured)".format(
-                        str_prefix,
-                        target_duplex,
-                        ethtool_duplex
-                    )
+                    "{}Cannot check duplex mode: not present in ethtool information".format(str_prefix)
                 )
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         else:
-            add_errors.append(
-                "{}Cannot check duplex mode: not present in ethtool information".format(str_prefix)
-            )
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = limits.nag_STATE_OK
         return ret_state
 
     def interpret_old(self, result, parsed_coms):
