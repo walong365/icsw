@@ -557,6 +557,7 @@ class netdevice(models.Model):
     fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True, default="")
     network_device_type = models.ForeignKey("backbone.network_device_type")
     description = models.CharField(max_length=765, blank=True)
+    # true for bridge master
     is_bridge = models.BooleanField(default=False)
     # true for bond master
     is_bond = models.BooleanField(default=False)
@@ -609,6 +610,7 @@ class netdevice(models.Model):
             network_device_type=self.network_device_type,
             description=self.description,
             is_bridge=self.is_bridge,
+            is_bond=self.is_bond,
             bridge_name=self.bridge_name,
             vlan_id=self.vlan_id,
             enabled=self.enabled,

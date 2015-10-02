@@ -185,6 +185,23 @@ angular.module(
         $scope.scan_mixin.template = "device.network.scan.form"
         $scope.scan_mixin.cssClass = "modal-tall"
 
+        $scope.ethtool_autoneg = [
+            {"id": 0, "option": "default"},
+            {"id": 1, "option": "on"},
+            {"id": 2, "option": "off"},
+        ]
+        $scope.ethtool_duplex = [
+            {"id": 0, "option": "default"},
+            {"id": 1, "option": "on"},
+            {"id": 2, "option": "off"},
+        ]
+        $scope.ethtool_speed = [
+            {"id": 0, "option": "default"},
+            {"id": 1, "option": "10 MBit"},
+            {"id": 2, "option": "100 MBit"},
+            {"id": 3, "option": "1 GBit"},
+            {"id": 4, "option": "10 GBit"},
+        ]
         $scope.devsel_list = []
         $scope.devices = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -1267,6 +1284,11 @@ angular.module(
                 return (entry for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
             else
                 return false
+        autorange_set : (edit_obj) ->
+            if edit_obj.start_range == "0.0.0.0" and edit_obj.end_range == "0.0.0.0"
+                return false
+            else
+                return true
         has_master_network : (edit_obj) ->
             return if edit_obj.master_network then true else false
         network_or_netmask_blur : (edit_obj) ->
