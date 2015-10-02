@@ -264,10 +264,28 @@ angular.module(
                 return "slave (" + $scope.nd_lut[nd.bridge_device].devname + ")"
             else
                 return ""
+        $scope.get_bond_info = (nd) ->
+            dev = $scope.dev_lut[nd.device]
+            if nd.is_bond
+                slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx)
+                if slaves.length
+                    return "master" + " (" + slaves.join(", ") + ")"
+                else
+                    return "master"
+            else if nd.bond_master
+                return "slave (" + $scope.nd_lut[nd.bond_master].devname + ")"
+            else
+                return ""
         $scope.has_bridge_slaves = (nd) ->
             dev = $scope.dev_lut[nd.device]
             if nd.is_bridge
                 return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).length then true else false
+            else
+                return false
+        $scope.has_bond_slaves = (nd) ->
+            dev = $scope.dev_lut[nd.device]
+            if nd.is_bond
+                return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx).length then true else false
             else
                 return false
         $scope.get_netdevice_name = (nd) ->
@@ -494,10 +512,13 @@ angular.module(
             $scope.build_luts()
         $scope.get_vlan_masters = (cur_nd) ->
             _cd = $scope.dev_lut[cur_nd.device]
-            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge)
+            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge and not entry.is_bond)
         $scope.get_bridge_masters = (cur_nd) ->
             _cd = $scope.dev_lut[cur_nd.device]
             return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bridge)
+        $scope.get_bond_masters = (cur_nd) ->
+            _cd = $scope.dev_lut[cur_nd.device]
+            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bond)
         $scope.create_netip_dev = (obj, event) ->
             $scope._current_dev = obj
             $scope.netip_edit.create_list = undefined

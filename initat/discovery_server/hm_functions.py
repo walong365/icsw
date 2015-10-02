@@ -46,11 +46,23 @@ class NDStruct(object):
         NDStruct.dict[self.dev_name] = self
 
     @staticmethod
-    def setup(cur_inst, device, default_nds):
+    def setup(cur_inst, device, default_nds, bond_dict):
         NDStruct.cur_inst = cur_inst
         NDStruct.device = device
         NDStruct.default_nds = default_nds
+        NDStruct.bond_dict = bond_dict
         NDStruct.dict = {}
+
+    @staticmethod
+    def handle_bonds():
+        for _master_name, _struct in NDStruct.bond_dict.iteritems():
+            _master = NDStruct.dict[_master_name]
+            _master.nd.is_bond = True
+            _master.nd.save(update_fields=["is_bond"])
+            for _slave_name in _struct["slaves"]:
+                _slave = NDStruct.dict[_slave_name]
+                _slave.nd.bond_master = _master.nd
+                _slave.nd.save(update_fields=["bond_master"])
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         NDStruct.cur_inst.log("[nd {}] {}".format(self.dev_name, what), log_level)
@@ -479,7 +491,18 @@ class HostMonitoringMixin(object):
                         exc_dict = {}
                         _all_devs = set(networks)
                         _br_devs = set(bridges)
-                        NDStruct.setup(self, target_dev, default_nds)
+                        # build bond dict
+                        bond_dict = {}
+                        for dev_name in _all_devs:
+                            _struct = networks[dev_name]
+                            if "MASTER" in _struct["flags"]:
+                                bond_dict[dev_name] = {"slaves": []}
+                        for dev_name in _all_devs:
+                            _struct = networks[dev_name]
+                            if "SLAVE" in _struct["flags"]:
+                                master_name = _struct["features"]["master"]
+                                bond_dict[master_name]["slaves"].append(dev_name)
+                        NDStruct.setup(self, target_dev, default_nds, bond_dict)
                         for dev_name in sorted(list(_all_devs & _br_devs)) + sorted(list(_all_devs - _br_devs)):
                             if any([dev_name.startswith(_ignore_pf) for _ignore_pf in IGNORE_LIST]):
                                 self.log("ignoring device {}".format(dev_name))
@@ -511,6 +534,8 @@ class HostMonitoringMixin(object):
                                 for _peer in _old_peer_dict[cur_nd.nd.devname]:
                                     _new_peer = peer_information.create_from_store(_peer, cur_nd.nd)
                                 del _old_peer_dict[cur_nd.nd.devname]
+                        if all_ok:
+                            NDStruct.handle_bonds()
                         if exc_dict:
                             for key in sorted(exc_dict.keys()):
                                 res_node.error(
