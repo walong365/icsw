@@ -22,6 +22,7 @@ setup(
         "initat.icsw.relay",
         "initat.icsw.image",
         "initat.icsw.job",
+        "initat.icsw.collectd",
         "initat.tools",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",
@@ -111,8 +112,6 @@ setup(
                 "opt/cluster/bin/license_server_tool.py",
                 # set passive checkresult
                 "opt/cluster/bin/set_passive_checkresult.py",
-                # cdfetch for collectd
-                "opt/cluster/bin/cdfetch.py",
                 "opt/cluster/bin/sgestat.py",
                 "opt/cluster/bin/cluster-server.py",
                 "opt/cluster/bin/license_progs.py",

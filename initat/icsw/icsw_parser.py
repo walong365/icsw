@@ -40,6 +40,7 @@ from .cstore.cstore_parser import Parser as CStoreParser
 from .relay.relay_parser import Parser as RelayParser
 from .lse.lse_parser import Parser as LseParser
 from .info.info_parser import Parser as InfoParser
+from initat.icsw.service.instance import InstanceXML
 
 try:
     from .license.license_parser import Parser as LicenseParser
@@ -67,12 +68,19 @@ except ImportError:
     JobParser = None
 
 
+try:
+    from .collectd.collectd_parser import Parser as CollectdParser
+except ImportError:
+    CollectdParser = None
+
+
 class ICSWParser(object):
     def __init__(self):
         self._parser = argparse.ArgumentParser(prog="icsw")
         self._parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
         sub_parser = self._parser.add_subparsers(help="sub-command help")
         server_mode = True if django is not None else False
+        inst_xml = InstanceXML(quiet=True)
         # ServiceParser().link(sub_parser)
         # LogwatchParser().link(sub_parser)
         for _sp in [
@@ -87,10 +95,15 @@ class ICSWParser(object):
             RelayParser,
             ImageParser,
             JobParser,
+            CollectdParser,
         ]:
             if _sp is not None:
                 try:
-                    _sp().link(sub_parser, server_mode=server_mode)
+                    _sp().link(
+                        sub_parser,
+                        server_mode=server_mode,
+                        instance_xml=inst_xml,
+                    )
                 except TypeError:
                     # happens when switching to kwarg-expecting parsers
                     pass

@@ -19,7 +19,6 @@
 #
 """ connect to a given collectd-server and fetch some data """
 
-import argparse
 import json
 import re
 import sys
@@ -27,9 +26,9 @@ import time
 
 import memcache
 import zmq
+
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.tools import logging_tools, process_tools, server_command
-from initat.icsw.service.instance import InstanceXML
 
 
 class BaseCom(object):
@@ -241,7 +240,11 @@ class KeyListCom(BaseCom):
                             base=entry[6],
                             factor=entry[7]
                         )
-                    out_f.append([logging_tools.form_entry(v_dict[h_uuid][1], header="device")] + cur_mv.get_form_entry(num_key))
+                    out_f.append(
+                        [
+                            logging_tools.form_entry(v_dict[h_uuid][1], header="device")
+                        ] + cur_mv.get_form_entry(num_key)
+                    )
         print unicode(out_f)
         # print v_list
 
@@ -260,53 +263,32 @@ class KeyListCom(BaseCom):
                 )
                 for num_key, key_el in enumerate(host):
                     cur_mv = mvect_entry(key_el.attrib.pop("name"), info="", **key_el.attrib)
-                    out_f.append([logging_tools.form_entry(host.attrib["name"], header="device")] + cur_mv.get_form_entry(num_key + 1))
+                    out_f.append(
+                        [
+                            logging_tools.form_entry(host.attrib["name"], header="device")
+                        ] + cur_mv.get_form_entry(num_key + 1)
+                    )
             print unicode(out_f)
         else:
             print "No host_list found in result"
             self.ret_state = 1
 
 
-def main():
-    parser = argparse.ArgumentParser("query the datastore of collectd servers")
-    com_list = [key[:-3] for key in globals().keys() if key.endswith("Com") if key not in ["BaseCom"]]
-    parser.add_argument(
-        "arguments",
-        nargs="+",
-        help="additional arguments, first one is command (one of {})".format(
-            ", ".join(sorted(com_list))
-        )
-    )
-    parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
-    parser.add_argument("-p", help="port [%(default)d]", default=8008, dest="port", type=int)
-    parser.add_argument("-H", help="host [%(default)s] or server", default="localhost", dest="host")
-    parser.add_argument("-v", help="verbose mode [%(default)s]", default=False, dest="verbose", action="store_true")
-    parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="cdf", dest="identity_string")
-    parser.add_argument("--host-filter", help="set filter for host name [%(default)s]", type=str, default=".*", dest="host_filter")
-    parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
-    parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
-    parser.add_argument("--mc-addr", type=str, default="127.0.0.1", help="address of memcached [%(default)s]")
-    parser.add_argument("--mc-port", type=int, default=InstanceXML(quiet=True).get_port_dict("memcached", command=True), help="port of memcached [%(default)d]")
-    # parser.add_argument("arguments", nargs="+", help="additional arguments")
+def main(args):
+    com_list = ["host_list", "key_list"]
+    other_args = args.arguments
     ret_state = 1
-    args, other_args = parser.parse_known_args()
-    # print args.arguments, other_args
-    command = args.arguments.pop(0)
-    other_args = args.arguments + other_args
-    if command in com_list:
-        try:
-            cur_com = globals()["{}_com".format(command)](args, *other_args)
-        except:
-            print "error init '{}': {}".format(command, process_tools.get_except_info())
-            sys.exit(ret_state)
-    else:
-        print "Unknown command '{}'".format(command)
+    cc_name = "".join([sub_str.title() for sub_str in args.command.split("_")])
+    try:
+        cur_com = globals()["{}Com".format(cc_name)](args, *other_args)
+    except:
+        print "error init '{}': {}".format(args.command, process_tools.get_except_info())
         sys.exit(ret_state)
     if args.mode == "tcp":
         zmq_context = zmq.Context(1)
-        client = zmq_context.socket(zmq.DEALER)  # if not args.split else zmq.PUB) # ROUTER)#DEALER) @UndefinedVariable
-        client.setsockopt(zmq.IDENTITY, cur_com["identity"].text)  # @UndefinedVariable
-        client.setsockopt(zmq.LINGER, args.timeout)  # @UndefinedVariable
+        client = zmq_context.socket(zmq.DEALER)
+        client.setsockopt(zmq.IDENTITY, cur_com["identity"].text)
+        client.setsockopt(zmq.LINGER, args.timeout)
         was_ok = cur_com.send_and_receive(client)
         if was_ok:
             cur_com.interpret_tcp()
@@ -315,7 +297,3 @@ def main():
     else:
         cur_com.fetch()
     sys.exit(cur_com.ret_state)
-
-
-if __name__ == "__main__":
-    main()
