@@ -558,7 +558,10 @@ class netdevice(models.Model):
     network_device_type = models.ForeignKey("backbone.network_device_type")
     description = models.CharField(max_length=765, blank=True)
     is_bridge = models.BooleanField(default=False)
-    bridge_device = models.ForeignKey("self", null=True, related_name="bridge_slaves", blank=True)
+    # true for bond master
+    is_bond = models.BooleanField(default=False)
+    bridge_device = models.ForeignKey("self", null=True, blank=True, related_name="bridge_slaves")
+    bond_master = models.ForeignKey("self", null=True, blank=True, related_name="bond_slaves")
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True, default=0)
     # for VLAN devices

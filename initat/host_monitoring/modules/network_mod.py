@@ -474,7 +474,9 @@ class _general(hm_classes.hm_module):
                 if os.path.isdir(os.path.join(net_dir, ent, "bridge")):
                     bdir_dict[ent] = os.path.join(net_dir, ent)
         for ent, loc_dir in bdir_dict.iteritems():
-            b_dict[ent] = {"interfaces": os.listdir(os.path.join(loc_dir, "brif"))}
+            b_dict[ent] = {
+                "interfaces": os.listdir(os.path.join(loc_dir, "brif"))
+            }
             for key in ["address", "addr_len", "features", "flags", "mtu"]:
                 _f_name = os.path.join(loc_dir, key)
                 if os.path.exists(_f_name):
@@ -765,7 +767,6 @@ class netspeed(object):
             "carrier": 14
         }
         self.__keys = set(self.__idx_dict.keys())
-        self.__is_xen_host = False
         try:
             self.update()
         except:
@@ -783,11 +784,10 @@ class netspeed(object):
     def keys(self):
         return self.devices.keys()
 
-    def is_xen_host(self):
-        return self.__is_xen_host
-
     def make_speed_dict(self):
-        return {key: self[key].get_speed() for key in self.keys()}
+        return {
+            key: self[key].get_speed() for key in self.keys()
+        }
 
     def update(self):
         ntime = time.time()
@@ -1526,13 +1526,27 @@ class network_info_command(hm_classes.hm_command):
         net_dict = srv_com["networks"]
         net_names = sorted(net_dict.keys())
         out_list = logging_tools.new_form_list()
+        # collect flags
+        all_flags = set()
+        for net_name in net_names:
+            all_flags |= set(net_dict[net_name]["flags"])
         for net_name in net_names:
             net_stuff = net_dict[net_name]
-            out_list.append(
+            if "MASTER" in net_stuff["flags"]:
+                b_state = "master"
+            elif "SLAVE" in net_stuff["flags"]:
+                b_state = "slave"
+            else:
+                b_state = "---"
+            _line = [
+                logging_tools.form_entry(net_name, header="name"),
+                logging_tools.form_entry("yes" if net_name in bridge_dict.keys() else "no", header="bridge"),
+                logging_tools.form_entry(b_state, header="bonding"),
+            ]
+            for _flag in sorted(all_flags):
+                _line.append(logging_tools.form_entry("yes" if _flag in net_stuff["flags"] else "---", header=_flag))
+            _line.extend(
                 [
-                    logging_tools.form_entry(net_name, header="name"),
-                    logging_tools.form_entry("yes" if net_name in bridge_dict.keys() else "no", header="bridge"),
-                    logging_tools.form_entry(",".join(net_stuff["flags"]), header="flags"),
                     logging_tools.form_entry(
                         ", ".join(
                             [
@@ -1546,6 +1560,7 @@ class network_info_command(hm_classes.hm_command):
                     )
                 ]
             )
+            out_list.append(_line)
             for link_key in sorted(net_stuff["links"]):
                 link_stuff = net_stuff["links"][link_key]
                 if type(link_stuff[0]) == bool:
