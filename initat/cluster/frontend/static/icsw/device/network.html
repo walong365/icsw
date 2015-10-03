@@ -168,8 +168,7 @@
             tooltip-html-unsafe="<div class='text-left'>
             devicegroup: {{ ndip_obj.device_group_name }}<br>
             comment: {{ ndip_obj.comment }}<br>
-            </div>
-            ">
+            </div>">
             <span class="glyphicon glyphicon-info-sign"></span>
         </button>
     </td>
@@ -492,7 +491,7 @@
                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
                                      possible-items-by-page="10,20,50,100,200,500,1000">
                                 </div>
-                                <icsw-tools-show-hide-columns columns="network gateway autorange" create-show-column="true">
+                                <icsw-tools-show-hide-columns columns="network gateway autorange prefDTN" create-show-column="true">
                                 </icsw-tools-show-hide-columns>
                             </td>
                         </tr>
@@ -507,6 +506,7 @@
                             <th st-sort="enforce_unique_ips">uniqueIP</th>
                             <th st-sort="network_type">Type</th>
                             <th st-sort="master_network">Master</th>
+                            <th ng-show="show_column.prefDTN">preferred DTN</th>
                             <th st-sort="network_device_type">devtype(s)</th>
                             <th colspan="2" class="text-center">action</th>
                         </tr>
@@ -545,6 +545,9 @@
                             </td>
                             <td>
                                 {{ obj.master_network | array_lookup:entries:'identifier':'---' }}
+                            </td>
+                            <td ng-show="show_column.prefDTN">
+                                {{ config_service.preferred_dtn(obj) }}
                             </td>
                             <td>
                                 {{ obj.network_device_type | resolve_n2m:config_service.network_device_types:'identifier':'---' }}
@@ -993,5 +996,172 @@
         <div class="form-actions">
             <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
         </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="network.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Network</h2>
+        <tabset>
+            <tab heading="Base data">
+                <fieldset>
+                    <legend>Base data</legend>
+                    <div id="div_id_identifier" class="form-group ng-class:form_error('identifier')">
+                        <label for="id_identifier" class="control-label col-sm-3 requiredField">
+                            Identifier<span class="asteriskField">*</span></label>
+
+                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_identifier" maxlength="255" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"></input></div>
+                    </div>
+                    <div id="div_id_network" class="form-group  ng-class:form_error('network')">
+                        <label for="id_network" class="control-label col-sm-3 requiredField">
+                            Network<span class="asteriskField">*</span></label>
+                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text"></input></div>
+                    </div>
+                    <div id="div_id_netmask" class="form-group  ng-class:form_error('netmask')">
+                        <label for="id_netmask" class="control-label col-sm-3 requiredField">
+                            Netmask<span class="asteriskField">*</span></label>
+
+                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text"></input></div>
+                    </div>
+                    <div id="div_id_broadcast" class="form-group  ng-class:form_error('broadcast')">
+                        <label for="id_broadcast" class="control-label col-sm-3 requiredField">
+                            Broadcast<span class="asteriskField">*</span></label>
+
+                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_broadcast" name="broadcast" ng-model="edit_obj.broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Broadcast" required="True" type="text"></input></div>
+                    </div>
+                    <div id="div_id_gateway" class="form-group  ng-class:form_error('gateway')">
+                        <label for="id_gateway" class="control-label col-sm-3 requiredField">
+                            Gateway<span class="asteriskField">*</span></label>
+
+                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_gateway" name="gateway" ng-model="edit_obj.gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Gateway" required="True" type="text"></input></div>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Network type (master / slave)</legend>
+                    <div id="div_id_network_type" class="form-group">
+                        <label for="id_network_type" class="control-label col-sm-3 requiredField">
+                            Network type<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <ui-select ng-model="edit_obj.network_type" style="max-width:400px; min-width:240px;" ng-disabled="has_master_network(edit_obj)">
+                                <ui-select-match placeholder="network type">{{$select.selected.description}}</ui-select-match>
+                                <ui-select-choices repeat="value.idx as value in config_service.network_types| props_filter:{description:$select.search}">
+                                    <div ng-bind-html="value.description | highlight: $select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                    <div class="form-group" ng_show="config_service.is_slave_network(edit_obj.network_type)">
+                        <label class="control-label col-sm-3">
+                            Master network
+                        </label>
+                        <div class="controls col-sm-7">
+                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                                <ui-select ng-model="edit_obj.master_network" ng-disabled="false">
+                                    <ui-select-match placeholder="master network">{{$select.selected.identifier}}
+                                    </ui-select-match>
+                                    <ui-select-choices repeat="value.idx as value in config_service.get_production_networks()| props_filter:{identifier:$select.search}">
+                                        <div ng-bind-html="value.identifier | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                                <span class="input-group-btn"><button type="button" ng-click="edit_obj.master_network = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            </tab>
+            <tab heading="Flags / Range">
+                <fieldset>
+                    <legend>Flags and priority</legend>
+                    <div class="form-group">
+                        <div id="div_id_enforce_unique_ips" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.enforce_unique_ips" type="checkbox"/>
+                                    Enforce unique ips
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="div_id_gw_pri" class="form-group">
+                        <label for="id_gw_pri" class="control-label col-sm-3">
+                            Gw pri
+                        </label>
+                        <div class="controls col-sm-7"><input class="numberinput form-control" id="id_gw_pri" name="gw_pri" ng-model="edit_obj.gw_pri" type="number" value="1"></input></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
+                            Preferred domain tree node
+                        </label>
+                        {{  config_service.domain_tree_node_list }}
+                        <div class="controls col-sm-7">
+                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                                <ui-select ng-model="edit_obj.preferred_domain_tree_node">
+                                    <ui-select-match placeholder="preferred DTN">{{$select.selected.info}}</ui-select-match>
+                                    <ui-select-choices
+                                        repeat="value.idx as value in config_service.domain_tree_node_list() | props_filter:{full_name:$select.search}"
+                                        refresh="config_service.refresh_domain_tree_node()"
+                                    >
+                                        <div ng-bind-html="value.info | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="edit_obj.preferred_domain_tree_node = undefined" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="div_id_network_device_type" class="form-group">
+                        <label for="id_network_device_type" class="control-label col-sm-3">
+                            Network device type
+                        </label>
+                        <div class="controls col-sm-7">
+                            <ui-select multiple="multiple" ng-model="edit_obj.network_device_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select-match placeholder="network device types">{{$item.identifier}}</ui-select-match>
+                                <ui-select-choices repeat="value.idx as value in config_service.network_device_types| props_filter:{identifier:$select.search}">
+                                    <div ng-bind-html="value.identifier | highlight: $select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Range</legend>
+                    <div class="form-group ng-class:form_error('start_range')">
+                        <label class="control-label col-sm-5 requiredField">
+                            Range Start (incl.)
+                        </label>
+                        <div class="controls col-sm-6">
+                            <div class="input-group">
+                                <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.start_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range start"  type="text"/>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="config_service.clear_range(edit_obj)" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group ng-class:form_error('end_range')">
+                        <label class="control-label col-sm-5 requiredField">
+                            Range End (incl.)
+                        </label>
+                        <div class="controls col-sm-6">
+                            <div class="input-group">
+                                <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.end_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range end" type="text"/>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="config_service.clear_range(edit_obj)" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            </tab>
+        </tabset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>

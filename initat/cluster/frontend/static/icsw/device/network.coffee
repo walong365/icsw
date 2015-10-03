@@ -1218,11 +1218,13 @@ angular.module(
         object_created      : (new_obj) -> new_obj.description = ""
         network_types       : nw_types_dict  # for create/edit dialog
     }
-]).service('icswNetworkService', ["Restangular", "$q", "icswTools", "ICSW_URLS", (Restangular, $q, icswTools, ICSW_URLS) ->
+]).service('icswNetworkService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainNameService", (Restangular, $q, icswTools, ICSW_URLS, icswDomainNameService) ->
 
     networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_device_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
+    domain_tree_node_list = []
+    domain_tree_node_dict = []
 
     network_display = {}
     get_defer = (q_type) ->
@@ -1237,9 +1239,38 @@ angular.module(
         network_display.active_network = null
         network_display.iplist = []
 
+    long2ip = (long) ->
+        a = (long & (0xff << 24)) >>> 24
+        b = (long & (0xff << 16)) >>> 16
+        c = (long & (0xff << 8)) >>> 8
+        d = long & 0xff
+        return [a, b, c, d].join('.')
+
+    ip2long = (ip) ->
+        b = (ip + '').split('.')
+        if b.length is 0 or b.length > 4 then throw new Error('Invalid IP')
+        for byte, i in b
+            if isNaN parseInt(byte, 10) then throw new Error("Invalid byte: #{byte}")
+            if byte < 0 or byte > 255 then throw new Error("Invalid byte: #{byte}")
+        return ((b[0] or 0) << 24 | (b[1] or 0) << 16 | (b[2] or 0) << 8 | (b[3] or 0)) >>> 0
+
+    set_domain_tree_node = (data) ->
+        domain_tree_node_dict = {}
+        for entry in data
+            _name = if entry.depth then entry.full_name else "[TLN]"
+            entry.info = _name
+            domain_tree_node_dict[entry.idx] = entry
+        domain_tree_node_list = data
+
     return {
         rest_handle         : networks_rest
         edit_template       : "network.form"
+        domain_tree_node_list: () ->
+            return domain_tree_node_list
+        refresh_domain_tree_node: () ->
+            icswDomainNameService.load("ins").then((data) ->
+                set_domain_tree_node(data)
+            )
         networks            : networks_rest
         network_types       : network_types_rest
         network_device_types: network_device_types_rest
@@ -1284,6 +1315,16 @@ angular.module(
                 return (entry for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
             else
                 return false
+        preferred_dtn: (edit_obj) ->
+            if edit_obj.preferred_domain_tree_node
+                if domain_tree_node_list.length
+                    return domain_tree_node_dict[edit_obj.preferred_domain_tree_node].full_name
+                else
+                    icswDomainNameService.fetch("ins").then((data) ->
+                        set_domain_tree_node(data)
+                    )
+            else
+                return "---"
         autorange_set : (edit_obj) ->
             if edit_obj.start_range == "0.0.0.0" and edit_obj.end_range == "0.0.0.0"
                 return false
@@ -1291,23 +1332,36 @@ angular.module(
                 return true
         has_master_network : (edit_obj) ->
             return if edit_obj.master_network then true else false
+
+        clear_range : (edit_obj) ->
+            edit_obj.start_range = "0.0.0.0"
+            edit_obj.end_range = "0.0.0.0"
+
+        enter_range : (edit_obj) ->
+            # click on range field
+            sr = edit_obj.start_range
+            er = edit_obj.end_range
+            if (not sr and not er) or (sr == "0.0.0.0" and er == "0.0.0.0")
+                sr = ip2long(edit_obj.network) + 1
+                er = ip2long(edit_obj.network) + (4294967295 - ip2long(edit_obj.netmask)) - 1
+                # range valid, set
+                if sr < er
+                    edit_obj.start_range = long2ip(sr)
+                    edit_obj.end_range = long2ip(er)
+
+        range_check : (edit_obj) ->
+            # check the range parameters
+            sr = edit_obj.start_range
+            er = edit_obj.end_range
+            if sr and er
+                sr = ip2long(sr)
+                er = ip2long(er)
+                min = ip2long(edit_obj.network) + 1
+                max = ip2long(edit_obj.network) + (4294967295 - ip2long(edit_obj.netmask)) - 1
+                # todo, improve checks
+
         network_or_netmask_blur : (edit_obj) ->
             # calculate broadcast and gateway automatically
-
-            long2ip = (long) ->
-                a = (long & (0xff << 24)) >>> 24
-                b = (long & (0xff << 16)) >>> 16
-                c = (long & (0xff << 8)) >>> 8
-                d = long & 0xff
-                return [a, b, c, d].join('.')
-
-            ip2long = (ip) ->
-                b = (ip + '').split('.')
-                if b.length is 0 or b.length > 4 then throw new Error('Invalid IP')
-                for byte, i in b
-                    if isNaN parseInt(byte, 10) then throw new Error("Invalid byte: #{byte}")
-                    if byte < 0 or byte > 255 then throw new Error("Invalid byte: #{byte}")
-                return ((b[0] or 0) << 24 | (b[1] or 0) << 16 | (b[2] or 0) << 8 | (b[3] or 0)) >>> 0
 
             # validation ensures that if it is not undefined, then it is a valid entry
             if edit_obj.network? and edit_obj.netmask?

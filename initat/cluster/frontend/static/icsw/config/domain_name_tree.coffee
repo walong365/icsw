@@ -22,8 +22,64 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
     ]
-).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswConfigDomainNameTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswConfigDomainNameTreeService) ->
+).service('icswDomainNameService', ["Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS", (Restangular, $q, icswTools, icswCachingCall, ICSW_URLS) ->
+    domain_rest = Restangular.all(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1)).getList().$object
+    _fetch_dict = {}
+    _result = undefined
+    load_called = false
+    load_data = (client) ->
+        load_called = true
+        _wait_list = [icswCachingCall.fetch(client, ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, [], [])]
+        if client
+            _defer = $q.defer()
+        $q.all(_wait_list).then((data) ->
+            if _result is undefined
+                _result = data
+            else
+                for _zip in _.zip(_result, data)
+                    _old = _zip[0]
+                    _new = _zip[1]
+                    _old.length = 0
+                    # also the code below does not work if we execute it immediately, but this works:
+                    for entry in _new
+                        _old.push(entry)
+            if client
+                _defer.resolve(_result[0])
+            for client of _fetch_dict
+                # resolve clients
+                _fetch_dict[client].resolve(_result[0])
+            # reset fetch_dict
+            _fetch_dict = {}
+        )
+        if client
+            return _defer
+    trigger_reload = () ->
+        # this code works in principle but is not recommended because we will overwrite all local settings
+        load_data(null)
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result? and _result.length
+            # resolve immediately
+            _fetch_dict[client].resolve(_result[0])
+        return _fetch_dict[client]
+    return {
+        "load": (client) ->
+            # loads from server
+            return load_data(client).promise
+        "trigger_reload": () ->
+            trigger_reload()
+        "fetch": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
+]).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswConfigDomainNameTreeService", "icswDomainNameService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, $q, $modal, access_level_service, ICSW_URLS, icswConfigDomainNameTreeService, icswDomainNameService) ->
         $scope.dnt = new icswConfigDomainNameTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("dtn_base", $scope)
         $scope.entries = []
@@ -41,11 +97,8 @@ angular.module(
         $scope.edit_mixin.edit_template = "icsw.config.domain.tree.node"
         $scope.form = {}
         $scope.reload = () ->
-            wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
-            ]
-            $q.all(wait_list).then((data) ->
-                $scope.entries = data[0]
+            icswDomainNameService.load($scope.$id).then((data) ->
+                $scope.entries = data
                 $scope.edit_mixin.create_list = $scope.entries
                 $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_dnt()

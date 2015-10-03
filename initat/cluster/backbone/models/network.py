@@ -236,6 +236,8 @@ class network(models.Model):
     start_range = models.GenericIPAddressField(default="0.0.0.0")
     end_range = models.GenericIPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
+    # preferred domain_tree_node
+    preferred_domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True)
     network_device_type = models.ManyToManyField("backbone.network_device_type")
     enforce_unique_ips = models.BooleanField(default=False)
 
@@ -315,12 +317,17 @@ def network_pre_save(sender, **kwargs):
             raise ValidationError("slave networks exists, cannot change type")
         if nw_type != "s" and cur_inst.master_network_id:
             raise ValidationError("only slave networks can have a master")
-        if nw_type == "s" and cur_inst.master_network_id:
-            # print cur_inst.pk, cur_inst.master_network_id
-            if cur_inst.master_network.network_type.identifier != "p":
-                raise ValidationError("master network must be a production network")
+        if nw_type == "s":
+            if not cur_inst.master_network_id:
+                raise ValidationError("slave network needs a master network")
+            else:
+                # print cur_inst.pk, cur_inst.master_network_id
+                if cur_inst.master_network.network_type.identifier != "p":
+                    raise ValidationError("master network must be a production network")
         # validate IP
-        ip_dict = dict([(key, None) for key in ["network", "netmask", "broadcast", "gateway"]])
+        ip_dict = {
+            key: None for key in ["network", "netmask", "broadcast", "gateway"]
+        }
         for key in ip_dict.keys():
             try:
                 ip_dict[key] = ipvx_tools.ipv4(getattr(cur_inst, key))
@@ -352,7 +359,9 @@ def network_pre_save(sender, **kwargs):
             ip_dict = {}
             for _ip in cur_inst.net_ip_set.all():
                 ip_dict.setdefault(_ip.ip, []).append(_ip)
-            ip_dict = {key: value for key, value in ip_dict.iteritems() if len(value) > 1}
+            ip_dict = {
+                key: value for key, value in ip_dict.iteritems() if len(value) > 1
+            }
             if ip_dict:
                 raise ValidationError(
                     "not all IPs are unique: {}".format(
@@ -366,6 +375,43 @@ def network_pre_save(sender, **kwargs):
                         )
                     )
                 )
+        # check range
+        _ignore_range = {None, "", "0.0.0.0"}
+        if cur_inst.start_range not in _ignore_range and cur_inst.end_range not in _ignore_range:
+            # validate range
+            try:
+                ip_dict["start_range"] = ipvx_tools.ipv4(cur_inst.start_range)
+                ip_dict["end_range"] = ipvx_tools.ipv4(cur_inst.end_range)
+            except:
+                raise ValidationError(
+                    "start / end range {} / {} not valid".format(
+                        cur_inst.start_range,
+                        cur_inst.end_range,
+                    )
+                )
+            else:
+                if ip_dict["end_range"] < ip_dict["start_range"]:
+                    raise ValidationError(
+                        "range end {} is below range start {}".format(
+                            str(ip_dict["end_range"]),
+                            str(ip_dict["start_range"]),
+                        )
+                    )
+                if ip_dict["start_range"] <= ip_dict["network"]:
+                    raise ValidationError(
+                        "range start {} is less or equal to network {}".format(
+                            str(ip_dict["end_range"]),
+                            str(ip_dict["network"]),
+                        )
+                    )
+                _highest = ip_dict["network"] | (ip_dict["broadcast"] & ~ip_dict["netmask"])
+                if ip_dict["end_range"] >= _highest:
+                    raise ValidationError(
+                        "range end {} is above or equal to highest IP {}".format(
+                            str(ip_dict["end_range"]),
+                            str(_highest),
+                        )
+                    )
         # set values
         for key, value in ip_dict.iteritems():
             setattr(cur_inst, key, unicode(value))
