@@ -25,6 +25,7 @@ class angular_edit_mixin
         @use_promise = false
         @put_parameters = {}
         @min_width = "600px"
+        @animate = true
         @change_signal = undefined
         @title = "Modal"
         @cssClass = "modal-tall"
@@ -67,6 +68,7 @@ class angular_edit_mixin
                 draggable: true
                 size: BootstrapDialog.SIZE_WIDE
                 title: @title
+                animate: @animate
                 closable: true
                 closeByBackdrop: false
                 cssClass: @cssClass

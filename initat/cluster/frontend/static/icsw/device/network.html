@@ -1220,10 +1220,10 @@
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group" ng_show="create_mode">
-                <label class="control-label col-sm-2 requiredField">
+                <label class="control-label col-sm-4 requiredField">
                     Netdevice<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-9">
+                <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="false">
                         <ui-select-match placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
                         <ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set">
@@ -1232,19 +1232,11 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group  ng-class:form_error('devname')">
-                <label class="control-label col-sm-2 requiredField">
-                    Ip<span class="asteriskField">*</span>
-                </label>
-                <div class="controls col-sm-9">
-                    <input class="textinput textInput form-control" maxlength="48" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" required="True" type="text"/>
-                </div>
-            </div>
             <div class="form-group">
-                <label class="control-label col-sm-2 requiredField">
+                <label class="control-label col-sm-4 requiredField">
                     Network<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-9">
+                <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.network" style="max-width:400px; min-width:240px;" ng-disabled="false">
                         <ui-select-match placeholder="network">{{$select.selected.info_string}}</ui-select-match>
                         <ui-select-choices repeat="value.idx as value in networks| props_filter:{info_string:$select.search}">
@@ -1253,11 +1245,24 @@
                     </ui-select>
                 </div>
             </div>
+            <div class="form-group  ng-class:form_error('devname')">
+                <label class="control-label col-sm-4 requiredField">
+                    IP<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-8">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <input class="textinput textInput form-control" maxlength="16" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" required="True" type="text"/>
+                        <span class="input-group-btn">
+                            <icsw-tools-button type="create" value="Get free IP" size="sm" ng-click="get_free_ip(_edit_obj)"></icsw-tools-button>
+                        </span>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
-                <label class="control-label col-sm-2 requiredField">
+                <label class="control-label col-sm-4 requiredField">
                     Domain tree node<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-9">
+                <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
                         <ui-select-match placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
                         <ui-select-choices repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
@@ -1270,19 +1275,19 @@
         <fieldset>
             <legend>Alias settings (will be written without node postfixes)</legend>
             <div class="form-group">
-                <label class="control-label col-sm-2">
+                <label class="control-label col-sm-4">
                     Alias
                 </label>
-                <div class="controls col-sm-9">
+                <div class="controls col-sm-8">
                     <input class="textinput textInput form-control" maxlength="765" name="alias" ng-model="_edit_obj.alias" type="text"/>
                 </div>
             </div>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-9">
+                    <div class="controls col-sm-offset-4 col-sm-9">
                         <label>
                             <input class="checkboxinput checkbox" name="alias_excl" ng-model="_edit_obj.alias_excl" type="checkbox"/>
-                            Alias excl
+                            Alias is exclusive
                         </label>
                     </div>
                 </div>

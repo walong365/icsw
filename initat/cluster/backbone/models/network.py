@@ -247,6 +247,19 @@ class network(models.Model):
             ("show_clusters", "show network clustering", False),
         )
 
+    def get_free_ip(self):
+        _ignore_range = {None, "", "0.0.0.0"}
+        free_ip = None
+        if self.start_range not in _ignore_range and self.end_range not in _ignore_range:
+            used_ips = {ipvx_tools.ipv4(_ip.ip) for _ip in self.net_ip_set.all()}
+            offset = ipvx_tools.ipv4("0.0.0.1")
+            free_ip = ipvx_tools.ipv4(self.start_range)
+            while free_ip in used_ips:
+                free_ip += offset
+            if free_ip > ipvx_tools.ipv4(self.end_range):
+                free_ip = None
+        return free_ip
+
     @staticmethod
     def get_unique_identifier():
         _all_ids = network.objects.all().values_list("identifier", flat=True)

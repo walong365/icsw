@@ -133,10 +133,10 @@ angular.module(
 ).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
      "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
-    "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService",
+    "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService", "icswSimpleAjaxCall",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
      $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
-     icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService
+     icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, icswSimpleAjaxCall
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
@@ -763,6 +763,19 @@ angular.module(
             if obj.dhcp_write != obj.dhcp_written
                 r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
             return r_val
+        $scope.get_free_ip = (obj) ->
+            blockUI.start("requesting free IP...")
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.NETWORK_GET_FREE_IP
+                data: {
+                    "netip": angular.toJson(obj)
+                }
+                dataType: "json"
+            ).then((json) ->
+                blockUI.stop()
+                if json["ip"]?
+                    obj.ip = json["ip"]
+            )
 ]).directive("icswDeviceNetworkNetdeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"

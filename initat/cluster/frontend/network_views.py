@@ -32,7 +32,7 @@ from django.db.utils import IntegrityError
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device, peer_information
+from initat.cluster.backbone.models import device, peer_information, network
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from networkx.readwrite import json_graph
@@ -271,5 +271,24 @@ class get_active_scans(permission_required_mixin, View):
         _dev = list(device.objects.filter(Q(pk__in=_pks)).values("pk", "active_scan"))
         return HttpResponse(
             json.dumps(_dev),
+            content_type="application/json"
+        )
+
+
+class get_free_ip(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        net_ip = json.loads(_post["netip"])
+        cur_nw = network.objects.get(Q(idx=net_ip["network"]))
+        free_ip = cur_nw.get_free_ip()
+        if free_ip:
+            _res = {
+                "ip": str(free_ip)
+            }
+        else:
+            _res = {}
+        return HttpResponse(
+            json.dumps(_res),
             content_type="application/json"
         )

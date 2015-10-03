@@ -238,6 +238,7 @@ angular.module(
                             size: BootstrapDialog.SIZE_WIDE
                             closable: true
                             title: _title
+                            animate: false
                             closeByBackdrop: false
                             cssClass: "modal-tall"
                             onhidden: () =>
