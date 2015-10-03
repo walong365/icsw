@@ -2154,78 +2154,6 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="net.ip.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
-        <h2>IP Address '{{ _edit_obj.ip }}'</h2>
-        <fieldset>
-            <legend>Basic settings</legend>
-            <div id="div_id_netdevice" class="form-group" ng_show="create_mode">
-                <label for="id_netdevice" class="control-label col-sm-2 requiredField">
-                    Netdevice<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-9">
-                    <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set">
-                            <div ng-bind-html="value.devname | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-            <div id="div_id_ip" class="form-group  ng-class:form_error('devname')">
-                <label for="id_ip" class="control-label col-sm-2 requiredField">
-                    Ip<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_ip" maxlength="48" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_network" class="form-group">
-                <label for="id_network" class="control-label col-sm-2 requiredField">
-                    Network<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-9">
-                    <ui-select ng-model="_edit_obj.network" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="network">{{$select.selected.info_string}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in networks| props_filter:{info_string:$select.search}">
-                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-            <div id="div_id_domain_tree_node" class="form-group">
-                <label for="id_domain_tree_node" class="control-label col-sm-2 requiredField">
-                    Domain tree node<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-9">
-                    <ui-select ng-model="_edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
-                            <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Alias settings (will be written without node postfixes)</legend>
-            <div id="div_id_alias" class="form-group">
-                <label for="id_alias" class="control-label col-sm-2">
-                    Alias
-                </label>
-
-                <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_alias" maxlength="765" name="alias" ng-model="_edit_obj.alias" type="text"></input></div>
-            </div>
-            <div class="form-group">
-                <div id="div_id_alias_excl" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-9"><label for="id_alias_excl"><input class="checkboxinput checkbox" id="id_alias_excl" name="alias_excl" ng-model="_edit_obj.alias_excl" type="checkbox"></input>
-                        Alias excl
-                    </label></div>
-                </div>
-            </div>
-        </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
-    </form>
-</script>
-
 <script type="text/ng-template" id="boot.form">
     <form id="form" class="form-horizontal" method="post" name="form">
         <h2>Connection {{ get_cd_info() }}</h2>
@@ -2397,35 +2325,6 @@
             </tab>
         </tabset>
         <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
-    </form>
-</script>
-
-<script type="text/ng-template" id="network.type.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Network type</h2>
-        <fieldset>
-            <legend>Base data</legend>
-            <div id="div_id_description" class="form-group  ng-class:form_error('description')">
-                <label for="id_description" class="control-label col-sm-3 requiredField">
-                    Description<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_identifier" class="form-group">
-                <label for="id_identifier" class="control-label col-sm-3 requiredField">
-                    Identifier<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.identifier" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="network type type">{{$select.selected.name}}</ui-select-match>
-                        <ui-select-choices repeat="value.value as value in config_service.network_types">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-        </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 

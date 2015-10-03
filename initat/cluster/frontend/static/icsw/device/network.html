@@ -724,7 +724,6 @@
 
 <script type="text/ng-template" id="netdevice.form">
     <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
-        <h2>Netdevice '{{ _edit_obj.devname }}'</h2>
         <tabset>
             <tab heading="Basic settings">
                 <fieldset>
@@ -1001,45 +1000,55 @@
 
 <script type="text/ng-template" id="network.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Network</h2>
         <tabset>
             <tab heading="Base data">
                 <fieldset>
                     <legend>Base data</legend>
-                    <div id="div_id_identifier" class="form-group ng-class:form_error('identifier')">
-                        <label for="id_identifier" class="control-label col-sm-3 requiredField">
-                            Identifier<span class="asteriskField">*</span></label>
-
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_identifier" maxlength="255" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"></input></div>
+                    <div class="form-group ng-class:form_error('identifier')">
+                        <label class="control-label col-sm-3 requiredField">
+                            Identifier<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="255" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_network" class="form-group  ng-class:form_error('network')">
-                        <label for="id_network" class="control-label col-sm-3 requiredField">
-                            Network<span class="asteriskField">*</span></label>
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text"></input></div>
+                    <div class="form-group  ng-class:form_error('network')">
+                        <label class="control-label col-sm-3 requiredField">
+                            Network<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_netmask" class="form-group  ng-class:form_error('netmask')">
-                        <label for="id_netmask" class="control-label col-sm-3 requiredField">
-                            Netmask<span class="asteriskField">*</span></label>
-
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text"></input></div>
+                    <div class="form-group  ng-class:form_error('netmask')">
+                        <label class="control-label col-sm-3 requiredField">
+                            Netmask<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_broadcast" class="form-group  ng-class:form_error('broadcast')">
-                        <label for="id_broadcast" class="control-label col-sm-3 requiredField">
-                            Broadcast<span class="asteriskField">*</span></label>
-
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_broadcast" name="broadcast" ng-model="edit_obj.broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Broadcast" required="True" type="text"></input></div>
+                    <div class="form-group  ng-class:form_error('broadcast')">
+                        <label class="control-label col-sm-3 requiredField">
+                            Broadcast<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" name="broadcast" ng-model="edit_obj.broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Broadcast" required="True" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_gateway" class="form-group  ng-class:form_error('gateway')">
-                        <label for="id_gateway" class="control-label col-sm-3 requiredField">
-                            Gateway<span class="asteriskField">*</span></label>
-
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_gateway" name="gateway" ng-model="edit_obj.gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Gateway" required="True" type="text"></input></div>
+                    <div class="form-group  ng-class:form_error('gateway')">
+                        <label class="control-label col-sm-3 requiredField">
+                            Gateway<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" name="gateway" ng-model="edit_obj.gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Gateway" required="True" type="text"/>
+                        </div>
                     </div>
                 </fieldset>
                 <fieldset>
                     <legend>Network type (master / slave)</legend>
-                    <div id="div_id_network_type" class="form-group">
-                        <label for="id_network_type" class="control-label col-sm-3 requiredField">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3 requiredField">
                             Network type<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
@@ -1064,7 +1073,11 @@
                                         <div ng-bind-html="value.identifier | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
-                                <span class="input-group-btn"><button type="button" ng-click="edit_obj.master_network = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="edit_obj.master_network = undefined" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1074,7 +1087,7 @@
                 <fieldset>
                     <legend>Flags and priority</legend>
                     <div class="form-group">
-                        <div id="div_id_enforce_unique_ips" class="checkbox">
+                        <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.enforce_unique_ips" type="checkbox"/>
@@ -1083,11 +1096,13 @@
                             </div>
                         </div>
                     </div>
-                    <div id="div_id_gw_pri" class="form-group">
-                        <label for="id_gw_pri" class="control-label col-sm-3">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
                             Gw pri
                         </label>
-                        <div class="controls col-sm-7"><input class="numberinput form-control" id="id_gw_pri" name="gw_pri" ng-model="edit_obj.gw_pri" type="number" value="1"></input></div>
+                        <div class="controls col-sm-7">
+                            <input class="numberinput form-control" name="gw_pri" ng-model="edit_obj.gw_pri" type="number" value="1"/>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="control-label col-sm-3">
@@ -1113,8 +1128,8 @@
                             </div>
                         </div>
                     </div>
-                    <div id="div_id_network_device_type" class="form-group">
-                        <label for="id_network_device_type" class="control-label col-sm-3">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
                             Network device type
                         </label>
                         <div class="controls col-sm-7">
@@ -1162,6 +1177,119 @@
                 </fieldset>
             </tab>
         </tabset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+        <div class="form-actions">
+            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"/>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="network.type.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group  ng-class:form_error('description')">
+                <label class="control-label col-sm-3 requiredField">
+                    Description<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Identifier<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.identifier" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match placeholder="network type type">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="value.value as value in config_service.network_types">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"/>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="net.ip.form">
+    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group" ng_show="create_mode">
+                <label class="control-label col-sm-2 requiredField">
+                    Netdevice<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
+                        <ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set">
+                            <div ng-bind-html="value.devname | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('devname')">
+                <label class="control-label col-sm-2 requiredField">
+                    Ip<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="48" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2 requiredField">
+                    Network<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <ui-select ng-model="_edit_obj.network" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match placeholder="network">{{$select.selected.info_string}}</ui-select-match>
+                        <ui-select-choices repeat="value.idx as value in networks| props_filter:{info_string:$select.search}">
+                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2 requiredField">
+                    Domain tree node<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <ui-select ng-model="_edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
+                        <ui-select-choices repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
+                            <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Alias settings (will be written without node postfixes)</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Alias
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="765" name="alias" ng-model="_edit_obj.alias" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-9">
+                        <label>
+                            <input class="checkboxinput checkbox" name="alias_excl" ng-model="_edit_obj.alias_excl" type="checkbox"/>
+                            Alias excl
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
+        </div>
     </form>
 </script>

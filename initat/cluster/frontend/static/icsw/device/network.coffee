@@ -481,6 +481,7 @@ angular.module(
             $scope.build_luts()
         $scope.create_netdevice = (obj, event) ->
             $scope.netdevice_edit.create_list = obj.netdevice_set
+            $scope.netdevice_edit.title = "New Netdevice"
             $scope.netdevice_edit.new_object = (scope) ->
                 _dev = {
                     "device" : obj.idx
@@ -507,6 +508,7 @@ angular.module(
                         $scope.check_for_peer_change(new_obj)
             )
         $scope.edit_netdevice = (ndev, event) ->
+            $scope.netdevice_edit.title = "Netdevice '#{ndev.devname}'"
             $scope.netdevice_edit.edit(ndev, event).then(
                 (mod_ndev) ->
                     if mod_ndev != false
@@ -539,6 +541,7 @@ angular.module(
         $scope.create_netip_dev = (obj, event) ->
             $scope._current_dev = obj
             $scope.netip_edit.create_list = undefined
+            $scope.netip_edit.title = "New IP"
             $scope.netip_edit.new_object = (scope) ->
                 return {
                     "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
@@ -555,6 +558,7 @@ angular.module(
         $scope.create_netip_nd = (obj, event) ->
             $scope._current_dev = $scope.dev_lut[obj.device]
             $scope.netip_edit.create_list = undefined
+            $scope.netip_edit.title = "New IP"
             $scope.netip_edit.new_object = (scope) ->
                 return {
                     "netdevice" : obj.idx
@@ -569,6 +573,7 @@ angular.module(
                         $scope.ip_lut[new_obj.idx] = new_obj
             )
         $scope.edit_netip = (ip, event) ->
+            $scope.netip_edit.title = "Edit IP '#{ip.ip}'"
             $scope.netip_edit.edit(ip, event).then(
                 (mod_ip) ->
                     if mod_ip != false
@@ -1213,6 +1218,7 @@ angular.module(
     return {
         rest_url            : ICSW_URLS.REST_NETWORK_TYPE_LIST
         edit_template       : "network.type.form"
+        modal_title         : "Network Type"
         delete_confirm_str  : (obj) -> return "Really delete Network type '#{obj.description}' ?"
         new_object          : {"identifier" : "p", description : ""}
         object_created      : (new_obj) -> new_obj.description = ""
@@ -1224,7 +1230,7 @@ angular.module(
     network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_device_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     domain_tree_node_list = []
-    domain_tree_node_dict = []
+    domain_tree_node_dict = {}
 
     network_display = {}
     get_defer = (q_type) ->
@@ -1265,6 +1271,7 @@ angular.module(
     return {
         rest_handle         : networks_rest
         edit_template       : "network.form"
+        modal_title         : "Network definition"
         domain_tree_node_list: () ->
             return domain_tree_node_list
         refresh_domain_tree_node: () ->

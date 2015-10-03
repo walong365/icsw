@@ -230,11 +230,14 @@ angular.module(
                         else
                             _templ = scope.config_service.edit_template
                         scope.edit_div = $compile($templateCache.get(_templ))(scope)
+                        # default value for modal title
+                        _title = scope.config_service.modal_title ? 'ICSW Modal'
                         scope.my_modal = BootstrapDialog.show
                             message: scope.edit_div
                             draggable: true
                             size: BootstrapDialog.SIZE_WIDE
                             closable: true
+                            title: _title
                             closeByBackdrop: false
                             cssClass: "modal-tall"
                             onhidden: () =>
