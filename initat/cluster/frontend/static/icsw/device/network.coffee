@@ -546,7 +546,7 @@ angular.module(
                 return {
                     "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
                     "ip" : "0.0.0.0"
-                    "_user_changed_" : false
+                    "_auto_generated_" : true
                     "network" : $scope.networks[0].idx
                     "domain_tree_node" : obj.domain_tree_node #$scope.domain_tree_node[0].idx
                 } 
@@ -766,8 +766,11 @@ angular.module(
                 r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
             return r_val
         $scope.network_changed = (obj) ->
-            if obj.ip == "0.0.0.0" or not obj._user_changed_
+            console.log obj, obj._auto_created_
+            if obj.ip == "0.0.0.0" or obj._auto_created_?
+                console.log obj, obj._auto_created_
                 $scope.get_free_ip(obj)
+
         $scope.get_free_ip = (obj) ->
             blockUI.start("requesting free IP...")
             icswSimpleAjaxCall(
