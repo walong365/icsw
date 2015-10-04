@@ -1219,12 +1219,12 @@
     <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
         <fieldset>
             <legend>Basic settings</legend>
-            <div class="form-group" ng_show="create_mode">
+            <div class="form-group">
                 <label class="control-label col-sm-4 requiredField">
                     Netdevice<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="!create_mode">-->
                         <ui-select-match placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
                         <ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set">
                             <div ng-bind-html="value.devname | highlight: $select.search"></div>
@@ -1237,9 +1237,9 @@
                     Network<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.network" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="_edit_obj.network" ng-change="network_changed(_edit_obj)" style="max-width:400px; min-width:240px;" ng-disabled="false">
                         <ui-select-match placeholder="network">{{$select.selected.info_string}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in networks| props_filter:{info_string:$select.search}">
+                        <ui-select-choices repeat="value.idx as value in networks| props_filter:{info_string:$select.search}" position="down">
                             <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1284,7 +1284,7 @@
             </div>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="controls col-sm-offset-4 col-sm-9">
+                    <div class="controls col-sm-offset-4 col-sm-7">
                         <label>
                             <input class="checkboxinput checkbox" name="alias_excl" ng-model="_edit_obj.alias_excl" type="checkbox"/>
                             Alias is exclusive

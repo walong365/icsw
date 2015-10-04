@@ -546,6 +546,7 @@ angular.module(
                 return {
                     "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
                     "ip" : "0.0.0.0"
+                    "_user_changed_" : false
                     "network" : $scope.networks[0].idx
                     "domain_tree_node" : obj.domain_tree_node #$scope.domain_tree_node[0].idx
                 } 
@@ -573,6 +574,7 @@ angular.module(
                         $scope.ip_lut[new_obj.idx] = new_obj
             )
         $scope.edit_netip = (ip, event) ->
+            $scope._current_dev = $scope.dev_lut[$scope.nd_lut[ip.netdevice].device]
             $scope.netip_edit.title = "Edit IP '#{ip.ip}'"
             $scope.netip_edit.edit(ip, event).then(
                 (mod_ip) ->
@@ -763,6 +765,9 @@ angular.module(
             if obj.dhcp_write != obj.dhcp_written
                 r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
             return r_val
+        $scope.network_changed = (obj) ->
+            if obj.ip == "0.0.0.0" or not obj._user_changed_
+                $scope.get_free_ip(obj)
         $scope.get_free_ip = (obj) ->
             blockUI.start("requesting free IP...")
             icswSimpleAjaxCall(
