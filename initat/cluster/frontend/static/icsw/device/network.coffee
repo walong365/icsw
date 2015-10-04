@@ -766,9 +766,9 @@ angular.module(
                 r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
             return r_val
         $scope.network_changed = (obj) ->
-            console.log obj, obj._auto_created_
+            # console.log obj, obj._auto_created_
             if obj.ip == "0.0.0.0" or obj._auto_created_?
-                console.log obj, obj._auto_created_
+                # console.log obj, obj._auto_created_
                 $scope.get_free_ip(obj)
 
         $scope.get_free_ip = (obj) ->

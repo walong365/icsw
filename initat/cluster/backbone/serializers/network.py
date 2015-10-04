@@ -7,7 +7,8 @@ from rest_framework import serializers
 import logging
 
 __all__ = [
-    "network_serializer", "network_with_ip_serializer",
+    "network_serializer",
+    "network_with_ip_serializer",
     "network_type_serializer",
     "net_ip_serializer",
     "network_device_type_serializer",
@@ -53,6 +54,11 @@ class network_with_ip_serializer(serializers.ModelSerializer):
 
 class net_ip_serializer(serializers.ModelSerializer):
     # network = network_serializer()
+    _auto_created_ = serializers.SerializerMethodField("get_auto_created")
+
+    def get_auto_created(selfs):
+        return False
+
     class Meta:
         model = net_ip
 
