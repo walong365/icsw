@@ -546,9 +546,10 @@ angular.module(
                 return {
                     "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
                     "ip" : "0.0.0.0"
-                    "_auto_generated_" : true
+                    "_changed_by_user_": false
                     "network" : $scope.networks[0].idx
-                    "domain_tree_node" : obj.domain_tree_node #$scope.domain_tree_node[0].idx
+                    # copy domain tree node from device
+                    "domain_tree_node" : obj.domain_tree_node
                 } 
             $scope.netip_edit.create(event).then(
                 (new_obj) ->
@@ -564,7 +565,9 @@ angular.module(
                 return {
                     "netdevice" : obj.idx
                     "ip" : "0.0.0.0"
+                    "_changed_by_user_": false
                     "network" : $scope.networks[0].idx
+                    # take first domain tree node
                     "domain_tree_node" : $scope.domain_tree_node[0].idx
                 } 
             $scope.netip_edit.create(event).then(
@@ -766,10 +769,12 @@ angular.module(
                 r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
             return r_val
         $scope.network_changed = (obj) ->
-            # console.log obj, obj._auto_created_
-            if obj.ip == "0.0.0.0" or obj._auto_created_?
-                # console.log obj, obj._auto_created_
+            if obj.ip == "0.0.0.0" or not obj._changed_by_user_
                 $scope.get_free_ip(obj)
+            if not obj._changed_by_user_
+                _nw = $scope.network_lut[obj.network]
+                if _nw.preferred_domain_tree_node
+                    obj.domain_tree_node = _nw.preferred_domain_tree_node
 
         $scope.get_free_ip = (obj) ->
             blockUI.start("requesting free IP...")

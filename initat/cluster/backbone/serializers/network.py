@@ -54,10 +54,10 @@ class network_with_ip_serializer(serializers.ModelSerializer):
 
 class net_ip_serializer(serializers.ModelSerializer):
     # network = network_serializer()
-    _auto_created_ = serializers.SerializerMethodField("get_auto_created")
+    _changed_by_user_ = serializers.SerializerMethodField("get_changed_by_user")
 
-    def get_auto_created(selfs):
-        return False
+    def get_changed_by_user(self, obj):
+        return True
 
     class Meta:
         model = net_ip
