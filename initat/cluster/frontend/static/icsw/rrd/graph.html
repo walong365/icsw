@@ -116,10 +116,14 @@
                 </div>
             </div>&nbsp;
             <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="show_values && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_values=!show_values" title="show numeric values">
-                        <span class="glyphicon glyphicon-list"></span>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="Legend mode">
+                        <span class="glyphicon glyphicon-align-justify"></span>
+                        {{ legend_mode_long }}<span class="caret"></span>
                     </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="_lm in legend_modes" ng-click="set_legend_mode(_lm)"><a href="#">{{ _lm['long'] }}</a></li>
+                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group" ng-show="!merge_cd">
@@ -208,8 +212,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">
-    <h4>{{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}</h4>
-    {{ scope.cropFunc }}
+    <h2>{{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}</h2>
     <table class="table-condensed">
         <tr ng-repeat="gkey in get_graph_keys()">
             <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">

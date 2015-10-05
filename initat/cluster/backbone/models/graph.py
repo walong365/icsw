@@ -24,6 +24,8 @@
 from django.db import models
 from django.db.models import signals, Q
 from django.dispatch import receiver
+from enum import Enum
+
 from initat.cluster.backbone.signals import SensorThresholdChanged
 
 __all__ = [
@@ -33,6 +35,9 @@ __all__ = [
     "SensorAction",
     "SensorThreshold",
     "SensorThresholdAction",
+    "GraphSetting",
+    "GraphScaleModeEnum",
+    "GraphLegendModeEnum",
 ]
 
 
@@ -331,3 +336,46 @@ def SensorThresholdPostDelete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         SensorThresholdChanged.send(sender=_cur_inst, sensor_threshold=_cur_inst, cause="SensorThreshold deleted")
+
+
+class GraphScaleModeEnum(Enum):
+    level = "l"
+    none = "n"
+    to100 = "t"
+
+
+class GraphLegendModeEnum(Enum):
+    full_with_values = "f"
+    only_text = "t"
+    nothing = "n"
+
+
+class GraphSetting(models.Model):
+    # log
+    idx = models.AutoField(primary_key=True)
+    user = models.ForeignKey("backbone.user")
+    # hide empty (all zero) RRDs
+    hide_empty = models.BooleanField(default=True)
+    # include y=0
+    include_zero = models.BooleanField(default=True)
+    # scale mode
+    # ... (l)evel : all graphs have the same max-value
+    # ... (n)one  : no scaling
+    # ... (t)o100 : all graphs max out at 100
+    scale_mode = models.CharField(
+        max_length=4,
+        default=GraphScaleModeEnum.level,
+        choices=[(_en.value, _en.name.replace("_", " ")) for _en in GraphScaleModeEnum],
+    )
+    legend_mode = models.CharField(
+        max_length=4,
+        default=GraphLegendModeEnum.full_with_values,
+        choices=[(_en.value, _en.name.replace("_", " ")) for _en in GraphLegendModeEnum],
+    )
+    # merge all devices together
+    merge_devices = models.BooleanField(default=False)
+    # merge all graphs into one
+    merge_graphs = models.BooleanField(default=False)
+    # merge controlling devices, only meaningfull when used with pks
+    merge_controlling_devices = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)

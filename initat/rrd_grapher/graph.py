@@ -38,13 +38,14 @@ from django.db.models import Q
 from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVValueEntry
+    MVValueEntry, GraphScaleModeEnum, GraphLegendModeEnum
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from lxml.builder import E  # @UnresolvedImport
 import dateutil.parser
 
 from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
 from .config import global_config
+
 
 FLOAT_FMT = "{:.6f}"
 
@@ -116,7 +117,7 @@ class Colorizer(object):
     def _read_files(self):
         _ct_file = os.path.join(self._gc_base, "color_tables.xml")
         _cr_file = os.path.join(self._gc_base, "color_rules.xml")
-        self.colortables = etree.fromstring(file(_ct_file, "r").read())  # @UndefinedVariable
+        self.colortables = etree.fromstring(file(_ct_file, "r").read())
         self.color_tables = {}
         for c_table in self.colortables.findall(".//colortable[@name]"):
             self.color_tables[c_table.get("name")] = ["#{:s}".format(color.get("rgb")) for color in c_table if self._check_color(color)]
@@ -210,7 +211,7 @@ class GraphVar(object):
         self.scale_y_factor = 1
         self.y_scaled = False
         self.graph_target = graph_target
-        if self.rrd_graph.para_dict["show_values"]:
+        if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]:
             self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
         else:
             self.max_info_width = self.rrd_graph.width / 7
@@ -321,16 +322,23 @@ class GraphVar(object):
             show_forecast = False
         # area: modes area (pure are), area{1,2,3} (area with lines)
         # print draw_name, draw_type, _stacked
-        if draw_type.startswith("AREA"):  # in ["AREA", "AREA1", "AREA2", "AREA3"]:
+        comment_str = ":<tt>{}</tt>".format(
+            (
+                "{{:<{:d}s}}".format(self.max_info_width)
+            ).format(
+                self.info(timeshift, show_forecast)
+            )[:self.max_info_width],
+        ) if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text] else ""
+        if draw_type.startswith("AREA"):
             # support area with outline style
             if self.y_scaled:
                 draw_name = self._transform(c_lines, draw_name, "sc", "CDEF:{{}}={{}},{},*".format(self.scale_y_factor))
             c_lines.append(
-                "{}:{}{}:<tt>{}</tt>{}".format(
+                "{}:{}{}{}{}".format(
                     "AREA",
                     draw_name,
                     self.color,
-                    ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift, show_forecast))[:self.max_info_width],
+                    comment_str,
                     ":STACK" if _stacked else "",
                 ),
             )
@@ -350,15 +358,11 @@ class GraphVar(object):
             if self.y_scaled:
                 draw_name = self._transform(c_lines, draw_name, "scl", "CDEF:{{}}={{}},{},*".format(self.scale_y_factor))
             c_lines.append(
-                "{}:{}{}:<tt>{}</tt>{}".format(
+                "{}:{}{}{}{}".format(
                     draw_type,
                     draw_name,
                     self.color,
-                    (
-                        "{{:<{:d}s}}".format(self.max_info_width)
-                    ).format(
-                        self.info(timeshift, show_forecast)
-                    )[:self.max_info_width],
+                    comment_str,
                     ":STACK" if _stacked else "",
                 ),
             )
@@ -438,7 +442,7 @@ class GraphVar(object):
             _sum_unit = _sum_unit[:-2]
             if _sum_unit == "1":
                 _sum_unit = ""
-        if self.rrd_graph.para_dict["show_values"]:
+        if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]:
             c_lines.append(
                 "COMMENT:<tt>{}</tt>".format(
                     "{:>4s}".format(
@@ -466,7 +470,7 @@ class GraphVar(object):
                     ),
                 ]
             )
-            if self.rrd_graph.para_dict["show_values"]:
+            if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]:
                 c_lines.extend(
                     [
                         "GPRINT:{}{}:<tt>%6.1lf%s{}</tt>{}".format(
@@ -517,7 +521,7 @@ class GraphVar(object):
                     # Q(date__lte=cluster_timezone.normalize(self.rrd_graph.para_dict["end_time_fc"])),
                 ):
                     _loc = cluster_timezone.normalize(_sta.date)
-                    if _loc > self.rrd_graph.para_dict["start_time"] and _loc < self.rrd_graph.para_dict["end_time"]:
+                    if self.rrd_graph.para_dict["end_time"] > _loc > self.rrd_graph.para_dict["start_time"]:
                         _events.setdefault(_sta.action_type, []).append(_sta)
                 for _event_type in sorted(_events.iterkeys()):
                     for _event_num, _sta in enumerate(_events[_event_type]):
@@ -558,26 +562,29 @@ class GraphVar(object):
 
     @property
     def header_line(self):
-        _sv = self.rrd_graph.para_dict["show_values"]
-        if _sv:
-            _l_list = self.get_legend_list()
-        else:
-            _l_list = []
-        return "COMMENT:<tt>{}{}{}</tt>\\n".format(
-            (
-                "{{:<{:d}s}}".format(
-                    self.max_info_width + 4
+        if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text]:
+            _sv = self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]
+            if _sv:
+                _l_list = self.get_legend_list()
+            else:
+                _l_list = []
+            return "COMMENT:<tt>{}{}{}</tt>\\n".format(
+                (
+                    "{{:<{:d}s}}".format(
+                        self.max_info_width + 4
+                    )
+                ).format(
+                    "Description"
+                )[:self.max_info_width + 4],
+                "unit" if _sv else "",
+                "".join(
+                    [
+                        "{:>9s}".format(rep_name) for rep_name, _cf, _total in _l_list
+                    ]
                 )
-            ).format(
-                "Description"
-            )[:self.max_info_width + 4],
-            "unit" if _sv else "",
-            "".join(
-                [
-                    "{:>9s}".format(rep_name) for rep_name, _cf, _total in _l_list
-                ]
             )
-        )
+        else:
+            return "COMMENT:"
 
 
 class GraphTarget(object):
@@ -890,7 +897,8 @@ class RRDGraph(object):
             "hide_empty": False,
             "include_zero": False,
             "show_forecast": False,
-            "scale_mode": "level",
+            "scale_mode": GraphScaleModeEnum("l"),
+            "legend_mode": GraphLegendModeEnum("f"),
             "merge_devices": True,
             "merge_graphs": False,
             "job_mode": "none",
@@ -1349,10 +1357,10 @@ class RRDGraph(object):
                 _iterate_line = False
                 _valid_graphs = [_entry for _entry in _graph_line if _entry.valid]
                 if _line_iteration == 0 and self.para_dict["scale_mode"] in [
-                    "level", "to100"
-                ] and (len(_valid_graphs) > 1 or self.para_dict["scale_mode"] == "to100"):
+                    GraphScaleModeEnum.level, GraphScaleModeEnum.to100
+                ] and (len(_valid_graphs) > 1 or self.para_dict["scale_mode"] == GraphScaleModeEnum.to100):
                     _line_iteration += 1
-                    if self.para_dict["scale_mode"] == "level":
+                    if self.para_dict["scale_mode"] == GraphScaleModeEnum.level:
                         _vmin_v, _vmax_v = (
                             [_entry.draw_result["value_min"] for _entry in _valid_graphs],
                             [_entry.draw_result["value_max"] for _entry in _valid_graphs],
@@ -1489,13 +1497,14 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             ("hide_empty", "0"),
             ("merge_devices", "1"),
             ("merge_graphs", "0"),
-            ("show_values", "1"),
             ("include_zero", "0"),
             ("show_forecast", "0"),
             ("debug_mode", "0"),
             ("merge_cd", "0"),
         ]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
+        para_dict["scale_mode"] = GraphScaleModeEnum(para_dict.get("scale_mode", "l")[0])
+        para_dict["legend_mode"] = GraphLegendModeEnum(para_dict.get("legend_mode", "f")[0])
         self._open_rrdcached_socket()
         try:
             graph_list = RRDGraph(

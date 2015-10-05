@@ -212,7 +212,13 @@ angular.module(
         $scope.selected_job = 0
         $scope.include_zero = true
         $scope.show_forecast = false
-        $scope.show_values = true
+        $scope.legend_modes = [
+            {"short": "f", "long": "full"},
+            {"short": "t", "long": "only text"},
+            {"short": "n", "long": "nothing"},
+        ]
+        $scope.legend_mode = $scope.legend_modes[0]["short"]
+        $scope.legend_mode_long = $scope.legend_modes[0]["long"]
         $scope.cds_already_merged = false
         $scope.merge_cd = false
         $scope.scale_modes = ["level", "none", "to100"]
@@ -250,6 +256,9 @@ angular.module(
             $scope.job_mode = new_jm
         $scope.set_scale_mode = (new_sm) ->
             $scope.scale_mode = new_sm
+        $scope.set_legend_mode = (new_lm) ->
+            $scope.legend_mode = new_lm["short"]
+            $scope.legend_mode_long = new_lm["long"]
         $scope.get_job_mode = (_jm) ->
             if _jm == "selected"
                 return "#{_jm} (#{$scope.selected_job})"
@@ -561,7 +570,7 @@ angular.module(
                         "selected_job"  : $scope.selected_job 
                         "include_zero"  : $scope.include_zero
                         "show_forecast" : $scope.show_forecast
-                        "show_values"   : $scope.show_values
+                        "legend_mode"   : $scope.legend_mode
                         "merge_cd"      : $scope.merge_cd
                         # flag if the controlling devices are shown in the rrd tree
                         "cds_already_merged" : $scope.cds_already_merged
