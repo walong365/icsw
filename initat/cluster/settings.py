@@ -73,7 +73,10 @@ DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
 
 # config stores
 _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
-_ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True)
+if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
+    _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True)
+else:
+    raise ImproperlyConfigured("DB-Access not configure (store not found)")
 
 # validate settings
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
