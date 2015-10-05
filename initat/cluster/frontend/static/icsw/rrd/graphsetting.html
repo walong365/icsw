@@ -1,0 +1,59 @@
+<script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
+    <icsw-tools-button type="modify" value="" size="sm" ng-click="show_settings()">
+    </icsw-tools-button>
+</script>
+
+<script type="text/ng-template" id="icsw.rrd.graphsetting.modify">
+    <form>
+        <fieldset>
+            <legend>
+                Flags
+            </legend>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Hide Empty:</label>
+                <div class="col-md-3 controls">
+                    <icsw-tools-yes-no flag="cur_setting.hide_empty"></icsw-tools-yes-no>
+                </div>
+                <label class="col-md-3 control-label">Include y=0:</label>
+                <div class="col-md-3 controls">
+                    <icsw-tools-yes-no flag="cur_setting.include_zero"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Merge devices:</label>
+                <div class="col-md-3 controls">
+                    <icsw-tools-yes-no flag="cur_setting.merge_devices"></icsw-tools-yes-no>
+                </div>
+                <label class="col-md-3 control-label">Merge graphs:</label>
+                <div class="col-md-3 controls">
+                    <icsw-tools-yes-no flag="cur_setting.merge_graphs"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>
+                Legend / Scale
+            </legend>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Legend mode:</label>
+                <div class="col-md-3 controls">
+                    <ui-select ng-model="cur_setting.legend_mode">
+                        <ui-select-match placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-choices repeat="lm in legend_modes">
+                            <div ng-bind-html="lm.long"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <label class="col-md-3 control-label">Scale mode:</label>
+                <div class="col-md-3 controls">
+                    <ui-select ng-model="cur_setting.scale_mode">
+                        <ui-select-match placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-choices repeat="sm in scale_modes">
+                            <div ng-bind-html="sm.long"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>

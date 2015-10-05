@@ -118,6 +118,22 @@ angular.module(
             conf = get_config_for_button_type(type)
             return conf.css_class + " " + conf.icon_class
     }
+]).directive("icswToolsYesNo", [() ->
+    return {
+        restict: "EA"
+        template: """
+<button class="btn btn-xs form-control" ng-class="get_class()" ng-click="change_value()">{{ get_value() }}</button>
+"""
+        scope:
+            flag: "="
+        link: (scope, element, attrs) ->
+            scope.change_value = () ->
+                scope.flag = !scope.flag
+            scope.get_value = () ->
+                return if scope.flag then "yes" else "no"
+            scope.get_class = () ->
+                return if scope.flag then "btn-success" else "btn-default"
+    }
 ]).directive('icswToolsButton', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
     return {
         restrict: "EA",

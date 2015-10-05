@@ -364,12 +364,12 @@ class GraphSetting(models.Model):
     # ... (t)o100 : all graphs max out at 100
     scale_mode = models.CharField(
         max_length=4,
-        default=GraphScaleModeEnum.level,
+        default=GraphScaleModeEnum.level.value,
         choices=[(_en.value, _en.name.replace("_", " ")) for _en in GraphScaleModeEnum],
     )
     legend_mode = models.CharField(
         max_length=4,
-        default=GraphLegendModeEnum.full_with_values,
+        default=GraphLegendModeEnum.full_with_values.value,
         choices=[(_en.value, _en.name.replace("_", " ")) for _en in GraphLegendModeEnum],
     )
     # merge all devices together

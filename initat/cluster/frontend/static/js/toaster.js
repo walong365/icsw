@@ -1,10 +1,9 @@
-/* global angular */
-(function (window, document) {
+(function () {
     'use strict';
 
     /*
      * AngularJS Toaster
-     * Version: 0.4.15
+     * Version: 0.4.14
      *
      * Copyright 2013-2015 Jiri Kavulak.
      * All Rights Reserved.
@@ -15,7 +14,7 @@
      * Related to project of John Papa, Hans Fjällemark and Nguyễn Thiện Hùng (thienhung1989)
      */
 
-    angular.module('toaster', []).constant(
+    angular.module('toaster', ['ngAnimate']).constant(
         'toasterConfig', {
             'limit': 0,                   // limits max number of toasts
             'tap-to-dismiss': true,
@@ -29,8 +28,8 @@
              'close-button': { 'toast-error': true, 'toast-info': false }
              */
             'close-button': false,
-            'newest-on-top': true, 
-            //'fade-in': 1000,            // done in css
+
+            'newest-on-top': true, //'fade-in': 1000,            // done in css
             //'on-fade-in': undefined,    // not implemented
             //'fade-out': 1000,           // done in css
             //'on-fade-out': undefined,   // not implemented
@@ -58,7 +57,7 @@
     ).service(
         'toaster', [
             '$rootScope', 'toasterConfig', function ($rootScope, toasterConfig) {
-                this.pop = function (type, title, body, timeout, bodyOutputType, clickHandler, toasterId, showCloseButton, toastId, onHideCallback) {
+                this.pop = function (type, title, body, timeout, bodyOutputType, clickHandler, toasterId, showCloseButton, toastId) {
                     if (angular.isObject(type)) {
                         var params = type; // Enable named parameters as pop argument
                         this.toast = {
@@ -69,8 +68,7 @@
                             bodyOutputType: params.bodyOutputType,
                             clickHandler: params.clickHandler,
                             showCloseButton: params.showCloseButton,
-                            uid: params.toastId,
-                            onHideCallback: params.onHideCallback
+                            uid: params.toastId
                         };
                         toastId = params.toastId;
                         toasterId = params.toasterId;
@@ -83,8 +81,7 @@
                             bodyOutputType: bodyOutputType,
                             clickHandler: clickHandler,
                             showCloseButton: showCloseButton,
-                            uid: toastId,
-                            onHideCallback: onHideCallback
+                            uid: toastId
                         };
                     }
                     $rootScope.$emit('toaster-newToast', toasterId, toastId);
@@ -97,7 +94,7 @@
                 // Create one method per icon class, to allow to call toaster.info() and similar
                 for (var type in toasterConfig['icon-classes']) {
                     this[type] = (function (toasterType) {
-                        return function (title, body, timeout, bodyOutputType, clickHandler, toasterId, showCloseButton, toastId,onHideCallback) {
+                        return function (title, body, timeout, bodyOutputType, clickHandler, toasterId, showCloseButton, toastId) {
                             if (angular.isString(title)) {
                                 this.pop(
                                     toasterType,
@@ -108,8 +105,7 @@
                                     clickHandler,
                                     toasterId,
                                     showCloseButton,
-                                    toastId,
-                                    onHideCallback
+                                    toastId
                                 );
                             } else { // 'title' is actually an object with options
                                 this.pop(angular.extend(title, { type: toasterType }));
@@ -332,10 +328,6 @@
                                     $interval.cancel(toast.timeoutPromise);
                                 }
                                 scope.toasters.splice(toastIndex, 1);
-                                
-                                if (angular.isFunction(toast.onHideCallback)) {
-                                    toast.onHideCallback();
-                                }
                             }
                         }
 
@@ -406,9 +398,9 @@
                                     var removeToast = true;
                                     if (toast.clickHandler) {
                                         if (angular.isFunction(toast.clickHandler)) {
-                                            removeToast = toast.clickHandler(toast, isCloseButton);
+                                            removeToast = toast.clickHandler(toast, true);
                                         } else if (angular.isFunction($scope.$parent.$eval(toast.clickHandler))) {
-                                            removeToast = $scope.$parent.$eval(toast.clickHandler)(toast, isCloseButton);
+                                            removeToast = $scope.$parent.$eval(toast.clickHandler)(toast, toast.showCloseButton);
                                         } else {
                                             console.log("TOAST-NOTE: Your click handler is not inside a parent scope of toaster-container.");
                                         }

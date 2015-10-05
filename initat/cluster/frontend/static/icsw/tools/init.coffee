@@ -679,7 +679,7 @@ angular.module(
                         d.reject()
                 },
             ]
-            onshow: (modal) =>
+            iconshow: (modal) =>
                 height = $(window).height() - 100
                 modal.getModal().find(".modal-body").css("max-height", height)
         return d.promise
