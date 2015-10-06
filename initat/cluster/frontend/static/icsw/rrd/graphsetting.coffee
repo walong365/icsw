@@ -69,6 +69,7 @@ angular.module(
     restrict: "EA"
     template: $templateCache.get("icsw.rrd.graphsetting.modify")
     link: (scope, el, attrs) ->
+      console.log scope.settings
       scope.legend_modes = [
         {"short": "f", "long": "full"}
         {"short": "t", "long": "only text"}

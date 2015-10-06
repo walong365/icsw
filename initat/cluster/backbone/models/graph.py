@@ -354,6 +354,7 @@ class GraphSetting(models.Model):
     # log
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
+    name = models.CharField(max_length=128, default="")
     # hide empty (all zero) RRDs
     hide_empty = models.BooleanField(default=True)
     # include y=0
@@ -379,3 +380,7 @@ class GraphSetting(models.Model):
     # merge controlling devices, only meaningfull when used with pks
     merge_controlling_devices = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("user", "name")]
+        
