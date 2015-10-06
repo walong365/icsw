@@ -383,4 +383,6 @@ class GraphSetting(models.Model):
 
     class Meta:
         unique_together = [("user", "name")]
-        
+
+    def __unicode__(self):
+        return "GraphSetting '{}'".format(self.name)

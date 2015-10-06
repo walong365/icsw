@@ -5,28 +5,29 @@
 
 <script type="text/ng-template" id="icsw.rrd.graphsetting.modify">
     <form>
+        <h3>Settings defined: {{ settings.length }}</h3>
         <fieldset>
             <legend>
                 Flags
             </legend>
-            <div class="form-group">
+            <div class="form-group row">
                 <label class="col-md-3 control-label">Hide Empty:</label>
                 <div class="col-md-3 controls">
-                    <icsw-tools-yes-no flag="cur_setting.hide_empty"></icsw-tools-yes-no>
+                    <icsw-tools-yes-no flag="vars.current.hide_empty"></icsw-tools-yes-no>
                 </div>
                 <label class="col-md-3 control-label">Include y=0:</label>
                 <div class="col-md-3 controls">
-                    <icsw-tools-yes-no flag="cur_setting.include_zero"></icsw-tools-yes-no>
+                    <icsw-tools-yes-no flag="vars.current.include_zero"></icsw-tools-yes-no>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group row">
                 <label class="col-md-3 control-label">Merge devices:</label>
                 <div class="col-md-3 controls">
-                    <icsw-tools-yes-no flag="cur_setting.merge_devices"></icsw-tools-yes-no>
+                    <icsw-tools-yes-no flag="vars.current.merge_devices"></icsw-tools-yes-no>
                 </div>
                 <label class="col-md-3 control-label">Merge graphs:</label>
                 <div class="col-md-3 controls">
-                    <icsw-tools-yes-no flag="cur_setting.merge_graphs"></icsw-tools-yes-no>
+                    <icsw-tools-yes-no flag="vars.current.merge_graphs"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>
@@ -34,10 +35,10 @@
             <legend>
                 Legend / Scale
             </legend>
-            <div class="form-group">
+            <div class="form-group row">
                 <label class="col-md-3 control-label">Legend mode:</label>
                 <div class="col-md-3 controls">
-                    <ui-select ng-model="cur_setting.legend_mode">
+                    <ui-select ng-model="vars.current.legend_mode2">
                         <ui-select-match placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
                         <ui-select-choices repeat="lm in legend_modes">
                             <div ng-bind-html="lm.long"></div>
@@ -46,12 +47,45 @@
                 </div>
                 <label class="col-md-3 control-label">Scale mode:</label>
                 <div class="col-md-3 controls">
-                    <ui-select ng-model="cur_setting.scale_mode">
+                    <ui-select ng-model="vars.current.scale_mode2">
                         <ui-select-match placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
                         <ui-select-choices repeat="sm in scale_modes">
                             <div ng-bind-html="sm.long"></div>
                         </ui-select-choices>
                     </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>
+                Selection / Action
+            </legend>
+            <div class="form-group row">
+                <label class="col-md-3 control-label">Select:</label>
+                <div class="col-md-9 controls">
+                    <div class="input-group">
+                        <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
+                            <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices repeat="entry in settings">
+                                <div ng-bind-html="entry.name"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-md-3 control-label">Name:</label>
+                <div class="col-md-9 controls">
+                    <div class="input-group">
+                        <input class="form-control" type="text" size="100" max_length="100" ng-model="vars.current.name"/>
+                        <span class="input-group-btn">
+                            <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
+                            <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
+                        </span>
+                    </div>
                 </div>
             </div>
         </fieldset>
