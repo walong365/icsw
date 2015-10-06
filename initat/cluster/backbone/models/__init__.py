@@ -1212,9 +1212,9 @@ class wc_files(models.Model):
         ("i", "internal"),
     ))
     # source path
-    source = models.CharField(max_length=1024)
+    source = models.TextField(default="")
     # destination path, relative to tree_node
-    dest = models.CharField(max_length=1024)
+    dest = models.TextField(default="")
     # error
     error_flag = models.BooleanField(default=False)
     # content, defaults to the empty string, base64-encoded for binary data

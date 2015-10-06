@@ -339,6 +339,6 @@ class PopulateRamdiskCmdLine(models.Model):
     # device
     machine = models.CharField(max_length=256, default="")
     # command line
-    cmdline = models.CharField(max_length=1024)
+    cmdline = models.TextField(default="")
     kernel = models.ForeignKey("backbone.kernel")
     date = models.DateTimeField(auto_now_add=True)

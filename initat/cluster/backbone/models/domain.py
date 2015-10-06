@@ -473,7 +473,7 @@ class category(models.Model):
     # the top node has no name
     name = models.CharField(max_length=64, default="")
     # full_name, gets computed on structure change
-    full_name = models.CharField(max_length=1024, default="", blank=True)
+    full_name = models.TextField(default="", blank=True)
     # the top node has no parent
     parent = models.ForeignKey("self", null=True)
     # depth information, top_node has idx=0
@@ -622,7 +622,7 @@ class location_gfx(models.Model):
     # changes
     changes = models.IntegerField(default=0)
     # comment
-    comment = models.CharField(max_length=1024, default="", blank=True)
+    comment = models.TextField(default="", blank=True)
 
     def get_icon_url(self):
         if self.image_stored:
@@ -794,7 +794,7 @@ class device_mon_location(models.Model):
     # locked (as soon as a graphic is set)
     locked = models.BooleanField(default=False)
     # comment
-    comment = models.CharField(max_length=1024, default="", blank=True)
+    comment = models.TextField(default="", blank=True)
     # creation date
     created = models.DateTimeField(auto_now_add=True)
 
