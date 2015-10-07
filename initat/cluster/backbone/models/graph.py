@@ -39,6 +39,7 @@ __all__ = [
     "GraphScaleModeEnum",
     "GraphLegendModeEnum",
     "GraphSettingSize",
+    "GraphSettingTimeshift",
 ]
 
 
@@ -362,6 +363,15 @@ class GraphSettingSize(models.Model):
 
     class Meta:
         unique_together = [("width", "height")]
+        ordering = ("width", "height",)
+
+
+class GraphSettingTimeshift(models.Model):
+    # sizes
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64, default="", unique=True)
+    seconds = models.IntegerField(default=0, unique=True)
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class GraphSetting(models.Model):
@@ -395,6 +405,7 @@ class GraphSetting(models.Model):
     merge_controlling_devices = models.BooleanField(default=False)
     # size
     graph_setting_size = models.ForeignKey("backbone.GraphSettingSize", null=True)
+    graph_setting_timeshift = models.ForeignKey("backbone.GraphSettingTimeshift", null=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def to_enum(self):

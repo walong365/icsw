@@ -38,3 +38,15 @@ def add_fixtures(**kwargs):
             width=_width,
             height=_height,
         )
+    for _name, _seconds in [
+        ("timeframe", 0),
+        ("1 hour", 3600),
+        ("1 day", 24 * 3600),
+        ("1 week", 7 * 24 * 3600),
+        ("1 month (31 days)", 31 * 24 * 3600),
+        ("1 year (365 days)", 365 * 24 * 3600),
+    ]:
+        _new_ts = factories.GraphSettingTimeshiftFactory(
+            name=_name,
+            seconds=_seconds,
+        )

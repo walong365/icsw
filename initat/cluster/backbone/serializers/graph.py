@@ -22,7 +22,7 @@
 """ serializer definitions for Graphs elements """
 
 from initat.cluster.backbone.models import SensorAction, SensorThreshold, SensorThresholdAction, \
-    GraphSetting, GraphSettingSize
+    GraphSetting, GraphSettingSize, GraphSettingTimeshift
 from rest_framework import serializers
 
 __all__ = [
@@ -31,6 +31,7 @@ __all__ = [
     "SensorThresholdActionSerializer",
     "GraphSettingSerializer",
     "GraphSettingSizeSerializer",
+    "GraphSettingTimeshiftSerializer",
 ]
 
 
@@ -59,3 +60,10 @@ class GraphSettingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = GraphSetting
+
+
+class GraphSettingTimeshiftSerializer(serializers.ModelSerializer):
+    # graph_setting_size = GraphSettingSizeSerializer()
+
+    class Meta:
+        model = GraphSettingTimeshift
