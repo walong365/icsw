@@ -39,8 +39,16 @@ angular.module(
     ).then((data) ->
         sizes = data[0]
         for waiter in size_waiters
-        if _size_waiters
+            waiter.resolve(sizes)
+        size_waiters = []
     )
+    get_sizes = () ->
+        _defer = $q.defer()
+        if sizes.length
+            _defer.resolve(sizes)
+        else
+            size_waiters.push(_defer)
+        return _defer
     load_data = (client) ->
         _defer= $q.defer()
         icswUserService.load().then((user) ->
@@ -120,6 +128,8 @@ angular.module(
         }
         return cur_setting
     return {
+        "get_sizes": () ->
+            return get_sizes().promise
         "set_version": () ->
             return _set_version
         "get_active": () ->
