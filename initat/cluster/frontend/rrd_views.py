@@ -141,7 +141,6 @@ class graph_rrds(View):
             E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
-            E.timeshift(_post.get("timeshift", "0")),
         )
         result = contact_server(request, "rrd-grapher", srv_com, timeout=30)
         if result:

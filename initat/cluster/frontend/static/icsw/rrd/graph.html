@@ -39,17 +39,6 @@
             </div>&nbsp;
             <div class="form-group">
                 <div class="btn-group">
-                    <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-dashboard"></span>
-                        timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
-                    </ul>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="btn-group">
                     <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
                         <span class="glyphicon glyphicon-tasks"></span>
                         {{ get_job_mode(job_mode) }}<span class="caret"></span>

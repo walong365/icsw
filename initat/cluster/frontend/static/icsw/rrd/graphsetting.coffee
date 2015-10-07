@@ -26,23 +26,31 @@ angular.module(
 ).service("icswRrdGraphSettingService", ["$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular", ($q, icswCachingCall, ICSW_URLS, icswUserService, Restangular) ->
     _url = ICSW_URLS.REST_GRAPH_SETTING_LIST
     _size_url = ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
+    _shift_url = ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST
     _sets = []
     sizes = []
+    shifts = []
     size_waiters = []
+    shift_waiters = []
     _set_version = 0
     _active = undefined
     _user = undefined
     $q.all(
         [
             icswCachingCall.fetch("graphsize", _size_url, {}, [])
+            icswCachingCall.fetch("graphsize", _shift_url, {}, [])
         ]
     ).then((data) ->
         sizes = data[0]
+        shifts = data[1]
         for size in sizes
             size.info = "#{size.name} (#{size.width} x #{size.height})"
         for waiter in size_waiters
             waiter.resolve(sizes)
         size_waiters = []
+        for waiter in shift_waiters
+            waiter.resolve(shifts)
+        shift_waiters = []
     )
     get_sizes = () ->
         _defer = $q.defer()
@@ -50,6 +58,13 @@ angular.module(
             _defer.resolve(sizes)
         else
             size_waiters.push(_defer)
+        return _defer
+    get_shifts = () ->
+        _defer = $q.defer()
+        if shifts.length
+            _defer.resolve(shifts)
+        else
+            shift_waiters.push(_defer)
         return _defer
     load_data = (client) ->
         _defer= $q.defer()
@@ -141,6 +156,8 @@ angular.module(
     return {
         "get_sizes": () ->
             return get_sizes().promise
+        "get_shifts": () ->
+            return get_shifts().promise
         "set_version": () ->
             return _set_version
         "get_active": () ->
@@ -205,6 +222,10 @@ angular.module(
             scope.sizes = []
             icswRrdGraphSettingService.get_sizes().then((sizes) ->
                 scope.sizes = sizes
+            )
+            scope.shifts = []
+            icswRrdGraphSettingService.get_shifts().then((shifts) ->
+                scope.shifts = shifts
             )
             scope.set_current = (setting) ->
                 setting.legend_mode2 = (entry for entry in icswRrdGraphSettingService.legend_modes() when entry.short == setting.legend_mode)[0]

@@ -1254,11 +1254,17 @@ class RRDGraph(object):
                         draw_it = True
                         removed_keys = set()
                         while draw_it:
+                            if self.para_dict["graph_setting"].graph_setting_timeshift_id:
+                                timeshift = self.para_dict["graph_setting"].graph_setting_timeshift.seconds
+                                if timeshift == 0:
+                                    timeshift = self.abs_end_time - self.abs_start_time
+                            else:
+                                timeshift = 0
                             rrd_args = rrd_pre_args + sum(
                                 [
                                     _graph_target.graph_var_def(
                                         _key,
-                                        timeshift=self.para_dict["timeshift"],
+                                        timeshift=timeshift,
                                     ) for _key in _graph_target.draw_keys
                                 ],
                                 []
@@ -1484,7 +1490,7 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text
         # cast to integer
-        para_dict = {key: int(value) if key in ["timeshift", "graph_setting"] else value for key, value in para_dict.iteritems()}
+        para_dict = {key: int(value) if key in ["graph_setting"] else value for key, value in para_dict.iteritems()}
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])

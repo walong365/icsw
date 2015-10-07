@@ -373,6 +373,9 @@ class GraphSettingTimeshift(models.Model):
     seconds = models.IntegerField(default=0, unique=True)
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "GraphTimeshift {}".format(self.name)
+
 
 class GraphSetting(models.Model):
     # log
@@ -404,8 +407,8 @@ class GraphSetting(models.Model):
     # merge controlling devices, only meaningfull when used with pks
     merge_controlling_devices = models.BooleanField(default=False)
     # size
-    graph_setting_size = models.ForeignKey("backbone.GraphSettingSize", null=True)
-    graph_setting_timeshift = models.ForeignKey("backbone.GraphSettingTimeshift", null=True)
+    graph_setting_size = models.ForeignKey("backbone.GraphSettingSize")
+    graph_setting_timeshift = models.ForeignKey("backbone.GraphSettingTimeshift", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def to_enum(self):

@@ -151,9 +151,6 @@ class pd_timerange
         else
             return moment()    
 
-class pd_timeshift
-    constructor: (@name, @seconds) ->
-
 angular.module(
     "icsw.rrd.graph",
     [
@@ -177,14 +174,6 @@ angular.module(
             new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
             new pd_timerange("last year", moment().subtract(1, "year").startOf("year"), moment().subtract(1, "year").endOf("year"))
         ]
-        $scope.all_timeshifts = [
-            new pd_timeshift("none", 0)
-            new pd_timeshift("1 hour", 60 * 60)
-            new pd_timeshift("1 day", 24 * 60 * 60)
-            new pd_timeshift("1 week", 7 * 24 * 60 * 60)
-            new pd_timeshift("1 month (31 days)", 31 * 24 * 60 * 60)
-            new pd_timeshift("1 year (365 days)", 365 * 24 * 60 * 60)
-        ]
         moment().utc()
         $scope.dt_valid = true
         $scope.vector_valid = false
@@ -197,7 +186,6 @@ angular.module(
         $scope.is_loading = true
         $scope.is_drawing = false
         $scope.cur_selected = []
-        $scope.active_ts = undefined
         # to be set by directive
         $scope.auto_select_keys = []
         $scope.draw_on_init = false
@@ -280,11 +268,6 @@ angular.module(
             $scope.from_date_mom = new_from
             $scope.to_date_mom   = new_to
             $scope.update_dt()
-        $scope.set_active_ts = (new_ts) ->
-            if new_ts.seconds
-                $scope.active_ts = new_ts
-            else
-                $scope.active_ts = undefined
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             # clear graphs
             $scope.devlist_loading = false
@@ -553,7 +536,6 @@ angular.module(
                         "graph_setting" : icswRrdGraphSettingService.get_active().idx
                         # flag if the controlling devices are shown in the rrd tree
                         "cds_already_merged" : $scope.cds_already_merged
-                        "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
                     }
                     success : (xml) =>
                         gfx.resolve(xml)
