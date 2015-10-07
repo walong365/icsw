@@ -9,7 +9,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     network, netdevice, net_ip, device_config, LogSource, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
-    ComCapability, SensorAction, config_catalog
+    ComCapability, SensorAction, config_catalog, GraphSettingSize
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -488,3 +488,9 @@ class SensorActionFactory(factory.django.DjangoModelFactory):
         if self.hard_control != extracted:
             self.hard_control = extracted
             self.save()
+
+
+class GraphSettingSizeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = GraphSettingSize
+        django_get_or_create = ("name",)

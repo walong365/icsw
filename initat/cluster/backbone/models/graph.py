@@ -38,6 +38,7 @@ __all__ = [
     "GraphSetting",
     "GraphScaleModeEnum",
     "GraphLegendModeEnum",
+    "GraphSettingSize",
 ]
 
 
@@ -350,6 +351,19 @@ class GraphLegendModeEnum(Enum):
     nothing = "n"
 
 
+class GraphSettingSize(models.Model):
+    # sizes
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64, default="", unique=True)
+    default = models.BooleanField(default=False)
+    width = models.IntegerField(default=0)
+    height = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("width", "height")]
+
+
 class GraphSetting(models.Model):
     # log
     idx = models.AutoField(primary_key=True)
@@ -379,6 +393,8 @@ class GraphSetting(models.Model):
     merge_graphs = models.BooleanField(default=False)
     # merge controlling devices, only meaningfull when used with pks
     merge_controlling_devices = models.BooleanField(default=False)
+    # size
+    size = models.ForeignKey("backbone.GraphSettingSize", null=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def to_enum(self):
