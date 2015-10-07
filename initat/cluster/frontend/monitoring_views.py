@@ -337,8 +337,7 @@ class StatusHistory(permission_required_mixin, View):
 class Graph(permission_required_mixin, View):
     def get(self, request):
         return render_me(
-            request, "monitoring_graph.html", {
-            }
+            request, "monitoring_graph.html", {}
         )()
 
 
