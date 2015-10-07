@@ -34,17 +34,20 @@ angular.module(
     _user = undefined
     $q.all(
         [
-            icswCachingCall.fetch(client, _size_url, {}, [])
+            icswCachingCall.fetch("graphsize", _size_url, {}, [])
         ]
     ).then((data) ->
+        console.log data.length
         sizes = data[0]
         for waiter in size_waiters
             waiter.resolve(sizes)
         size_waiters = []
     )
     get_sizes = () ->
+        console.log "x", sizes
         _defer = $q.defer()
         if sizes.length
+            console.log "*", sizes
             _defer.resolve(sizes)
         else
             size_waiters.push(_defer)
@@ -74,10 +77,19 @@ angular.module(
         )
         return _defer
     create_default = () ->
-        return create(get_default())
-    create = (setting) ->
-        setting.user = _user.idx
         _defer = $q.defer()
+        get_sizes().promise.then((sizes) ->
+            _def_size = (size for size in sizes when size.default)[0]
+            _def_dict = get_default()
+            _def_dict.graph_setting_size = _def_size.idx
+            create(_def_dict).then((new_setting) ->
+                _defer.resolve(new_setting)
+            )
+        )
+        return _defer
+    create = (setting) ->
+        _defer = $q.defer()
+        setting.user = _user.idx
         Restangular.all(_url.slice(1)).post(setting).then((new_data) ->
             _sets.push(new_data)
             _defer.resolve(new_data)
