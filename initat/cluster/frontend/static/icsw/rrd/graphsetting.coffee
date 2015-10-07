@@ -37,17 +37,16 @@ angular.module(
             icswCachingCall.fetch("graphsize", _size_url, {}, [])
         ]
     ).then((data) ->
-        console.log data.length
         sizes = data[0]
+        for size in sizes
+            size.info = "#{size.name} (#{size.width} x #{size.height})"
         for waiter in size_waiters
             waiter.resolve(sizes)
         size_waiters = []
     )
     get_sizes = () ->
-        console.log "x", sizes
         _defer = $q.defer()
         if sizes.length
-            console.log "*", sizes
             _defer.resolve(sizes)
         else
             size_waiters.push(_defer)
@@ -81,8 +80,8 @@ angular.module(
         get_sizes().promise.then((sizes) ->
             _def_size = (size for size in sizes when size.default)[0]
             _def_dict = get_default()
-            _def_dict.graph_setting_size = _def_size.idx
-            create(_def_dict).then((new_setting) ->
+            _def_dict.graph_setting_size = _def_size
+            create(_def_dict).promise.then((new_setting) ->
                 _defer.resolve(new_setting)
             )
         )
@@ -203,6 +202,10 @@ angular.module(
             scope.vars = {
                 "current" : undefined
             }
+            scope.sizes = []
+            icswRrdGraphSettingService.get_sizes().then((sizes) ->
+                scope.sizes = sizes
+            )
             scope.set_current = (setting) ->
                 setting.legend_mode2 = (entry for entry in icswRrdGraphSettingService.legend_modes() when entry.short == setting.legend_mode)[0]
                 setting.scale_mode2 = (entry for entry in icswRrdGraphSettingService.scale_modes() when entry.short == setting.scale_mode)[0]

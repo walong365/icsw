@@ -49,11 +49,13 @@ class SensorThresholdActionSerializer(serializers.ModelSerializer):
         model = SensorThresholdAction
 
 
-class GraphSettingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = GraphSetting
-
-
 class GraphSettingSizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = GraphSettingSize
+
+
+class GraphSettingSerializer(serializers.ModelSerializer):
+    # graph_setting_size = GraphSettingSizeSerializer()
+
+    class Meta:
+        model = GraphSetting

@@ -66,6 +66,17 @@
                     </ui-select>
                 </div>
             </div>
+            <div class="form-group row">
+                <label class="col-md-3 control-label">Size:</label>
+                <div class="col-md-3 controls">
+                    <ui-select ng-model="vars.current.graph_setting_size">
+                        <ui-select-match placeholder="Size">{{ $select.selected.info }}</ui-select-match>
+                        <ui-select-choices repeat="sz.idx as sz in sizes">
+                            <div ng-bind-html="sz.info"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                </div>
         </fieldset>
         <fieldset>
             <legend>

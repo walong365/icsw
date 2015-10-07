@@ -167,8 +167,6 @@ angular.module(
         $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService,
         toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->
-        # possible dimensions
-        $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
             new pd_timerange("last 24 hours", 24, undefined)
             new pd_timerange("last day", moment().subtract(1, "days").startOf("day"), moment().subtract(1, "days").endOf("day"))
@@ -192,7 +190,6 @@ angular.module(
         $scope.vector_valid = false
         $scope.to_date_mom = moment()
         $scope.from_date_mom = moment().subtract(1, "days")
-        $scope.cur_dim = $scope.all_dims[1]
         $scope.error_string = ""
         $scope.vals =
             searchstr: ""
@@ -288,8 +285,6 @@ angular.module(
                 $scope.active_ts = new_ts
             else
                 $scope.active_ts = undefined
-        $scope.set_active_dim = (cur_dim) ->
-            $scope.cur_dim = cur_dim
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             # clear graphs
             $scope.devlist_loading = false
@@ -551,7 +546,6 @@ angular.module(
                         "pks"        : angular.toJson($scope.devsel_list)
                         "start_time" : moment($scope.from_date_mom).format(DT_FORM)
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
-                        "size"       : $scope.cur_dim
                         "job_mode"      : $scope.job_mode
                         "selected_job"  : $scope.selected_job 
                         "show_forecast" : $scope.show_forecast
@@ -604,9 +598,6 @@ angular.module(
         link : (scope, el, attrs) ->
             if attrs["selectkeys"]?
                 scope.auto_select_keys = attrs["selectkeys"].split(",")
-            if attrs["graphsize"]?
-                scope.all_dims.push(attrs["graphsize"])
-                scope.cur_dim = attrs["graphsize"]
             if attrs["fromdt"]? and parseInt(attrs["fromdt"])
                 scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
             if attrs["todt"]? and parseInt(attrs["todt"])

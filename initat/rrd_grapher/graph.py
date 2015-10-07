@@ -892,7 +892,6 @@ class RRDGraph(object):
     def __init__(self, graph_root, log_com, colorizer, para_dict, proc):
         self.log_com = log_com
         self.para_dict = {
-            "size": "400x200",
             "graph_root": graph_root,
             "show_forecast": False,
             "job_mode": "none",
@@ -1083,8 +1082,10 @@ class RRDGraph(object):
         if self.para_dict["show_forecast"]:
             self.para_dict["end_time_fc"] += self.para_dict["end_time"] - self.para_dict["start_time"]
         timeframe = abs((self.para_dict["end_time_fc"] - self.para_dict["start_time"]).total_seconds())
-        graph_size = self.para_dict["size"]
-        graph_width, graph_height = [int(value) for value in graph_size.split("x")]
+        graph_width, graph_height = (
+            self.para_dict["graph_setting"].graph_setting_size.width,
+            self.para_dict["graph_setting"].graph_setting_size.height,
+        )
         self.log(
             "width / height : {:d} x {:d}, timeframe {}".format(
                 graph_width,

@@ -173,7 +173,7 @@ class rest_logging(object):
         return result
 
 
-class db_prefetch_mixin(object):
+class DBPrefetchMixin(object):
     def _kernel_prefetch(self):
         return ["initrd_build_set", "kernel_build_set", "new_kernel", "kerneldevicehistory_set"]
 
@@ -200,6 +200,9 @@ class db_prefetch_mixin(object):
 
     def _mon_host_cluster_prefetch(self):
         return ["devices"]
+
+    def _graphsetting_related(self):
+        return ["graph_setting_size"]
 
     def _mon_host_dependency_prefetch(self):
         return ["devices", "dependent_devices"]
@@ -280,7 +283,7 @@ class detail_view(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.DestroyModelMixin,
                   generics.SingleObjectAPIView,
-                  db_prefetch_mixin):
+                  DBPrefetchMixin):
     @rest_logging
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
@@ -348,7 +351,7 @@ class detail_view(mixins.RetrieveModelMixin,
 class list_view(mixins.ListModelMixin,
                 mixins.CreateModelMixin,
                 generics.MultipleObjectAPIView,
-                db_prefetch_mixin
+                DBPrefetchMixin
                 ):
     @rest_logging
     def get(self, request, *args, **kwargs):
