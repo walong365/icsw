@@ -76,7 +76,6 @@ angular.module(
                 ]
             ).then((data) ->
                 _sets = data[0]
-                _sizes = data[1]
                 if not _sets.length
                     # create default setting
                     create_default().promise.then((new_setting) ->
@@ -95,7 +94,7 @@ angular.module(
         get_sizes().promise.then((sizes) ->
             _def_size = (size for size in sizes when size.default)[0]
             _def_dict = get_default()
-            _def_dict.graph_setting_size = _def_size
+            _def_dict.graph_setting_size = _def_size.idx
             create(_def_dict).promise.then((new_setting) ->
                 _defer.resolve(new_setting)
             )
