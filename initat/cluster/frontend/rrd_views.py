@@ -134,19 +134,14 @@ class graph_rrds(View):
             end_time = datetime.datetime.now(dateutil.tz.tzutc())
         srv_com["parameters"] = E.parameters(
             E.debug_mode("1" if settings.DEBUG else "0"),
+            E.graph_setting("{:d}".format(int(_post["graph_setting"]))),
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
             E.size(_post.get("size", "400x200")),
-            E.hide_empty(self._parse_post_boolean(_post, "hide_empty", "0")),
-            E.include_zero(self._parse_post_boolean(_post, "include_zero", "0")),
-            E.legend_mode(_post.get("legend_mode", "full")[0]),
             E.show_forecast(self._parse_post_boolean(_post, "show_forecast", "0")),
-            E.scale_mode(_post.get("scale_mode", "level")[0]),
             E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
-            E.merge_devices(self._parse_post_boolean(_post, "merge_devices", "1")),
-            E.merge_graphs(self._parse_post_boolean(_post, "merge_graphs", "0")),
             E.timeshift(_post.get("timeshift", "0")),
         )
         result = contact_server(request, "rrd-grapher", srv_com, timeout=30)

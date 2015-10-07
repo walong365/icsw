@@ -381,6 +381,11 @@ class GraphSetting(models.Model):
     merge_controlling_devices = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
+    def to_enum(self):
+        # rewrite scale and legend mode to full enum
+        self.scale_mode = [_entry for _entry in GraphScaleModeEnum if _entry.value == self.scale_mode][0]
+        self.legend_mode = [_entry for _entry in GraphLegendModeEnum if _entry.value == self.legend_mode][0]
+
     class Meta:
         unique_together = [("user", "name")]
 

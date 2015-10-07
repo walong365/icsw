@@ -161,11 +161,11 @@ angular.module(
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
         "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-        "toaster", "icswCachingCall", "icswUserService", "icswSavedSelectionService",
+        "toaster", "icswCachingCall", "icswUserService", "icswSavedSelectionService", "icswRrdGraphSettingService",
     (
         $scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
         $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService,
-        toaster, icswCachingCall, icswUserService, icswSavedSelectionService
+        toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
@@ -205,26 +205,13 @@ angular.module(
         $scope.auto_select_keys = []
         $scope.draw_on_init = false
         $scope.graph_list = []
-        $scope.hide_empty = true
         # none, all or selected
         $scope.job_modes = ["none", "all", "selected"]
         $scope.job_mode = $scope.job_modes[0]
         $scope.selected_job = 0
-        $scope.include_zero = true
         $scope.show_forecast = false
-        $scope.legend_modes = [
-            {"short": "f", "long": "full"},
-            {"short": "t", "long": "only text"},
-            {"short": "n", "long": "nothing"},
-        ]
-        $scope.legend_mode = $scope.legend_modes[0]["short"]
-        $scope.legend_mode_long = $scope.legend_modes[0]["long"]
         $scope.cds_already_merged = false
         $scope.merge_cd = false
-        $scope.scale_modes = ["level", "none", "to100"]
-        $scope.scale_mode  = $scope.scale_modes[0]
-        $scope.merge_devices = false
-        $scope.merge_graphs = false
         $scope.show_tree = true
         $scope.g_tree = new icswRRDGraphTreeService($scope)
         $scope.user = undefined
@@ -565,18 +552,13 @@ angular.module(
                         "start_time" : moment($scope.from_date_mom).format(DT_FORM)
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                         "size"       : $scope.cur_dim
-                        "hide_empty"    : $scope.hide_empty
                         "job_mode"      : $scope.job_mode
                         "selected_job"  : $scope.selected_job 
-                        "include_zero"  : $scope.include_zero
                         "show_forecast" : $scope.show_forecast
-                        "legend_mode"   : $scope.legend_mode
                         "merge_cd"      : $scope.merge_cd
+                        "graph_setting" : icswRrdGraphSettingService.get_active().idx
                         # flag if the controlling devices are shown in the rrd tree
                         "cds_already_merged" : $scope.cds_already_merged
-                        "scale_mode"    : $scope.scale_mode
-                        "merge_devices" : $scope.merge_devices
-                        "merge_graphs"  : $scope.merge_graphs
                         "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
                     }
                     success : (xml) =>
@@ -622,8 +604,6 @@ angular.module(
         link : (scope, el, attrs) ->
             if attrs["selectkeys"]?
                 scope.auto_select_keys = attrs["selectkeys"].split(",")
-            if attrs["mergedevices"]?
-                scope.merge_devices = if parseInt(attrs["mergedevices"]) then true else false
             if attrs["graphsize"]?
                 scope.all_dims.push(attrs["graphsize"])
                 scope.cur_dim = attrs["graphsize"]

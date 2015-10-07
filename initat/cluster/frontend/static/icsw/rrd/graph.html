@@ -3,7 +3,6 @@
         <alert type="warning">No device selected</alert>
     </div>
     <p class="text-danger">{{ error_string }}</p>
-    <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
     <h4 ng-show="vector_valid">
         <div class="input-group form-inline">
             <div class="form-group">
@@ -19,6 +18,7 @@
                     </button>
                 </div>
             </div>&nbsp;
+            <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
             <div class="form-group">
                 <div class="input-group-btn">
                     <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
@@ -71,17 +71,6 @@
                 </div>
             </div>&nbsp;
             <div class="form-group">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="y-Scale mode">
-                        <span class="glyphicon glyphicon-sort"></span>
-                        {{ scale_mode }}<span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="_sm in scale_modes" ng-click="set_scale_mode(_sm)"><a href="#">{{ _sm }}</a></li>
-                    </ul>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
                 <div class="input-group-btn">
                     <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
                         <span class="glyphicon glyphicon-step-forward"></span>
@@ -97,34 +86,9 @@
             </div>&nbsp;
             <div class="form-group">
                 <div class="input-group-btn">
-                    <button type="button" ng-class="hide_empty && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
-                        <span class="glyphicon glyphicon-ban-circle"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="include_zero && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
-                        <span class="glyphicon glyphicon-download"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
                     <button type="button" ng-class="show_forecast && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_forecast=!show_forecast" title="show forecast">
                         <span class="glyphicon glyphicon-eye-open"></span>
                     </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="Legend mode">
-                        <span class="glyphicon glyphicon-align-justify"></span>
-                        {{ legend_mode_long }}<span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="_lm in legend_modes" ng-click="set_legend_mode(_lm)"><a href="#">{{ _lm['long'] }}</a></li>
-                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group" ng-show="!merge_cd">
@@ -134,20 +98,6 @@
                     </button>
                 </div>
             </div>&nbsp;
-            <div class="form-group" ng-show="devsel_list.length > 1">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
-                        <span class="glyphicon glyphicon-th"></span>
-                    </button>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_graphs && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_graphs=!merge_graphs" title="merge graphs into one">
-                        <span class="glyphicon glyphicon-edit"></span>
-                    </button>
-                </div>
-            </div>
             <div class="form-group">
                 <div class="input-group">
                     <span class="input-group-addon">

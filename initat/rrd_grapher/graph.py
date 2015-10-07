@@ -35,17 +35,16 @@ from lxml import etree
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
+from lxml.builder import E
+import dateutil.parser
+
 from initat.cluster.backbone.models.license import License, LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone, MachineVector, \
-    MVValueEntry, GraphScaleModeEnum, GraphLegendModeEnum
+    MVValueEntry, GraphScaleModeEnum, GraphLegendModeEnum, GraphSetting
 from initat.cluster.backbone.available_licenses import LicenseEnum
-from lxml.builder import E  # @UnresolvedImport
-import dateutil.parser
-
 from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
 from .config import global_config
-
 
 FLOAT_FMT = "{:.6f}"
 
@@ -211,7 +210,7 @@ class GraphVar(object):
         self.scale_y_factor = 1
         self.y_scaled = False
         self.graph_target = graph_target
-        if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]:
+        if self.rrd_graph.para_dict["graph_setting"].legend_mode in [GraphLegendModeEnum.full_with_values]:
             self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
         else:
             self.max_info_width = self.rrd_graph.width / 7
@@ -328,7 +327,7 @@ class GraphVar(object):
             ).format(
                 self.info(timeshift, show_forecast)
             )[:self.max_info_width],
-        ) if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text] else ""
+        ) if self.rrd_graph.para_dict["graph_setting"].legend_mode in [GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text] else ""
         if draw_type.startswith("AREA"):
             # support area with outline style
             if self.y_scaled:
@@ -442,7 +441,7 @@ class GraphVar(object):
             _sum_unit = _sum_unit[:-2]
             if _sum_unit == "1":
                 _sum_unit = ""
-        if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]:
+        if self.rrd_graph.para_dict["graph_setting"].legend_mode in [GraphLegendModeEnum.full_with_values]:
             c_lines.append(
                 "COMMENT:<tt>{}</tt>".format(
                     "{:>4s}".format(
@@ -470,7 +469,7 @@ class GraphVar(object):
                     ),
                 ]
             )
-            if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]:
+            if self.rrd_graph.para_dict["graph_setting"].legend_mode in [GraphLegendModeEnum.full_with_values]:
                 c_lines.extend(
                     [
                         "GPRINT:{}{}:<tt>%6.1lf%s{}</tt>{}".format(
@@ -562,8 +561,9 @@ class GraphVar(object):
 
     @property
     def header_line(self):
-        if self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text]:
-            _sv = self.rrd_graph.para_dict["legend_mode"] in [GraphLegendModeEnum.full_with_values]
+        _lm = self.rrd_graph.para_dict["graph_setting"].legend_mode
+        if _lm in [GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text]:
+            _sv = _lm in [GraphLegendModeEnum.full_with_values]
             if _sv:
                 _l_list = self.get_legend_list()
             else:
@@ -894,13 +894,7 @@ class RRDGraph(object):
         self.para_dict = {
             "size": "400x200",
             "graph_root": graph_root,
-            "hide_empty": False,
-            "include_zero": False,
             "show_forecast": False,
-            "scale_mode": GraphScaleModeEnum("l"),
-            "legend_mode": GraphLegendModeEnum("f"),
-            "merge_devices": True,
-            "merge_graphs": False,
             "job_mode": "none",
             "selected_job": 0,
             "merge_cd": False,
@@ -1113,7 +1107,7 @@ class RRDGraph(object):
                 )
             )
         )
-        if self.para_dict["merge_graphs"]:
+        if self.para_dict["graph_setting"].merge_graphs:
             # reorder all graph_keys into one graph_key_dict
             s_graph_key_dict = {
                 "all": sum(s_graph_key_dict.values(), [])
@@ -1135,7 +1129,7 @@ class RRDGraph(object):
                 _pk
             ) for _idx, _pk in enumerate(dev_pks)
         ]
-        if self.para_dict["merge_devices"]:
+        if self.para_dict["graph_setting"].merge_devices:
             # one device per graph
             graph_key_list = [
                 [
@@ -1175,7 +1169,7 @@ class RRDGraph(object):
                         ) for dev_id, dev_pk in enumerated_dev_pks
                     ]
                 )
-        if self.para_dict["merge_graphs"]:
+        if self.para_dict["graph_setting"].merge_graphs:
             # set header
             [_gt.set_header("all") for _gt in sum(graph_key_list, [])]
         self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
@@ -1319,14 +1313,14 @@ class RRDGraph(object):
                                         val_dict.setdefault(_key, {})[_xml.get("cf")] = (value, _xml)
                                 # list of empty (all none or 0.0 values) keys
                                 _zero_keys = [key for key, value in val_dict.iteritems() if all([_v[0] in [0.0, None] for _k, _v in value.iteritems()])]
-                                if _zero_keys and self.para_dict["hide_empty"]:
+                                if _zero_keys and self.para_dict["graph_setting"].hide_empty:
                                     # remove all-zero structs
                                     val_dict = {key: value for key, value in val_dict.iteritems() if key not in _zero_keys}
                                 for key, value in val_dict.iteritems():
                                     _graph_target.feed_draw_result(key, value)
                                 # check if the graphs shall always include y=0
                                 draw_it = False
-                                if self.para_dict["include_zero"]:
+                                if self.para_dict["graph_setting"].include_zero:
                                     if "value_min" in draw_result and "value_max" in draw_result:
                                         if draw_result["value_min"] > 0.0:
                                             _graph_target.set_post_arg("-l", "0")
@@ -1336,7 +1330,7 @@ class RRDGraph(object):
                                             draw_it = True
                                 # check for empty graphs
                                 empty_keys = set(_graph_target.draw_keys) - set(val_dict.keys())
-                                if empty_keys and self.para_dict["hide_empty"]:
+                                if empty_keys and self.para_dict["graph_setting"].hide_empty:
                                     self.log(
                                         u"{}: {}".format(
                                             logging_tools.get_plural("empty key", len(empty_keys)),
@@ -1356,11 +1350,11 @@ class RRDGraph(object):
                         self.log("no DEFs for graph_key_dict {}".format(_graph_target.graph_key), logging_tools.LOG_LEVEL_ERROR)
                 _iterate_line = False
                 _valid_graphs = [_entry for _entry in _graph_line if _entry.valid]
-                if _line_iteration == 0 and self.para_dict["scale_mode"] in [
+                if _line_iteration == 0 and self.para_dict["graph_setting"].scale_mode in [
                     GraphScaleModeEnum.level, GraphScaleModeEnum.to100
-                ] and (len(_valid_graphs) > 1 or self.para_dict["scale_mode"] == GraphScaleModeEnum.to100):
+                ] and (len(_valid_graphs) > 1 or self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.to100):
                     _line_iteration += 1
-                    if self.para_dict["scale_mode"] == GraphScaleModeEnum.level:
+                    if self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.level:
                         _vmin_v, _vmax_v = (
                             [_entry.draw_result["value_min"] for _entry in _valid_graphs],
                             [_entry.draw_result["value_max"] for _entry in _valid_graphs],
@@ -1489,22 +1483,18 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text
         # cast to integer
-        para_dict = {key: int(value) if key in ["timeshift"] else value for key, value in para_dict.iteritems()}
+        para_dict = {key: int(value) if key in ["timeshift", "graph_setting"] else value for key, value in para_dict.iteritems()}
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
+        para_dict["graph_setting"] = GraphSetting.objects.get(Q(pk=para_dict["graph_setting"]))
+        para_dict["graph_setting"].to_enum()
         for key, _default in [
-            ("hide_empty", "0"),
-            ("merge_devices", "1"),
-            ("merge_graphs", "0"),
-            ("include_zero", "0"),
             ("show_forecast", "0"),
             ("debug_mode", "0"),
             ("merge_cd", "0"),
         ]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
-        para_dict["scale_mode"] = GraphScaleModeEnum(para_dict.get("scale_mode", "l")[0])
-        para_dict["legend_mode"] = GraphLegendModeEnum(para_dict.get("legend_mode", "f")[0])
         self._open_rrdcached_socket()
         try:
             graph_list = RRDGraph(

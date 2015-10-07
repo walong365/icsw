@@ -1,6 +1,17 @@
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
-    <icsw-tools-button type="modify" value="" size="sm" ng-click="show_settings()">
-    </icsw-tools-button>
+    <div class="input-group">
+        <ui-select ng-model="current" on-select="select_setting($item, $model)" style="width:160px;">
+            <ui-select-match>{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
+            <ui-select-choices repeat="entry in settings">
+                <div ng-bind-html="entry.name"></div>
+            </ui-select-choices>
+        </ui-select>
+        <span class="input-group-btn">
+            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="show_settings()">
+                <span class="fa fa-wrench"></span>
+            </button>
+        </span>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graphsetting.modify">
