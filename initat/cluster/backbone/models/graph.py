@@ -394,7 +394,7 @@ class GraphSetting(models.Model):
     # merge controlling devices, only meaningfull when used with pks
     merge_controlling_devices = models.BooleanField(default=False)
     # size
-    size = models.ForeignKey("backbone.GraphSettingSize", null=True)
+    graph_setting_size = models.ForeignKey("backbone.GraphSettingSize", null=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def to_enum(self):

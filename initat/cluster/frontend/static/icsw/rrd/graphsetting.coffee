@@ -25,10 +25,22 @@ angular.module(
     ]
 ).service("icswRrdGraphSettingService", ["$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular", ($q, icswCachingCall, ICSW_URLS, icswUserService, Restangular) ->
     _url = ICSW_URLS.REST_GRAPH_SETTING_LIST
+    _size_url = ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
     _sets = []
+    sizes = []
+    size_waiters = []
     _set_version = 0
     _active = undefined
     _user = undefined
+    $q.all(
+        [
+            icswCachingCall.fetch(client, _size_url, {}, [])
+        ]
+    ).then((data) ->
+        sizes = data[0]
+        for waiter in size_waiters
+        if _size_waiters
+    )
     load_data = (client) ->
         _defer= $q.defer()
         icswUserService.load().then((user) ->
@@ -39,6 +51,7 @@ angular.module(
                 ]
             ).then((data) ->
                 _sets = data[0]
+                _sizes = data[1]
                 if not _sets.length
                     # create default setting
                     create_default().promise.then((new_setting) ->
