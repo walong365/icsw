@@ -9,7 +9,8 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     network, netdevice, net_ip, device_config, LogSource, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
-    ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift
+    ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
+    GraphSettingForecast
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -499,4 +500,10 @@ class GraphSettingSizeFactory(factory.django.DjangoModelFactory):
 class GraphSettingTimeshiftFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = GraphSettingTimeshift
+        django_get_or_create = ("name",)
+
+
+class GraphSettingForecastFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = GraphSettingForecast
         django_get_or_create = ("name",)

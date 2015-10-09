@@ -38,8 +38,10 @@ __all__ = [
     "GraphSetting",
     "GraphScaleModeEnum",
     "GraphLegendModeEnum",
+    "GraphForecastModeEnum",
     "GraphSettingSize",
     "GraphSettingTimeshift",
+    "GraphSettingForecast",
 ]
 
 
@@ -352,6 +354,10 @@ class GraphLegendModeEnum(Enum):
     nothing = "n"
 
 
+class GraphForecastModeEnum(Enum):
+    simple_linear = "sl"
+
+
 class GraphSettingSize(models.Model):
     # sizes
     idx = models.AutoField(primary_key=True)
@@ -374,7 +380,23 @@ class GraphSettingTimeshift(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "GraphTimeshift {}".format(self.name)
+        return "GraphSettingTimeshift {}".format(self.name)
+
+
+class GraphSettingForecast(models.Model):
+    # sizes
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64, default="", unique=True)
+    seconds = models.IntegerField(default=0, unique=True)
+    mode = models.CharField(
+        max_length=4,
+        default=GraphForecastModeEnum.simple_linear.value,
+        choices=[(_en.value, _en.name.replace("_", " ")) for _en in GraphForecastModeEnum],
+    )
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "GraphSettingForecast {}".format(self.name)
 
 
 class GraphSetting(models.Model):
@@ -409,12 +431,17 @@ class GraphSetting(models.Model):
     # size
     graph_setting_size = models.ForeignKey("backbone.GraphSettingSize")
     graph_setting_timeshift = models.ForeignKey("backbone.GraphSettingTimeshift", null=True, blank=True)
+    graph_setting_forecast = models.ForeignKey("backbone.GraphSettingForecast", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def to_enum(self):
         # rewrite scale and legend mode to full enum
         self.scale_mode = [_entry for _entry in GraphScaleModeEnum if _entry.value == self.scale_mode][0]
         self.legend_mode = [_entry for _entry in GraphLegendModeEnum if _entry.value == self.legend_mode][0]
+        if self.graph_setting_forecast_id:
+            self.graph_setting_forecast.mode = [
+                _entry for _entry in GraphForecastModeEnum if _entry.value == self.graph_setting_forecast.mode
+            ][0]
 
     class Meta:
         unique_together = [("user", "name")]

@@ -21,6 +21,7 @@
 
 
 from initat.cluster.backbone import factories
+from initat.cluster.backbone.models import GraphForecastModeEnum
 
 
 def add_fixtures(**kwargs):
@@ -49,4 +50,13 @@ def add_fixtures(**kwargs):
         _new_ts = factories.GraphSettingTimeshiftFactory(
             name=_name,
             seconds=_seconds,
+        )
+
+    for _name, _seconds, _mode in [
+        ("simple linear for timeframe", 0, GraphForecastModeEnum.simple_linear),
+    ]:
+        _new_fc = factories.GraphSettingForecastFactory(
+            name=_name,
+            seconds=_seconds,
+            mode=_mode.value,
         )
