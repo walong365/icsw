@@ -667,14 +667,13 @@ class DataSource(object):
             if _req.get("build_info", ""):
                 _key = (_req["struct_key"], _req["value_key"])
                 _full_key = full_graph_key(_key)
-                print "+++", _req["build_info"]
                 _build_infos = [process_tools.decompress_struct(_entry) for _entry in _req["build_info"]]
-                print "***", _build_info
                 _compound_dict[_key] = []
                 for _build_info in _build_infos:
                     for _entry in _build_info:
                         _query_keys.add(_entry["key"])
-                        _compound_dict[_key].append(_entry)
+                        if _entry not in _compound_dict[_key]:
+                            _compound_dict[_key].append(_entry)
         # import pprint
         # pprint.pprint(_compound_dict)
         # get mvv_list
