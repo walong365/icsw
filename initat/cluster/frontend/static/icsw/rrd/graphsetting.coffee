@@ -27,11 +27,14 @@ angular.module(
     _url = ICSW_URLS.REST_GRAPH_SETTING_LIST
     _size_url = ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
     _shift_url = ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST
+    _forceast_url = ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST
     _sets = []
     sizes = []
     shifts = []
+    forecasts = []
     size_waiters = []
     shift_waiters = []
+    forecast_waiters = []
     _set_version = 0
     _active = undefined
     _user = undefined
@@ -39,10 +42,12 @@ angular.module(
         [
             icswCachingCall.fetch("graphsize", _size_url, {}, [])
             icswCachingCall.fetch("graphsize", _shift_url, {}, [])
+            icswCachingCall.fetch("graphsize", _forecast_url, {}, [])
         ]
     ).then((data) ->
         sizes = data[0]
         shifts = data[1]
+        forecasts = data[2]
         for size in sizes
             size.info = "#{size.name} (#{size.width} x #{size.height})"
         for waiter in size_waiters
@@ -51,6 +56,9 @@ angular.module(
         for waiter in shift_waiters
             waiter.resolve(shifts)
         shift_waiters = []
+        for waiter in forecast_waiters
+            waiter.resolve(forecasts)
+        forecast_waiters = []
     )
     get_sizes = () ->
         _defer = $q.defer()
@@ -65,6 +73,13 @@ angular.module(
             _defer.resolve(shifts)
         else
             shift_waiters.push(_defer)
+        return _defer
+    get_forecasts = () ->
+        _defer = $q.defer()
+        if forecasts.length
+            _defer.resolve(forecasts)
+        else
+            forecast_waiters.push(_defer)
         return _defer
     load_data = (client) ->
         _defer= $q.defer()
@@ -157,6 +172,8 @@ angular.module(
             return get_sizes().promise
         "get_shifts": () ->
             return get_shifts().promise
+        "get_forecasts": () ->
+            return get_forecasts().promise
         "set_version": () ->
             return _set_version
         "get_active": () ->
