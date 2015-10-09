@@ -68,7 +68,7 @@ top levels: ['machine_vector']
 class MachineVector(models.Model):
     idx = models.AutoField(primary_key=True)
     # link to device
-    device = models.ForeignKey("device")
+    device = models.ForeignKey("backbone.device")
     # src_file name, for later reference
     src_file_name = models.CharField(max_length=256, default="", blank=True)
     # directory under cache_dir, in most cases the UUID
@@ -273,7 +273,7 @@ class SensorThreshold(models.Model):
     # creating user
     create_user = models.ForeignKey("user", null=True, blank=True, related_name="sensor_threshold_create_user")
     # device selection
-    device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)
+    device_selection = models.ForeignKey("backbone.DeviceSelection", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -312,7 +312,7 @@ class SensorThresholdAction(models.Model):
     value = models.FloatField(default=0.0)
     notify_users = models.ManyToManyField("user")
     create_user = models.ForeignKey("user", null=True, blank=True, related_name="sensor_threshold_action_create_user")
-    device_selection = models.ForeignKey("DeviceSelection", null=True, blank=True)
+    device_selection = models.ForeignKey("backbone.DeviceSelection", null=True, blank=True)
     # was triggered via webfrontend ?
     triggered = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)

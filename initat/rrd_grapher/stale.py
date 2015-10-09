@@ -31,7 +31,7 @@ from initat.tools import logging_tools, process_tools, server_mixins, \
     threading_tools
 
 
-class stale_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
+class GraphStaleProcess(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

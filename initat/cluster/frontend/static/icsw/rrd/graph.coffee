@@ -133,7 +133,7 @@ get_node_keys = (node) ->
     return {
         "struct_key": node._key_pair[0]
         "value_key": node._key_pair[1]
-        "build_info": if node.build_info? then node.build_info else "",
+        "build_info": node.build_info
     }
 
 class pd_timerange
@@ -358,7 +358,7 @@ angular.module(
                             _dev_pks : [$scope.mv_dev_pk]
                             _node_type : "s"
                             _show_select: false
-                            build_info: ""
+                            build_info: []
                             # marker: this is not an mve entry
                             _is_mve: false
                         }
@@ -414,6 +414,7 @@ angular.module(
                         _is_mve: true
                     }
                 )
+                cur_node.build_info = []
                 $scope.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, $scope._child_sort)
@@ -422,7 +423,7 @@ angular.module(
             if $scope.mv_dev_pk not in cur_node._dev_pks
                 cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
-            cur_node.build_info = entry.build_info
+            cur_node.build_info.push(entry.build_info)
             cur_node.num_sensors = entry.num_sensors
             cur_node.folder = false
             cur_node._show_select = true
@@ -439,6 +440,7 @@ angular.module(
                 _node_type : "h"
                 _show_select : false
             })
+            root_node.build_info = []
             $scope.g_tree.add_root_node(root_node)
             return root_node
 

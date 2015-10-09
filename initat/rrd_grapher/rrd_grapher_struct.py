@@ -19,7 +19,7 @@
 #
 """ data_store structure for rrd-grapher """
 
-from lxml import etree  # @UnresolvedImport
+from lxml import etree
 import re
 import os
 

@@ -65,6 +65,7 @@ setup(
         "initat.package_install.server",
         "initat.package_install.client",
         "initat.rrd_grapher",
+        "initat.rrd_grapher.graph",
         "initat.mother",
         "initat.snmp",
         "initat.snmp.handler",
