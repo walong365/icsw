@@ -194,7 +194,6 @@ angular.module(
         $scope.job_modes = ["none", "all", "selected"]
         $scope.job_mode = $scope.job_modes[0]
         $scope.selected_job = 0
-        $scope.show_forecast = false
         $scope.cds_already_merged = false
         $scope.merge_cd = false
         $scope.show_tree = true
@@ -531,7 +530,6 @@ angular.module(
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                         "job_mode"      : $scope.job_mode
                         "selected_job"  : $scope.selected_job 
-                        "show_forecast" : $scope.show_forecast
                         "merge_cd"      : $scope.merge_cd
                         "graph_setting" : icswRrdGraphSettingService.get_active().idx
                         # flag if the controlling devices are shown in the rrd tree

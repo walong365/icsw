@@ -316,7 +316,7 @@ class GraphVar(object):
             draw_type = draw_type[:-5]
         # plot forecast ?
         if draw_type.startswith("LINE") or (draw_type.startswith("AREA") and not _stacked):
-            show_forecast = self.rrd_graph.para_dict["show_forecast"]
+            show_forecast = True if self.rrd_graph.para_dict["graph_setting"].graph_setting_forecast_id else False
         else:
             show_forecast = False
         # area: modes area (pure are), area{1,2,3} (area with lines)
@@ -893,7 +893,6 @@ class RRDGraph(object):
         self.log_com = log_com
         self.para_dict = {
             "graph_root": graph_root,
-            "show_forecast": False,
             "job_mode": "none",
             "selected_job": 0,
             "merge_cd": False,
@@ -1079,8 +1078,14 @@ class RRDGraph(object):
         # end time with forecast
         local_ds = DataSource(self.log_com, dev_pks, graph_keys, self.colorizer)
         self.para_dict["end_time_fc"] = self.para_dict["end_time"]
-        if self.para_dict["show_forecast"]:
-            self.para_dict["end_time_fc"] += self.para_dict["end_time"] - self.para_dict["start_time"]
+        if self.para_dict["graph_setting"].graph_setting_forecast_id:
+            _fc = self.para_dict["graph_setting"].graph_setting_forecast
+            if _fc.seconds:
+                # add seconds
+                self.para_dict["end_time_fc"] += datetime.timedelta(seconds=_fc.seconds)
+            else:
+                # add timeframe
+                self.para_dict["end_time_fc"] += self.para_dict["end_time"] - self.para_dict["start_time"]
         timeframe = abs((self.para_dict["end_time_fc"] - self.para_dict["start_time"]).total_seconds())
         graph_width, graph_height = (
             self.para_dict["graph_setting"].graph_setting_size.width,
@@ -1497,7 +1502,6 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
         para_dict["graph_setting"] = GraphSetting.objects.get(Q(pk=para_dict["graph_setting"]))
         para_dict["graph_setting"].to_enum()
         for key, _default in [
-            ("show_forecast", "0"),
             ("debug_mode", "0"),
             ("merge_cd", "0"),
         ]:

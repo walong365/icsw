@@ -27,7 +27,7 @@ angular.module(
     _url = ICSW_URLS.REST_GRAPH_SETTING_LIST
     _size_url = ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
     _shift_url = ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST
-    _forceast_url = ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST
+    _forecast_url = ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST
     _sets = []
     sizes = []
     shifts = []
@@ -242,6 +242,10 @@ angular.module(
             scope.shifts = []
             icswRrdGraphSettingService.get_shifts().then((shifts) ->
                 scope.shifts = shifts
+            )
+            scope.forecasts = []
+            icswRrdGraphSettingService.get_forecasts().then((forecasts) ->
+                scope.forecasts = forecasts
             )
             scope.set_current = (setting) ->
                 setting.legend_mode2 = (entry for entry in icswRrdGraphSettingService.legend_modes() when entry.short == setting.legend_mode)[0]

@@ -137,7 +137,6 @@ class graph_rrds(View):
             E.graph_setting("{:d}".format(int(_post["graph_setting"]))),
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
-            E.show_forecast(self._parse_post_boolean(_post, "show_forecast", "0")),
             E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
