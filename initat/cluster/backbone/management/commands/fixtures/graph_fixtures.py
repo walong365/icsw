@@ -60,3 +60,26 @@ def add_fixtures(**kwargs):
             seconds=_seconds,
             mode=_mode.value,
         )
+
+    for _name, _rtn, _ar, _seconds, _base_tf, _tfo in [
+        ("last 24 hours", True, True, 3600 * 24, "h", 0),
+        ("today", False, True, 3600 * 24, "d", 0),
+        ("this week", False, True, 3600 * 24 * 7, "w", 0),
+        ("this month", False, True, 3600 * 24 * 31, "m", 0),
+        ("this year", False, True, 3600 * 24 * 365, "y", 0),
+        ("this decade", False, True, 3600 * 24 * 365 * 10, "D", 0),
+        # according to BM last is more common then past
+        ("last day", False, False, 3600 * 24, "d", -1),
+        ("last week", False, False, 3600 * 24 * 7, "w", -1),
+        ("last month", False, False, 3600 * 24 * 31, "m", -1),
+        ("last year", False, False, 3600 * 24 * 365, "y", -1),
+        ("last decade", False, False, 3600 * 24 * 365 * 10, "D", -1),
+    ]:
+        _new_tf = factories.GraphTimeFrameFactory(
+            name=_name,
+            relative_to_now=_rtn,
+            auto_refresh=_ar,
+            seconds=_seconds,
+            base_timeframe=_base_tf,
+            timeframe_offset=_tfo,
+        )

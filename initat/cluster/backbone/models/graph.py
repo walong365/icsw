@@ -42,6 +42,7 @@ __all__ = [
     "GraphSettingSize",
     "GraphSettingTimeshift",
     "GraphSettingForecast",
+    "GraphTimeFrame",
 ]
 
 
@@ -400,7 +401,6 @@ class GraphSettingForecast(models.Model):
 
 
 class GraphSetting(models.Model):
-    # log
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
     name = models.CharField(max_length=128, default="")
@@ -448,3 +448,33 @@ class GraphSetting(models.Model):
 
     def __unicode__(self):
         return "GraphSetting '{}'".format(self.name)
+
+
+class GraphTimeFrame(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64, default="", unique=True)
+    # relative to now (for last X hours)
+    relative_to_now = models.BooleanField(default=False)
+    # auto_refresh flag
+    auto_refresh = models.BooleanField(default=False)
+    # lenght of timespan in seconds
+    seconds = models.IntegerField(default=0)
+    # base timeframe
+    base_timeframe = models.CharField(
+        max_length=4,
+        default="d",
+        choices=[
+            ("h", "hour"),
+            ("d", "day"),
+            ("w", "week"),
+            ("m", "month"),
+            ("y", "year"),
+            ("D", "decade"),
+        ]
+    )
+    # timeframe offset, 0 means current <timeframe>, -1 means previous <timeframe> and so on
+    timeframe_offset = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "GraphTimeFrame '{}'".format(self.name)

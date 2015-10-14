@@ -1,4 +1,25 @@
-#!/usr/bin/python-init -Otu
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# -*- coding: utf-8 -*-
+#
+""" factories for ICSW models """
 
 import factory
 from django.db.models import Q
@@ -10,7 +31,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
-    GraphSettingForecast
+    GraphSettingForecast, GraphTimeFrame
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -506,4 +527,10 @@ class GraphSettingTimeshiftFactory(factory.django.DjangoModelFactory):
 class GraphSettingForecastFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = GraphSettingForecast
+        django_get_or_create = ("name",)
+
+
+class GraphTimeFrameFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = GraphTimeFrame
         django_get_or_create = ("name",)
