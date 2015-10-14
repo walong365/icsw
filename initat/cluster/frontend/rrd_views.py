@@ -50,24 +50,6 @@ class device_rrds(View):
         return _get_node_rrd(request, dev_pks)
 
 
-class merge_cds(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        # return the RRD tree with selected controlling devices
-        dev_pks = [_pk for _pk in request.POST.getlist("pks[]")]
-        devs = device.all_real_enabled.filter(Q(pk__in=dev_pks))
-        cd_pks = list(
-            device.all_real_enabled.filter(
-                (
-                    Q(com_capability_list__matchcode="ipmi") |
-                    Q(snmp_schemes__power_control=True)
-                ) &
-                Q(master_connections__in=devs)
-            ).values_list("pk", flat=True)
-        )
-        return _get_node_rrd(request, dev_pks + cd_pks)
-
-
 def _get_node_rrd(request, dev_pks):
     srv_com = server_command.srv_command(command="get_node_rrd")
     srv_com["device_list"] = E.device_list(
@@ -104,22 +86,8 @@ class graph_rrds(View):
             json.loads(_post["pks"]),
             json.loads(_post["keys"])
         )
-        if int(self._parse_post_boolean(_post, "cds_already_merged", "0")):
-            # FIXME
-            devs = device.all_real_enabled.filter(Q(pk__in=pk_list))
-            cd_pks = list(
-                device.all_real_enabled.filter(
-                    (
-                        Q(com_capability_list__matchcode="ipmi") |
-                        Q(snmp_schemes__power_control=True)
-                    ) &
-                    Q(master_connections__in=devs)
-                ).values_list("pk", flat=True)
-            )
-        else:
-            cd_pks = []
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list + cd_pks]
+            *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list]
         )
         # simply copy the graph-keys as a json dump
         srv_com["graph_key_list"] = json.dumps(graph_keys)
@@ -137,7 +105,6 @@ class graph_rrds(View):
             E.graph_setting("{:d}".format(int(_post["graph_setting"]))),
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
-            E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
         )

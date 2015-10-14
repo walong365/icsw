@@ -134,6 +134,7 @@ device_patterns = patterns(
     url("^DeviceGeneral$", device_views.DeviceGeneral.as_view(), name="DeviceGeneral"),
     url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
+    url("^select_parents$", device_views.select_parents.as_view(), name="select_parents"),
     url("^config$", device_views.show_configs.as_view(), name="show_configs"),
     url("^connections", device_views.connections.as_view(), name="connections"),
     url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
@@ -255,7 +256,6 @@ rrd_patterns = patterns(
     "initat.cluster.frontend",
     url(r"^dev_rrds$", rrd_views.device_rrds.as_view(), name="device_rrds"),
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view(), name="graph_rrds"),
-    url(r"^merge_cd$", rrd_views.merge_cds.as_view(), name="merge_cds"),
     url(r"^trigger_threshold", rrd_views.trigger_sensor_threshold.as_view(), name="trigger_sensor_threshold"),
 )
 

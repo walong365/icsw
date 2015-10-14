@@ -167,8 +167,6 @@ angular.module(
         $scope.job_modes = ["none", "all", "selected"]
         $scope.job_mode = $scope.job_modes[0]
         $scope.selected_job = 0
-        $scope.cds_already_merged = false
-        $scope.merge_cd = false
         $scope.show_tree = true
         $scope.g_tree = new icswRRDGraphTreeService($scope)
         $scope.user = undefined
@@ -209,19 +207,6 @@ angular.module(
             $scope.graph_list = []
             $scope.devsel_list = _dev_sel
             $scope.reload()
-
-        $scope.toggle_merge_cd = () ->
-            $scope.merge_cd = !$scope.merge_cd
-            if $scope.merge_cd and not $scope.cds_already_merged
-                $scope.cds_already_merged = true
-                icswCallAjaxService
-                    url  : ICSW_URLS.RRD_MERGE_CDS
-                    data : {
-                        "pks" : $scope.devsel_list
-                    }
-                    dataType: "json"
-                    success : (json) =>
-                        $scope.feed_rrd_json(json)
 
         $scope.reload = () ->
             $scope.vector_valid = false
@@ -468,10 +453,7 @@ angular.module(
                         "end_time"   : moment($scope.timeframe.to_date_mom).format(DT_FORM)
                         "job_mode"      : $scope.job_mode
                         "selected_job"  : $scope.selected_job
-                        "merge_cd"      : $scope.merge_cd
                         "graph_setting" : icswRrdGraphSettingService.get_active().idx
-                        # flag if the controlling devices are shown in the rrd tree
-                        "cds_already_merged" : $scope.cds_already_merged
                     }
                     success : (xml) =>
                         gfx.resolve(xml)

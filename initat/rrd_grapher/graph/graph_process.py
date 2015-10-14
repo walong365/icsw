@@ -146,7 +146,6 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
         para_dict["graph_setting"].to_enum()
         for key, _default in [
             ("debug_mode", "0"),
-            ("merge_cd", "0"),
         ]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
         self._open_rrdcached_socket()

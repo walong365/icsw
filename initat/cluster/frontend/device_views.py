@@ -143,6 +143,28 @@ class set_selection(View):
         request.session.save()
 
 
+class select_parents(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        cur_sel = json.loads(_post["angular_sel"])
+        devs = device.all_real_enabled.filter(Q(pk__in=cur_sel))
+        cd_pks = list(
+            device.all_real_enabled.filter(
+                (
+                    Q(com_capability_list__matchcode="ipmi") |
+                    Q(snmp_schemes__power_control=True)
+                ) &
+                Q(master_connections__in=devs)
+            ).values_list("pk", flat=True)
+        )
+        _res = {
+            "cd_pks": cd_pks,
+            "new_selection": list(set(cur_sel) | set(cd_pks))
+        }
+        return HttpResponse(json.dumps(_res), content_type="application/json")
+
+
 class show_configs(View):
     @method_decorator(login_required)
     def get(self, request):

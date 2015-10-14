@@ -129,7 +129,7 @@ angular.module(
         "set_selection": (new_sel) ->
             set_selection(new_sel)
     }
-]).service("icswSelection", ["icswSelectionService", "$q", "icswCallAjaxService", "ICSW_URLS", (icswSelectionService, $q, icswCallAjaxService, ICSW_URLS) ->
+]).service("icswSelection", ["icswSelectionService", "$q", "icswCallAjaxService", "icswSimpleAjaxCall", "ICSW_URLS", (icswSelectionService, $q, icswCallAjaxService, icswSimpleAjaxCall, ICSW_URLS) ->
     class Selection
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel, @db_idx=0) ->
         update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
@@ -220,6 +220,20 @@ angular.module(
                 data    : {
                     "angular_sel" : angular.toJson(@tot_dev_sel)
                 }
+        select_parent: () ->
+            defer = $q.defer()
+            icswSimpleAjaxCall(
+                "url": ICSW_URLS.DEVICE_SELECT_PARENTS
+                "data": {
+                    "angular_sel" : angular.toJson(@tot_dev_sel)
+                }
+                dataType: "json"
+            ).then((data) =>
+                @tot_dev_sel = data["new_selection"]
+                defer.resolve(data)
+            )
+
+            return defer.promise
 ]).service("icswSelectionService", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
     load_data = (client) ->
         _defer = $q.defer()
@@ -329,11 +343,11 @@ angular.module(
 [
     "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "msgbus",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
-    "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall'
+    "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI",
 (
     $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, msgbus,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
-    DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall,
+    DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
 ) ->
     # search settings
     $scope.search_ok = true
@@ -659,6 +673,21 @@ angular.module(
         devsel_list = $scope.selection.get_devsel_list()
         selected_devices = (icswSelectionService.resolve_device(_pk) for _pk in devsel_list[0])
         DeviceOverviewService.NewOverview(event, selected_devices)
+    $scope.select_parents = () ->
+        blockUI.start()
+        $scope.selection.select_parent().then(() ->
+            $scope.tc_devices.iter(
+                (node, data) ->
+                    node.selected = node.obj in $scope.selection.tot_dev_sel
+            )
+            $scope.tc_devices.recalc()
+            $scope.tc_groups.show_selected(false)
+            $scope.tc_categories.show_selected(false)
+            $scope.tc_devices.show_selected(false)
+            $scope.selection_changed()
+            $scope.activate_tab("d")
+            blockUI.stop()
+        )
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
     show_dialog = (scope) ->
         sel_scope = scope.$new()

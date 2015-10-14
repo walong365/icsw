@@ -19,7 +19,13 @@
                     <icsw-tools-button type="modify" size="sm" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
                 </span>
                 <span class="input-group pull-right">
-                    <button class="btn btn-primary" ng-show="selection.any_selected()"
+                    <icsw-tools-button type="select_parent"
+                                       value="select parents"
+                                       ng-show="selection.any_selected()"
+                                       ng-click="select_parents()"
+                            ></icsw-tools-button>
+                    <button class="btn btn-primary"
+                            ng-show="selection.any_selected()"
                             ng-click="show_current_selection_in_overlay()">
                         <span class="bootstrap-dialog-button-icon glyphicon glyphicon-menu-hamburger"></span>
                         show in overlay

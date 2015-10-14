@@ -161,21 +161,21 @@
                 </ui-select-choices>
             </ui-select>
         </div>
-        <div class="form-group">
+        <div class="form-group" ng-if="show_detail">
             <div class="input-group-btn">
                 <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
                     <span class="glyphicon glyphicon-step-forward"></span>
                 </button>
             </div>
         </div>&nbsp;
-        <div class="form-group">
+        <div class="form-group" ng-if="show_detail">
             <div class="input-group-btn">
                 <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
                     <span class="glyphicon glyphicon-fast-forward"></span>
                 </button>
             </div>
         </div>&nbsp;
-        <div class="input-group">
+        <div class="input-group" ng-if="show_detail">
             <span class="input-group-addon">
                  from
             </span>
@@ -192,7 +192,7 @@
                 </div>
             </span>
         </div>
-        <div class="input-group">
+        <div class="input-group" ng-if="show_detail">
             <span class="input-group-addon">
                  to
             </span>

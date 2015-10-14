@@ -306,8 +306,13 @@ angular.module(
         restrict: "EA"
         scope:
             timeframe: "="
+            detail: "@"
         template: $templateCache.get("icsw.rrd.graphsetting.timeframe")
         link: (scope, el, attrs) ->
+            if parseInt(if scope.detail? then scope.detail else "0")
+                scope.show_detail = true
+            else
+                scope.show_detail = false
             moment().utc()
             scope.timeframes = []
             scope.val =

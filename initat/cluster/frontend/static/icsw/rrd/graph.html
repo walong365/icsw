@@ -19,7 +19,7 @@
                 </div>
             </div>&nbsp;
             <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
-            <icsw-rrd-graph-time-frame timeframe="timeframe"></icsw-rrd-graph-time-frame>
+            <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame>
             <div class="form-group">
                 <div class="input-group-btn">
                     <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && timeframe.valid" ng-click="draw_graph()">
@@ -36,13 +36,6 @@
                     <ul class="dropdown-menu">
                         <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
                     </ul>
-                </div>
-            </div>&nbsp;
-            <div class="form-group" ng-show="!merge_cd">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
-                        <span class="glyphicon glyphicon-off"></span>
-                    </button>
                 </div>
             </div>
         </div>
