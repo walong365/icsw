@@ -76,12 +76,6 @@ menu_module = angular.module(
         # )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
-        $scope.show_time = () ->
-            # set locale
-            moment.locale("en")
-            $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
-            $scope.$digest()
-            $timeout($scope.show_time, 1000, false)
         $scope.update_progress_bar = () ->
             icswSimpleAjaxCall(
                 {
@@ -114,20 +108,14 @@ menu_module = angular.module(
         $scope.redirect_to_init = () ->
             window.location = "http://www.init.at"
             return false
-        $scope.redirect_to_info = () ->
-            window.location = ICSW_URLS.MAIN_INFO_PAGE
-            return false
         $scope.redirect_to_handbook = () ->
             window.location = "/cluster/doc/#{initProduct.name.toLowerCase()}_handbook.pdf"
             return false
-        $scope.show_handbook_page = () ->
-            # not working right now, FIXME
-            window.open(
-                ICSW_URLS.DYNDOC_DOC_PAGE.slice(0, -1) + $scope.HANDBOOK_PAGE
-                "cluster documenation"
-                "height=500,width=600,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
-            )
-            return false
+        $scope.handbook_url = "/"
+        $scope.$watch("initProduct", (new_val) ->
+            if new_val.name?
+                $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
+        )
         $scope.rebuild_config = (cache_mode) ->
             # console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
             icswSimpleAjaxCall(
@@ -144,7 +132,6 @@ menu_module = angular.module(
                     $scope.progress_iters = 5
                     $scope.update_progress_bar()
             )
-        $timeout($scope.show_time, 1, false)
         $scope.$watch("navbar_size", (new_val) ->
             if new_val
                 if $scope.is_authenticated
