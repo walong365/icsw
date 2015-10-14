@@ -22,8 +22,10 @@
 
 """ DB definitions for background jobs """
 
-from django.db import models
 import logging
+
+from django.db import models
+
 from initat.tools import server_command
 
 logger = logging.getLogger(__name__)

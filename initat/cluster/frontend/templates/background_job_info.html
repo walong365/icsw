@@ -32,7 +32,7 @@
             </tr>
             <tr ng-repeat="job in jobs | paginator:this" ng-class="get_line_class(job)">
                 <td><strong>{{ job.command }}</strong></td>
-                <td>{{ job.result }}</td>
+                <td>{{ get_result_str(job) }}</td>
                 <td title="{{ job.command_xml }}">{{ job.command_xml | limit_text:10 }}</td>
                 <td>{{ get_time(job.date) }} ({{ get_diff_time(job.date) }})</td>
                 <td>{{ job.user_name }}</td>

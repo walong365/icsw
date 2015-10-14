@@ -56,10 +56,18 @@ background_job_info_module = angular.module(
                 return diff + "s"
             else
                 return "< 1s"
+        $scope.get_result_str = (job) ->
+            return {
+                0: "OK"
+                1: "Warn"
+                2: "Error"
+                3: "Critical"
+                4: "Unknown"
+            }[job.result]
         $scope.get_line_class = (job) ->
-            if job.state == 0
+            if job.result == 0
                 return ""
-            else if job.state == 1
+            else if job.result == 1
                 return "warning"
             else
                 return "danger"
