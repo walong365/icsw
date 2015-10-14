@@ -136,21 +136,6 @@ get_node_keys = (node) ->
         "build_info": node.build_info
     }
 
-class pd_timerange
-    constructor: (@name, @from, @to) ->
-    get_from: (cur_from, cur_to) =>
-        if @to
-            # from and to set, return from
-            return @from
-        else
-            # special format, no to set, from == moment() - @from hours
-            return moment().subtract(@from, "hours")
-    get_to: (cur_from, cur_to) =>
-        if @to
-            return @to
-        else
-            return moment()    
-
 angular.module(
     "icsw.rrd.graph",
     [
@@ -164,21 +149,9 @@ angular.module(
         $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService,
         toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->
-        $scope.all_timeranges = [
-            new pd_timerange("last 24 hours", 24, undefined)
-            new pd_timerange("last day", moment().subtract(1, "days").startOf("day"), moment().subtract(1, "days").endOf("day"))
-            new pd_timerange("current week", moment().startOf("week"), moment().endOf("week"))
-            new pd_timerange("last week", moment().subtract(1, "week").startOf("week"), moment().subtract(1, "week").endOf("week"))
-            new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
-            new pd_timerange("last month", moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month"))
-            new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
-            new pd_timerange("last year", moment().subtract(1, "year").startOf("year"), moment().subtract(1, "year").endOf("year"))
-        ]
         moment().utc()
-        $scope.dt_valid = true
+        $scope.timeframe = undefined
         $scope.vector_valid = false
-        $scope.to_date_mom = moment()
-        $scope.from_date_mom = moment().subtract(1, "days")
         $scope.error_string = ""
         $scope.vals =
             searchstr: ""
@@ -213,16 +186,6 @@ angular.module(
             $scope.user_list = data[1]
             $scope.selection_list = data[2]
         )
-        $scope.$watch("from_date_mom", (new_val) ->
-            if $scope.change_dt_to
-                $timeout.cancel($scope.change_dt_to)
-            $scope.change_dt_to = $timeout($scope.update_dt, 2000)
-        )
-        $scope.$watch("to_date_mom", (new_val) ->
-            if $scope.change_dt_to
-                $timeout.cancel($scope.change_dt_to)
-            $scope.change_dt_to = $timeout($scope.update_dt, 2000)
-        )
         $scope.set_job_mode = (new_jm) ->
             $scope.job_mode = new_jm
         $scope.set_scale_mode = (new_sm) ->
@@ -240,33 +203,6 @@ angular.module(
                 return false
             else
                 return true     
-        $scope.update_dt = () ->
-            # force moment
-            from_date = moment($scope.from_date_mom)
-            to_date = moment($scope.to_date_mom)
-            $scope.dt_valid = from_date.isValid() and to_date.isValid()
-            if $scope.dt_valid
-                diff = to_date - from_date 
-                if diff < 0
-                    toaster.pop("warning", "", "exchanged from with to date")
-                    $scope.to_date_mom = from_date
-                    $scope.from_date_mom = to_date
-                else if diff < 60000
-                    $scope.dt_valid = false
-        $scope.move_to_now = () ->
-            # shift timeframe
-            _timeframe = moment.duration($scope.to_date_mom.unix() - $scope.from_date_mom.unix(), "seconds")
-            $scope.from_date_mom = moment().subtract(_timeframe)
-            $scope.to_date_mom = moment()
-        $scope.set_to_now = () ->
-            # set to_date to now
-            $scope.to_date_mom = moment()
-        $scope.set_active_tr = (new_tr) ->
-            new_from = new_tr.get_from($scope.from_date_mom, $scope.to_date_mom)
-            new_to   = new_tr.get_to($scope.from_date_mom, $scope.to_date_mom)
-            $scope.from_date_mom = new_from
-            $scope.to_date_mom   = new_to
-            $scope.update_dt()
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             # clear graphs
             $scope.devlist_loading = false
@@ -501,8 +437,8 @@ angular.module(
         $scope.$on("cropSet", (event, graph) ->
             event.stopPropagation()
             if graph.crop_width > 600
-                $scope.from_date_mom = graph.cts_start_mom
-                $scope.to_date_mom = graph.cts_end_mom
+                $scope.timeframe.from_date_mom = graph.cts_start_mom
+                $scope.timeframe.to_date_mom = graph.cts_end_mom
                 $scope.draw_graph()
             else
                 _mins = parseInt(graph.crop_width / 60)
@@ -528,10 +464,10 @@ angular.module(
                     data : {
                         "keys"       : angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
                         "pks"        : angular.toJson($scope.devsel_list)
-                        "start_time" : moment($scope.from_date_mom).format(DT_FORM)
-                        "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
+                        "start_time" : moment($scope.timeframe.from_date_mom).format(DT_FORM)
+                        "end_time"   : moment($scope.timeframe.to_date_mom).format(DT_FORM)
                         "job_mode"      : $scope.job_mode
-                        "selected_job"  : $scope.selected_job 
+                        "selected_job"  : $scope.selected_job
                         "merge_cd"      : $scope.merge_cd
                         "graph_setting" : icswRrdGraphSettingService.get_active().idx
                         # flag if the controlling devices are shown in the rrd tree

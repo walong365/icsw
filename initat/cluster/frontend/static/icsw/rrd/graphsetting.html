@@ -150,3 +150,64 @@
         </fieldset>
     </form>
 </script>
+
+<script type="text/ng-template" id="icsw.rrd.graphsetting.timeframe">
+    <div class="form-group">
+        <div class="input-group">
+            <ui-select ng-disabled="timeframes.length == 0" ng-change="change_tf()" ng-model="val.current" style="width:160px;">
+                <ui-select-match>{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
+                <ui-select-choices repeat="entry in timeframes">
+                    <div ng-bind-html="entry.name"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+        <div class="form-group">
+            <div class="input-group-btn">
+                <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
+                    <span class="glyphicon glyphicon-step-forward"></span>
+                </button>
+            </div>
+        </div>&nbsp;
+        <div class="form-group">
+            <div class="input-group-btn">
+                <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
+                    <span class="glyphicon glyphicon-fast-forward"></span>
+                </button>
+            </div>
+        </div>&nbsp;
+        <div class="input-group">
+            <span class="input-group-addon">
+                 from
+            </span>
+            <input type="text" class="form-control" ng-model="val.from_date_mom">
+            </input>
+            <span class="dropdown-toggle input-group-addon">
+                <div class="dropdown">
+                    <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                         <i class="glyphicon glyphicon-calendar"></i>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <datetimepicker ng-model="val.from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                    </ul>
+                </div>
+            </span>
+        </div>
+        <div class="input-group">
+            <span class="input-group-addon">
+                 to
+            </span>
+            <input type="text" class="form-control" ng-model="val.to_date_mom">
+            </input>
+            <span class="dropdown-toggle input-group-addon">
+                <div class="dropdown">
+                    <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                         <i class="glyphicon glyphicon-calendar"></i>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <datetimepicker ng-model="val.to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                    </ul>
+                </div>
+            </span>
+        </div>
+    </div>
+</script>

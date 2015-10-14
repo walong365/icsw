@@ -28,13 +28,16 @@ angular.module(
     _size_url = ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
     _shift_url = ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST
     _forecast_url = ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST
+    _timeframe_url = ICSW_URLS.REST_GRAPH_TIME_FRAME_LIST
     _sets = []
     sizes = []
     shifts = []
+    timeframes = []
     forecasts = []
     size_waiters = []
     shift_waiters = []
     forecast_waiters = []
+    timeframe_waiters = []
     _set_version = 0
     _active = undefined
     _user = undefined
@@ -43,11 +46,13 @@ angular.module(
             icswCachingCall.fetch("graphsize", _size_url, {}, [])
             icswCachingCall.fetch("graphsize", _shift_url, {}, [])
             icswCachingCall.fetch("graphsize", _forecast_url, {}, [])
+            icswCachingCall.fetch("graphsize", _timeframe_url, {}, [])
         ]
     ).then((data) ->
         sizes = data[0]
         shifts = data[1]
         forecasts = data[2]
+        timeframes = data[3]
         for size in sizes
             size.info = "#{size.name} (#{size.width} x #{size.height})"
         for waiter in size_waiters
@@ -59,6 +64,9 @@ angular.module(
         for waiter in forecast_waiters
             waiter.resolve(forecasts)
         forecast_waiters = []
+        for waiter in timeframe_waiters
+            waiter.resolve(timeframes)
+        timeframe_waiters = []
     )
     get_sizes = () ->
         _defer = $q.defer()
@@ -80,6 +88,13 @@ angular.module(
             _defer.resolve(forecasts)
         else
             forecast_waiters.push(_defer)
+        return _defer
+    get_timeframes = () ->
+        _defer = $q.defer()
+        if timeframes.length
+            _defer.resolve(timeframes)
+        else
+            timeframe_waiters.push(_defer)
         return _defer
     load_data = (client) ->
         _defer= $q.defer()
@@ -174,6 +189,8 @@ angular.module(
             return get_shifts().promise
         "get_forecasts": () ->
             return get_forecasts().promise
+        "get_timeframes": () ->
+            return get_timeframes().promise
         "set_version": () ->
             return _set_version
         "get_active": () ->
@@ -282,5 +299,93 @@ angular.module(
                 )
             scope.select_setting = (new_setting, b) ->
                 scope.set_current(new_setting)
+    }
+]).directive("icswRrdGraphTimeFrame", ["$templateCache", "icswRrdGraphSettingService", "$compile", "$timeout", "toaster", ($templateCache, icswRrdGraphSettingService, $compile, $timeout, toaster) ->
+    return {
+        scope: true
+        restrict: "EA"
+        scope:
+            timeframe: "="
+        template: $templateCache.get("icsw.rrd.graphsetting.timeframe")
+        link: (scope, el, attrs) ->
+            moment().utc()
+            scope.timeframes = []
+            scope.val =
+                current: undefined
+                from_data_mom: undefined
+                to_date_mom: undefined
+                valid: false
+            scope.timeframe = scope.val
+            icswRrdGraphSettingService.get_timeframes().then((data) ->
+                scope.timeframes = data
+                scope.val.current = data[0]
+                scope.change_tf()
+                scope.$watch(
+                    () ->
+                        return scope.val.from_date_mom
+                    (new_val) ->
+                        if scope.change_dt_to
+                            $timeout.cancel(scope.change_dt_to)
+                        scope.change_dt_to = $timeout(scope.update_dt, 2000)
+                )
+                scope.$watch(
+                    () ->
+                        return scope.val.to_date_mom
+                    (new_val) ->
+                        if scope.change_dt_to
+                            $timeout.cancel(scope.change_dt_to)
+                        scope.change_dt_to = $timeout(scope.update_dt, 2000)
+                )
+            )
+            scope.move_to_now = () ->
+                # shift timeframe
+                _timeframe = moment.duration(scope.val.to_date_mom.unix() - scope.val.from_date_mom.unix(), "seconds")
+                scope.val.from_date_mom = moment().subtract(_timeframe)
+                scope.val.to_date_mom = moment()
+            scope.set_to_now = () ->
+                # set to_date to now
+                scope.val.to_date_mom = moment()
+            scope.update_dt = () ->
+                # force moment
+                from_date = moment(scope.val.from_date_mom)
+                to_date = moment(scope.val.to_date_mom)
+                scope.val.valid = from_date.isValid() and to_date.isValid()
+                if scope.val.valid
+                    diff = to_date - from_date
+                    if diff < 0
+                        toaster.pop("warning", "", "exchanged from with to date")
+                        scope.val.to_date_mom = from_date
+                        scope.val.from_date_mom = to_date
+                    else if diff < 60000
+                        scope.val.valid = false
+            scope.change_tf = () ->
+                get_time_string = (short) ->
+                    return {
+                        "h": "hour"
+                        "d": "day"
+                        "w": "week"
+                        "m": "month"
+                        "y": "year"
+                        "D": "year"
+                    }[short]
+                _tf = scope.val.current
+                _now = moment()
+                if _tf.relative_to_now
+                    # special relative to now
+                    scope.val.to_date_mom = _now
+                    scope.val.from_date_mom = moment(_now).subtract(_tf.seconds, "seconds")
+                else
+                    tfs = get_time_string(_tf.base_timeframe)
+                    _start = _now.startOf(tfs)
+                    if _tf.base_timeframe == "D"
+                        # fix decade
+                        _start.year(10 * parseInt(_start.year() / 10))
+                    if _tf.timeframe_offset
+                        if _tf.base_timeframe == "D"
+                            _start = _start.subtract(-_tf.timeframe_offset * 10, tfs)
+                        else
+                            _start = _start.subtract(-_tf.timeframe_offset, tfs)
+                    scope.val.from_date_mom = _start
+                    scope.val.to_date_mom = moment(_start).add(_tf.seconds, "seconds")
     }
 ])

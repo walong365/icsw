@@ -478,3 +478,6 @@ class GraphTimeFrame(models.Model):
 
     def __unicode__(self):
         return "GraphTimeFrame '{}'".format(self.name)
+
+    class Meta:
+        ordering = ("-relative_to_now", "timeframe_offset", "seconds",)

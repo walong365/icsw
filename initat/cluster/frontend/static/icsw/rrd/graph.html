@@ -19,22 +19,12 @@
                 </div>
             </div>&nbsp;
             <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
+            <icsw-rrd-graph-time-frame timeframe="timeframe"></icsw-rrd-graph-time-frame>
             <div class="form-group">
                 <div class="input-group-btn">
-                    <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
+                    <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && timeframe.valid" ng-click="draw_graph()">
                         <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
                      </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-time"></span>
-                        timerange <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                    </ul>
                 </div>
             </div>&nbsp;
             <div class="form-group">
@@ -48,63 +38,11 @@
                     </ul>
                 </div>
             </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
-                        <span class="glyphicon glyphicon-step-forward"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
-                        <span class="glyphicon glyphicon-fast-forward"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
             <div class="form-group" ng-show="!merge_cd">
                 <div class="input-group-btn">
                     <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
                         <span class="glyphicon glyphicon-off"></span>
                     </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         from
-                    </span>
-                    <input type="text" class="form-control" ng-model="from_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                 <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                            </ul>
-                        </div>
-                    </span>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         to
-                    </span>
-                    <input type="text" class="form-control" ng-model="to_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                 <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                            </ul>
-                        </div>
-                    </span>
                 </div>
             </div>
         </div>
@@ -114,10 +52,10 @@
             <div class="input-group">
                 <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vals.searchstr" placeholder="search ..." ng-change="update_search()"/>
                 <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()">
+                    <button class="btn btn-success" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="is_drawing" ng-click="draw_graph()">
                         <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
                     </button>
-                    <button class="btn btn-warning" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="clear_selection()">
+                    <button class="btn btn-warning" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="is_drawing" ng-click="clear_selection()">
                         <span title="clear selection" class="fa fa-remove"></span>
                     </button>
                     <button class="btn btn-warning" type="button" ladda="is_drawing" ng-click="select_with_sensor()">
