@@ -667,7 +667,7 @@ class DataSource(object):
             if _req.get("build_info", ""):
                 _key = (_req["struct_key"], _req["value_key"])
                 _full_key = full_graph_key(_key)
-                _build_infos = [process_tools.decompress_struct(_entry) for _entry in _req["build_info"]]
+                _build_infos = [process_tools.decompress_struct(_entry) for _entry in _req["build_info"] if _entry]
                 _compound_dict[_key] = []
                 for _build_info in _build_infos:
                     for _entry in _build_info:
