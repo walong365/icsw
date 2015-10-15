@@ -137,27 +137,34 @@ class snmp_if(object):
         self.idx = in_dict[1]
         self.name = in_dict[2]
         self.if_type = in_dict[3]
-        self.mtu = in_dict[4]
+        # mtu is not present for Cisco StackSub-St1
+        self.mtu = in_dict.get(4, 0)
         self.speed = in_dict[5]
         if 6 in in_dict:
-            self.macaddr = ":".join(["{:02x}".format(ord(_val)) for _val in in_dict[6]])
+            self.macaddr = ":".join(
+                [
+                    "{:02x}".format(ord(_val)) for _val in in_dict[6]
+                ]
+            )
         else:
             self.macaddr = ""
         self.admin_status = in_dict[7]
         self.oper_status = in_dict[8]
         self.last_change = in_dict[9]
+        # Ciscos 2960X does not have ifInNUcastPakts or ifOutNUcastPakts
         if 10 in in_dict:
-            self.in_counter = snmp_if_counter(in_dict[10], in_dict[11], in_dict[12], in_dict[13], in_dict[14])
+            self.in_counter = snmp_if_counter(in_dict[10], in_dict[11], in_dict.get(12, 0), in_dict[13], in_dict[14])
         else:
             self.in_counter = None
         if 16 in in_dict:
-            self.out_counter = snmp_if_counter(in_dict[16], in_dict[17], in_dict[18], in_dict[19], in_dict[20])
+            self.out_counter = snmp_if_counter(in_dict[16], in_dict[17], in_dict.get(18, 0), in_dict[19], in_dict[20])
         else:
             self.out_counter = None
-        self.in_unknown_protos = in_dict[15]
+        # as mtu, see above
+        self.in_unknown_protos = in_dict.get(15, 0)
 
     def __repr__(self):
-        return "if {} ({:d}), MTU is {:d}, type is {:d}".format(
+        return u"if {} ({:d}), MTU is {:d}, type is {:d}".format(
             self.name,
             self.idx,
             self.mtu,
