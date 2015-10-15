@@ -27,10 +27,10 @@ angular.module(
 ).controller("icswDeviceTreeCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout",
      "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
-     "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects",
+     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout,
     $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
-    icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects) ->
+    icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
@@ -172,19 +172,17 @@ angular.module(
             $scope.create_or_edit(event, false, edit_obj)
         $scope.modify_many = () ->
             #console.log "mm", $scope.edit_obj
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
                 data    : {
                     "change_dict" : angular.toJson($scope.edit_obj)
                     "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
                 }
-                success : (xml) ->
-                    if icswParseXMLResponseService(xml)
-                        if parseInt($(xml).find("value[name='changed']").text())
-                            $scope.my_modal.close()
-                            $scope.reload()
-                            # FIXME, TODO
-                            # reload_sidebar_tree()
+            ).then((xml) ->
+                if parseInt($(xml).find("value[name='changed']").text())
+                    $scope.my_modal.close()
+                    $scope.reload()
+            )
         $scope.delete = (a_name, obj) ->
             icswDialogDeleteObjects([obj], a_name, () -> $scope.reload(false))  # set blocking to false because it might happen in background of the delete dlg
         $scope.delete_many = (event) ->
@@ -283,13 +281,13 @@ angular.module(
                     new_obj.domain_tree_node = (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
             return new_obj
         $scope.update_selected = () ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.DEVICE_SET_SELECTION
                 data    : {
                     "angular_sel" : angular.toJson((entry.idx for entry in $scope.entries when entry.selected))
                 }
-                success : (xml) ->
-                    icswParseXMLResponseService(xml)
+            ).then((xml) ->
+            )
 
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->

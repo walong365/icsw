@@ -23,8 +23,8 @@ angular.module(
     [
         "ngSanitize", "ui.bootstrap", "restangular"
     ]
-).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->
         $scope.base_open = true
         $scope.resolve_pending = false
         $scope.device_data = {
@@ -84,20 +84,15 @@ angular.module(
             # clear ip
             $scope.device_data.ip = ""
             $scope.resolve_pending = true
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url  : ICSW_URLS.MON_RESOLVE_NAME
                 data : {
                     "fqdn" : $scope.device_data.full_name
                 }
-                success : (xml) =>
-                    $scope.$apply(
-                        $scope.resolve_pending = false
-                    )
-                    if icswParseXMLResponseService(xml)
-                        if $(xml).find("value[name='ip']").length and not $scope.device_data.ip
-                            $scope.$apply(
-                                $scope.device_data.ip = $(xml).find("value[name='ip']").text()
-                            )
+            ).then((xml) ->
+                $scope.resolve_pending = false
+                $scope.device_data.ip = $(xml).find("value[name='ip']").text()
+            )
         $scope.device_groups = () ->
             return (entry.name for entry in $scope.rest_data.device_group when entry.cluster_device_group == false and entry.enabled)
         $scope.any_peers = () ->
@@ -112,17 +107,15 @@ angular.module(
         $scope.create_device = () ->
             d_dict = $scope.device_data
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url  : ICSW_URLS.MON_CREATE_DEVICE
                 data : {
                     "device_data" : angular.toJson(d_dict)
                 }
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
-                    # FIXME, TODO
-                    # reload_sidebar_tree()
-                    blockUI.stop()
-                    $scope.reload()
+            ).then((xml) ->
+                blockUI.stop()
+                $scope.reload()
+            )
         $scope.reload()
 ]).directive("icswDeviceCreateMask", ["$templateCache", ($templateCache) ->
     return {

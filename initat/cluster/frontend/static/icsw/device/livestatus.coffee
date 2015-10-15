@@ -294,10 +294,10 @@ angular.module(
         }
 ]).controller("icswDeviceLiveStatusCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "$timeout",
-     "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
+     "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceLivestatusDataService",
      "icswCachingCall", "icswLivestatusFilterFactory", "icswDeviceTreeService", "icswLivestatusDevSelFactory", "$state",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
-     $q, $modal, $timeout, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService,
+     $q, $modal, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceLivestatusDataService,
      icswCachingCall, icswLivestatusFilterFactory, icswDeviceTreeService, icswLivestatusDevSelFactory, $state) ->
         $scope.host_entries = []
         $scope.service_entries = []
@@ -437,7 +437,7 @@ angular.module(
     return {
         edit_template: "network.type.form"
     }
-]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", "icswParseXMLResponseService", "$q", "icswDeviceTreeService", (ICSW_URLS, $interval, $timeout, icswCallAjaxService, icswParseXMLResponseService, $q, icswDeviceTreeService) ->
+]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService", (ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService) ->
     watch_list = {}
     defer_list = {}
     result_list = {}
@@ -522,76 +522,76 @@ angular.module(
                 if watch_list[dev].length > 0
                     watched_devs.push(dev)
 
-            cur_xhr = icswCallAjaxService
+            icswSimpleAjaxCall(
                 url  : ICSW_URLS.MON_GET_NODE_STATUS
                 data : {
                     "pk_list" : angular.toJson(watched_devs)
-                },
-                success : (xml) =>
-                    if icswParseXMLResponseService(xml)
-                        icswDeviceTreeService.fetch("bla").then((data) ->
-                            dev_tree_lut = data[2]
-                            service_entries = []
-                            $(xml).find("value[name='service_result']").each (idx, node) =>
-                                service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                            host_entries = []
-                            $(xml).find("value[name='host_result']").each (idx, node) =>
-                                host_entries = host_entries.concat(angular.fromJson($(node).text()))
-                            host_lut = {}
-                            used_cats = []
-                            host_id = 0
-                            for entry in host_entries
-                                host_id++
-                                # sanitize entries
-                                _sanitize_entries(entry)
-                                # list of checks for host
-                                entry.checks = []
-                                entry.ct = "host"
-                                # dummy link
-                                entry.host = entry
-                                entry.custom_variables = _parse_custom_variables(entry.custom_variables)
-                                entry._srv_id = "host#{host_id}"
-                                if entry.custom_variables.device_pk of dev_tree_lut
-                                    _dev = dev_tree_lut[entry.custom_variables.device_pk]
-                                    entry.group_name = _dev.device_group_name
-                                host_lut[entry.host_name] = entry
-                                host_lut[entry.custom_variables.device_pk] = entry
-                            srv_id = 0
-                            for entry in service_entries
-                                entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
-                                srv_id++
-                                # sanitize entries
-                                _sanitize_entries(entry)
-                                entry.custom_variables = _parse_custom_variables(entry.custom_variables)
-                                entry.description = entry.display_name  # this is also what icinga displays
-                                entry.ct = "service"
-                                entry._srv_id = "srvc#{srv_id}"
-                                # populate list of checks
-                                host_lut[entry.custom_variables.device_pk].checks.push(entry)
-                                entry.host = host_lut[entry.custom_variables.device_pk]
-                                entry.group_name = host_lut[entry.host_name].group_name
-                                if entry.custom_variables and entry.custom_variables.cat_pks?
-                                    used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
-                                else
-                                    used_cats = _.union(used_cats, [0])
-                            _host_lut = host_lut
+                }
+            ).then((xml) ->
+                icswDeviceTreeService.fetch("bla").then((data) ->
+                    dev_tree_lut = data[2]
+                    service_entries = []
+                    $(xml).find("value[name='service_result']").each (idx, node) =>
+                        service_entries = service_entries.concat(angular.fromJson($(node).text()))
+                    host_entries = []
+                    $(xml).find("value[name='host_result']").each (idx, node) =>
+                        host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                    host_lut = {}
+                    used_cats = []
+                    host_id = 0
+                    for entry in host_entries
+                        host_id++
+                        # sanitize entries
+                        _sanitize_entries(entry)
+                        # list of checks for host
+                        entry.checks = []
+                        entry.ct = "host"
+                        # dummy link
+                        entry.host = entry
+                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                        entry._srv_id = "host#{host_id}"
+                        if entry.custom_variables.device_pk of dev_tree_lut
+                            _dev = dev_tree_lut[entry.custom_variables.device_pk]
+                            entry.group_name = _dev.device_group_name
+                        host_lut[entry.host_name] = entry
+                        host_lut[entry.custom_variables.device_pk] = entry
+                    srv_id = 0
+                    for entry in service_entries
+                        entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
+                        srv_id++
+                        # sanitize entries
+                        _sanitize_entries(entry)
+                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                        entry.description = entry.display_name  # this is also what icinga displays
+                        entry.ct = "service"
+                        entry._srv_id = "srvc#{srv_id}"
+                        # populate list of checks
+                        host_lut[entry.custom_variables.device_pk].checks.push(entry)
+                        entry.host = host_lut[entry.custom_variables.device_pk]
+                        entry.group_name = host_lut[entry.host_name].group_name
+                        if entry.custom_variables and entry.custom_variables.cat_pks?
+                            used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
+                        else
+                            used_cats = _.union(used_cats, [0])
+                    _host_lut = host_lut
 
-                            for client, _defer of defer_list
-                                _result = result_list[client]
-                                hosts_client = []
-                                services_client = []
-                                host_lut_client = {}
-                                for dev, watchers of watch_list
-                                    if client in watchers and dev of host_lut  # sometimes we don't get data for a device
-                                        entry = host_lut[dev]
-                                        hosts_client.push(entry)
-                                        for check in entry.checks
-                                            services_client.push(check)
-                                        host_lut_client[dev] = entry
-                                        host_lut_client[entry.host_name] = entry
-                                _result.update(hosts_client, services_client, host_lut_client, used_cats)
-                                _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
-                        )
+                    for client, _defer of defer_list
+                        _result = result_list[client]
+                        hosts_client = []
+                        services_client = []
+                        host_lut_client = {}
+                        for dev, watchers of watch_list
+                            if client in watchers and dev of host_lut  # sometimes we don't get data for a device
+                                entry = host_lut[dev]
+                                hosts_client.push(entry)
+                                for check in entry.checks
+                                    services_client.push(check)
+                                host_lut_client[dev] = entry
+                                host_lut_client[entry.host_name] = entry
+                        _result.update(hosts_client, services_client, host_lut_client, used_cats)
+                        _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
+                )
+            )
 
     remove_watchers_by_client = (client) ->
         client = client.toString()

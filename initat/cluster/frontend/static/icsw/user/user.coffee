@@ -124,8 +124,8 @@ user_module = angular.module(
             if _dir.num_files_total
                 _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
             return "#{_dir.name} (" + _info.join(", ") + ")"
-]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "access_level_service", "icswUserTree",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster, access_level_service, icswUserTree) ->
+]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "access_level_service", "icswUserTree",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, access_level_service, icswUserTree) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -236,12 +236,11 @@ user_module = angular.module(
         )
         $scope.sync_users = () ->
             blockUI.start("Sending sync to server ...")
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.USER_SYNC_USERS
                 title   : "syncing users"
-                success : (xml) =>
-                    blockUI.stop()
-                    icswParseXMLResponseService(xml)
+            ).then((xml) ->
+            )
         $scope.rebuild_tree = () ->
             $scope.tree.clear_root_nodes()
             group_lut = {}
@@ -373,7 +372,7 @@ user_module = angular.module(
             $scope.$broadcast("icsw.enter_password")
         $scope.create_object_permission = () ->
             perm = $scope.csw_permission_lut[$scope._edit_obj.permission]
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.USER_CHANGE_OBJECT_PERMISSION
                 data    :
                     # group or user
@@ -384,17 +383,15 @@ user_module = angular.module(
                     "csw_idx": $scope._edit_obj.permission
                     "set": 1
                     "level": $scope._edit_obj.permission_level
-                success : (xml) =>
-                    if icswParseXMLResponseService(xml)
-                        if $(xml).find("value[name='new_obj']").length
-                            new_obj = angular.fromJson($(xml).find("value[name='new_obj']").text())
-                            if $scope._edit_mode == "u"
-                                $scope._edit_obj.user_object_permission_set.push(new_obj)
-                            else
-                                $scope._edit_obj.group_object_permission_set.push(new_obj)
-                            toaster.pop("success", "", "added local permission")
-                            # trigger redraw
-                            $scope.$digest()
+            ).then((xml) ->
+                if $(xml).find("value[name='new_obj']").length
+                    new_obj = angular.fromJson($(xml).find("value[name='new_obj']").text())
+                    if $scope._edit_mode == "u"
+                        $scope._edit_obj.user_object_permission_set.push(new_obj)
+                    else
+                        $scope._edit_obj.group_object_permission_set.push(new_obj)
+                    toaster.pop("success", "", "added local permission")
+            )
         $scope.delete_permission = (perm) ->
             if $scope._edit_mode == "u"
                 ug_name = "user"
@@ -460,15 +457,13 @@ user_module = angular.module(
         $scope.get_home_dir_created_value = (obj) ->
             return if obj.home_dir_created then "homedir exists" else "no homedir"
         $scope.clear_home_dir_created = (obj) ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.USER_CLEAR_HOME_DIR_CREATED
                 data    :
                     "user_pk" : obj.idx
-                success : (xml) =>
-                    if icswParseXMLResponseService(xml)
-                        $scope.$apply(() ->
-                            obj.home_dir_created = false
-                        )
+            ).then((xml) ->
+                obj.home_dir_created = false
+            )
         $scope.get_perm_object = (perm) ->
             obj_perm = perm.csw_object_permission
             csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]
@@ -479,17 +474,18 @@ user_module = angular.module(
             url = ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST.slice(1)
             Restangular.all(url).post(new_obj).then( then_fun )
         $scope.get_viewer_command_line = (vdus) ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url      : ICSW_URLS.USER_GET_DEVICE_IP
                 data     :
                     "device" : vdus.device
                 dataType : "json"
-                success  : (json) =>
-                    vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, json.ip)
-                    script = "notepad.exe\r\n"
-                    blob = new Blob([ script ], { type : 'application/x-bat' });
-                    # console.log "blob", blob
-                    vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
+            ).then((json) ->
+                vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, json.ip)
+                script = "notepad.exe\r\n"
+                blob = new Blob([ script ], { type : 'application/x-bat' });
+                # console.log "blob", blob
+                vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
+            )
 ]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswUserService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswUserService) ->
         $scope.virtual_desktop_user_setting = []

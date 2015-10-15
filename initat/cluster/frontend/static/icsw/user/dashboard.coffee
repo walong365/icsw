@@ -26,8 +26,8 @@ dashboard_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user", "icsw.user.license",
     ]
-).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)->
+).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswSimpleAjaxCall)->
         $scope.jobs_waiting = []
         $scope.jobs_running = []
         $scope.jobs_finished = []
@@ -47,18 +47,17 @@ dashboard_module = angular.module(
                 ts.timedelta_description[0],
                 ts.timedelta_description[1]
             ).unix()
-            icswCallAjaxService
-                  url      : ICSW_URLS.RMS_GET_RMS_JOBINFO
-                  data     :
-                      "jobinfo_jobsfrom" : jobsfrom
-                  dataType : "json"
-                  success  : (json) =>
-                      $scope.$apply(
-                          $scope.jobinfo_valid = true
-                          $scope.jobs_running = json.jobs_running
-                          $scope.jobs_waiting = json.jobs_waiting
-                          $scope.jobs_finished = json.jobs_finished
-                      )
+            icswSimpleAjaxCall(
+                url      : ICSW_URLS.RMS_GET_RMS_JOBINFO
+                data     :
+                    "jobinfo_jobsfrom" : jobsfrom
+                dataType : "json"
+            ).then((json) ->
+              $scope.jobinfo_valid = true
+              $scope.jobs_running = json.jobs_running
+              $scope.jobs_waiting = json.jobs_waiting
+              $scope.jobs_finished = json.jobs_finished
+            )
         $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
         listmax = 15
         jobidToString = (j) -> 
@@ -76,7 +75,7 @@ dashboard_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.user.job.info")
         link: (scope, element, attrs) ->
-]).directive("icswUserVduOverview", ["$compile", "$window", "$templateCache", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $window, $templateCache, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswUserVduOverview", ["$compile", "$window", "$templateCache", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", ($compile, $window, $templateCache, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
         restrict : "EA"
         template : $templateCache.get("icsw.user.vdu.overview")
         link: (scope, element, attrs) ->
@@ -124,23 +123,22 @@ dashboard_module = angular.module(
                 # set some dummy value so that the vnc directive doesn't complain
                 dummy_ip = "0.0.0.0"
                 scope.ips_for_devices[index] = dummy_ip
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url      : ICSW_URLS.USER_GET_DEVICE_IP
                     data     :
                         "device" : index
                     dataType : "json"
-                    success  : (json) =>
-                        scope.$apply(
-                            scope.ips_for_devices[index] = json.ip
-                            if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
-                                # all are loaded
-                                scope.ips_loaded = true
+                ).then((json) ->
+                    scope.ips_for_devices[index] = json.ip
+                    if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
+                        # all are loaded
+                        scope.ips_loaded = true
 
-                                # calc command lines
-                                for vdus in scope.virtual_desktop_sessions
-                                    vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, scope.ips_for_devices[vdus.device]) 
-                        )
-                
+                        # calc command lines
+                        for vdus in scope.virtual_desktop_sessions
+                            vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, scope.ips_for_devices[vdus.device])
+                )
+
             scope.download_vdus_start_script = (vdus) ->
                 # create .vnc file (supported by at least tightvnc and realvnc on windows)
                 content = ["[Connection]\n",

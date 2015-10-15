@@ -1042,7 +1042,12 @@ class LogSource(models.Model):
         ls_dev = kwargs.get("device", None)
         sources = LogSource.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
         if len(sources) > 1:
-            print("Too many LogSources present ({}), exiting".format(", ".join([identifier])))
+            print(
+                "Too many LogSources present for identifier '{}': {}, exiting".format(
+                    identifier,
+                    ", ".join([unicode(_src) for _src in sources])
+                )
+            )
             cur_source = None
         elif not len(sources):
             if ls_dev is not None:

@@ -319,7 +319,7 @@ angular.module(
                 @ajax_dict[xhr_id]["state"]   = "done"
                 @ajax_dict[xhr_id]["runtime"] = new Date() - @ajax_dict[xhr_id]["start"]
                 @top_div.find("li##{xhr_id}").remove()
-]).service("icswCallAjaxService", ["icswAjaxInfoService", "icswCSRFService", (icswAjaxInfoService, icswCSRFService) ->
+]).service("_icswCallAjaxService", ["icswAjaxInfoService", "icswCSRFService", (icswAjaxInfoService, icswCSRFService) ->
     local_ajax_info = new icswAjaxInfoService("div#ajax_info")
     default_ajax_dict =
         type       : "POST"
@@ -351,18 +351,23 @@ angular.module(
         #    console.log "s", in_dict["success"]
         cur_xhr = $.ajax(in_dict)
         return cur_xhr
-]).service("icswSimpleAjaxCall", ["icswCallAjaxService", "icswParseXMLResponseService", "$q", (icswCallAjaxService, icswParseXMLResponseService, $q) ->
+]).service("icswSimpleAjaxCall", ["_icswCallAjaxService", "icswParseXMLResponseService", "$q", (_icswCallAjaxService, icswParseXMLResponseService, $q) ->
     return (in_dict) ->
         _def = $q.defer()
+        if in_dict.ignore_log_level?
+            ignore_log_level = true
+            delete in_dict.ignore_log_level
+        else
+            ignore_log_level = false
         in_dict.success = (res) =>
             if in_dict.dataType == "json"
                 _def.resolve(res)
             else
-                if icswParseXMLResponseService(res)
+                if icswParseXMLResponseService(res) or ignore_log_level
                     _def.resolve(res)
                 else
-                    _def.reject()
-        icswCallAjaxService(in_dict)
+                    _def.reject(res)
+        _icswCallAjaxService(in_dict)
 
         return _def.promise
 ]).service("access_level_service", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->

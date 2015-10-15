@@ -140,8 +140,8 @@ angular.module(
         "get_device_lut": () ->
             return device_lut
     }
-]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswSimpleAjaxCall) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
         $scope.loaded = false
@@ -150,13 +150,13 @@ angular.module(
         $scope.load_vars = () ->
             if not $scope.loaded
                 $scope.loaded = true
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url     : ICSW_URLS.CONFIG_GET_DEVICE_CVARS
                     data    :
                         "keys" : angular.toJson($scope.devsel_list)
-                    success : (xml) =>
-                        icswParseXMLResponseService(xml)
-                        $scope.set_tree_content($(xml).find("devices"))
+                ).then((xml) ->
+                    $scope.set_tree_content($(xml).find("devices"))
+                )
         $scope.set_tree_content = (in_xml) ->
             for dev_xml in in_xml.find("device")
                 dev_xml = $(dev_xml)
@@ -389,7 +389,7 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.overview")
         controller: "icswDeviceConfigurationCtrl"
     }
-]).service("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "icswDeviceConfigRestService", "access_level_service", "$q", (Restangular, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, icswDeviceConfigRestService, access_level_service, $q) ->
+]).service("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceConfigRestService", "access_level_service", "$q", (Restangular, ICSW_URLS, icswSimpleAjaxCall, icswDeviceConfigRestService, access_level_service, $q) ->
     show_config = (dev, conf_idx) ->
         if conf_idx != null
             cur_conf = icswDeviceConfigRestService.get_config(conf_idx)

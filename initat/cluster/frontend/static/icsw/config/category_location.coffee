@@ -80,9 +80,9 @@ angular.module(
 ]).controller("icswConfigCategoryLocationCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$timeout", "icswCSRFService",
     "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
-    "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService", "msgbus",
+    "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService", "msgbus",
    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $timeout, icswCSRFService, $q, $modal, access_level_service,
-    FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster,
+    FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, msgbus) ->
         $scope.entries = []
         # mixins
@@ -207,16 +207,16 @@ angular.module(
                 if new_val
                     $timeout(
                         () ->
-                            icswCallAjaxService
+                            icswSimpleAjaxCall(
                                 hidden: true
                                 url : ICSW_URLS.MON_SVG_TO_PNG
                                 data :
                                     svg : _el[0].outerHTML
-                                success : (xml) ->
-                                    if icswParseXMLResponseService(xml)
-                                        _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
-                                        sub_scope.$destroy()
-                                        defer.resolve([loc_pk, _url])
+                            ).then((xml) ->
+                                _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
+                                sub_scope.$destroy()
+                                defer.resolve([loc_pk, _url])
+                            )
                     )
             )
             return defer.promise
@@ -383,7 +383,7 @@ angular.module(
                 true
             )
     }
-]).directive("icswConfigCategoryTreeMapEnhance", ["$templateCache", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", ($templateCache, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI) ->
+]).directive("icswConfigCategoryTreeMapEnhance", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, blockUI) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.map.enhance")
@@ -448,18 +448,16 @@ angular.module(
                 if angular.isString(data)
                     data = {"id" : scope.preview_gfx.idx, "mode": data}
                 blockUI.start()
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
                     data: data
-                    success: (xml) ->
-                        blockUI.stop()
-                        if icswParseXMLResponseService(xml)
-                            scope.$apply(() ->
-                                scope.preview_gfx.image_url = $(xml).find("value[name='image_url']").text()
-                                scope.preview_gfx.icon_url = $(xml).find("value[name='icon_url']").text()
-                                scope.preview_gfx.width = parseInt($(xml).find("value[name='width']").text())
-                                scope.preview_gfx.height = parseInt($(xml).find("value[name='height']").text())
-                            )
+                ).then((xml) ->
+                    blockUI.stop()
+                    scope.preview_gfx.image_url = $(xml).find("value[name='image_url']").text()
+                    scope.preview_gfx.icon_url = $(xml).find("value[name='icon_url']").text()
+                    scope.preview_gfx.width = parseInt($(xml).find("value[name='width']").text())
+                    scope.preview_gfx.height = parseInt($(xml).find("value[name='height']").text())
+                )
     }
 ]).service("icswConfigCategoryTreeMapService", [() ->
     _map = null

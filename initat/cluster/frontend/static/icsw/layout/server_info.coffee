@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswCallAjaxService", "icswParseXMLResponseService", "icswSimpleAjaxCall",
-    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswCallAjaxService, icswParseXMLResponseService, icswSimpleAjaxCall) ->
+).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswSimpleAjaxCall",
+    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswSimpleAjaxCall) ->
         access_level_service.install($scope)
         $scope.show_server = true
         $scope.show_roles = false
@@ -43,24 +43,24 @@ angular.module(
                 $scope.routing_info = json.routing
         )
         $scope.reload_server_info = () ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.MAIN_GET_SERVER_INFO
                 hidden  : true
-                success : (xml) =>
-                    $scope.server_info_list = []
-                    $scope.instance_list = []
-                    $scope.runs_on = {}
-                    $(xml).find("ics_batch").each (idx, res_xml) ->
-                        res_xml = $(res_xml)
-                        cur_si = new icswLayoutServerInfoService(res_xml)
-                        $scope.server_info_list.push(cur_si)
-                        _cur_inst = cur_si.instance_names()
-                        for _name in _cur_inst
-                            if _name not of $scope.runs_on
-                                $scope.runs_on[_name] = res_xml.find("instance[name='#{_name}']").attr("runs_on")
-                        $scope.instance_list = _.union($scope.instance_list, _cur_inst)
-                    $scope.cur_to = $timeout($scope.reload_server_info, 15000)
-                    $scope.$digest()
+            ).then((xml) ->
+                $scope.server_info_list = []
+                $scope.instance_list = []
+                $scope.runs_on = {}
+                $(xml).find("ics_batch").each (idx, res_xml) ->
+                    res_xml = $(res_xml)
+                    cur_si = new icswLayoutServerInfoService(res_xml)
+                    $scope.server_info_list.push(cur_si)
+                    _cur_inst = cur_si.instance_names()
+                    for _name in _cur_inst
+                        if _name not of $scope.runs_on
+                            $scope.runs_on[_name] = res_xml.find("instance[name='#{_name}']").attr("runs_on")
+                    $scope.instance_list = _.union($scope.instance_list, _cur_inst)
+                $scope.cur_to = $timeout($scope.reload_server_info, 15000)
+            )
         $scope.get_runs_on = (instance) ->
             return $scope.runs_on[instance]
         $scope.num_roles = () ->
@@ -77,7 +77,7 @@ angular.module(
             if $scope.cur_to
                 $timeout.cancel($scope.cur_to)
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.MAIN_SERVER_CONTROL
                 data    : {
                     "cmd" : angular.toJson(
@@ -86,10 +86,10 @@ angular.module(
                         "type"      : type
                     )
                 }
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
-                    blockUI.stop()
-                    $scope.cur_to = $timeout($scope.reload_server_info, 100)
+            ).then((xml) ->
+                blockUI.stop()
+                $scope.cur_to = $timeout($scope.reload_server_info, 100)
+            )
             return false
         $scope.reload_server_info()
 ]).service("icswLayoutServerInfoService", () ->

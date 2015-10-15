@@ -566,8 +566,8 @@ config_module = angular.module(
                 scope.use_catalog = scope.config_catalogs[0].idx
             )
     }
-]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall", "icswCachedConfigRestService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService, msgbus, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall, icswCachedConfigRestService) ->
+]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService", "msgbus", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall", "icswCachedConfigRestService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService, msgbus, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall, icswCachedConfigRestService) ->
         $scope.selected_objects = []
         $scope.num_cached_uploads = 0
         $scope.$watch(
@@ -592,13 +592,16 @@ config_module = angular.module(
                     else
                         conf["config_#{obj.object_type}_set"] = ref_f
                     $scope._set_fields(conf)
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url     : ICSW_URLS.CONFIG_DELETE_OBJECTS
                     data    :
                         "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
-                    success : (xml) =>
-                        icswParseXMLResponseService(xml)
+                ).then(
+                    (xml) ->
                         blockUI.stop()
+                    (xml) ->
+                        blockUI.stop()
+                )
                 $scope.selected_objects = []
         $scope.unselect_objects = () ->
             # unselect all selected objects
@@ -1123,7 +1126,7 @@ config_module = angular.module(
         }
         replace : true
     }
-]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "blockUI", "$modal", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswConfigRestService", "icswCachedConfigRestService", "icswSimpleAjaxCall", "icswConfigListService", ($templateCache, $compile, blockUI, $modal, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswConfigRestService, icswCachedConfigRestService, icswSimpleAjaxCall, icswConfigListService) ->
+]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "blockUI", "$modal", "Restangular", "ICSW_URLS", "icswConfigRestService", "icswCachedConfigRestService", "icswSimpleAjaxCall", "icswConfigListService", ($templateCache, $compile, blockUI, $modal, Restangular, ICSW_URLS, icswConfigRestService, icswCachedConfigRestService, icswSimpleAjaxCall, icswConfigListService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.cached.upload")

@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 class mc_table
     constructor : (@xml, paginatorSettings) ->
         @name = @xml.prop("tagName")
@@ -64,8 +65,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswSimpleAjaxCall", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswSimpleAjaxCall, toaster) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"
@@ -110,38 +111,37 @@ angular.module(
                 _reset_entries()
             else
                 $scope.reload_pending = true
-                $scope.cur_xhr = icswCallAjaxService
+                icswSimpleAjaxCall(
                     url  : ICSW_URLS.MON_GET_NODE_CONFIG
                     data : {
                         "pk_list" : angular.toJson($scope.devsel_list)
                         "mode"    : mode
                     },
-                    success : (xml) =>
-                        if icswParseXMLResponseService(xml)
-                            mc_tables = []
-                            $(xml).find("config > *").each (idx, node) =>
-                                new_table = new mc_table($(node), paginatorSettings)
-                                mc_tables.push(new_table)
-                            $scope.$apply(
-                                $scope.mc_tables = mc_tables
-                            )
-                            restDataSource.reset()
-                            wait_list = restDataSource.add_sources([
-                                [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
-                            ])
-                            $q.all(wait_list).then((data) ->
-                                $scope.devices = []
-                                $scope.device_lut = {}
-                                for entry in data[0]
-                                    entry.expanded = true
-                                    $scope.devices.push(entry)
-                                    $scope.device_lut[entry.idx] = entry
-                                $scope.reload_pending = false
-                            )
-                        else
-                            $scope.$apply(
-                                _reset_entries()
-                            )
+                ).then(
+                    (xml) ->
+                        mc_tables = []
+                        $(xml).find("config > *").each (idx, node) =>
+                            new_table = new mc_table($(node), paginatorSettings)
+                            mc_tables.push(new_table)
+                        $scope.$apply(
+                            $scope.mc_tables = mc_tables
+                        )
+                        restDataSource.reset()
+                        wait_list = restDataSource.add_sources([
+                            [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
+                        ])
+                        $q.all(wait_list).then((data) ->
+                            $scope.devices = []
+                            $scope.device_lut = {}
+                            for entry in data[0]
+                                entry.expanded = true
+                                $scope.devices.push(entry)
+                                $scope.device_lut[entry.idx] = entry
+                            $scope.reload_pending = false
+                        )
+                    (xml) ->
+                        _reset_entries()
+                )
         $scope.get_tr_class = (obj) ->
             if obj.is_meta_device
                 return "success"
@@ -156,13 +156,13 @@ angular.module(
                 return "glyphicon glyphicon-chevron-right"
         $scope.remove_hint = (hint) ->
             _.remove($scope.device_lut[hint.device].monitoring_hint_set, (entry) -> return entry.idx == hint.idx)
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     :ICSW_URLS.MON_DELETE_HINT
                 data    :
                     hint_pk : hint.idx
-                success : (xml) ->
-                    if icswParseXMLResponseService(xml)
-                        toaster.pop("success", "", "removed hint")
+            ).then((xml) ->
+                toaster.pop("success", "", "removed hint")
+            )
         $scope.save_hint = (hint) ->
             Restangular.restangularizeElement(null, hint, ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2))
             hint.put()
@@ -203,8 +203,6 @@ angular.module(
         $scope.$on("$destroy", () ->
             #if $scope.cur_timeout?
             #    $timeout.cancel($scope.cur_timeout)
-            if $scope.cur_xhr?
-                $scope.cur_xhr.abort()
         )
 ]).directive("icswDeviceMonConfig", ["$templateCache", ($templateCache) ->
     return {

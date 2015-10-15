@@ -4,9 +4,9 @@ angular.module(
         "icsw.tools.button",
     ]
 ).service('icswDialogDeleteObjects',
-    ['icswParseXMLResponseService', 'icswCallAjaxService', 'icswToolsSimpleModalService', 'ICSW_URLS', '$rootScope',
+    ['icswSimpleAjaxCall', 'icswToolsSimpleModalService', 'ICSW_URLS', '$rootScope',
     '$compile', '$templateCache', 'toaster', 'blockUI', 'icswDialogDeleteCheckDeletionService',
-    (icswParseXMLResponseService, icswCallAjaxService, icswToolsSimpleModalService, ICSW_URLS, $rootScope,
+    (icswSimpleAjaxCall, icswToolsSimpleModalService, ICSW_URLS, $rootScope,
     $compile, $templateCache, toaster, blockUI, icswDialogDeleteCheckDeletionService) ->
         # Ask whether to delete object, then deal with references (show popup querying user for actions)
 
@@ -40,28 +40,28 @@ angular.module(
 
                         del_pks.push(obj_pk)
 
-                        icswCallAjaxService
+                        icswSimpleAjaxCall(
                             url: ICSW_URLS.BASE_ADD_DELETE_REQUEST
                             data: {
                                 model: model
                                 obj_pks: JSON.stringify([obj_pk])
                                 delete_strategies: delete_strategies
                             }
-                            success: (xml) ->
-                                icswParseXMLResponseService(xml)
+                        ).then((xml) ->
+                        )
 
                 if regular_deletion_pks.length > 0
                     # delete regular objs in bulk
 
-                    icswCallAjaxService
+                    icswSimpleAjaxCall(
                         url: ICSW_URLS.BASE_ADD_DELETE_REQUEST
                         data: {
                             model: model
                             obj_pks: JSON.stringify(regular_deletion_pks)
                             delete_strategies: delete_strategies
                         }
-                        success: (xml) ->
-                            icswParseXMLResponseService(xml)
+                    ).then((xml) ->
+                    )
 
                 icswDialogDeleteCheckDeletionService.add_to_check_list(del_pks, model, async, after_delete)
 
@@ -150,46 +150,49 @@ angular.module(
 
             try_delete = () ->
                 blockUI.start()  # this can take up to a few seconds in bad cases
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url: ICSW_URLS.BASE_CHECK_DELETE_OBJECT
                     data: {
                         model: model
                         obj_pks: JSON.stringify((obj.idx for obj in objects_to_delete))
                     }
-                    success: (xml) ->
+                ).then(
+                    (xml) ->
                         blockUI.stop()
-                        if icswParseXMLResponseService(xml)
-                            related_objects = JSON.parse($(xml).find("value[name='related_objects']").text())
-                            deletable_objects = JSON.parse($(xml).find("value[name='deletable_objects']").text())
+                        related_objects = JSON.parse($(xml).find("value[name='related_objects']").text())
+                        deletable_objects = JSON.parse($(xml).find("value[name='deletable_objects']").text())
 
-                            # related objects contains info about undeletable objs,
-                            # deletable_objs is just a list of deletable objects
+                        # related objects contains info about undeletable objs,
+                        # deletable_objs is just a list of deletable objects
 
-                            # related_objs is dict { obj_pk : [ related_obj_info ] }
+                        # related_objs is dict { obj_pk : [ related_obj_info ] }
 
-                            for k, ref_list of related_objects
-                                for ref in ref_list
-                                    ref.actions = []
-                                    # only have default action if it is a "safe" one
+                        for k, ref_list of related_objects
+                            for ref in ref_list
+                                ref.actions = []
+                                # only have default action if it is a "safe" one
 
-                                    # actions are [logical name, name for user]
-                                    if ref.null
-                                        ref.actions.push(['set null', 'set reference to null'])
+                                # actions are [logical name, name for user]
+                                if ref.null
+                                    ref.actions.push(['set null', 'set reference to null'])
+                                    ref.selected_action = ref.actions[0][0]
+
+                                if ref.objects.num_refs_of_refs == 0
+                                    ref.actions.push(['delete object', 'delete referenced object'])
+                                    if ! ref.selected_action?
                                         ref.selected_action = ref.actions[0][0]
+                                else
+                                    ref.actions.push(['delete cascade', 'delete cascade on referenced object'])
 
-                                    if ref.objects.num_refs_of_refs == 0
-                                        ref.actions.push(['delete object', 'delete referenced object'])
-                                        if ! ref.selected_action?
-                                            ref.selected_action = ref.actions[0][0]
-                                    else
-                                        ref.actions.push(['delete cascade', 'delete cascade on referenced object'])
-
-                            show_delete_dialog(related_objects, deletable_objects)
+                        show_delete_dialog(related_objects, deletable_objects)
+                    (xml) ->
+                        blockUI.stop()
+                )
 
             try_delete()
 ]).service('icswDialogDeleteCheckDeletionService',
-    ['ICSW_URLS', 'blockUI', 'icswCallAjaxService', '$interval', 'icswParseXMLResponseService', 'toaster', '$rootScope'
-    (ICSW_URLS, blockUI, icswCallAjaxService, $interval, icswParseXMLResponseService, toaster, $rootScope) ->
+    ['ICSW_URLS', 'blockUI', 'icswSimpleAjaxCall', '$interval', 'toaster', '$rootScope'
+    (ICSW_URLS, blockUI, icswSimpleAjaxCall, $interval, toaster, $rootScope) ->
 
         check_list = {}
         next_delete_request_id = 0
@@ -217,38 +220,38 @@ angular.module(
             request_params = {}
             for k, v of check_list
                 request_params[k] = [v.model, v.del_pks]
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url: ICSW_URLS.BASE_CHECK_DELETION_STATUS
                 data:
                     del_requests: JSON.stringify(request_params)
-                success: (xml) ->
-                    if icswParseXMLResponseService(xml)
-                        remove_list = []
-                        for k, check_list_entry of check_list
-                            # handle msg
-                            msg = $(xml).find("value[name='msg_#{k}']").text()
-                            if msg != ""  # this is "" if the msg is not defined in case check_list here is not current
-                                if check_list_entry.async
-                                    if check_list_entry.last_msg != msg
-                                        toaster.pop("success", "", msg)
-                                else
-                                    blockUI.message(msg)
-                                check_list_entry.last_msg = msg
-                                # check if we are done
-                                num_remaining = parseInt($(xml).find("value[name='num_remaining_#{k}']").text())
-                                # this is Nan on invalid entry, and NaN != 0, which we want here
-                                if num_remaining == 0
-                                    if check_list_entry.after_delete?
-                                        $rootScope.$apply(
-                                            check_list_entry.after_delete()
-                                        )
-                                    if !check_list_entry.async
-                                        blockUI.stop()
-                                    remove_list.push(k)
-                        for k in remove_list
-                            delete check_list[k]
-                        if Object.keys(check_list).length == 0
-                            $interval.cancel(interval_promise)
+            ).then((xml) ->
+                remove_list = []
+                for k, check_list_entry of check_list
+                    # handle msg
+                    msg = $(xml).find("value[name='msg_#{k}']").text()
+                    if msg != ""  # this is "" if the msg is not defined in case check_list here is not current
+                        if check_list_entry.async
+                            if check_list_entry.last_msg != msg
+                                toaster.pop("success", "", msg)
+                        else
+                            blockUI.message(msg)
+                        check_list_entry.last_msg = msg
+                        # check if we are done
+                        num_remaining = parseInt($(xml).find("value[name='num_remaining_#{k}']").text())
+                        # this is Nan on invalid entry, and NaN != 0, which we want here
+                        if num_remaining == 0
+                            if check_list_entry.after_delete?
+                                $rootScope.$apply(
+                                    check_list_entry.after_delete()
+                                )
+                            if !check_list_entry.async
+                                blockUI.stop()
+                            remove_list.push(k)
+                for k in remove_list
+                    delete check_list[k]
+                if Object.keys(check_list).length == 0
+                    $interval.cancel(interval_promise)
+            )
         return {
             add_to_check_list: add_to_check_list
         }

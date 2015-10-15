@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswUserService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswUserService) ->
+).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswUserService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswUserService) ->
         $scope.devsel_list = []
         # ac settings
         $scope.ac_type = "master"
@@ -31,19 +31,20 @@ angular.module(
             $scope.ac_type = if $scope.ac_type == "master" then "slave" else "master"
         $scope.handle_ac = () ->
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url   : ICSW_URLS.DEVICE_MANUAL_CONNECTION
                 data  : {
                     "source" : $scope.ac_host
                     "target" : $scope.ac_cd
                     "mode"   : $scope.ac_type
                 }
-                success : (xml) =>
-                    blockUI.stop()
-                    # show info
-                    icswParseXMLResponseService(xml, 30)
-                    # reload (even on error)
-                    $scope.reload()
+            ).then((xml) ->
+                blockUI.stop()
+                # show info
+                # icswParseXMLResponseService(xml, 30)
+                # reload (even on error)
+                $scope.reload()
+            )
         $scope.CURRENT_USER = undefined
         icswUserService.load().then((data) ->
             $scope.CURRENT_USER = data

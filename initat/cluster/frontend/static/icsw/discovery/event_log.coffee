@@ -22,8 +22,8 @@ angular.module(
     [
     ]
 ).directive("icswDiscoveryEventLog",
-    ['msgbus', 'Restangular', 'ICSW_URLS', '$timeout', '$q', 'icswCallAjaxService', 'toaster',
-     (msgbus, Restangular, ICSW_URLS, $timeout, $q, icswCallAjaxService, toaster) ->
+    ['msgbus', 'Restangular', 'ICSW_URLS', '$timeout', '$q', 'icswSimpleAjaxCall', 'toaster',
+     (msgbus, Restangular, ICSW_URLS, $timeout, $q, icswSimpleAjaxCall, toaster) ->
         return  {
             restrict: 'EA'
             templateUrl: 'icsw.discovery.event_log'
@@ -193,14 +193,15 @@ angular.module(
                         scope.entries.is_loading = true
                         console.log 'really doing query'
                         defer = $q.defer()
-                        if xhr.cur_request?
-                            xhr.cur_request.abort()
-                        xhr.cur_request = icswCallAjaxService
+                        # if xhr.cur_request?
+                        #     xhr.cur_request.abort()
+                        icswSimpleAjaxCall(
                             url  : ICSW_URLS.DISCOVERY_GET_EVENT_LOG
                             data : rest_params
                             dataType  : 'json'
-                            success   : (json) ->
-                                defer.resolve(json)
+                        ).then((json) ->
+                            defer.resolve(json)
+                        )
                         return defer.promise
                     else
                         console.log 'no query, disregarding'

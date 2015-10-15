@@ -142,11 +142,11 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.rrd.graphsetting",
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-        "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+        "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswSimpleAjaxCall", "icswParseXMLResponseService",
         "toaster", "icswCachingCall", "icswUserService", "icswSavedSelectionService", "icswRrdGraphSettingService",
     (
         $scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
-        $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService,
+        $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswSimpleAjaxCall, icswParseXMLResponseService,
         toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->
         moment().utc()
@@ -210,15 +210,16 @@ angular.module(
 
         $scope.reload = () ->
             $scope.vector_valid = false
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url  : ICSW_URLS.RRD_DEVICE_RRDS
                 data : {
                     "pks" : $scope.devsel_list
                 }
                 dataType: "json"
-                success : (json) =>
-                    $scope.feed_rrd_json(json)
-        
+            ).then((json) ->
+                $scope.feed_rrd_json(json)
+            )
+
         $scope.feed_rrd_json = (json) ->
             if "error" of json
                 toaster.pop("error", "", json["error"])
@@ -253,7 +254,6 @@ angular.module(
                             $scope.draw_graph()
                 else
                     $scope.error_string = "No vector found"
-                $scope.$digest()
 
         $scope._add_structural_entry = (entry, lut, parent) =>
             parts = entry.key.split(".")
@@ -444,7 +444,7 @@ angular.module(
                         rst.resolve(data)
                 )
                 gfx = $q.defer()
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
                         "keys"       : angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
@@ -455,8 +455,12 @@ angular.module(
                         "selected_job"  : $scope.selected_job
                         "graph_setting" : icswRrdGraphSettingService.get_active().idx
                     }
-                    success : (xml) =>
+                ).then(
+                    (xml) ->
                         gfx.resolve(xml)
+                    (xml) ->
+                        gfx.resolve(xml)
+                )
                 $q.all([gfx.promise, rst.promise]).then(
                     (result) ->
                         xml = result[0]

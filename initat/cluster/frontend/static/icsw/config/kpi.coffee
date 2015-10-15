@@ -194,8 +194,8 @@ angular.module(
         }
 
 ]).service("icswConfigKpiDialogService",
-    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswCallAjaxService", "ICSW_URLS", "icswParseXMLResponseService", "icswConfigKpiVisUtils", "$timeout",
-    ($compile, $templateCache, icswConfigKpiDataService, icswCallAjaxService, ICSW_URLS, icswParseXMLResponseService, icswConfigKpiVisUtils, $timeout) ->
+    ["$compile", "$templateCache", "icswConfigKpiDataService", "icswSimpleAjaxCall", "ICSW_URLS", "icswConfigKpiVisUtils", "$timeout",
+    ($compile, $templateCache, icswConfigKpiDataService, icswSimpleAjaxCall, ICSW_URLS, icswConfigKpiVisUtils, $timeout) ->
 
         KPI_DLG_MODE_CREATE = 'create'
         KPI_DLG_MODE_MODIFY = 'modify'
@@ -238,17 +238,20 @@ angular.module(
                         )
                 else
                     update_kpi_data_source.is_running = true
-                    icswCallAjaxService
+                    icswSimpleAjaxCall(
                         url: ICSW_URLS.BASE_GET_KPI_SOURCE_DATA
                         data:
                             dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
                             time_range: JSON.stringify(cur_edit_kpi.time_range)
                             time_range_parameter: JSON.stringify(cur_edit_kpi.time_range_parameter)
-                        success: (xml) ->
+                    ).then(
+                        (xml) ->
                             update_kpi_data_source.is_running = false
-                            if icswParseXMLResponseService(xml)
-                                res = angular.fromJson($(xml).find("value[name='response']").text())
-                                scope.selected_cats_kpi_set = icswConfigKpiVisUtils.sort_kpi_set(res)
+                            res = angular.fromJson($(xml).find("value[name='response']").text())
+                            scope.selected_cats_kpi_set = icswConfigKpiVisUtils.sort_kpi_set(res)
+                        (xml) ->
+                            update_kpi_data_source.is_running = false
+                    )
             update_kpi_data_source()
 
             child_scope.on_data_source_tab_selected = () ->
@@ -342,25 +345,24 @@ angular.module(
                 kpi_serialized = JSON.stringify(kpi_serialized)
                 set_kpi_result_to_default()
                 child_scope.kpi_result.loading = true
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url: ICSW_URLS.BASE_CALCULATE_KPI_PREVIEW
                     timeout: 120 * 1000
                     data:
                         kpi_serialized: kpi_serialized
                         dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
-                    success: (xml) ->
-                        if icswParseXMLResponseService(xml)
-                            child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
+                ).then((xml) ->
+                    child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
 
-                            kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
-                            if  kpi_error_report?
-                                # sometimes <type 'int'> or similar occurs in error, handle that
-                                kpi_error_report = (_.escape(line) for line in kpi_error_report)
-                                #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
-                                child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
-                            child_scope.kpi_result.loading = false
+                    kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
+                    if  kpi_error_report?
+                        # sometimes <type 'int'> or similar occurs in error, handle that
+                        kpi_error_report = (_.escape(line) for line in kpi_error_report)
+                        #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
+                        child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
+                    child_scope.kpi_result.loading = false
 
-                            child_scope.$digest()
+                )
 
             # parameters as understood by KpiData.parse_kpi_time_range
             child_scope.kpi_time_ranges = [

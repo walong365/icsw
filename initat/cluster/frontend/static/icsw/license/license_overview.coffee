@@ -105,7 +105,7 @@ lic_module.controller("icswLicenseOverviewCtrl",
     restrict: "EA"
     templateUrl: "icsw.license.overview"
 
-]).directive("icswLicenseGraph", ["$templateCache", "$resource", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($templateCache, $resource, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswLicenseGraph", ["$templateCache", "$resource", "ICSW_URLS", "icswSimpleAjaxCall", ($templateCache, $resource, ICSW_URLS, icswSimpleAjaxCall) ->
     return {
     restrict : "EA"
     template : """
@@ -263,15 +263,16 @@ lic_module.controller("icswLicenseOverviewCtrl",
 
             lic_utils.get_lic_data($resource, viewmode, scope.lic_id, tr, start_date, ICSW_URLS, (new_data) ->
                 # also query all possible dates to check for missing ones (dimple needs all of them)
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url: ICSW_URLS.LIC_GET_LICENSE_OVERVIEW_STEPS
                     data:
                         "date": moment(start_date).unix()  # ask server in utc
                         "duration_type" : tr
                     dataType : "json"
-                    success: (steps_json) =>
-                        cont(new_data, steps_json)
-                        scope.set_lic_data()
+                ).then((steps_json) ->
+                    cont(new_data, steps_json)
+                    scope.set_lic_data()
+                )
             )
 
         if !scope.fixed_range
@@ -282,7 +283,8 @@ lic_module.controller("icswLicenseOverviewCtrl",
             # no updates for fixed range
             scope.update_lic_data(scope.viewmode)
         scope.$watch('viewmode', (unused) -> scope.set_lic_data())
- }])
+    }
+])
 
 # TODO: make service out of this
 lic_utils = {

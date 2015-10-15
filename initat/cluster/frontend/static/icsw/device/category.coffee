@@ -61,8 +61,8 @@ angular.module(
         handle_click: (entry, event) =>
             @scope.selected_category = entry.obj
             @scope.$digest()
-]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
+]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall", "msgbus"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall, msgbus) ->
         access_level_service.install($scope)
         $scope.device_pks = []
         $scope.device_list_ready = false
@@ -116,7 +116,7 @@ angular.module(
         $scope.new_md_selection = (entry) ->
             # for multi-device selection
             cat = entry.obj
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"
@@ -124,33 +124,28 @@ angular.module(
                     "obj_pks"  : angular.toJson((_entry.idx for _entry in $scope.devices))
                     "set"      : if entry.selected then "1" else "0"
                     "cat_pk"   : cat.idx
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
-                    $scope.$apply(
-                        if entry.selected
-                            $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
-                        else
-                            $scope.sel_dict[cat.idx] = []
-                        # FIXME, TODO
-                        # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
+            ).then((xml) ->
+                if entry.selected
+                    $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
+                else
+                    $scope.sel_dict[cat.idx] = []
+                # FIXME, TODO
+                # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
 
-                        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
-                    )
+                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
+            )
         $scope.new_selection = (sel_list) =>
             # only for single-device mode
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"
                     "obj_pk"   : $scope.devices[0].idx
                     "subtree"  : "/device"
                     "cur_sel"  : angular.toJson(sel_list)
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
-                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
-                    # selectively reload sidebar tree
-                    # FIXME, TODO
-                    # reload_sidebar_tree([$scope.devices[0].idx])
+            ).then((xml) ->
+                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
+            )
 ]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"

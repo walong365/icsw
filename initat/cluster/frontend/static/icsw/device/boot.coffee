@@ -53,8 +53,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswSimpleAjaxCall) ->
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
@@ -316,103 +316,102 @@ angular.module(
                         "sel_list" : $scope.devsel_list
                         "call_mother" : 1
                     }
-                    icswCallAjaxService
+                    icswSimpleAjaxCall(
                         url     : ICSW_URLS.BOOT_GET_BOOT_INFO_JSON
                         data    : send_data
-                        success : (xml) =>
+                    ).then(
+                        (xml) ->
                             $scope.update_info_timeout = $timeout($scope.update_info, 10000)
-                            if icswParseXMLResponseService(xml, 40, false)
-                                $scope.conn_problems = 0
-                                $scope.info_ok = true
-                                _resp = angular.fromJson($(xml).find("value[name='response']").text())
-                                for entry in _resp
-                                    dev = $scope.device_lut[entry.idx]
-                                    # copied from bootcontrol, seems strange to me now ...
-                                    if entry.hoststatus_str
-                                         dev.recvreq_str = entry.hoststatus_str +  "(" + entry.hoststatus_source + ")"
-                                    else
-                                         dev.recvreq_str = "rcv: ---"
-                                    net_state = entry.net_state
-                                    tr_class = {"down" : "danger", "unknown" : "warning", "ping" : "warning", "up" : "success"}[net_state]
-                                    dev.network = "#{entry.network} (#{net_state})"
-                                    dev.net_state = net_state
-                                    dev.recvreq_state = tr_class
-                                    dev.network_state = tr_class
-                                    # target state
-                                    for _kv in ["new_state", "prod_link"]
-                                        dev[_kv] = entry[_kv]
-                                    dev.target_state = 0
-                                    # rewrite device new_state / prod_link
-                                    if dev.new_state
-                                        if dev.prod_link
-                                            _list = (_entry for _entry in $scope.network_states when _entry.network == dev.prod_link)
-                                            if _list.length
-                                                _list = (_entry for _entry in _list[0]["states"] when _entry.status == dev.new_state)
-                                        else
-                                            _list = (_entry for _entry in $scope.special_states when _entry.status == dev.new_state)
-                                        # _list can be empty when networks change theirs types
-                                        if _list.length
-                                            dev.target_state = _list[0].idx
-                                    # copy image, act_image is a tuple (idx, vers, release) or none
-                                    for _kv in ["new_image", "act_image"]
-                                        dev[_kv] = entry[_kv]
-                                    # copy kernel, act_kernel is a tuple (idx, vers, release) or none
-                                    for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append"]
-                                        dev[_kv] = entry[_kv]
-                                    # copy partition
-                                    for _kv in ["act_partition_table", "partition_table"]
-                                        dev[_kv] = entry[_kv]
-                                    # copy bootdevice
-                                    for _kv in ["dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice"]
-                                        dev[_kv] = entry[_kv]
-                                    # master connections
-                                    for _kv in ["master_connections", "slave_connections"]
-                                        dev[_kv] = entry[_kv]
-                                cd_result = $(xml).find("value[name='cd_response']")
-                                if cd_result.length
-                                    $scope.cd_reachable = angular.fromJson(cd_result.text())
+                            $scope.conn_problems = 0
+                            $scope.info_ok = true
+                            _resp = angular.fromJson($(xml).find("value[name='response']").text())
+                            for entry in _resp
+                                dev = $scope.device_lut[entry.idx]
+                                # copied from bootcontrol, seems strange to me now ...
+                                if entry.hoststatus_str
+                                     dev.recvreq_str = entry.hoststatus_str +  "(" + entry.hoststatus_source + ")"
                                 else
-                                    $scope.cd_reachable = {}
-                                $scope.$digest()
+                                     dev.recvreq_str = "rcv: ---"
+                                net_state = entry.net_state
+                                tr_class = {"down" : "danger", "unknown" : "warning", "ping" : "warning", "up" : "success"}[net_state]
+                                dev.network = "#{entry.network} (#{net_state})"
+                                dev.net_state = net_state
+                                dev.recvreq_state = tr_class
+                                dev.network_state = tr_class
+                                # target state
+                                for _kv in ["new_state", "prod_link"]
+                                    dev[_kv] = entry[_kv]
+                                dev.target_state = 0
+                                # rewrite device new_state / prod_link
+                                if dev.new_state
+                                    if dev.prod_link
+                                        _list = (_entry for _entry in $scope.network_states when _entry.network == dev.prod_link)
+                                        if _list.length
+                                            _list = (_entry for _entry in _list[0]["states"] when _entry.status == dev.new_state)
+                                    else
+                                        _list = (_entry for _entry in $scope.special_states when _entry.status == dev.new_state)
+                                    # _list can be empty when networks change theirs types
+                                    if _list.length
+                                        dev.target_state = _list[0].idx
+                                # copy image, act_image is a tuple (idx, vers, release) or none
+                                for _kv in ["new_image", "act_image"]
+                                    dev[_kv] = entry[_kv]
+                                # copy kernel, act_kernel is a tuple (idx, vers, release) or none
+                                for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append"]
+                                    dev[_kv] = entry[_kv]
+                                # copy partition
+                                for _kv in ["act_partition_table", "partition_table"]
+                                    dev[_kv] = entry[_kv]
+                                # copy bootdevice
+                                for _kv in ["dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice"]
+                                    dev[_kv] = entry[_kv]
+                                # master connections
+                                for _kv in ["master_connections", "slave_connections"]
+                                    dev[_kv] = entry[_kv]
+                            cd_result = $(xml).find("value[name='cd_response']")
+                            if cd_result.length
+                                $scope.cd_reachable = angular.fromJson(cd_result.text())
                             else
-                                $scope.$apply(
-                                    $scope.conn_problems++
-                                )
+                                $scope.cd_reachable = {}
+                        (xml) ->
+                            $scope.update_info_timeout = $timeout($scope.update_info, 10000)
+                            $scope.conn_problems++
+                    )
                 )
                 if $scope.bo_enabled["l"]
                     send_data = {
                         "sel_list" : angular.toJson(([dev.idx, dev.latest_log] for dev in $scope.devices))
                     }
-                    icswCallAjaxService
+                    icswSimpleAjaxCall(
                         url      : ICSW_URLS.BOOT_GET_DEVLOG_INFO
                         data     : send_data
                         dataType : "json"
-                        success  : (json) =>
-                            if json.dev_logs
-                                for dev_id of json.dev_logs
-                                    cur_dev = $scope.device_lut[dev_id]
-                                    json_dev = json.dev_logs[dev_id]
-                                    cur_dev.num_logs = json_dev["total"]
-                                    cur_dev.logs_set = true
-                                    for line in json_dev["lines"]
-                                        # format: pk, device_id, log_source_id, user_id, log_level_id, text, seconds
-                                        cur_dev.latest_log = Math.max(line[0], cur_dev.latest_log)
-                                        new_line = new logline(line, $scope.log_source_lut, $scope.user_lut, $scope.log_level_lut)
-                                        cur_dev.log_lines.splice(0, 0, new_line)
-                                $scope.$digest()
+                    ).then((json) ->
+                        if json.dev_logs
+                            for dev_id of json.dev_logs
+                                cur_dev = $scope.device_lut[dev_id]
+                                json_dev = json.dev_logs[dev_id]
+                                cur_dev.num_logs = json_dev["total"]
+                                cur_dev.logs_set = true
+                                for line in json_dev["lines"]
+                                    # format: pk, device_id, log_source_id, user_id, log_level_id, text, seconds
+                                    cur_dev.latest_log = Math.max(line[0], cur_dev.latest_log)
+                                    new_line = new logline(line, $scope.log_source_lut, $scope.user_lut, $scope.log_level_lut)
+                                    cur_dev.log_lines.splice(0, 0, new_line)
+                    )
         $scope.soft_control = (dev, command) ->
             if dev
                 dev_pk_list = [dev.idx]
             else
                 dev_pk_list = (dev.idx for dev in $scope.devices when dev.selected)
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.BOOT_SOFT_CONTROL
                 data    : {
                     "dev_pk_list" : angular.toJson(dev_pk_list)
                     "command"     : command
                 }
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
+            ).then((xml) ->
+            )
         $scope.hard_control = (cd_con, command) ->
             if cd_con
                 cd_pk_list = [cd_con.idx]
@@ -422,14 +421,14 @@ angular.module(
                     if dev.selected and dev.slave_connections.length
                         for slave_con in dev.slave_connections
                             cd_pk_list.push(slave_con.idx)
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.BOOT_HARD_CONTROL
                 data    : {
                     "cd_pk_list" : angular.toJson(cd_pk_list)
                     "command"    : command
                 }
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
+            ).then((xml) ->
+            )
         $scope.modify_device = (dev, event) ->
             $scope.device_info_str = dev.full_name
             $scope.device_edit.edit_template = "boot.single.form"

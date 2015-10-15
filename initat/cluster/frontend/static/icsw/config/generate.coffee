@@ -68,8 +68,8 @@ config_gen_module = angular.module(
                     else
                         @dev_conf.active_content = []
             @scope.$digest()
-]).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswSimpleAjaxCall) ->
         $scope.devsel_list = []
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->
@@ -87,65 +87,66 @@ config_gen_module = angular.module(
         $scope.generate_config = () ->
             $scope.result_trees = []
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.CONFIG_GENERATE_CONFIG
                 data    : {
                     "pk_list" : angular.toJson($scope.devsel_list)
                 },
-                success : (xml) =>
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    cur_list = []
                     result = $(xml).find("value[name='result']").text()
-                    if icswParseXMLResponseService(xml) && result
-                        _json = angular.fromJson(result)
-                        for cur_dev in _json["devices"]
-                            new_tree = new icswConfigConfigTreeService($scope)
-                            new_conf = {
-                                state : parseInt(cur_dev.state_level)
-                                name : cur_dev.name
-                                tree : new_tree
-                                info_str : cur_dev.info_str
-                                active_error : []
-                                active_content : []
-                            }
-                            new_tree.dev_conf = new_conf
-                            if new_conf.state >= 40
-                                top_node = new_tree.new_node(
+                    _json = angular.fromJson(result)
+                    for cur_dev in _json["devices"]
+                        new_tree = new icswConfigConfigTreeService($scope)
+                        new_conf = {
+                            state : parseInt(cur_dev.state_level)
+                            name : cur_dev.name
+                            tree : new_tree
+                            info_str : cur_dev.info_str
+                            active_error : []
+                            active_content : []
+                        }
+                        new_tree.dev_conf = new_conf
+                        if new_conf.state >= 40
+                            top_node = new_tree.new_node(
+                                {
+                                    folder     :  true
+                                    _node_type : "eh"
+                                    expand     : true
+                                }
+                            )
+                            new_tree.add_root_node(top_node)
+                            # build error tree
+                            for entry in cur_dev.info_dict
+                                t_entry = new_tree.new_node({folder:true, obj:entry, _node_type : "e", expand:true})
+                                top_node.add_child(t_entry)
+                        else
+                            node_lut = {}
+                            # build list of entries
+                            _tree_list = $scope._build_list(cur_dev.config_tree)
+                            for entry in _tree_list
+                                t_entry = new_tree.new_node(
                                     {
-                                        folder     :  true
-                                        _node_type : "eh"
-                                        expand     : true
+                                        folder : parseInt(entry.is_dir)
+                                        _node_type : "c"
+                                        expand : parseInt(entry.depth) < 2
+                                        obj : entry
                                     }
                                 )
-                                new_tree.add_root_node(top_node)
-                                # build error tree
-                                for entry in cur_dev.info_dict
-                                    t_entry = new_tree.new_node({folder:true, obj:entry, _node_type : "e", expand:true})
-                                    top_node.add_child(t_entry)
-                            else
-                                node_lut = {}
-                                # build list of entries
-                                _tree_list = $scope._build_list(cur_dev.config_tree)
-                                for entry in _tree_list
-                                    t_entry = new_tree.new_node(
-                                        {
-                                            folder : parseInt(entry.is_dir)
-                                            _node_type : "c"
-                                            expand : parseInt(entry.depth) < 2
-                                            obj : entry
-                                        }
-                                    )
-                                    node_id = entry.node_id
-                                    parent_id = entry.parent_id
-                                    node_lut[node_id] = t_entry
-                                    if parent_id != "0"
-                                        node_lut[parent_id].add_child(t_entry)
-                                    else
-                                        new_tree.add_root_node(t_entry)
-                            cur_list.push(new_conf)
-                    $scope.$apply(
-                        $scope.result_trees = cur_list
-                    )
+                                node_id = entry.node_id
+                                parent_id = entry.parent_id
+                                node_lut[node_id] = t_entry
+                                if parent_id != "0"
+                                    node_lut[parent_id].add_child(t_entry)
+                                else
+                                    new_tree.add_root_node(t_entry)
+                        cur_list.push(new_conf)
+                    $scope.result_trees = cur_list
+                (xml) ->
+                    blockUI.stop()
+                    $scope.result_trees = []
+            )
         $scope.get_info_class = (dev_conf) ->
             if dev_conf.state == 40
                 return "text-danger"

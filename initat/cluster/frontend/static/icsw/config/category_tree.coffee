@@ -43,10 +43,10 @@ angular.module(
 ]).controller("icswConfigCategoryTreeCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$timeout",
     "$q", "$modal", "access_level_service", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService", "msgbus",
-    "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService",
+    "icswSimpleAjaxCall", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService",
     "icswToolsSimpleModalService",
    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $timeout, $q, $modal, access_level_service,
-    blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, msgbus, icswCallAjaxService, icswParseXMLResponseService, toaster,
+    blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, msgbus, icswSimpleAjaxCall, toaster,
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, icswToolsSimpleModalService) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
@@ -173,15 +173,20 @@ angular.module(
             $scope.close_modal()
             icswToolsSimpleModalService("Really prune tree (delete empty elements) ?").then(() ->
                 blockUI.start()
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
                     data:
                         mode : $scope.mode
-                    success : (xml) ->
-                        icswParseXMLResponseService(xml)
+                ).then(
+                    (xml) ->
                         $scope.reload()
                         msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
                         blockUI.stop()
+                    (xml) ->
+                        $scope.reload()
+                        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
+                        blockUI.stop()
+                )
             )
         $scope.reload()
 ]).service("icswConfigCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->

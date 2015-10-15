@@ -87,8 +87,8 @@ angular.module(
             @show_active()
             # important to update frontend
             @scope.$digest()
-]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "msgbus",
-    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, msgbus) ->
+]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall", "msgbus",
+    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall, msgbus) ->
         access_level_service.install($scope)
         $scope.DEBUG = false
         $scope.loc_tree = new icswDeviceLocationTreeService($scope, {})
@@ -165,7 +165,7 @@ angular.module(
         $scope.new_md_selection = (entry) ->
             # for multi-device selection
             cat = entry.obj
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"
@@ -173,29 +173,20 @@ angular.module(
                     "obj_pks"  : angular.toJson((_entry.idx for _entry in $scope.devices))
                     "set"      : if entry.selected then "1" else "0"
                     "cat_pk"   : cat.idx
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
-                    $scope.$apply(
-                        $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
-                        # FIXME, TODO
-                        # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
-                    )
+            ).then((xml) ->
+                $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
+            )
         $scope.new_selection = (sel_list) =>
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"
                     "obj_pk"   : $scope.device_pks[0]
                     "subtree"  : "/location"
                     "cur_sel"  : angular.toJson(sel_list)
-                success : (xml) =>
-                    icswParseXMLResponseService(xml)
-                    # selectively reload sidebar tree
-                    $scope.$apply(
-                        $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
-                        # FIXME, TODO
-                        # reload_sidebar_tree([$scope.devices[0].idx])
-                    )
+            ).then((xml) ->
+                $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
+            )
         $scope.update_monloc_count = () ->
             _gfx_lut = {}
             for _loc_gfx in $scope.location_gfxs

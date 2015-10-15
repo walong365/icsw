@@ -35,7 +35,7 @@ package_module = angular.module(
             obj.publish_to_nodes = if obj.publish_to_nodes then false else true
             obj.put()
     }
-]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "$timeout", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, $timeout) ->
+]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "$timeout", (Restangular, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
     user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
     _scope = undefined
     reload_func = () ->
@@ -52,14 +52,17 @@ package_module = angular.module(
         post_delete : (scope, del_obj) ->
             scope.clear_active_search(del_obj)
         object_modified : (edit_obj, srv_data, $scope) ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_RETRY_SEARCH
                 data    : {
                     "pk" : edit_obj.idx
                 }
-                success : (xml) ->
-                    icswParseXMLResponseService(xml)
+            ).then(
+                (xml) ->
                     $scope.reload()
+                (xml) ->
+                    $scope.reload()
+            )
         reload: () ->
             reload_func()
         init_fn: (scope) ->
@@ -95,8 +98,8 @@ package_module = angular.module(
         set_repos: (repo_list) ->
             _scope.repos = repo_list
     }
-]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "icswUserService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, icswUserService, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "icswUserService", "icswSimpleAjaxCall",
+    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, icswUserService, icswSimpleAjaxCall) ->
         # flags
         $scope.show_enabled_repos = false
         $scope.show_published_repos = false
@@ -130,15 +133,18 @@ package_module = angular.module(
         )
         $scope.rescan_repos = (reload_func) ->
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "rescan_repos"
                 }
-                success : (xml) ->
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    if icswParseXMLResponseService(xml)
-                        reload_func()
+                    reload_func()
+                (xml) ->
+                    blockUI.stop()
+            )
         $scope.$watch(
             "entries.repos",
             (new_val) ->
@@ -174,24 +180,30 @@ package_module = angular.module(
             $scope.package_list_scope = scope
         $scope.sync_repos = () ->
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "sync_repos"
                 }
-                success : (xml) ->
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    icswParseXMLResponseService(xml)
+                (xml) ->
+                    blockUI.stop()
+            )
         $scope.clear_caches = () ->
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "clear_caches"
                 }
-                success : (xml) ->
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    icswParseXMLResponseService(xml)
+                (xml) ->
+                    blockUI.stop()
+            )
         #$scope.load_devices = (url, options) ->
         #    return Restangular.all(url.slice(1)).getList(options)
         $scope.reload_devices = (dev_pks) ->
@@ -329,19 +341,19 @@ package_module = angular.module(
                 for pack_idx, pdc of dev_dict
                     if pdc.selected and parseInt(pack_idx) == obj.idx
                         attach_list.push([parseInt(dev_idx), obj.idx])
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_ADD_PACKAGE
                 data    : {
                     "add_list" : angular.toJson(attach_list)
                 }
-                success : (xml) ->
-                    icswParseXMLResponseService(xml)
+            ).then(
+                (xml) ->
                     new_pdcs = angular.fromJson($(xml).find("value[name='result']").text())
                     for new_pdc in new_pdcs
                         new_pdc.selected = true
                         $scope.state_dict[new_pdc.device][new_pdc.package] = new_pdc
                     $scope.update_selected_pdcs()
-                    $scope.$apply()
+            )
         $scope.remove = (obj) ->
             remove_list = []
             for dev_idx, dev_dict of $scope.state_dict
@@ -351,15 +363,17 @@ package_module = angular.module(
                         delete $scope.selected_pdcs[pdc.idx]
                         delete pdc.idx
                         #pdc.remove_pdc()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_REMOVE_PACKAGE
                 data    : {
                     "remove_list" : angular.toJson(remove_list)
                 }
-                success : (xml) ->
-                    icswParseXMLResponseService(xml)
-                    # just to be sure
+            ).then(
+                (xml) ->
                     $scope.update_selected_pdcs()
+                (xml) ->
+                    $scope.update_selected_pdcs()
+            )
         $scope.target_states = [
             {"state" : "keep", "info": "keep"}
             {"state" : "install", "info": "install"}
@@ -390,13 +404,13 @@ package_module = angular.module(
                 if $scope.edit_obj.image_change
                     pdc["image_list"] = (_v for _v in $scope.edit_obj.image_list)
             #console.log change_dict
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_CHANGE_PDC
                 data    : {
                     "change_dict" : angular.toJson(change_dict)
                 }
-                success : (xml) ->
-                    icswParseXMLResponseService(xml)
+            ).then((xml) ->
+            )
         $scope.action = (event) ->
             $scope.edit_obj = {
                 "target_state" : ""
@@ -434,26 +448,32 @@ package_module = angular.module(
                 return "text-center"
         $scope.send_sync = (event) ->
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "new_config"
                     "pks": (_dev.idx for _dev in $scope.devices)
                 }
-                success : (xml) ->
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    icswParseXMLResponseService(xml)
+                (xml) ->
+                    blockUI.stop()
+            )
         $scope.send_clear_caches = (event) ->
             blockUI.start()
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "clear_caches"
                     "pks": (_dev.idx for _dev in $scope.devices)
                 }
-                success : (xml) ->
+            ).then(
+                (xml) ->
                     blockUI.stop()
-                    icswParseXMLResponseService(xml)
+                (xml) ->
+                    blockUI.stop()
+            )
         $scope.latest_contact = (dev) ->
             if dev.latest_contact
                 return moment.unix(dev.latest_contact).fromNow(true)
@@ -510,8 +530,8 @@ package_module = angular.module(
 ]).controller(
     "icswPackageInstallSearchController",
     [
-        "$scope", "$templateCache", "icswUserService", "ICSW_URLS", "icswCallAjaxService", "Restangular", "blockUI", "icswParseXMLResponseService", "icswPackageInstallSearchService", "icswPackageInstallPackageListService", "$timeout", "icswPackageInstallSearchResultService",
-        ($scope, $templateCache, icswUserService, ICSW_URLS, icswCallAjaxService, Restangular, blockUI, icswParseXMLResponseService, icswPackageInstallSearchService, icswPackageInstallPackageListService, $timeout, icswPackageInstallSearchResultService) ->
+        "$scope", "$templateCache", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", "Restangular", "blockUI", "icswPackageInstallSearchService", "icswPackageInstallPackageListService", "$timeout", "icswPackageInstallSearchResultService",
+        ($scope, $templateCache, icswUserService, ICSW_URLS, icswSimpleAjaxCall, Restangular, blockUI, icswPackageInstallSearchService, icswPackageInstallPackageListService, $timeout, icswPackageInstallSearchResultService) ->
             $scope.search_string = ""
             $scope.searchresults = undefined
             # active search
@@ -523,14 +543,17 @@ package_module = angular.module(
                 if $scope.active_search?
                     $scope.active_search = undefined
                 obj.current_state = "pending"
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url     : ICSW_URLS.PACK_RETRY_SEARCH
                     data    : {
                         "pk" : obj.idx
                     }
-                    success : (xml) ->
-                        icswParseXMLResponseService(xml)
+                ).then(
+                    (xml) ->
                         icswPackageInstallSearchService.reload()
+                    (xml) ->
+                        icswPackageInstallSearchService.reload()
+                )
             $scope.show_search_result = (obj) ->
                 $scope.active_search = obj
                 if $scope.active_search?
@@ -548,33 +571,37 @@ package_module = angular.module(
                 if $scope.search_string
                     icswUserService.load().then((user) ->
                         Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_string, "user" : user.idx}).then((data) ->
-                            icswCallAjaxService
+                            icswSimpleAjaxCall(
                                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                                 data    : {
                                     "mode" : "reload_searches"
                                 }
-                                success : (xml) ->
-                                    icswParseXMLResponseService(xml)
+                            ).then(
+                                (xml) ->
                                     icswPackageInstallSearchService.reload()
                                     $timeout(icswPackageInstallSearchService.reload, 500)
+                                (xml) ->
+                                    icswPackageInstallSearchService.reload()
+                                    $timeout(icswPackageInstallSearchService.reload, 500)
+                            )
                             $scope.search_string = ""
                         )
                     )
             $scope.take_search_result = (obj, exact) ->
                 obj.copied = 1
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url     : ICSW_URLS.PACK_USE_PACKAGE
                     data    : {
                         "pk"          : obj.idx
                         "exact"       : if exact then 1 else 0
                         "target_repo" : if obj.target_repo then obj.target_repo else 0
                     }
-                    success : (xml) ->
-                        if icswParseXMLResponseService(xml)
-                            # reload package list
-                            icswPackageInstallPackageListService.reload()
-                        else
-                            obj.copied = 0
+                ).then(
+                    (xml) ->
+                        icswPackageInstallPackageListService.reload()
+                    (xml) ->
+                        obj.copied = 0
+                )
 
 
 ]).directive("icswPackageInstallSearchOverview", ["$templateCache", ($templateCache) ->

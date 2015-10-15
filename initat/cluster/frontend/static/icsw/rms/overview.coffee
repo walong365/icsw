@@ -20,7 +20,7 @@
 LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
-    constructor: (@table, h_struct, @hidden_headers, @ICSW_URLS, @icswCallAjaxService) ->
+    constructor: (@table, h_struct, @hidden_headers, @ICSW_URLS, @icswSimpleAjaxCall) ->
         _dict = {}
         @headers = []
         @attributes = {}
@@ -44,12 +44,13 @@ class header_struct
         @togglec = _c
     change_entry : (entry) =>
         @toggle[entry] = ! @toggle[entry]
-        @icswCallAjaxService
+        @icswSimpleAjaxCall(
             url      : @ICSW_URLS.RMS_SET_USER_SETTING
             dataType : "json"
             data:
                 "data" : angular.toJson({"table" : @table, "row" : entry, "enabled" : @toggle[entry]})
-            success  : (json) =>
+        ).then((json) ->
+        )
         @build_cache()
     display_headers : () =>
         return (v[0] for v in _.zip.apply(null, [@headers, @togglec]) when v[1][0] and v[0] not in @hidden_headers)
@@ -213,8 +214,8 @@ rms_module = angular.module(
         lineNumbers: true
         matchBrackets: true
     }
-}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "$window"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, $window) ->
+}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswSimpleAjaxCall, $window) ->
         access_level_service.install($scope)
         $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
@@ -289,10 +290,10 @@ rms_module = angular.module(
             137 : [-1, "killed", "glyphicon-remove-circle"]
             99 : [0, "rescheduled", "glyphicon-repeat"]
         }
-        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)
-        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)
-        $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)
-        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)
+        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS, icswSimpleAjaxCall)
+        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS, icswSimpleAjaxCall)
+        $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS, icswSimpleAjaxCall)
+        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS, icswSimpleAjaxCall)
         $scope.rms_operator = false
         $scope.structs = {
             "running" : $scope.running_struct
@@ -324,116 +325,114 @@ rms_module = angular.module(
             # refresh every 10 seconds
             $scope.update_info_timeout = $timeout($scope.reload, 10000)
             if $scope.refresh
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url      : ICSW_URLS.RMS_GET_RMS_JSON
                     dataType : "json"
-                    success  : (json) =>
-                        $scope.$apply(() ->
-                            # reset counter
-                            $scope.running_slots = 0
-                            $scope.waiting_slots = 0
-                            $scope.files = json.files
-                            $scope.run_list = $scope.running_struct.map_headers(json.run_table)
-                            $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)
-                            $scope.node_list = $scope.node_struct.map_headers(json.node_table)
-                            $scope.done_list = json.done_table
-                            # calculate max load
-                            valid_loads = (parseFloat(entry.load.value) for entry in $scope.node_list when entry.load.value.match(LOAD_RE))
-                            if valid_loads.length
-                                $scope.max_load = _.max(valid_loads)
-                                # round to next multiple of 4
-                                $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999  ) / 4)
+                ).then(
+                    (json) ->
+                        # reset counter
+                        $scope.running_slots = 0
+                        $scope.waiting_slots = 0
+                        $scope.files = json.files
+                        $scope.run_list = $scope.running_struct.map_headers(json.run_table)
+                        $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)
+                        $scope.node_list = $scope.node_struct.map_headers(json.node_table)
+                        $scope.done_list = json.done_table
+                        # calculate max load
+                        valid_loads = (parseFloat(entry.load.value) for entry in $scope.node_list when entry.load.value.match(LOAD_RE))
+                        if valid_loads.length
+                            $scope.max_load = _.max(valid_loads)
+                            # round to next multiple of 4
+                            $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999  ) / 4)
+                        else
+                            $scope.max_load = 4
+                        if $scope.max_load == 0
+                            $scope.max_load = 4
+                        $scope.slot_info.reset()
+                        # build queue list
+                        $scope.queue_list = []
+                        for entry in $scope.node_list
+                            i_split = (in_str) ->
+                                parts = in_str.split("/")
+                                if parts.length != _nq
+                                    parts = (parts[0] for _x in [1.._nq])
+                                return parts
+                            queues = entry.queues.value.split("/")
+                            _nq = queues.length
+                            states = i_split(entry.state.value)
+                            loads = i_split(entry.load.value)
+                            types = i_split(entry.type.value)
+                            complexes = i_split(entry.complex.value)
+                            pe_lists = i_split(entry.pe_list.value)
+                            _idx = 0
+                            for _vals in _.zip(
+                                queues, states, loads, types, complexes, pe_lists,
+                                i_split(entry.slots_used.value),
+                                i_split(entry.slots_reserved.value),
+                                i_split(entry.slots_total.value),
+                                i_split(entry.jobs.value),
+                            )
+                                queue = new Queue(_vals[0])
+                                queue.host = entry
+                                queue.state = {"value": _vals[1], "raw": entry.state.raw[_idx]}
+                                queue.load = {"value": _vals[2]}
+                                queue.type = {"value": _vals[3]}
+                                queue.complex = {"value": _vals[4]}
+                                queue.pe_list = {"value": _vals[5]}
+                                queue.slots_used = {"value": _vals[6]}
+                                queue.slots_reserved = {"value": _vals[7]}
+                                queue.slots_total = {"value": _vals[8]}
+                                # job display still buggy, FIXME
+                                queue.jobs = {"value": _vals[9]}
+                                $scope.queue_list.push(queue)
+                                _idx++
+                        for entry in $scope.node_list
+                            # for filter function
+                            entry.sv0 = entry.host.value
+                            entry.sv1 = entry.queues.value
+                            entry.sv2 = entry.state.value
+                            entry.sv3 = entry.pe_list.value
+                            _total = (parseInt(_val) for _val in entry.slots_total.value.split("/"))
+                            _used = (parseInt(_val) for _val in entry.slots_used.value.split("/"))
+                            _reserved = (parseInt(_val) for _val in entry.slots_reserved.value.split("/"))
+                            _size = _.max([_total.length, _used.length, _reserved.length])
+                            if _total.length < _size
+                                _total = (_total[0] for _idx in _.range(_size))
+                            if _used.length < _size
+                                _used = (_used[0] for _idx in _.range(_size))
+                            if _reserved.length < _size
+                                _reserved = (_reserved[0] for _idx in _.range(_size))
+                            entry.load_vector = _.zip(_total, _used, _reserved)
+                            for _lv in entry.load_vector
+                                if _lv.length and not isNaN(_lv[0])
+                                    $scope.slot_info.feed_vector(_lv)
+                        # get slot info
+                        for _job in $scope.run_list
+                            $scope.set_filter_values(_job)
+                            if _job.granted_pe.value == "-"
+                                $scope.running_slots += 1
                             else
-                                $scope.max_load = 4
-                            if $scope.max_load == 0
-                                $scope.max_load = 4
-                            $scope.slot_info.reset()
-                            # build queue list
-                            $scope.queue_list = []
-                            for entry in $scope.node_list
-                                i_split = (in_str) ->
-                                    parts = in_str.split("/")
-                                    if parts.length != _nq
-                                        parts = (parts[0] for _x in [1.._nq])
-                                    return parts
-                                queues = entry.queues.value.split("/")
-                                _nq = queues.length
-                                states = i_split(entry.state.value)
-                                loads = i_split(entry.load.value)
-                                types = i_split(entry.type.value)
-                                complexes = i_split(entry.complex.value)
-                                pe_lists = i_split(entry.pe_list.value)
-                                _idx = 0
-                                for _vals in _.zip(
-                                    queues, states, loads, types, complexes, pe_lists,
-                                    i_split(entry.slots_used.value),
-                                    i_split(entry.slots_reserved.value),
-                                    i_split(entry.slots_total.value),
-                                    i_split(entry.jobs.value),
-                                )
-                                    queue = new Queue(_vals[0])
-                                    queue.host = entry
-                                    queue.state = {"value": _vals[1], "raw": entry.state.raw[_idx]}
-                                    queue.load = {"value": _vals[2]}
-                                    queue.type = {"value": _vals[3]}
-                                    queue.complex = {"value": _vals[4]}
-                                    queue.pe_list = {"value": _vals[5]}
-                                    queue.slots_used = {"value": _vals[6]}
-                                    queue.slots_reserved = {"value": _vals[7]}
-                                    queue.slots_total = {"value": _vals[8]}
-                                    # job display still buggy, FIXME
-                                    queue.jobs = {"value": _vals[9]}
-                                    $scope.queue_list.push(queue)
-                                    _idx++
-                            for entry in $scope.node_list
-                                # for filter function
-                                entry.sv0 = entry.host.value
-                                entry.sv1 = entry.queues.value
-                                entry.sv2 = entry.state.value
-                                entry.sv3 = entry.pe_list.value
-                                _total = (parseInt(_val) for _val in entry.slots_total.value.split("/"))
-                                _used = (parseInt(_val) for _val in entry.slots_used.value.split("/"))
-                                _reserved = (parseInt(_val) for _val in entry.slots_reserved.value.split("/"))
-                                _size = _.max([_total.length, _used.length, _reserved.length])
-                                if _total.length < _size
-                                    _total = (_total[0] for _idx in _.range(_size))
-                                if _used.length < _size
-                                    _used = (_used[0] for _idx in _.range(_size))
-                                if _reserved.length < _size
-                                    _reserved = (_reserved[0] for _idx in _.range(_size))
-                                entry.load_vector = _.zip(_total, _used, _reserved)
-                                for _lv in entry.load_vector
-                                    if _lv.length and not isNaN(_lv[0])
-                                        $scope.slot_info.feed_vector(_lv)
-                            # get slot info
-                            for _job in $scope.run_list
-                                $scope.set_filter_values(_job)
-                                if _job.granted_pe.value == "-"
-                                    $scope.running_slots += 1
-                                else
-                                    $scope.running_slots += parseInt(_job.granted_pe.value.split("(")[1].split(")")[0])
-                            for _job in $scope.wait_list
-                                $scope.set_filter_values(_job)
-                                if _job.requested_pe.value == "-"
-                                    $scope.waiting_slots += 1
-                                else
-                                    $scope.waiting_slots += parseInt(_job.requested_pe.value.split("(")[1].split(")")[0])
-                        )
+                                $scope.running_slots += parseInt(_job.granted_pe.value.split("(")[1].split(")")[0])
+                        for _job in $scope.wait_list
+                            $scope.set_filter_values(_job)
+                            if _job.requested_pe.value == "-"
+                                $scope.waiting_slots += 1
+                            else
+                                $scope.waiting_slots += parseInt(_job.requested_pe.value.split("(")[1].split(")")[0])
                         if not $scope.device_dict_set
                             node_names = (entry[0].value for entry in json.node_table)
                             $scope.device_dict_set = true
-                            icswCallAjaxService
+                            icswSimpleAjaxCall(
                                 url      : ICSW_URLS.RMS_GET_NODE_INFO
                                 data     :
                                     devnames : angular.toJson(node_names)
                                 dataType : "json"
-                                success  : (json) =>
-                                    $scope.$apply(() ->
-                                        for name of json
-                                            _new_di = new device_info(name, json[name])
-                                            $scope.device_dict[name] = _new_di
-                                            $scope.device_dict[_new_di.pk] = _new_di
-                                    )
+                            ).then((json) ->
+                                for name of json
+                                    _new_di = new device_info(name, json[name])
+                                    $scope.device_dict[name] = _new_di
+                                    $scope.device_dict[_new_di.pk] = _new_di
+                            )
                         # fetch file ids
                         fetch_list = []
                         for _id in $scope.io_list
@@ -441,17 +440,19 @@ rms_module = angular.module(
                                 fetch_list.push($scope.io_dict[_id].get_id())
                         if fetch_list.length
                             is_ie_below_eleven = /MSIE/.test($window.navigator.userAgent)
-                            icswCallAjaxService
+                            icswSimpleAjaxCall(
                                 url     : ICSW_URLS.RMS_GET_FILE_CONTENT
                                 data    :
                                     file_ids: angular.toJson(fetch_list)
                                     is_ie: if is_ie_below_eleven then 1 else 0
-                                success : (xml) =>
-                                    icswParseXMLResponseService(xml)
+                            ).then(
+                                (xml) ->
                                     xml = $(xml)
                                     for _id in $scope.io_list
                                         $scope.io_dict[_id].feed(xml)
                                     $scope.$digest()
+                            )
+            )
         $scope.get_io_link_class = (job, io_type) ->
             io_id = "#{job.job_id.value}.#{job.task_id.value}.#{io_type}"
             if io_id in $scope.io_list
@@ -472,26 +473,26 @@ rms_module = angular.module(
             $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
             delete $scope.io_dict[io_struct.get_id()]
         $scope.$on("queue_control", (event, queue, command) ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url      : ICSW_URLS.RMS_CONTROL_QUEUE
                 data     : {
                     "queue"   : queue.name
                     "host"    : queue.host.host.value
                     "command" : command 
                 }
-                success  : (xml) =>
-                    icswParseXMLResponseService(xml)
+            ).then((xml) ->
+            )
         )
         $scope.$on("job_control", (event, job, command, force) ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url      : ICSW_URLS.RMS_CONTROL_JOB
                 data     : {
                     "job_id"  : job.job_id.value
                     "task_id" : job.task_id.value
                     "command" : command 
                 }
-                success  : (xml) =>
-                    icswParseXMLResponseService(xml)
+            ).then((xml) ->
+            )
         )
         $scope.get_running_info = () ->
             return "running (#{$scope.run_list.length} jobs, #{$scope.running_slots} slots)"
@@ -559,16 +560,15 @@ rms_module = angular.module(
             #        # destroy scopes
             #        $scope.refresh = true
             #        $.simplemodal.close()
-        icswCallAjaxService
+        icswSimpleAjaxCall(
             url      : ICSW_URLS.RMS_GET_USER_SETTING
             dataType : "json"
-            success  : (json) =>
-                for key, value of json
-                    $scope.structs[key].set_disabled(value)
-                $scope.$apply(() ->
-                    $scope.header_filter_set = true
-                )
-                $scope.reload()
+        ).then((json) ->
+            for key, value of json
+                $scope.structs[key].set_disabled(value)
+            $scope.header_filter_set = true
+            $scope.reload()
+        )
 ]).directive("icswRmsJobRunningTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
@@ -843,7 +843,7 @@ rms_module = angular.module(
         scope:
             struct : "="
     }
-]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "icswUserService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $templateCache, $modal, icswUserService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", ($compile, $templateCache, $modal, icswUserService, ICSW_URLS, icswSimpleAjaxCall) ->
     return {
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
@@ -875,17 +875,14 @@ rms_module = angular.module(
                     msg = $compile($templateCache.get("icsw.rms.change.priority"))(child_scope)
 
                     on_ok = (new_pri, job_id) ->
-                        icswCallAjaxService
+                        icswSimpleAjaxCall(
                             url      : ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
                             data:
                                 "job_id": job_id
                                 "new_pri" : new_pri
-                            success  : (xml) =>
-                                if icswParseXMLResponseService(xml)
-                                    scope.$apply(
-                                        scope.job.priority.value = new_pri
-                                    )
-
+                        ).then((xml) ->
+                            scope.job.priority.value = new_pri
+                        )
                     child_scope.modal = BootstrapDialog.show
                         title: "Change priority of job #{child_scope.get_job_id()}"
                         message: msg
@@ -967,31 +964,29 @@ rms_module = angular.module(
             scope.change_display = (file_name) ->
                 scope.fis[file_name].show = !scope.fis[file_name].show
     }
-]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswSimpleAjaxCall) ->
         $scope.servers = []
         $scope.licenses = []
         $scope.lic_overview = []
         $scope.server_open = false
         $scope.overview_open = true
         $scope.update = () ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url      : ICSW_URLS.LIC_LICENSE_LIVEVIEW
                 dataType : "xml"
-                success  : (xml) =>
-                    if icswParseXMLResponseService(xml)
-                        $scope.$apply(() ->
-                            _open_list = (_license.name for _license in $scope.licenses when _license.open)
-                            $scope.servers = (new license_server($(_entry)) for _entry in $(xml).find("license_info > license_servers > server"))
-                            $scope.licenses = (new license($(_entry)) for _entry in $(xml).find("license_info > licenses > license"))
-                            $scope.lic_overview = (new license_overview($(_entry)) for _entry in $(xml).find("license_overview > licenses > license"))
-                            for _lic in $scope.licenses
-                                if _lic.name in _open_list
-                                    _lic.open = true
-                            for _ov in $scope.lic_overview
-                                $scope.build_stack(_ov)
-                            $scope.cur_timeout = $timeout($scope.update, 30000)
-                        )
+            ).then((xml) ->
+                _open_list = (_license.name for _license in $scope.licenses when _license.open)
+                $scope.servers = (new license_server($(_entry)) for _entry in $(xml).find("license_info > license_servers > server"))
+                $scope.licenses = (new license($(_entry)) for _entry in $(xml).find("license_info > licenses > license"))
+                $scope.lic_overview = (new license_overview($(_entry)) for _entry in $(xml).find("license_overview > licenses > license"))
+                for _lic in $scope.licenses
+                    if _lic.name in _open_list
+                        _lic.open = true
+                for _ov in $scope.lic_overview
+                    $scope.build_stack(_ov)
+                $scope.cur_timeout = $timeout($scope.update, 30000)
+            )
         $scope.build_stack = (lic) ->
             total = lic.total
             stack = []

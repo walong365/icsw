@@ -81,7 +81,7 @@ partition_table_module = angular.module(
             edit_part.tab_active = true
             $scope.edit_pts.push(edit_part)
         $scope.reload()
-]).directive("icswConfigDiskLayout", ["$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "$q", ($compile, $templateCache, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, $q) ->
+]).directive("icswConfigDiskLayout", ["$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$q", ($compile, $templateCache, Restangular, ICSW_URLS, icswSimpleAjaxCall, $q) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.disk.layout")
@@ -117,13 +117,14 @@ partition_table_module = angular.module(
             scope.validate = () ->
                 if !scope.part.idx?
                     return
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url : ICSW_URLS.SETUP_VALIDATE_PARTITION
                     data : {
                         "pt_pk" : scope.part.idx
                     }
-                    success : (xml) ->
-                        icswParseXMLResponseService(xml)
+                    ignore_log_level: true
+                ).then(
+                    (xml) ->
                         error_list = []
                         $(xml).find("problem").each (idx, cur_p) =>
                             cur_p = $(cur_p)
@@ -135,10 +136,9 @@ partition_table_module = angular.module(
                                 }
                             )
                         is_valid = if parseInt($(xml).find("problems").attr("valid")) then true else false
-                        scope.$apply(
-                            scope.edit_obj.valid = is_valid
-                            scope.error_list = error_list
-                        )
+                        scope.edit_obj.valid = is_valid
+                        scope.error_list = error_list
+                )
             scope.error_list = []
             # watch edit_obj and validate if changed
             scope.$watch("edit_obj", () ->

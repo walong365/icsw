@@ -129,7 +129,7 @@ angular.module(
         "set_selection": (new_sel) ->
             set_selection(new_sel)
     }
-]).service("icswSelection", ["icswSelectionService", "$q", "icswCallAjaxService", "icswSimpleAjaxCall", "ICSW_URLS", (icswSelectionService, $q, icswCallAjaxService, icswSimpleAjaxCall, ICSW_URLS) ->
+]).service("icswSelection", ["icswSelectionService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", (icswSelectionService, $q, icswSimpleAjaxCall, ICSW_URLS) ->
     class Selection
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel, @db_idx=0) ->
         update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
@@ -215,11 +215,13 @@ angular.module(
             else
                 return false
         store_as_current: () ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.DEVICE_SET_SELECTION
                 data    : {
                     "angular_sel" : angular.toJson(@tot_dev_sel)
                 }
+            ).then((xml) ->
+            )
         select_parent: () ->
             defer = $q.defer()
             icswSimpleAjaxCall(

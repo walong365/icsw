@@ -133,10 +133,10 @@ angular.module(
 ).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
      "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
-    "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService", "icswSimpleAjaxCall",
+    "icswSimpleAjaxCall", "icswToolsSimpleModalService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
      $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
-     icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, icswSimpleAjaxCall
+     icswSimpleAjaxCall, icswToolsSimpleModalService
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
@@ -433,15 +433,15 @@ angular.module(
             _dev.scan_address = _dev.manual_address
             # intermediate state to trigger reload
             _dev.active_scan = "waiting"
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
                 data    :
                     "dev" : angular.toJson($scope.scan_device)
-                success : (xml) ->
-                    icswParseXMLResponseService(xml)
-                    blockUI.stop()
-                    $scope.scan_mixin.close_modal()
-                    $scope.update_scans()
+            ).then((xml) ->
+                blockUI.stop()
+                $scope.scan_mixin.close_modal()
+                $scope.update_scans()
+            )
         $scope.update_scans = () ->
             Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList({"pks" : angular.toJson($scope.devsel_list)}).then(
                 (data) ->
@@ -730,17 +730,17 @@ angular.module(
             icswToolsSimpleModalService("Overwrite all networks with the one from #{src_obj.full_name} ?").then(
                 () ->
                     blockUI.start()
-                    icswCallAjaxService
+                    icswSimpleAjaxCall(
                         url     : ICSW_URLS.NETWORK_COPY_NETWORK
                         data    : {
                             "source_dev" : src_obj.idx
                             "copy_coms"  : $scope.copy_coms
                             "all_devs"   : angular.toJson($scope.devsel_list)
-                        },
-                        success : (xml) =>
-                            blockUI.stop()
-                            icswParseXMLResponseService(xml)
-                            $scope.reload()
+                        }
+                    ).then((xml) ->
+                        blockUI.stop()
+                        $scope.reload()
+                    )
             )
         $scope.get_bootdevice_info_class = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
@@ -893,8 +893,8 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.network.total")
     }
-]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswSimpleAjaxCall) ->
         access_level_service.install($scope)
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.devices = args[1] 
@@ -904,13 +904,12 @@ angular.module(
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devices = _dev_sel
         $scope.reload = () ->
-            icswCallAjaxService
+            icswSimpleAjaxCall(
                 url      : ICSW_URLS.NETWORK_GET_CLUSTERS
                 dataType : "json"
-                success  : (json) =>
-                    $scope.$apply(
-                        $scope.clusters = json
-                    )
+            ).then((json) ->
+                $scope.clusters = json
+            )
         $scope.is_selected = (cluster) ->
             _sel = _.intersection(cluster.device_pks, $scope.devices)
             return if _sel.length then "yes (#{_sel.length})" else "no"
@@ -1079,7 +1078,7 @@ angular.module(
                 scope.$apply()
             )
     }
-]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswCallAjaxService", "icswParseXMLResponseService", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswCallAjaxService, icswParseXMLResponseService) ->
+]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswSimpleAjaxCall", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswSimpleAjaxCall) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
@@ -1102,30 +1101,29 @@ angular.module(
                 blockUI.start(
                     "loading, please wait..."
                 )
-                icswCallAjaxService
+                icswSimpleAjaxCall(
                     url      : ICSW_URLS.NETWORK_JSON_NETWORK
                     data     : 
                         "graph_sel" : scope.graph_sel
                     dataType : "json"
-                    success  : (json) =>
-                        blockUI.stop()
-                        scope.json_data = json
-                        scope.draw_graph()
+                ).then((json) ->
+                    blockUI.stop()
+                    scope.json_data = json
+                    scope.draw_graph()
+                )
             )
             scope.draw_graph = () ->
                 scope.iter = 0
                 scope.force.nodes(scope.json_data.nodes).links(scope.json_data.links)
-                scope.$apply(() ->
-                    scope.node_lut = {}
-                    scope.nodes = scope.json_data.nodes
-                    scope.links = scope.json_data.links
-                    for node in scope.nodes
-                        node.fixed = false
-                        node.dragging = false
-                        node.ignore_click = false
-                        scope.node_lut[node.id] = node
-                    scope.redraw_nodes++
-                )
+                scope.node_lut = {}
+                scope.nodes = scope.json_data.nodes
+                scope.links = scope.json_data.links
+                for node in scope.nodes
+                    node.fixed = false
+                    node.dragging = false
+                    node.ignore_click = false
+                    scope.node_lut[node.id] = node
+                scope.redraw_nodes++
                 scope.force.start()
             scope.find_element = (s_target) ->
                 if svg_tools.has_class_svg(s_target, "draggable")
