@@ -250,7 +250,7 @@ class handler(SNMPHandler):
                             _vector,
                             _name,
                             name=_prefix,
-                            info="if _name",
+                            info="if {}".format(_name),
                             timeout="{:d}".format(int(time.time()) + 120)
                         )
                     )
