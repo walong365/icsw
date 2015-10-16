@@ -97,11 +97,8 @@ class MVStructEntry(models.Model):
             ("mve", "mve"),
         ],
     )
-    # we ignore the 'host' field for pdes because it seems to be a relict from the original PerformanceData sent from icinga
-    # info is set for mvl structural entries, is now ignored
-    # info = models.CharField(max_length=256, default="")
     # type instance is set for certains PDEs (for instance windows disk [C,D,E,...], SNMP netifaces [eth0,eth1,...])
-    type_instance = models.CharField(max_length=16, default="")
+    type_instance = models.CharField(max_length=255, default="")
     # position in RRD-tree this nodes resides in, was name
     key = models.CharField(max_length=256)
     # is active
@@ -112,9 +109,10 @@ class MVStructEntry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MVStructEntry ({}, {}), file is {}".format(
+        return u"MVStructEntry ({}, {}{}), file is {}".format(
             self.se_type,
             self.key,
+            ", ti={}".format(self.type_instance) if self.type_instance else "",
             self.file_name,
         )
 

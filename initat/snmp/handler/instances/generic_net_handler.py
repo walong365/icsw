@@ -209,9 +209,17 @@ class handler(SNMPHandler):
         result_dict = self.filter_results(result_dict, keys_are_strings=True)  # False)
         if IF_BASE in result_dict:
             # take result tree
-            _base_dict = simplify_dict(result_dict[IF_BASE], (2, 1), sub_key_filter=set([2, 1, 10, 11, 12, 13, 14, 16, 117, 18, 19, 20]))
+            _base_dict = simplify_dict(
+                result_dict[IF_BASE],
+                (2, 1),
+                sub_key_filter={2, 1, 10, 11, 12, 13, 14, 16, 117, 18, 19, 20}
+            )
             if HS_BASE in result_dict:
-                _hi_dict = simplify_dict(result_dict[HS_BASE], (), sub_key_filter=set([6, 10]))
+                _hi_dict = simplify_dict(
+                    result_dict[HS_BASE],
+                    (),
+                    sub_key_filter={6, 10}
+                )
             else:
                 _hi_dict = {}
             # pprint.pprint(result_dict)

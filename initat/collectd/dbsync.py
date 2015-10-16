@@ -234,7 +234,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMix
         # list to compare
         if entry.tag == "mve":
             _list = [
-                ("type_instance", ""),
+                ("type_instance", entry.get("info", "")),
                 ("file_name", entry.get("file_name")),
             ]
         elif entry.tag == "mvl":

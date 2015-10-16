@@ -98,4 +98,3 @@ class WmiScanning(TestCase):
 
         # same scan again, no changes
         self.test_scan_all(scan_dev)
-
