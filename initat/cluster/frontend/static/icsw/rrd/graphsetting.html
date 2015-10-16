@@ -22,21 +22,33 @@
                 Flags
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Hide Empty:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-eye-slash"/>
+                    Hide Empty:
+                </label>
                 <div class="col-md-3 controls">
                     <icsw-tools-yes-no flag="vars.current.hide_empty"></icsw-tools-yes-no>
                 </div>
-                <label class="col-md-3 control-label">Include y=0:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-area-chart"/>
+                    Include y=0:
+                </label>
                 <div class="col-md-3 controls">
                     <icsw-tools-yes-no flag="vars.current.include_zero"></icsw-tools-yes-no>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Merge devices:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-hdd-o"/>
+                    Merge devices:
+                </label>
                 <div class="col-md-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_devices"></icsw-tools-yes-no>
                 </div>
-                <label class="col-md-3 control-label">Merge graphs:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-line-chart"/>
+                    Merge graphs:
+                </label>
                 <div class="col-md-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_graphs"></icsw-tools-yes-no>
                 </div>
@@ -47,7 +59,10 @@
                 Legend / Scale / Size
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Legend mode:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-lightbulb-o"/>
+                    Legend mode:
+                </label>
                 <div class="col-md-3 controls">
                     <ui-select ng-model="vars.current.legend_mode2">
                         <ui-select-match placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
@@ -56,7 +71,10 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
-                <label class="col-md-3 control-label">Scale mode:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-arrows-v"/>
+                    Scale mode:
+                </label>
                 <div class="col-md-3 controls">
                     <ui-select ng-model="vars.current.scale_mode2">
                         <ui-select-match placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
@@ -67,7 +85,10 @@
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Size:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-expand"/>
+                    Size:
+                </label>
                 <div class="col-md-9 controls">
                     <ui-select ng-model="vars.current.graph_setting_size">
                         <ui-select-match placeholder="Size">{{ $select.selected.info }}</ui-select-match>
@@ -83,7 +104,10 @@
                 Timeshift / Forecast
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Timeshift:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-exchange"/>
+                    Timeshift:
+                </label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_timeshift">
@@ -99,7 +123,10 @@
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Forecast:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-eye"/>
+                    Forecast:
+                </label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_forecast">
@@ -120,7 +147,10 @@
                 Selection / Action
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Select:</label>
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-anchor"/>
+                    Select:
+                </label>
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
