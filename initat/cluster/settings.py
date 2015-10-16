@@ -334,6 +334,8 @@ PIPELINE_COMPILERS = (
 PIPELINE_COFFEE_SCRIPT_BINARY = "/opt/cluster/bin/coffee"
 PIPELINE_COFFEE_SCRIPT_ARGUMENTS = ""
 
+WITH_REACT = True
+
 PIPELINE_CSS = {
     "part1": {
         "source_filenames": {
@@ -436,6 +438,18 @@ PIPELINE_JS = {
         "output_filename": "pipeline/js/icsw1.js"
     }
 }
+
+if WITH_REACT:
+    PIPELINE_JS["js_base"]["source_filenames"] = tuple(
+        list(
+            PIPELINE_JS["js_base"]["source_filenames"]
+        ) + [
+            "js/react-0.14.0.js",
+            "js/react-dom-0.14.0.js",
+            "js/ngReact.js",
+        ]
+    )
+    ADDITIONAL_ANGULAR_APPS.append("react")
 
 SSI_ROOTS = []
 SSI_FILES = []

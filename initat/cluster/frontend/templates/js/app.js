@@ -45,7 +45,7 @@
 // - name of templates start with the name of the module with underscores, ending is ".html"
 // - no root. bindings
 
-ics_app = angular.module(
+icsw_app = angular.module(
     "icsw.app",
     [
         "ngResource",

@@ -136,6 +136,19 @@ get_node_keys = (node) ->
         "build_info": node.build_info
     }
 
+{div, h1} = React.DOM
+
+testcomp = React.createClass(
+    {
+        propTypes: {
+            a : React.PropTypes.string.isRequired
+        }
+        render: () ->
+            h1({}, ["text " + @props.a])
+    }
+)
+icsw_app.value("testcomp", testcomp)
+
 angular.module(
     "icsw.rrd.graph",
     [
@@ -150,6 +163,7 @@ angular.module(
         toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->
         moment().utc()
+        $scope.blabla = {"a": "4"}
         $scope.timeframe = undefined
         $scope.vector_valid = false
         $scope.error_string = ""
@@ -304,6 +318,7 @@ angular.module(
             return info
             
         $scope._add_value_entry = (entry, lut, parent, top) =>
+            $scope.blabla.a = "ddd"
             # top is the parent node from the value entry (== mvstructentry)
             if entry.key
                 g_key = "#{top.key}.#{entry.key}"
@@ -875,3 +890,4 @@ angular.module(
     }
     # console.log "S", $scope.graph
 ])
+
