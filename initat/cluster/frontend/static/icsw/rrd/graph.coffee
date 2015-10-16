@@ -186,11 +186,6 @@ angular.module(
         )
         $scope.set_job_mode = (new_jm) ->
             $scope.job_mode = new_jm
-        $scope.set_scale_mode = (new_sm) ->
-            $scope.scale_mode = new_sm
-        $scope.set_legend_mode = (new_lm) ->
-            $scope.legend_mode = new_lm["short"]
-            $scope.legend_mode_long = new_lm["long"]
         $scope.get_job_mode = (_jm) ->
             if _jm == "selected"
                 return "#{_jm} (#{$scope.selected_job})"
@@ -258,7 +253,10 @@ angular.module(
         $scope._add_structural_entry = (entry, lut, parent) =>
             parts = entry.key.split(".")
             _pn = ""
+            _idx = 0
             for _part in parts
+                _idx++
+                _last = _idx == parts.length
                 if pn
                     pn = "#{pn}.#{_part}"
                 else
@@ -274,7 +272,7 @@ angular.module(
                         {
                             folder : true,
                             expand : false
-                            _display_name: _part
+                            _display_name: if (entry.ti and _last) then entry.ti else _part
                             _mult : 1
                             _dev_pks : [$scope.mv_dev_pk]
                             _node_type : "s"

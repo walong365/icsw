@@ -93,7 +93,7 @@ class CompoundEntry(object):
                 _res.extend([(key, _xml, _match.groupdict()) for key, _match in _found])
         _ok = self.__order_key
         _all_keys = set([_gd[_ok] for key, _xml, _gd in _res if _ok in _gd])
-        for _key in _all_keys:
+        for _key in sorted(_all_keys):
             yield (
                 [
                     (key, _xml) for key, _xml, _gd in _res if _gd.get(_ok) == _key
@@ -105,10 +105,26 @@ class CompoundEntry(object):
         raise StopIteration
 
     def entry(self, result, ref_dict):
+        # import pprint
+        # pprint.pprint(ref_dict)
         m_list, gd = result
         for _key in [key for key, _xml in m_list]:
             # update dict with attribute dicts from the top-level node
-            gd.update({_sk: _sv for _sk, _sv in ref_dict[key][0].iteritems() if _sk in ["info"]})
+            gd.update(
+                {
+                    _sk: _sv for _sk, _sv in ref_dict[key][0].iteritems() if _sk in ["info", "ti"]
+                }
+            )
+        # set default values
+        for _key, _default in [
+            ("key", "KEY???"),
+            ("ti", "TI???"),
+        ]:
+            if _key not in gd:
+                gd[_key] = _default
+        # overrwrite empty ti
+        if not gd["ti"]:
+            gd["ti"] = gd["key"]
         # expand according to dict
         compound_key = self.__key.format(**gd)
         _info = "{} ({:d})".format(self.__info.format(**gd), len(m_list))

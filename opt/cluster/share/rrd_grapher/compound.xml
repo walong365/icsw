@@ -49,7 +49,7 @@
             <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
-    <compound key="compound.net.snmp_{key}" info="SNMP info for interface {key}" order_key="key">
+    <compound key="compound.net.snmp_{key}" info="SNMP info for {ti}" order_key="key">
         <key_list>
             <key match="^net\.snmp_(?P&lt;key&gt;.*)\.rx$" required="1" color="#00dd00" draw_type="AREA"></key>
             <key match="^net\.snmp_(?P&lt;key&gt;.*)\.tx$" required="1" color="#0000ff" draw_type="LINE1"></key>
