@@ -2,15 +2,10 @@
     <div ng-if="devsel_list.length == 0">
         <alert type="warning">No device selected</alert>
     </div>
-    <react-component name="testcomp" props="blabla"></react-component>
     <p class="text-danger">{{ error_string }}</p>
     <h4 ng-show="vector_valid">
         <div class="input-group form-inline">
-            <div class="form-group">
-                Vector info:
-                <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
-                <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>,
-            </div>
+            <react-component name="icsw-rrd-vector-info" props="vectordata"></react-component>,
             <div class="form-group">
                 <div class="input-group-btn">
                     <button type="button" ng-class="show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="show_tree=!show_tree">

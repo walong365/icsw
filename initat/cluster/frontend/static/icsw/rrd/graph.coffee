@@ -136,19 +136,6 @@ get_node_keys = (node) ->
         "build_info": node.build_info
     }
 
-{div, h1} = React.DOM
-
-testcomp = React.createClass(
-    {
-        propTypes: {
-            a : React.PropTypes.string.isRequired
-        }
-        render: () ->
-            h1({}, ["text " + @props.a])
-    }
-)
-icsw_app.value("testcomp", testcomp)
-
 angular.module(
     "icsw.rrd.graph",
     [
@@ -163,7 +150,7 @@ angular.module(
         toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->
         moment().utc()
-        $scope.blabla = {"a": "4"}
+        $scope.blabla = {"num_struct": 0, "num_mve": 0, "num_devices": 0, "num_mve_sel": 0}
         $scope.timeframe = undefined
         $scope.vector_valid = false
         $scope.error_string = ""
@@ -238,28 +225,25 @@ angular.module(
                 else
                     $scope.auto_select_re = null
                 # to machine vector
-                $scope.num_devices = 0
                 root_node = $scope.init_machine_vector()
-                $scope.num_struct = 0
-                $scope.num_mve = 0
+                $scope.vectordata = {"num_struct": 0, "num_mve": 0, "num_devices": 0, "num_mve_sel": 0}
                 for dev in json
                     if dev.struct? and dev.struct.length
                         $scope.add_machine_vector(root_node, dev.pk, dev.struct)
                         #if dev._nodes.length > 1
                         #    # compound
                         #    $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
-                        $scope.num_devices++
+                        $scope.vectordata.num_devices++
                 $scope.g_tree.recalc()
                 $scope.is_loading = false
-                $scope.vector_valid = if $scope.num_struct then true else false
+                $scope.vector_valid = if $scope.vectordata.num_struct then true else false
                 if $scope.vector_valid
                     $scope.error_string = ""
-                    $scope.num_mve_sel = 0
                     if $scope.auto_select_re or $scope.cur_selected.length
                         # recalc tree when an autoselect_re is present
                         $scope.g_tree.show_selected(false)
                         $scope.selection_changed()
-                        if $scope.draw_on_init and $scope.num_mve_sel
+                        if $scope.draw_on_init and $scope.vectordata.num_mve_sel
                             $scope.draw_graph()
                 else
                     $scope.error_string = "No vector found"
@@ -296,7 +280,7 @@ angular.module(
                             _is_mve: false
                         }
                     )
-                    $scope.num_struct++
+                    $scope.vectordata.num_struct++
                     lut[pn] = cur_node
                     parent.add_child(cur_node, $scope._child_sort)
                 parent = cur_node
@@ -318,7 +302,7 @@ angular.module(
             return info
             
         $scope._add_value_entry = (entry, lut, parent, top) =>
-            $scope.blabla.a = "ddd"
+            $scope.vectordata.a = "ddd"
             # top is the parent node from the value entry (== mvstructentry)
             if entry.key
                 g_key = "#{top.key}.#{entry.key}"
@@ -337,8 +321,8 @@ angular.module(
                     # change marker
                     cur_node._is_mve = true
                     cur_node._dev_pks = []
-                    $scope.num_struct--
-                    $scope.num_mve++
+                    $scope.vectordata.num_struct--
+                    $scope.vectordata.num_mve++
             else
                 cur_node = $scope.g_tree.new_node(
                     {
@@ -349,7 +333,7 @@ angular.module(
                     }
                 )
                 cur_node.build_info = []
-                $scope.num_mve++
+                $scope.vectordata.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, $scope._child_sort)
             cur_node._key_pair = [top.key, entry.key]
@@ -431,7 +415,7 @@ angular.module(
                     else
                         return []
             )
-            $scope.num_mve_sel = $scope.cur_selected.length
+            $scope.vectordata.num_mve_sel = $scope.cur_selected.length
         $scope.$on("cropSet", (event, graph) ->
             event.stopPropagation()
             if graph.crop_width > 600
@@ -889,5 +873,47 @@ angular.module(
             )
     }
     # console.log "S", $scope.graph
-])
-
+]).value(
+    "icsw-rrd-vector-info"
+    React.createClass(
+        {
+            propTypes: {
+                num_struct : React.PropTypes.number.isRequired
+                num_devices : React.PropTypes.number.isRequired
+                num_mve : React.PropTypes.number.isRequired
+                num_mve_sel : React.PropTypes.number.isRequired
+            }
+            render: () ->
+                {div, span} = React.DOM
+                div(
+                    {key: "k0", className: "form-group"},
+                    [
+                        "Vector info: "
+                        span(
+                            {key: "se", className: "label label-primary", title: "structural entries"},
+                            [
+                                @props.num_struct
+                                if @props.num_devices
+                                    span(
+                                        {key: "nd", title: "number of devices"}
+                                        " / " + @props.num_devices
+                                    )
+                            ]
+                        )
+                        " / "
+                        span(
+                            {key: "de", className: "label label-primary", title: "data entries"},
+                            [
+                                @props.num_mve
+                                if @props.num_mve_sel
+                                    span(
+                                        {key: "des", title: "selected entries"}
+                                        " / " + @props.num_mve_sel
+                                    )
+                            ]
+                        )
+                    ]
+                )
+        }
+    )
+)
