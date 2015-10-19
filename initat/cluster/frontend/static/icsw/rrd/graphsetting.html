@@ -1,13 +1,13 @@
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
     <div class="input-group">
         <ui-select ng-model="current" on-select="select_setting($item, $model)" style="width:160px;">
-            <ui-select-match>{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
+            <ui-select-match title="Stored RRD graphing settings">{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
             <ui-select-choices repeat="entry in settings">
                 <div ng-bind-html="entry.name"></div>
             </ui-select-choices>
         </ui-select>
         <span class="input-group-btn">
-            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="show_settings()">
+            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="show_settings()" title="RRD graphing settings">
                 <span class="fa fa-wrench"></span>
             </button>
         </span>
@@ -184,7 +184,7 @@
 <script type="text/ng-template" id="icsw.rrd.graphsetting.timeframe">
     <div class="form-group">
         <div class="input-group">
-            <ui-select ng-disabled="timeframes.length == 0" ng-change="change_tf()" ng-model="val.current" style="width:160px;">
+            <ui-select ng-disabled="timeframes.length == 0" ng-change="change_tf()" ng-model="val.current" style="width:160px;" title="choose graphing timeframe">
                 <ui-select-match>{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
                 <ui-select-choices repeat="entry in timeframes">
                     <div ng-bind-html="entry.name"></div>
