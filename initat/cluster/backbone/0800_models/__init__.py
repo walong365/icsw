@@ -31,8 +31,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
-from initat.cluster.backbone.middleware import thread_local_middleware, \
-    _thread_local
+from initat.cluster.backbone.middleware import thread_local_middleware, thread_local_obj
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt

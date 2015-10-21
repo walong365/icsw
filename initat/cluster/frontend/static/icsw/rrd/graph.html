@@ -5,7 +5,7 @@
     <p class="text-danger">{{ error_string }}</p>
     <h4 ng-show="vector_valid">
         <div class="input-group form-inline">
-            <react-component name="icsw-rrd-vector-info" props="vectordata"></react-component>,
+            <icsw-rrd-vector-info vector-info="vectordata"></icsw-rrd-vector-info>,
             <div class="form-group">
                 <div class="input-group-btn">
                     <button type="button" ng-class="show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="show_tree=!show_tree" title="show/hide RRD tree">

@@ -55,16 +55,15 @@ menu_module = angular.module(
                         "dataType": "json"
                     }
                 ),
+                icswUserService.load(),
             ]
         ).then(
             (data) ->
                 $scope.SERVICE_TYPES = data[0].service_types
                 $scope.HANDBOOK_PDF_PRESENT = data[1].HANDBOOK_PDF_PRESENT
                 $scope.HANDBOOK_CHUNKS_PRESENT = data[1].HANDBOOK_CHUNKS_PRESENT
-        )
-        icswUserService.load().then((data) ->
-            $scope.is_authenticated = data.authenticated
-            $scope.CURRENT_USER = data
+                $scope.is_authenticated = data[2].authenticated
+                $scope.CURRENT_USER = data[2]
         )
         # testing
         # $timeout(
@@ -205,5 +204,214 @@ menu_module = angular.module(
                 # reload every 30 seconds
                 $timeout(reload, 30000)
             reload()
+    }
+]).factory(
+    "icswReactMenuFactory",
+    ["access_level_service", "ICSW_URLS", (access_level_service, ICSW_URLS) ->
+        # console.log access_level_service
+        {div, ul, li, a, span} = React.DOM
+        _counter = 0
+        _key_counter = 0
+        menu_line = React.createClass(
+            render: () ->
+                return li(
+                    {}
+                    [
+                        a(
+                            {href: @props.href}
+                            [
+                                span(
+                                    {className: "fa #{@props.icon} fa_icsw"}
+                                )
+                                " #{@props.name}"
+                            ]
+                        )
+                    ]
+                )
+        )
+        menu_header = React.createClass(
+            getDefaultProps: () ->
+            render: () ->
+                _key_counter++
+                # console.log @props.rights, access_level_service.has_any_menu_permission(@props.rights)
+                _items = []
+                for entry in @props.entries
+                    if entry.name?
+                        if not entry.disable?
+                            _add = true
+                            if entry.rights?
+                                _add = access_level_service.has_any_menu_permission(entry.rights)
+                            if _add
+                                _items.push(
+                                    React.createElement(menu_line, entry)
+                                )
+                    else
+                        _items.push(
+                            li({className: "divider"})
+                        )
+                if _items.length
+                    _res = li(
+                        {}
+                        a(
+                            {className: "dropdown-toggle", "data-toggle": "dropdown"
+                            }
+                            [
+                                span(
+                                    {className: "fa #{@props.icon} fa-lg fa_top"}
+                                )
+                                span({}, @props.name)
+                            ]
+                        )
+                        ul(
+                            {className: "dropdown-menu"}
+                            _items
+                        )
+                    )
+                else
+                    _res = null
+                return _res
+        )
+        menu_comp = React.createClass(
+            propTypes:
+                React.PropTypes.object.isRequired
+            render: () ->
+                _counter++
+                console.log "render", @props, _counter
+                # console.log access_level_service.has_menu_permission("user.modify_tree")
+                # console.log @props
+                _res = ul(
+                    {key: "tl", className: "nav navbar-nav"}
+                    [
+                        # "test #{_counter}"
+                        React.createElement(
+                            menu_header
+                            {
+                                key: 4
+                                name: "Device"
+                                icon: "fa-hdd-o"
+                                entries: [
+                                    {
+                                        name: "Create new device"
+                                        rights: ["user.modify_tree"]
+                                        icon: "fa-plus-circle"
+                                        href: ICSW_URLS.MON_CREATE_DEVICE
+                                    }
+                                    {}
+                                    {
+                                        name: "General"
+                                        rights: ["user.modify_tree"]
+                                        icon: "fa-bars"
+                                        href: ICSW_URLS.DEVICE_DEVICE_GENERAL
+                                    }
+                                    {
+                                        name: "Network"
+                                        rights: ["device.change_network"]
+                                        icon: "fa-sitemap"
+                                        href: ICSW_URLS.NETWORK_DEVICE_NETWORK
+                                    }
+                                    {
+                                        name: "Configurations"
+                                        rights: ["device.change_config"]
+                                        icon: "fa-check-square-o"
+                                        href: ICSW_URLS.CONFIG_SHOW_CONFIGS
+                                    }
+                                    {
+                                        name: "Device Configurations"
+                                        rights: ["device.change_config"]
+                                        icon: "fa-check-square"
+                                        href: ICSW_URLS.DEVICE_SHOW_CONFIGS
+                                    }
+                                    {
+                                        name: "Device variables"
+                                        rights: ["device.change_variables"]
+                                        icon: "fa-code"
+                                        href: ICSW_URLS.DEVICE_VARIABLES
+                                    }
+                                    {
+                                        name: "Device category"
+                                        rights: ["user.modify_category_tree"]
+                                        icon: "fa-table"
+                                        href: ICSW_URLS.BASE_DEVICE_CATEGORY
+                                    }
+                                    {
+                                        name: "Device location"
+                                        rights: ["user.modify_category_tree"]
+                                        icon: "fa-map-marker"
+                                        href: ICSW_URLS.BASE_DEVICE_LOCATION
+                                    }
+                                    {
+                                        name: "Device connections"
+                                        rights: ["device.change_connection"]
+                                        icon: "fa-plug"
+                                        href: ICSW_URLS.DEVICE_CONNECTIONS
+                                    }
+                                    {}
+                                    {
+                                        name: "Device tree"
+                                        rights: ["user.modify_tree"]
+                                        icon: "fa-list"
+                                        href: ICSW_URLS.DEVICE_TREE_SMART
+                                    }
+                                    {
+                                        name: "Domain name tree"
+                                        rights: ["user.modify_domain_name_tree"]
+                                        icon: "fa-list-alt"
+                                        href: ICSW_URLS.NETWORK_DOMAIN_NAME_TREE
+                                    }
+                                    {}
+                                    {
+                                        disable: true
+                                        name: "Discovery"
+                                        rights: ["device.discovery_server"]
+                                        href: ICSW_URLS.DISCOVERY_OVERVIEW
+                                    }
+
+                                ]
+                            }
+                        )
+                        React.createElement(
+                            menu_header
+                            {
+                                key: 6,
+                                name: "Monitoring",
+                                icon: "fa-gears",
+                                entries: [
+                                    {
+                                        name: "bla"
+                                        rights: ["device.change_config"]
+                                    }
+                                ]
+                            }
+                        )
+                    ]
+                )
+                return _res
+        )
+        return menu_comp
+    ]
+).directive("icswMenuDirective", ["icswReactMenuFactory", "access_level_service", (icswReactMenuFactory, access_level_service) ->
+    return {
+        restrict: "EA"
+        replace: true
+        scope:
+            user: "="
+        link: (scope, el, attrs) ->
+            _user = undefined
+            _render = () ->
+                if _user
+                    ReactDOM.render(
+                        React.createElement(icswReactMenuFactory, _user)
+                        el[0]
+                    )
+            scope.$watch("user", (new_val) ->
+                _user = new_val
+                _render()
+            )
+            scope.$watch(
+                () ->
+                    return access_level_service.acl_valid()
+                (new_val) ->
+                    _render()
+            )
     }
 ])

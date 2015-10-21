@@ -446,10 +446,8 @@ if WITH_REACT:
         ) + [
             "js/react-0.14.0.js",
             "js/react-dom-0.14.0.js",
-            "js/ngReact.js",
         ]
     )
-    ADDITIONAL_ANGULAR_APPS.append("react")
 
 SSI_ROOTS = []
 SSI_FILES = []

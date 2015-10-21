@@ -370,16 +370,29 @@ angular.module(
         _icswCallAjaxService(in_dict)
 
         return _def.promise
-]).service("access_level_service", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+]).service("access_level_service", ["ICSW_URLS", "Restangular", "$q", (ICSW_URLS, Restangular, $q) ->
     data = {}
+    acls_are_valid = false
     reload = () ->
-        data.global_permissions = Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET().$object
+        data.global_permissions = {}
         # these are not permissions for single objects, but the merged permission set of all objects
-        data.object_permissions = Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET().$object
+        data.object_permissions = {}
 
-        data.license_data = Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET().$object
+        data.license_data = {}
+        $q.all(
+            [
+                Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
+                Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET()
+                Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET()
+            ]
+        ).then((r_data) ->
+            data.global_permissions = r_data[0]
+            data.object_permissions = r_data[1]
+            data.license_permissions = r_data[2]
+            acls_are_valid = true
+            console.log "set"
+        )
     reload()
-
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
         if ac_name.split(".").length != 3
@@ -438,6 +451,8 @@ angular.module(
             return check_level(obj, ac_name, mask, true)
         "acl_all" : (obj, ac_name, mask) ->
             return check_level(obj, ac_name, mask, false)
+        acl_valid: () ->
+            return acls_are_valid
 
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission

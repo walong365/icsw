@@ -42,8 +42,8 @@ class Command(BaseCommand):
             cur_cdg = device_group.objects.get(Q(cluster_device_group=True))
         except device_group.DoesNotExist:
             cur_cdg = device_group(name=options["name"], description=options["description"], cluster_device_group=True)
-            cur_cdg.save()
             print "Created cluster device group '{}'".format(unicode(cur_cdg))
         else:
             print "Cluster device group '{}' already exists".format(unicode(cur_cdg))
+        cur_cdg.save()
         factories.DeviceVariable(name="CLUSTER_NAME", device=cur_cdg.device_group.all()[0], local_copy_ok=False, value="new cluster")

@@ -150,7 +150,7 @@ angular.module(
         toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->
         moment().utc()
-        $scope.blabla = {"num_struct": 0, "num_mve": 0, "num_devices": 0, "num_mve_sel": 0}
+        $scope.vectordata = {"num_struct": 0, "num_mve": 0, "num_devices": 0, "num_mve_sel": 0}
         $scope.timeframe = undefined
         $scope.vector_valid = false
         $scope.error_string = ""
@@ -873,47 +873,67 @@ angular.module(
             )
     }
     # console.log "S", $scope.graph
-]).value(
-    "icsw-rrd-vector-info"
-    React.createClass(
-        {
-            propTypes: {
-                num_struct : React.PropTypes.number.isRequired
-                num_devices : React.PropTypes.number.isRequired
-                num_mve : React.PropTypes.number.isRequired
-                num_mve_sel : React.PropTypes.number.isRequired
+]).factory(
+    "icswRRDVectorInfoFactory"
+    [() ->
+        return React.createClass(
+            {
+                propTypes: {
+                    num_struct : React.PropTypes.number.isRequired
+                    num_devices : React.PropTypes.number.isRequired
+                    num_mve : React.PropTypes.number.isRequired
+                    num_mve_sel : React.PropTypes.number.isRequired
+                }
+                render: () ->
+                    {div, span} = React.DOM
+                    div(
+                        {key: "k0", className: "form-group"},
+                        [
+                            "Vector info: "
+                            span(
+                                {key: "se", className: "label label-primary", title: "structural entries"},
+                                [
+                                    @props.num_struct
+                                    if @props.num_devices
+                                        span(
+                                            {key: "nd", title: "number of devices"}
+                                            " / " + @props.num_devices
+                                        )
+                                ]
+                            )
+                            " / "
+                            span(
+                                {key: "de", className: "label label-primary", title: "data entries"},
+                                [
+                                    @props.num_mve
+                                    if @props.num_mve_sel
+                                        span(
+                                            {key: "des", title: "selected entries"}
+                                            " / " + @props.num_mve_sel
+                                        )
+                                ]
+                            )
+                        ]
+                    )
             }
-            render: () ->
-                {div, span} = React.DOM
-                div(
-                    {key: "k0", className: "form-group"},
-                    [
-                        "Vector info: "
-                        span(
-                            {key: "se", className: "label label-primary", title: "structural entries"},
-                            [
-                                @props.num_struct
-                                if @props.num_devices
-                                    span(
-                                        {key: "nd", title: "number of devices"}
-                                        " / " + @props.num_devices
-                                    )
-                            ]
-                        )
-                        " / "
-                        span(
-                            {key: "de", className: "label label-primary", title: "data entries"},
-                            [
-                                @props.num_mve
-                                if @props.num_mve_sel
-                                    span(
-                                        {key: "des", title: "selected entries"}
-                                        " / " + @props.num_mve_sel
-                                    )
-                            ]
-                        )
-                    ]
-                )
-        }
-    )
-)
+        )
+    ]
+).directive("icswRrdVectorInfo", ["icswRRDVectorInfoFactory", (icswRRDVectorInfoFactory) ->
+    return {
+        restrict: "EA"
+        replace: true
+        scope:
+            vectorInfo: "="
+        link: (scope, el, attrs) ->
+            scope.$watch(
+                "vectorInfo",
+                (new_val) ->
+                    ReactDOM.render(
+                        React.createElement(icswRRDVectorInfoFactory, new_val)
+                        el[0]
+                    )
+                true
+            )
+    }
+])
+
