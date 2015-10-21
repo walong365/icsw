@@ -387,10 +387,9 @@ angular.module(
             ]
         ).then((r_data) ->
             data.global_permissions = r_data[0]
-            data.object_permissions = r_data[1]
-            data.license_permissions = r_data[2]
+            data.license_data = r_data[1]
+            data.object_permissions = r_data[2]
             acls_are_valid = true
-            console.log "set"
         )
     reload()
     # see lines 205 ff in backbone/models/user.py
@@ -429,14 +428,13 @@ angular.module(
             p_name = "backbone.#{p_name}"
         return p_name of data.global_permissions or p_name of data.object_permissions
     has_valid_license = (license) ->
-        if Object.keys(data.license_data).length == 0
+        if not acls_are_valid
             # not loaded yet
             return false
-        else
-            if license not in data.license_data.all_licenses
-                if license not in ["netboot"]
-                    console.warn("Invalid license check for #{license}. Licenses are: #{data.license_data.all_licenses}")
-            return license in data.license_data.valid_licenses
+        if license not in data.license_data.all_licenses
+            if license not in ["netboot"]
+                console.warn("Invalid license check for #{license}. Licenses are: #{data.license_data.all_licenses}")
+        return license in data.license_data.valid_licenses
     func_dict = {
         # functions to check permissions for single objects
         "acl_delete" : (obj, ac_name) ->
@@ -461,6 +459,11 @@ angular.module(
                 if has_menu_permission(p)
                     return true
             return false
+        has_all_menu_permissions: (permissions) ->
+            for p in permissions
+                if not has_menu_permission(p)
+                    return false
+            return true
 
         has_valid_license: has_valid_license
         has_any_valid_license: (licenses) ->
@@ -468,6 +471,11 @@ angular.module(
                 if has_valid_license(l)
                     return true
             return false
+        has_all_valid_licenses: (licenses) ->
+            for l in licenses
+                if not has_valid_license(l)
+                    return false
+            return true
     }
     return angular.extend({
         install: (scope) ->

@@ -115,22 +115,6 @@ menu_module = angular.module(
             if new_val.name?
                 $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
         )
-        $scope.rebuild_config = (cache_mode) ->
-            # console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MON_CREATE_CONFIG
-                    data: {
-                        "cache_mode": cache_mode
-                    }
-                    title: "create config"
-                }
-            ).then(
-                (xml) ->
-                    # make at least five iterations to catch slow startup of md-config-server
-                    $scope.progress_iters = 5
-                    $scope.update_progress_bar()
-            )
         $scope.$watch("navbar_size", (new_val) ->
             if new_val
                 if $scope.is_authenticated
@@ -207,21 +191,87 @@ menu_module = angular.module(
     }
 ]).factory(
     "icswReactMenuFactory",
-    ["access_level_service", "ICSW_URLS", (access_level_service, ICSW_URLS) ->
+    ["access_level_service", "ICSW_URLS", "icswSimpleAjaxCall", (access_level_service, ICSW_URLS, icswSimpleAjaxCall) ->
         # console.log access_level_service
-        {div, ul, li, a, span} = React.DOM
+        {input, ul, li, a, span} = React.DOM
         _counter = 0
         _key_counter = 0
-        menu_line = React.createClass(
+        rebuild_config = (cache_mode) ->
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.MON_CREATE_CONFIG
+                    data: {
+                        "cache_mode": cache_mode
+                    }
+                    title: "create config"
+                }
+            ).then(
+                (xml) ->
+                    # make at least five iterations to catch slow startup of md-config-server
+                    # $scope.progress_iters = 5
+                    # $scope.update_progress_bar()
+            )
+        menu_rebuild_mon_config = React.createClass(
             render: () ->
                 return li(
-                    {}
+                    {className: "text-left", key: "bmc"}
+                    ul(
+                        {className: "list-group", style: {marginBottom: "10px", marginTop: "5px"}}
+                        [
+                            li(
+                                {className: "list-group-item", key: "mr.alw"}
+                                input(
+                                    {
+                                        className: "btn btn-success btn-xs",
+                                        type: "button",
+                                        value: "\uf021 rebuild config (cached, RC)"
+                                        title: "fully cached (using also the routing cache)"
+                                        onClick: () ->
+                                            rebuild_config("ALWAYS")
+                                    }
+                                )
+                            )
+                            li(
+                                {className: "list-group-item", key: "mr.dyn"}
+                                input(
+                                    {
+                                        className: "btn btn-warning btn-xs",
+                                        type: "button",
+                                        value: "\uf021 rebuild config (dynamic)"
+                                        title: "refresh depends on timeout settings"
+                                        onClick: () ->
+                                            rebuild_config("DYNAMIC")
+                                    }
+                                )
+                            )
+                            li(
+                                {className: "list-group-item", key: "mr.ref"}
+                                input(
+                                    {
+                                        className: "btn btn-danger btn-xs",
+                                        type: "button",
+                                        value: "\uf021 rebuild config (refresh)"
+                                        title: "rebuild network and contact devices"
+                                        onClick: () ->
+                                            rebuild_config("REFRESH")
+                                    }
+                                )
+                            )
+                        ]
+                    )
+                )
+        )
+        menu_line = React.createClass(
+            displayName: "menuline"
+            render: () ->
+                return li(
+                    {key: "li"}
                     [
                         a(
-                            {href: @props.href}
+                            {href: @props.href, key: "a"}
                             [
                                 span(
-                                    {className: "fa #{@props.icon} fa_icsw"}
+                                    {className: "fa #{@props.icon} fa_icsw", key: "span"}
                                 )
                                 " #{@props.name}"
                             ]
@@ -230,40 +280,49 @@ menu_module = angular.module(
                 )
         )
         menu_header = React.createClass(
+            displayName: "menuheader"
             getDefaultProps: () ->
             render: () ->
                 _key_counter++
-                # console.log @props.rights, access_level_service.has_any_menu_permission(@props.rights)
                 _items = []
+                _idx = 0
                 for entry in @props.entries
+                    _idx++
+                    _key = "item#{_idx}"
                     if entry.name?
                         if not entry.disable?
                             _add = true
                             if entry.rights?
-                                _add = access_level_service.has_any_menu_permission(entry.rights)
+                                _add = access_level_service.has_all_menu_permissions(entry.rights)
+                            if entry.licenses? and _add
+                                _add = access_level_service.has_all_valid_licenses(entry.licenses)
                             if _add
-                                _items.push(
-                                    React.createElement(menu_line, entry)
-                                )
+                                if angular.isFunction(entry.name)
+                                    _items.push(
+                                        React.createElement(entry.name, {key: _key})
+                                    )
+                                else
+                                    _items.push(
+                                        React.createElement(menu_line, entry)
+                                    )
                     else
                         _items.push(
-                            li({className: "divider"})
+                            li({className: "divider", key: _key})
                         )
                 if _items.length
                     _res = li(
-                        {}
+                        {key: "menu"}
                         a(
-                            {className: "dropdown-toggle", "data-toggle": "dropdown"
-                            }
+                            {className: "dropdown-toggle", "data-toggle": "dropdown", key: "a"}
                             [
                                 span(
-                                    {className: "fa #{@props.icon} fa-lg fa_top"}
+                                    {className: "fa #{@props.icon} fa-lg fa_top", key: "span"}
                                 )
-                                span({}, @props.name)
+                                span({key: "text"}, @props.name)
                             ]
                         )
                         ul(
-                            {className: "dropdown-menu"}
+                            {className: "dropdown-menu", key: "ul"}
                             _items
                         )
                     )
@@ -272,21 +331,22 @@ menu_module = angular.module(
                 return _res
         )
         menu_comp = React.createClass(
+            displayName: "menubar"
             propTypes:
                 React.PropTypes.object.isRequired
             render: () ->
                 _counter++
-                console.log "render", @props, _counter
+                user = @props
                 # console.log access_level_service.has_menu_permission("user.modify_tree")
                 # console.log @props
                 _res = ul(
-                    {key: "tl", className: "nav navbar-nav"}
+                    {key: "topmenu", className: "nav navbar-nav"}
                     [
                         # "test #{_counter}"
                         React.createElement(
                             menu_header
                             {
-                                key: 4
+                                key: "dev"
                                 name: "Device"
                                 icon: "fa-hdd-o"
                                 entries: [
@@ -372,13 +432,212 @@ menu_module = angular.module(
                         React.createElement(
                             menu_header
                             {
-                                key: 6,
+                                key: "mon",
                                 name: "Monitoring",
                                 icon: "fa-gears",
                                 entries: [
                                     {
-                                        name: "bla"
-                                        rights: ["device.change_config"]
+                                        name: "Basic setup"
+                                        rights: ["mon_check_command.setup_monitoring"]
+                                        icon: "fa-bars"
+                                        href: ICSW_URLS.MON_SETUP
+                                    }
+                                    {
+                                        name: "Device settings"
+                                        rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
+                                        icon: "fa-laptop"
+                                        href: ICSW_URLS.MON_DEVICE_CONFIG
+                                    }
+                                    {}
+                                    {
+                                        name: "Cluster / Dependency setup"
+                                        licenses: ["md_config_server"]
+                                        rights: ["mon_check_command.setup_monitoring"]
+                                        icon: "fa-chain"
+                                        href: ICSW_URLS.MON_SETUP_CLUSTER
+                                    }
+                                    {
+                                        name: "Escalation setup"
+                                        licenses: ["md_config_server"]
+                                        rights: ["mon_check_command.setup_monitoring"]
+                                        icon: "fa-bolt"
+                                        href: ICSW_URLS.MON_SETUP_ESCALATION
+                                    }
+                                    {}
+                                    {
+                                        name: "Monitoring hints"
+                                        licenses: ["md_config_server"]
+                                        rights: ["mon_check_command.setup_monitoring"]
+                                        icon: "fa-info"
+                                        href: ICSW_URLS.MON_MONITORING_HINTS
+                                    }
+                                    {
+                                        name: "Disk"
+                                        licenses: ["md_config_server"]
+                                        rights: ["mon_check_command.setup_monitoring"]
+                                        icon: "fa-hdd-o"
+                                        href: ICSW_URLS.MON_MONITORING_DISK
+                                    }
+                                    {}
+                                    {
+                                        name: "Icinga"
+                                        licenses: ["md_config_server"]
+                                        icon: "fa-share-alt"
+                                        href: ICSW_URLS.MON_CALL_ICINGA
+                                    }
+                                    {
+                                        rights: ["mon_check_command.setup_monitoring"]
+                                        licenses: ["md_config_server"]
+                                        name: menu_rebuild_mon_config
+                                    }
+                                    {
+                                        name: "Build Info"
+                                        rights: ["mon_check_command.setup_monitoring"]
+                                        icon: "fa-info-circle"
+                                        href: ICSW_URLS.MON_BUILD_INFO
+                                    }
+                                ]
+                            }
+                        )
+                        React.createElement(
+                            menu_header
+                            {
+                                key: "stat",
+                                name: "Status",
+                                icon: "fa-line-chart"
+                                entries: [
+                                    {
+                                        name: "Monitoring dashboard"
+                                        rights: ["mon_check_command.show_monitoring_dashboard"]
+                                        licenses: ["monitoring_dashboard"]
+                                        icon: "fa-dot-circle-o"
+                                        href: ICSW_URLS.MON_LIVESTATUS
+                                    }
+                                    {
+                                        name: "Graph"
+                                        rights: ["backbone.device.show_graphs"]
+                                        licenses: ["graphing"]
+                                        icon: "fa-line-chart"
+                                        href: ICSW_URLS.MON_GRAPH
+                                    }
+                                    {
+                                        name: "Status History"
+                                        rights: ["backbone.device.show_status_history"]
+                                        licenses: ["reporting"]
+                                        icon: "fa-pie-chart"
+                                        href: ICSW_URLS.MON_STATUS_HISTORY
+                                    }
+                                    {}
+                                    {
+                                        name: "Key performance indicators"
+                                        rights: ["kpi.kpi"]
+                                        licenses: ["kpi"]
+                                        icon: "fa-code-fork"
+                                        href: ICSW_URLS.BASE_KPI
+                                    }
+                                    {}
+                                    {
+                                        name: "WMI and IPMI Event logs"
+                                        rights: ["device.discovery_server"]
+                                        licenses: ["discovery_server"]
+                                        icon: "fa-list-alt"
+                                        href: ICSW_URLS.DISCOVERY_EVENT_LOG_OVERVIEW
+                                    }
+                                ]
+                            }
+                        )
+                        React.createElement(
+                            menu_header
+                            {
+                                key: "clus",
+                                name: "Cluster"
+                                icon: "fa-cubes"
+                                entries: [
+                                    {
+                                        name: "Nodeboot"
+                                        rights: ["device.change_boot"]
+                                        licenses: ["netboot"]
+                                        icon: "fa-rocket"
+                                        href: ICSW_URLS.BOOT_SHOW_BOOT
+                                    }
+                                    {
+                                        name: "Packet install"
+                                        rights: ["package.package_install"]
+                                        licenses: ["package_install"]
+                                        icon: "fa-download"
+                                        href: ICSW_URLS.PACK_REPO_OVERVIEW
+                                    }
+                                    {}
+                                    {
+                                        name: "Images and Kernels"
+                                        rights: ["image.modify_images", "kernel.modify_kernels"]
+                                        licenses: ["netboot"]
+                                        icon: "fa-linux"
+                                        href: ICSW_URLS.PACK_REPO_OVERVIEW
+                                    }
+                                    {
+                                        name: "Partition overview"
+                                        rights: ["partition_fs.modify_partitions"]
+                                        licenses: ["netboot"]
+                                        icon: "fa-database"
+                                        href: ICSW_URLS.SETUP_PARTITION_OVERVIEW
+                                    }
+                                ]
+                            }
+                        )
+                        React.createElement(
+                            menu_header
+                            {
+                                key: "rms"
+                                name: "RMS"
+                                icon: "fa-cubes"
+                                entries: [
+                                    {
+                                        name: "RMS overview"
+                                        licenses: ["rms"]
+                                        icon: "fa-table"
+                                        href: ICSW_URLS.RMS_OVERVIEW
+                                    }
+                                    {
+                                        disable: true
+                                        name: "License overview"
+                                        licenses: ["ext_license"]
+                                        href: ICSW_URLS.LIC_OVERVIEW
+                                    }
+                                    {
+                                        name: "License LiveView"
+                                        licenses: ["ext_license"]
+                                        icon: "fa-line-chart"
+                                        href: ICSW_URLS.LIC_LICENSE_LIVEVIEW
+                                    }
+                                ]
+                            }
+                        )
+                        React.createElement(
+                            menu_header
+                            {
+                                key: "sys"
+                                name: "System"
+                                icon: "fa-cog"
+                                entries: [
+                                    {
+                                        name: "User"
+                                        rights: ["group.group_admin"]
+                                        icon: "fa-user"
+                                        href: ICSW_URLS.USER_OVERVIEW
+                                    }
+                                    {
+                                        name: "History"
+                                        rights: ["user.snapshots"]
+                                        licenses: ["snapshot"]
+                                        icon: "fa-history"
+                                        href: ICSW_URLS.SYSTEM_HISTORY_OVERVIEW
+                                    }
+                                    {
+                                        name: "License"
+                                        rights: if user.is_superuser then [] else ["deny"]
+                                        icon: "fa-key"
+                                        href: ICSW_URLS.USER_GLOBAL_LICENSE
                                     }
                                 ]
                             }
