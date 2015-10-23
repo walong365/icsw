@@ -573,7 +573,7 @@ menu_module = angular.module(
                                         rights: ["image.modify_images", "kernel.modify_kernels"]
                                         licenses: ["netboot"]
                                         icon: "fa-linux"
-                                        href: ICSW_URLS.PACK_REPO_OVERVIEW
+                                        href: ICSW_URLS.SETUP_IMAGE_OVERVIEW
                                     }
                                     {
                                         name: "Partition overview"
