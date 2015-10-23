@@ -65,9 +65,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswSimpleAjaxCall", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswSimpleAjaxCall, toaster) ->
-        access_level_service.install($scope)
+).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "$timeout", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, toaster) ->
+        icswAcessLevelService.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"
         $scope.hint_edit.modify_rest_url = ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2)

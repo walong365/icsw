@@ -87,9 +87,9 @@ angular.module(
             @show_active()
             # important to update frontend
             @scope.$digest()
-]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall", "msgbus",
-    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall, msgbus) ->
-        access_level_service.install($scope)
+]).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "icswAcessLevelService", "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall", "msgbus",
+    ($scope, restDataSource, $q, icswAcessLevelService, icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall, msgbus) ->
+        icswAcessLevelService.install($scope)
         $scope.DEBUG = false
         $scope.loc_tree = new icswDeviceLocationTreeService($scope, {})
         $scope.device_pks = []

@@ -24,9 +24,9 @@ angular.module(
         "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda"
     ]
 ).controller("icswConfigKpiCtrl", [
-    "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "access_level_service"
-    ($scope, ICSW_URLS, icswConfigKpiDataService, $timeout, access_level_service) ->
-        access_level_service.install($scope)
+    "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "icswAcessLevelService"
+    ($scope, ICSW_URLS, icswConfigKpiDataService, $timeout, icswAcessLevelService) ->
+        icswAcessLevelService.install($scope)
 
         cur_edit_kpi = undefined
 

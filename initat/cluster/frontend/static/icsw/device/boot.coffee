@@ -53,9 +53,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
-        access_level_service.install($scope)
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, $timeout, msgbus, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
+        icswAcessLevelService.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.new_devsel(args[1])

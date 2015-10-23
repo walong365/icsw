@@ -24,9 +24,9 @@ lic_module = angular.module("icsw.license.overview",
          "icsw.tools.angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"])
 
 lic_module.controller("icswLicenseOverviewCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "$q", "$modal", "access_level_service",
+    ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "$q", "$modal", "icswAcessLevelService",
      "$timeout", "$sce", "$resource", "d3_service", "dimple_service", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, restDataSource, $q, $modal, access_level_service,
+    ($scope, $compile, $filter, $templateCache, restDataSource, $q, $modal, icswAcessLevelService,
      $timeout, $sce, $resource, d3_service, dimple_service, ICSW_URLS) ->
         wait_list = restDataSource.add_sources([
             [ICSW_URLS.REST_DEVICE_LIST, {}],

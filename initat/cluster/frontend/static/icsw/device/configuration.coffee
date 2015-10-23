@@ -207,9 +207,9 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.var.overview")
         controller: "icswConfigVarsCtrl"
     }
-]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools", "ICSW_URLS", "icswDeviceConfigRestService", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, icswTools, ICSW_URLS, icswDeviceConfigRestService, $timeout) ->
-        access_level_service.install($scope)
+]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "msgbus", "icswTools", "ICSW_URLS", "icswDeviceConfigRestService", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, msgbus, icswTools, ICSW_URLS, icswDeviceConfigRestService, $timeout) ->
+        icswAcessLevelService.install($scope)
         $scope.devices = []
         $scope.configs = []
         $scope.config_catalogs = []
@@ -389,7 +389,7 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.overview")
         controller: "icswDeviceConfigurationCtrl"
     }
-]).service("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceConfigRestService", "access_level_service", "$q", (Restangular, ICSW_URLS, icswSimpleAjaxCall, icswDeviceConfigRestService, access_level_service, $q) ->
+]).service("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceConfigRestService", "icswAcessLevelService", "$q", (Restangular, ICSW_URLS, icswSimpleAjaxCall, icswDeviceConfigRestService, icswAcessLevelService, $q) ->
     show_config = (dev, conf_idx) ->
         if conf_idx != null
             cur_conf = icswDeviceConfigRestService.get_config(conf_idx)
@@ -426,7 +426,7 @@ angular.module(
         "click": (dev, conf_idx, defer) ->
             if defer
                 _def = $q.defer()
-            if conf_idx != null and access_level_service.acl_create(dev, 'backbone.device.change_config') and show_config(dev, conf_idx)
+            if conf_idx != null and icswAcessLevelService.acl_create(dev, 'backbone.device.change_config') and show_config(dev, conf_idx)
                 meta_dev = icswDeviceConfigRestService.get_meta_device_from_group(dev.device_group)
                 value = 1
                 if conf_idx in dev.local_selected

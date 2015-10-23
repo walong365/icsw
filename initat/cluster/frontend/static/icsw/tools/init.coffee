@@ -158,10 +158,9 @@ angular.module(
     # close on click
     toasterConfig["tap-to-dismiss"] = true
 ]).service("icswParseXMLResponseService", ["toaster", (toaster) ->
-    return (xml, min_level, show_error=true) ->
+    return (xml, min_level, show_error=true, hidden=false) ->
         # use in combination with icswCallAjaxService, or otherwise make sure to wrap
         # the <response> from the server in some outer tag (similar to usage in license.coffee)
-
         success = false
         if $(xml).find("response header").length
             ret_state = $(xml).find("response header").attr("code")
@@ -171,9 +170,11 @@ angular.module(
                 cur_mes = $(cur_mes)
                 cur_level = parseInt(cur_mes.attr("log_level"))
                 if cur_level < 30
-                    toaster.pop("success", "", cur_mes.text())
+                    if not hidden
+                        toaster.pop("success", "", cur_mes.text())
                 else if cur_level == 30
-                    toaster.pop("warning", "", cur_mes.text())
+                    if not hidden
+                        toaster.pop("warning", "", cur_mes.text())
                 else
                     if show_error
                         toaster.pop("error", "An Error occured", cur_mes.text(), 0)
@@ -229,8 +230,8 @@ angular.module(
                         # check selman selection mode, can be
                         # d ... report all device pks
                         # D ... report all device pks with meta devices
-                        # ....... more to come
-                        selman_mode = attrs["icswSelManSelMode"]||"d"
+                        # ........ more to come
+                        selman_mode = attrs["icswSelManSelMode"] || "d"
                         if selman_mode == "d"
                             scope.new_devsel(args[1])
                         else if selman_mode == "D"
@@ -253,7 +254,7 @@ angular.module(
                 fn.assign(scope, new_val)
             true
         )
-]).factory("icswTools", ["icswParseXMLResponseService", (icwParseXMLResponseService) ->
+]).factory("icswTools", [() ->
     return {
         "get_size_str" : (size, factor, postfix) ->
             f_idx = 0
@@ -359,36 +360,45 @@ angular.module(
             delete in_dict.ignore_log_level
         else
             ignore_log_level = false
+        if in_dict.hidden?
+            hidden = in_dict.hidden
+            delete in_dict.hidden
+        else
+            hidden = false
         in_dict.success = (res) =>
             if in_dict.dataType == "json"
                 _def.resolve(res)
             else
-                if icswParseXMLResponseService(res) or ignore_log_level
+                if icswParseXMLResponseService(res, 40, show_error=true, hidden=hidden) or ignore_log_level
                     _def.resolve(res)
                 else
                     _def.reject(res)
         _icswCallAjaxService(in_dict)
 
         return _def.promise
-]).service("access_level_service", ["ICSW_URLS", "Restangular", "$q", (ICSW_URLS, Restangular, $q) ->
+]).service("icswAcessLevelService", ["ICSW_URLS", "Restangular", "$q", (ICSW_URLS, Restangular, $q) ->
     data = {}
     acls_are_valid = false
     reload = () ->
         data.global_permissions = {}
         # these are not permissions for single objects, but the merged permission set of all objects
         data.object_permissions = {}
-
+        # license data
         data.license_data = {}
+        # routing info
+        data.routing_info = {}
         $q.all(
             [
                 Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
                 Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET()
                 Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET()
+                Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customPOST({dataType: "json"})
             ]
         ).then((r_data) ->
             data.global_permissions = r_data[0]
             data.license_data = r_data[1]
             data.object_permissions = r_data[2]
+            data.routing_info = r_data[3]
             acls_are_valid = true
         )
     reload()
@@ -427,6 +437,8 @@ angular.module(
         if p_name.split(".").length == 2
             p_name = "backbone.#{p_name}"
         return p_name of data.global_permissions or p_name of data.object_permissions
+    has_service_type = (s_name) ->
+        return s_name of data.routing_info.service_types
     has_valid_license = (license) ->
         if not acls_are_valid
             # not loaded yet
@@ -454,6 +466,7 @@ angular.module(
 
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission
+        has_service_type: has_service_type
         has_any_menu_permission: (permissions) ->
             for p in permissions
                 if has_menu_permission(p)
@@ -466,6 +479,8 @@ angular.module(
             return true
 
         has_valid_license: has_valid_license
+        get_routing_info: () ->
+            return data.routing_info
         has_any_valid_license: (licenses) ->
             for l in licenses
                 if has_valid_license(l)

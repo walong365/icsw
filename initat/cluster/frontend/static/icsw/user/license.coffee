@@ -26,10 +26,10 @@ angular.module(
 ).controller("icswUserLicenseCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal",
      "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService', 'icswUserLicenseDataService',
-     "access_level_service", "icswCSRFService",
+     "icswAcessLevelService", "icswCSRFService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal,
      ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
-     access_level_service, icswCSRFService) ->
+     icswAcessLevelService, icswCSRFService) ->
         $scope.uploader = new FileUploader(
             scope : $scope
             url : ICSW_URLS.USER_UPLOAD_LICENSE_FILE
@@ -48,7 +48,7 @@ angular.module(
             response = "<document>" + response + "</document>"
             icswParseXMLResponseService(response)
             icswUserLicenseDataService.reload_data()
-            access_level_service.reload()
+            icswAcessLevelService.reload()
         $scope.uploader.onCompleteAll = () ->
             blockUI.stop()
             $scope.uploader.clearQueue()

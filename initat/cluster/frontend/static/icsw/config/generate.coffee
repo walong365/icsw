@@ -154,13 +154,13 @@ config_gen_module = angular.module(
                 return "text-success"
             else
                 return "text-warning"
-]).directive("icswConfigGenerateConfig", ["$templateCache", "access_level_service", ($templateCache, access_level_service) ->
+]).directive("icswConfigGenerateConfig", ["$templateCache", "icswAcessLevelService", ($templateCache, icswAcessLevelService) ->
     return {
         scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.config.generate.config")
         controller: "icswConfigGenerateCtrl"
         link: (scope, el, attrs) ->
-            access_level_service.install(scope)
+            icswAcessLevelService.install(scope)
     }
 ])

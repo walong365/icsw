@@ -124,15 +124,15 @@ user_module = angular.module(
             if _dir.num_files_total
                 _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
             return "#{_dir.name} (" + _info.join(", ") + ")"
-]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "access_level_service", "icswUserTree",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, access_level_service, icswUserTree) ->
+]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "icswAcessLevelService", "icswUserTree",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, icswAcessLevelService, icswUserTree) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
             {"level" : 3, "info" : "Modify, Create"},
             {"level" : 7, "info" : "Modify, Create, Delete"},
         ]
-        access_level_service.install($scope)
+        icswAcessLevelService.install($scope)
         $scope.obj_perms = {}
         $scope.tree = new icswUserTree($scope)
         $scope.filterstr = ""

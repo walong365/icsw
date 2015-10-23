@@ -433,7 +433,6 @@ PIPELINE_JS = {
     "icsw_cs1": {
         "source_filenames": (
             "icsw/*/*.coffee",
-            "icsw/*/*/*.coffee",
         ),
         "output_filename": "pipeline/js/icsw1.js"
     }
@@ -473,6 +472,9 @@ for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
                     # print "*", _dir, _file
                     SSI_FILES.append(os.path.join(_dir, _file))
         SSI_ROOTS.append(_SSI_ROOT)
+
+if not SSI_FILES and not DEBUG:
+    raise ImproperlyConfigured("no static files found, wrong filesystem rights ?")
 
 TEMPLATES = [
     {

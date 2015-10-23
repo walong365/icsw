@@ -132,14 +132,14 @@ angular.module(
     ]
 ).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-     "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
+     "$q", "$modal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
-     $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
+     $q, $modal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
      icswSimpleAjaxCall, icswToolsSimpleModalService
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
-        access_level_service.install($scope)
+        icswAcessLevelService.install($scope)
         # copy flags
         $scope.show_copy_button = false
         # accordion flags
@@ -893,9 +893,9 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.network.total")
     }
-]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswSimpleAjaxCall) ->
-        access_level_service.install($scope)
+]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "msgbus", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, msgbus, ICSW_URLS, icswSimpleAjaxCall) ->
+        icswAcessLevelService.install($scope)
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.devices = args[1] 
         )
@@ -941,9 +941,9 @@ angular.module(
                     modal.getModal().find(".modal-body").css("max-height", height)
 
         $scope.reload()
-]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "icswLivestatusFilterFactory",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, icswLivestatusFilterFactory) ->
-        access_level_service.install($scope)
+]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "icswLivestatusFilterFactory",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, icswLivestatusFilterFactory) ->
+        icswAcessLevelService.install($scope)
         $scope.graph_sel = "sel"
         $scope.show_livestatus = false
         $scope.devices = []

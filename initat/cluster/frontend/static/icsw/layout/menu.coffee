@@ -23,13 +23,12 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "access_level_service", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
-    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, access_level_service, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
+    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
         $scope.is_authenticated = false
         # init background jobs
         $scope.NUM_BACKGROUND_JOBS = 0
         # init service types
-        $scope.SERVICE_TYPES = {}
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
         $scope.quicksel = false
@@ -37,18 +36,12 @@ menu_module = angular.module(
         $scope.HANDBOOK_PDF_PRESENT = false
         $scope.HANDBOOK_CHUNKS_PRESENT = false
         $scope.HANDBOOK_PAGE = "---"
-        access_level_service.install($scope)
+        icswAcessLevelService.install($scope)
         $scope.progress_iters = 0
         $scope.cur_gauges = {}
         $scope.num_gauges = 0
         $q.all(
             [
-                icswSimpleAjaxCall(
-                    {
-                        "url": ICSW_URLS.MAIN_ROUTING_INFO
-                        "dataType": "json"
-                    }
-                ),
                 icswSimpleAjaxCall(
                     {
                         "url": ICSW_URLS.MAIN_GET_DOCU_INFO,
@@ -59,20 +52,11 @@ menu_module = angular.module(
             ]
         ).then(
             (data) ->
-                $scope.SERVICE_TYPES = data[0].service_types
-                $scope.HANDBOOK_PDF_PRESENT = data[1].HANDBOOK_PDF_PRESENT
-                $scope.HANDBOOK_CHUNKS_PRESENT = data[1].HANDBOOK_CHUNKS_PRESENT
-                $scope.is_authenticated = data[2].authenticated
-                $scope.CURRENT_USER = data[2]
+                $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
+                $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
+                $scope.is_authenticated = data[1].authenticated
+                $scope.CURRENT_USER = data[1]
         )
-        # testing
-        # $timeout(
-        #    () ->
-        #        icswUserService.load().then((data) ->
-        #            console.log "*", data
-        #        )
-        #    2000
-        # )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
         $scope.update_progress_bar = () ->
@@ -189,13 +173,10 @@ menu_module = angular.module(
                 $timeout(reload, 30000)
             reload()
     }
-]).factory(
-    "icswReactMenuFactory",
-    ["access_level_service", "ICSW_URLS", "icswSimpleAjaxCall", (access_level_service, ICSW_URLS, icswSimpleAjaxCall) ->
-        # console.log access_level_service
+]).factory("icswReactMenuFactory",
+    ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall) ->
+        # console.log icswAcessLevelService
         {input, ul, li, a, span} = React.DOM
-        _counter = 0
-        _key_counter = 0
         rebuild_config = (cache_mode) ->
             icswSimpleAjaxCall(
                 {
@@ -283,7 +264,6 @@ menu_module = angular.module(
             displayName: "menuheader"
             getDefaultProps: () ->
             render: () ->
-                _key_counter++
                 _items = []
                 _idx = 0
                 for entry in @props.entries
@@ -293,9 +273,9 @@ menu_module = angular.module(
                         if not entry.disable?
                             _add = true
                             if entry.rights?
-                                _add = access_level_service.has_all_menu_permissions(entry.rights)
+                                _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
                             if entry.licenses? and _add
-                                _add = access_level_service.has_all_valid_licenses(entry.licenses)
+                                _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
                             if _add
                                 if angular.isFunction(entry.name)
                                     _items.push(
@@ -335,14 +315,13 @@ menu_module = angular.module(
             propTypes:
                 React.PropTypes.object.isRequired
             render: () ->
-                _counter++
+                # todo: check for service_type
                 user = @props
-                # console.log access_level_service.has_menu_permission("user.modify_tree")
+                # console.log icswAcessLevelService.has_menu_permission("user.modify_tree")
                 # console.log @props
                 _res = ul(
                     {key: "topmenu", className: "nav navbar-nav"}
                     [
-                        # "test #{_counter}"
                         React.createElement(
                             menu_header
                             {
@@ -648,7 +627,7 @@ menu_module = angular.module(
         )
         return menu_comp
     ]
-).directive("icswMenuDirective", ["icswReactMenuFactory", "access_level_service", (icswReactMenuFactory, access_level_service) ->
+).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", (icswReactMenuFactory, icswAcessLevelService) ->
     return {
         restrict: "EA"
         replace: true
@@ -668,7 +647,7 @@ menu_module = angular.module(
             )
             scope.$watch(
                 () ->
-                    return access_level_service.acl_valid()
+                    return icswAcessLevelService.acl_valid()
                 (new_val) ->
                     _render()
             )

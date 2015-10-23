@@ -79,9 +79,9 @@ angular.module(
         icswConfigCategoryLocationHelperService.set_active_tab(name)
 ]).controller("icswConfigCategoryLocationCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$timeout", "icswCSRFService",
-    "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
+    "$q", "$modal", "icswAcessLevelService", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService", "msgbus",
-   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $timeout, icswCSRFService, $q, $modal, access_level_service,
+   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $timeout, icswCSRFService, $q, $modal, icswAcessLevelService,
     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, msgbus) ->
         $scope.entries = []

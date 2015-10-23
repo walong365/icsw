@@ -56,13 +56,13 @@ angular.module(
     }
 ]).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
     return {
-        restrict: 'EA',
-        require: '^stTable',
+        restrict: 'EA'
+        require: '^stTable'
         scope: {
-            stItemsByPage: '=?',
+            stItemsByPage: '=?'
             stDisplayedPages: '=?'
             noNumberOfElements: '=?'
-        },
+        }
         template: $templateCache.get("icsw.tools.paginator")
         link: (scope, element, attrs, ctrl) ->
 
@@ -106,7 +106,7 @@ angular.module(
                 redraw, true)
 
             # scope --> table state  (--> view)
-            scope.$watch('stItemsByPage', () ->
+            scope.$watch('stItemsByPage', (new_val) ->
                 scope.selectPage(1)
             )
 

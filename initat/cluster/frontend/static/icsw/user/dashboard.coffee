@@ -147,8 +147,8 @@ dashboard_module = angular.module(
                 blob = new Blob(content, {type: "text/plain;charset=utf-8"});
                 # use FileSaver.js
                 saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
-]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS", "access_level_service", "icswSimpleAjaxCall",
-    ($scope, $timeout, $window, ICSW_URLS, access_level_service, icswSimpleAjaxCall) ->
+]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswAcessLevelService", "icswSimpleAjaxCall",
+    ($scope, $timeout, $window, ICSW_URLS, icswAcessLevelService, icswSimpleAjaxCall) ->
         $scope.ICSW_URLS = ICSW_URLS
         $scope.show_index = true
         $scope.quick_open = true
@@ -167,8 +167,8 @@ dashboard_module = angular.module(
             (json) ->
                 $scope.NUM_QUOTA_SERVERS = json.num_quota_servers
         )
-        $scope.has_menu_permission = access_level_service.has_menu_permission
-]).directive("indexView", ["$templateCache", "access_level_service", "icswUserLicenseDataService", ($templateCache, access_level_service, icswUserLicenseDataService) ->
+        $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
+]).directive("indexView", ["$templateCache", "icswAcessLevelService", "icswUserLicenseDataService", ($templateCache, icswAcessLevelService, icswUserLicenseDataService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.index")
@@ -214,7 +214,7 @@ dashboard_module = angular.module(
             ]
             scope.get_panel_class = (item) ->
                 return "panel-" + item.class
-            access_level_service.install(scope)
+            icswAcessLevelService.install(scope)
             scope.lds = icswUserLicenseDataService
     }
 ]).directive("icswDashboardElement", ["$templateCache", "$compile", ($templateCache, $compile) ->

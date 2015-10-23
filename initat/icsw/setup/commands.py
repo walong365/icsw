@@ -564,7 +564,7 @@ def check_db_rights():
         c_stat = os.stat(DB_CS_FILENAME)
         if c_stat[stat.ST_UID] == 0 & c_stat[stat.ST_GID]:
             if not c_stat.st_mode & stat.S_IROTH:
-                print "setting R_OTHER flag on {} (because owned by root.root)".format(DB_CS_FILENAME)
+                print("setting R_OTHER flag on {} (because owned by root.root)".format(DB_CS_FILENAME))
                 os.chmod(DB_CS_FILENAME, c_stat.st_mode | stat.S_IROTH)
 
 

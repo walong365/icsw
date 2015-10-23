@@ -22,14 +22,14 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
     ]
-).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "msgbus", "access_level_service", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, msgbus, access_level_service, ICSW_URLS) ->
-        access_level_service.install($scope)
+).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "msgbus", "icswAcessLevelService", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, msgbus, icswAcessLevelService, ICSW_URLS) ->
+        icswAcessLevelService.install($scope)
 ]).service(
     "DeviceOverviewService",
     [
-        "Restangular", "$rootScope", "$templateCache", "$compile", "$modal", "$q", "access_level_service", "msgbus",
-        (Restangular, $rootScope, $templateCache, $compile, $modal, $q, access_level_service, msgbus) ->
+        "Restangular", "$rootScope", "$templateCache", "$compile", "$modal", "$q", "icswAcessLevelService", "msgbus",
+        (Restangular, $rootScope, $templateCache, $compile, $modal, $q, icswAcessLevelService, msgbus) ->
             return {
                 "NewSingleSelection" : (dev) ->
                     if dev.is_meta_device
@@ -41,7 +41,7 @@ angular.module(
                     # create new modal for device
                     # device object with access_levels
                     sub_scope = $rootScope.$new()
-                    access_level_service.install(sub_scope)
+                    icswAcessLevelService.install(sub_scope)
 
                     sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
                     sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist if !dev.is_meta_device)
@@ -143,9 +143,9 @@ angular.module(
                     else if name in ["config", "graphing"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
-]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, toaster) ->
-        access_level_service.install($scope)
+]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, toaster) ->
+        icswAcessLevelService.install($scope)
         $scope.show_uuid = false
         $scope.image_url = ""
         $scope.get_image_src = () ->
