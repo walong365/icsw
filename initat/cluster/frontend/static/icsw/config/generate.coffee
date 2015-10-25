@@ -68,8 +68,8 @@ config_gen_module = angular.module(
                     else
                         @dev_conf.active_content = []
             @scope.$digest()
-]).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswSimpleAjaxCall) ->
+]).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswSimpleAjaxCall) ->
         $scope.devsel_list = []
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->

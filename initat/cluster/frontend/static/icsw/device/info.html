@@ -40,6 +40,13 @@
                 </icsw-device-status-history-overview>
             </div>
         </tab>
+        <tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('device_variable')" active="device_variable_active">
+            <tab-heading>
+                Device Variable{{ addon_text }}
+            </tab-heading>
+            <icsw-device-variable-overview icsw-sel-man="{{ popupmode }}" devicepklist="pk_list['device_variable']">
+            </icsw-device-variable-overview>
+        </tab>
         <!-- also check for md-config-server in service list -->
         <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length && has_valid_license('monitoring_dashboard')"
              select="activate('livestatus')" active="livestatus_active">

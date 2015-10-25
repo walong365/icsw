@@ -141,11 +141,11 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.rrd.graphsetting",
     ]
-).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
+).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",
         "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswSimpleAjaxCall", "icswParseXMLResponseService",
         "toaster", "icswCachingCall", "icswUserService", "icswSavedSelectionService", "icswRrdGraphSettingService",
     (
-        $scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
+        $scope, $compile, $filter, $templateCache, Restangular,
         $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswSimpleAjaxCall, icswParseXMLResponseService,
         toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
     ) ->

@@ -61,8 +61,8 @@ angular.module(
         handle_click: (entry, event) =>
             @scope.selected_category = entry.obj
             @scope.$digest()
-]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall", "msgbus"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall, msgbus) ->
+]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall", "msgbus"
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, icswAcessLevelService, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall, msgbus) ->
         icswAcessLevelService.install($scope)
         $scope.device_pks = []
         $scope.device_list_ready = false

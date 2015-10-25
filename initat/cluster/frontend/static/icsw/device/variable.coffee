@@ -402,7 +402,7 @@ device_variable_module = angular.module(
                 icswDeviceVariableListService.set_hide_empty(new_val)
         )
         $scope.new_devsel = (dev_pks, group_pks) ->
-            icswDeviceVariableListService.set_pks(dev_pks)
+           icswDeviceVariableListService.set_pks(dev_pks)
             $scope.entries = dev_pks
             icswDeviceVariableRestService.load("ctrl", dev_pks).then((vstruct) ->
                 $scope.entries = vstruct.entries
@@ -454,10 +454,6 @@ device_variable_module = angular.module(
         $scope.modify = () ->
             # hack, redirect to
             $scope.cv_mixin.modify()
-        $scope.$on("icsw.dv.changed", (args) ->
-            # trigger redisplay of vars
-            $scope.new_filter_set($scope.var_filter, false)
-        )
 ]).directive("icswDeviceVariableOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict: "EA"

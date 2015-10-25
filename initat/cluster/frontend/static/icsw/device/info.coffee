@@ -44,7 +44,7 @@ angular.module(
                     icswAcessLevelService.install(sub_scope)
 
                     sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
-                    sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist if !dev.is_meta_device)
+                    sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist when !dev.is_meta_device)
                     if !sub_scope.dev_pk_nmd_list?
                         sub_scope.dev_pk_nmd_list = []
                     sub_scope.devicepklist = sub_scope.dev_pk_list
@@ -97,6 +97,7 @@ angular.module(
                     "status_history": []
                     "livestatus": []
                     "graphing": []
+                    "device_variable": []
                 }
                 for key of scope.pk_list
                     scope["#{key}_active"] = false
@@ -140,11 +141,11 @@ angular.module(
                     DeviceOverviewSettings.set_mode(name)
                     if name in ["network", "status_history", "livestatus", "category"]
                         scope.pk_list[name] = scope.dev_pk_nmd_list
-                    else if name in ["config", "graphing"]
+                    else if name in ["config", "graphing", "device_variable"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
-]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, toaster) ->
+]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$modal", "icswAcessLevelService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $modal, icswAcessLevelService, toaster) ->
         icswAcessLevelService.install($scope)
         $scope.show_uuid = false
         $scope.image_url = ""

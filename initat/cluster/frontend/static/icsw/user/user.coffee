@@ -124,8 +124,8 @@ user_module = angular.module(
             if _dir.num_files_total
                 _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
             return "#{_dir.name} (" + _info.join(", ") + ")"
-]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "icswAcessLevelService", "icswUserTree",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, icswAcessLevelService, icswUserTree) ->
+]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "icswAcessLevelService", "icswUserTree",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, icswAcessLevelService, icswUserTree) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -486,8 +486,8 @@ user_module = angular.module(
                 # console.log "blob", blob
                 vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
             )
-]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswUserService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswUserService) ->
+]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswUserService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswUserService) ->
         $scope.virtual_desktop_user_setting = []
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
