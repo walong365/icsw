@@ -102,8 +102,10 @@ angular.module(
 
             # table state --> view
             scope.$watch(
-                () -> return ctrl.tableState().pagination,
-                redraw, true)
+                () -> return ctrl.tableState().pagination
+                redraw
+                true
+            )
 
             # scope --> table state  (--> view)
             scope.$watch('stItemsByPage', (new_val) ->
@@ -184,16 +186,18 @@ angular.module(
                     if not scope[_list_name]?
                         # init list if not defined
                         scope[_list_name] = []
-                    scope.config_service.load_promise.then(
-                        (new_data) ->
-                            # start watch to check for length changes
-                            scope.$watch(
-                                () -> new_data.length
-                                (new_d) ->
-                                    if new_d
-                                        scope.data_received(new_data)
-                            )
-                    )
+                    scope.reload = () ->
+                        scope.config_service.load_promise().then(
+                            (new_data) ->
+                                # start watch to check for length changes
+                                scope.$watch(
+                                    () -> new_data.length
+                                    (new_d) ->
+                                        if new_d
+                                            scope.data_received(new_data)
+                                )
+                        )
+                    scope.reload()
 
                 if scope.rest?
                     # NOTE: watching on restangular does not work. if $object gets filled up, there is NO call.
@@ -213,9 +217,9 @@ angular.module(
                 scope.edit = (event, obj) ->
                     scope.pre_edit_obj = angular.copy(obj)
                     scope.create_or_edit(event, false, obj)
-                scope.create = (event) ->
+                scope.create = (event, parent_obj) ->
                     if typeof(scope.config_service.new_object) == "function"
-                        scope.new_obj = scope.config_service.new_object()
+                        scope.new_obj = scope.config_service.new_object(parent_obj)
                     else
                         scope.new_obj = scope.config_service.new_object
                     scope.create_or_edit(event, true, scope.new_obj)
@@ -225,10 +229,12 @@ angular.module(
                     if scope.fn and scope.fn.create_or_edit
                         scope.fn.create_or_edit(scope, scope.create_mode, obj)
                     if scope.config_service.use_modal
-                        if typeof(scope.config_service.edit_template) == "function"
-                            _templ = scope.config_service.edit_template(obj)
+                        if scope.create_mode and scope.config_service.create_template?
+                            _templ = scope.config_service.create_template
                         else
                             _templ = scope.config_service.edit_template
+                        if typeof(_templ) == "function"
+                            _templ = _templ(obj)
                         scope.edit_div = $compile($templateCache.get(_templ))(scope)
                         # default value for modal title
                         _title = scope.config_service.modal_title ? 'ICSW Modal'
@@ -261,10 +267,14 @@ angular.module(
                                         scope.config_service.object_created(scope.new_obj, new_data, scope)
                                 )
                             if scope.config_service.save_defer?
-                                scope.config_service.save_defer(scope.new_obj).then((new_data) ->
-                                    scope.close_modal()
-                                    if scope.config_service.object_created
-                                        scope.config_service.object_created(scope.new_obj, new_data, scope)
+                                scope.config_service.save_defer(scope.new_obj).then(
+                                    (new_data) ->
+                                        scope.close_modal()
+                                        if scope.config_service.object_created
+                                            scope.config_service.object_created(scope.new_obj, new_data, scope)
+                                    (error) ->
+                                        if error
+                                            toaster.pop("error", "", error)
                                 )
                         else
                             scope.edit_obj.put().then(

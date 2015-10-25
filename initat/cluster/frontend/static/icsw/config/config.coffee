@@ -334,7 +334,8 @@ config_module = angular.module(
     )
     return {
         edit_template: "config.catalog.form"
-        load_promise: _config.promise
+        load_promise: () ->
+            return _config.promise
         delete_confirm_str: (obj) ->
             return "Really delete config catalog '#{obj.name}' ?"
         new_object: () ->
@@ -418,7 +419,8 @@ config_module = angular.module(
             # we don't know if categories have changed, notify to be sure
             msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
         edit_template: "config.form"
-        load_promise: _config.promise
+        load_promise: () ->
+            return _config.promise
         save_defer: (new_obj) ->
             _cd = $q.defer()
             icswConfigRestService.create_config(new_obj).then(

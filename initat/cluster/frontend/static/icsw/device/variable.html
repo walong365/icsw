@@ -6,14 +6,24 @@
         <th>Comment</th>
         <th colspan="1">Action</th>
     </tr>
+    <tr>
+        <td colspan="99">
+            <div
+                icsw-tools-pagination
+                st-displayed-pages="11"
+                st-items-by-page="15"
+                possible-items-by-page="15,30,100,200"
+            ></div>
+        </td>
+    </tr>
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.row">
     <td>
         <button class="btn btn-primary btn-xs" ng-disabled="!num_vars(obj)" ng-click="expand_vt(obj)">
-            <span ng_class="get_expand_class(obj)">
-            </span> {{ obj.device_variable_set.length }}
-            <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown</span>
+            <span ng_class="get_expand_class(obj)"></span>
+            {{ obj.device_variable_set.length }}
+            <span ng-if="obj.filter_active"> / {{ obj.num_filtered }} shown</span>
             <span ng-if="parent_vars_defined(obj)">&nbsp;({{ num_parent_vars(obj) }} inherit)</span>
             <span ng-if="any_shadowed_vars(obj)">&nbsp;({{ num_shadowed_vars(obj) }} shadow)</span>
         </button>
@@ -21,7 +31,7 @@
     <td>{{ get_name(obj) }}</td>
     <td>{{ obj.device_group_name }}</td>
     <td>{{ obj.comment }}</td>
-    <td><icsw-tools-button value="create" type="create" ng-click="create(obj, $event)" size="xs"/></td>
+    <td><icsw-tools-button value="create" type="create" ng-click="create($event, obj)" size="xs"/></td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.table">
@@ -38,28 +48,28 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="obj in device.device_variable_set | filter_name:filtervalue | orderBy:'name'">
+            <tr ng-repeat="obj in device.device_variable_set | filter_dv_name | orderBy:'name'">
                 <td>{{ obj.name }}</td>
                 <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
                 <td>{{ get_value(obj) }}</td>
                 <td>{{ obj.is_public|yesno1 }}</td>
                 <td>{{ obj.inherit | yesno2 }}</td>
                 <td>direct</td>
-                <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public" ng-click="edit_mixin.edit(obj, $event)" value="modify"/></td>
-                <td><input type="button" class="btn btn-danger btn-xs" ng-show="!obj.protected" ng-click="edit_mixin.delete_obj(obj)" value="delete"/></td>
+                <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public" ng-click="edit($event, obj)" value="modify"/></td>
+                <td><input type="button" class="btn btn-danger btn-xs" ng-show="!obj.protected" ng-click="delete(obj, $event)" value="delete"/></td>
             </tr>
-            <tr ng-repeat="obj in get_parent_vars(device, 'g') | filter_name:filtervalue | orderBy:'name'">
+            <tr ng-repeat="obj in get_parent_vars(device, 'g') | filter_dv_name | orderBy:'name'">
                 <td>{{ obj.name }}</td>
                 <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
                 <td>{{ get_value(obj) }}</td>
-                <td>{{ obj.is_public|yesno1 }}</td>
+                <td>{{ obj.is_public | yesno1 }}</td>
                 <td>{{ obj.inherit | yesno2 }}</td>
                 <td>group</td>
                 <td colspan="2">
                     <input ng-show="obj.local_copy_ok" type="button" class="btn btn-xs btn-warning" value="local copy" ng-click="local_copy(obj, 'g')"/>
                 </td>
             </tr>
-            <tr ng-repeat="obj in get_parent_vars(device, 'c') | filter_name:filtervalue | orderBy:'name'">
+            <tr ng-repeat="obj in get_parent_vars(device, 'c') | filter_dv_name | orderBy:'name'">
                 <td>{{ obj.name }}</td>
                 <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
                 <td>{{ get_value(obj) }}</td>
@@ -77,37 +87,218 @@
 <script type="text/ng-template" id="icsw.device.variable.overview">
     <h2>
         Device variables ({{ entries.length }} devices),
-        <icsw-tools-button type="create" value="create new" title="create a new variable for all shown devices" ng-click="create_for_all($event)" size="sm"></icsw-tools-button>
+        <icsw-tools-button type="create" value="create for all" title="create a new variable for all shown devices" ng-click="create_for_all($event)" size="sm"></icsw-tools-button>
     </h2>
-
     <icsw-tools-ensure-device-selection dev-list="entries" list-ready="dataLoaded">
         <div class="row">
             <div class="col-sm-5 form-inline">
                 <div class="form-group">
-                    <input class="form-control" ng-model="var_filter" placeholder="filter"/>
-                </div>,
+                    <input class="form-control" ng-model="vars.name_filter" ng-change="new_filter_set()" placeholder="filter"/>
+                </div>
                 <div class="form-group">
                     <input
                         type="button"
-                        ng-class="get_hide_class()"
-                        ng-click="pagSettings.conf.filter_settings.hide_empty = !pagSettings.conf.filter_settings.hide_empty"
+                        ng-class="vars.hide_empty && 'btn btn-sm btn-warning' || 'btn btn-sm btn-default'"
+                        ng-click="vars.hide_empty = !vars.hide_empty"
                         value="hide empty"
                     />
                 </div>
             </div>
         </div>
 
-        <table class="table table-condensed table-hover" style="width:auto;">
-            <thead icsw-device-variable-head></thead>
-            <tbody>
-                <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-                <tr icsw-device-variable-row ng-repeat-start="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
-                <tr ng-repeat-end ng-if="obj.expanded">
-                    <td colspan="9">
-                        <icsw-device-variable-table device="obj" filtervalue="var_filter"></icsw-device-variable-table>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <icsw-tools-rest-table target-list="var_devices" config-service="icswDeviceVariableListService">
+            <table st-table="var_devices_displayed" st-safe-src="var_devices" class="table table-condensed table-hover" style="width:auto;">
+                <thead icsw-device-variable-head></thead>
+                <tbody>
+                    <tr icsw-device-variable-row ng-repeat-start="obj in var_devices_displayed" ng-class="get_tr_class(obj)">
+                    </tr>
+                    <tr ng-repeat-end ng-if="obj.expanded">
+                        <td colspan="9">
+                            <icsw-device-variable-table device="obj"></icsw-device-variable-table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </icsw-tools-rest-table>
     </icsw-tools-ensure-device-selection>
+</script>
+
+<script type="text/ng-template" id="device.variable.new.form">
+    <form id="form" class="form-horizontal" ng-submit="modify(this)" name="form">
+        <h2>New device variable '{{ edit_obj.name }}'</h2>
+        <fieldset ng-show="edit_obj.device && mon_vars.length">
+            <legend>Monitoring variables</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">Copy</label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="edit_obj._mon_copy" ng-change="take_mon_var()">
+                        <ui-select-match placeholder="select a monitoring variable">{{$select.selected.info}}
+                        </ui-select-match>
+                        <ui-select-choices repeat="entry.idx as entry in mon_vars | props_filter:{info:$select.search}">
+                            <div ng-bind-html="entry.info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group  ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control" name="name" maxlength="765" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Type<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="edit_obj.var_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match placeholder="Variable type">{{$select.selected.long}}</ui-select-match>
+                        <ui-select-choices repeat="value.short as value in valid_var_types| props_filter:{long:$select.search}">
+                            <div ng-bind-html="value.long | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 's'">
+                <label class="control-label col-sm-3">
+                    Value (string)
+                </label>
+                <div class="controls col-sm-8">
+                    <textarea class="textarea form-control" cols="40" ng-model="edit_obj.val_str" rows="10">
+                    </textarea>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 'i'">
+                <label class="control-label col-sm-3">
+                    Value (integer)
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="numberinput form-control" ng-model="edit_obj.val_int" type="number" value="0"/>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 'd'">
+                <label class="control-label col-sm-3">
+                    Value (date)
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="datetimeinput form-control" ng-model="edit_obj.val_date" type="text"/>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 't'">
+                <label class="control-label col-sm-3">
+                    Value (time)
+                </label>
+                <div class="controls col-sm-8">
+                    <textarea class="textarea form-control" cols="40" ng-model="edit_obj.val_time" rows="10">
+                    </textarea>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 'b'">
+                <label class="control-label col-sm-3">
+                    Value (blob)
+                </label>
+                <div class="controls col-sm-8">
+                    <textarea class="textarea form-control" cols="40" ng-model="edit_obj.val_blob" rows="10">
+                    </textarea>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="form-group">
+                <div class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-8">
+                        <label>
+                            <input checked="checked" class="checkboxinput checkbox" id="id_inherit" name="inherit" ng-model="edit_obj.inherit" type="checkbox"/>
+                            Inherit
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" ng-value="action_string"/>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="device.variable.form">
+    <form id="form" class="form-horizontal" ng-submit="modify(this)" name="form">
+        <h2>Device variable '{{ edit_obj.name }}'</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name
+                    <span class="asteriskField">*</span></label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="765" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 's'">
+                <label class="control-label col-sm-3">
+                    Value (string)
+                </label>
+                <div class="controls col-sm-8">
+                    <textarea class="textarea form-control" cols="40" ng-model="edit_obj.val_str" rows="10">
+                    </textarea>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 'i'">
+                <label class="control-label col-sm-3">
+                    Value (integer)
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="numberinput form-control" ng-model="edit_obj.val_int" type="number" value="0"/>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 'd'">
+                <label class="control-label col-sm-3">
+                    Value (date)
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="datetimeinput form-control" ng-model="edit_obj.val_date" type="text"/>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 't'">
+                <label class="control-label col-sm-3">
+                    Value (time)
+                </label>
+                <div class="controls col-sm-8">
+                    <textarea class="textarea form-control" cols="40" ng-model="edit_obj.val_time" rows="10">
+                    </textarea>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.var_type == 'b'">
+                <label class="control-label col-sm-3">
+                    Value (blob)
+                </label>
+                <div class="controls col-sm-8">
+                    <textarea class="textarea form-control" cols="40" ng-model="edit_obj.val_blob" rows="10">
+                    </textarea>
+                </div>
+           </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="form-group">
+                <div class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-7">
+                        <label>
+                            <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.inherit" type="checkbox"/>
+                            Inherit
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
+        </div>
+    </form>
 </script>

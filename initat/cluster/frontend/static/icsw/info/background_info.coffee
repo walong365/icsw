@@ -46,7 +46,8 @@ background_job_info_module = angular.module(
         lines.resolve(data)
     )
     return {
-        "load_promise": lines.promise
+        "load_promise": () ->
+            return lines.promise
     }
 
 ]).directive("icswBackgroundJobInfoTable", ["$templateCache", ($templateCache) ->

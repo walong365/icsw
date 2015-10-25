@@ -391,6 +391,7 @@ PIPELINE_JS = {
             "js/angular-gettext.min.js",
             "js/webfrontend_translation.js",
             "js/angular-gridster.min.js",
+            "js/angular-promise-extras.js",
         ),
         "output_filename": "pipeline/js/base.js"
     },
