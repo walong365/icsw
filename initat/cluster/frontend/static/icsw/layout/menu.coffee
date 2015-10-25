@@ -569,7 +569,7 @@ menu_module = angular.module(
                             {
                                 key: "rms"
                                 name: "RMS"
-                                icon: "fa-cubes"
+                                icon: "fa-list-ol"
                                 entries: [
                                     {
                                         name: "RMS overview"
