@@ -402,7 +402,7 @@ device_variable_module = angular.module(
                 icswDeviceVariableListService.set_hide_empty(new_val)
         )
         $scope.new_devsel = (dev_pks, group_pks) ->
-           icswDeviceVariableListService.set_pks(dev_pks)
+            icswDeviceVariableListService.set_pks(dev_pks)
             $scope.entries = dev_pks
             icswDeviceVariableRestService.load("ctrl", dev_pks).then((vstruct) ->
                 $scope.entries = vstruct.entries
