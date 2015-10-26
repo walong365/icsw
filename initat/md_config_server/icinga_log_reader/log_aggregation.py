@@ -208,7 +208,7 @@ class icinga_log_aggregator(object):
             # this is not really a valid state, but take the next dump to have something reasonable
             try:
                 latest_obj = mon_icinga_log_full_system_dump.objects.filter(date__gte=(start_time)).earliest('date')
-            except mon_icinga_log_full_system_dump.DoesNotExist
+            except mon_icinga_log_full_system_dump.DoesNotExist:
                 pass
             else:
                 dump_times.append(
