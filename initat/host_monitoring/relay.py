@@ -22,7 +22,7 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-from lxml import etree  # @UnresolvedImport
+from lxml import etree
 import StringIO
 import base64
 import bz2
@@ -34,18 +34,18 @@ import socket
 import sys
 import time
 
+from lxml.builder import E
+import zmq
+
 from initat.host_monitoring import limits, hm_classes
 from initat.client_version import VERSION_STRING
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import configfile, logging_tools, process_tools, \
-    server_command, threading_tools, uuid_tools
-import zmq
+    server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
 from initat.host_monitoring.modules.network_mod import ping_command
 from initat.host_monitoring.hm_mixins import HMHRMixin
-
 from .config import global_config
-from .constants import MASTER_FILE_NAME, ICINGA_TOP_DIR
+from .constants import ICINGA_TOP_DIR, RELAY_SETTINGS_CS_NAME
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
@@ -189,15 +189,25 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.master_ip = None
         self.master_port = None
         self.master_uuid = None
-        if os.path.isfile(MASTER_FILE_NAME):
+        _master_found = False
+        if config_store.ConfigStore.exists(RELAY_SETTINGS_CS_NAME):
+            new_store = config_store.ConfigStore(RELAY_SETTINGS_CS_NAME, log_com=self.log)
             try:
-                master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())  # @UndefinedVariable
+                self._register_master(
+                    new_store["master_ip"],
+                    new_store["master_uuid"],
+                    new_store["master_port"]
+                )
             except:
-                self.log("error interpreting master_file '{}': {}".format(MASTER_FILE_NAME, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                pass
             else:
-                self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
-        else:
-            self.log("no master_file found", logging_tools.LOG_LEVEL_WARN)
+                _master_found = True
+            # self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
+        if not _master_found:
+            self.log(
+                "no master settings found or CS not defined ({})".format(RELAY_SETTINGS_CS_NAME),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def _handle_relayer_info_result(self, srv_com):
         sync_id = int(srv_com["*sync_id"])
@@ -244,14 +254,15 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.master_port = master_port
         _ets = etree.tostring  # @UndefinedVariable
         if write:
-            file(MASTER_FILE_NAME, "w").write(_ets(
-                E.master_data(
-                    ip=self.master_ip,
-                    uuid=self.master_uuid,
-                    port="{:d}".format(self.master_port)
-                ),
-                pretty_print=True
-            ))
+            if config_store.ConfigStore.exists(RELAY_SETTINGS_CS_NAME):
+                _store = config_store.ConfigStore(RELAY_SETTINGS_CS_NAME, log_com=self.log)
+            else:
+                _store = config_store.ConfigStore(RELAY_SETTINGS_CS_NAME, log_com=self.log, read=False)
+            _store["master_ip"] = self.master_ip
+            _store["master_uuid"] = self.master_uuid
+            _store["master_port"] = self.master_port
+            self.log("creating config_store {}".format(RELAY_SETTINGS_CS_NAME))
+            _store.write()
         conn_str = u"tcp://{}:{:d}".format(self.master_ip, self.master_port)
         self.log(u"registered master at {} ({})".format(conn_str, self.master_uuid))
         ZMQDiscovery.set_mapping(conn_str, self.master_uuid)

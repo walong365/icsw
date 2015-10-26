@@ -28,8 +28,8 @@ TIME_FORMAT = "{:.3f}"
 
 _CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
 MAPPING_FILE_IDS = os.path.join(_CONFIG_DIR, "collrelay_0mq_mapping")
-MASTER_FILE_NAME = os.path.join(_CONFIG_DIR, "monitor_master")
 
 ICINGA_TOP_DIR = "/opt/icinga"
 ZMQ_ID_MAP_STORE = "icsw.hm.0mq-mapping"
 MACHVECTOR_CS_NAME = "icsw.hm.machvector"
+RELAY_SETTINGS_CS_NAME = "icsw.relay.settings"

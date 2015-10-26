@@ -23,16 +23,14 @@ import itertools
 from collections import defaultdict
 
 from django.conf import settings
-from initat.tools import logging_tools
 from django.db.models.query_utils import Q
 
+from initat.tools import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, raw_service_alert_manager, \
-    StatusHistoryUtils, AlertList, mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, StatusHistoryUtils, AlertList, mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.cluster.backbone.models.functions import cluster_timezone, duration
-
 
 __all__ = ["icinga_log_aggregator"]
 
@@ -208,9 +206,14 @@ class icinga_log_aggregator(object):
         if not dump_times:
             # this happens if there are log entries, but no proper icinga start message
             # this is not really a valid state, but take the next dump to have something reasonable
-            dump_times.append(
-                mon_icinga_log_full_system_dump.objects.filter(date__gte=(start_time)).earliest('date').date
-            )
+            try:
+                latest_obj = mon_icinga_log_full_system_dump.objects.filter(date__gte=(start_time)).earliest('date')
+            except mon_icinga_log_full_system_dump.DoesNotExist
+                pass
+            else:
+                dump_times.append(
+                    latest_obj.date
+                )
 
         def build_dump_times_filters(dump_times):
             cur = dump_times.pop()

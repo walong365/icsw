@@ -146,10 +146,12 @@ class alter_config_cb(View):
             dev_id, conf_id = (
                 int(_post["dev_pk"]),
                 int(_post["conf_pk"]),
-                )
+            )
         else:
-            dev_id, conf_id = (int(_post["id"].split("__")[1]),
-                               int(_post["id"].split("__")[3]))
+            dev_id, conf_id = (
+                int(_post["id"].split("__")[1]),
+                int(_post["id"].split("__")[3])
+            )
         cur_dev, cur_conf = (
             device.objects.get(Q(pk=dev_id)),
             getattr(config, "objects").get(Q(pk=conf_id))
@@ -270,13 +272,15 @@ class tree_struct(object):
             self.node = node
         if self.node is not None:
             self.wc_file = self.node.wc_files
-            self.childs = [tree_struct(
-                cur_dev,
-                node_list,
-                node=cur_node,
-                depth=self.depth + 1,
-                parent=self,
-            ) for cur_node in sorted(node_list) if cur_node.parent_id == self.node.pk]
+            self.childs = [
+                tree_struct(
+                    cur_dev,
+                    node_list,
+                    node=cur_node,
+                    depth=self.depth + 1,
+                    parent=self,
+                ) for cur_node in sorted(node_list) if cur_node.parent_id == self.node.pk
+            ]
         else:
             self.wc_file = None
             self.childs = []
@@ -285,20 +289,25 @@ class tree_struct(object):
         if self.node:
             return "{}{}".format(
                 self.wc_file.dest,
-                "/" if self.node.is_dir else "")
+                "/" if self.node.is_dir else ""
+            )
         else:
             return "empty"
 
     def __unicode__(self):
-        return "\n".join([
-            "{}{} ({:d}, {:d}), {}".format(
-                "  " * self.depth,
-                unicode(self.node),
-                self.depth,
-                len(self),
-                self.get_name())
-            ] +
-            [u"{}".format(unicode(sub_entry)) for sub_entry in self.childs])
+        return "\n".join(
+            [
+                "{}{} ({:d}, {:d}), {}".format(
+                    "  " * self.depth,
+                    unicode(self.node),
+                    self.depth,
+                    len(self),
+                    self.get_name()
+                )
+            ] + [
+                u"{}".format(unicode(sub_entry)) for sub_entry in self.childs
+            ]
+        )
 
     def get_dict(self):
         return {
@@ -396,7 +405,7 @@ class download_configs(View):
             "mon_check_command_set",
             "config_script_set",
             "categories",
-            )
+        )
         for cur_conf in conf_list:
             configs.append(config_dump_serializer(cur_conf).data)
         xml_tree = etree.fromstring(XMLRenderer().render(configs))  # @UndefinedVariable
@@ -567,10 +576,12 @@ class handle_cached_config(View):
                     _ent.object.save()
                     # pass
                 except:
-                    logger.error("error saving entry '{}': {}".format(
-                        unicode(_ent),
-                        process_tools.get_except_info()
-                        ))
+                    logger.error(
+                        "error saving entry '{}': {}".format(
+                            unicode(_ent),
+                            process_tools.get_except_info()
+                        )
+                    )
                 else:
                     taken = True
                     # add sub-sets
@@ -585,16 +596,23 @@ class handle_cached_config(View):
                                 try:
                                     _sub_ent.object.save()
                                 except:
-                                    request.xml_response.error("error saving subentry '{}': {}".format(
-                                        unicode(_sub_ent),
-                                        process_tools.get_except_info()
-                                        ), logger=logger)
+                                    request.xml_response.error(
+                                        "error saving subentry '{}': {}".format(
+                                            unicode(_sub_ent),
+                                            process_tools.get_except_info()
+                                        ),
+                                        logger=logger
+                                    )
                                 else:
                                     sub_added += 1
                             else:
-                                request.xml_response.error("cannot create {} object: {}".format(
-                                    key,
-                                    unicode(_sub_ent.errors)), logger=logger)
+                                request.xml_response.error(
+                                    "cannot create {} object: {}".format(
+                                        key,
+                                        unicode(_sub_ent.errors)
+                                    ),
+                                    logger=logger
+                                )
                     added += 1
                     _ent.object.name = conf["name"]
                     _ent.object.save()

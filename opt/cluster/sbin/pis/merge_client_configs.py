@@ -26,7 +26,7 @@
 import os
 import re
 
-from initat.tools import config_store, logging_tools
+from initat.tools import config_store, logging_tools, process_tools
 
 
 def log(what, log_level=logging_tools.LOG_LEVEL_OK):
