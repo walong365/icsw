@@ -414,7 +414,13 @@ class bg_job(object):
     def check_for_timeout(self):
         diff_time = int(abs(time.time() - self.last_start))
         if diff_time > self.max_runtime:
-            self.log("timeout ({:d} > {:d})".format(diff_time, self.max_runtime), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "timeout ({:d} > {:d})".format(
+                    diff_time,
+                    self.max_runtime
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
             return True
         else:
             return False
@@ -441,7 +447,9 @@ class bg_job(object):
                             self.result,
                             logging_tools.get_diff_time_str(self.__ec.end_time - self.__ec.start_time),
                             logging_tools.get_plural("byte", len(stdout)),
-                            ", stderr: {}".format(logging_tools.get_plural("byte", len(stderr))) if stderr else "",
+                            ", stderr: {}".format(
+                                logging_tools.get_plural("byte", len(stderr))
+                            ) if stderr else "",
                         )
                     )
                 if stdout and self.result == 0:
@@ -457,6 +465,7 @@ class bg_job(object):
                     else:
                         bg_job.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
                 if stderr:
+                    self.log("error output follows, cmdline was '{}'".format(self.comline))
                     for line_num, line in enumerate(stderr.strip().split("\n")):
                         self.log("  {:3d} {}".format(line_num + 1, line), logging_tools.LOG_LEVEL_ERROR)
         else:
