@@ -277,6 +277,8 @@ angular.module(
                                             toaster.pop("error", "", error)
                                 )
                         else
+                            if scope.config_service.pre_modify?
+                                scope.config_service.pre_modify(scope.edit_obj)
                             scope.edit_obj.put().then(
                                 (data) ->
                                     icswTools.handle_reset(data, scope.rest, scope.edit_obj.idx)

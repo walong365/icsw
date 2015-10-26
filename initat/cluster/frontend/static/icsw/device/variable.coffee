@@ -233,6 +233,8 @@ device_variable_module = angular.module(
             return "Really delete variable #{dvar.name} ?"
         delete: (scope, dvar) ->
             icswDeviceVariableRestService.delete_variable(dvar)
+        pre_modify: (dvar) ->
+            Restangular.restangularizeElement(null, dvar, ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
         new_object: (device) ->
             _scope.mon_vars = []
             nv_idx = 0
