@@ -31,7 +31,7 @@ VERS_DIR = os.path.join(SHARE_DIR, "source-versions")
 SOURCES_DIR = os.path.join(SHARE_DIR, "sources")
 INGEST_DIR = os.path.join(SOURCES_DIR, "ingest")
 
-SYSTEM_LIST = ["hpl", "libgoto", "mpich", "openmpi", "sge"]
+SYSTEM_LIST = ["hpl", "libgoto", "mpich", "openmpi", "sge", "scalapack"]
 
 
 def main():
