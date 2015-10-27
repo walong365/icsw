@@ -29,7 +29,8 @@ from initat.tools import logging_tools
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, StatusHistoryUtils, AlertList, mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, StatusHistoryUtils, AlertList, mon_icinga_log_raw_host_downtime_data, \
+    mon_icinga_log_raw_service_downtime_data
 from initat.cluster.backbone.models.functions import cluster_timezone, duration
 
 __all__ = ["icinga_log_aggregator"]
@@ -72,11 +73,17 @@ class icinga_log_aggregator(object):
 
                     do_loop = True
                     try:
-                        last_entry = mon_icinga_log_aggregated_timespan.objects\
-                            .filter(duration_type=duration_type.ID).latest("start_date")
+                        last_entry = mon_icinga_log_aggregated_timespan.objects.filter(
+                            duration_type=duration_type.ID
+                        ).latest("start_date")
                         next_start_time = last_entry.end_date
-                        self.log("last icinga aggregated entry for {} from {} to {}"
-                                 .format(duration_type.__name__, last_entry.start_date, last_entry.end_date))
+                        self.log(
+                            "last icinga aggregated entry for {} from {} to {}".format(
+                                duration_type.__name__,
+                                last_entry.start_date,
+                                last_entry.end_date
+                            )
+                        )
                     except mon_icinga_log_aggregated_timespan.DoesNotExist:
                         try:
                             earliest_date1 = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date

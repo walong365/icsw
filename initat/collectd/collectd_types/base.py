@@ -21,7 +21,6 @@
 """ base definitions for collectd types """
 
 from lxml.builder import E  # @UnresolvedImports
-from initat.tools import server_command
 
 
 class perfdata_value(object):

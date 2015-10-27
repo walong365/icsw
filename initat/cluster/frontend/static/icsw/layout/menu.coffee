@@ -89,15 +89,17 @@ menu_module = angular.module(
                         $timeout($scope.update_progress_bar, 1000)
             )
         $scope.redirect_to_init = () ->
-            window.location = "http://www.init.at"
-            return false
-        $scope.redirect_to_handbook = () ->
-            window.location = "/cluster/doc/#{initProduct.name.toLowerCase()}_handbook.pdf"
+            window.location = "http://www.initat.org"
             return false
         $scope.handbook_url = "/"
-        $scope.$watch("initProduct", (new_val) ->
-            if new_val.name?
-                $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
+        $scope.handbook_url_valid = false
+        $scope.$watch(
+            "initProduct",
+            (new_val) ->
+                if new_val.name?
+                    $scope.handbook_url_valid = true
+                    $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
+            true
         )
         $scope.$watch("navbar_size", (new_val) ->
             if new_val

@@ -20,9 +20,11 @@
 #
 """ linux basic checks """
 
-from .base import PerfdataObject, perfdata_value
 import re
+
 from lxml.builder import E
+
+from .base import PerfdataObject, perfdata_value
 
 
 class LinuxLoadPerfdata(PerfdataObject):

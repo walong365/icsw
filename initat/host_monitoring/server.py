@@ -421,7 +421,9 @@ class server_code(ICSWBasePool, HMHRMixin):
                 _bind["virtual"],
             )
         ipv4_dict = {
-            cur_if_name: [ip_tuple["addr"] for ip_tuple in value[2]][0] for cur_if_name, value in [
+            cur_if_name: [
+                ip_tuple["addr"] for ip_tuple in value[2]
+            ][0] for cur_if_name, value in [
                 (if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()
             ] if 2 in value
         }

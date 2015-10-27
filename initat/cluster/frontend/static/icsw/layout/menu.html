@@ -35,7 +35,7 @@
                     <li><a href="{{ ICSW_URLS.SESSION_LOGOUT }}"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
                     <li class="divider"></li>
                     <li><a href="{{ ICSW_URLS.MAIN_INFO_PAGE }}"><span class="fa fa-info fa_icsw"></span>Server information</a></li>
-                    <li>
+                    <li ng-show="handbook_url_valid">
                         <a href="{{ handbook_url }}">
                             <span class="fa fa-book fa_icsw"></span>PDF Handbook
                         </a>

@@ -20,9 +20,11 @@
 #
 """ disk checks via SNMP """
 
-from .base import PerfdataObject, perfdata_value
 import re
+
 from lxml.builder import E
+
+from .base import PerfdataObject, perfdata_value
 
 """ example: 'UCD-SNMP-MIB::dskPercent.3=14' """
 
