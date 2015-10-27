@@ -126,8 +126,9 @@ angular.module(
                 num = parseInt(num)
                 s_val = (num - 1 ) * scope.stItemsByPage + 1
                 e_val = s_val + scope.stItemsByPage - 1
-                if !scope.noNumberOfElements and e_val > ctrl.getNumberOfTotalEntries()
-                    e_val = ctrl.getNumberOfTotalEntries()
+                # removed because getNumberOfTotalEntries is no longer defined in newer st-table versions
+                # if !scope.noNumberOfElements and e_val > ctrl.getNumberOfTotalEntries()
+                #    e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
     }
 ]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", "icswTools", "icswToolsSimpleModalService", "toaster", "$timeout",
