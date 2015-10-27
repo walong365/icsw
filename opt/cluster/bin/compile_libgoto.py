@@ -24,14 +24,12 @@ import os
 import os.path
 import tempfile
 import tarfile
-from initat.tools import cpu_database
 import time
 import shutil
-from initat.tools import logging_tools
-from initat.tools import rpm_build_tools
 import subprocess
 import commands
-from initat.tools import compile_tools
+
+from initat.tools import cpu_database, logging_tools, rpm_build_tools, compile_tools
 
 LIBGOTO_VERSION_FILE = "/opt/cluster/share/libgoto_versions"
 
@@ -47,19 +45,27 @@ class my_opt_parser(optparse.OptionParser):
             is_64_bit = False
         self._read_libgoto_versions()
         target_dir = "/opt/libs/libgoto"
-        cc_choices = sorted(["GNU",
-                             "INTEL",
-                             "PATHSCALE"])
-        fc_choices = sorted(["G77",
-                             "GFORTRAN",
-                             "G95",
-                             "INTEL",
-                             "PGI",
-                             "PATHSCALE",
-                             "IBM",
-                             "COMPAQ",
-                             "SUN",
-                             "F2C"])
+        cc_choices = sorted(
+            [
+                "GNU",
+                "INTEL",
+                "PATHSCALE"
+            ]
+        )
+        fc_choices = sorted(
+            [
+                "G77",
+                "GFORTRAN",
+                "G95",
+                "INTEL",
+                "PGI",
+                "PATHSCALE",
+                "IBM",
+                "COMPAQ",
+                "SUN",
+                "F2C"
+            ]
+        )
         self.cpu_id = cpu_database.get_cpuid()
         self.add_option(
             "-f", type="choice", dest="fcompiler", help="Set Fortran Compiler, options are %s [%%default]" % (", ".join(fc_choices)),
@@ -193,7 +199,7 @@ class my_opt_parser(optparse.OptionParser):
                                       "F77": "pathf95"}
                 stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
                 if stat:
-                    raise ValueError("Cannot get Version from pathf95 (%d): %s" % (stat, pathf05_out))
+                    raise ValueError("Cannot get Version from pathf95 (%d): %s" % (stat, pathf95_out))
                 self.short_version = pathf95_out.split("\n")[0]
                 self.compiler_version_dict = {"pathf95": pathf95_out}
                 stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
@@ -356,7 +362,7 @@ class goto_builder(object):
             if os.path.isfile(libgoto_static_file_name) and os.path.isfile(libgoto_dynamic_file_name):
                 success = True
             else:
-                print "Cannot find library %s" % (libgoto_file_name)
+                print "Cannot find library %s" % (libgoto_static_file_name)
                 success = False
         return success
 

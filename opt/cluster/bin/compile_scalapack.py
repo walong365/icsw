@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007-2009,2012,2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cbc-tools
 #
@@ -17,14 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" compiles openmpi or mpich """
-"""
-to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
+""" compiles scalapack, not really working ... """
 
- o rename all OMPI_DATATYPE_INIT_UNAVAILABLE_BASIC_TYPE to OMPI_DATATYPE_INIT_PREDEFINED_BASIC_TYPE in ompi/datatype/ompi_datatype_module.c
- o add #include <stdlib.h> to include/mpi.h (to define size_t)
-
-"""
 import argparse
 import commands
 import os
@@ -37,24 +31,19 @@ import time
 
 from initat.tools import compile_tools, cpu_database, logging_tools, rpm_build_tools
 
-MPI_VERSION_FD = {
-    "openmpi": "/opt/cluster/share/source-versions/openmpi_versions",
-    "mpich": "/opt/cluster/share/source-versions/mpich_versions",
-}
-
 
 class my_opt_parser(argparse.ArgumentParser):
     def __init__(self):
         self.mode = os.path.basename(sys.argv[0]).split("_")[1].split(".")[0]
-        self.MPI_VERSION_FILE = MPI_VERSION_FD[self.mode]
-        argparse.ArgumentParser.__init__(self, description="compile MPI implementation {}".format(self.mode))
+        self.VERSION_FILE = "/opt/cluster/share/source-versions/scalapack_versions"
+        argparse.ArgumentParser.__init__(self, description="compile ScalaPack")
         # check for 64-bit Machine
         self.mach_arch = os.uname()[4]
         if self.mach_arch in ["x86_64", "ia64"]:
             is_64_bit = True
         else:
             is_64_bit = False
-        self._read_mpi_versions()
+        self._read_versions()
         target_dir = "/opt/libs/"
         fc_choices = sorted(
             [
@@ -84,8 +73,8 @@ class my_opt_parser(argparse.ArgumentParser):
         self.add_argument(
             "-o",
             type=str,
-            dest="mpi_version",
-            help="Choose MPI Version [%(default)s]",
+            dest="version",
+            help="Choose Version [%(default)s]",
             action="store",
             choices=self.version_dict.keys(),
             default=self.highest_version
@@ -150,25 +139,11 @@ class my_opt_parser(argparse.ArgumentParser):
             help="target dir for module file [%(default)s]"
         )
         self.add_argument(
-            "--without-mpi-selecter",
-            dest="mpi_selector",
-            default=True,
-            action="store_false",
-            help="disable support for MPI-Selector [%(default)s]"
-        )
-        self.add_argument(
             "--without-module",
             dest="module_file",
             default=True,
             action="store_false",
             help="disable support for modules [%(default)s]"
-        )
-        self.add_argument(
-            "--without-hwloc",
-            dest="hwloc",
-            default=True,
-            action="store_false",
-            help="disable hwloc support [%(default)s]"
         )
         self.add_argument(
             "--no-parallel-make",
@@ -188,7 +163,7 @@ class my_opt_parser(argparse.ArgumentParser):
         self._check_compiler_settings()
         self.package_name = "{}-{}-{}-{}-{}{}".format(
             self.mode,
-            self.options.mpi_version,
+            self.options.version,
             self.options.fcompiler,
             self.small_version,
             self.options.use_64_bit and "64" or "32",
@@ -312,23 +287,28 @@ class my_opt_parser(argparse.ArgumentParser):
         else:
             raise ValueError("Compiler settings %s unknown" % (self.options.fcompiler))
 
-    def _read_mpi_versions(self):
-        if os.path.isfile(self.MPI_VERSION_FILE):
-            version_lines = [line.strip().split() for line in file(self.MPI_VERSION_FILE, "r").read().split("\n") if line.strip()]
-            self.version_dict = dict([(key, value) for key, value in version_lines])
-            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in self.version_dict.keys()])
+    def _read_versions(self):
+        if os.path.isfile(self.VERSION_FILE):
+            version_lines = [
+                line.strip().split() for line in file(self.VERSION_FILE, "r").read().split("\n") if line.strip()
+            ]
+            self.version_dict = {
+                key: value for key, value in version_lines
+            }
+            vers_dict = {
+                tuple([part.isdigit() and int(part) or part for part in key.split(".")]): key for key in self.version_dict.keys()
+            }
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
-            raise IOError("No {} found".format(self.MPI_VERSION_FILE))
+            raise IOError("No {} found".format(self.VERSION_FILE))
 
     def get_compile_options(self):
         return "\n".join(
             [
                 " - build_date is %s" % (time.ctime()),
-                " - implementation is {}".format(self.mode),
                 " - mpi Version is %s, cpuid is %s" % (
-                    self.options.mpi_version,
+                    self.options.version,
                     self.cpu_id
                 ),
                 " - Compiler is %s, Compiler Base path is %s" % (
@@ -337,7 +317,7 @@ class my_opt_parser(argparse.ArgumentParser):
                 ),
                 " - small_version is %s" % (self.small_version),
                 " - source package is %s, target directory is %s" % (
-                    self.version_dict[self.options.mpi_version],
+                    self.version_dict[self.options.version],
                     self.mpi_dir
                 ),
                 " - extra_settings for configure: %s" % (self.options.extra_settings),
@@ -377,7 +357,7 @@ class mpi_builder(object):
             pass
 
     def _untar_source(self):
-        tar_source = self.parser.version_dict[self.parser.options.mpi_version]
+        tar_source = self.parser.version_dict[self.parser.options.version]
         if not os.path.isfile(tar_source):
             print "Cannot find MPI source {} ({})".format(tar_source, self.parser.mode)
             success = False
@@ -390,10 +370,39 @@ class mpi_builder(object):
             success = True
         return success
 
+    def _create_slmake_inc(self):
+        # create SLMake.inc
+        sub_dir = os.path.join(self.tempdir, os.listdir(self.tempdir)[0])
+        slmake_inc = os.path.join(sub_dir, "SLmake.inc")
+        c_d = self.parser.compiler_dict
+        file(slmake_inc, "w").write(
+            "\n".join(
+                [
+                    "FC       = {}".format(c_d["FC"]),
+                    "CC       = {}".format(c_d["CC"]),
+                    "NOOPT        = -O0",
+                    "FCFLAGS      = -O3",
+                    "CCFLAGS      = -O3",
+                    "FCLOADER     = $(FC)",
+                    "CCLOADER     = $(CC)",
+                    "FCLOADFLAGS  = $(FCFLAGS)",
+                    "CCLOADFLAGS  = $(CCFLAGS)",
+                    "ARCH         = ar",
+                    "ARCHFLAGS    = cr",
+                    "RANLIB       = ranlib",
+                    "SCALAPACKLIB = libscalapack.a",
+                    "BLASLIB      = -lblas",
+                    "LAPACKLIB    = -llapack",
+                    "LIBS         = $(LAPACKLIB) $(BLASLIB)",
+                ]
+            )
+        )
+
     def _compile_it(self):
+        self._create_slmake_inc()
         num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2 if self.parser.options.pmake else 1
         act_dir = os.getcwd()
-        os.chdir(os.path.join(self.tempdir, "{}-{}".format(self.parser.mode, self.parser.options.mpi_version)))
+        os.chdir(os.path.join(self.tempdir, "{}-{}".format(self.parser.mode, self.parser.options.version)))
         print "Modifying environment"
         for env_name, env_value in self.parser.compiler_dict.iteritems():
             os.environ[env_name] = env_value
@@ -405,21 +414,9 @@ class mpi_builder(object):
             if os.path.islink("%s/etc/openmpi-mca-params.conf" % (self.parser.mpi_dir)):
                 os.unlink("%s/etc/openmpi-mca-params.conf" % (self.parser.mpi_dir))
         success = True
-        config_list = [("--prefix", self.parser.mpi_dir)]
-        if self.parser.options.hwloc:
-            config_list.append(("--with-hwloc", "/opt/cluster"))
-        if self.parser.mode == "mpich":
-            config_list.append(("--with-device", "ch3:nemesis"))
         for command, time_name in [
-            (
-                "./configure {} {}".format(
-                    " ".join(["{}={}".format(key, value) for key, value in config_list]),
-                    self.parser.options.extra_settings
-                ),
-                "configure"
-            ),
-            ("make -j %d" % (num_cores), "make"),
-            ("make install", "install")
+            ("make -j {:d} lib".format(num_cores), "make"),
+            # ("make install", "install")
         ]:
             self.time_dict[time_name] = {"start": time.time()}
             print "Doing command {}".format(command)
@@ -556,8 +553,9 @@ class mpi_builder(object):
         file("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
         package_name, package_version, package_release = (
             self.parser.package_name,
-            self.parser.options.mpi_version,
-            self.parser.options.release)
+            self.parser.options.version,
+            self.parser.options.release
+        )
 
         if self.parser.options.module_file:
             self._create_module_file()

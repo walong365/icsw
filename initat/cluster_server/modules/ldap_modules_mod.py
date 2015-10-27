@@ -694,6 +694,14 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         u_password = u"{{{}}}{}".format(_enc, u_password.split(":", 1)[1])
                     else:
                         self.log(u"user_password for {} is not parseable, using value".format(unicode(u_stuff)))
+                    # check user home
+                    if u_stuff.home.strip():
+                        if u_stuff.home.startswith("/"):
+                            _u_home = u_stuff.home.strip()
+                        else:
+                            _u_home = u"{}/{}".format(g_stuff.homestart, u_stuff.login.strip())
+                    else:
+                        _u_home = u"{}/{}".format(g_stuff.homestart, u_stuff.home.strip())
                     u_stuff.attributes = {
                         "objectClass": [_entry for _entry in par_dict["user_object_classes"]],
                         # "structuralObjectClass" : ["namedObject"],
@@ -709,7 +717,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         "uidNumber": [str(u_stuff.uid)],
                         # "memberOf"         : [self._expand_dn("group", None, g_stuff)],
                         "userPassword": [u_password],
-                        "homeDirectory": [os.path.normpath(u"{}/{}".format(g_stuff.homestart, u_stuff.home.strip() or u_stuff.login.strip()))],
+                        "homeDirectory": [os.path.normpath(_u_home)],
                         "loginShell": [u_stuff.shell],
                         "shadowLastChange": ["11192"],
                         "shadowMin": ["-1"],

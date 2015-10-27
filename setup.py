@@ -90,6 +90,7 @@ setup(
                 "opt/cluster/bin/compile_openmpi.py",
                 "opt/cluster/bin/compile_hpl.py",
                 "opt/cluster/bin/compile_fftw.py",
+                "opt/cluster/bin/compile_scalapack.py",
                 "opt/cluster/bin/read_bonnie.py",
                 "opt/cluster/bin/bonnie.py",
                 "opt/cluster/bin/n_from_mem.py",
