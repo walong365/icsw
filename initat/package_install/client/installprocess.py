@@ -475,7 +475,7 @@ class YumInstallProcess(InstallProcess):
         )
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
-        old_repo_dict = {f_name: file(os.path.join(repo_dir, "{}.repo".format(f_name), "r").read()) for f_name in cur_repo_names}
+        old_repo_dict = {f_name: file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read() for f_name in cur_repo_names}
         new_repo_dict = {in_repo.findtext("name").replace("/", "_"): get_repo_str("yum", in_repo) for in_repo in in_repos}
         rewrite_repos = False
         if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set(new_repo_dict.keys())]):
