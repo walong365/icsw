@@ -133,7 +133,10 @@ class RepoTypeRpmYum(RepoType):
             self.log(
                 "found {}: {}".format(
                     logging_tools.get_plural("old repository", len(old_repos)),
-                    ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
+                    ", ".join(sorted(old_repos))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             if global_config["DELETE_MISSING_REPOS"]:
                 self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
                 package_repo.objects.filter(Q(name__in=old_repos)).delete()
@@ -633,7 +636,10 @@ class Client(object):
             Q(device=self.device)
         ).prefetch_related(
             "kernel_list", "image_list"
-        ).select_related("package", "package__target_repo")
+        ).select_related(
+            "package",
+            "package__target_repo"
+        )
         # send to client
         send_list = []
         # pre-delete list

@@ -22,10 +22,11 @@
 from lxml import etree  # @UnresolvedImport
 import os
 
+from lxml.builder import E
+
 from initat.package_install.client.command import simple_command
 from initat.package_install.client.config import global_config
 from initat.client_version import VERSION_STRING
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools, process_tools, threading_tools, config_store, server_command
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
@@ -56,7 +57,7 @@ def get_repo_str(_type, in_repo):
     else:
         # yum repository
         _vf = [
-            "[{}]".format(in_repo.findtext("name")),
+            "[{}]".format(in_repo.findtext("name").replace("/", "_")),
             "name={}".format(in_repo.findtext("alias")),
             "enabled={:d}".format(1 if in_repo.findtext("enabled") == "True" else 0),
             "autorefresh={:d}".format(1 if in_repo.findtext("autorefresh") == "True" else 0),
@@ -81,7 +82,7 @@ def get_srv_command(**kwargs):
     )
 
 
-class install_process(threading_tools.process_obj):
+class InstallProcess(threading_tools.process_obj):
     """ handles all install and external command stuff """
     def __init__(self, name):
         threading_tools.process_obj.__init__(
@@ -235,7 +236,8 @@ class install_process(threading_tools.process_obj):
                         log_com=self.log,
                         info="install package",
                         command_stage="post",
-                        data=hc_sc.data)
+                        data=hc_sc.data
+                    )
             elif hc_sc.command_stage == "post":
                 # self._post_decide(hc_sc, cur_out.strip())
                 send_return = True
@@ -375,7 +377,7 @@ class install_process(threading_tools.process_obj):
         self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
 
 
-class yum_install_process(install_process):
+class YumInstallProcess(InstallProcess):
     response_type = "yum_flat"
 
     def build_command(self, cur_pdc):
@@ -407,13 +409,18 @@ class yum_install_process(install_process):
             "installed flag from '{}': {}".format(
                 cur_out,
                 str(is_installed),
-                )
             )
+        )
         pack_xml = cur_pdc[0]
         yum_com = {
             "install": "install",
             "upgrade": "update",
             "erase": "erase"
+        }.get(cur_pdc.attrib["target_state"])
+        options = {
+            "install": "--nogpgcheck",
+            "upgrade": "--nogpgcheck",
+            "erase": "",
         }.get(cur_pdc.attrib["target_state"])
         package_name = self.package_name(pack_xml)
         always_latest = self.get_always_latest(pack_xml)
@@ -437,9 +444,10 @@ class yum_install_process(install_process):
                 yum_com = "install"
                 self.log("changing yum_com to '{}' (always_latest flag)".format(yum_com), logging_tools.LOG_LEVEL_WARN)
             self.log("starting action '{}'".format(yum_com))
-            yum_com = "/usr/bin/yum -y {} {}".format(
+            yum_com = "/usr/bin/yum -y {} {} {}".format(
                 yum_com,
                 package_name,
+                options,
             )
             simple_command(
                 yum_com,
@@ -467,9 +475,8 @@ class yum_install_process(install_process):
         )
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
-        old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read()) for f_name in cur_repo_names])
-        # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
-        new_repo_dict = dict([(in_repo.findtext("name"), get_repo_str("yum", in_repo)) for in_repo in in_repos])
+        old_repo_dict = {f_name: file(os.path.join(repo_dir, "{}.repo".format(f_name), "r").read()) for f_name in cur_repo_names}
+        new_repo_dict = {in_repo.findtext("name").replace("/", "_"): get_repo_str("yum", in_repo) for in_repo in in_repos}
         rewrite_repos = False
         if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set(new_repo_dict.keys())]):
             self.log("repository content differs, forcing rewrite")
@@ -499,7 +506,7 @@ class yum_install_process(install_process):
             self._clear_cache()
 
 
-class zypper_install_process(install_process):
+class ZypperInstallProcess(InstallProcess):
     response_type = "zypper_xml"
 
     def build_command(self, cur_pdc):
@@ -533,8 +540,8 @@ class zypper_install_process(install_process):
                 str(is_installed),
                 cur_pdc.attrib["target_state"],
                 str(always_latest),
-                )
             )
+        )
         zypper_com = {
             "install": "in",
             "upgrade": "up",
@@ -623,9 +630,8 @@ class zypper_install_process(install_process):
             repo_dir))
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
-        old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read()) for f_name in cur_repo_names])
-        # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
-        new_repo_dict = dict([(in_repo.findtext("alias"), get_repo_str("zypper", in_repo)) for in_repo in in_repos])
+        old_repo_dict = {f_name: file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read() for f_name in cur_repo_names}
+        new_repo_dict = {in_repo.findtext("alias"): get_repo_str("zypper", in_repo) for in_repo in in_repos}
         rewrite_repos = False
         if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set(new_repo_dict.keys())]):
             self.log("repository content differs, forcing rewrite")

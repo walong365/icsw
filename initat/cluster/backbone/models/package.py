@@ -48,8 +48,8 @@ class package_repo(models.Model):
     gpg_check = models.BooleanField(default=True)
     url = models.CharField(max_length=384, default="")
     # username and password for urls with authentication
-    username = models.CharField(max_length=128, default="")
-    password = models.CharField(max_length=128, default="")
+    username = models.CharField(max_length=128, default="", blank=True)
+    password = models.CharField(max_length=128, default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
     service = models.ForeignKey(package_service, null=True, blank=True)
     publish_to_nodes = models.BooleanField(default=False, verbose_name="PublishFlag")
@@ -79,6 +79,8 @@ class package_repo(models.Model):
             unicode(self),
             pk="{:d}".format(self.pk),
             key="pr__{:d}".format(self.pk),
+            password=self.password,
+            username=self.username,
             name=self.name,
             alias=self.alias,
             repo_type=self.repo_type,

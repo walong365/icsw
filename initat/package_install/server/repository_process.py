@@ -26,9 +26,9 @@ import time
 
 from django.db import connection
 from django.db.models import Q
+
 from initat.cluster.backbone.models import package_search
 from initat.tools import logging_tools, server_command, threading_tools
-
 from .config import global_config
 from .structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct
 

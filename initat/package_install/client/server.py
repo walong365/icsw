@@ -28,7 +28,7 @@ from initat.tools.server_mixins import RemoteCall
 import zmq
 
 from .config import global_config
-from .install_process import yum_install_process, zypper_install_process, get_srv_command
+from .installprocess import YumInstallProcess, ZypperInstallProcess, get_srv_command
 
 
 @server_mixins.RemoteCallProcess
@@ -60,9 +60,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._init_network_sockets()
             self.register_func("send_to_server", self._send_to_server)
             if os.path.isfile("/etc/centos-release") or os.path.isfile("/etc/redhat-release"):
-                self.add_process(yum_install_process("install"), start=True)
+                self.add_process(YumInstallProcess("install"), start=True)
             else:
-                self.add_process(zypper_install_process("install"), start=True)
+                self.add_process(ZypperInstallProcess("install"), start=True)
         else:
             self.main_socket = None
             self._int_error("no package_server id")
