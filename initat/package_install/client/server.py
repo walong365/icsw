@@ -268,7 +268,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             )
         )
         try:
-            self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)
             self.main_socket.send_unicode(send_com)
         except zmq.error.ZMQError:
             self.__send_buffer.append(send_com)

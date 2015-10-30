@@ -24,9 +24,10 @@ import re
 import sys
 
 import zmq
+from enum import IntEnum
+
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
     configfile, config_store, uuid_tools
-from enum import IntEnum
 from initat.icsw.service.instance import InstanceXML
 
 
@@ -299,7 +300,10 @@ class NetworkBindMixin(object):
             master_bind_list.extend(_virt_list)
             # we have to bind to localhost but localhost is not present in bind_list, add master_bind
             if bind_to_localhost and not any([_ip.startswith("127.") for _ip in _bind_ips]):
-                self.log("bind_to_localhost is set but not IP in range 127.0.0.0/8 found in list, adding virtual_bind", logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "bind_to_localhost is set but not IP in range 127.0.0.0/8 found in list, adding virtual_bind",
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 master_bind_list.append(
                     (
                         False,
@@ -357,7 +361,7 @@ class NetworkBindMixin(object):
                     else:
                         self.log("bound {} to {} with id {}".format(_sock_type, _bind_str, bind_id))
                         if pollin:
-                            self.register_poller(client, zmq.POLLIN, pollin, ext_call=ext_call, bind_id=bind_id)  # @UndefinedVariable
+                            self.register_poller(client, zmq.POLLIN, pollin, ext_call=ext_call, bind_id=bind_id)
             if master_bind:
                 _main_socket = client
             else:
@@ -409,7 +413,7 @@ class RemoteAsyncHelper(object):
             if async_id not in self.__lut:
                 self.log(
                     "asnyc_id {:d} not defined in lut, discarding message".format(
-                        asnyc_id
+                        async_id
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )

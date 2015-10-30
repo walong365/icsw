@@ -23,6 +23,7 @@ setup(
         "initat.icsw.image",
         "initat.icsw.job",
         "initat.icsw.collectd",
+        "initat.icsw.user",
         "initat.tools",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",

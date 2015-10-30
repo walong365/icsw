@@ -74,6 +74,12 @@ except ImportError:
     CollectdParser = None
 
 
+try:
+    from .user.user_parser import Parser as UserParser
+except:
+    UserParser = None
+
+
 class ICSWParser(object):
     def __init__(self):
         self._parser = argparse.ArgumentParser(prog="icsw")
@@ -96,6 +102,7 @@ class ICSWParser(object):
             ImageParser,
             JobParser,
             CollectdParser,
+            UserParser,
         ]:
             if _sp is not None:
                 try:
