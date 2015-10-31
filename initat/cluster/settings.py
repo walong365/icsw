@@ -444,8 +444,8 @@ if WITH_REACT:
         list(
             PIPELINE_JS["js_base"]["source_filenames"]
         ) + [
-            "js/react-0.14.0.js",
-            "js/react-dom-0.14.0.js",
+            "js/react-0.14.1.js",
+            "js/react-dom-0.14.1.js",
         ]
     )
 
