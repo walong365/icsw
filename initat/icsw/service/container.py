@@ -127,6 +127,8 @@ class ServiceContainer(object):
         return _dict
 
     def check_service(self, entry, use_cache=True, refresh=True, models_changed=False):
+        if not hasattr(self, "_config_check_errors"):
+            self._config_check_errors = []
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
             self.update_valid_licenses()

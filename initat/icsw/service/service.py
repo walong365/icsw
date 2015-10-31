@@ -27,12 +27,11 @@ import stat
 import subprocess
 import signal
 import netifaces
-import sys
 
-from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools, process_tools
+from lxml.builder import E
 import psutil
 
+from initat.tools import logging_tools, process_tools
 from .constants import *
 
 

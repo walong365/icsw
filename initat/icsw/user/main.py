@@ -49,7 +49,8 @@ def user_main(cur_opts):
         log_com(
             "sending to {}: {}".format(
                 logging_tools.get_plural("address", len(all_users)),
-                ", ".join(sorted(all_users)))
+                ", ".join(sorted(all_users))
+            )
         )
     message = (" ".join(cur_opts.message)).replace("\\n", "\n").strip()
     my_mail = mail_tools.mail(cur_opts.subject, getattr(cur_opts, "from"), cur_opts.to, message)

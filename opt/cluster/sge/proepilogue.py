@@ -36,12 +36,8 @@ import socket
 import stat
 import time
 try:
-    from initat.tools import threading_tools
-    from initat.tools import configfile
-    from initat.tools import logging_tools
-    from initat.tools import net_tools
-    from initat.tools import process_tools
-    from initat.tools import server_command
+    from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
+        process_tools, server_command
     NEW_CODE = True
 except ImportError:
     # for running on nodes
@@ -68,26 +64,27 @@ def sec_to_str(in_sec):
     dt -= 3600 * diff_h
     diff_m = int(dt / 60)
     dt -= diff_m * 60
-    # if diff_d:
     out_f = "%2d:%02d:%02d:%02d" % (diff_d, diff_h, diff_m, dt)
-    # else:
-    #    out_f = "%2d:%02d:%02d" % (diff_h, diff_m, dt)
     return out_f
 
 
-class job_object(object):
+class RMSJob(object):
     def __init__(self, p_pool):
         self.p_pool = p_pool
-        self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (
+        self.__log_dir = time.strftime("%Y/%m/%d/{}{}").format(
             global_config["JOB_ID"],
-            ".{}".format(os.environ["SGE_TASK_ID"]) if os.environ.get("SGE_TASK_ID", "undefined") != "undefined" else "")
+            ".{}".format(os.environ["SGE_TASK_ID"]) if os.environ.get("SGE_TASK_ID", "undefined") != "undefined" else ""
+        )
         self.__log_name = "{}".format(self.__log_dir)
         self.__log_template = logging_tools.get_logger(
-            "%s.%s/log" % (global_config["LOG_NAME"],
-                           self.__log_name.replace(".", "\.")),
+            "{}.{}/log".format(
+                global_config["LOG_NAME"],
+                self.__log_name.replace(".", "\.")
+            ),
             global_config["LOG_DESTINATION"],
             zmq=True,
-            context=self.p_pool.zmq_context)
+            context=self.p_pool.zmq_context
+        )
         self._init_exit_code()
 
     def _init_exit_code(self):
@@ -95,14 +92,25 @@ class job_object(object):
 
     def _set_exit_code(self, cause, exit_code):
         self.p_pool["return_value"] = exit_code
-        self.log("setting exit_code to %d because of %s" % (exit_code,
-                                                            cause),
-                 logging_tools.LOG_LEVEL_ERROR)
+        self.log(
+            "setting exit_code to {:d} because of {}".format(
+                exit_code,
+                cause
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK, **kwargs):
         self.__log_template.log(lev, what)
         if kwargs.get("do_print", False):
-            self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(lev)) if lev != logging_tools.LOG_LEVEL_OK else "", what))
+            self._print(
+                "{}{}".format(
+                    "[{}] ".format(
+                        logging_tools.get_log_level_str(lev)
+                    ) if lev != logging_tools.LOG_LEVEL_OK else "",
+                    what
+                )
+            )
         if lev != logging_tools.LOG_LEVEL_OK or kwargs.get("pool", False):
             self.p_pool.log(what, lev)
 
@@ -149,8 +157,12 @@ class job_object(object):
         shell_path, shell_start_mode = (self.__env_int_dict.get("shell_path", "/bin/bash"),
                                         self.__env_int_dict.get("shell_start_mode", "posix_compliant"))
         # cluster_queue_name = global_config["JOB_QUEUE"]
-        self.log("shell_path is '%s', shell_start_mode is '%s'" % (shell_path,
-                                                                   shell_start_mode))
+        self.log(
+            "shell_path is '{}', shell_start_mode is '{}'".format(
+                shell_path,
+                shell_start_mode
+            )
+        )
         # cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
         no_cpuset_cause = []
         if no_cpuset_cause:
@@ -184,11 +196,17 @@ class job_object(object):
         src_file = self.__env_dict["JOB_SCRIPT"]
         dst_file = self._get_wrapper_script_name()
         if not dst_file.startswith("/"):
-            self.log("refuse to delete wrapper script {}".format(dst_file),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "refuse to delete wrapper script {}".format(dst_file),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             return
-        self.log("Deleting wrapper-script (%s for %s)" % (dst_file,
-                                                          src_file))
+        self.log(
+            "Deleting wrapper-script ({} for {})".format(
+                dst_file,
+                src_file
+            )
+        )
         if os.path.isfile(dst_file):
             try:
                 os.unlink(dst_file)
@@ -203,66 +221,88 @@ class job_object(object):
             else:
                 self.log("deleted {}".format(dst_file))
         else:
-            self.log("no such file: {}".format(dst_file),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "no such file: {}".format(dst_file),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _add_script_var(self, key, value):
         var_file = self._get_var_script_name()
-        self.log("adding variable (%s=%s) to var_file %s" % (key,
-                                                             value,
-                                                             var_file))
+        self.log(
+            "adding variable ({}={}) to var_file {}".format(
+                key,
+                value,
+                var_file
+            )
+        )
         try:
             file(var_file, "a").write("export %s=%s\n" % (key, value))
         except:
-            self.log("error writing to %s: %s" % (var_file,
-                                                  process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error writing to {}: {}".format(
+                    var_file,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     @property
     def is_start_call(self):
-        return global_config["CALLER_NAME"] in ["prologue",
-                                                "lamstart",
-                                                "mvapich2start",
-                                                "pvmstart",
-                                                "pestart"]
+        return global_config["CALLER_NAME"] in [
+            "prologue",
+            "lamstart",
+            "mvapich2start",
+            "pvmstart",
+            "pestart"
+        ]
 
     @property
     def is_pe_start_call(self):
-        return global_config["CALLER_NAME"] in ["lamstart",
-                                                "pestart",
-                                                "pvmstart",
-                                                "mvapich2start"]
+        return global_config["CALLER_NAME"] in [
+            "lamstart",
+            "pestart",
+            "pvmstart",
+            "mvapich2start"
+        ]
 
     @property
     def is_pe_end_call(self):
-        return global_config["CALLER_NAME"] in ["lamstop",
-                                                "pestop",
-                                                "pvmstop",
-                                                "mvapich2stop"]
+        return global_config["CALLER_NAME"] in [
+            "lamstop",
+            "pestop",
+            "pvmstop",
+            "mvapich2stop"
+        ]
 
     @property
     def is_proepilogue_call(self):
-        return global_config["CALLER_NAME"] in ["prologue",
-                                                "epilogue"]
+        return global_config["CALLER_NAME"] in [
+            "prologue",
+            "epilogue"
+        ]
 
     @property
     def is_pe_call(self):
-        return global_config["CALLER_NAME"] in ["lamstart",
-                                                "pestart",
-                                                "pvmstart",
-                                                "mvapich2start",
-                                                "lamstop",
-                                                "pestop",
-                                                "pvmstop",
-                                                "mvapich2stop"]
+        return global_config["CALLER_NAME"] in [
+            "lamstart",
+            "pestart",
+            "pvmstart",
+            "mvapich2start",
+            "lamstop",
+            "pestop",
+            "pvmstop",
+            "mvapich2stop"
+        ]
 
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
                 self.log("Config info : [%d] %s" % (log_level, log_line))
         except:
-            self.log("error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         conf_info = global_config.get_config_info()
         self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
@@ -298,21 +338,19 @@ class job_object(object):
         logger.close()
 
     def _copy_environments(self):
-        self.__env_dict = dict([(key, str(os.environ[key])) for key in os.environ.keys()])
+        self.__env_dict = {key: str(os.environ[key]) for key in os.environ.keys()}
         if "SGE_JOB_SPOOL_DIR" in self.__env_dict:
-            self.__env_int_dict = dict(
-                [
-                    (key, value) for key, value in [
-                        line.split("=", 1) for line in file(
-                            os.path.join(
-                                self.__env_dict["SGE_JOB_SPOOL_DIR"],
-                                "config"
-                            ),
-                            "r"
-                        ).read().strip().split("\n") if line.count("=")
-                    ]
+            self.__env_int_dict = {
+                key: value for key, value in [
+                    line.split("=", 1) for line in file(
+                        os.path.join(
+                            self.__env_dict["SGE_JOB_SPOOL_DIR"],
+                            "config"
+                        ),
+                        "r"
+                    ).read().strip().split("\n") if line.count("=")
                 ]
-            )
+            }
         else:
             self.__env_int_dict = {}
 
@@ -381,8 +419,12 @@ class job_object(object):
                 init_dict = {}
                 for line, line_num in zip(lines, xrange(len(lines))):
                     if s_list is not None:
-                        s_list.append([logging_tools.form_entry(line_num + 1, header="line"),
-                                       logging_tools.form_entry(line, header="content")])
+                        s_list.append(
+                            [
+                                logging_tools.form_entry(line_num + 1, header="line"),
+                                logging_tools.form_entry(line, header="content")
+                            ]
+                        )
                     if line.startswith("#$ "):
                         num_sge += 1
                     elif line.startswith("#init "):
@@ -713,12 +755,27 @@ class job_object(object):
                         if i_val == 99:
                             self._set_exit_code("requeue requested", i_val)
                         ext_str = " (%s)" % (ext_str) if ext_str else ""
-                out_list.append([logging_tools.form_entry(key, header="key"),
-                                 logging_tools.form_entry(value, header="value"),
-                                 logging_tools.form_entry(ext_str, header="info")])
-                log_res.append("%s:%s%s" % (key, value, ext_str))
-            self._print("\n".join(["  %s" % (line) for line in str(out_list).split("\n")]))
-            self.log("reported %d resources: %s" % (len(log_res), ", ".join(log_res)))
+                out_list.append(
+                    [
+                        logging_tools.form_entry(key, header="key"),
+                        logging_tools.form_entry(value, header="value"),
+                        logging_tools.form_entry(ext_str, header="info")
+                    ]
+                )
+                log_res.append("{}:{}{}".format(key, value, ext_str))
+            self._print(
+                "\n".join(
+                    [
+                        "  {}".format(line) for line in str(out_list).split("\n")
+                    ]
+                )
+            )
+            self.log(
+                "reported {}: {}".format(
+                    logging_tools.get_plural("resource", len(log_res)),
+                    ", ".join(log_res)
+                )
+            )
         else:
             self.log("No resources found", do_print=True)
 
@@ -749,8 +806,12 @@ class job_object(object):
                     info_str = "{:8d} (hard), {:8d} (soft)".format(val[0], val[1])
                 else:
                     info_str = "None (error?)"
-                res_list.append([logging_tools.form_entry(key, header="key"),
-                                 logging_tools.form_entry(info_str, header="value")])
+                res_list.append(
+                    [
+                        logging_tools.form_entry(key, header="key"),
+                        logging_tools.form_entry(info_str, header="value")
+                    ]
+                )
             for _line in unicode(res_list).split("\n"):
                 self.log(_line)
             self.write_file(
@@ -772,7 +833,9 @@ class job_object(object):
         nf_ok = False
         if os.path.isfile(orig_file):
             try:
-                node_list = [line.strip() for line in file(orig_file, "r").readlines() if line.strip()]
+                node_list = [
+                    line.strip() for line in file(orig_file, "r").readlines() if line.strip()
+                ]
             except:
                 self.log(
                     "Cannot read node_file {}: {}".format(
@@ -783,9 +846,15 @@ class job_object(object):
                 )
             else:
                 nf_ok = True
-                self.__node_list = [node_name.split(".")[0] for node_name in [line.split()[0] for line in node_list]]
+                self.__node_list = [
+                    node_name.split(".")[0] for node_name in [line.split()[0] for line in node_list]
+                ]
                 try:
-                    node_dict = dict([(node_name.split(".")[0], {"num": int(node_num)}) for node_name, node_num in [line.split()[0:2] for line in node_list]])
+                    node_dict = {
+                        node_name.split(".")[0]: {
+                            "num": int(node_num)
+                        } for node_name, node_num in [line.split()[0:2] for line in node_list]
+                    }
                 except:
                     self.log(
                         "cannot interpret node_file {}: {}".format(
@@ -794,10 +863,16 @@ class job_object(object):
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-                    node_dict = dict([(node_name.split(".")[0], {"num": 1}) for node_name in node_list])
+                    node_dict = {
+                        node_name.split(".")[0]: {
+                            "num": 1
+                        } for node_name in node_list
+                    }
         else:
-            self.log("No node_file name '%s' found" % (orig_file),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "No node_file name '{}' found".format(orig_file),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         if not nf_ok:
             # dummy default node dict
             self.__node_list = [global_config["HOST_SHORT"]]
@@ -808,20 +883,28 @@ class job_object(object):
             pass
         else:
             mpi_postfix = global_config.get("MPI_POSTFIX", "mp")
-            self.log("using mpi_postfix '%s' for PE '%s' on queue '%s'" % (mpi_postfix,
-                                                                           global_config["PE"],
-                                                                           global_config["JOB_QUEUE"]))
+            self.log(
+                "using mpi_postfix '{}' for PE '{}' on queue '{}'".format(
+                    mpi_postfix,
+                    global_config["PE"],
+                    global_config["JOB_QUEUE"]
+                )
+            )
             for key, value in node_dict.iteritems():
-                value["mpi_name"] = "%s%s" % (key, mpi_postfix)
+                value["mpi_name"] = "{}{}".format(key, mpi_postfix)
         # resolve names
         for node_name in self.__node_list:
             node_stuff = node_dict[node_name]
             try:
                 node_ip = socket.gethostbyname(node_name)
             except:
-                self.log("error resolving %s to IP: %s" % (node_name,
-                                                           process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error resolving {} to IP: {}".format(
+                        node_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 node_ip = node_name
             node_stuff["ip"] = node_ip
             node_stuff["ip_list"] = [node_ip]
@@ -829,9 +912,13 @@ class job_object(object):
                 try:
                     mpi_ip = socket.gethostbyname(node_stuff["mpi_name"])
                 except:
-                    self.log("error resolving %s to IP: %s" % (node_stuff["mpi_name"],
-                                                               process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error resolving {} to IP: {}".format(
+                            node_stuff["mpi_name"],
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     mpi_ip = node_stuff["mpi_name"]
                 node_stuff["mpi_ip"] = mpi_ip
                 node_stuff["ip_list"].append(mpi_ip)
@@ -965,7 +1052,13 @@ class job_object(object):
         s_time = time.time()
         all_ips = sorted(list(set(sum([node_stuff["ip_list"] for node_stuff in self.__node_dict.itervalues()], []))))
         all_nfs_ips = [node_stuff["ip"] for node_stuff in self.__node_dict.itervalues()]
-        reach_dict = dict([(cur_ip, {"sent": len(all_nfs_ips), "ok_from": [], "error_from": []}) for cur_ip in all_ips])
+        reach_dict = {
+            cur_ip: {
+                "sent": len(all_nfs_ips),
+                "ok_from": [],
+                "error_from": []
+            } for cur_ip in all_ips
+        }
         # build connection dict
         self.log(" - {} {}: {} to check".format(
             logging_tools.get_plural("node", len(self.__node_list)),
@@ -1144,7 +1237,7 @@ class job_object(object):
         self.__log_template.close()
 
 
-class process_pool(threading_tools.process_pool):
+class ProcessPool(threading_tools.process_pool):
     def __init__(self, **kwargs):
         self.dummy_call = kwargs.get("dummy_call", False)
         self.start_time = time.time()
@@ -1159,7 +1252,12 @@ class process_pool(threading_tools.process_pool):
             zmq_contexts=1,
             loop_granularity=100
         )
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         self.install_signal_handlers()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
@@ -1167,7 +1265,7 @@ class process_pool(threading_tools.process_pool):
         self._read_config()
         self._show_config()
         if not self.dummy_call:
-            self._job = job_object(p_pool=self)
+            self._job = RMSJob(p_pool=self)
             self.loop_function = self._job.loop_function
             # self["return_value"] = "a"
             self.register_timer(self._force_exit, global_config["MAX_RUN_TIME"])
@@ -1181,8 +1279,14 @@ class process_pool(threading_tools.process_pool):
         else:
             self.__log_cache.append((lev, what))
         if kwargs.get("do_print", False):
-            self._print("%s%s" % ("[%s]" % (logging_tools.get_log_level_str(lev)) if lev != logging_tools.LOG_LEVEL_OK else "",
-                                  what))
+            self._print(
+                "{}{}".format(
+                    "[{}]".format(
+                        logging_tools.get_log_level_str(lev)
+                    ) if lev != logging_tools.LOG_LEVEL_OK else "",
+                    what
+                )
+            )
 
     def _print(self, what):
         try:
@@ -1329,17 +1433,26 @@ def zmq_main_code():
                 ]
             )
     elif len(options.arguments) == 0:
-        process_pool(dummy_call=True)
+        ProcessPool(dummy_call=True)
         _exit = True
     else:
-        print "Unable to determine execution mode for %s, exiting (%d args)" % (
-            global_config.name(),
-            len(options.arguments))
+        print(
+            "Unable to determine execution mode for {}, exiting ({:d} args)".format(
+                global_config.name(),
+                len(options.arguments)
+            )
+        )
         _exit = True
     if not _exit:
         cf_time = time.localtime(os.stat(configfile.__file__.replace(".pyc", ".py").replace(".pyo", ".py"))[stat.ST_MTIME])  # @UndefinedVariable
         if (cf_time.tm_year, cf_time.tm_mon, cf_time.tm_mday) < (2012, 5, 1):
-            print "your python-modules-base are too old, please upgrade ({:d}, {:d}, {:d})".format(cf_time.tm_year, cf_time.tm_mon, cf_time.tm_mday)
+            print(
+                "your python-modules-base are too old, please upgrade ({:d}, {:d}, {:d})".format(
+                    cf_time.tm_year,
+                    cf_time.tm_mon,
+                    cf_time.tm_mday
+                )
+            )
             return 0
         else:
             # add more entries
@@ -1350,7 +1463,7 @@ def zmq_main_code():
                     ("HOST_IP", configfile.str_c_var("unknown", source="cmdline")),
                 ]
             )
-            return process_pool().loop()
+            return ProcessPool().loop()
     else:
         return -1
 
