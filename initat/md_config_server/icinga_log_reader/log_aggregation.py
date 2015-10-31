@@ -222,6 +222,9 @@ class icinga_log_aggregator(object):
                     latest_obj.date
                 )
 
+        if not dump_times:
+            return [], []
+
         def build_dump_times_filters(dump_times):
             cur = dump_times.pop()
             cur_filter = Q(date__range=(cur - datetime.timedelta(seconds=5), cur + datetime.timedelta(seconds=5)))

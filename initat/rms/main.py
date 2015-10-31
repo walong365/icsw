@@ -30,7 +30,6 @@ from initat.rms.config import global_config
 from initat.rms.server import ServerProcess
 from initat.server_version import VERSION_STRING
 from initat.tools import cluster_location, configfile, process_tools, sge_license_tools
-import sys
 
 
 def main():
@@ -58,6 +57,7 @@ def main():
         positional_arguments=False
     )
     sge_dict = {}
+    _all_ok = True
     for v_name, v_src, v_default in [
         ("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
         ("SGE_CELL", "/etc/sge_cell", "default")
@@ -65,12 +65,16 @@ def main():
         if os.path.isfile(v_src):
             sge_dict[v_name] = file(v_src, "r").read().strip()
         else:
-            print("error: Cannot read {} from file {}, exiting...".format(v_name, v_src))
-            sys.exit(2)
-    stat, sge_dict["SGE_ARCH"], _log_lines = call_command("/{}/util/arch".format(sge_dict["SGE_ROOT"]))
-    if stat:
-        print "error Cannot evaluate SGE_ARCH"
-        sys.exit(1)
+            _all_ok = False
+            sge_dict[v_name] = ""
+    if _all_ok:
+        stat, sge_dict["SGE_ARCH"], _log_lines = call_command(
+            "/{}/util/arch".format(sge_dict["SGE_ROOT"])
+        )
+        if stat:
+            sge_dict["SGE_ARCH"] = ""
+    else:
+        sge_dict["SGE_ARCH"] = ""
     cluster_location.read_config_from_db(
         global_config,
         "rms_server",

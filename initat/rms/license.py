@@ -90,7 +90,7 @@ class LicenseProcess(threading_tools.process_obj):
         self._sge_lic_set = {}
         self.__lc_dict = {}
         self.log(
-            "init sge environment for license tracking in {} ({}, database tracing is {})".format(
+            "init sge environment for license tracking in {} ({}, database tracking is {})".format(
                 self._license_base,
                 "enabled" if self._track else "disabled",
                 "enabled" if self._track_in_db else "disabled",
@@ -100,7 +100,7 @@ class LicenseProcess(threading_tools.process_obj):
         os.environ["SGE_ROOT"] = global_config["SGE_ROOT"]
         os.environ["SGE_CELL"] = global_config["SGE_CELL"]
         # get sge environment
-        self._sge_dict = sge_license_tools.get_sge_environment()
+        self._sge_dict = sge_license_tools.get_sge_environment(log_com=self.log)
         self.log(sge_license_tools.get_sge_log_line(self._sge_dict))
 
     def _init_network(self):
