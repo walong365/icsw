@@ -840,7 +840,8 @@ class license_check(object):
                 "{:d} {}".format(
                     cur_year,
                     start_data.title()
-                ), "%Y %a %m/%d %H:%M"
+                ),
+                "%Y %a %m/%d %H:%M"
             )
             cur_lic_version.find("usages").append(
                 E.usage(

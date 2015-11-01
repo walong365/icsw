@@ -47,7 +47,10 @@ class DBCursor(object):
         if not self.__cached:
             self.conn.commit()
 
-
+# format: configured state (stop / run) -> current state -> license state ->
+# if the evaluation of SERVICE_OK_DICT yields to None
+# or if the license_state is in the resulting tuple
+# the current state is deemed ok
 SERVICE_OK_DICT = {
     constants.TARGET_STATE_RUNNING: {
         constants.SERVICE_OK: (
@@ -64,6 +67,8 @@ SERVICE_OK_DICT = {
         ),
         constants.SERVICE_INCOMPLETE: (),
         constants.SERVICE_NOT_INSTALLED: (),
+        # changed from None to () due to not stopping services on boss (boku)
+        # NOT changed, we need process and db_target_state separated, TODO
         constants.SERVICE_NOT_CONFIGURED: None,
     },
     constants.TARGET_STATE_STOPPED: {
@@ -323,7 +328,7 @@ class ServiceState(object):
         _save = False
         if (state, lic_state) != self.__state_dict.get(name, None):
             self.log(
-                "state for {} is {} (license: {})".format(
+                "state for {} is {} (license: {}, target_dict_state )".format(
                     name,
                     constants.STATE_DICT[state],
                     constants.LIC_STATE_DICT[lic_state],

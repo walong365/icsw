@@ -215,6 +215,11 @@ class Service(object):
                     if self.entry.find(".//ignore-missing-database") is not None:
                         sql_info = "relayer mode"
                     else:
+                        # if the current service is not configured via database / IP we set
+                        # the state to NOT_CONFIGURED (from [for instance] DEAD)
+                        # we have to change the behaviour because this simple transition
+                        # disables in fact the functionality of the meta-server to stop
+                        # no longer configured services (as seen on the boke beegfs server 'boss')
                         sql_info = self._modify_state(_result, SERVICE_NOT_CONFIGURED, "not configured")
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
@@ -542,6 +547,17 @@ class SimpleService(Service):
                 proc_info_str=act_str,
             ),
         )
+        if "pid_file_name" in self.attrib:
+            pid_file_name = self.attrib["pid_file_name"]
+            if not pid_file_name.startswith("/"):
+                pid_file_name = os.path.join("/var", "run", pid_file_name)
+            if os.path.isfile(pid_file_name):
+                try:
+                    act_pid = int(file(pid_file_name, "r").read().strip())
+                except:
+                    pass
+                else:
+                    self._add_pids(result, [act_pid])
 
     def _start(self):
         self._handle_service_rc("start")

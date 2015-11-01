@@ -120,7 +120,7 @@
             </div>
             <div class="col-xs-2 text-right">{{ get_mem_info() | get_size:1:1024 }}</div>
             <div class="col-xs-3" style="height:10px;">
-                <progressbar value="get_mem_value()" animate="false"></progressbar>
+                <progressbar ng-show="get_mem_value()" value="get_mem_value()" animate="false"></progressbar>
             </div>
             <icsw-service-enable-disable></icsw-service-enable-disable>
         </div>
