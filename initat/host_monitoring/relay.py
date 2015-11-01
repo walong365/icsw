@@ -720,10 +720,15 @@ class relay_code(ICSWBasePool, HMHRMixin):
                                 "connection to '{}:{:d}' via {}".format(
                                     t_host,
                                     int(srv_com["port"].text),
-                                    full_con_mode
+                                    full_con_mode[con_mode],
                                 )
                             )
-                        if int(srv_com["port"].text) != 2001:
+                        _host = srv_com["*host"]
+                        com_name = srv_com["*command"]
+                        if com_name == "ping" and _host in ["127.0.0.1", "localhost"]:
+                            # special handling of local pings
+                            self._handle_local_ping(src_id, srv_com)
+                        elif int(srv_com["port"].text) != 2001:
                             # connect to non-host-monitoring service
                             if con_mode == "0":
                                 self._send_to_nhm_service(src_id, srv_com, xml_input)
@@ -852,36 +857,39 @@ class relay_code(ICSWBasePool, HMHRMixin):
     def _send_to_client(self, src_id, srv_com, xml_input):
         _host = srv_com["*host"]
         com_name = srv_com["*command"]
-        if com_name == "ping" and _host in ["127.0.0.1", "localhost"]:
-            self._handle_local_ping(src_id, srv_com)
-        else:
-            # generate new xml from srv_com
-            conn_str = "tcp://{}:{:d}".format(
-                _host,
-                int(srv_com["*port"])
+        # generate new xml from srv_com
+        conn_str = "tcp://{}:{:d}".format(
+            _host,
+            int(srv_com["*port"])
+        )
+        if conn_str in ZMQDiscovery.vanished:
+            self.log(
+                "{} has vanished, closing connection".format(conn_str),
+                logging_tools.LOG_LEVEL_ERROR
             )
-            if conn_str in ZMQDiscovery.vanished:
-                self.log("{} has vanished, closing connection".format(conn_str), logging_tools.LOG_LEVEL_ERROR)
-                ZMQDiscovery.vanished.remove(conn_str)
-                cur_hc = HostConnection.get_hc_0mq(conn_str, "ignore")
-                cur_hc._close()
-            if ZMQDiscovery.has_mapping(conn_str):
-                id_str = ZMQDiscovery.get_mapping(conn_str)
-                cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
-                cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
-                if com_name in self.modules.command_dict:
-                    com_struct = self.modules.command_dict[srv_com["command"].text]
-                    # handle commandline
-                    cur_hc.send(cur_mes, com_struct)
-                else:
-                    cur_hc.return_error(cur_mes, "command '{}' not defined on relayer".format(com_name))
-            elif ZMQDiscovery.is_pending(conn_str):
-                cur_hc = HostConnection.get_hc_0mq(conn_str)
-                com_name = srv_com["command"].text
-                cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
-                cur_hc.return_error(cur_mes, "0mq discovery in progress")
+            ZMQDiscovery.vanished.remove(conn_str)
+            cur_hc = HostConnection.get_hc_0mq(conn_str, "ignore")
+            cur_hc._close()
+        if ZMQDiscovery.has_mapping(conn_str):
+            id_str = ZMQDiscovery.get_mapping(conn_str)
+            cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
+            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            if com_name in self.modules.command_dict:
+                com_struct = self.modules.command_dict[srv_com["command"].text]
+                # handle commandline
+                cur_hc.send(cur_mes, com_struct)
             else:
-                ZMQDiscovery(srv_com, src_id, xml_input)
+                cur_hc.return_error(
+                    cur_mes,
+                    "command '{}' not defined on relayer".format(com_name)
+                )
+        elif ZMQDiscovery.is_pending(conn_str):
+            cur_hc = HostConnection.get_hc_0mq(conn_str)
+            com_name = srv_com["command"].text
+            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            cur_hc.return_error(cur_mes, "0mq discovery in progress")
+        else:
+            ZMQDiscovery(srv_com, src_id, xml_input)
 
     def _handle_local_ping(self, src_id, srv_com):
         args = srv_com["*arg_list"].strip().split()

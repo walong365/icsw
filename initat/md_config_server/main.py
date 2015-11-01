@@ -113,7 +113,6 @@ def main():
             ("MAX_SERVICE_CHECK_SPREAD", configfile.int_c_var(5)),
             ("MAX_HOST_CHECK_SPREAD", configfile.int_c_var(5)),
             ("MAX_CONCURRENT_CHECKS", configfile.int_c_var(500)),
-            ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
             ("CHECK_SERVICE_FRESHNESS", configfile.bool_c_var(True, help_string="enable service freshness checking")),
             ("CHECK_HOST_FRESHNESS", configfile.bool_c_var(True, help_string="enable host freshness checking")),
             ("SAFE_CC_NAME", configfile.bool_c_var(False)),

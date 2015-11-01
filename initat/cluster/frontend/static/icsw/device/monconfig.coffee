@@ -123,9 +123,7 @@ angular.module(
                         $(xml).find("config > *").each (idx, node) =>
                             new_table = new mc_table($(node), paginatorSettings)
                             mc_tables.push(new_table)
-                        $scope.$apply(
-                            $scope.mc_tables = mc_tables
-                        )
+                        $scope.mc_tables = mc_tables
                         restDataSource.reset()
                         wait_list = restDataSource.add_sources([
                             [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],

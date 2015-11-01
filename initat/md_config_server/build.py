@@ -823,12 +823,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if net_devices:
             # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
-            if host.name == self.gc["SERVER_SHORT_NAME"]:
-                valid_ips, traces = ([(net_ip(ip="127.0.0.1"), "localdomain")], [(1, 0, [host.pk])])
-            else:
-                valid_ips, traces = self._get_target_ip_info(_bc, my_net_idxs, net_devices, _bc.get_host(host.pk))
-                if not valid_ips:
-                    _counter.error()
+            valid_ips, traces = self._get_target_ip_info(_bc, my_net_idxs, net_devices, _bc.get_host(host.pk))
+            if not valid_ips:
+                _counter.error()
             act_def_dev = _bc.dev_templates[host.mon_device_templ_id or 0]
             if _bc.single_build:
                 if not valid_ips:
