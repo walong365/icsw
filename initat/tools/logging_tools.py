@@ -451,7 +451,8 @@ class form_entry(object):
                 long: "d",
                 float: "f",
                 datetime.date: "s",
-                datetime.datetime: "s"
+                datetime.datetime: "s",
+                bool: "b",
             }.get(type(self.content), "s")
         )
 
@@ -475,6 +476,8 @@ class form_entry(object):
             form_str = "d"
         elif self.content_type == "f":
             form_str = "f"
+        elif self.content_type == "b":
+            form_str = "d"
         else:
             form_str = "s"
         if max_len is None:
@@ -484,7 +487,7 @@ class form_entry(object):
                 "<" if self.left else ">",
                 max_len,
                 form_str,
-                )
+            )
         return "{}{}{}".format(self.pre_str, form_str, self.post_str)
 
     def format(self, max_len):
@@ -740,16 +743,18 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
                 "error logging unicode ({}, len {:d}, log_type {:d})".format(
                     error_str,
                     len(out_str),
-                    log_type)
+                    log_type
                 )
+            )
         else:
             syslog.syslog(
                 syslog.LOG_ERR | syslog.LOG_USER,
                 "error logging string ({}, len {:d}, log_type {:d})".format(
                     error_str,
                     len(str(out_str)),
-                    log_type)
+                    log_type
                 )
+            )
     if out:
         print(out_str)
 

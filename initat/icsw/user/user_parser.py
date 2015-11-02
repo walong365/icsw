@@ -31,13 +31,30 @@ class Parser(object):
     def _add_user_parser(self, sub_parser, server_mode):
         parser = sub_parser.add_parser("user", help="user information and tools")
         parser.set_defaults(subcom="user", execute=self._execute)
+        if server_mode:
+            _choices = ["mail", "list", "export"]
+            _defc = "list"
+        else:
+            _choices = ["mail"]
+            _defc = "mail"
+        parser.add_argument("--mode", type=str, default=_defc, choices=_choices, help="action [%(default)s]")
         parser.add_argument("-f", "--from", type=str, help="from address [%(default)s]", default="root@localhost")
         parser.add_argument("-s", "--subject", type=str, help="subject [%(default)s]", default="mailsubject")
         parser.add_argument("-m", "--server", type=str, help="mailserver to connect [%(default)s]", default="localhost")
-        parser.add_argument("-t", "--to", type=str, nargs="*", help="to address [%(default)s]", default="root@localhost")
-        parser.add_argument("message", nargs="+", help="message to send")
+        parser.add_argument("-t", "--to", action="append", help="to address [%(default)s]", default=[])
+        parser.add_argument("--message", nargs="+", help="message to send")
         if server_mode:
-            parser.add_argument("--all", dest="to_all", action="store_true", default=False, help="send mail to all active users [%(default)s]")
+            parser.add_argument(
+                "--only-active",
+                dest="only_active",
+                default=False,
+                action="store_true",
+                help="filter for active users (in active groups) [%(default)s]"
+            )
+            parser.add_argument("--user-filter", type=str, default=".*", help="regex for user login filter [%(default)s]")
+            parser.add_argument("--group-filter", type=str, default=".*", help="regex for group name filter [%(default)s]")
+            parser.add_argument("--use-db-for-mail", dest="use_db", action="store_true", default=False, help="use database as user source [%(default)s]")
+            parser.add_argument("--export", type=str, default="", help="filename to export users to [%(default)s]")
 
     def _execute(self, opt_ns):
         from .main import user_main

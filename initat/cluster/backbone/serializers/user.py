@@ -32,6 +32,7 @@ __all__ = [
     "csw_permission_serializer",
     "csw_object_permission_serializer",
     "user_serializer",
+    "user_flat_serializer",
     "group_serializer",
     "group_permission_serializer",
     "group_object_permission_serializer",

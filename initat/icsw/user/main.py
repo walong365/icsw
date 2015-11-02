@@ -24,27 +24,35 @@
 """ small tool for sending mails via commandline """
 
 import sys
+import re
 
 from . import logging
 from initat.tools import mail_tools, logging_tools
 
 
-def user_main(cur_opts):
-    log_com = logging.get_logger(cur_opts.logger, all=True)
+def get_users(cur_opts, log_com):
+    from initat.cluster.backbone.models import user
+    from django.db.models import Q
+    all_users = user.objects.all().select_related("group").order_by("group__groupname", "login")
+    if cur_opts.only_active:
+        all_users = all_users.filter(
+            Q(active=True) &
+            Q(group__active=True)
+        )
+    if cur_opts.user_filter != ".*":
+        log_f = re.compile(cur_opts.user_filter)
+        all_users = [entry for entry in all_users if log_f.match(entry.login)]
+    if cur_opts.group_filter != ".*":
+        log_f = re.compile(cur_opts.group_filter)
+        all_users = [entry for entry in all_users if log_f.match(entry.group.groupname)]
+    print("{} in list".format(logging_tools.get_plural("User", len(all_users))))
+    return all_users
 
-    if cur_opts.to_all:
-        from initat.cluster.backbone.models import user
-        from django.db.models import Q
-        all_users = [
-            entry for entry in list(
-                user.objects.exclude(
-                    Q(email='')
-                ).filter(
-                    Q(active=True) &
-                    Q(group__active=True)
-                ).values_list("email", flat=True)
-            ) if entry.count("@")
-        ]
+
+def do_mail(cur_opts, log_com):
+    if cur_opts.use_db:
+        all_users = get_users(cur_opts, log_com)
+        all_users = [entry.email for entry in all_users if not entry.email.strip() and entry.email.count("@")]
         cur_opts.to = all_users
         log_com(
             "sending to {}: {}".format(
@@ -52,6 +60,9 @@ def user_main(cur_opts):
                 ", ".join(sorted(all_users))
             )
         )
+    if not cur_opts.to:
+        log_com("no valid target addresses", logging_tools.LOG_LEVEL_ERROR)
+        sys.exit(0)
     message = (" ".join(cur_opts.message)).replace("\\n", "\n").strip()
     my_mail = mail_tools.mail(cur_opts.subject, getattr(cur_opts, "from"), cur_opts.to, message)
     my_mail.set_server(cur_opts.server)
@@ -74,3 +85,49 @@ def user_main(cur_opts):
             )
         )
     sys.exit(m_stat)
+
+
+def do_list(cur_opts, log_com):
+    users = get_users(cur_opts, log_com)
+    out_list = logging_tools.new_form_list()
+    for _user in users:
+        out_list.append(
+            [
+                logging_tools.form_entry(_user.login, header="login"),
+                logging_tools.form_entry(_user.uid, header="uid"),
+                logging_tools.form_entry(_user.active, header="active"),
+                logging_tools.form_entry(_user.group.groupname, header="group"),
+                logging_tools.form_entry(_user.group.gid, header="gid"),
+                logging_tools.form_entry(_user.group.active, header="gactive"),
+                logging_tools.form_entry(_user.first_name, header="first name"),
+                logging_tools.form_entry(_user.last_name, header="last name"),
+                logging_tools.form_entry(_user.email, header="email"),
+                logging_tools.form_entry(_user.login_count, header="logincount"),
+                logging_tools.form_entry(_user.comment, header="comment"),
+            ]
+        )
+    print unicode(out_list)
+
+
+def do_export(cur_opts, log_com):
+    from initat.cluster.backbone.serializers import user_flat_serializer
+    from rest_framework.renderers import JSONRenderer
+    users = get_users(cur_opts, log_com)
+    _exp = JSONRenderer().render(user_flat_serializer(users, many=True).data)
+    if cur_opts.export:
+        file(cur_opts.export, "wb").write(_exp)
+        print("exported dump to {}".format(cur_opts.export))
+    else:
+        print(_exp)
+
+
+def user_main(cur_opts):
+    log_com = logging.get_logger(cur_opts.logger, all=True)
+    if cur_opts.mode == "mail":
+        do_mail(cur_opts, log_com)
+    elif cur_opts.mode == "list":
+        do_list(cur_opts, log_com)
+    elif cur_opts.mode == "export":
+        do_export(cur_opts, log_com)
+    else:
+        print("Unknown mode '{}'".format(cur_opts.mode))
