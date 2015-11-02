@@ -359,9 +359,9 @@ class GraphForecastModeEnum(Enum):
 
 
 class GraphCFEnum(Enum):
-    minimum = "MINIMUM"
+    minimum = "MIN"
     average = "AVERAGE"
-    maximum = "MAXIMUM"
+    maximum = "MAX"
 
 
 class GraphSettingSize(models.Model):

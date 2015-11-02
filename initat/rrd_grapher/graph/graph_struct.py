@@ -142,7 +142,7 @@ class GraphVar(object):
         # unique_id = device pk
         timeshift = kwargs.get("timeshift", 0)
         self.get_color_and_style()
-        src_cf = "AVERAGE"
+        src_cf = self.rrd_graph.para_dict["graph_setting"].cf.value
         if self.mvs_entry.se_type in ["pde", "mvl"]:
             # pde entry
             _src_str = "{}:{}:{}".format(self.mvs_entry.file_name, self.mvv_entry.name or self.mvv_entry.key, src_cf)

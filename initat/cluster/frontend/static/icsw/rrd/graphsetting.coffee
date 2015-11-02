@@ -171,6 +171,11 @@ angular.module(
         {"short": "n", "long": "none"}
         {"short": "t", "long": "to100"}
     ]
+    cfs = [
+        {"short": "MIN", long: "minimum"}
+        {"short": "AVERAGE", long: "average"}
+        {"short": "MAX", long: "maximum"}
+    ]
     get_default = () ->
         cur_setting = {
             "name": "default"
@@ -180,6 +185,7 @@ angular.module(
             "merge_graphs": false
             "legend_mode": legend_modes[0]["short"]
             "scale_mode": scale_modes[0]["short"]
+            "cf": cfs[1]["short"]
         }
         return cur_setting
     return {
@@ -211,6 +217,8 @@ angular.module(
             return _sets
         "scale_modes": () ->
             return scale_modes
+        "cfs": () ->
+            return cfs
         "legend_modes": () ->
             return legend_modes
     }
@@ -249,6 +257,7 @@ angular.module(
         link: (scope, el, attrs) ->
             scope.legend_modes = icswRrdGraphSettingService.legend_modes()
             scope.scale_modes = icswRrdGraphSettingService.scale_modes()
+            scope.cfs = icswRrdGraphSettingService.cfs()
             scope.vars = {
                 "current" : undefined
             }
@@ -267,12 +276,14 @@ angular.module(
             scope.set_current = (setting) ->
                 setting.legend_mode2 = (entry for entry in icswRrdGraphSettingService.legend_modes() when entry.short == setting.legend_mode)[0]
                 setting.scale_mode2 = (entry for entry in icswRrdGraphSettingService.scale_modes() when entry.short == setting.scale_mode)[0]
+                setting.cf2 = (entry for entry in icswRrdGraphSettingService.cfs() when entry.short == setting.cf)[0]
                 scope.vars.current = setting
                 icswRrdGraphSettingService.set_active(setting)
             scope.update_setting = () ->
                 # transform legend_mode2 / scale_mode2
                 scope.vars.current.legend_mode = scope.vars.current.legend_mode2["short"]
                 scope.vars.current.scale_mode = scope.vars.current.scale_mode2["short"]
+                scope.vars.current.cf = scope.vars.current.cf2["short"]
             scope.set_current(icswRrdGraphSettingService.get_active())
             scope.save_setting = () ->
                 scope.update_setting()

@@ -19,7 +19,7 @@
         <h3>Settings defined: {{ settings.length }}</h3>
         <fieldset>
             <legend>
-                Flags
+                Graph Flags
             </legend>
             <div class="form-group row">
                 <label class="col-md-3 control-label">
@@ -51,6 +51,20 @@
                 </label>
                 <div class="col-md-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_graphs"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-md-3 control-label">
+                    <span class="fa fa-arrows-v"/>
+                    CF:
+                </label>
+                <div class="col-md-9 controls">
+                    <ui-select ng-model="vars.current.cf2">
+                        <ui-select-match placeholder="Consolidation function...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-choices repeat="cf in cfs">
+                            <div ng-bind-html="cf.long"></div>
+                        </ui-select-choices>
+                    </ui-select>
                 </div>
             </div>
         </fieldset>
