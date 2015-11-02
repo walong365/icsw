@@ -278,6 +278,8 @@ menu_module = angular.module(
                                 _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
                             if entry.licenses? and _add
                                 _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
+                            if entry.service_types? and _add
+                                _add = icswAcessLevelService.has_all_service_types(entry.service_types)
                             if _add
                                 if angular.isFunction(entry.name)
                                     _items.push(
@@ -576,6 +578,7 @@ menu_module = angular.module(
                                     {
                                         name: "RMS overview"
                                         licenses: ["rms"]
+                                        service_types: ["rms-server"]
                                         icon: "fa-table"
                                         href: ICSW_URLS.RMS_OVERVIEW
                                     }
@@ -588,6 +591,7 @@ menu_module = angular.module(
                                     {
                                         name: "License LiveView"
                                         licenses: ["ext_license"]
+                                        service_types: ["rms-server"]
                                         icon: "fa-line-chart"
                                         href: ICSW_URLS.LIC_LICENSE_LIVEVIEW
                                     }

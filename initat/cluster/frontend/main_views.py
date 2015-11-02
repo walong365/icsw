@@ -108,7 +108,7 @@ class get_server_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        cur_routing = routing.srv_type_routing()
+        cur_routing = routing.srv_type_routing(force=True)
         _server_list = []
         for _server in cur_routing.resolv_dict.get("cluster-server", []):
             srv_com = server_command.srv_command(command="server_status")

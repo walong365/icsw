@@ -399,6 +399,7 @@ angular.module(
             data.license_data = r_data[1]
             data.object_permissions = r_data[2]
             data.routing_info = r_data[3]
+            # console.log data.routing_info.service_types
             acls_are_valid = true
         )
     reload()
@@ -489,6 +490,11 @@ angular.module(
         has_all_valid_licenses: (licenses) ->
             for l in licenses
                 if not has_valid_license(l)
+                    return false
+            return true
+        has_all_service_types: (stypes) ->
+            for s in stypes
+                if not has_service_type(s)
                     return false
             return true
     }
