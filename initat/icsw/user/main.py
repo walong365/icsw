@@ -48,32 +48,52 @@ def get_users(cur_opts, log_com):
     if cur_opts.group_filter != ".*":
         log_f = re.compile(cur_opts.group_filter)
         all_users = [entry for entry in all_users if log_f.match(entry.group.groupname)]
+    if cur_opts.with_email:
+        all_users = [entry for entry in all_users if entry.email.strip() and entry.email.count("@")]
     print("{} in list".format(logging_tools.get_plural("User", len(all_users))))
     return all_users
 
 
 def do_mail(cur_opts, log_com):
     if cur_opts.use_db:
+        _send_mail = cur_opts.sendit
         all_users = get_users(cur_opts, log_com)
-        all_users = [entry.email for entry in all_users if not entry.email.strip() and entry.email.count("@")]
-        cur_opts.to = all_users
+        all_users = [entry.email for entry in all_users if entry.email.strip() and entry.email.count("@")]
+    else:
+        all_users = cur_opts.to
+        _send_mail = True
+    if not all_users:
+        log_com("no valid target addresses", logging_tools.LOG_LEVEL_ERROR)
+        sys.exit(0)
+    if not _send_mail:
+        print("")
+        print("Will not send the email because --sendit is missing !")
+        print("")
+        print(
+            "target list has {:d} entries: {}".format(
+                len(all_users),
+                ", ".join(sorted(all_users)),
+            )
+        )
+        sys.exit(0)
+    else:
         log_com(
             "sending to {}: {}".format(
                 logging_tools.get_plural("address", len(all_users)),
                 ", ".join(sorted(all_users))
             )
         )
-    if not cur_opts.to:
-        log_com("no valid target addresses", logging_tools.LOG_LEVEL_ERROR)
-        sys.exit(0)
+    if not cur_opts.message:
+        print("No message given")
+        sys.exit(-1)
     message = (" ".join(cur_opts.message)).replace("\\n", "\n").strip()
-    my_mail = mail_tools.mail(cur_opts.subject, getattr(cur_opts, "from"), cur_opts.to, message)
+    my_mail = mail_tools.mail(cur_opts.subject, getattr(cur_opts, "from"), all_users, message)
     my_mail.set_server(cur_opts.server)
     m_stat, m_ret_f = my_mail.send_mail()
     if m_stat:
         log_com(
             "Some error occured sending to {} ({}, {:d}): {}".format(
-                ",".join(cur_opts.to),
+                ",".join(all_users),
                 cur_opts.subject,
                 m_stat,
                 "\n".join(m_ret_f)
@@ -83,7 +103,7 @@ def do_mail(cur_opts, log_com):
     else:
         log_com(
             "Mail successfully sent to {} ({})".format(
-                ",".join(cur_opts.to),
+                ",".join(all_users),
                 cur_opts.subject,
             )
         )
@@ -138,7 +158,7 @@ def do_export(cur_opts, log_com):
 
 
 def do_import(cur_opts, log_com):
-    from initat.cluster.backbone.serializers import user_flat_serializer #  , group_flat_serializer
+    from initat.cluster.backbone.serializers import user_flat_serializer  # , group_flat_serializer
     from initat.cluster.backbone.models import group, home_export_list
     from django.db.models import Q
     if not os.path.exists(cur_opts.export):

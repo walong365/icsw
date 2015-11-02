@@ -56,6 +56,8 @@ class Parser(object):
             parser.add_argument("--use-db-for-mail", dest="use_db", action="store_true", default=False, help="use database as user source [%(default)s]")
             parser.add_argument("--export", type=str, default="", help="filename to (export to / import from) users [%(default)s]")
             parser.add_argument("--default-group", type=str, default="", help="default group from import [%(default)s]")
+            parser.add_argument("--with-email", default=False, action="store_true", help="filter for users with a valid email address [%(default)s]")
+            parser.add_argument("--sendit", default=False, action="store_true", help="really send email [%(default)s]")
 
     def _execute(self, opt_ns):
         from .main import user_main
