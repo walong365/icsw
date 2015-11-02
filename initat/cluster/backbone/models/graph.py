@@ -39,6 +39,7 @@ __all__ = [
     "GraphScaleModeEnum",
     "GraphLegendModeEnum",
     "GraphForecastModeEnum",
+    "GraphCFEnum",
     "GraphSettingSize",
     "GraphSettingTimeshift",
     "GraphSettingForecast",
@@ -357,6 +358,12 @@ class GraphForecastModeEnum(Enum):
     simple_linear = "sl"
 
 
+class GraphCFEnum(Enum):
+    minimum = "MINIMUM"
+    average = "AVERAGE"
+    maximum = "MAXIMUM"
+
+
 class GraphSettingSize(models.Model):
     # sizes
     idx = models.AutoField(primary_key=True)
@@ -420,6 +427,11 @@ class GraphSetting(models.Model):
         default=GraphLegendModeEnum.full_with_values.value,
         choices=[(_en.value, _en.name.replace("_", " ")) for _en in GraphLegendModeEnum],
     )
+    cf = models.CharField(
+        max_length=16,
+        default=GraphCFEnum.average.value,
+        choices=[(_en.value, _en.name) for _en in GraphCFEnum],
+    )
     # merge all devices together
     merge_devices = models.BooleanField(default=False)
     # merge all graphs into one
@@ -436,6 +448,7 @@ class GraphSetting(models.Model):
         # rewrite scale and legend mode to full enum
         self.scale_mode = [_entry for _entry in GraphScaleModeEnum if _entry.value == self.scale_mode][0]
         self.legend_mode = [_entry for _entry in GraphLegendModeEnum if _entry.value == self.legend_mode][0]
+        self.cf = [_entry for _entry in GraphCFEnum if _entry.value == self.cf][0]
         if self.graph_setting_forecast_id:
             self.graph_setting_forecast.mode = [
                 _entry for _entry in GraphForecastModeEnum if _entry.value == self.graph_setting_forecast.mode
