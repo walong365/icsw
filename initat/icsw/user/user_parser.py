@@ -32,7 +32,7 @@ class Parser(object):
         parser = sub_parser.add_parser("user", help="user information and tools")
         parser.set_defaults(subcom="user", execute=self._execute)
         if server_mode:
-            _choices = ["mail", "list", "export"]
+            _choices = ["mail", "list", "export", "import"]
             _defc = "list"
         else:
             _choices = ["mail"]
@@ -54,7 +54,8 @@ class Parser(object):
             parser.add_argument("--user-filter", type=str, default=".*", help="regex for user login filter [%(default)s]")
             parser.add_argument("--group-filter", type=str, default=".*", help="regex for group name filter [%(default)s]")
             parser.add_argument("--use-db-for-mail", dest="use_db", action="store_true", default=False, help="use database as user source [%(default)s]")
-            parser.add_argument("--export", type=str, default="", help="filename to export users to [%(default)s]")
+            parser.add_argument("--export", type=str, default="", help="filename to (export to / import from) users [%(default)s]")
+            parser.add_argument("--default-group", type=str, default="", help="default group from import [%(default)s]")
 
     def _execute(self, opt_ns):
         from .main import user_main

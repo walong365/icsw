@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2001-2004,2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
 #
@@ -25,9 +25,12 @@
 
 import sys
 import re
+import os
+import json
+import pprint
 
 from . import logging
-from initat.tools import mail_tools, logging_tools
+from initat.tools import mail_tools, logging_tools, process_tools
 
 
 def get_users(cur_opts, log_com):
@@ -110,15 +113,85 @@ def do_list(cur_opts, log_com):
 
 
 def do_export(cur_opts, log_com):
-    from initat.cluster.backbone.serializers import user_flat_serializer
+    from initat.cluster.backbone.serializers import user_flat_serializer, group_flat_serializer
     from rest_framework.renderers import JSONRenderer
     users = get_users(cur_opts, log_com)
-    _exp = JSONRenderer().render(user_flat_serializer(users, many=True).data)
+    groups = {}
+    for _user in users:
+        if _user.group_id not in groups:
+            groups[_user.group.pk] = _user.group
+    _group_exp = JSONRenderer().render(group_flat_serializer(groups.values(), many=True).data)
+    _user_exp = JSONRenderer().render(user_flat_serializer(users, many=True).data)
+    _exp = json.dumps(
+        {
+            "version": 1,
+            "groups": json.loads(_group_exp),
+            "users": json.loads(_user_exp),
+        },
+        indent=4,
+    )
     if cur_opts.export:
         file(cur_opts.export, "wb").write(_exp)
         print("exported dump to {}".format(cur_opts.export))
     else:
         print(_exp)
+
+
+def do_import(cur_opts, log_com):
+    from initat.cluster.backbone.serializers import user_flat_serializer #  , group_flat_serializer
+    from initat.cluster.backbone.models import group, home_export_list
+    from django.db.models import Q
+    if not os.path.exists(cur_opts.export):
+        print("import file '{}' not found".format(cur_opts.export))
+    _imp = json.loads(file(cur_opts.export, "r").read())
+    if "version" in _imp:
+        pass
+    else:
+        _imp = {
+            "version": 0,
+            "groups": [],
+            "users": _imp
+        }
+    if cur_opts.default_group:
+        default_group = group.objects.get(Q(groupname=cur_opts.default_group))
+    else:
+        default_group = None
+    hel = home_export_list()
+    exp_dict = hel.exp_dict
+    # todo, import groups
+    for _user in _imp["users"]:
+        data = user_flat_serializer(data=_user)
+        if not data.is_valid():
+            if "group" in data.errors and default_group:
+                _user["group"] = default_group.pk
+                data = user_flat_serializer(data=_user)
+        if not data.is_valid():
+            if "export" in data.errors and len(exp_dict.keys()) == 1:
+                _user["export"] = exp_dict.keys()[0]
+                data = user_flat_serializer(data=_user)
+        if not data.is_valid():
+            log_com("")
+            log_com("-" * 50)
+            log_com("Cannot import user")
+            log_com(str(_user))
+            log_com("errors:")
+            log_com(str(data.errors))
+            log_com("-" * 50)
+            log_com("")
+        else:
+            try:
+                data.object.save()
+            except:
+                log_com(
+                    u"Cannot create user '{}': {}".format(
+                        unicode(data.object),
+                        process_tools.get_except_info(),
+                    )
+                )
+            else:
+                log_com(
+                    "created user '{}'".format(unicode(data.object))
+                )
 
 
 def user_main(cur_opts):
@@ -129,5 +202,7 @@ def user_main(cur_opts):
         do_list(cur_opts, log_com)
     elif cur_opts.mode == "export":
         do_export(cur_opts, log_com)
+    elif cur_opts.mode == "import":
+        do_import(cur_opts, log_com)
     else:
-        print("Unknown mode '{}'".format(cur_opts.mode))
+        log_com("Unknown mode '{}'".format(cur_opts.mode))

@@ -34,6 +34,7 @@ __all__ = [
     "user_serializer",
     "user_flat_serializer",
     "group_serializer",
+    "group_flat_serializer",
     "group_permission_serializer",
     "group_object_permission_serializer",
     "user_permission_serializer",
@@ -135,17 +136,14 @@ class user_serializer(serializers.ModelSerializer):
 
 
 class user_flat_serializer(serializers.ModelSerializer):
-    info = serializers.Field(source="get_info")
 
     class Meta:
         model = user
-        fields = (
-            "idx", "login", "uid", "group", "first_name", "last_name", "shell",
-            "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
-            "info", "scan_user_home", "scan_depth", "home",
-            "only_webfrontend",
-        )
+
+
+class group_flat_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = group
 
 
 class group_serializer(serializers.ModelSerializer):

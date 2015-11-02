@@ -466,7 +466,7 @@ class form_entry(object):
         return getattr(self, key)
 
     def min_len(self):
-        return max(len(str(self)), self.min_width)
+        return max(len(unicode(self)), self.min_width)
 
     def __str__(self):
         return self.form_str().format(self.content)
@@ -481,14 +481,14 @@ class form_entry(object):
         else:
             form_str = "s"
         if max_len is None:
-            form_str = "{{:{}}}".format(form_str)
+            form_str = u"{{:{}}}".format(form_str)
         else:
-            form_str = "{{:{}{:d}{}}}".format(
+            form_str = u"{{:{}{:d}{}}}".format(
                 "<" if self.left else ">",
                 max_len,
                 form_str,
             )
-        return "{}{}{}".format(self.pre_str, form_str, self.post_str)
+        return u"{}{}{}".format(self.pre_str, form_str, self.post_str)
 
     def format(self, max_len):
         return self.form_str(max_len).format(self.content)
