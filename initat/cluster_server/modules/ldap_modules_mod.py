@@ -425,7 +425,7 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
             except ldap.LDAPError:
                 ldap_err_str = self._get_ldap_err_str("read_access")
                 self.log(
-                    "cannot initialize read_cursor: %s" % (ldap_err_str),
+                    "cannot initialize read_cursor: {}".format(ldap_err_str),
                     logging_tools.LOG_LEVEL_ERROR
                 )
                 errors.append(ldap_err_str)
@@ -436,14 +436,16 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
                     ld_write.simple_bind_s(
                         u"cn={},{}".format(
                             par_dict["admin_cn"],
-                            par_dict["base_dn"]),
+                            par_dict["base_dn"]
+                        ),
                         par_dict["root_passwd"]
                     )
                 except ldap.LDAPError:
                     ldap_err_str = self._get_ldap_err_str("write_access")
                     self.log(
                         u"cannot initialize write_cursor: {}".format(ldap_err_str),
-                        logging_tools.LOG_LEVEL_ERROR)
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     errors.append(ldap_err_str)
                     ld_write = None
                     ld_read.unbind_s()
@@ -613,8 +615,10 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     ld_write.simple_bind_s(
                         "cn={},{}".format(
                             par_dict["admin_cn"],
-                            par_dict["base_dn"]),
-                        par_dict["root_passwd"])
+                            par_dict["base_dn"]
+                        ),
+                        par_dict["root_passwd"]
+                    )
                 except ldap.LDAPError:
                     ldap_err_str = self._get_ldap_err_str("write_access")
                     self.log(
@@ -712,7 +716,9 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 u_stuff.title,
                                 u_stuff.first_name,
                                 u_stuff.last_name,
-                                u_stuff.email)],
+                                u_stuff.email
+                            )
+                        ],
                         "gidNumber": [str(g_stuff.gid)],
                         "uidNumber": [str(u_stuff.uid)],
                         # "memberOf"         : [self._expand_dn("group", None, g_stuff)],

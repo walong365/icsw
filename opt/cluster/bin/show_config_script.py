@@ -49,7 +49,7 @@ def main():
         if options.full_strip:
             f_lines = [_line.strip() for _line in f_lines if _line.strip()]
         if options.remove_hashes:
-            f_lines = [_line for _line in f_lines if not _line.startswith("#")]
+            f_lines = [_line for _line in f_lines if (not _line.startswith("#") or _line.startswith("#!"))]
         p_line = " " * 4
         print(
             "# from {} ({}, host {}, size was {} in {})".format(
@@ -64,7 +64,11 @@ def main():
         print(
             u"{} += [\n{}]\n".format(
                 obj_name,
-                "".join(["{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines])
+                "".join(
+                    [
+                        "{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines
+                    ]
+                )
             )
         )
         print(

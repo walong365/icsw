@@ -423,7 +423,7 @@ class ServiceState(object):
             _action = {0: "stop", 1: "start"}[self.__target_dict[name]]
             _res_node = service.entry.find(".//result")
             if _res_node is not None:
-                _state = int(_res_node.find("state_info").attrib["state"])
+                _state = int(_res_node.find("process_state_info").attrib["state"])
                 _lic_state = int(_res_node.find("license_info").attrib["state"])
                 if _state in [constants.SERVICE_NOT_CONFIGURED, constants.SERVICE_NOT_INSTALLED]:
                     _action = "stop"
@@ -493,9 +493,9 @@ class ServiceState(object):
                 _res = _el.entry.find(".//result")
                 if _res is not None:
                     # print etree.tostring(_el.entry, pretty_print=True)
-                    _state = int(_res.find("state_info").attrib["state"])
+                    _state = int(_res.find("process_state_info").attrib["state"])
                     _lic_state = int(_res.find("license_info").attrib["state"])
-                    _proc_info_str = _res.find("state_info").get("proc_info_str", "")
+                    _proc_info_str = _res.find("process_state_info").get("proc_info_str", "")
                     _is_ok = self._update_state(_el.name, _state, _lic_state, _proc_info_str)
                     if not _is_ok:
                         if self.__shutdown:

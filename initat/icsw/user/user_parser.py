@@ -32,7 +32,7 @@ class Parser(object):
         parser = sub_parser.add_parser("user", help="user information and tools")
         parser.set_defaults(subcom="user", execute=self._execute)
         if server_mode:
-            _choices = ["mail", "list", "export", "import"]
+            _choices = ["mail", "list", "export", "import", "modify"]
             _defc = "list"
         else:
             _choices = ["mail"]
@@ -49,8 +49,10 @@ class Parser(object):
                 dest="only_active",
                 default=False,
                 action="store_true",
-                help="filter for active users (in active groups) [%(default)s]"
+                help="filter for active users (in active groups) [%(default)s]",
             )
+            from initat.cluster.backbone.models import home_export_list
+            hel = home_export_list()
             parser.add_argument("--user-filter", type=str, default=".*", help="regex for user login filter [%(default)s]")
             parser.add_argument("--group-filter", type=str, default=".*", help="regex for group name filter [%(default)s]")
             parser.add_argument("--use-db-for-mail", dest="use_db", action="store_true", default=False, help="use database as user source [%(default)s]")
@@ -58,6 +60,21 @@ class Parser(object):
             parser.add_argument("--default-group", type=str, default="", help="default group from import [%(default)s]")
             parser.add_argument("--with-email", default=False, action="store_true", help="filter for users with a valid email address [%(default)s]")
             parser.add_argument("--sendit", default=False, action="store_true", help="really send email [%(default)s]")
+            if hel.exp_dict:
+                # build dict
+                parser.add_argument(
+                    "--new-export",
+                    default=0,
+                    type=int,
+                    choices=[0] + hel.exp_dict.keys(),
+                    help="set export entry for modify [%(default)d=keep], info:\n{}".format(
+                        "\n".join(
+                            [
+                                "{:d}={}@{}".format(_key, hel.exp_dict[_key]["createdir"], hel.exp_dict[_key]["name"]) for _key in hel.exp_dict.keys()
+                            ]
+                        )
+                    ),
+                )
 
     def _execute(self, opt_ns):
         from .main import user_main

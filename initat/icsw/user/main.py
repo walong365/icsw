@@ -214,6 +214,23 @@ def do_import(cur_opts, log_com):
                 )
 
 
+def do_modify(cur_opts, log_com):
+    from initat.cluster.backbone.models import device_config
+    from django.db.models import Q
+    users = get_users(cur_opts, log_com)
+    for _user in users:
+        if cur_opts.new_export and _user.export_id and _user.export_id != cur_opts.new_export:
+            log_com(
+                "changing export_id of user '{}' from {:d} to {:d}".format(
+                    unicode(_user),
+                    _user.export_id,
+                    cur_opts.new_export,
+                )
+            )
+            _user.export = device_config.objects.get(Q(pk=cur_opts.new_export))
+            _user.save()
+
+
 def user_main(cur_opts):
     log_com = logging.get_logger(cur_opts.logger, all=True)
     if cur_opts.mode == "mail":
@@ -224,5 +241,7 @@ def user_main(cur_opts):
         do_export(cur_opts, log_com)
     elif cur_opts.mode == "import":
         do_import(cur_opts, log_com)
+    elif cur_opts.mode == "modify":
+        do_modify(cur_opts, log_com)
     else:
         log_com("Unknown mode '{}'".format(cur_opts.mode))

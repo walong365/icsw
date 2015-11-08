@@ -44,11 +44,11 @@ class Service(object):
     def __new__(cls, entry, log_com):
         _ct = entry.attrib["check_type"]
         if _ct == "simple":
-            new_cls = SimpleService  # (entry, log_com)
+            new_cls = SimpleService
         elif _ct == "meta":
-            new_cls = MetaService  # (entry, log_com)
+            new_cls = MetaService
         elif _ct == "pid_file":
-            new_cls = PIDService  # (entry, log_com)
+            new_cls = PIDService
         else:
             raise KeyError("unknown check_type '{}'".format(_ct))
         return super(Service, new_cls).__new__(new_cls)
@@ -73,15 +73,15 @@ class Service(object):
 
     @property
     def init_script_name(self):
-        return os.path.join("/etc", "init.d", self.attrib["init_script_name"])
+        return os.path.join("/", "etc", "init.d", self.attrib["init_script_name"])
 
     @property
     def msi_name(self):
         c_name = self.attrib["meta_server_name"]
-        _path = os.path.join("/var", "lib", "meta-server", c_name)
+        _path = os.path.join("/", "var", "lib", "meta-server", c_name)
         # compat layer for buggy specs
         if not os.path.exists(_path) and c_name in self._COMPAT_DICT:
-            _alt_path = os.path.join("/var", "lib", "meta-server", self._COMPAT_DICT[c_name])
+            _alt_path = os.path.join("/", "var", "lib", "meta-server", self._COMPAT_DICT[c_name])
             if os.path.exists(_alt_path):
                 _path = _alt_path
         return _path
@@ -131,14 +131,14 @@ class Service(object):
         # - "error" if the service is not running
         if len(self.entry.findall(".//pids/pid")):
             # any pids found
-            _si = self.entry.find(".//state_info")
+            _si = self.entry.find(".//process_state_info")
             if _si is not None:
                 _state = int(_si.get("state"))
                 return "ok" if _state in [SERVICE_OK, SERVICE_NOT_CONFIGURED] else "warn"
             else:
                 return "error"
         else:
-            _si = self.entry.find(".//state_info[@check_source='simple']")
+            _si = self.entry.find(".//process_state_info[@check_source='simple']")
             if _si is not None:
                 _state = int(_si.get("state"))
                 return "ok" if _state in [SERVICE_OK, SERVICE_NOT_CONFIGURED] else "warn"
@@ -146,9 +146,9 @@ class Service(object):
                 return "error"
 
     def _modify_state(self, result, act_state, info_str):
-        _state_info = result.find("state_info")
-        _state_info.text = info_str
-        _state_info.attrib["state"] = "{:d}".format(act_state)
+        _process_state_info = result.find("process_state_info")
+        _process_state_info.text = info_str
+        _process_state_info.attrib["state"] = "{:d}".format(act_state)
         return info_str
 
     def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, models_changed=False):
@@ -199,28 +199,34 @@ class Service(object):
 
         self._check(_result, act_proc_dict)
 
-        act_state = int(_result.find("state_info").attrib["state"])
+        act_state = int(_result.find("process_state_info").attrib["state"])
+        c_state = CONF_STATE_RUN
         if self.attrib["runs_on"] == "server":
             if models_changed:
                 # force state to failed
-                sql_info = self._modify_state(_result, SERVICE_DEAD, "models changed")
+                # TODO, FIXME, OMG
+                print("*" * 50)
+                c_state = CONF_STATE_MODELS_CHANGED
+                overall_info = "models changed"  # self._modify_state(_result, SERVICE_DEAD, "models changed")
             else:
                 if dev_config:
-                    sql_info = ", ".join(
+                    overall_info = ", ".join(
                         [
                             _dc.server_info_str for _dc in dev_config
                         ]
                     )
                 else:
                     if self.entry.find(".//ignore-missing-database") is not None:
-                        sql_info = "relayer mode"
+                        overall_info = "relayer mode"
                     else:
                         # if the current service is not configured via database / IP we set
                         # the state to NOT_CONFIGURED (from [for instance] DEAD)
                         # we have to change the behaviour because this simple transition
                         # disables in fact the functionality of the meta-server to stop
                         # no longer configured services (as seen on the boke beegfs server 'boss')
-                        sql_info = self._modify_state(_result, SERVICE_NOT_CONFIGURED, "not configured")
+                        c_state = CONF_STATE_STOP
+                        overall_info = "not configured"
+                        # sql_info = self._modify_state(_result, SERVICE_NOT_CONFIGURED, "not configured")
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -232,28 +238,33 @@ class Service(object):
                             lic_state = License.objects._get_license_state(_vl)
                             break
                 else:
-                    lic_state = -1
+                    lic_state = LIC_STATE_NOT_NEEDED
             else:
-                lic_state = -1
+                lic_state = LIC_STATE_NOT_NEEDED
             if not ip_match:
-                lic_state = LIC_STATE_IP_MISMATCH
+                c_state = CONF_STATE_IP_MISMATCH
+                overall_info = "IP mismatch"
         else:
+            lic_state = LIC_STATE_NOT_NEEDED
             if not ip_match:
-                # TODO
-                sql_info = "IP mismatch"
-                lic_state = LIC_STATE_IP_MISMATCH
+                overall_info = "IP mismatch"
+                c_state = CONF_STATE_IP_MISMATCH
             else:
-                sql_info = self.attrib["runs_on"]
-                lic_state = -1
-        if isinstance(sql_info, basestring):
+                overall_info = self.attrib["runs_on"]
+        _result.append(
+            E.configured_state_info(
+                state="{:d}".format(c_state)
+            )
+        )
+        if isinstance(overall_info, basestring):
             _result.append(
-                E.sql_info(str(sql_info))
+                E.overall_info(str(overall_info))
             )
         else:
             _result.append(
-                E.sql_info("{} ({})".format(
-                    sql_info.server_info_str,
-                    sql_info.config_name),
+                E.overall_info("{} ({})".format(
+                    overall_info.server_info_str,
+                    overall_info.config_name),
                 )
             )
         _result.append(
@@ -345,7 +356,7 @@ class Service(object):
         if os.path.isfile(init_script_name) or check_init_script is False:
             act_state = SERVICE_DEAD
             result.append(
-                E.state_info(
+                E.process_state_info(
                     "no processes",
                     state="{:d}".format(act_state),
                 )
@@ -353,7 +364,7 @@ class Service(object):
         else:
             act_state = SERVICE_NOT_INSTALLED
             result.append(
-                E.state_info(
+                E.process_state_info(
                     "not installed",
                     state="{:d}".format(act_state),
                 )
@@ -540,7 +551,7 @@ class SimpleService(Service):
         else:
             act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
         result.append(
-            E.state_info(
+            E.process_state_info(
                 act_str,
                 check_source="simple",
                 state="{:d}".format(act_state),
@@ -550,7 +561,7 @@ class SimpleService(Service):
         if "pid_file_name" in self.attrib:
             pid_file_name = self.attrib["pid_file_name"]
             if not pid_file_name.startswith("/"):
-                pid_file_name = os.path.join("/var", "run", pid_file_name)
+                pid_file_name = os.path.join("/", "var", "run", pid_file_name)
             if os.path.isfile(pid_file_name):
                 try:
                     act_pid = int(file(pid_file_name, "r").read().strip())
@@ -573,12 +584,12 @@ class SimpleService(Service):
 
 
 class PIDService(Service):
-    # Service backup up by a PID-file
+    # Service backed up by a PID-file
     def _check(self, result, act_proc_dict):
         name = self.name
         pid_file_name = self.attrib["pid_file_name"]
         if not pid_file_name.startswith("/"):
-            pid_file_name = os.path.join("/var", "run", pid_file_name)
+            pid_file_name = os.path.join("/", "var", "run", pid_file_name)
         if os.path.isfile(pid_file_name):
             start_time = os.stat(pid_file_name)[stat.ST_CTIME]
             act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
@@ -586,7 +597,7 @@ class PIDService(Service):
             num_diff = 0
             diff_dict = {}
             result.append(
-                E.state_info(
+                E.process_state_info(
                     *[
                         E.diff_info(
                             pid="{:d}".format(key),
@@ -639,7 +650,7 @@ class MetaService(Service):
                 num_found = num_started
             num_diff = diff_threads
             result.append(
-                E.state_info(
+                E.process_state_info(
                     *[
                         E.diff_info(
                             pid="{:d}".format(key),

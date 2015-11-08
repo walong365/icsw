@@ -132,7 +132,13 @@ class ServiceContainer(object):
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
             self.update_valid_licenses()
-        entry.check(self.__act_proc_dict, refresh=refresh, config_tools=config_tools, valid_licenses=self.valid_licenses, models_changed=models_changed)
+        entry.check(
+            self.__act_proc_dict,
+            refresh=refresh,
+            config_tools=config_tools,
+            valid_licenses=self.valid_licenses,
+            models_changed=models_changed,
+        )
         if not entry.config_check_ok:
             self._config_check_errors.append(entry.name)
 
@@ -205,12 +211,17 @@ class ServiceContainer(object):
         }[service.run_state][subcom]
 
     def instance_to_form_list(self, opt_ns, res_xml):
-        rc_dict = {
+        prc_dict = {
             SERVICE_OK: ("running", "ok"),
             SERVICE_DEAD: ("error", "critical"),
             SERVICE_INCOMPLETE: ("incomplete", "critical"),
             SERVICE_NOT_INSTALLED: ("not installed", "warning"),
             SERVICE_NOT_CONFIGURED: ("not configured", "warning"),
+        }
+        crc_dict = {
+            CONF_STATE_RUN: ("run", "ok"),
+            CONF_STATE_STOP: ("stop", "critical"),
+            CONF_STATE_IP_MISMATCH: ("ip mismatch", "critical"),
         }
         if License is not None:
             lic_dict = {
@@ -220,7 +231,7 @@ class ServiceContainer(object):
                 LicenseState.valid: ("valid", "ok"),
                 LicenseState.grace: ("in grace", "warning"),
                 LicenseState.expired: ("expired", "critical"),
-                LicenseState.ip_mismatch: ("ip mismatch", "critical"),
+                # LicenseState.ip_mismatch: ("ip mismatch", "critical"),
             }
         else:
             lic_dict = None
@@ -234,13 +245,14 @@ class ServiceContainer(object):
         )
         for act_struct in _list:
             _res = act_struct.find("result")
-            cur_state = int(act_struct.find(".//state_info").get("state", "1"))
-            if not opt_ns.failed or (opt_ns.failed and cur_state not in [SERVICE_OK]):
+            p_state = int(act_struct.find(".//process_state_info").get("state", "1"))
+            c_state = int(act_struct.find(".//configured_state_info").get("state", "1"))
+            if not opt_ns.failed or (opt_ns.failed and p_state not in [SERVICE_OK]):
                 cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
                 cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
-                cur_line.append(logging_tools.form_entry(_res.find("state_info").get("check_source", "N/A"), header="source"))
+                cur_line.append(logging_tools.form_entry(_res.find("process_state_info").get("check_source", "N/A"), header="source"))
                 if opt_ns.thread:
-                    s_info = act_struct.find(".//state_info")
+                    s_info = act_struct.find(".//process_state_info")
                     if "num_started" not in s_info.attrib:
                         cur_line.append(logging_tools.form_entry(s_info.text))
                     else:
@@ -260,7 +272,7 @@ class ServiceContainer(object):
                                 da_name = "warning"
                         cur_line.append(logging_tools.form_entry(s_info.attrib["proc_info_str"], header="Thread info", display_attribute=da_name))
                 if opt_ns.started:
-                    start_time = int(act_struct.find(".//state_info").get("start_time", "0"))
+                    start_time = int(act_struct.find(".//process_state_info").get("start_time", "0"))
                     if start_time:
                         diff_time = max(0, time.mktime(time.localtime()) - start_time)
                         diff_days = int(diff_time / (3600 * 24))
@@ -294,7 +306,7 @@ class ServiceContainer(object):
                     else:
                         cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
                 if opt_ns.database:
-                    cur_line.append(logging_tools.form_entry(_res.findtext("sql_info"), header="DB info"))
+                    cur_line.append(logging_tools.form_entry(_res.findtext("overall_info"), header="DB info"))
                 if opt_ns.memory:
                     cur_mem = act_struct.find(".//memory_info")
                     if cur_mem is not None:
@@ -328,9 +340,16 @@ class ServiceContainer(object):
                     )
                 cur_line.append(
                     logging_tools.form_entry(
-                        rc_dict[cur_state][0],
-                        header="status",
-                        display_attribute=rc_dict[cur_state][1],
+                        prc_dict[p_state][0],
+                        header="PState",
+                        display_attribute=prc_dict[p_state][1],
+                    )
+                )
+                cur_line.append(
+                    logging_tools.form_entry(
+                        crc_dict[c_state][0],
+                        header="CState",
+                        display_attribute=crc_dict[c_state][1],
                     )
                 )
                 out_bl.append(cur_line)

@@ -126,6 +126,7 @@ class Parser(object):
                 opt_ns.thread = True
                 opt_ns.memory = True
                 opt_ns.version = True
+                opt_ns.database = True
             if opt_ns.all:
                 opt_ns.pid = True
                 opt_ns.started = True

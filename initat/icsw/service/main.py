@@ -22,15 +22,14 @@
 
 """ checks installed servers on system """
 
-import os
-import time
 import datetime
+import os
 import sys
+import time
 
 from initat.tools import logging_tools, net_tools, server_command
-
-from . import instance
 from . import container
+from . import instance
 from . import logging
 from . import transition
 from .constants import STATE_DICT, LIC_STATE_DICT
@@ -123,7 +122,7 @@ def main(opt_ns):
             _res = inst_xml.findall(".//result")
             if len(_res) == 1:
                 # set return state to single-state result
-                _state = int(_res[0].find("state_info").get("state"))
+                _state = int(_res[0].find("process_state_info").get("state"))
                 sys.exit(_state)
     elif opt_ns.childcom in ["start", "stop", "restart", "debug", "reload"]:
         if opt_ns.childcom == "debug":

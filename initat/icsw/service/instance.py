@@ -23,11 +23,11 @@
 """ instance definition for services """
 
 import os
-from lxml import etree  # @UnresolvedImport
 
-from lxml.builder import E  # @UnresolvedImport
+from lxml import etree
+from lxml.builder import E
+
 from initat.tools import logging_tools, process_tools
-
 from .constants import SERVERS_DIR
 
 

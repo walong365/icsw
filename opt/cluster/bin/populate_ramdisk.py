@@ -1103,7 +1103,7 @@ class arg_parser(argparse.ArgumentParser):
 def copy_stage_file(src_dir, stage_name, stage_dest):
     src_file = os.path.join(src_dir, stage_name)
     content = file(src_file, "r").read()
-    if os.path.isfile("/usr/bin/bash"):
+    if os.path.isfile("/usr/bin/bash") and not os.path.islink("/bin"):
         # rewrite shebang
         content = "\n".join(["#!/usr/bin/bash"] + content.split("\n")[1:])
     file(stage_dest, "w").write(content)
