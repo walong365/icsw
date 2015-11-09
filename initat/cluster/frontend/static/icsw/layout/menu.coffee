@@ -247,11 +247,14 @@ menu_module = angular.module(
         menu_line = React.createClass(
             displayName: "menuline"
             render: () ->
+                a_attrs = {href: @props.href, key: "a"}
+                if @props.target?
+                    a_attrs["target"] = @props.target
                 return li(
                     {key: "li"}
                     [
                         a(
-                            {href: @props.href, key: "a"}
+                            a_attrs
                             [
                                 span(
                                     {className: "fa #{@props.icon} fa_icsw", key: "span"}
@@ -467,6 +470,7 @@ menu_module = angular.module(
                                         licenses: ["md_config_server"]
                                         icon: "fa-share-alt"
                                         href: ICSW_URLS.MON_CALL_ICINGA
+                                        target: "_blank"
                                     }
                                     {
                                         rights: ["mon_check_command.setup_monitoring"]
