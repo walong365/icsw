@@ -31,13 +31,13 @@ from initat.tools import configfile, logging_tools, mail_tools, process_tools, s
     threading_tools, inotify_tools
 from initat.host_monitoring import hm_classes
 from initat.client_version import VERSION_STRING
-from initat.tools.server_mixins import ICSWBasePool
+from initat.tools.server_mixins import ICSWBasePoolClient
 
 from .config import global_config
 from .servicestate import ServiceState
 
 
-class main_process(ICSWBasePool):
+class main_process(ICSWBasePoolClient):
     def __init__(self):
         self.__debug = global_config["DEBUG"]
         threading_tools.process_pool.__init__(self, "main")

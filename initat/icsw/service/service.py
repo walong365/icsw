@@ -145,12 +145,6 @@ class Service(object):
             else:
                 return "error"
 
-    def _modify_state(self, result, act_state, info_str):
-        _process_state_info = result.find("process_state_info")
-        _process_state_info.text = info_str
-        _process_state_info.attrib["state"] = "{:d}".format(act_state)
-        return info_str
-
     def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, models_changed=False):
         if self.entry.find("result") is not None:
             if refresh:
@@ -201,32 +195,30 @@ class Service(object):
 
         act_state = int(_result.find("process_state_info").attrib["state"])
         c_state = CONF_STATE_RUN
+
+        run_info = []
         if self.attrib["runs_on"] == "server":
             if models_changed:
                 # force state to failed
                 # TODO, FIXME, OMG
                 print("*" * 50)
                 c_state = CONF_STATE_MODELS_CHANGED
-                overall_info = "models changed"  # self._modify_state(_result, SERVICE_DEAD, "models changed")
+                run_info.append("models changed")
             else:
                 if dev_config:
-                    overall_info = ", ".join(
-                        [
-                            _dc.server_info_str for _dc in dev_config
-                        ]
+                    run_info.append(
+                        ", ".join(
+                            [
+                                _dc.server_info_str for _dc in dev_config
+                            ]
+                        )
                     )
                 else:
                     if self.entry.find(".//ignore-missing-database") is not None:
-                        overall_info = "relayer mode"
+                        run_info.append("relayer mode")
                     else:
-                        # if the current service is not configured via database / IP we set
-                        # the state to NOT_CONFIGURED (from [for instance] DEAD)
-                        # we have to change the behaviour because this simple transition
-                        # disables in fact the functionality of the meta-server to stop
-                        # no longer configured services (as seen on the boke beegfs server 'boss')
                         c_state = CONF_STATE_STOP
-                        overall_info = "not configured"
-                        # sql_info = self._modify_state(_result, SERVICE_NOT_CONFIGURED, "not configured")
+                        run_info.append("not configured")
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -241,32 +233,20 @@ class Service(object):
                     lic_state = LIC_STATE_NOT_NEEDED
             else:
                 lic_state = LIC_STATE_NOT_NEEDED
-            if not ip_match:
-                c_state = CONF_STATE_IP_MISMATCH
-                overall_info = "IP mismatch"
         else:
             lic_state = LIC_STATE_NOT_NEEDED
-            if not ip_match:
-                overall_info = "IP mismatch"
-                c_state = CONF_STATE_IP_MISMATCH
-            else:
-                overall_info = self.attrib["runs_on"]
+            run_info.append(self.attrib["runs_on"])
+        if not ip_match:
+            c_state = CONF_STATE_IP_MISMATCH
+            run_info.append("IP mismatch")
         _result.append(
             E.configured_state_info(
                 state="{:d}".format(c_state)
             )
         )
-        if isinstance(overall_info, basestring):
-            _result.append(
-                E.overall_info(str(overall_info))
-            )
-        else:
-            _result.append(
-                E.overall_info("{} ({})".format(
-                    overall_info.server_info_str,
-                    overall_info.config_name),
-                )
-            )
+        _result.append(
+            E.config_info(", ".join(run_info))
+        )
         _result.append(
             E.license_info(state="{:d}".format(lic_state))
         )

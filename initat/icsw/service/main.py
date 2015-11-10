@@ -32,7 +32,7 @@ from . import container
 from . import instance
 from . import logging
 from . import transition
-from .constants import STATE_DICT, LIC_STATE_DICT
+from .constants import STATE_DICT, LIC_STATE_DICT, CONF_STATE_DICT
 
 
 def show_form_list(form_list):
@@ -83,9 +83,10 @@ def _state_overview(opt_ns, result):
         if opt_ns.state:
             for _cur_s in _states:
                 print(
-                    "    {} state={}, license_state={} [{}]".format(
+                    "    {} pstate={}, cstate={}, license_state={} [{}]".format(
                         time.ctime(int(_cur_s.attrib["created"])),
-                        STATE_DICT[int(_cur_s.attrib["state"])],
+                        STATE_DICT[int(_cur_s.attrib["pstate"])],
+                        CONF_STATE_DICT[int(_cur_s.attrib["cstate"])],
                         LIC_STATE_DICT[int(_cur_s.attrib["license_state"])],
                         _cur_s.attrib["proc_info_str"],
                     )

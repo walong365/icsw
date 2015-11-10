@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" meta-server, config """
+""" meta-server, ServiceState code """
 
 import os
 import sqlite3
@@ -47,10 +47,101 @@ class DBCursor(object):
         if not self.__cached:
             self.conn.commit()
 
+
 # format: configured state (stop / run) -> current state -> license state ->
 # if the evaluation of SERVICE_OK_DICT yields to None
 # or if the license_state is in the resulting tuple
 # the current state is deemed ok
+class ServiceActionState(object):
+    @staticmethod
+    def setup():
+        ServiceActionState.mapping = {
+            "target": constants.TARGET_STATE_DICT,
+            "process": constants.STATE_DICT,
+            "configured": constants.CONF_STATE_DICT,
+            "license": constants.LIC_STATE_DICT,
+        }
+        ServiceActionState.keys = ["target", "process", "configured", "license"]
+        # decision dict
+        ServiceActionState.d_dict = {}
+
+    def __init__(self, **kwargs):
+        # target state(s) or NONE if does not matter
+        self._vals = {_key: None for _key in ServiceActionState.keys}
+        for _key in ServiceActionState.keys:
+            if _key in kwargs:
+                _val = kwargs[_key]
+                self._vals[_key] = _val if type(_val) is list else [_val]
+        self._action = kwargs["action"]
+        ServiceActionState.add_state(self)
+
+    @staticmethod
+    def add_state(sas):
+        _als = []
+        for _key in ServiceActionState.keys:
+            _vals = sas._vals[_key]
+            if _vals is None:
+                _vals = ServiceActionState.mapping[_key]
+            if not _als:
+                _als = [[_val] for _val in _vals]
+            else:
+                _als = sum([[_pl + [_val] for _val in _vals] for _pl in _als], [])
+        for _tuple in _als:
+            ServiceActionState.d_dict[tuple(_tuple)] = sas._action
+
+    @staticmethod
+    def get_action(_tuple):
+        return ServiceActionState.d_dict.get(_tuple, "keep")
+
+
+ServiceActionState.setup()
+
+_OK_LIST = [
+    ServiceActionState(
+        target=constants.TARGET_STATE_RUNNING,
+        process=constants.SERVICE_OK,
+        configured=constants.CONF_STATE_RUN,
+        license=[
+            constants.LIC_STATE_VALID,
+            constants.LIC_STATE_NOT_NEEDED,
+            constants.LIC_STATE_GRACE,
+        ],
+        action="keep",
+    ),
+    ServiceActionState(
+        target=constants.TARGET_STATE_RUNNING,
+        process=constants.SERVICE_DEAD,
+        configured=[
+            constants.CONF_STATE_STOP,
+            constants.CONF_STATE_IP_MISMATCH,
+        ],
+        license=[
+            constants.LIC_STATE_VIOLATED,
+            constants.LIC_STATE_EXPIRED,
+            constants.LIC_STATE_VALID_IN_FUTURE,
+            constants.LIC_STATE_NONE,
+        ],
+        action="keep",
+    ),
+    ServiceActionState(
+        target=constants.TARGET_STATE_RUNNING,
+        configured=constants.CONF_STATE_RUN,
+        process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_NOT_INSTALLED],
+        action="start",
+    ),
+    ServiceActionState(
+        target=constants.TARGET_STATE_RUNNING,
+        configured=[constants.CONF_STATE_STOP, constants.CONF_STATE_IP_MISMATCH],
+        process=[constants.SERVICE_OK, constants.SERVICE_INCOMPLETE],
+        action="stop",
+    ),
+    ServiceActionState(
+        target=constants.TARGET_STATE_STOPPED,
+        process=[constants.SERVICE_DEAD, constants.SERVICE_NOT_INSTALLED, constants.SERVICE_NOT_CONFIGURED],
+        action="keep",
+    ),
+]
+
 SERVICE_OK_DICT = {
     constants.TARGET_STATE_RUNNING: {
         constants.SERVICE_OK: (
@@ -63,7 +154,7 @@ SERVICE_OK_DICT = {
             constants.LIC_STATE_EXPIRED,
             constants.LIC_STATE_VALID_IN_FUTURE,
             constants.LIC_STATE_NONE,
-            constants.LIC_STATE_IP_MISMATCH,
+            # constants.LIC_STATE_IP_MISMATCH,
         ),
         constants.SERVICE_INCOMPLETE: (),
         constants.SERVICE_NOT_INSTALLED: (),
@@ -129,9 +220,11 @@ class ServiceState(object):
             "state": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
                 "service INTEGER",
-                # state, defaults to (==SERVICE_DEAD)
-                "state INTEGER DEFAULT {:d}".format(constants.SERVICE_DEAD),
-                # state, defaults to -1 (==NOT_NEEDED)
+                # process state, defaults to (==SERVICE_DEAD)
+                "pstate INTEGER DEFAULT {:d}".format(constants.SERVICE_DEAD),
+                # configured state, defaults to (==CONF_STATE_STOP)
+                "cstate INTEGER DEFAULT {:d}".format(constants.CONF_STATE_STOP),
+                # license state, defaults to -1 (==NOT_NEEDED)
                 "license_state INTEGER DEFAULT -1",
                 # process info str
                 "proc_info_str TEXT DEFAULT ''",
@@ -155,7 +248,9 @@ class ServiceState(object):
                 "FOREIGN KEY(service) REFERENCES service(idx)",
             ]
         }
-        all_tables = {_entry[0]: _entry[1] for _entry in conn.execute("SELECT name, sql FROM sqlite_master WHERE type='table';").fetchall()}
+        all_tables = {
+            _entry[0]: _entry[1] for _entry in conn.execute("SELECT name, sql FROM sqlite_master WHERE type='table';").fetchall()
+        }
         for _t_name, _t_struct in _table_dict.iteritems():
             _sql_str = "CREATE TABLE {}({})".format(
                 _t_name,
@@ -204,6 +299,7 @@ class ServiceState(object):
                     "INSERT INTO service(name, target_state, active, created) VALUES(?, ?, ?, ?)",
                     (new_service, self._get_default_state(new_service), 1, int(time.time())),
                 )
+            # services
             self.__service_lut = {
                 _entry[1]: _entry[0] for _entry in cursor.execute("SELECT idx, name FROM service")
             }
@@ -324,32 +420,31 @@ class ServiceState(object):
                         _changed = True
         return _changed
 
-    def _update_state(self, name, state, lic_state, proc_info_str):
+    def _update_state(self, name, p_state, c_state, lic_state, proc_info_str):
         _save = False
-        if (state, lic_state) != self.__state_dict.get(name, None):
+        if (p_state, c_state, lic_state) != self.__state_dict.get(name, None):
             self.log(
-                "state for {} is {} (license: {}, target_dict_state )".format(
+                "state for {} is {} (configured: {}, license: {}, target_dict_state )".format(
                     name,
-                    constants.STATE_DICT[state],
+                    constants.STATE_DICT[p_state],
+                    constants.CONF_STATE_DICT[c_state],
                     constants.LIC_STATE_DICT[lic_state],
                 )
             )
-            self.__state_dict[name] = (state, lic_state)
+            self.__state_dict[name] = (p_state, c_state, lic_state)
             with self.get_cursor() as crs:
                 crs.execute(
-                    "INSERT INTO state(service, license_state, state, proc_info_str, created) VALUES(?, ?, ?, ?, ?)",
-                    (self.__service_lut[name], lic_state, state, proc_info_str, int(time.time())),
+                    "INSERT INTO state(service, license_state, pstate, cstate, proc_info_str, created) VALUES(?, ?, ?, ?, ?, ?)",
+                    (self.__service_lut[name], lic_state, p_state, c_state, proc_info_str, int(time.time())),
                 )
         # check if the current state is in sync with the targetstate
-        _ct = (self.__target_dict[name], self.__state_dict[name][0], self.__state_dict[name][1])
+        _ct = (self.__target_dict[name], p_state, c_state, lic_state)
         return self._check_current_state(_ct)
 
     def _check_current_state(self, ct):
-        _stuff = SERVICE_OK_DICT[ct[0]][ct[1]]
-        if _stuff is None or ct[2] in _stuff:
-            return True
-        else:
-            return False
+        _target, _process, _config, _license = ct
+        _action = ServiceActionState.get_action(ct)
+        return (_action == "keep", _action)
 
     def _check_for_stable_state(self, service):
         name = service.name
@@ -361,23 +456,23 @@ class ServiceState(object):
         cur_time = int(time.time())
         with self.get_cursor() as crs:
             _records = crs.execute(
-                "SELECT state, license_state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
+                "SELECT pstate, cstate, license_state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
                 (cur_time, self.__service_lut[name]),
             ).fetchall()
             _stable = True
             # correct times
-            _records = [(_a, _b, abs(_c)) for _a, _b, _c in _records]
+            _records = [(_a, _b, _c, abs(_d)) for _a, _b, _c, _d in _records]
             # print _records
             _first = _records.pop(0)
-            _stable_time = _first[2]
+            _stable_time = _first[3]
             for _rec in _records:
-                if _rec[2] < STABLE_INTERVAL:
+                if _rec[3] < STABLE_INTERVAL:
                     # only compare records which are not older than STABLE_INTERVAL
-                    if _rec[0:2] != _first[0:2]:
+                    if _rec[0:3] != _first[0:3]:
                         _stable = False
                         break
                     else:
-                        _stable_time = _rec[2]
+                        _stable_time = _rec[3]
         if not _stable:
             service.log(
                 "state is not stable ({} < {})".format(
@@ -388,15 +483,15 @@ class ServiceState(object):
             )
         else:
             # compare record for SERVICE_OK_LIST
-            c_rec = (self.__target_dict[name], _first[0], _first[1])
+            c_rec = (self.__target_dict[name], _first[0], _first[1], _first[2])
             # print _first, c_rec
-            if not self._check_current_state(c_rec) and _first[2] < MIN_STATE_TIME:
+            if not self._check_current_state(c_rec)[0] and _first[3] < MIN_STATE_TIME:
                 service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
                 _stable = False
-            elif _first[2] < MIN_STATE_TIME:
+            elif _first[3] < MIN_STATE_TIME:
                 service.log(
                     "state not old enough ({:.2f} < {:.2f})".format(
-                        _first[2],
+                        _first[3],
                         MIN_STATE_TIME
                     ),
                     logging_tools.LOG_LEVEL_WARN
@@ -404,7 +499,7 @@ class ServiceState(object):
                 _stable = False
         return _stable
 
-    def _generate_transition(self, service):
+    def _generate_transition(self, service, action):
         name = service.name
         cur_time = time.time()
         LOCK_TIMEOUT = 30
@@ -420,24 +515,11 @@ class ServiceState(object):
             )
             return []
         else:
-            _action = {0: "stop", 1: "start"}[self.__target_dict[name]]
-            _res_node = service.entry.find(".//result")
-            if _res_node is not None:
-                _state = int(_res_node.find("process_state_info").attrib["state"])
-                _lic_state = int(_res_node.find("license_info").attrib["state"])
-                if _state in [constants.SERVICE_NOT_CONFIGURED, constants.SERVICE_NOT_INSTALLED]:
-                    _action = "stop"
-                elif _lic_state in [
-                    constants.LIC_STATE_VIOLATED, constants.LIC_STATE_EXPIRED,
-                    constants.LIC_STATE_VALID_IN_FUTURE, constants.LIC_STATE_NONE,
-                    constants.LIC_STATE_IP_MISMATCH,
-                ]:
-                    _action = "stop"
             with self.get_cursor() as crs:
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
                     (
-                        self.__service_lut[name], _action, int(time.time())
+                        self.__service_lut[name], action, int(time.time())
                     ),
                 )
                 trans_id = crs.lastrowid
@@ -445,7 +527,7 @@ class ServiceState(object):
             return [
                 ServiceStateTranstaction(
                     name,
-                    _action,
+                    action,
                     trans_id,
                 )
             ]
@@ -493,21 +575,23 @@ class ServiceState(object):
                 _res = _el.entry.find(".//result")
                 if _res is not None:
                     # print etree.tostring(_el.entry, pretty_print=True)
-                    _state = int(_res.find("process_state_info").attrib["state"])
+                    _p_state = int(_res.find("process_state_info").attrib["state"])
+                    _c_state = int(_res.find("configured_state_info").attrib["state"])
                     _lic_state = int(_res.find("license_info").attrib["state"])
                     _proc_info_str = _res.find("process_state_info").get("proc_info_str", "")
-                    _is_ok = self._update_state(_el.name, _state, _lic_state, _proc_info_str)
+                    _is_ok, _action = self._update_state(_el.name, _p_state, _c_state, _lic_state, _proc_info_str)
                     if not _is_ok:
                         if self.__shutdown:
                             if _el.name not in exclude:
                                 if not self._check_for_throttle(_el, cur_time, throttle_dict):
-                                    t_list.extend(self._generate_transition(_el))
+                                    t_list.extend(self._generate_transition(_el, _action))
                         else:
                             _stable = self._check_for_stable_state(_el)
                             _el.log(
-                                "not OK ({}, SState={}, LState={} [{}], {}, {})".format(
+                                "not OK ({}, PState={}, CState={}, LState={} [{}], {}, {})".format(
                                     "should run" if self.__target_dict[_el.name] else "should not run",
-                                    constants.STATE_DICT[_state],
+                                    constants.STATE_DICT[_p_state],
+                                    constants.CONF_STATE_DICT[_c_state],
                                     constants.LIC_STATE_DICT[_lic_state],
                                     "stable" if _stable else "not stable",
                                     logging_tools.get_plural("pid", len(_res.findall(".//pid"))),
@@ -518,7 +602,7 @@ class ServiceState(object):
                             if _stable or force:
                                 if _el.name not in exclude:
                                     if not self._check_for_throttle(_el, cur_time, throttle_dict):
-                                        t_list.extend(self._generate_transition(_el))
+                                        t_list.extend(self._generate_transition(_el, _action))
                 else:
                     _el.log("no result entry found", logging_tools.LOG_LEVEL_WARN)
         self.conn.commit()
@@ -551,7 +635,7 @@ class ServiceState(object):
                     (_trans.name,),
                 ).fetchone()[0]
                 _states = crsr.execute(
-                    "SELECT state, license_state, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
+                    "SELECT pstate, cstate, license_state, created, proc_info_str FROM state WHERE service=? AND created > ? ORDER BY -created",
                     (_srv_id, cur_time - REPORT_TIME)
                 ).fetchall()
                 _actions = crsr.execute(
@@ -568,11 +652,12 @@ class ServiceState(object):
                         ),
                         "",
                     ] + [
-                        "{} state={}, license_state={} [{}]".format(
-                            time.ctime(int(_state[2])),
+                        "{} pstate={}, cstate={}, license_state={} [{}]".format(
+                            time.ctime(int(_state[3])),
                             _state[0],
                             _state[1],
-                            _state[3],
+                            _state[2],
+                            _state[4],
                         ) for _state in _states
                     ] + [
                         ""
@@ -618,12 +703,13 @@ class ServiceState(object):
                                 _bldr.states(
                                     *[
                                         _bldr.state(
-                                            state="{:d}".format(state),
+                                            pstate="{:d}".format(p_state),
+                                            cstate="{:d}".format(c_state),
                                             license_state="{:d}".format(license_state),
                                             created="{:d}".format(int(created)),
                                             proc_info_str=proc_info_str,
-                                        ) for state, license_state, created, proc_info_str in state_crsr.execute(
-                                            "SELECT state, license_state, created, proc_info_str FROM state "
+                                        ) for p_state, c_state, license_state, created, proc_info_str in state_crsr.execute(
+                                            "SELECT pstate, cstate, license_state, created, proc_info_str FROM state "
                                             "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
                                             (_srv_id, cur_time - 24 * 3600),
                                         )

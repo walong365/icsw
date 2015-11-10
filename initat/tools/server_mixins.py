@@ -670,3 +670,13 @@ class ICSWBasePool(threading_tools.process_pool, NetworkBindMixin, ServerStatusM
     # to use the log-function of the ConfigCheckMixin
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         ConfigCheckMixin.log(self, what, log_level)
+
+
+# basepool for clients (without operationalerrormixin)
+class ICSWBasePoolClient(threading_tools.process_pool, NetworkBindMixin, ServerStatusMixin, ConfigCheckMixin):
+    def __init__(self):
+        pass
+
+    # to use the log-function of the ConfigCheckMixin
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        ConfigCheckMixin.log(self, what, log_level)

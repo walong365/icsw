@@ -245,11 +245,11 @@ class ServiceContainer(object):
         )
         for act_struct in _list:
             _res = act_struct.find("result")
-            p_state = int(act_struct.find(".//process_state_info").get("state", "1"))
-            c_state = int(act_struct.find(".//configured_state_info").get("state", "1"))
+            p_state = int(act_struct.find(".//process_state_info").get("state", SERVICE_DEAD))
+            c_state = int(act_struct.find(".//configured_state_info").get("state", CONF_STATE_STOP))
             if not opt_ns.failed or (opt_ns.failed and p_state not in [SERVICE_OK]):
                 cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
-                cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
+                cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="runson"))
                 cur_line.append(logging_tools.form_entry(_res.find("process_state_info").get("check_source", "N/A"), header="source"))
                 if opt_ns.thread:
                     s_info = act_struct.find(".//process_state_info")
@@ -305,8 +305,8 @@ class ServiceContainer(object):
                             )
                     else:
                         cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
-                if opt_ns.database:
-                    cur_line.append(logging_tools.form_entry(_res.findtext("overall_info"), header="DB info"))
+                if opt_ns.config:
+                    cur_line.append(logging_tools.form_entry(act_struct.find(".//config_info").text, header="config info"))
                 if opt_ns.memory:
                     cur_mem = act_struct.find(".//memory_info")
                     if cur_mem is not None:

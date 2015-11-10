@@ -48,7 +48,7 @@ class Parser(object):
         _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview [%(default)s]")
         _srvc.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
         _srvc.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info [%(default)s]")
-        _srvc.add_argument("-d", dest="database", action="store_true", default=False, help="show database info [%(default)s]")
+        _srvc.add_argument("-c", dest="config", action="store_true", default=False, help="show config info [%(default)s]")
         _srvc.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption [%(default)s]")
         _srvc.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
         _srvc.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
@@ -126,10 +126,10 @@ class Parser(object):
                 opt_ns.thread = True
                 opt_ns.memory = True
                 opt_ns.version = True
-                opt_ns.database = True
             if opt_ns.all:
                 opt_ns.pid = True
                 opt_ns.started = True
+                opt_ns.config = True
         main(opt_ns)
 
     def _state_execute(self, opt_ns):
@@ -143,7 +143,7 @@ class Parser(object):
         def_ns = Parser()._add_status_parser(sub_parser).parse_args([])
         def_ns.all = True
         def_ns.memory = True
-        def_ns.database = True
+        def_ns.config = True
         def_ns.pid = True
         def_ns.started = True
         def_ns.thread = True

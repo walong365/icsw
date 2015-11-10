@@ -52,6 +52,7 @@ __all__ = [
     "STATE_DICT",
     "LIC_STATE_DICT",
     "CONF_STATE_DICT",
+    "TARGET_STATE_DICT",
 ]
 
 # service states (== process states)
@@ -61,7 +62,7 @@ SERVICE_INCOMPLETE = 2
 SERVICE_NOT_INSTALLED = 3
 SERVICE_NOT_CONFIGURED = 4
 
-# configured states (== from DB)
+# configured states (== from DB and checks)
 CONF_STATE_RUN = 0
 CONF_STATE_STOP = 1
 CONF_STATE_IP_MISMATCH = 2
@@ -77,6 +78,10 @@ LIC_STATE_VALID_IN_FUTURE = 20
 LIC_STATE_NONE = 0
 LIC_STATE_NOT_NEEDED = -1
 
+# for meta server
+TARGET_STATE_STOPPED = 0
+TARGET_STATE_RUNNING = 1
+
 _locs = locals()
 
 STATE_DICT = {
@@ -91,9 +96,9 @@ CONF_STATE_DICT = {
     _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("CONF_STATE_")
 }
 
-# for meta server
-TARGET_STATE_STOPPED = 0
-TARGET_STATE_RUNNING = 1
+TARGET_STATE_DICT = {
+    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("TARGET_STATE_")
+}
 
 # path definitions
 INIT_BASE = os.path.join("/", "opt", "python-init", "lib", "python", "site-packages", "initat")
