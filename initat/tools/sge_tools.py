@@ -19,24 +19,24 @@
 #
 """ tools for the SGE """
 
-from lxml import etree  # @UnresolvedImport
 import argparse
 import commands
 import copy
 import datetime
+import json
 import os
 import re
 import stat
-import json
 import time
 import uuid
-
-from lxml import etree
 from StringIO import StringIO
-from lxml.builder import E  # @UnresolvedImport
-from initat.tools import logging_tools, process_tools, server_command
+
 import zmq  # @UnresolvedImport
+from lxml import etree
+from lxml.builder import E  # @UnresolvedImport
+
 from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, process_tools, server_command
 
 try:
     import memcache

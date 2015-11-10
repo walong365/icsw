@@ -27,7 +27,7 @@ import django
 django.setup()
 
 import sys
-from lxml import etree  # @UnresolvedImport
+from lxml import etree
 import argparse
 import requests
 

@@ -55,6 +55,7 @@ def get_users(cur_opts, log_com):
 
 
 def do_mail(cur_opts, log_com):
+    # attention: we call this from send_email.py (located in /opt/cluster/bin), important
     if cur_opts.use_db:
         _send_mail = cur_opts.sendit
         all_users = get_users(cur_opts, log_com)

@@ -161,7 +161,6 @@ install:
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/populate_ramdisk_local.py
 	${LN} -s ./populate_ramdisk.py ${DESTDIR}/${ICSW_BIN}/copy_local_kernel.sh
 	${LN} -s ${ICSW_BIN}/ics_tools.sh ${DESTDIR}/${INIT}/
-	${LN} -s ${PYTHON_SITE}/initat/tools/send_mail.py ${DESTDIR}/${ICSW_BIN}/
 	${LN} -s ./compile_openmpi.py ${DESTDIR}/${ICSW_BIN}/compile_mpich.py
 	# /etc/init.d/
 	${INSTALL} ${INSTALL_OPTS} init_scripts/loadmodules ${DESTDIR}/${INIT}/loadmodules
