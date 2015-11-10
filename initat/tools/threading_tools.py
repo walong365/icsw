@@ -24,19 +24,18 @@
 import inspect
 import multiprocessing
 import os
+import setproctitle
 import signal
 import sys
 import threading
 import time
 import traceback
-import setproctitle
 
-import six
 import psutil
+import six
 import zmq
 
 from initat.tools import io_stream_helper, logging_tools, process_tools
-
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
@@ -242,8 +241,14 @@ class TimerBaseEntry(object):
         # data
         self.data = kwargs.get("data", None)
 
-    def __call__(self):
+    def increase_timer(self):
         self.next_time += self.step
+
+    def timer_ok(self, cur_time):
+        return self.next_time >= cur_time
+
+    def __call__(self):
+        self.increase_timer()
         if self.data is None:
             self.cb_func()
         else:
@@ -293,6 +298,19 @@ class TimerBase(object):
                 cur_to()
                 # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
                 if not cur_to.oneshot:
+                    # check for correct time
+                    _bumped = 0
+                    while not cur_to.timer_ok(cur_time):
+                        _bumped += 1
+                        cur_to.increase_timer()
+                    if _bumped:
+                        self.log(
+                            "bumped timer with id {:d} {}".format(
+                                cur_to.timer_id,
+                                logging_tools.get_plural("time", _bumped)
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                     cur_ids = [_obj.timer_id for _obj in self.__timer_list]
                     if cur_to.timer_id in cur_ids:
                         new_tl.append(cur_to)

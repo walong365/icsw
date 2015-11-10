@@ -54,7 +54,9 @@ class DBCursor(object):
 # the current state is deemed ok
 class ServiceActionState(object):
     @staticmethod
-    def setup():
+    def setup(parent):
+        ServiceActionState.parent = parent
+        ServiceActionState.num_states = 0
         ServiceActionState.mapping = {
             "target": constants.TARGET_STATE_DICT,
             "process": constants.STATE_DICT,
@@ -64,6 +66,13 @@ class ServiceActionState(object):
         ServiceActionState.keys = ["target", "process", "configured", "license"]
         # decision dict
         ServiceActionState.d_dict = {}
+
+    @staticmethod
+    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        ServiceActionState.parent.log("[sas] {}".format(what), log_level)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        ServiceActionState.parent.log("[sas] {}".format(what), log_level)
 
     def __init__(self, **kwargs):
         # target state(s) or NONE if does not matter
@@ -78,6 +87,7 @@ class ServiceActionState(object):
     @staticmethod
     def add_state(sas):
         _als = []
+        ServiceActionState.num_states += 1
         for _key in ServiceActionState.keys:
             _vals = sas._vals[_key]
             if _vals is None:
@@ -88,59 +98,18 @@ class ServiceActionState(object):
                 _als = sum([[_pl + [_val] for _val in _vals] for _pl in _als], [])
         for _tuple in _als:
             ServiceActionState.d_dict[tuple(_tuple)] = sas._action
+        ServiceActionState.g_log(
+            "added action {}, {:d} states defined, {:d} keys".format(
+                sas._action,
+                ServiceActionState.num_states,
+                len(ServiceActionState.d_dict),
+            )
+        )
 
     @staticmethod
     def get_action(_tuple):
         return ServiceActionState.d_dict.get(_tuple, "keep")
 
-
-ServiceActionState.setup()
-
-_OK_LIST = [
-    ServiceActionState(
-        target=constants.TARGET_STATE_RUNNING,
-        process=constants.SERVICE_OK,
-        configured=constants.CONF_STATE_RUN,
-        license=[
-            constants.LIC_STATE_VALID,
-            constants.LIC_STATE_NOT_NEEDED,
-            constants.LIC_STATE_GRACE,
-        ],
-        action="keep",
-    ),
-    ServiceActionState(
-        target=constants.TARGET_STATE_RUNNING,
-        process=constants.SERVICE_DEAD,
-        configured=[
-            constants.CONF_STATE_STOP,
-            constants.CONF_STATE_IP_MISMATCH,
-        ],
-        license=[
-            constants.LIC_STATE_VIOLATED,
-            constants.LIC_STATE_EXPIRED,
-            constants.LIC_STATE_VALID_IN_FUTURE,
-            constants.LIC_STATE_NONE,
-        ],
-        action="keep",
-    ),
-    ServiceActionState(
-        target=constants.TARGET_STATE_RUNNING,
-        configured=constants.CONF_STATE_RUN,
-        process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_NOT_INSTALLED],
-        action="start",
-    ),
-    ServiceActionState(
-        target=constants.TARGET_STATE_RUNNING,
-        configured=[constants.CONF_STATE_STOP, constants.CONF_STATE_IP_MISMATCH],
-        process=[constants.SERVICE_OK, constants.SERVICE_INCOMPLETE],
-        action="stop",
-    ),
-    ServiceActionState(
-        target=constants.TARGET_STATE_STOPPED,
-        process=[constants.SERVICE_DEAD, constants.SERVICE_NOT_INSTALLED, constants.SERVICE_NOT_CONFIGURED],
-        action="keep",
-    ),
-]
 
 SERVICE_OK_DICT = {
     constants.TARGET_STATE_RUNNING: {
@@ -188,6 +157,7 @@ class ServiceState(object):
             os.mkdir(self._path)
         os.chmod(self._path, 0700)
         self._db_path = os.path.join(self._path, "servicestate.sqlite")
+        self.init_sas()
         self._init_states()
         self.init_db()
         self.__shutdown = False
@@ -196,6 +166,52 @@ class ServiceState(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[SrvState] {}".format(what), log_level)
+
+    def init_sas(self):
+        ServiceActionState.setup(self)
+        ServiceActionState(
+            target=constants.TARGET_STATE_RUNNING,
+            process=constants.SERVICE_OK,
+            configured=constants.CONF_STATE_RUN,
+            license=[
+                constants.LIC_STATE_VALID,
+                constants.LIC_STATE_NOT_NEEDED,
+                constants.LIC_STATE_GRACE,
+            ],
+            action="keep",
+        )
+        ServiceActionState(
+            target=constants.TARGET_STATE_RUNNING,
+            process=constants.SERVICE_DEAD,
+            configured=[
+                constants.CONF_STATE_STOP,
+                constants.CONF_STATE_IP_MISMATCH,
+            ],
+            license=[
+                constants.LIC_STATE_VIOLATED,
+                constants.LIC_STATE_EXPIRED,
+                constants.LIC_STATE_VALID_IN_FUTURE,
+                constants.LIC_STATE_NONE,
+            ],
+            action="keep",
+        )
+        ServiceActionState(
+            target=constants.TARGET_STATE_RUNNING,
+            configured=constants.CONF_STATE_RUN,
+            process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_NOT_INSTALLED],
+            action="start",
+        )
+        ServiceActionState(
+            target=constants.TARGET_STATE_RUNNING,
+            configured=[constants.CONF_STATE_STOP, constants.CONF_STATE_IP_MISMATCH],
+            process=[constants.SERVICE_OK, constants.SERVICE_INCOMPLETE],
+            action="stop",
+        )
+        ServiceActionState(
+            target=constants.TARGET_STATE_STOPPED,
+            process=[constants.SERVICE_DEAD, constants.SERVICE_NOT_INSTALLED, constants.SERVICE_NOT_CONFIGURED],
+            action="keep",
+        )
 
     def init_db(self):
         self.conn = sqlite3.connect(self._db_path)
