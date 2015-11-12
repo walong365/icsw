@@ -84,7 +84,7 @@
         </config_names>
         <network>
             <ports>
-                <port type="command">11211</port>
+                <port type="command">8001</port>
             </ports>
         </network>
     </instance>
