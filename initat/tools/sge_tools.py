@@ -265,7 +265,7 @@ class sge_info(object):
 
     def _init_cache(self):
         if memcache:
-            self._cache_socket = memcache.Client(["127.0.0.1:11211"], debug=0)
+            self._cache_socket = memcache.Client(["127.0.0.1:8001"], debug=0)
         else:
             self._cache_socket = None
 

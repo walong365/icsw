@@ -271,7 +271,7 @@ def main():
     parser.add_argument("--host-filter", help="set filter for host name [%(default)s]", type=str, default=".*", dest="host_filter")
     parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
     parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
-    parser.add_argument("--mc-addr", type=str, default="127.0.0.1:11211", help="address of memcached [%(default)s]")
+    parser.add_argument("--mc-addr", type=str, default="127.0.0.1:8001", help="address of memcached [%(default)s]")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()

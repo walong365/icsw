@@ -77,7 +77,7 @@ def main():
                     choices=CACHE_MODES
                 )
             ),
-            ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
+            ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:8001", help_string="memcache address")),
         ]
     )
     global_config.parse_file()

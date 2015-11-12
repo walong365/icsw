@@ -117,7 +117,7 @@ FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.memcached.MemcachedCache",
-        "LOCATION": "127.0.0.1:11211",
+        "LOCATION": "127.0.0.1:8001",
     }
 }
 

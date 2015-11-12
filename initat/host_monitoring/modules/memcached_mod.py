@@ -42,7 +42,7 @@ class memcached_status_command(hm_classes.hm_command):
             if cur_ns.arguments:
                 target_servers = cur_ns.arguments
             else:
-                target_servers = ["localhost:11211"]
+                target_servers = ["localhost:8001"]
             cur_c = memcache.Client(target_servers)
             try:
                 mc_stats = cur_c.get_stats()
