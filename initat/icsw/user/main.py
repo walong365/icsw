@@ -21,16 +21,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" small tool for sending mails via commandline """
+""" user commands for icsw """
 
-import sys
-import re
-import os
+from __future__ import print_function
+
+import base64
+import bz2
 import json
-import pprint
+import os
+import re
+import subprocess
+import sys
+import termios
+import time
 
+from initat.tools import mail_tools, logging_tools, process_tools, server_command, net_tools
 from . import logging
-from initat.tools import mail_tools, logging_tools, process_tools
 
 
 def get_users(cur_opts, log_com):
@@ -130,7 +136,7 @@ def do_list(cur_opts, log_com):
                 logging_tools.form_entry(_user.comment, header="comment"),
             ]
         )
-    print unicode(out_list)
+    print(unicode(out_list))
 
 
 def do_export(cur_opts, log_com):
@@ -232,8 +238,181 @@ def do_modify(cur_opts, log_com):
             _user.save()
 
 
+def get_quota_str(uqs):
+    _info_f = []
+    if uqs.bytes_used > uqs.bytes_hard:
+        _info_f.append("hard quota violated")
+    elif uqs.bytes_used > uqs.bytes_soft:
+        _info_f.append("soft quota violated")
+    if uqs.bytes_gracetime:
+        # seconds
+        grace_time = uqs.bytes_gracetime
+        cur_time = int(time.time())
+        _info_f.append("grace time left is {}".format(logging_tools.get_diff_time_str(grace_time - cur_time)))
+    else:
+        pass
+    return "    {}{} used ({} soft, {} hard)".format(
+        "{}; ".format(", ".join(_info_f)) if _info_f else "",
+        logging_tools.get_size_str(uqs.bytes_used, True, 1024, True),
+        logging_tools.get_size_str(uqs.bytes_soft, True, 1024, True),
+        logging_tools.get_size_str(uqs.bytes_hard, True, 1024, True),
+    )
+
+
+def _get_user(user_name):
+    from initat.cluster.backbone.models import user
+    from django.db.models import Q
+    _uo = user.objects
+    try:
+        _user = _uo.select_related(
+            "group"
+        ).prefetch_related(
+            "user_quota_setting_set__quota_capable_blockdevice__device"
+        ).get(
+            Q(login=user_name)
+        )
+    except user.DoesNotExist:
+        print("Unknown user '{}'".format(user_name))
+        _user = None
+    return _user
+
+
+def do_info(cur_opts, log_com):
+    if not cur_opts.username:
+        print("No user name given")
+        return 1
+    _user = _get_user(cur_opts.username)
+    _ret_state = 0
+    if _user is None:
+        _ret_state = 1
+    else:
+        from initat.cluster.backbone.models import user_quota_setting
+        print("")
+        print(
+            u"User with loginname '{}' (user {}), uid={:d}, group={} (gid={:d})".format(
+                _user.login,
+                unicode(_user),
+                _user.uid,
+                unicode(_user.group),
+                _user.group.gid,
+            )
+        )
+        num_qs = _user.user_quota_setting_set.all().count()
+        if num_qs and cur_opts.system_wide_quota:
+            print("")
+            print("{} found:".format(logging_tools.get_plural("system-wide quota setting", num_qs)))
+            for _qs in _user.user_quota_setting_set.all():
+                _bd = _qs.quota_capable_blockdevice
+                print(
+                    "    device {} ({} on {}): {}".format(
+                        unicode(_bd.device.full_name),
+                        _bd.block_device_path,
+                        _bd.mount_path,
+                        get_quota_str(_qs),
+                    )
+                )
+        try:
+            _cmd = "quota --show-mntpoint -wp -u {}".format(
+                _user.login,
+                # os.path.expanduser("~{}".format(_user.login)),
+            )
+            _res = subprocess.check_output(
+                _cmd.split(),
+            )
+        except subprocess.CalledProcessError as sb_exc:
+            _res = sb_exc.output
+            # print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
+            _ret_state = 1
+        else:
+            _ret_state = 0
+        if _res.lower().count("denied"):
+            print("    error getting local quotas for {}: {}".format(_user.login, _res))
+        else:
+            # print _res
+            _lines = [_line.strip().split() for _line in _res.split("\n") if _line.strip()]
+            _lines = [_line for _line in _lines if len(_line) == 10]
+            if _lines:
+                print("", "local quota:", sep="\n")
+                _line = _lines[-1]
+                _bytes_violate = _line[2].count("*") > 0
+                _local = user_quota_setting(
+                    bytes_used=int(_line[2].replace("*", "")) * 1024,
+                    bytes_soft=int(_line[3]) * 1024,
+                    bytes_hard=int(_line[4]) * 1024,
+                    bytes_gracetime=int(_line[5]),
+                )
+                print(
+                    "    local mountpoint: {}".format(
+                        get_quota_str(_local),
+                    )
+                )
+        return _ret_state
+
+
+def get_pass(prompt=">"):
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    new = termios.tcgetattr(fd)
+    new[3] = new[3] & ~termios.ECHO
+    termios.tcsetattr(fd, termios.TCSADRAIN, new)
+    passwd = None
+    while True:
+        try:
+            passwd = raw_input(prompt)
+        except KeyboardInterrupt:
+            print("press <CTRL-d> to exit")
+            passwd = ""
+        except EOFError:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            print("\nterminating")
+            sys.exit(-1)
+        else:
+            if passwd:
+                break
+            else:
+                print("password is empty")
+    termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    print()
+    return passwd
+
+
+def do_chpasswd(cur_opts, log_com):
+    srv_com = server_command.srv_command(command="modify_password")
+    srv_com["server_key:user_name"] = cur_opts.username
+    print("changing password for user '{}'".format(cur_opts.username))
+    srv_com["server_key:old_password"] = base64.b64encode(bz2.compress(get_pass("please enter current password:")))
+    srv_com["server_key:new_password_1"] = base64.b64encode(bz2.compress(get_pass("please enter the new password:")))
+    srv_com["server_key:new_password_2"] = base64.b64encode(bz2.compress(get_pass("please reenter the new password:")))
+    _conn = net_tools.zmq_connection(
+        "pwd_change_request",
+        timeout=cur_opts.timeout,
+    )
+    _conn.add_connection("tcp://localhost:8004", srv_com, immediate=True)
+    _result = _conn.loop()[0]
+    _res_str, _res_state = _result.get_log_tuple()
+    # _res_str, _res_state = ("ok", logging_tools.LOG_LEVEL_OK)
+    print("change gave [{}]: {}".format(logging_tools.get_log_level_str(_res_state), _res_str))
+    if _res_state == logging_tools.LOG_LEVEL_OK:
+        _conn = net_tools.zmq_connection(
+            "ldap_update_request",
+            timeout=cur_opts.timeout,
+        )
+        upd_com = server_command.srv_command(command="sync_ldap_config")
+        _conn.add_connection("tcp://localhost:8004", upd_com, immediate=True)
+        _res_str, _res_state = _conn.loop()[0].get_log_tuple()
+        print(
+            "syncing the LDAP tree returned ({}) {}".format(
+                logging_tools.get_log_level_str(_res_state),
+                _res_str,
+            )
+        )
+    # print(_result.pretty_print())
+    return 0
+
+
 def user_main(cur_opts):
     log_com = logging.get_logger(cur_opts.logger, all=True)
+    ret_code = 0
     if cur_opts.mode == "mail":
         do_mail(cur_opts, log_com)
     elif cur_opts.mode == "list":
@@ -244,5 +423,11 @@ def user_main(cur_opts):
         do_import(cur_opts, log_com)
     elif cur_opts.mode == "modify":
         do_modify(cur_opts, log_com)
+    elif cur_opts.mode == "info":
+        ret_code = max(ret_code, do_info(cur_opts, log_com))
+        sys.exit(ret_code)
+    elif cur_opts.mode == "chpasswd":
+        ret_code = max(ret_code, do_chpasswd(cur_opts, log_com))
+        sys.exit(ret_code)
     else:
         log_com("Unknown mode '{}'".format(cur_opts.mode))

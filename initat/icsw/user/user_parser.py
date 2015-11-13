@@ -23,17 +23,24 @@
 #
 """ small tool for sending mails via commandline """
 
+import pwd
+import os
+
 
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         return self._add_user_parser(sub_parser, server_mode=kwargs["server_mode"])
 
     def _add_user_parser(self, sub_parser, server_mode):
+        _user_name = pwd.getpwuid(os.getuid())[0]
         parser = sub_parser.add_parser("user", help="user information and tools")
         parser.set_defaults(subcom="user", execute=self._execute)
         if server_mode:
-            _choices = ["mail", "list", "export", "import", "modify"]
-            _defc = "list"
+            _choices = ["mail", "list", "export", "import", "modify", "info", "chpasswd"]
+            if _user_name in ["root"]:
+                _defc = "list"
+            else:
+                _defc = "info"
         else:
             _choices = ["mail"]
             _defc = "mail"
@@ -51,7 +58,8 @@ class Parser(object):
                 action="store_true",
                 help="filter for active users (in active groups) [%(default)s]",
             )
-            from initat.cluster.backbone.models import home_export_list
+            from initat.cluster.backbone.models import home_export_list, user
+            from django.db.models import Q
             hel = home_export_list()
             parser.add_argument("--user-filter", type=str, default=".*", help="regex for user login filter [%(default)s]")
             parser.add_argument("--group-filter", type=str, default=".*", help="regex for group name filter [%(default)s]")
@@ -75,6 +83,14 @@ class Parser(object):
                         )
                     ),
                 )
+            parser.add_argument("-Q", "--system-wide-quota", default=False, action="store_true", help="show system-wide quota [%(default)s]")
+            parser.add_argument(
+                "--username",
+                default=_user_name,
+                choices=user.objects.filter(Q(active=True) & Q(group__active=True)).values_list("login", flat=True),
+                help="user to use for info and changepwd [%(default)s]"
+            )
+            parser.add_argument("--timeout", default=10, type=int, help="timeout for server connections [%(default)d]")
 
     def _execute(self, opt_ns):
         from .main import user_main
