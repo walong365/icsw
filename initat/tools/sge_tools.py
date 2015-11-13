@@ -20,7 +20,6 @@
 """ tools for the SGE """
 
 import argparse
-import commands
 import copy
 import datetime
 import json
@@ -666,7 +665,8 @@ class sge_info(object):
         base_com = command.split()[0]
         if os.path.exists(base_com):
             s_time = time.time()
-            c_stat, c_out = commands.getstatusoutput(command)
+            c_stat, c_out = process_tools.getstatusoutput(command)
+            c_out = unicode(c_out, errors='replace')
             e_time = time.time()
             if c_stat:
                 self.log(
