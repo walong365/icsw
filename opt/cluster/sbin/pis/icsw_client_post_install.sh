@@ -50,7 +50,8 @@ rm -rf /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools
 rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
 rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py{c,o}
 
-[ -d /var/log/cluster/sockets/snmprelay ] && rm -rf /var/log/cluster/sockets/snmprelay
+[ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
+[ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
 [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
 
 # migrate client config files

@@ -66,6 +66,10 @@ rm -rf ${ICSW_BASE}/lib/node_modules/yuglify/node_modules
 # delete old modules
 rm -rf ${PREFIX_INIT}/initat/cluster/rms
 
+# remove old socket and zmq dirs
+[ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
+[ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
+
 # purge debian packages
 if [ -f /etc/debian_version ] ; then
     for service in ${SERVER_SERVICES} ; do

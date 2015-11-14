@@ -221,7 +221,7 @@ int main(int argc, char **argv)
         if (!only_send) {
             // receive, init receiver before sender to let ZMQ settle
             zmq_connect(receiver,
-                        "ipc:///var/log/cluster/sockets/collrelay/sender");
+                        "ipc:///var/run/icsw/sockets/collrelay/sender");
 
             /* set filter */
             zmq_setsockopt(receiver, ZMQ_SUBSCRIBE, identity_str,
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
         };
         // send
         zmq_connect(requester,
-                    "ipc:///var/log/cluster/sockets/collrelay/receiver");
+                    "ipc:///var/run/icsw/sockets/collrelay/receiver");
         zmq_msg_t request;
 
         if (verbose) {

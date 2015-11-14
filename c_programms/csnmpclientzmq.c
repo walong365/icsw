@@ -220,9 +220,9 @@ int main(int argc, char **argv)
 
         // send
         zmq_connect(requester,
-                    "ipc:///var/log/cluster/sockets/snmp-relay/receiver");
+                    "ipc:///var/run/icsw/sockets/snmp-relay/receiver");
         zmq_connect(receiver,
-                    "ipc:///var/log/cluster/sockets/snmp-relay/sender");
+                    "ipc:///var/run/icsw/sockets/snmp-relay/sender");
         zmq_setsockopt(receiver, ZMQ_SUBSCRIBE, identity_str,
                        strlen(identity_str));
         zmq_setsockopt(receiver, ZMQ_RCVTIMEO, &rcv_timeout, sizeof(int));

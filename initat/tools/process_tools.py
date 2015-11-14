@@ -241,12 +241,12 @@ def remove_zmq_dirs(dir_name):
     except:
         pass
 
-LOCAL_ZMQ_DIR = "/tmp/.icsw_zmq/.zmq_{:d}:{:d}".format(
+LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
     os.getuid(),
     os.getpid(),
 )
 
-LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets"
+LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
 
