@@ -101,6 +101,8 @@ def _failed_login(request, user_name):
         pass
     else:
         login_history.login_attempt(_user, request, False)
+        _user.fail_count += 1
+        _user.save(update_fields=["login_count", "login_fail_count"])
 
 
 def _login(request, _user_object, login_credentials=None):

@@ -62,7 +62,7 @@ def get_users(cur_opts, log_com):
 
 def do_mail(cur_opts, log_com):
     # attention: we call this from send_email.py (located in /opt/cluster/bin), important
-    if cur_opts.use_db:
+    if cur_opts.server_mode and cur_opts.use_db:
         _send_mail = cur_opts.sendit
         all_users = get_users(cur_opts, log_com)
         all_users = [entry.email for entry in all_users if entry.email.strip() and entry.email.count("@")]
@@ -133,6 +133,7 @@ def do_list(cur_opts, log_com):
                 logging_tools.form_entry(_user.last_name, header="last name"),
                 logging_tools.form_entry(_user.email, header="email"),
                 logging_tools.form_entry(_user.login_count, header="logincount"),
+                logging_tools.form_entry(_user.failed_count, header="failedcount"),
                 logging_tools.form_entry(_user.comment, header="comment"),
             ]
         )

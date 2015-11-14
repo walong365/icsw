@@ -33,6 +33,7 @@ class Parser(object):
 
     def _add_user_parser(self, sub_parser, server_mode):
         _user_name = pwd.getpwuid(os.getuid())[0]
+        self.server_mode = server_mode
         parser = sub_parser.add_parser("user", help="user information and tools")
         parser.set_defaults(subcom="user", execute=self._execute)
         if server_mode:
@@ -94,4 +95,5 @@ class Parser(object):
 
     def _execute(self, opt_ns):
         from .main import user_main
+        opt_ns.server_mode = self.server_mode
         user_main(opt_ns)

@@ -636,8 +636,10 @@ class user(models.Model):
     home_dir_created = models.BooleanField(default=False)
     secondary_groups = models.ManyToManyField("group", related_name="secondary", blank=True)
     last_login = models.DateTimeField(null=True)
-    # login count
+    # login count (ok)
     login_count = models.IntegerField(default=0)
+    # login count (failed)
+    login_fail_count = models.IntegerField(default=0)
     # deprecated
     permissions = models.ManyToManyField(csw_permission, related_name="db_user_permissions", blank=True)
     object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_user_permissions", blank=True)
