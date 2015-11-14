@@ -31,12 +31,13 @@ import resource
 import stat
 import time
 
-from initat.logging_server.config import global_config
+import zmq
+
 from initat.icsw.service import clusterid
+from initat.logging_server.config import global_config
 from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
     uuid_tools
 from initat.tools.server_mixins import ICSWBasePool
-import zmq
 
 SEP_STR = "-" * 50
 
@@ -89,12 +90,6 @@ class main_process(ICSWBasePool):
             )
         )
         resource.setrlimit(resource.RLIMIT_OFILE, new_files)
-        self.log("fixing directory rights")
-        try:
-            os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-            os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-        except:
-            pass
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst="log", **kwargs):
         if not self["exit_requested"]:
@@ -278,7 +273,7 @@ class main_process(ICSWBasePool):
                 gname = grp.getgrgid(in_dict.get("gid", -1))[0]
             except:
                 gname = "<unknown>"
-            pid_str = "{} (uid {:d} [{}], gid {:d} [{}])".format(
+            pid_str = u"{} (uid {:d} [{}], gid {:d} [{}])".format(
                 in_dict.get("name", "N/A"),
                 in_dict.get("uid", 0),
                 uname,

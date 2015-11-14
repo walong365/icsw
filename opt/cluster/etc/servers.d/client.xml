@@ -17,6 +17,10 @@
                 <port type="command">8011</port>
             </ports>
         </network>
+        <access-rights>
+            <dir value="/var/lib/logging-server" user="idlog" group="idg" create="1" mask="0777"/>
+            <dir value="/var/log/cluster/sockets" user="idrrd" group="idg" create="1" mask="0777"/>
+        </access-rights>
     </instance>
     <!-- wait_time of 120 seconds to give the meta server some time to shut down -->
     <instance check_type="meta" name="meta-server" short="meta" runs_on="client" has_force_stop="1" wait_time="120" uuid-postfix="meta-server">

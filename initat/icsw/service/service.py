@@ -768,14 +768,20 @@ class MetaService(Service):
             if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
                 os.makedirs(_dir)
             _recursive = True if int(_dir_el.get("recursive", "0")) else False
+            if "mask" in _dir_el.attrib:
+                _mask = int(_dir_el.get("attrib"), 7)
+            else:
+                _mask = None
             if os.path.isdir(_dir):
+                if _mask:
+                    os.chmod(_dir, _mask)
                 _uid, _gid = (
                     process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
                     process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
 
                 )
                 os.chown(_dir, _uid, _gid)
-                if -_recursive:
+                if _recursive:
                     for _dir, _dirs, _files in os.walk(_dir):
                         for _file in _files:
                             _file = os.path.join(_dir, _file)
