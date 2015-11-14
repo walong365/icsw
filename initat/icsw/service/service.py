@@ -769,7 +769,17 @@ class MetaService(Service):
                 os.makedirs(_dir)
             _recursive = True if int(_dir_el.get("recursive", "0")) else False
             if "mask" in _dir_el.attrib:
-                _mask = int(_dir_el.get("attrib"), 7)
+                _mask = _dir_el.get("attrib")
+                try:
+                    _mask = int(_mask, 8)
+                except:
+                    self.log(
+                        "cannot interpret mask '{}' with base 8".format(
+                            _mask,
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR,
+                    )
+                    _mask = None
             else:
                 _mask = None
             if os.path.isdir(_dir):
