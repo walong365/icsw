@@ -133,7 +133,7 @@ def do_list(cur_opts, log_com):
                 logging_tools.form_entry(_user.last_name, header="last name"),
                 logging_tools.form_entry(_user.email, header="email"),
                 logging_tools.form_entry(_user.login_count, header="logincount"),
-                logging_tools.form_entry(_user.failed_count, header="failedcount"),
+                logging_tools.form_entry(_user.login_fail_count, header="failedcount"),
                 logging_tools.form_entry(_user.comment, header="comment"),
             ]
         )

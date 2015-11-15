@@ -198,7 +198,12 @@ class ServiceState(object):
         ServiceActionState(
             target=constants.TARGET_STATE_RUNNING,
             configured=constants.CONF_STATE_RUN,
-            process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_NOT_INSTALLED],
+            process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_NOT_INSTALLED, constants.SERVICE_DEAD],
+            license=[
+                constants.LIC_STATE_VALID,
+                constants.LIC_STATE_NOT_NEEDED,
+                constants.LIC_STATE_GRACE,
+            ],
             action="start",
         )
         ServiceActionState(
@@ -440,7 +445,7 @@ class ServiceState(object):
         _save = False
         if (p_state, c_state, lic_state) != self.__state_dict.get(name, None):
             self.log(
-                "state for {} is {} (configured: {}, license: {}, target_dict_state )".format(
+                "state for {} is {} (configured: {}, license: {}, target_dict_state TODO)".format(
                     name,
                     constants.STATE_DICT[p_state],
                     constants.CONF_STATE_DICT[c_state],

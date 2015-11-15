@@ -118,7 +118,7 @@ class rms_job(models.Model):
     jobid = models.IntegerField()
     taskid = models.IntegerField(null=True)
     owner = models.CharField(max_length=255, default="")
-    user = models.ForeignKey("backbone.user", null=True)
+    user = models.ForeignKey("backbone.user", null=True, on_delete=models.SET_NULL)
     date = models.DateTimeField(auto_now_add=True)
 
     @property
