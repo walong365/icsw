@@ -115,6 +115,9 @@ class InstanceXML(object):
                     for _el in sub_inst:
                         _main_inst.append(_el)
 
+    def __contains__(self, name):
+        return name in self.__lut
+
     def __getitem__(self, name):
         return self.__lut[name]
 

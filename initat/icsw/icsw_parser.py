@@ -87,6 +87,9 @@ class ICSWParser(object):
             for _sc in sorted(SC_MAPPING.iterkeys()):
                 self._add_parser(_sc, server_mode, inst_xml)
 
+    def _error(self, *args, **kwargs):
+        raise ValueError(args[0])
+
     def parse_args(self):
         # set constants
         server_mode = True if django is not None else False
@@ -102,7 +105,15 @@ class ICSWParser(object):
             # error parsing, fully popualte the parser
             self._populate_all(server_mode, inst_xml)
         # are there any unknown args ?
-        _known, _unknown = self._parser.parse_known_args()
+        # monkey-patch parser
+        _prev_error = self._parser.error
+        self._parser.error = self._error
+        try:
+            _known, _unknown = self._parser.parse_known_args()
+        except ValueError:
+            _known, _unknown = ("error", "error")
+        finally:
+            self._parser.error = _prev_error
         if _unknown:
             # yes, fully populate the parser
             self._populate_all(server_mode, inst_xml)

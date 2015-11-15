@@ -22,16 +22,12 @@
 #
 """ collectd parser """
 
-import argparse
-import os
-import re
-
-from initat.tools import process_tools
-
 
 class Parser(object):
     def link(self, sub_parser, **kwargs):
-        return self._add_collectd_parser(sub_parser, inst_xml=kwargs.get("instance_xml"))
+        inst_xml = kwargs.get("instance_xml")
+        if "collectd" in inst_xml:
+            return self._add_collectd_parser(sub_parser, inst_xml=inst_xml)
 
     def _add_collectd_parser(self, sub_parser, inst_xml):
         parser = sub_parser.add_parser("collectd", help="collectd helper commands")
