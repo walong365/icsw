@@ -32,89 +32,80 @@ try:
 except:
     django = None
 
+import importlib
 import argparse
 
-from .service.service_parser import Parser as ServiceParser
-from .logwatch.logwatch_parser import Parser as LogwatchParser
-from .cstore.cstore_parser import Parser as CStoreParser
-from .relay.relay_parser import Parser as RelayParser
-from .lse.lse_parser import Parser as LseParser
-from .info.info_parser import Parser as InfoParser
 from initat.icsw.service.instance import InstanceXML
 
-try:
-    from .license.license_parser import Parser as LicenseParser
-except ImportError:
-    LicenseParser = None
-
-try:
-    from .setup.parser import Parser as SetupParser
-except ImportError:
-    SetupParser = None
-
-try:
-    from .device.device_parser import Parser as DeviceParser
-except ImportError:
-    DeviceParser = None
-
-try:
-    from .image.image_parser import Parser as ImageParser
-except ImportError:
-    ImageParser = None
-
-try:
-    from .job.job_parser import Parser as JobParser
-except ImportError:
-    JobParser = None
-
-
-try:
-    from .collectd.collectd_parser import Parser as CollectdParser
-except ImportError:
-    CollectdParser = None
-
-
-try:
-    from .user.user_parser import Parser as UserParser
-except:
-    UserParser = None
+SC_MAPPING = {
+    "user": ".user.user_parser",
+    "collectd": ".collectd.collectd_parser",
+    "job": ".job.job_parser",
+    "image": ".image.image_parser",
+    "device": ".device.device_parser",
+    "setup": ".setup.parser",
+    "license": ".license.license_parser",
+    "info": ".info.info_parser",
+    "lse": ".lse.lse_parser",
+    "relay": ".relay.relay_parser",
+    "cstore": ".cstore.cstore_parser",
+    "logwatch": ".logwatch.logwatch_parser",
+    "server": ".service.service_parser",
+}
 
 
 class ICSWParser(object):
     def __init__(self):
-        self._parser = argparse.ArgumentParser(prog="icsw")
-        self._parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
-        sub_parser = self._parser.add_subparsers(help="sub-command help")
-        server_mode = True if django is not None else False
-        inst_xml = InstanceXML(quiet=True)
-        # ServiceParser().link(sub_parser)
-        # LogwatchParser().link(sub_parser)
-        for _sp in [
-            LseParser,
-            InfoParser,
-            ServiceParser,
-            LogwatchParser,
-            LicenseParser,
-            SetupParser,
-            DeviceParser,
-            CStoreParser,
-            RelayParser,
-            ImageParser,
-            JobParser,
-            CollectdParser,
-            UserParser,
-        ]:
-            if _sp is not None:
-                try:
-                    _sp().link(
-                        sub_parser,
-                        server_mode=server_mode,
-                        instance_xml=inst_xml,
-                    )
-                except TypeError:
-                    # happens when switching to kwarg-expecting parsers
-                    pass
+        for _pn in ["_parser", "_dummy_parser"]:
+            _parser = argparse.ArgumentParser(prog="icsw", add_help="dummy" not in _pn)
+            _parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
+            setattr(self, _pn, _parser)
+        # catch args for dummy parser
+        self._dummy_parser.add_argument("args", nargs="*")
+        self.fully_populated = False
+        self.sub_parser = self._parser.add_subparsers(help="sub-command help")
+        self._added_parsers = set()
+
+    def _add_parser(self, subcom, server_mode, inst_xml):
+        if subcom in self._added_parsers:
+            return
+        self._added_parsers.add(subcom)
+        try:
+            _parser_module = importlib.import_module(SC_MAPPING[subcom], package="initat.icsw")
+        except:
+            pass
+        else:
+            _parser_module.Parser().link(
+                self.sub_parser,
+                server_mode=server_mode,
+                instance_xml=inst_xml,
+            )
+
+    def _populate_all(self, server_mode, inst_xml):
+        if not self.fully_populated:
+            self.fully_populated = True
+            for _sc in sorted(SC_MAPPING.iterkeys()):
+                self._add_parser(_sc, server_mode, inst_xml)
 
     def parse_args(self):
+        # set constants
+        server_mode = True if django is not None else False
+        inst_xml = InstanceXML(quiet=True)
+        # parse args
+        _known, _unknown = self._dummy_parser.parse_known_args()
+        # try to parse subcommand
+        if _known.args and _known.args[0] in SC_MAPPING:
+            _sc = _known.args[0]
+            # add subcommand parser
+            self._add_parser(_sc, server_mode, inst_xml)
+        else:
+            # error parsing, fully popualte the parser
+            self._populate_all(server_mode, inst_xml)
+        # are there any unknown args ?
+        _known, _unknown = self._parser.parse_known_args()
+        if _unknown:
+            # yes, fully populate the parser
+            self._populate_all(server_mode, inst_xml)
+        # parse and go
         opt_ns = self._parser.parse_args()
         return opt_ns

@@ -38,7 +38,7 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
     check_float, check_integer, check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone, duration, \
     system_timezone
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 import crypt
 import datetime
 import json
