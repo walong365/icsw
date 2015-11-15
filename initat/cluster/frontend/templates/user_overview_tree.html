@@ -17,9 +17,9 @@
             <input type="text" class="form-control" ng-model="filterstr" placeholder="filter ..." ng-change="update_filter()"></input>
         </div>
         <div class="row">
-            <input type="button" class="btn btn-success" value="create group" ng-click="create_group()" ng-disabled="!user_list"></input>&nbsp;
-            <input type="button" class="btn btn-primary" value="create user" ng-click="create_user()" ng-disabled="!user_list"></input>&nbsp;
-            <input type="button" class="btn btn-warning" value="sync users" ng-click="sync_users()" ng-disabled="!user_list"></input>
+            <icsw-tools-button type="create" value="create group" ng-click="create_group()" ng-disabled="!user_list"></icsw-tools-button>&nbsp;
+            <icsw-tools-button type="create" value="create user" ng-click="create_user()" ng-disabled="!user_list"></icsw-tools-button>&nbsp;
+            <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()" ng-disabled="!user_list"></icsw-tools-button>
         </div>
         <div class="row">
             <tree treeconfig="tree"></tree>

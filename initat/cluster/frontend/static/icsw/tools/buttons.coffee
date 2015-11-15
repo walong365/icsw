@@ -126,13 +126,14 @@ angular.module(
     return {
         restict: "EA"
         template: """
-<button class="btn btn-xs form-control" ng-class="get_class()" ng-click="change_value()">{{ get_value() }}</button>
+<button class="btn btn-xs form-control" ng-class="get_class()" ng-click="change_value($event)">{{ get_value() }}</button>
 """
         scope:
             flag: "="
         link: (scope, element, attrs) ->
-            scope.change_value = () ->
+            scope.change_value = ($event) ->
                 scope.flag = !scope.flag
+                $event.preventDefault()
             scope.get_value = () ->
                 return if scope.flag then "yes" else "no"
             scope.get_class = () ->

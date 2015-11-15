@@ -82,91 +82,100 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.vdu.settings">
-    <fieldset ng-show="true">
+    <fieldset>
         <legend>Virtual Desktops</legend>
         <div ng-show="!virtual_desktop_device_available()">
             <p>No device supporting a virtual desktop protocol and a window manager found</p>
         </div>
-        <div id="div_id_device" class="form-group" ng_show="virtual_desktop_device_available()">
-            <label for="id_device" class="control-label col-sm-2">
+        <div class="form-group" ng_show="virtual_desktop_device_available()">
+            <label class="control-label col-sm-2">
                Device
             </label>
             <div class="controls col-sm-8">
                 <div class='input-group' style='max-width:400px; min-width:240px;'>
-                    <ui-select ng-model='_edit_obj.device' ng-disabled='false' ng-change="on_device_change()">
-                        <ui-select-match placeholder='Select a device'>{{$select.selected.name}}</ui-select-match>
+                    <ui-select ng-model='_edit_obj.device' ng-change="on_device_change()">
+                        <ui-select-match placeholder='Select a device'>{{ $select.selected.name }}</ui-select-match>
                         <ui-select-choices repeat='value.idx as value in virtual_desktop_devices()' group-by='&#39;model_name&#39;'>
                             <div ng-bind-html='value.name | highlight: $select.search'></div>
                         </ui-select-choices>
                     </ui-select>
                     <span class='input-group-btn'>
-                    <button type="button" ng-click="_edit_obj.device = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div>
+                        <button type="button" ng-click="_edit_obj.device = undefined" class="btn btn-default">
+                            <span class="glyphicon glyphicon-trash"/>
+                        </button>
+                    </span>
                 </div>
             </div>
-
-            <div id="div_id_virtual_desktop_protocol" class="form-group " ng_show="_edit_obj.device" >
-                <label for="id_virtual_desktop_protocol" class="control-label col-sm-2">
-                    Virtual desktop protocol
-                </label>
-                <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select an virtual desktop protocol'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='&#39;model_name&#39;'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div>
+        </div>
+        <div class="form-group " ng_show="_edit_obj.device" >
+            <label class="control-label col-sm-2">
+                Virtual desktop protocol
+            </label>
+            <div class="controls col-sm-8">
+                <ui-select ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;'>
+                    <ui-select-match placeholder='Select an virtual desktop protocol'>{{ $select.selected.description }}</ui-select-match>
+                    <ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='model_name'>
+                        <div ng-bind-html='value.description | highlight: $select.search'></div>
+                    </ui-select-choices>
+                </ui-select>
             </div>
-
-            <div id="div_id_port" class="form-group " ng_show="_edit_obj.device" >
-                <label for="id_port" class="control-label col-sm-2">
-                    Port
-                 </label>
-                <div class="controls col-sm-8">
-                    <input class="numberinput form-control" id="id_port" max="65535" min="0" name="port" ng-model="_edit_obj.port" placeholder="0" type="number" />
-                </div>
+        </div>
+        <div class="form-group" ng_show="_edit_obj.device" >
+            <label class="control-label col-sm-2">
+                Port
+             </label>
+            <div class="controls col-sm-8">
+                <input class="numberinput form-control" max="65535" min="0" name="port" ng-model="_edit_obj.port" placeholder="0" type="number"/>
             </div>
-
-            <div id="div_id_web_vnc_port" class="form-group " ng_show="_edit_obj.device" >
-                <label for="id_web_vnc_port" class="control-label col-sm-2">
-                    Web VNC Port
-                </label>
-                <div class="controls col-sm-8">
-                    <input class="numberinput form-control" id="id_web_vnc_port" max="65535" min="0" name="port" ng-model="_edit_obj.websockify_port" placeholder="0" type="number" />
-                </div>
+        </div>
+        <div class="form-group " ng_show="_edit_obj.device" >
+            <label class="control-label col-sm-2">
+                Web VNC Port
+            </label>
+            <div class="controls col-sm-8">
+                <input class="numberinput form-control" max="65535" min="0" name="port" ng-model="_edit_obj.websockify_port" placeholder="0" type="number" />
             </div>
-
-            <div id="div_id_window_manager" class="form-group " ng_show="_edit_obj.device" ><label for="id_window_manager" class="control-label col-sm-2">
-                    Window manager
-                </label>
-                <div class="controls col-sm-8">
-                    <ui-select ng-model='_edit_obj.window_manager' style='max-width:400px; min-width:240px;' ng-disabled='false'>
-                        <ui-select-match placeholder='Select a wm'>{{$select.selected.description}}</ui-select-match>
-                        <ui-select-choices repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='&#39;model_name&#39;'>
-                            <div ng-bind-html='value.description | highlight: $select.search'></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
+        </div>
+        <div class="form-group " ng_show="_edit_obj.device">
+            <label class="control-label col-sm-2">
+                Window manager
+            </label>
+            <div class="controls col-sm-8">
+                <ui-select ng-model='_edit_obj.window_manager' style='max-width:400px; min-width:240px;'>
+                    <ui-select-match placeholder='Select a wm'>{{ $select.selected.description }}</ui-select-match>
+                    <ui-select-choices repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='model_name'>
+                        <div ng-bind-html='value.description | highlight: $select.search'></div>
+                    </ui-select-choices>
+                </ui-select>
             </div>
-
-            <div id="div_id_screen_size" class="form-group " ng_show="_edit_obj.device" >
-                <label for="id_screen_size" class="control-label col-sm-2">
-                    Screen size
-                </label>
-                <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.screen_size' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='...'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value as value in available_screen_sizes'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div>
+        </div>
+        <div class="form-group " ng_show="_edit_obj.device" >
+            <label class="control-label col-sm-2">
+                Screen size
+            </label>
+            <div class="controls col-sm-8">
+                <ui-select ng-model='_edit_obj.screen_size' style='max-width:400px; min-width:240px;'>
+                    <ui-select-match placeholder='...'>{{ $select.selected.name }}</ui-select-match>
+                    <ui-select-choices repeat='value as value in available_screen_sizes'>
+                        <div ng-bind-html='value.name | highlight: $select.search'></div>
+                    </ui-select-choices>
+                </ui-select>
             </div>
-
-
-            <div>
-                <div class="control-label col-sm-2" > &nbsp; </div>
-                <div class="controls form-inline" ng_show="_edit_obj.device && _edit_obj.screen_size.manual">
-                    <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_x"></input> x <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_y"></input>
-                </div>
+        </div>
+        <div>
+            <div class="controls form-inline" ng_show="_edit_obj.device && _edit_obj.screen_size.manual">
+                <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_x"/> x
+                <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_y"/>
             </div>
-
-            <div  ng-show="_edit_obj.device">
+        </div>
+        <div  ng-show="_edit_obj.device">
             <!--<div  class="control-label col-sm-2" > &nbsp; </div>-->
-            <div class="form-group">
-                <div id="div_id_start_automatically" class="checkbox " >
-                    <div class="controls col-lg-offset-0 col-sm-8">
-                        <label for="id_start_automatically" class="">
-                            <input class="checkboxinput checkbox" id="id_start_automatically" name="start_automatically" ng-model="_edit_obj.start_automatically" type="checkbox" />
+            <div class="form-group row">
+                <div class="control-label col-sm-6">
                     Enabled (Check to make sure the server is always running)
-                        </label>
-                    </div>
+                </div>
+                <div class="controls col-sm-2">
+                    <icsw-tools-yes-no flag="_edit_obj.start_automatically"></icsw-tools-yes-no>
                 </div>
             </div>
         </div>
@@ -346,4 +355,501 @@
             </tr>
         </tbody>
     </table>
+</script>
+
+<script type="text/ng-template" id="user.detail.form">
+    <form id="form" class="form-horizontal" ng-submit="user_edit.modify()" name="form">
+        <h2>Details for user '{{ _edit_obj.login }}'</h2>
+
+        <div class="row">
+            <div class="col-md-6">
+                <fieldset>
+                    <legend>Base data</legend>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2 requiredField">
+                            Login<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="255" name="login" ng-model="_edit_obj.login" required="True" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2 requiredField">
+                            Uid<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="numberinput form-control" name="uid" ng-model="_edit_obj.uid" required="True" type="number"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            First name
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="first_name" ng-model="_edit_obj.first_name" placeholder="first name" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Last name
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="last_name" ng-model="_edit_obj.last_name" placeholder="last name" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Shell
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="shell" ng-model="_edit_obj.shell" placeholder="shell to use" type="text" value="/bin/bash"/>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="col-md-6">
+                <fieldset>
+                    <legend>Additional data</legend>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Title
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="title" ng-model="_edit_obj.title" placeholder="title" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Email
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="email" ng-model="_edit_obj.email" placeholder="email address" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Mobile phone number
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="pager" ng-model="_edit_obj.pager" placeholder="mobile number" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Telefon number
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="tel" ng-model="_edit_obj.tel" placeholder="telefon number" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Comment
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="comment" ng-model="_edit_obj.comment" placeholder="comment" type="text"/>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group controls row">
+                        <div class="col-sm-8 control-label">
+                            Active
+                        </div>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="_edit_obj.active"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group controls row">
+                        <div class="control-label col-sm-8">
+                            Is superuser
+                        </div>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="_edit_obj.is_superuser"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group controls row">
+                        <div class="control-label col-sm-8">
+                            Database is authoritative for password
+                        </div>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="_edit_obj.db_is_auth_for_password"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group controls row">
+                        <div class="col-sm-8 control-label">
+                            Only for webfrontend (== no system user)
+                        </div>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="_edit_obj.only_webfrontend"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Groups / export entry</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2 requiredField">
+                    Group<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-8">
+                    <select class="select form-control" name="group" ng-model="_edit_obj.group" ng-options="value.idx as value.groupname for value in group_list" required="True"></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Secondary groups
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select multiple="multiple" ng-model="_edit_obj.secondary_groups" style="max-width:400px; min-width:240px;">
+                        <ui-select-match placeholder="Select secondary groups">{{ $item.groupname }}</ui-select-match>
+                        <ui-select-choices repeat="value.idx as value in group_list| props_filter:{groupname:$select.search}">
+                            <div ng-bind-html="value.groupname | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group" ng_show="!_edit_obj.only_webfrontend">
+                <label class="control-label col-sm-2">
+                    Export
+                </label>
+                <div class="controls col-sm-8">
+                    <select class="select form-control" id="id_export" name="export" ng-model="_edit_obj.export" ng-options="value.idx as value.home_info_string for value in get_export_list()">
+                        <option value="" selected>None</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" ng-show="!_edit_obj.only_webfrontend">
+                <label class="control-label col-sm-2">
+                    Homedir status
+                </label>
+                <div class="col-sm-8">
+                    <input type="button" ng-disabled="!_edit_obj.home_dir_created" ng-class="get_home_dir_created_class(_edit_obj)" ng-value="get_home_dir_created_value(_edit_obj)" ng-click="clear_home_dir_created(_edit_obj)"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="!_edit_obj.only_webfrontend">
+                <label class="control-label col-sm-2">
+                    Home
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control" maxlength="128" name="home" ng-model="_edit_obj.home" type="text"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Aliases</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Aliases
+                </label>
+                <div class="controls col-sm-8">
+                    <textarea class="textarea form-control" cols="40" id="id_aliases" name="aliases" ng-model="_edit_obj.aliases" rows="3"></textarea>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset ng-show="_edit_obj.user_quota_setting_set.length &amp;&amp; !_edit_obj.only_webfrontend">
+            <legend>Quota settings</legend>
+            <div class="form-group">
+                <div class="col-sm-12">
+                    <icsw-user-quota-settings object="_edit_obj" type="user"></icsw-user-quota-settings>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset ng-show="!_edit_obj.only_webfrontend &amp;&amp; _edit_obj.export">
+            <legend>/home scan settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">Scan Home dir</label>
+                <div class="controls col-sm-8">
+                    <input type="button" ng-class='_edit_obj.scan_user_home &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm"' ng-click="_edit_obj.scan_user_home = !_edit_obj.scan_user_home" ng-value='_edit_obj.scan_user_home &amp;&amp; "yes" || "no"'></input>
+                </div>
+            </div>
+            <div class="form-group" ng_show="_edit_obj.scan_user_home">
+                <label class="control-label col-sm-2 requiredField">
+                    Scan depth<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="numberinput form-control" max="5" min="1" name="scan_depth" ng-model="_edit_obj.scan_depth" required="True" type="number" value="2"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Permissions</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Allowed device groups
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select multiple="multiple" ng-model="_edit_obj.allowed_device_groups" style="max-width:400px; min-width:240px;">
+                        <ui-select-match placeholder="Select one or more device groups">{{$item.name}}</ui-select-match>
+                        <ui-select-choices repeat="value.idx as value in valid_device_groups()| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group" ng_show="!create_mode">
+                <label class="control-label col-sm-2">
+                    Permission
+                </label>
+                <div class="controls col-sm-8">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="_edit_obj.permission">
+                            <ui-select-match placeholder="Select a permission">{{$select.selected.info}}
+                            </ui-select-match>
+                            <ui-select-choices repeat="value.idx as value in valid_user_csw_perms()| props_filter:{info:$select.search}" group-by="'model_name'">
+                                <div ng-bind-html="value.info | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="_edit_obj.permission = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"/>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" ng_show="!create_mode &amp;&amp; _edit_obj.permission">
+                <label class="control-label col-sm-2">
+                    Object
+                </label>
+                <div class="controls col-sm-8">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="_edit_obj.object">
+                            <ui-select-match placeholder="Select an object">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
+                                <div ng-bind-html="value.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="_edit_obj.object = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"/>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" ng_show="!create_mode">
+                <label class="control-label col-sm-2">
+                    Permission level
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="_edit_obj.permission_level" style="max-width:400px; min-width:240px;">
+                        <ui-select-match placeholder="Select a permission mode">{{ $select.selected.info }}</ui-select-match>
+                        <ui-select-choices repeat="value.level as value in ac_levels">
+                            <div ng-bind-html="value.info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <input type="button" name="" value="create global permission" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission"></input>
+            &#160;<input type="button" name="" value="create object permission" class="btn btn btn-sm btn-primary" id="button-id-" ng-click="create_object_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission &amp;&amp; _edit_obj.object"></input>
+            <div class="col-sm-12">
+                <div icsw-user-permissions="" ng_if="!create_mode" object="_edit_obj" type="user" action="true"></div>
+            </div>
+        </fieldset>
+        <div class="form-group" ng-show="has_valid_license('virtual_desktop')">
+            <div class="col-sm-12">
+                <icsw-user-virtual-desktop-settings object="_edit_obj"></icsw-user-virtual-desktop-settings>
+            </div>
+        </div>
+        <div class="form-actions">
+            <input type="submit" name="modify" value="modify" class="btn btn-primary btn-success" id="submit-id-modify" ng-show="!create_mode"></input> <input type="submit" name="create" value="create" class="btn btn-primary btn-success" id="submit-id-create" ng-disabled="!_edit_obj.password" ng-show="create_mode"></input>
+            &#160;<input type="button" name="close" value="close" class="btn btn-primary" id="button-id-close" ng-click="user_edit.close_modal()" ng-show="!create_mode"></input>
+            &#160;<input type="button" name="delete" value="delete" class="btn btn-danger" id="button-id-delete" ng-click="user_edit.delete_obj(_edit_obj)" ng-show="!create_mode"></input>
+            &#160;<input type="button" name="change-password" value="change password" class="btn btn-warning" id="button-id-change-password" ng-click="change_password()" ng-show="!create_mode"></input> <input type="button" name="set-password" value="set password" class="btn btn-warning" id="button-id-set-password" ng-click="change_password()" ng-show="create_mode &amp;&amp; !_edit_obj.password"></input> <input type="button" name="change-password" value="change password" class="btn btn-warning" id="button-id-change-password" ng-click="change_password()" ng-show="create_mode &amp;&amp; _edit_obj.password"></input>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="group.detail.form">
+    <form id="form" class="form-horizontal" ng-submit="group_edit.modify(this)" name="form">
+        <h2>Details for group '{{ _edit_obj.groupname }}'</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <fieldset>
+                    <legend>Basic data</legend>
+                    <div class="form-group ng-class:group_edit.form_error('groupname')">
+                        <label class="control-label col-sm-2 requiredField">
+                            Groupname<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="48" name="groupname" ng-model="_edit_obj.groupname" ng-pattern="/^.+$/" required="True" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group ng-class:group_edit.form_error('gid')">
+                        <label class="control-label col-sm-2 requiredField">
+                            Gid<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="numberinput form-control" name="gid" ng-model="_edit_obj.gid" ng-pattern="/^\d+$/" required="True" type="number"/>
+                        </div>
+                    </div>
+                    <div class="form-group ng-class:group_edit.form_error('homestart')">
+                        <label class="control-label col-sm-2 requiredField">
+                            Homestart<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" name="homestart" ng-model="_edit_obj.homestart" ng-pattern="/^\/.*/" required="True" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <div class="form-group">
+                            <div class="checkbox">
+                                <div class="controls col-lg-offset-0 col-sm-8">
+                                    <label>
+                                        <input checked="checked" class="checkboxinput checkbox" name="active" ng-model="_edit_obj.active" type="checkbox"/>
+                                        Active
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="col-md-6">
+                <fieldset>
+                    <legend>Additional data</legend>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Email
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="email" ng-model="_edit_obj.email" placeholder="email address" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Mobile
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="pager" ng-model="_edit_obj.pager" placeholder="mobile number" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Tel
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="tel" ng-model="_edit_obj.tel" placeholder="telefon number" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Comment
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" name="comment" ng-model="_edit_obj.comment" placeholder="comment" type="text"/>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+        <fieldset>
+            <legend>Permissions</legend>
+            <div class="form-group" ng_show="!create_mode">
+                <label class="control-label col-sm-2">
+                    Parent group
+                </label>
+                <div class="controls col-sm-8">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="_edit_obj.parent_group">
+                            <ui-select-match placeholder="Select a parent group">{{ $select.selected.groupname }}</ui-select-match>
+                            <ui-select-choices repeat="value.idx as value in parent_groups[_edit_obj.idx]| props_filter:{groupname:$select.search}">
+                                <div ng-bind-html="value.groupname | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="_edit_obj.parent_group = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"/>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Allowed device groups
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select multiple="multiple" ng-model="_edit_obj.allowed_device_groups" style="max-width:400px; min-width:240px;">
+                        <ui-select-match placeholder="Select one or more device groups">{{ $item.name }}</ui-select-match>
+                        <ui-select-choices repeat="value.idx as value in valid_device_groups()| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group" ng_show="!create_mode">
+                <label class="control-label col-sm-2">
+                    Permission
+                </label>
+                <div class="controls col-sm-8">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="_edit_obj.permission">
+                            <ui-select-match placeholder="Select a permission">{{ $select.selected.info }}</ui-select-match>
+                            <ui-select-choices repeat="value.idx as value in valid_group_csw_perms(_edit_obj)| props_filter:{info:$select.search}" group-by="'model_name'">
+                                <div ng-bind-html="value.info | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="_edit_obj.permission = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"/>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" ng_show="!create_mode &amp;&amp; _edit_obj.permission">
+                <label class="control-label col-sm-2">
+                    Object
+                </label>
+                <div class="controls col-sm-8">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="_edit_obj.object">
+                            <ui-select-match placeholder="Select an object">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
+                                <div ng-bind-html="value.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="_edit_obj.object = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"/>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" ng_show="!create_mode">
+                <label class="control-label col-sm-2">
+                    Permission level
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="_edit_obj.permission_level" style="max-width:400px; min-width:240px;">
+                        <ui-select-match placeholder="Select a permission mode">{{ $select.selected.info }}</ui-select-match>
+                        <ui-select-choices repeat="value.level as value in ac_levels">
+                            <div ng-bind-html="value.info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <input type="button" name="" value="create global permission" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission"></input>
+            &#160;<input type="button" name="" value="create object permission" class="btn btn btn-sm btn-primary" id="button-id-" ng-click="create_object_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission &amp;&amp; _edit_obj.object"></input>
+            <div class="col-sm-12">
+                <div icsw-user-permissions="" ng_if="!create_mode" object="_edit_obj" type="group" action="true"></div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <input type="submit" name="modify" value="Modify" class="btn btn-primary btn-success" id="submit-id-modify" ng-show="!create_mode"></input> <input type="submit" name="create" value="Create" class="btn btn-primary btn-success" id="submit-id-create" ng-show="create_mode"></input>
+            &#160;<input type="button" name="close" value="close" class="btn btn-primary" id="button-id-close" ng-click="group_edit.close_modal()" ng-show="!create_mode"></input>
+            &#160;<input type="button" name="delete" value="delete" class="btn btn-danger" id="button-id-delete" ng-click="group_edit.delete_obj(_edit_obj)" ng-show="!create_mode"></input>
+        </div>
+    </form>
 </script>

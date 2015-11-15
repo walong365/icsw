@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 DT_FORM = "YYYY-MM-DD HH:mm"
 
 class screen_size
@@ -91,11 +92,28 @@ user_module = angular.module(
             if ! ug.active
                 _if.push("inactive")
             return "#{_name} (" + _if.join(", ") + ")"
+        add_extra_span: (entry) ->
+            return angular.element("<span><span/><span/><span style='width:8px;'>&nbsp;</span></span>")
+        update_extra_span: (entry, div) ->
+            if entry._node_type == "u"
+                span = div.find("span:nth-child(1)")
+                span.removeClass()
+                if entry.obj.is_superuser
+                    span.addClass("fa fa-user-plus")
+                span = div.find("span:nth-child(2)")
+                span.removeClass()
+                if entry.obj.only_webfrontend
+                    span.addClass("fa fa-square-o")
         handle_click: (entry, event) =>
             @clear_active()
             entry.active = true
             @scope.edit_object(entry.obj, entry._node_type)
             @scope.$digest()
+        get_icon_class: (entry) ->
+            if entry._node_type == "u"
+                return "fa fa-user"
+            else
+                return "fa fa-group"
 ]).service("icswDiskUsageTree", ["icswTreeConfig", (icswTreeConfig) ->
     class icww_disk_usage_tree extends icswTreeConfig
         constructor: (@scope, args) ->
