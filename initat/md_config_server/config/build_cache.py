@@ -19,17 +19,16 @@
 #
 """ config part of md-config-server """
 
+import json
+import time
+
 from django.db.models import Q
+
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
 from initat.md_config_server.config.var_cache import var_cache
 from initat.snmp.sink import SNMPSink
-from initat.tools import configfile
-import json
-from initat.tools import logging_tools
-from initat.tools import process_tools
-import time
-
+from initat.tools import configfile, logging_tools, process_tools
 
 __all__ = [
     "build_cache",

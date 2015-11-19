@@ -21,13 +21,11 @@
 #
 
 import commands
-import sys
 import getopt
 import os
-import os.path
+import sys
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 def parse_list(in_list):

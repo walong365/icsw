@@ -1,17 +1,18 @@
 #!/usr/bin/python-init -Otu
 
-from email.parser import FeedParser
-from lxml import etree  # @UnresolvedImport
-import email
-from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
-import subprocess
 import codecs
+import email
+import os
+import re
+import subprocess
 import sys
 import tempfile
-import re
 from StringIO import StringIO
+from email.parser import FeedParser
+from lxml import etree  # @UnresolvedImport
+
+from initat.tools import logging_tools, process_tools
+
 
 SENDMAIL_BIN = process_tools.find_file("sendmail")
 SPAMC_BIN = process_tools.find_file("spamc")

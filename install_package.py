@@ -22,15 +22,15 @@
 """ commandline client to install packages """
 
 import getopt
-from initat.tools import logging_tools
-from initat.tools import net_tools
 import os
 import re
-from initat.tools import server_command
 import sys
 import time
 
+from initat.tools import logging_tools, net_tools, server_command
+
 SQL_ACCESS = "cluster_full_access"
+
 
 def main():
     try:
@@ -287,8 +287,8 @@ def main():
                                             logging_tools.compress_list(value))
     sys.exit(stat)
 
+
 if __name__ == "__main__":
     print "not ready right now, please wait for rewrite"
     sys.exit(1)
     main()
-

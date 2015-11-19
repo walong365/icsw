@@ -19,9 +19,8 @@
 
 import os
 
-from initat.tools import configfile
-from initat.tools import process_tools
 from initat.snmp_relay.config import global_config
+from initat.tools import configfile, process_tools
 
 
 def run_code():

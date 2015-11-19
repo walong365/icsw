@@ -22,13 +22,12 @@
 """ fronted for creating packages """
 
 import commands
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
-from initat.tools import rpm_build_tools
 import shutil
 import sys
 import time
+
+from initat.tools import logging_tools, process_tools, rpm_build_tools
 
 
 def check_for_association(dc, p_idx, name, version, release, set_dict):

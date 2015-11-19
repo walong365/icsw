@@ -24,10 +24,10 @@
 
 import argparse
 import datetime
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import stat
+
+from initat.tools import logging_tools, process_tools
 
 
 def main():

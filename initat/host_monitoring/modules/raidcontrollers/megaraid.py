@@ -17,20 +17,15 @@
 #
 """ checks for Megaraid RAID controllers """
 
-import argparse
 import base64
 import bz2
 import json
-import pprint  # @UnusedImport
 import re
 
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.host_monitoring_struct import ExtReturn
-from initat.tools import logging_tools
-from initat.tools import server_command
-
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
-
+from initat.tools import logging_tools, server_command
 
 # global debug mode
 DEBUG = False

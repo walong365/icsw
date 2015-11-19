@@ -17,16 +17,17 @@
 #
 """ cluster-server, user_scan capability """
 
+import os
+import stat
+import time
+
+import scandir
 from django.db.models import Q
+
 from initat.cluster.backbone.models import home_export_list, user, user_scan_result, user_scan_run
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
-from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
-import scandir
-import stat
-import time
+from initat.tools import logging_tools, process_tools
 
 
 def sub_sum(_dict):

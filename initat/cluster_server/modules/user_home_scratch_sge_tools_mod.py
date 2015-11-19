@@ -18,17 +18,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from django.db.models import Q
-from initat.cluster.backbone.models import user, config_str
-from initat.cluster_server.config import global_config
 import commands
-import cs_base_class
-import cs_tools
 import os
-from initat.tools import process_tools
-from initat.tools import server_command
 import shutil
 import tempfile
+
+from django.db.models import Q
+
+import cs_base_class
+import cs_tools
+from initat.cluster.backbone.models import user, config_str
+from initat.cluster_server.config import global_config
+from initat.tools import process_tools, server_command
 
 
 class create_user_home(cs_base_class.server_com):

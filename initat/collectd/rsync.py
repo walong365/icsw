@@ -19,13 +19,13 @@
 #
 """ resize part of collectd-init """
 
-import time
 import subprocess
+import time
 
 import psutil
+
 from initat.collectd.config import global_config
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 class RSyncMixin(object):

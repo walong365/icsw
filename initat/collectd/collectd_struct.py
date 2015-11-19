@@ -20,21 +20,20 @@
 #
 
 import json
-import shutil
 import os
-import rrdtool  # @UnresolvedImport
+import rrdtool
+import shutil
 import subprocess
 import time
 
+import memcache
 from django.db.models import Q
+from lxml.builder import E
+
 from initat.cluster.backbone.models import device_variable, device
 from initat.collectd.collectd_types.base import value, PerfdataObject
 from initat.collectd.config import global_config
-from lxml.builder import E  # @UnresolvedImports
-from initat.tools import logging_tools
-import memcache
-from initat.tools import process_tools
-from initat.tools import rrd_tools
+from initat.tools import logging_tools, process_tools, rrd_tools
 
 
 class file_creator(object):

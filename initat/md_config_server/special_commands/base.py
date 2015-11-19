@@ -19,16 +19,15 @@
 #
 """ special tasks for md-config-server, should be split into submodules, FIXME """
 
+import datetime
+import time
+
 from django.db.models import Q
+
 from initat.cluster.backbone.models import monitoring_hint, cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.md_config_server.constants import DEFAULT_CACHE_MODE
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
-import datetime
-from initat.tools import logging_tools
-from initat.tools import process_tools
-import time
-
+from initat.tools import logging_tools, process_tools
 
 __all__ = [
     "SpecialBase",

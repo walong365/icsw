@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -19,7 +19,6 @@
 #
 """ package client, configuration """
 
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())

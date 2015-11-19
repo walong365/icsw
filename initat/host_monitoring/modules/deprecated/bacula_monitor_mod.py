@@ -20,12 +20,11 @@
 #
 
 import commands
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
-import pprint
 import sys
+
 from initat.host_monitoring import limits, hm_classes
+from initat.tools import logging_tools, process_tools
 
 
 class my_modclass(hm_classes.hm_fileinfo):

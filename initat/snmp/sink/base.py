@@ -21,8 +21,7 @@
 
 from ..snmp_struct import ResultNode
 from ..handler.instances import handlers
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 class SNMPSink(object):

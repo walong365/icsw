@@ -34,7 +34,6 @@ from multiprocessing import Queue
 # import exceptions
 from Queue import Empty
 
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 import zmq

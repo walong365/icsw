@@ -19,14 +19,13 @@
 #
 """ config part of md-config-server """
 
-from initat.md_config_server.config.content_emitter import content_emitter
-from lxml.builder import E  # @UnresolvedImport
 import codecs
-from initat.tools import configfile
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 
+from lxml.builder import E  # @UnresolvedImport
+
+from initat.md_config_server.config.content_emitter import content_emitter
+from initat.tools import configfile, logging_tools, process_tools
 
 __all__ = [
     "config_dir",

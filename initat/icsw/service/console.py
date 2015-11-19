@@ -26,17 +26,8 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
-import argparse
-import datetime
 from initat.tools import logging_tools
-from initat.tools import process_tools
-from urwid import curses_display
-import psutil
-import stat
 import urwid
-import subprocess
 import time
 
 

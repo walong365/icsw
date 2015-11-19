@@ -20,17 +20,14 @@
 """ parallel bonnie runs, deprecated """
 
 import commands
-from initat.tools import configfile
 import getopt
 import grp
-from initat.tools import logging_tools
 import os
-from initat.tools import process_tools
 import pwd
-from initat.tools import server_command
 import sys
-from initat.tools import threading_tools
 import time
+
+from initat.tools import configfile, logging_tools, process_tools, server_command, threading_tools
 
 
 class slave_thread(threading_tools.thread_obj):
@@ -40,14 +37,17 @@ class slave_thread(threading_tools.thread_obj):
         self.__logger = logger
         threading_tools.thread_obj.__init__(self, "slave_%d" % (num), queue_size=100)
         self.register_func("start_run", self._start_run)
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         self.__logger.log(lev, what)
+
     def _sync(self):
         s_time = time.time()
         self.log("syncing...")
         stat, out = commands.getstatusoutput("sync")
         e_time = time.time()
         self.log("syncing took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+
     def _start_run(self):
         if self.__loc_config["SYNC_LOCAL"]:
             self._sync()
@@ -73,6 +73,7 @@ class slave_thread(threading_tools.thread_obj):
         self.send_pool_message(("run_finished", (self.__num, {"output"      : result,
                                                               "run_time"    : e_time - s_time,
                                                               "bonnie_args" : bonnie_args})))
+
 
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, logger, loc_config):

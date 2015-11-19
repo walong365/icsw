@@ -19,22 +19,20 @@
 #
 """ aggregation part of rrd-grapher service via memcache structure """
 
-from lxml import etree
 import json
 import os
 import re
 import time
+from lxml import etree
 
+import memcache
+import zmq
 from django.db import connection
+from lxml.builder import E
+
 from initat.cluster.backbone.models import device_group
 from initat.collectd.config import global_config
-from lxml.builder import E
-from initat.tools import logging_tools
-import memcache
-from initat.tools import process_tools
-from initat.tools import server_mixins
-from initat.tools import threading_tools
-import zmq
+from initat.tools import logging_tools, process_tools, server_mixins, threading_tools
 
 
 class AGStruct(object):

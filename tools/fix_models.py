@@ -31,8 +31,7 @@ from initat.cluster.backbone.models import device, device_group, mon_contact, \
     mon_device_templ, device_group, group, user, config_str, config_int, config_bool, \
     config_blob
 import datetime
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 def _parse_value(in_str):

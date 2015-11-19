@@ -22,21 +22,12 @@
 import os
 import stat
 import time
-import rrdtool
 
 from django.db import connection
-from initat.collectd.config import global_config
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import rrd_tools
-from initat.tools import server_mixins
-from initat.tools import threading_tools
 
+from initat.collectd.config import global_config, MAX_FOUND
+from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins, threading_tools
 from .rsync import RSyncMixin
-
-
-# constant, change to limit RRDs to be converted at once
-MAX_FOUND = 0
 
 
 class resize_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin, RSyncMixin):

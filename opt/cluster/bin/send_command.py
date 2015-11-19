@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2001,2002,2003,2004,2005,2006,2007,2008,2011 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2001-2007,2010,2011,2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of python-modules-base
 #
@@ -20,15 +20,12 @@
 """ sends a command to one of the python-servers """
 
 import sys
-from initat.tools import net_tools
 import time
-import os
-import os.path
-from initat.tools import server_command
-from initat.tools import logging_tools
-from initat.tools import configfile
 from lxml import etree
+
 import zmq
+
+from initat.tools import server_command, logging_tools, configfile, net_tools
 
 
 def main():

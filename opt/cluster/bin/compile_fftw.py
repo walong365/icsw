@@ -19,23 +19,23 @@
 #
 """ compiles fftw """
 
+import commands
 import optparse
-import sys
 import os
 import os.path
-import tempfile
-import tarfile
-import commands
-from initat.tools import cpu_database
-import time
 import shutil
-from initat.tools import logging_tools
-from initat.tools import rpm_build_tools
 import subprocess
-from initat.tools import compile_tools
+import sys
+import tarfile
+import tempfile
+import time
+
 import cluster_module_tools
 
+from initat.tools import compile_tools, cpu_database, logging_tools, rpm_build_tools
+
 FFTW_VERSION_FILE = "/opt/cluster/share/fftw_versions"
+
 
 class my_opt_parser(optparse.OptionParser):
     def __init__(self):

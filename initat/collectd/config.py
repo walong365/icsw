@@ -26,3 +26,6 @@ from initat.tools import process_tools, configfile, uuid_tools
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name("snmp", connect_to_root_instance=True, s_name="collectd-init")
+
+# constant, change to limit RRDs to be converted at once
+MAX_FOUND = 0

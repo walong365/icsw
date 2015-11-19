@@ -1,35 +1,50 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of host-monitoring
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 """ base views """
-import traceback
 
-from PIL import Image
 import datetime
+import json
+import logging
+
+import PIL
+from PIL import Image
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models.domain import device_mon_location
+from lxml.builder import E  # @UnresolvedImport
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
-from initat.cluster.frontend.rest_views import rest_logging
-from initat.tools import server_command
+
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
     category_tree, location_gfx, DeleteRequest, device, config, mon_check_command
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from lxml.builder import E  # @UnresolvedImport
-import json
-import PIL
-import logging
-from initat.tools import logging_tools
-from initat.tools import process_tools
-import pprint
+from initat.cluster.frontend.rest_views import rest_logging
+from initat.tools import logging_tools, process_tools, server_command
 
 logger = logging.getLogger("cluster.base")
 

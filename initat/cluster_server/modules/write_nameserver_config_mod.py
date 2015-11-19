@@ -16,24 +16,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
 import codecs
+import commands
 import grp
 import os
 import pwd
 import time
 
 from django.db.models import Q
+
+import cs_base_class
 from initat.cluster.backbone.models import net_ip, device, \
     domain_tree_node, config, network
 from initat.cluster_server.config import global_config
-from initat.tools import config_tools
-from initat.tools import ipvx_tools
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import server_command
-
-import cs_base_class
+from initat.tools import config_tools, ipvx_tools, logging_tools, process_tools, server_command
 
 
 class write_nameserver_config(cs_base_class.server_com):

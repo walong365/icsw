@@ -19,18 +19,17 @@
 #
 """ config part of md-config-server """
 
+import os
+
 from django.db.models import Q
+
 from initat.cluster.backbone.models import device, device_group, mon_check_command, mon_period, \
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
     host_check_command, mon_check_command_special
 from initat.md_config_server.config.check_command import check_command
 from initat.md_config_server.config.host_type_config import host_type_config
 from initat.md_config_server.config.mon_config import mon_config, unique_list, build_safe_name
-from initat.tools import cluster_location
-from initat.tools import configfile
-from initat.tools import logging_tools
-import os
-from initat.tools import process_tools
+from initat.tools import cluster_location, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 

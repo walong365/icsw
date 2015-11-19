@@ -15,7 +15,27 @@ Some measurements:
   datetime operations and some conversion overhead.
 """
 
+import array
+import base64
+import bz2
+import cProfile
+import codecs
+import datetime
+import logging
+import math
+import os
+import pstats
+import resource
+import subprocess
+import sys
+import time
+import zipfile
 from collections import Counter
+from functools import partial
+from optparse import make_option
+
+import networkx as nx
+import pytz
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
@@ -24,27 +44,8 @@ from django.db.models import ForeignKey, OneToOneField, Model, ManyToManyField
 from django.utils import datetime_safe
 from django.utils.datastructures import SortedDict
 from django.utils.encoding import smart_unicode
-from functools import partial
-from optparse import make_option
-import array
-import base64
-import bz2
-import cProfile
-import codecs
-import datetime
-from initat.tools import logging_tools
-import math
-import networkx as nx
-import os
-from initat.tools import process_tools
-import pstats
-import pytz
-import subprocess
-import sys
-import time
-import zipfile
-import resource
-import logging
+
+from initat.tools import logging_tools, process_tools
 
 # lazy init, for use in cluster-server.py::backup_process
 BASE_OBJECT = None

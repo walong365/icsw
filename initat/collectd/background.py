@@ -21,18 +21,16 @@
 
 """ background job definitions for collectd-init """
 
-from lxml import etree  # @UnresolvedImports
 import time
+from lxml import etree
+
+from lxml.builder import E
 
 from initat.collectd.collectd_struct import ext_com
 from initat.collectd.config import global_config
 from initat.snmp.sink import SNMPSink
 from initat.snmp.snmp_struct import value_cache
-from lxml.builder import E  # @UnresolvedImports
-from initat.tools import logging_tools
-from initat.tools import server_command
-from initat.tools import process_tools
-
+from initat.tools import logging_tools, server_command, process_tools
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
 

@@ -18,33 +18,33 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
+import commands
 import os
 import os.path
-import time
-from initat.host_monitoring import limits
-from initat.tools import logging_tools
-import commands
-from initat.host_monitoring import hm_classes
-from initat.tools import process_tools
-import pprint
+import sys
 
-SCALIX_QUEUES = ["BB",
-                 "DIRSYNC",
-                 "DMM",
-                 "DUMP",
-                 "ERRMGR",
-                 "ERROR",
-                 "LICENSE",
-                 "LOCAL",
-                 "PRINT",
-                 "REQ",
-                 "RESOLVE",
-                 "ROUTER",
-                 "SMERR",
-                 "SMINTFC",
-                 "TEST",
-                 "UNIX"]
+from initat.host_monitoring import hm_classes
+from initat.host_monitoring import limits
+from initat.tools import logging_tools, process_tools
+
+SCALIX_QUEUES = [
+    "BB",
+    "DIRSYNC",
+    "DMM",
+    "DUMP",
+    "ERRMGR",
+    "ERROR",
+    "LICENSE",
+    "LOCAL",
+    "PRINT",
+    "REQ",
+    "RESOLVE",
+    "ROUTER",
+    "SMERR",
+    "SMINTFC",
+    "TEST",
+    "UNIX",
+]
 
 
 class my_modclass(hm_classes.hm_fileinfo):

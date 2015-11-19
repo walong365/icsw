@@ -19,59 +19,31 @@
 #
 # -*- coding: utf-8 -*-
 #
+
 """ model serializers """
 
-from django.core.cache import cache
-from django.core.exceptions import ValidationError, ImproperlyConfigured
-from django.core.signals import request_finished, request_started
-from django.db import models
-from django.db.models import Q, signals
-from django.dispatch import receiver
-from initat.cluster.backbone.middleware import thread_local_middleware, \
-    thread_local_obj
-from initat.cluster.backbone.models.functions import check_empty_string, \
-    check_float, check_integer, check_non_empty_string, to_system_tz, \
-    get_change_reset_list, get_related_models, cluster_timezone
-from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
 from rest_framework import serializers
-import crypt
-import datetime
-from initat.tools import ipvx_tools
-import json
-import logging
-from initat.tools import logging_tools
-from initat.tools import net_tools
-from initat.tools import process_tools
-import pytz
-import random
-import re
-from initat.tools import server_command
-import time
-import uuid
 
 from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
     LogSource, LogLevel, device_group, mac_ignore, \
     macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
-    quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting, \
-    DeviceSNMPInfo, DeleteRequest
-
+    quota_capable_blockdevice, DeviceSNMPInfo
+from initat.cluster.backbone.serializers.background import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.capability import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.discovery import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.graph import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.hints import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.monitoring import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.network import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.package import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.user import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.background import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.hints import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.rms import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.partition import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.kpi import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.graph import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.selection import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.discovery import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.setup import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.user import *  # @UnusedWildImport
 
 
 class device_variable_serializer(serializers.ModelSerializer):

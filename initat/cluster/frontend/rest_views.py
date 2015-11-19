@@ -45,10 +45,9 @@ from rest_framework.response import Response
 from rest_framework.views import exception_handler, APIView
 import json
 import logging
-from initat.tools import logging_tools
+from initat.tools import logging_tools, process_tools
 import operator
 import pprint  # @UnusedImport
-from initat.tools import process_tools
 import time
 import types
 import importlib

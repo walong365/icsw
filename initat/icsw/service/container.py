@@ -22,14 +22,14 @@
 
 """ container for service checks """
 
+import hashlib
 import os
 import time
-import hashlib
 
 from initat.constants import GEN_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
-from .service import Service
 from .constants import *
+from .service import Service
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 

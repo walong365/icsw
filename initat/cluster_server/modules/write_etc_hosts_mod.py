@@ -19,14 +19,13 @@
 import codecs
 import os
 
-from initat.tools.config_tools import router_object
-from django.db.models import Q
-from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
-from initat.tools import cluster_location
-from initat.tools import ipvx_tools, logging_tools, process_tools
 import networkx
+from django.db.models import Q
 
 import cs_base_class
+from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
+from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location
+from initat.tools.config_tools import router_object
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"

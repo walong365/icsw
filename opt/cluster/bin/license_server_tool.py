@@ -27,9 +27,9 @@ import os
 import sys
 import time
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
 import psutil
+
+from initat.tools import logging_tools, process_tools
 
 DEFAULT_CFG_DIR = "/etc/sysconfig/init-license-server.d"
 LICENSE_DIR = "/opt/cluster/license_tools"

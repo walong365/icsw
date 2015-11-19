@@ -19,15 +19,13 @@
 
 import signal
 
-from pyasn1.codec.ber import decoder  # @UnresolvedImport
-from pyasn1.type.error import ValueConstraintError  # @UnresolvedImport
-from pysnmp.carrier.asynsock.dgram import udp  # @UnresolvedImport
-from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher  # @UnresolvedImport
-from pysnmp.proto import api  # @UnresolvedImport
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import threading_tools
+from pyasn1.codec.ber import decoder
+from pyasn1.type.error import ValueConstraintError
+from pysnmp.carrier.asynsock.dgram import udp
+from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
+from pysnmp.proto import api
 
+from initat.tools import logging_tools, process_tools, threading_tools
 from .batch import snmp_batch
 from .config import DEFAULT_RETURN_NAME
 

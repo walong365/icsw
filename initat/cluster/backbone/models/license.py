@@ -1,3 +1,4 @@
+
 # Copyright (C) 2015 Bernhard Mallinger, init.at
 #
 # Send feedback to: <mallinger@init.at>

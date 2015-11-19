@@ -21,10 +21,9 @@
 #
 """ test module dependency handler """
 
-from initat.tools import module_dependency_tools
 import sys
-import pprint  # @UnusedImport
-from initat.tools import logging_tools
+
+from initat.tools import logging_tools, module_dependency_tools
 
 
 def log_com(what, log_level=logging_tools.LOG_LEVEL_OK):

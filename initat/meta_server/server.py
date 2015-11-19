@@ -26,13 +26,13 @@ import stat
 import time
 
 import zmq
+
+from initat.client_version import VERSION_STRING
+from initat.host_monitoring import hm_classes
 from initat.icsw.service import container, transition, instance, service_parser, clusterid
 from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
     threading_tools, inotify_tools
-from initat.host_monitoring import hm_classes
-from initat.client_version import VERSION_STRING
 from initat.tools.server_mixins import ICSWBasePoolClient
-
 from .config import global_config
 from .servicestate import ServiceState
 

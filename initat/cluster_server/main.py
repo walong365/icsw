@@ -25,9 +25,7 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.tools import cluster_location
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import cluster_location, configfile, process_tools
 from initat.cluster_server.config import global_config
 
 from initat.server_version import VERSION_STRING

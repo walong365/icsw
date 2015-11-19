@@ -23,12 +23,10 @@
 import os
 import sys
 
-from initat.tools import net_tools
-from django.db.models import Q
 from initat.cluster.backbone.models import image
-from initat.tools import logging_tools, server_command
-from initat.icsw.service import instance
 from initat.cluster.frontend.helper_functions import XMLWrapper
+from initat.icsw.service import instance
+from initat.tools import logging_tools, server_command, net_tools
 
 
 def query_local_server(inst, cmd):

@@ -29,10 +29,7 @@ import tarfile
 import tempfile
 import time
 
-from initat.tools import compile_tools
-from initat.tools import cpu_database
-from initat.tools import logging_tools
-from initat.tools import rpm_build_tools
+from initat.tools import compile_tools, cpu_database, logging_tools, rpm_build_tools
 
 HPL_VERSION_FILE = "/opt/cluster/share/source-versions/hpl_versions"
 

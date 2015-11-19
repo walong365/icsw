@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013,2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-server
 #
@@ -20,7 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.tools import configfile
-from initat.tools import process_tools
+from initat.tools import configfile, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())

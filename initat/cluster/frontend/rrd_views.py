@@ -26,19 +26,17 @@ import datetime
 import json
 import logging
 
+import dateutil.parser
+import dateutil.tz
 from django.conf import settings
-from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device
-from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImports
-import dateutil.parser
-import dateutil.tz
-from initat.tools import logging_tools
-from initat.tools import server_command
+
+from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
+from initat.tools import logging_tools, server_command
 
 logger = logging.getLogger("cluster.rrd")
 

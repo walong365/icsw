@@ -24,10 +24,8 @@ import stat
 import time
 
 from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools
-from initat.tools import server_command
-
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
+from initat.tools import logging_tools, server_command
 
 
 class ctrl_type_ibmbcraid(ctrl_type):

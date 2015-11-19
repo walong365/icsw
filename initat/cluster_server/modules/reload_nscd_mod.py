@@ -16,10 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.tools import process_tools
-from initat.tools import server_command
-
 import cs_base_class
+from initat.tools import process_tools, server_command
 
 
 class reload_nscd(cs_base_class.server_com):

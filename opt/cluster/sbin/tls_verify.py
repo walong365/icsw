@@ -25,8 +25,7 @@ import sys
 
 import zmq
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
+from initat.tools import logging_tools, process_tools
 
 
 class AllowedStruct(object):

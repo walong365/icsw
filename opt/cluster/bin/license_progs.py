@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005,2007,2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,16 +23,14 @@
 #
 """ modify license settings """
 
-from lxml import etree
 import argparse
 import os
 import sys
 import tempfile
 import time
+from lxml import etree
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import sge_license_tools
+from initat.tools import logging_tools, process_tools, sge_license_tools
 
 
 # dummy logger

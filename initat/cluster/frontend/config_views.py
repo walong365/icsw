@@ -23,34 +23,33 @@
 """ config views """
 
 # do not remove mon_check_command, is access via globals()
+import StringIO
+import copy
+import datetime
+import json
+import logging
+import re
+import time
+from lxml import etree  # @UnresolvedImports
+
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone import models
+from lxml.builder import E  # @UnresolvedImports
+from rest_framework.parsers import XMLParser
+from rest_framework.renderers import XMLRenderer
+
 from initat.cluster.backbone import serializers
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
     get_related_models, mon_check_command, category, config_str, \
     config_script, config_bool, config_blob, config_int, config_catalog
-from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from lxml import etree  # @UnresolvedImports
-from lxml.builder import E  # @UnresolvedImports
-from rest_framework.parsers import XMLParser
-from rest_framework.renderers import XMLRenderer
-import StringIO
-import copy
-import datetime
-import json
-import logging
-from initat.tools import logging_tools
-from initat.tools import process_tools
-import re
-from initat.tools import server_command
-import time
+from initat.tools import logging_tools, process_tools, server_command
 
 logger = logging.getLogger("cluster.config")
 

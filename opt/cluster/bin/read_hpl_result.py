@@ -21,14 +21,11 @@
 #
 """ simple parser for HPL result files """
 
-import sys
-import re
-import os
 import argparse
+import re
+import sys
 
-from initat.tools import logging_tools
-from initat.tools import process_tools
-from initat.tools import configfile
+from initat.tools import logging_tools, process_tools
 
 
 class result_line(object):

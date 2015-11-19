@@ -21,21 +21,21 @@
 #
 """ database setup for NOCTUA / CORVUS / NESTOR """
 
-import os
-import pwd
-import importlib
 import fnmatch
 import grp
+import importlib
+import os
+import pwd
 import shutil
 import stat
+import subprocess
 import sys
 import time
-import subprocess
 
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
-from .utils import generate_password, DirSave, get_icsw_root
 from .connection_tests import test_psql, test_mysql, test_sqlite
+from .utils import generate_password, DirSave, get_icsw_root
 
 ICSW_ROOT = get_icsw_root()
 CMIG_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone", "migrations")
