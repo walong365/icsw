@@ -32,6 +32,7 @@ if __name__ == "__main__":
 from initat.host_monitoring.config import global_config
 from initat.client_version import VERSION_STRING
 from initat.tools import configfile
+from initat.icsw.service.instance import InstanceXML
 
 
 def run_code(prog_name, global_config):
@@ -63,7 +64,15 @@ def main():
             [
                 ("IDENTITY_STRING", configfile.str_c_var("collclient", help_string="identity string", short_options="i")),
                 ("TIMEOUT", configfile.int_c_var(10, help_string="set timeout [%(default)d", only_commandline=True)),
-                ("COM_PORT", configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
+                (
+                    "COM_PORT",
+                    configfile.int_c_var(
+                        InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True),
+                        info="listening Port",
+                        help_string="port to communicate [%(default)d]",
+                        short_options="p"
+                    )
+                ),
                 ("HOST", configfile.str_c_var("localhost", help_string="host to connect to")),
             ]
         )

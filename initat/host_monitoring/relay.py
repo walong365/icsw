@@ -44,6 +44,7 @@ from initat.tools import configfile, logging_tools, process_tools, \
 from initat.tools.server_mixins import ICSWBasePool
 from initat.host_monitoring.modules.network_mod import ping_command
 from initat.host_monitoring.hm_mixins import HMHRMixin
+from initat.icsw.service.instance import InstanceXML
 from .config import global_config
 from .constants import ICINGA_TOP_DIR, RELAY_SETTINGS_CS_NAME
 from .discovery import ZMQDiscovery
@@ -59,6 +60,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.objgraph = None
         # copy to access from modules
         from initat.host_monitoring import modules
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.modules = modules
         self.global_config = global_config
         threading_tools.process_pool.__init__(self, "main", zmq=True)
@@ -296,7 +298,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
                 if real_name != c_ip:
                     check_names.append(real_name)
         for c_name in check_names:
-            if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
+            if self.__client_dict.get(c_name, None) != c_type and c_port == self.__hm_port:
                 self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
                 self.__client_dict[c_name] = c_type
 
@@ -728,7 +730,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
                         if com_name == "ping" and _host in ["127.0.0.1", "localhost"]:
                             # special handling of local pings
                             self._handle_local_ping(src_id, srv_com)
-                        elif int(srv_com["port"].text) != 2001:
+                        elif int(srv_com["port"].text) != self.__hm_port:
                             # connect to non-host-monitoring service
                             if con_mode == "0":
                                 self._send_to_nhm_service(src_id, srv_com, xml_input)

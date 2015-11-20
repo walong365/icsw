@@ -183,7 +183,7 @@ dashboard_module = angular.module(
                 rowHeight: '200'
                 margins: [10, 10]
                 outerMargin: true
-                isMobile: false
+                isMobile: true
                 mobileBreakPoint: 600
                 mobileModeEnabled: true
                 minColumns: 1
@@ -214,6 +214,17 @@ dashboard_module = angular.module(
             ]
             scope.get_panel_class = (item) ->
                 return "panel-" + item.class
+            scope.$on(
+                "gridster-item-resized"
+                (item) ->
+                    console.log "gite", item
+            )
+            scope.$watch(
+                "elements"
+                (els) ->
+                    console.log "c", els
+                true
+            )
             icswAcessLevelService.install(scope)
             scope.lds = icswUserLicenseDataService
     }

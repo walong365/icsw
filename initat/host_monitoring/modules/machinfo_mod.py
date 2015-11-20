@@ -19,23 +19,24 @@
 #
 """ machine information """
 
-from lxml import etree  # @UnresolvedImport
 import commands
+import json
 import os
 import platform
 import re
 import statvfs
 import sys
-import json
 import tempfile
 import time
 
-from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
+import psutil
+from lxml import etree
+
+from initat.client_version import VERSION_STRING
 from initat.host_monitoring import hm_classes, limits
+from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
 from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, process_tools, \
     server_command, uuid_tools, config_store
-import psutil
-from initat.client_version import VERSION_STRING
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -62,6 +63,17 @@ class _general(hm_classes.hm_module):
     def _proc_stat_info(self, first_line=None):
         self.stat_list = psutil.cpu_times(percpu=False)._fields
         return self.stat_list
+
+    def _lstopo_int(self):
+        _lstopo_stat, _lstopo_result = commands.getstatusoutput("{} --of xml".format(self.module.lstopo_ng_bin))
+        return server_command.compress(_lstopo_result)
+
+    def _dmiinfo_int(self):
+        _dmi_stat, _dmi_result = commands.getstatusoutput(self.module.dmi_bin)
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            _dmi_stat, _dmi_result = commands.getstatusoutput("{} --dump-bin {}".format(self.module.dmi_bin, tmp_file.name))
+            _res = server_command.compress(file(tmp_file.name, "r").read())
+        return _res
 
     def _rescan_valid_disk_stuff(self):
         def _follow_link(start):
@@ -975,8 +987,10 @@ class _general(hm_classes.hm_module):
                                         dm_name = os.path.normpath(
                                             os.path.join(
                                                 "/dev/mapper",
-                                                os.readlink("/dev/mapper/%s%s" % (vg_name, "-%s" % (lv_name) if lv_name is not None else ""))))
-                                        dev_dict.setdefault("/dev/mapper/%s" % (vg_name), {})[lv_name] = {
+                                                os.readlink("/dev/mapper/{}{}".format(vg_name, "-{}".format(lv_name) if lv_name is not None else ""))
+                                            )
+                                        )
+                                        dev_dict.setdefault("/dev/mapper/{}".format(vg_name), {})[lv_name] = {
                                             "mountpoint": mp,
                                             "fstype": fstype,
                                             "options": opts,
@@ -1087,14 +1101,14 @@ class df_command(hm_classes.hm_command):
                             )
                         else:
                             disk_found = False
-                            for mapped_disk in ["/dev/disk/by-id/%s" % (cur_map) for cur_map in all_maps]:
+                            for mapped_disk in ["/dev/disk/by-id/{}".format(cur_map) for cur_map in all_maps]:
                                 if mapped_disk in n_dict:
                                     disk_found = True
                                     break
                             if not disk_found:
                                 store_info = False
                                 srv_com.set_result(
-                                    "invalid partition %s" % (disk),
+                                    "invalid partition {}".format(disk),
                                     server_command.SRV_REPLY_STATE_ERROR,
                                 )
                     if store_info:
@@ -1175,7 +1189,7 @@ class df_command(hm_classes.hm_command):
                 # recalc perc
                 result["perc"] = result["used"] * 100 / result["total"]
                 # add an asterisk to show the df-info as recalced
-                result["fs"] = "%s*" % (result["fs"])
+                result["fs"] = "{}*".format(result["fs"])
             if "i_size" in result:
                 if result["i_size"]:
                     inode_str = "%.2f%% (%d of %d)" % (
@@ -1191,9 +1205,9 @@ class df_command(hm_classes.hm_command):
                 result["perc"],
                 logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
                 logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
-                ", mp %s" % (result["mountpoint"]) if "mountpoint" in result else "",
-                ", %s" % (result["fs"]) if "fs" in result else "",
-                ", inode: %s" % (inode_str) if inode_str else "",
+                ", mp {}".format(result["mountpoint"]) if "mountpoint" in result else "",
+                ", {}".format(result["fs"]) if "fs" in result else "",
+                ", inode: {}".format(inode_str) if inode_str else "",
                 part_str,
                 (result["total"]) * 1024,
                 (result["used"]) * 1024,
@@ -1226,15 +1240,15 @@ class df_command(hm_classes.hm_command):
             # single-partition result
             ret_state = limits.check_ceiling(result["perc"], parsed_coms.warn, parsed_coms.crit)
             if "mapped_disk" in result:
-                part_str = "%s (is %s)" % (result["mapped_disk"], result["part"])
+                part_str = "{} (is {})".format(result["mapped_disk"], result["part"])
             else:
                 part_str = result["part"]
             return ret_state, "%.0f %% (%s of %s%s) used on %s" % (
                 result["perc"],
                 logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
                 logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
-                ", mp %s" % (result["mountpoint"]) if "mountpoint" in result else "",
-                part_str
+                ", mp {}".format(result["mountpoint"]) if "mountpoint" in result else "",
+                part_str,
             )
         else:
             # all-partition result
@@ -1267,7 +1281,7 @@ class version_command(hm_classes.hm_command):
 
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
-        return act_state, "version is %s" % (result)
+        return act_state, "version is {}".format(result)
 
 
 class get_0mq_id_command(hm_classes.hm_command):
@@ -1461,7 +1475,7 @@ class sysinfo_command(hm_classes.hm_command):
         log_lines, sys_dict = process_tools.fetch_sysinfo(root_dir)
         for log_line, log_lev in log_lines:
             self.log(log_line, log_lev)
-        imi_file = "/%s/.imageinfo" % (root_dir)
+        imi_file = "/{}/.imageinfo".format(root_dir)
         if os.path.isfile(imi_file):
             srv_com["imageinfo"] = {
                 key.strip(): value.strip() for key, value in [
@@ -1469,20 +1483,31 @@ class sysinfo_command(hm_classes.hm_command):
                 ]
             }
         srv_com["sysinfo"] = sys_dict
+        # add lstopo output
+        srv_com["lstopo_dump"] = self.module._lstopo_int()
+        # add dmi dump
+        srv_com["dmi_dump"] = self.module._dmiinfo_int()
 
     def interpret(self, srv_com, cur_ns):
         need_keys = {"vendor", "version", "arch"}
-        miss_keys = [key for key in need_keys if not "sysinfo:%s" % (key) in srv_com]
+        miss_keys = [key for key in need_keys if not "sysinfo:{}".format(key) in srv_com]
         if miss_keys:
-            return limits.nag_STATE_CRITICAL, "%s missing : %s" % (logging_tools.get_plural("key", len(miss_keys)), ", ".join(miss_keys))
+            return limits.nag_STATE_CRITICAL, "{}missing : {}".format(
+                logging_tools.get_plural("key", len(miss_keys)),
+                ", ".join(miss_keys)
+            )
         else:
-            ret_str = "Distribution is %s version %s on an %s" % (
+            ret_str = "Distribution is {} version {} on an {}".format(
                 srv_com["sysinfo:vendor"].text,
                 srv_com["sysinfo:version"].text,
-                srv_com["sysinfo:arch"].text)
+                srv_com["sysinfo:arch"].text
+            )
             if "imageinfo" in srv_com:
                 if "imageinfo:image_name" in srv_com and "imageinfo:image_version" in srv_com:
-                    ret_str += ", image is %s (version %s)" % (srv_com["imageinfo:image_name"].text, srv_com["imageinfo:image_version"].text)
+                    ret_str += ", image is {} (version {})".forrmat(
+                        srv_com["imageinfo:image_name"].text,
+                        srv_com["imageinfo:image_version"].text
+                    )
                 else:
                     ret_str += ", no image info"
             return limits.nag_STATE_OK, ret_str
@@ -1492,7 +1517,10 @@ class sysinfo_command(hm_classes.hm_command):
         need_keys = ["vendor", "version", "arch"]
         mis_keys = [k for k in need_keys if k not in result]
         if mis_keys:
-            return limits.nag_STATE_CRITICAL, "%s missing : %s" % (logging_tools.get_plural("key", len(mis_keys)), ", ".join(mis_keys))
+            return limits.nag_STATE_CRITICAL, "{} missing : {}".format(
+                logging_tools.get_plural("key", len(mis_keys)),
+                ", ".join(mis_keys)
+            )
         else:
             ret_str = "Distribution is %s version %s on an %s" % (result["vendor"], result["version"], result["arch"])
             if "imageinfo" in result.keys():
@@ -1562,7 +1590,7 @@ class uptime_command(hm_classes.hm_command):
         up_d = int(up_m / (60 * 24))
         up_h = int((up_m - up_d * (60 * 24)) / 60)
         up_m = up_m - 60 * (up_d * 24 + up_h)
-        return limits.nag_STATE_OK, "up for %s, %d:%02d" % (
+        return limits.nag_STATE_OK, "up for {}, {:d}:{:02d}".format(
             logging_tools.get_plural("day", up_d),
             up_h,
             up_m
@@ -2246,7 +2274,7 @@ class uname_command(hm_classes.hm_command):
         uname_list = []
         for _idx, sub_el in enumerate(srv_com["uname"]):
             uname_list.append(sub_el.text)
-        return limits.nag_STATE_OK, "%s, kernel %s" % (uname_list[0], uname_list[2])
+        return limits.nag_STATE_OK, "{}, kernel {}".format(uname_list[0], uname_list[2])
 
 
 class cpufreq_info_command(hm_classes.hm_command):
@@ -2356,21 +2384,16 @@ class cpufreq_info_command(hm_classes.hm_command):
 
 class lstopo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        _lstopo_stat, _lstopo_result = commands.getstatusoutput("{} --of xml".format(self.module.lstopo_ng_bin))
-        srv_com["lstopo_dump"] = server_command.compress(_lstopo_result)
+        srv_com["lstopo_dump"] = self.module._lstopo_int()
 
     def interpret(self, srv_com, cur_ns):
         dump = etree.fromstring(server_command.decompress(srv_com["*lstopo_dump"]))
-        # print etree.tostring(dump, pretty_print=True)
         return limits.nag_STATE_OK, "received lstopo output"
 
 
 class dmiinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        _dmi_stat, _dmi_result = commands.getstatusoutput(self.module.dmi_bin)
-        with tempfile.NamedTemporaryFile() as tmp_file:
-            _dmi_stat, _dmi_result = commands.getstatusoutput("{} --dump-bin {}".format(self.module.dmi_bin, tmp_file.name))
-            srv_com["dmi_dump"] = server_command.compress(file(tmp_file.name, "r").read())
+        srv_com["dmi_dump"] = self.module._dmiinfo_int()
 
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:

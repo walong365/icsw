@@ -23,13 +23,14 @@ import argparse
 import sys
 
 from initat.tools import net_tools
+from initat.icsw.service.instance import InstanceXML
 
 
 def _get_parser():
     parser = argparse.ArgumentParser("send command to servers of the init.at Clustersoftware")
     parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command")
     parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
-    parser.add_argument("-p", help="port [%(default)d]", default=2001, dest="port", type=int)
+    parser.add_argument("-p", help="port [%(default)d]", default=InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True), dest="port", type=int)
     parser.add_argument("-P", help="protocoll [%(default)s]", type=str, default="tcp", choices=["tcp", "ipc"], dest="protocoll")
     parser.add_argument("-S", help="servername [%(default)s]", type=str, default="collrelay", dest="server_name")
     parser.add_argument("-H", "--host", help="host [%(default)s] or server", default="localhost", dest="host")

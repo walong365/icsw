@@ -39,6 +39,7 @@ from initat.tools import cluster_location, server_mixins, server_command, \
     threading_tools, uuid_tools, logging_tools, process_tools, service_tools, \
     configfile
 from initat.tools.server_mixins import RemoteCall, RemoteCallProcess, RemoteCallMixin
+from initat.icsw.service.instance import InstanceXML
 from .config import global_config
 from .dhcp_config import DHCPConfigMixin
 
@@ -56,6 +57,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         connection.close()
         self.debug = global_config["DEBUG"]
         self.srv_helper = service_tools.ServiceHelper(self.log)
+        self.__hs_port = InstanceXML(quiet=True).get_port_dict("hoststatus", command=True)
         # log config
         self._log_config()
         self._re_insert_config()
@@ -208,7 +210,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         return self.server_status(srv_com, self.__msi_block, global_config)
 
     def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str, target_ip):
-        dst_addr = "tcp://{}:2002".format(target_ip)
+        dst_addr = "tcp://{}:{:d}".format(target_ip, self.__hs_port)
         if dst_addr not in self.connection_set:
             self.log("adding connection {}".format(dst_addr))
             self.connection_set.add(dst_addr)

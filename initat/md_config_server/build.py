@@ -47,6 +47,7 @@ from lxml.builder import E  # @UnresolvedImport
 import networkx
 from initat.tools import config_tools, configfile, logging_tools, net_tools, process_tools, \
     server_command, threading_tools
+from initat.icsw.service.instance import InstanceXML
 
 
 class build_process(threading_tools.process_obj, version_check_mixin):
@@ -63,6 +64,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         connection.close()
         self.__mach_loggers = {}
         self.__num_mach_logs = {}
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.version = int(time.time())
         self.log("initial config_version is %d" % (self.version))
         self.router_obj = config_tools.router_object(self.log)
@@ -278,7 +280,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if _cmd:
             self.log("Trying to {} {} via collserver-call_script".format(_cmd, global_config["MD_TYPE"]))
             reply = net_tools.zmq_connection("md_config_server", timeout=10).add_connection(
-                "tcp://localhost:2001",
+                "tcp://localhost:{:d}".format(self.__hm_port),
                 server_command.srv_command(
                     command="call_script",
                     **{

@@ -26,6 +26,8 @@ from initat.cluster.backbone import factories
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ComCapability as ComCapability_Model, SensorAction
 from initat.tools import logging_tools
+from initat.icsw.service.instance import InstanceXML
+
 
 SNMP_NET_TYPES = [
     (1, 'other'),
@@ -484,7 +486,7 @@ class Command(BaseCommand):
             matchcode=ComCapability_Model.MatchCode.hm.name,
             name="host-monitoring",
             info="init.at host-monitoring software",
-            port_spec="2001/tcp",
+            port_spec="{:d}/tcp".format(InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)),
         )
         factories.ComCapability(
             matchcode=ComCapability_Model.MatchCode.snmp.name,

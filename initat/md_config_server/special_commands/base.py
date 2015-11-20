@@ -28,6 +28,7 @@ from initat.cluster.backbone.models import monitoring_hint, cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.md_config_server.constants import DEFAULT_CACHE_MODE
 from initat.tools import logging_tools, process_tools
+from initat.icsw.service.instance import InstanceXML
 
 __all__ = [
     "SpecialBase",
@@ -60,6 +61,7 @@ class SpecialBase(object):
 
     def __init__(self, log_com, build_proc=None, s_check=None, host=None, global_config=None, build_cache=None, parent_check=None, **kwargs):
         self.__log_com = log_com
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         for key in dir(SpecialBase.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(SpecialBase.Meta, key))
@@ -231,7 +233,7 @@ class SpecialBase(object):
                         *args,
                         server=server_name,
                         zmq_context=self.build_process.zmq_context,
-                        port=2001,
+                        port=self.__hm_port,
                         timeout=self.Meta.timeout,
                         **kwargs
                     )

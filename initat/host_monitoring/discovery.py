@@ -31,6 +31,7 @@ from initat.host_monitoring import limits
 from initat.host_monitoring.constants import MAPPING_FILE_IDS
 from initat.host_monitoring.host_monitoring_struct import host_message
 from lxml.builder import E  # @UnresolvedImport
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, config_store
 import zmq
 
@@ -48,6 +49,7 @@ class ZMQDiscovery(object):
         self.port = int(srv_com["port"].text)
         self.host = srv_com["host"].text
         self.raw_connect = True if int(srv_com.get("raw_connect", "0")) else False
+        ZMQDiscovery.hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.conn_str = "tcp://{}:{:d}".format(
             self.host,
             self.port
@@ -144,7 +146,7 @@ class ZMQDiscovery(object):
                     self.log("0MQ id is {}".format(zmq_id))
                     ZMQDiscovery.set_mapping(self.conn_str, zmq_id)  # mapping[self.conn_str] = zmq_id
                     # reinject
-                    if self.port == 2001:
+                    if self.port == ZMQDiscovery.hm_port:
                         ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
                     else:
                         ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
@@ -276,7 +278,7 @@ class ZMQDiscovery(object):
     @staticmethod
     def get_hm_0mq_addrs():
         return [
-            _key.split("/")[-1].split(":")[0] for _key in ZMQDiscovery.mapping.iterkeys() if _key.endswith(":2001")
+            _key.split("/")[-1].split(":")[0] for _key in ZMQDiscovery.mapping.iterkeys() if _key.endswith(":{:d}".format(ZMQDiscovery.hm_port))
         ]
 
     @staticmethod

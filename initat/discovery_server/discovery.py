@@ -42,6 +42,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         connection.close()
         self.register_func("fetch_partition_info", self._fetch_partition_info)
         self.register_func("scan_network_info", self._scan_network_info)
+        self.register_func("scan_system_info", self._scan_system_info)
         self.register_func("snmp_basic_scan", self._snmp_basic_scan)
         self.register_func("snmp_result", self._snmp_result)
         self.register_func("base_scan", self._base_scan)
@@ -49,6 +50,11 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         self.__run_idx = 0
         self.__pending_commands = {}
         self._init_subsys()
+
+    def _scan_system_info(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        self._iterate(srv_com, "scan_system_info", "hm")
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _fetch_partition_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])

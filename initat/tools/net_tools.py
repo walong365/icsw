@@ -172,10 +172,11 @@ class zmq_connection(object):
 
 
 def SendCommandDefaults():
+    from initat.icsw.service.instance import InstanceXML
     _def = argparse.Namespace(
         arguments=[],
         timeout=10,
-        port=2001,
+        port=InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True),
         protocoll="tcp",
         host="localhost",
         verbose=False,

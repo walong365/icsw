@@ -24,6 +24,7 @@
 """ client for host-monitoring """
 
 import sys
+
 from initat.host_monitoring import main
 
 sys.exit(main.main())

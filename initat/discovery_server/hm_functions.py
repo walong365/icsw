@@ -21,17 +21,17 @@
 
 from django.db import transaction
 from django.db.models import Q
+
+from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
+    NoMatchingNetworkFoundError
 from initat.cluster.backbone.models import partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
     netdevice_speed, peer_information
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.snmp.snmp_struct import ResultNode
-from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
-    NoMatchingNetworkFoundError
-
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, net_tools, partition_tools, \
     process_tools, server_command
-
 
 # removed tun from list to enable adding of FWs from Madar, move to option?
 IGNORE_LIST = ["tap", "vnet"]
@@ -116,6 +116,7 @@ class HostMonitoringMixin(object):
         #    logging_tools.get_plural("pk", len(target_pks)),
         #    ", ".join(target_pks))
         # )
+        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.get_route_to_devices([scan_dev])
         zmq_con = net_tools.zmq_connection(
             "server:{}".format(process_tools.get_machine_name()),
@@ -128,7 +129,7 @@ class HostMonitoringMixin(object):
                 result_devs.append(target_dev)
                 conn_str = "tcp://{}:{:d}".format(
                     target_dev.target_ip,
-                    2001
+                    hm_port,
                 )
                 self.log(u"connection_str for {} is {}".format(unicode(target_dev), conn_str))
                 zmq_con.add_connection(
@@ -143,7 +144,7 @@ class HostMonitoringMixin(object):
             res_state = -1 if result is None else int(result["result"].attrib["state"])
             if res_state:
                 if res_state == -1:
-                    res_node.error(u"%s: no result" % (unicode(target_dev)))
+                    res_node.error(u"{}: no result".format(unicode(target_dev)))
                 else:
                     res_node.error(
                         u"%s: error %d: %s" % (
@@ -413,7 +414,38 @@ class HostMonitoringMixin(object):
         self.clear_scan(scan_dev)
         return res_node
 
+    def scan_system_info(self, dev_com, scan_dev):
+        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        res_node = ResultNode()
+        scan_address = dev_com.get("scan_address")
+        self.log(
+            "scanning system for device '{}' ({:d}), scan_address is '{}'".format(
+                unicode(scan_dev),
+                scan_dev.pk,
+                scan_address,
+            )
+        )
+        zmq_con = net_tools.zmq_connection(
+            "server:{}".format(process_tools.get_machine_name()),
+            context=self.zmq_context
+        )
+        conn_str = "tcp://{}:{:d}".format(
+            scan_address,
+            hm_port,
+        )
+        self.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
+        zmq_con.add_connection(
+            conn_str,
+            server_command.srv_command(command="sysinfo"),
+            multi=True,
+        )
+        res_list = zmq_con.loop()
+        print res_list
+        res_node.ok("system scanned")
+        self.clear_scan(scan_dev)
+
     def scan_network_info(self, dev_com, scan_dev):
+        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         res_node = ResultNode()
         strict_mode = True if int(dev_com.get("strict_mode")) else False
         modify_peering = True if int(dev_com.get("modify_peering")) else False
@@ -432,7 +464,7 @@ class HostMonitoringMixin(object):
         )
         conn_str = "tcp://{}:{:d}".format(
             scan_address,
-            2001,
+            hm_port,
         )
         self.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
         zmq_con.add_connection(

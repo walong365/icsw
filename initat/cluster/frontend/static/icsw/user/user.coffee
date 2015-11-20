@@ -98,12 +98,8 @@ user_module = angular.module(
             if entry._node_type == "u"
                 span = div.find("span:nth-child(1)")
                 span.removeClass()
-                if entry.obj.is_superuser
-                    span.addClass("fa fa-user-plus")
-                span = div.find("span:nth-child(2)")
-                span.removeClass()
                 if entry.obj.only_webfrontend
-                    span.addClass("fa fa-square-o")
+                    span.addClass("fa fa-genderless fa-fw")
         handle_click: (entry, event) =>
             @clear_active()
             entry.active = true
@@ -111,7 +107,10 @@ user_module = angular.module(
             @scope.$digest()
         get_icon_class: (entry) ->
             if entry._node_type == "u"
-                return "fa fa-user"
+                if entry.obj.is_superuser
+                    return "fa fa-user-plus"
+                else
+                    return "fa fa-user"
             else
                 return "fa fa-group"
 ]).service("icswDiskUsageTree", ["icswTreeConfig", (icswTreeConfig) ->

@@ -19,22 +19,23 @@
 #
 """ discovery-server, base scan functions """
 import collections
-
 import time
 import traceback
+
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from lxml import etree
 
+from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.snmp.snmp_struct import ResultNode
+from initat.tools import logging_tools, ipvx_toolsy
 from .discovery_struct import ExtCom
-from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
-from initat.tools import logging_tools, ipvx_tools
-from django.core.exceptions import ValidationError
 
 
 class ScanBatch(object):
-    """Base class for all scan batches.
+    """
+    Base class for all scan batches.
     Each of these currently has related mixins, see below.
     """
     # these are set by setup() and written here to make code analysis happy
@@ -100,7 +101,7 @@ class ScanBatch(object):
 
 
 class BaseScanBatch(ScanBatch):
-    """Batch class for base scan (scans for capabilities by open ports)"""
+    """ Batch class for base scan (scans for capabilities by open ports) """
     SCAN_TYPE = 'base'
 
     def __init__(self, dev_com, scan_dev):
@@ -372,7 +373,7 @@ class WmiScanBatch(ScanBatch):
 
 
 class _ExtComScanMixin(object):
-    """Base class for all scan mixins"""
+    """ Base class for all scan mixins """
     def _register_timer(self):
         if not hasattr(self, "_timer_registered"):
             self.log("registering base_timer")

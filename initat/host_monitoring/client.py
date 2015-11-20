@@ -26,6 +26,7 @@ import difflib
 import os
 
 from initat.host_monitoring.host_monitoring_struct import ExtReturn
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import net_tools, server_command
 
 from initat.host_monitoring import limits
@@ -76,7 +77,7 @@ def client_code(global_config):
                 immediate=True,
             )
             if result:
-                if global_config["COM_PORT"] == 2001:
+                if global_config["COM_PORT"] == InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True):
                     error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
                     if error_result:
                         error_result = error_result[0]

@@ -52,7 +52,8 @@ class Host(object):
         self.__log_template = logging_tools.get_logger(
             "{}.{}".format(
                 global_config["LOG_NAME"],
-                self.name.replace(".", r"\.")),
+                self.name.replace(".", r"\.")
+            ),
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=Host.process.zmq_context,

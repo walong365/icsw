@@ -19,10 +19,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import pprint
-from dateutil.relativedelta import relativedelta
-from collections import defaultdict
 import operator
+from collections import defaultdict
 
 from initat.cluster.backbone.models.discovery import DispatchSetting, ScanHistory
 

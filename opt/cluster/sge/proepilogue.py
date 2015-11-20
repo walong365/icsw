@@ -38,6 +38,11 @@ import time
 try:
     from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
         process_tools, server_command
+    try:
+        from initat.icsw.service.instance import InstanceXML
+        HM_PORT = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+    except:
+        HM_PORT = 2001
     NEW_CODE = True
 except ImportError:
     # for running on nodes
@@ -1079,7 +1084,7 @@ class RMSJob(object):
             srv_com["arguments:rest"] = arg_str
             for idx, cur_str in enumerate(arg_str.strip().split()):
                 srv_com["arguments:arg{:d}".format(idx)] = cur_str
-            zmq_con.add_connection("tcp://{}:2001".format(targ_ip), srv_com, multi=True)
+            zmq_con.add_connection("tcp://{}:{:d}".format(targ_ip, HM_PORT), srv_com, multi=True)
         result = zmq_con.loop()
         failure_list = []
         for targ_ip, cur_res in zip(all_nfs_ips, result):

@@ -1,6 +1,11 @@
 <?xml version="1.0"?>
 <instances>
     <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="client">
+        <network>
+            <ports>
+                <port type="command">2002</port>
+            </ports>
+        </network>
     </instance>
     <instance check_type="meta" name="logging-server" runs_on="client" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver" uuid-postfix="logging-server">
         <start-argument>

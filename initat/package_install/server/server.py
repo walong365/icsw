@@ -28,6 +28,7 @@ from initat.tools import cluster_location, configfile, logging_tools, \
     config_tools, process_tools, server_command, server_mixins, threading_tools
 import zmq
 from initat.tools.server_mixins import RemoteCall
+from initat.icsw.service.instance import InstanceXML
 
 from .config import global_config
 from .repository_process import RepoProcess
@@ -48,6 +49,7 @@ class server_process(
         self.CC.init("package-server", global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
+        self.__pc_port = InstanceXML(quiet=True).get_port_dict("package-client", command=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -138,7 +140,7 @@ class server_process(
         )
 
     def connect_client(self, device, ip):
-        _conn_str = "tcp://{}:2003".format(ip)
+        _conn_str = "tcp://{}:{:d}".format(ip, self.__pc_port)
         self.log("connecting to {}".format(_conn_str))
         # not needed and not called (reconnect_clients is commented out)
         # self.main_socket.connect(_conn_str)
