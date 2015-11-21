@@ -29,7 +29,7 @@ from lxml import etree
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, ipvx_toolsy
+from initat.tools import logging_tools, ipvx_tools
 from .discovery_struct import ExtCom
 
 

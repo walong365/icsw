@@ -217,12 +217,12 @@ dashboard_module = angular.module(
             scope.$on(
                 "gridster-item-resized"
                 (item) ->
-                    console.log "gite", item
+                    # console.log "gite", item
             )
             scope.$watch(
                 "elements"
                 (els) ->
-                    console.log "c", els
+                    # console.log "c", els
                 true
             )
             icswAcessLevelService.install(scope)

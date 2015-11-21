@@ -417,12 +417,12 @@ class HostMonitoringMixin(object):
     def scan_system_info(self, dev_com, scan_dev):
         hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         res_node = ResultNode()
-        scan_address = dev_com.get("scan_address")
+        self.get_route_to_devices([scan_dev])
         self.log(
             "scanning system for device '{}' ({:d}), scan_address is '{}'".format(
                 unicode(scan_dev),
                 scan_dev.pk,
-                scan_address,
+                scan_dev.target_ip,
             )
         )
         zmq_con = net_tools.zmq_connection(
@@ -430,7 +430,7 @@ class HostMonitoringMixin(object):
             context=self.zmq_context
         )
         conn_str = "tcp://{}:{:d}".format(
-            scan_address,
+            scan_dev.target_ip,
             hm_port,
         )
         self.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
@@ -441,8 +441,10 @@ class HostMonitoringMixin(object):
         )
         res_list = zmq_con.loop()
         print res_list
+
         res_node.ok("system scanned")
         self.clear_scan(scan_dev)
+        return res_node
 
     def scan_network_info(self, dev_com, scan_dev):
         hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
@@ -575,6 +577,7 @@ class HostMonitoringMixin(object):
                                         key,
                                         logging_tools.get_plural("netdevice", len(exc_dict[key])),
                                         ", ".join(sorted(exc_dict[key])))
+
                                 )
                         if _old_peer_dict.keys():
                             _err_str = "not all peers migrated: {}".format(", ".join(_old_peer_dict.keys()))

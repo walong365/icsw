@@ -57,6 +57,7 @@ class Parser(object):
     def _add_overview_parser(self, sub_parser):
         _act = sub_parser.add_parser("overview", help="show device structur (groups)")
         _act.add_argument("--devices", default=False, action="store_true", help="show devices [%(default)s]")
+        _act.add_argument("--get-pk", type=str, dest="name", default="", help="fetch pk of given device [%(default)s]")
         _act.set_defaults(childcom="overview")
 
     def _add_graphdump_parser(self, sub_parser):

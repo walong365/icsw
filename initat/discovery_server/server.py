@@ -182,15 +182,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         return srv_com
 
     @RemoteCall(target_process="discovery")
+    def scan_system_info(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="discovery")
     def scan_network_info(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="discovery")
-    def snmp_basic_scan(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="discovery")
-    def snmp_basic_scan(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="discovery")

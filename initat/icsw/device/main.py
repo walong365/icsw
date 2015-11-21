@@ -200,20 +200,28 @@ def dev_main(opt_ns):
 
 
 def overview_main(opt_ns):
-    print("Group structure")
-    for _devg in device_group.objects.all().prefetch_related("device_group"):
-        print(
-            "G [pk={:4d}] {}, {}".format(
-                _devg.pk,
-                unicode(_devg),
-                logging_tools.get_plural("device", _devg.device_group.all().count()),
-            )
-        )
-        if opt_ns.devices:
-            for _dev in _devg.device_group.all():
-                print(
-                    "    D [pk={:4d}] {}".format(
-                        _dev.pk,
-                        unicode(_dev),
-                    )
+    if opt_ns.name:
+        try:
+            _dev = device.objects.get(Q(name=opt_ns.name))
+        except:
+            print("0")
+        else:
+            print(_dev.pk)
+    else:
+        print("Group structure")
+        for _devg in device_group.objects.all().prefetch_related("device_group"):
+            print(
+                "G [pk={:4d}] {}, {}".format(
+                    _devg.pk,
+                    unicode(_devg),
+                    logging_tools.get_plural("device", _devg.device_group.all().count()),
                 )
+            )
+            if opt_ns.devices:
+                for _dev in _devg.device_group.all():
+                    print(
+                        "    D [pk={:4d}] {}".format(
+                            _dev.pk,
+                            unicode(_dev),
+                        )
+                    )
