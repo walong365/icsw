@@ -49,7 +49,7 @@ class ZMQDiscovery(object):
         self.port = int(srv_com["port"].text)
         self.host = srv_com["host"].text
         self.raw_connect = True if int(srv_com.get("raw_connect", "0")) else False
-        ZMQDiscovery.hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.conn_str = "tcp://{}:{:d}".format(
             self.host,
             self.port
@@ -146,7 +146,7 @@ class ZMQDiscovery(object):
                     self.log("0MQ id is {}".format(zmq_id))
                     ZMQDiscovery.set_mapping(self.conn_str, zmq_id)  # mapping[self.conn_str] = zmq_id
                     # reinject
-                    if self.port == ZMQDiscovery.hm_port:
+                    if self.port == self.__hm_port:
                         ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
                     else:
                         ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
@@ -268,6 +268,7 @@ class ZMQDiscovery(object):
         ZMQDiscovery.last_try = {}
         ZMQDiscovery.__cur_maps = set()
         ZMQDiscovery.vanished = set()
+        ZMQDiscovery.hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         ZMQDiscovery.reload_mapping()
 
     @staticmethod
