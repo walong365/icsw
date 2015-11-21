@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2015 Andreas Lang-Nevyjel
@@ -216,6 +215,11 @@ class ServiceState(object):
             target=constants.TARGET_STATE_STOPPED,
             process=[constants.SERVICE_DEAD, constants.SERVICE_NOT_INSTALLED, constants.SERVICE_NOT_CONFIGURED],
             action="keep",
+        )
+        ServiceActionState(
+            target=constants.TARGET_STATE_STOPPED,
+            process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_OK],
+            action="stop",
         )
 
     def init_db(self):
@@ -442,7 +446,6 @@ class ServiceState(object):
         return _changed
 
     def _update_state(self, name, p_state, c_state, lic_state, proc_info_str):
-        _save = False
         if (p_state, c_state, lic_state) != self.__state_dict.get(name, None):
             self.log(
                 "state for {} is {} (configured: {}, license: {}, target_dict_state TODO)".format(
