@@ -367,7 +367,6 @@ class Service(object):
             mem_dict = {
                 cur_pid: process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids)
             }
-
             _mem_info = E.memory_info(
                 "{:d}".format(
                     sum(mem_dict.values()),

@@ -385,10 +385,16 @@ def get_mem_info(pid=0, **kwargs):
     ps_list = []
     for cur_pid in pid:
         try:
+            _proc = psutil.Process(cur_pid)
             # only count RSS (resident set size)
-            ps_list.append(psutil.Process(cur_pid).memory_info()[0])
+            # ps_list.append(_proc.memory_info()[0])
+            _mi = _proc.memory_info_ex()
+            # count rss minus shared
+            ps_list.append(_mi.rss - _mi.shared)
         except:
             # ignore missing process
+            pass
+        else:
             pass
     return sum(ps_list)
 
