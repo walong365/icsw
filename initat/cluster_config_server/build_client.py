@@ -26,7 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 
 from initat.tools import logging_tools, process_tools
-from .build_container import build_container, generated_tree
+from .build_container import BuildContainer, GeneratedTree
 from .config import global_config
 from .partition_setup import partition_setup
 
@@ -161,14 +161,14 @@ class build_client(object):
 
     def get_partition(self, *args):
         part_name = args[0]
-        loc_tree = generated_tree()
+        loc_tree = GeneratedTree()
         loc_dev = device.objects.get(Q(pk=self.pk))
         self.log("set act_partition_table and partdev to %s" % (part_name))
         loc_dev.act_partition_table = loc_dev.partition_table
         loc_dev.partdev = part_name
         loc_dev.save()
         success = False
-        dummy_cont = build_container(self, {}, {"device": loc_dev}, loc_tree, None)
+        dummy_cont = BuildContainer(self, {}, {"device": loc_dev}, loc_tree, None)
         try:
             loc_ps = partition_setup(dummy_cont)
         except:

@@ -34,7 +34,7 @@ from initat.cluster_config_server.partition_setup import partition_setup
 from initat.tools import logging_tools, process_tools
 
 
-class tree_node_g(object):
+class GeneralTreeNode(object):
     """ tree node representation for intermediate creation of tree_node structure """
     def __init__(self, path="", c_node=None, is_dir=True, parent=None, intermediate=False):
         self.path = path
@@ -113,10 +113,10 @@ class tree_node_g(object):
             if path_list[1] not in self.childs:
                 if len(path_list) == 2 and not dir_node:
                     # add content node (final node)
-                    self.childs[path_list[1]] = tree_node_g(path_list[1], c_node, parent=self, is_dir=False)
+                    self.childs[path_list[1]] = GeneralTreeNode(path_list[1], c_node, parent=self, is_dir=False)
                 else:
                     # add (intermediate) dir node
-                    self.childs[path_list[1]] = tree_node_g(path_list[1], None, parent=self, intermediate=True)
+                    self.childs[path_list[1]] = GeneralTreeNode(path_list[1], None, parent=self, intermediate=True)
             return self.childs[path_list[1]].get_node(
                 os.path.join(*path_list[1:]),
                 c_node,
@@ -184,9 +184,9 @@ class tree_node_g(object):
         return node_list
 
 
-class generated_tree(tree_node_g):
+class GeneratedTree(GeneralTreeNode):
     def __init__(self):
-        tree_node_g.__init__(self, "")
+        GeneralTreeNode.__init__(self, "")
 
     def write_config(self, cur_c, cur_bc):
         cur_c.log("creating tree")
@@ -240,7 +240,7 @@ class generated_tree(tree_node_g):
         cur_c.log("wrote {}".format(logging_tools.get_plural("node", nodes_written)))
 
 
-class build_container(object):
+class BuildContainer(object):
     def __init__(self, b_client, config_dict, conf_dict, g_tree, router_obj):
         self.b_client = b_client
         # dict of all configs (pk -> config)

@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import device, network, config, log_level_lo
     net_ip
 from initat.cluster.backbone.routing import get_server_uuid, get_type_from_config
 from initat.cluster_config_server.build_client import build_client
-from initat.cluster_config_server.build_container import generated_tree, build_container
+from initat.cluster_config_server.build_container import GeneratedTree, BuildContainer
 from initat.cluster_config_server.config import global_config
 
 from initat.tools import config_tools, logging_tools, threading_tools
@@ -430,8 +430,8 @@ class build_process(threading_tools.process_obj):
                 conf_dict["called"] = {}
                 cur_c.conf_dict, cur_c.link_dict, cur_c.erase_dict = ({}, {}, {})
                 # cur_c.conf_dict[config_obj.dest] = config_obj
-                new_tree = generated_tree()
-                cur_bc = build_container(cur_c, config_dict, conf_dict, new_tree, self.router_obj)
+                new_tree = GeneratedTree()
+                cur_bc = BuildContainer(cur_c, config_dict, conf_dict, new_tree, self.router_obj)
                 for pk in config_pks:
                     cur_bc.process_scripts(pk)
                 new_tree.write_config(cur_c, cur_bc)

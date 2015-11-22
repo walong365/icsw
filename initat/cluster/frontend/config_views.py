@@ -370,7 +370,7 @@ class generate_config(View):
                         # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                         cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                         # build tree
-                        cur_tree = ConfigTreeStruct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("WrittenConfigFile"))
+                        cur_tree = ConfigTreeStruct(cur_dev, ConfigTreeNode.objects.filter(Q(device=cur_dev)).select_related("WrittenConfigFile"))
                         res_node["config_tree"] = cur_tree.get_dict()
                 else:
                     # config server not running, return dummy entry
