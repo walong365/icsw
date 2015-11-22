@@ -125,9 +125,8 @@ install:
 	# setup.py
 	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
 	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
-	# status and pci.ids
+	# status
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
-	${INSTALL} ${INSTALL_OPTS} configs/pci.ids ${DESTDIR}/${PYTHON_SITE}/
 	# Makefiles
 	${MAKE} -C c_programms DESTDIR=${DESTDIR} install
 	# INSTALL to ICSW_SBIN

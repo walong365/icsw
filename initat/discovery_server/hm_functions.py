@@ -440,7 +440,8 @@ class HostMonitoringMixin(object):
             multi=True,
         )
         res_list = zmq_con.loop()
-        print res_list
+        for _res in res_list:
+            print _res.pretty_print()
 
         res_node.ok("system scanned")
         self.clear_scan(scan_dev)

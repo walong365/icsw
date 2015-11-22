@@ -64,14 +64,20 @@ class _general(hm_classes.hm_module):
         self.stat_list = psutil.cpu_times(percpu=False)._fields
         return self.stat_list
 
+    def _pciinfo_int(self):
+        return server_command.compress(
+            pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts()),
+            marshal=True,
+        )
+
     def _lstopo_int(self):
-        _lstopo_stat, _lstopo_result = commands.getstatusoutput("{} --of xml".format(self.module.lstopo_ng_bin))
+        _lstopo_stat, _lstopo_result = commands.getstatusoutput("{} --of xml".format(self.lstopo_ng_bin))
         return server_command.compress(_lstopo_result)
 
     def _dmiinfo_int(self):
-        _dmi_stat, _dmi_result = commands.getstatusoutput(self.module.dmi_bin)
+        _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
         with tempfile.NamedTemporaryFile() as tmp_file:
-            _dmi_stat, _dmi_result = commands.getstatusoutput("{} --dump-bin {}".format(self.module.dmi_bin, tmp_file.name))
+            _dmi_stat, _dmi_result = commands.getstatusoutput("{} --dump-bin {}".format(self.dmi_bin, tmp_file.name))
             _res = server_command.compress(file(tmp_file.name, "r").read())
         return _res
 
@@ -1487,6 +1493,8 @@ class sysinfo_command(hm_classes.hm_command):
         srv_com["lstopo_dump"] = self.module._lstopo_int()
         # add dmi dump
         srv_com["dmi_dump"] = self.module._dmiinfo_int()
+        # add pci dump
+        srv_com["pci_dump"] = self.module._pciinfo_int()
 
     def interpret(self, srv_com, cur_ns):
         need_keys = {"vendor", "version", "arch"}
@@ -1882,7 +1890,8 @@ class thugepageinfo_command(hm_classes.hm_command):
 
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["pci"] = pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts())
+        srv_com["pci_dump"] = self.module._pciinfo_int()
+        # srv_com["pci"] = pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts())
 
     def interpret(self, srv_com, cur_ns):
         def _short(in_tag):
@@ -1890,22 +1899,53 @@ class pciinfo_command(hm_classes.hm_command):
 
         def _short_tag(in_el):
             return int(_short(in_el.tag)[7:])
-        cmr_b = []
-        for domain in srv_com.get_element("pci")[0]:
-            for bus in domain:
-                for slot in bus:
-                    for func in slot:
-                        s_dict = {_short(cur_el.tag): cur_el.text for cur_el in func}
-                        out_str = "{:04x}:{:02x}:{:02x}.{:x} {}: {} {}".format(
-                            _short_tag(domain), _short_tag(bus), _short_tag(slot), _short_tag(func),
-                            s_dict["subclassname"],
-                            s_dict["vendorname"],
-                            s_dict["devicename"]
-                        )
-                        if s_dict["revision"] != "00":
-                            out_str = u"{} (rev {})".format(out_str, s_dict["revision"])
-                        cmr_b.append(out_str)
-        return limits.nag_STATE_OK, "\n".join(cmr_b)
+
+        if "pci" in srv_com:
+            _dump = srv_com.get_element("pci")[0]
+            cmr_b = []
+            for domain in _dump:
+                for bus in domain:
+                    for slot in bus:
+                        for func in slot:
+                            s_dict = {_short(cur_el.tag): cur_el.text for cur_el in func}
+                            out_str = "{:04x}:{:02x}:{:02x}.{:x} {}: {} {}".format(
+                                _short_tag(domain), _short_tag(bus), _short_tag(slot), _short_tag(func),
+                                s_dict["subclassname"],
+                                s_dict["vendorname"],
+                                s_dict["devicename"]
+                            )
+                            if s_dict["revision"] != "00":
+                                out_str = u"{} (rev {})".format(out_str, s_dict["revision"])
+                            cmr_b.append(out_str)
+        elif "pci_dump" in srv_com:
+            _dump = server_command.decompress(srv_com["*pci_dump"], marshal=True)
+            cmr_b = []
+            for domain_id in sorted(_dump.iterkeys()):
+                domain = _dump[domain_id]
+                for bus_id in sorted(domain.iterkeys()):
+                    bus = domain[bus_id]
+                    for slot_id in sorted(bus.iterkeys()):
+                        slot = bus[slot_id]
+                        for func_id in sorted(slot.iterkeys()):
+                            func = slot[func_id]
+                            out_str = "{:04x}:{:02x}:{:02x}.{:x} {}: {} {}".format(
+                                domain_id,
+                                bus_id,
+                                slot_id,
+                                func_id,
+                                func["subclassname"],
+                                func["vendorname"],
+                                func["devicename"],
+                            )
+                            if func["revision"] != "00":
+                                out_str = u"{} (rev {})".format(out_str, func["revision"])
+                            cmr_b.append(out_str)
+        else:
+            _dump = None
+        if _dump is not None:
+            return limits.nag_STATE_OK, "\n".join(cmr_b)
+        else:
+            return limits.nag_STATE_CRITICAL, "no PCI-dump found"
 
 
 class cpuflags_command(hm_classes.hm_command):

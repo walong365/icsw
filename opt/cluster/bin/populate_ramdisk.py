@@ -540,7 +540,13 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         3: "/bin/bash"
     }[stage_num]
     # pci ids
-    pci_f_names = ["/usr/share/pci.ids", "/usr/share/misc/pci.ids", "/usr/share/hwdata/pci.ids", "/NOT_FOUND"]
+    pci_f_names = [
+        "/opt/cluster/share/pci/pci.ids",
+        "/usr/share/pci.ids",
+        "/usr/share/misc/pci.ids",
+        "/usr/share/hwdata/pci.ids",
+        "/NOT_FOUND",
+    ]
     for pci_f_name in pci_f_names:
         if os.path.isfile(pci_f_name):
             break

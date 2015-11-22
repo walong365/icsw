@@ -84,6 +84,12 @@ setup(
     ],
     data_files=[
         (
+            "/opt/cluster/share/pci",
+            [
+                "opt/cluster/share/pci/pci.ids",
+            ]
+        ),
+        (
             "/opt/cluster/bin",
             [
                 # cbc
