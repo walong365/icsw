@@ -26,7 +26,7 @@ from rest_framework import serializers
 
 from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
     LogSource, LogLevel, device_group, mac_ignore, \
-    macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
+    macbootlog, status, WrittenConfigFile, mon_dist_slave, mon_dist_master, cd_connection, \
     quota_capable_blockdevice, DeviceSNMPInfo
 from initat.cluster.backbone.serializers.background import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.capability import *  # @UnusedWildImport
@@ -128,9 +128,9 @@ class status_serializer(serializers.ModelSerializer):
         model = status
 
 
-class wc_files_serializer(serializers.ModelSerializer):
+class WrittenConfigFileSerializer(serializers.ModelSerializer):
     class Meta:
-        model = wc_files
+        model = WrittenConfigFile
 
 
 class mon_dist_slave_serializer(serializers.ModelSerializer):

@@ -25,7 +25,7 @@ import sys
 import time
 
 from django.db.models import Q
-from initat.cluster.backbone.models import wc_files, tree_node
+from initat.cluster.backbone.models import WrittenConfigFile, ConfigTreeNode
 from initat.cluster_config_server.base_objects import new_config_object, dir_object, copy_object, \
     link_object, delete_object, file_object
 from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
@@ -152,7 +152,7 @@ class tree_node_g(object):
 
     def write_node(self, cur_c, cur_bc, **kwargs):
         node_list = []
-        cur_tn = tree_node(
+        cur_tn = ConfigTreeNode(
             device=cur_bc.conf_dict["device"],
             is_dir=self.is_dir,
             is_link=self.is_link,
@@ -164,10 +164,10 @@ class tree_node_g(object):
         _c = "".join(self.content_node.content)
         if self.content_node.binary:
             _c = base64.b64encode(_c)
-        cur_wc = wc_files(
+        cur_wc = WrittenConfigFile(
             device=cur_bc.conf_dict["device"],
             dest=self.path,
-            tree_node=cur_tn,
+            config_tree_node=cur_tn,
             error_flag=self.error_flag,
             mode=self.content_node.mode,
             uid=self.content_node.uid,
@@ -190,11 +190,9 @@ class generated_tree(tree_node_g):
 
     def write_config(self, cur_c, cur_bc):
         cur_c.log("creating tree")
-        tree_node.objects.filter(Q(device=cur_bc.conf_dict["device"])).delete()
+        ConfigTreeNode.objects.filter(Q(device=cur_bc.conf_dict["device"])).delete()
         write_list = self.write_node(cur_c, cur_bc)
         nodes_written = len(write_list)
-        # tree_node.objects.bulk_create([cur_tn for cur_tn, cur_wc in write_list])
-        # wc_files.objects.bulk_create([cur_wc for cur_tn, cur_wc in write_list])
         # print write_list
         active_identifier = cur_bc.conf_dict["net"].identifier.replace(" ", "_")
         cur_c.log(

@@ -1155,34 +1155,40 @@ class status(models.Model):
         # print ".", self.status
         return u"{} ({}){}".format(
             self.status,
-            ",".join([short for short, attr_name in [
-                ("link", "prod_link"),
-                ("mem", "memory_test"),
-                ("loc", "boot_local"),
-                ("ins", "do_install"),
-                ("iso", "boot_iso"),
-                ("retain", "is_clean")] if getattr(self, attr_name)]),
-            "(*)" if self.allow_boolean_modify else "")
+            ",".join(
+                [
+                    short for short, attr_name in [
+                        ("link", "prod_link"),
+                        ("mem", "memory_test"),
+                        ("loc", "boot_local"),
+                        ("ins", "do_install"),
+                        ("iso", "boot_iso"),
+                        ("retain", "is_clean")
+                    ] if getattr(self, attr_name)
+                ]
+            ),
+            "(*)" if self.allow_boolean_modify else ""
+        )
 
     class Meta:
         db_table = u'status'
 
 
-class tree_node(models.Model):
+class ConfigTreeNode(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device", default=None)
     is_dir = models.BooleanField(default=False)
     is_link = models.BooleanField(default=False)
-    parent = models.ForeignKey("tree_node", null=True, default=None)
+    parent = models.ForeignKey("ConfigTreeNode", null=True, default=None)
     # is an intermediate node is has not to be created
     intermediate = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
 
     def __cmp__(self, other):
         if self.is_dir == other.is_dir:
-            if self.wc_files.dest < other.wc_files.dest:
+            if self.WrittenConfigFile.dest < other.WrittenConfigFile.dest:
                 return -1
-            elif self.wc_files.dest > other.wc_files.dest:
+            elif self.WrittenConfigFile.dest > other.WrittenConfigFile.dest:
                 return 1
             else:
                 return 0
@@ -1195,13 +1201,13 @@ class tree_node(models.Model):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
 
     def __unicode__(self):
-        return "tree_node, {}".format(self.get_type_str())
+        return "ConfigTreNode, {}".format(self.get_type_str())
 
 
-class wc_files(models.Model):
-    idx = models.AutoField(db_column="wc_files_idx", primary_key=True)
+class WrittenConfigFile(models.Model):
+    idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device")
-    tree_node = models.OneToOneField("tree_node", null=True, default=None)
+    config_tree_node = models.OneToOneField("ConfigTreeNode", null=True, default=None)
     run_number = models.IntegerField(default=0)
     config = models.ManyToManyField("backbone.config")
     # config = models.CharField(max_length=255, blank=True)
@@ -1226,10 +1232,6 @@ class wc_files(models.Model):
     content = models.TextField(blank=True, default="")
     binary = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = u'wc_files'
-        app_label = "backbone"
 
 
 class quota_capable_blockdevice(models.Model):

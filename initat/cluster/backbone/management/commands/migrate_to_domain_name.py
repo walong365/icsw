@@ -23,11 +23,12 @@
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+
 from initat.cluster.backbone.models import domain_tree_node, network, net_ip, domain_name_tree, device
 from initat.tools import logging_tools
 
 
-class tree_node(object):
+class DTNode(object):
     def __init__(self, name="", depth=0):
         self.name = name
         self.depth = depth
@@ -48,7 +49,7 @@ class tree_node(object):
             last_part = name_parts[-1]
             if last_part not in self.sub_nodes:
                 # create new sub_node
-                self.sub_nodes[last_part] = tree_node(last_part, depth=self.depth + 1)
+                self.sub_nodes[last_part] = DTNode(last_part, depth=self.depth + 1)
             return self.sub_nodes[last_part].feed_name(".".join(name_parts[:-1]), cur_net)
 
     def create_db_entries(self, top_node=None):
@@ -93,7 +94,7 @@ def main():
         print "domain tree already in use, skipping init..."
     else:
         print "Migrating to domain_tree_node system"
-        net_tree = tree_node()
+        net_tree = DTNode()
         for cur_net in network.objects.all():  # @UndefinedVariable
             _dns_node = net_tree.feed_name(cur_net.name, cur_net)
         net_tree.create_db_entries()
@@ -101,15 +102,6 @@ def main():
     # check for intermediate nodes
     for key in cur_dnt.keys():
         cur_node = cur_dnt[key]
-# #        # only used once
-# #        if False:
-# #            cur_nets = network.objects.filter(Q(name=cur_node.full_name))
-# #            if len(cur_nets):
-# #                cur_net = cur_nets[0]
-# #                cur_node.create_short_names = cur_net.short_names
-# #                cur_node.write_nameserver_config = cur_net.write_bind_config
-# #                cur_node.always_create_ip = cur_net.write_other_network_config
-# #                cur_node.save()
         if cur_node == cur_dnt._root_node:
             im_state = False
         else:
@@ -119,7 +111,6 @@ def main():
         if cur_node.intermediate != im_state:
             cur_node.intermediate = im_state
             cur_node.save()
-            # pprint.pprint(net_dict)
     # read network dict
     net_dict = {}
     for nw_obj in network.objects.all():  # @UndefinedVariable
@@ -136,7 +127,12 @@ def main():
         cur_ip.save()
     for cur_dev in device.objects.all().prefetch_related("netdevice_set__net_ip_set").order_by("name"):
         if not cur_dev.domain_tree_node_id:
-            all_ips = sum([list(cur_nd.net_ip_set.all()) for cur_nd in cur_dev.netdevice_set.all()], [])
+            all_ips = sum(
+                [
+                    list(cur_nd.net_ip_set.all()) for cur_nd in cur_dev.netdevice_set.all()
+                ],
+                []
+            )
             valid_ips = [cur_ip for cur_ip in all_ips if cur_ip.ip != "127.0.0.1"]
             dom_id = None
             if len(valid_ips) == 1:

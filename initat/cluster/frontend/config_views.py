@@ -22,7 +22,6 @@
 
 """ config views """
 
-# do not remove mon_check_command, is access via globals()
 import StringIO
 import copy
 import datetime
@@ -30,7 +29,6 @@ import json
 import logging
 import re
 import time
-from lxml import etree  # @UnresolvedImports
 
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -38,12 +36,13 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E  # @UnresolvedImports
+from lxml import etree
+from lxml.builder import E
 from rest_framework.parsers import XMLParser
 from rest_framework.renderers import XMLRenderer
 
 from initat.cluster.backbone import serializers
-from initat.cluster.backbone.models import config, device, device_config, tree_node, \
+from initat.cluster.backbone.models import config, device, device_config, ConfigTreeNode, \
     get_related_models, mon_check_command, category, config_str, \
     config_script, config_bool, config_blob, config_int, config_catalog
 from initat.cluster.backbone.render import permission_required_mixin, render_me
@@ -256,7 +255,7 @@ class alter_config_cb(View):
         request.xml_response["response"] = xml_resp
 
 
-class tree_struct(object):
+class ConfigTreeStruct(object):
     def __init__(self, cur_dev, node_list, node=None, depth=0, parent=None):
         self.dev_pk = cur_dev.pk
         self.depth = depth
@@ -270,9 +269,9 @@ class tree_struct(object):
         else:
             self.node = node
         if self.node is not None:
-            self.wc_file = self.node.wc_files
+            self.written_config_file = self.node.WrittenConfigFile
             self.childs = [
-                tree_struct(
+                ConfigTreeStruct(
                     cur_dev,
                     node_list,
                     node=cur_node,
@@ -310,7 +309,7 @@ class tree_struct(object):
 
     def get_dict(self):
         return {
-            "data": serializers.wc_files_serializer(self.wc_file).data,
+            "data": serializers.WrittenConfigFileSerializer(self.wc_file).data,
             "sub_nodes": [sub_node.get_dict() for sub_node in self.childs],
             "name": self.get_name(),
             "depth": "{:d}".format(self.depth),
@@ -371,7 +370,7 @@ class generate_config(View):
                         # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                         cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                         # build tree
-                        cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("wc_files"))
+                        cur_tree = ConfigTreeStruct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("WrittenConfigFile"))
                         res_node["config_tree"] = cur_tree.get_dict()
                 else:
                     # config server not running, return dummy entry
@@ -415,7 +414,9 @@ class download_configs(View):
             etree.tostring(xml_tree, pretty_print=True),  # @UndefinedVariable
             content_type="application/xml"
         )
-        act_resp["Content-disposition"] = "attachment; filename=config_{}.xml".format(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+        act_resp["Content-disposition"] = "attachment; filename=config_{}.xml".format(
+            datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
         return act_resp
 
 IGNORE_WHEN_EMPTY = ["categories"]
@@ -557,10 +558,16 @@ class handle_cached_config(View):
         sub_added = 0
         try:
             _exists = config.objects.get(Q(name=conf["name"]) & Q(config_catalog=ccat))  # @UndefinedVariable
-        except config.DoesNotExist:  # @UndefinedVariable
+        except config.DoesNotExist:
             _take = True
         else:
-            request.xml_response.error("config {} already exists in config catalog {}".format(conf["name"], unicode(ccat)), logger=logger)
+            request.xml_response.error(
+                "config {} already exists in config catalog {}".format(
+                    conf["name"],
+                    unicode(ccat)
+                ),
+                logger=logger
+            )
             _take = False
         # we create the config with a dummy name to simplify matching of vars / scripts / monccs against configs with same name but different catalogs
         dummy_name = "_ul_config_{:d}".format(int(time.time()))
