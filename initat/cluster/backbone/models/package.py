@@ -1,15 +1,36 @@
-#!/usr/bin/python-init
-
-from lxml import etree  # @UnresolvedImport
+# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# -*- coding: utf-8 -*-
+#
+""" package definitions for ICSW """
 
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
+
+from initat.cluster.backbone.models.functions import check_empty_string
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseParameterTypeEnum, LicenseEnum, \
     LicenseLockListDeviceService
-from initat.cluster.backbone.models.functions import check_empty_string
-from lxml.builder import E  # @UnresolvedImport
 
 
 __all__ = [
@@ -34,7 +55,6 @@ class package_service(models.Model):
 
     class Meta:
         ordering = ("name",)
-        app_label = "backbone"
 
 
 # package related models
@@ -117,7 +137,6 @@ class package_repo(models.Model):
 
     class Meta:
         ordering = ("name",)
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=package_repo)
@@ -163,7 +182,6 @@ class package_search(models.Model):
         fk_ignore_list = ["package_search_result"]
 
     class Meta:
-        app_label = "backbone"
         ordering = ("search_string", "results",)
 
 
@@ -219,7 +237,6 @@ class package_search_result(models.Model):
 
     class Meta:
         ordering = ("name", "arch", "version",)
-        app_label = "backbone"
 
 
 class package(models.Model):
@@ -278,7 +295,6 @@ class package(models.Model):
         unique_together = (
             ("name", "version", "arch", "kind", "target_repo",),
         )
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=package)
@@ -486,9 +502,6 @@ class package_device_connection(models.Model):
                     self.install_time = 0
         else:
             self.installed = "u"
-
-    class Meta:
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=package_device_connection)

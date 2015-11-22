@@ -19,17 +19,18 @@
 #
 """ database definitions for recording icinga events and aggregating them """
 
-from collections import defaultdict
 import collections
-import operator
-import django
 import itertools
+import operator
+from collections import defaultdict
 
+import django
 from django.db import models
 from django.db.models import Max, Min, Prefetch, Q
+
 from initat.cluster.backbone.available_licenses import LicenseParameterTypeEnum
-from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage
 from initat.cluster.backbone.models import mon_check_command
+from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage
 
 
 ########################################
@@ -70,7 +71,6 @@ class mon_icinga_log_raw_base(models.Model):
     _start_stop_field_args = {'max_length': 5, 'choices': [(START, START), (STOP, STOP)]}
 
     class Meta:
-        app_label = "backbone"
         abstract = True
 
 
@@ -294,9 +294,6 @@ class mon_icinga_log_file(models.Model):
     idx = models.AutoField(primary_key=True)
     filepath = models.TextField()
 
-    class Meta:
-        app_label = "backbone"
-
     class CSW_Meta:
         backup = False
 
@@ -320,9 +317,6 @@ class mon_icinga_log_last_read(models.Model):
 
     objects = _last_read_manager()
 
-    class Meta:
-        app_label = "backbone"
-
     class CSW_Meta:
         backup = False
 
@@ -337,9 +331,6 @@ class mon_icinga_log_aggregated_timespan(models.Model):
     start_date = models.DateTimeField(db_index=True)
     duration = models.IntegerField()  # seconds
     duration_type = models.IntegerField(db_index=True)  # durations pseudo enum from functions
-
-    class Meta:
-        app_label = "backbone"
 
 
 class mon_icinga_log_aggregated_host_data(models.Model):
@@ -360,9 +351,6 @@ class mon_icinga_log_aggregated_host_data(models.Model):
 
     # ratio of time span spent in this (state_type, state)
     value = models.FloatField()
-
-    class Meta:
-        app_label = "backbone"
 
     class CSW_Meta:
         backup = False
@@ -539,9 +527,6 @@ class mon_icinga_log_aggregated_service_data(models.Model):
 
     # ratio of time span spent in this (state_type, state)
     value = models.FloatField()
-
-    class Meta:
-        app_label = "backbone"
 
     class CSW_Meta:
         backup = False

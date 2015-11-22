@@ -21,6 +21,10 @@
 #
 """ Model definitions for domain related objects """
 
+import StringIO
+import os
+import re
+import uuid
 
 from PIL import Image, ImageEnhance, ImageFilter
 from django.apps import apps
@@ -31,13 +35,10 @@ from django.core.urlresolvers import reverse
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+
 from initat.cluster.backbone.models.functions import check_empty_string, check_non_empty_string, \
     check_float, get_related_models
-import StringIO
-import os
 from initat.tools import process_tools
-import re
-import uuid
 
 __all__ = [
     "domain_name_tree",
@@ -209,9 +210,6 @@ class domain_tree_node(models.Model):
             #    return u"%s%s (%s)" % (r"+-" * (self.depth), self.name, self.full_name)
         else:
             return u"[TLN]"
-
-    class Meta:
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=domain_tree_node)
@@ -548,7 +546,6 @@ class category(models.Model):
         return num_refs
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Category"
 
 
@@ -788,9 +785,6 @@ class location_gfx(models.Model):
             "content_type",
             "locked", "image_stored", "image_count", "image_name"])
 
-    class Meta:
-        app_label = "backbone"
-
 
 @receiver(signals.pre_save, sender=location_gfx)
 def location_gfx_pre_save(sender, **kwargs):
@@ -823,7 +817,6 @@ class device_mon_location(models.Model):
         return self.device.full_name
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Monitoring location"
 
 

@@ -577,8 +577,8 @@ class HostMonitoringMixin(object):
                                     "{} for {}: {}".format(
                                         key,
                                         logging_tools.get_plural("netdevice", len(exc_dict[key])),
-                                        ", ".join(sorted(exc_dict[key])))
-
+                                        ", ".join(sorted(exc_dict[key]))
+                                    )
                                 )
                         if _old_peer_dict.keys():
                             _err_str = "not all peers migrated: {}".format(", ".join(_old_peer_dict.keys()))

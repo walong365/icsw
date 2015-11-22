@@ -42,9 +42,6 @@ class config_hint(models.Model):
     help_text_html = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        app_label = "backbone"
-
 
 class config_var_hint(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -70,9 +67,6 @@ class config_var_hint(models.Model):
     ac_value = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        app_label = "backbone"
-
 
 class config_script_hint(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -88,6 +82,3 @@ class config_script_hint(models.Model):
     # will be casted to int, bool
     ac_value = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = "backbone"

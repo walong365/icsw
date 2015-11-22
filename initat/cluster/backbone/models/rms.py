@@ -69,9 +69,6 @@ class rms_project(models.Model):
     def __unicode__(self):
         return self.name
 
-    class Meta:
-        app_label = "backbone"
-
 
 class rms_department(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -83,9 +80,6 @@ class rms_department(models.Model):
     def __unicode__(self):
         return self.name
 
-    class Meta:
-        app_label = "backbone"
-
 
 class rms_queue(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -95,9 +89,6 @@ class rms_queue(models.Model):
     def __unicode__(self):
         return "queue {}".format(self.name)
 
-    class Meta:
-        app_label = "backbone"
-
 
 class rms_pe(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -106,9 +97,6 @@ class rms_pe(models.Model):
 
     def __unicode__(self):
         return "pe {}".format(self.name)
-
-    class Meta:
-        app_label = "backbone"
 
 
 class rms_job(models.Model):
@@ -154,9 +142,6 @@ class rms_job(models.Model):
 
     def __unicode__(self):
         return "job {}".format(self.full_id)
-
-    class Meta:
-        app_label = "backbone"
 
 
 class rms_job_run(models.Model):
@@ -248,9 +233,6 @@ class rms_job_run(models.Model):
         self.qacct_called = True
         self.save()
 
-    class Meta:
-        app_label = "backbone"
-
 
 @receiver(signals.post_save, sender=rms_job_run)
 def _rms_job_run_post_save(sender, instance, raw, **kwargs):
@@ -269,9 +251,6 @@ class rms_pe_info(models.Model):
     slots = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        app_label = "backbone"
-
 
 # license models
 # TODO: track cluster / external license usage
@@ -281,7 +260,6 @@ class ext_license_base(models.Model):
 
     class Meta:
         abstract = True
-        app_label = "backbone"
 
 
 class ext_license_site(ext_license_base):
@@ -344,9 +322,6 @@ class ext_license_state(models.Model):
     free = models.IntegerField(default=0)
     issued = models.IntegerField(default=0)
 
-    class Meta:
-        app_label = "backbone"
-
     class CSW_Meta:
         backup = False
 
@@ -358,9 +333,6 @@ class ext_license_version_state(models.Model):
     ext_license_state = models.ForeignKey("backbone.ext_license_state")
     is_floating = models.BooleanField(default=False)
     vendor = models.ForeignKey("backbone.ext_license_vendor")
-
-    class Meta:
-        app_label = "backbone"
 
     class CSW_Meta:
         backup = False
@@ -386,9 +358,6 @@ class ext_license_usage(models.Model):
     checkout_time = models.IntegerField(default=0)
     num = models.IntegerField(default=0)  # number of licenses of a single instance of a program
 
-    class Meta:
-        app_label = "backbone"
-
     class CSW_Meta:
         backup = False
 
@@ -412,9 +381,6 @@ class ext_license_check_coarse(models.Model):
         # border values easily create problems with timezones etc, hence use central values
         return klass.get_display_date(self.start_date + ((self.end_date - self.start_date) / 2))  # @IgnorePep8
 
-    class Meta:
-        app_label = "backbone"
-
     class CSW_Meta:
         backup = False
 
@@ -434,9 +400,6 @@ class ext_license_state_coarse(models.Model):
     issued_max = models.IntegerField(default=0)
     data_points = models.IntegerField()  # number of measurements used for calculating this
 
-    class Meta:
-        app_label = "backbone"
-
     class CSW_Meta:
         backup = False
 
@@ -453,9 +416,6 @@ class ext_license_version_state_coarse(models.Model):
     vendor = models.ForeignKey("backbone.ext_license_vendor")  # grouped by this
 
     frequency = models.IntegerField()  # number of actual usages of this combination of license_version and vendor occurred, grouped by check and state
-
-    class Meta:
-        app_label = "backbone"
 
     class CSW_Meta:
         backup = False
@@ -475,9 +435,6 @@ class ext_license_usage_coarse(models.Model):
     num = models.IntegerField(default=0)  # number of licenses of a single instance of a program
 
     frequency = models.IntegerField()  # number of times this client/user/num combination occurred for this version_state
-
-    class Meta:
-        app_label = "backbone"
 
     class CSW_Meta:
         backup = False

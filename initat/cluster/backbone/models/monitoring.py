@@ -19,19 +19,20 @@
 #
 """ database definitions for monitoring """
 
+import json
+import re
+from collections import defaultdict
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, Max, Min
+from django.db.models import Q, signals
 from django.dispatch import receiver
+
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
-from collections import defaultdict
-import json
 from initat.cluster.backbone.models.license import LicenseUsage
 from initat.tools import logging_tools
-import re
-import operator
 
 __all__ = [
     "mon_host_cluster",
@@ -95,9 +96,6 @@ class mon_trace(models.Model):
     def get_trace(self):
         return json.loads(self.traces)
 
-    class Meta:
-        app_label = "backbone"
-
 
 class mon_dist_base(models.Model):
     # start of build
@@ -141,7 +139,6 @@ class mon_dist_slave(mon_dist_base):
     size_raw = models.IntegerField(default=0)
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Config builds as slave"
 
 
@@ -153,7 +150,6 @@ class mon_dist_master(mon_dist_base):
     md_version = models.CharField(max_length=128, default="")
 
     class Meta:
-        app_label = "backbone"
         ordering = ("-idx",)
         verbose_name = "Config builds as master"
 
@@ -165,9 +161,6 @@ class mon_build_unreachable(models.Model):
     device_name = models.CharField(max_length=256, default="")
     devicegroup_name = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = "backbone"
 
     class CSW_Meta:
         backup = False
@@ -190,7 +183,6 @@ class mon_host_cluster(models.Model):
         return self.name
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Host Cluster"
 
 
@@ -224,7 +216,6 @@ class mon_service_cluster(models.Model):
         return self.name
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Service Cluster"
 
 
@@ -249,9 +240,6 @@ class host_check_command(models.Model):
     def __unicode__(self):
         return "hcc_{}".format(self.name)
 
-    class Meta:
-        app_label = "backbone"
-
 
 class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -273,7 +261,6 @@ class mon_check_command_special(models.Model):
         return "special_{:d}_{}".format(self.idx, self.name)
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Special check command"
 
     def __unicode__(self):
@@ -418,7 +405,6 @@ class mon_check_command(models.Model):
     class Meta:
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
-        app_label = "backbone"
         verbose_name = "Check command"
 
     class CSW_Meta:
@@ -486,7 +472,6 @@ class mon_check_command_type(models.Model):
 
     class Meta:
         db_table = u'ng_check_command_type'
-        app_label = "backbone"
 
 
 class mon_contact(models.Model):
@@ -521,7 +506,6 @@ class mon_contact(models.Model):
 
     class Meta:
         db_table = u'ng_contact'
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_contact)
@@ -560,9 +544,6 @@ class mon_notification(models.Model):
             self.channel,
         )
 
-    class Meta:
-        app_label = "backbone"
-
 
 @receiver(signals.pre_save, sender=mon_notification)
 def mon_notification_pre_save(sender, **kwargs):
@@ -597,7 +578,6 @@ class mon_contactgroup(models.Model):
 
     class Meta:
         db_table = u'ng_contactgroup'
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_contactgroup)
@@ -646,7 +626,6 @@ class mon_device_templ(models.Model):
 
     class Meta:
         db_table = u'ng_device_templ'
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_device_templ)
@@ -684,9 +663,6 @@ class mon_device_esc_templ(models.Model):
 
     def __unicode__(self):
         return self.name
-
-    class Meta:
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_device_esc_templ)
@@ -744,7 +720,6 @@ class mon_host_dependency_templ(models.Model):
 
     class Meta:
         ordering = ("name",)
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_host_dependency_templ)
@@ -790,9 +765,6 @@ class mon_host_dependency(models.Model):
         conf["notification_failure_criteria"] = self.mon_host_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_host_dependency_templ.dependency_period.name
 
-    class Meta:
-        app_label = "backbone"
-
 
 class mon_service_dependency_templ(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -836,7 +808,6 @@ class mon_service_dependency_templ(models.Model):
 
     class Meta:
         ordering = ("name",)
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_service_dependency_templ)
@@ -895,9 +866,6 @@ class mon_service_dependency(models.Model):
         conf["notification_failure_criteria"] = self.mon_service_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_service_dependency_templ.dependency_period.name
 
-    class Meta:
-        app_label = "backbone"
-
 
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
@@ -920,7 +888,6 @@ class mon_ext_host(models.Model):
     class Meta:
         ordering = ("name",)
         db_table = u'ng_ext_host'
-        app_label = "backbone"
 
 
 class mon_period(models.Model):
@@ -941,7 +908,6 @@ class mon_period(models.Model):
 
     class Meta:
         db_table = u'ng_period'
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_period)
@@ -1007,7 +973,6 @@ class mon_service_templ(models.Model):
 
     class Meta:
         db_table = u'ng_service_templ'
-        app_label = "backbone"
 
     def any_notification_enabled(self):
         return self.nrecovery or self.ncritical or self.nwarning or self.nunknown or self.nflapping or \
@@ -1063,9 +1028,6 @@ class mon_service_esc_templ(models.Model):
 
     def __unicode__(self):
         return self.name
-
-    class Meta:
-        app_label = "backbone"
 
 
 @receiver(signals.pre_save, sender=mon_service_esc_templ)
@@ -1212,6 +1174,5 @@ class monitoring_hint(models.Model):
         )
 
     class Meta:
-        app_label = "backbone"
         ordering = ("m_type", "key",)
         verbose_name = "Monitoring hint"

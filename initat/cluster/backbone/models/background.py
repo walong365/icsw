@@ -98,7 +98,6 @@ class background_job(models.Model):
 
     class Meta:
         ordering = ("-date",)
-        app_label = "backbone"
         verbose_name = "Background jobs"
 
     class CSW_Meta:
@@ -129,5 +128,4 @@ class background_job_run(models.Model):
 
     class Meta:
         ordering = ("date",)
-        app_label = "backbone"
         verbose_name = "Background job run"

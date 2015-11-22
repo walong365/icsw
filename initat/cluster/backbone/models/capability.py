@@ -19,20 +19,8 @@
 #
 """ database definitions for monitoring """
 
-from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, Max, Min
-from django.dispatch import receiver
 from enum import enum
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.functions import check_empty_string, check_integer
-from collections import defaultdict
-import json
-from initat.cluster.backbone.models.license import LicenseUsage
-from initat.tools import logging_tools
-import re
-import operator
 
 __all__ = [
     "snmp_scheme_vendor",
@@ -52,9 +40,6 @@ class snmp_scheme_vendor(models.Model):
 
     def __unicode__(self):
         return "snmp_scheme_vendor {}".format(self.name)
-
-    class Meta:
-        app_label = "backbone"
 
 
 class snmp_scheme(models.Model):
@@ -96,9 +81,6 @@ class snmp_scheme(models.Model):
             self.version,
         )
 
-    class Meta:
-        app_label = "backbone"
-
 
 class snmp_scheme_tl_oid(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -107,9 +89,6 @@ class snmp_scheme_tl_oid(models.Model):
     # is this oid optional ?
     optional = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
 class ComCapability(models.Model):
@@ -129,6 +108,3 @@ class ComCapability(models.Model):
         ipmi = 2
         snmp = 3
         wmi = 4
-
-    class Meta:
-        app_label = "backbone"

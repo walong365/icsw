@@ -22,8 +22,9 @@
 """ model definitions for key performance indicators """
 import datetime
 
-from django.db import models
 import django.utils.timezone
+from django.db import models
+
 from initat.cluster.backbone.models.functions import duration
 
 
@@ -123,7 +124,6 @@ class Kpi(models.Model):
         return u"KPI {}".format(self.name)
 
     class Meta:
-        app_label = "backbone"
         ordering = ('idx', )  # rest view in order of creation
         verbose_name = "KPI"
 
@@ -163,7 +163,6 @@ class KpiDataSourceTuple(DataSourceTuple):
     __unicode__ = __repr__  # useful for force_text
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "KPI data sources"
 
 
@@ -173,6 +172,3 @@ class KpiStoredResult(models.Model):
     date = models.DateTimeField()
 
     result = models.TextField(null=True)  # json
-
-    class Meta:
-        app_label = "backbone"

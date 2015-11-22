@@ -243,15 +243,19 @@ class alter_config_cb(View):
                     delete_object(request, del_obj, xml_log=False)
                     request.xml_response.info("remove config {}".format(unicode(cur_conf)), logger)
         xml_resp = _get_device_configs(["dev__{:d}".format(sel_dev.pk) for sel_dev in all_devs], conf=cur_conf)
-        xml_resp.extend([
-            E.config(pk="{:d}".format(cur_conf.pk)),
-            E.devices(
-                *[
-                    E.device(
-                        pk="{:d}".format(sel_dev.pk),
-                        key="dev__{:d}".format(sel_dev.pk)
-                    ) for sel_dev in all_devs])
-        ])
+        xml_resp.extend(
+            [
+                E.config(pk="{:d}".format(cur_conf.pk)),
+                E.devices(
+                    *[
+                        E.device(
+                            pk="{:d}".format(sel_dev.pk),
+                            key="dev__{:d}".format(sel_dev.pk)
+                        ) for sel_dev in all_devs
+                    ]
+                )
+            ]
+        )
         request.xml_response["response"] = xml_resp
 
 

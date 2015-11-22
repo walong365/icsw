@@ -23,32 +23,32 @@
 
 import base64
 import crypt
+import datetime
 import hashlib
 import inspect
 import os
 import random
-import string
 import smbpasswd
-import datetime
+import string
 
+import django.core.serializers
+from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
-from django.utils.encoding import force_text
-from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
-import django.core.serializers
+from django.utils.encoding import force_text
 
-from initat.tools import config_store
-from initat.constants import GEN_CS_NAME
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     virtual_desktop_user_setting_changed
+from initat.constants import GEN_CS_NAME
+from initat.tools import config_store
 
 __all__ = [
     "csw_permission",
@@ -243,7 +243,6 @@ class csw_permission(models.Model):
     class Meta:
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "name",)
-        app_label = "backbone"
         verbose_name = "Global permission"
 
     @staticmethod
@@ -283,7 +282,6 @@ class csw_object_permission(models.Model):
         return u"{} on {}".format(unicode(self.csw_permission), obj)
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Object permission"
 
 
@@ -294,9 +292,6 @@ class group_permission(models.Model):
     csw_permission = models.ForeignKey(csw_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
 @receiver(signals.post_save, sender=group_permission)
@@ -319,9 +314,6 @@ class group_object_permission(models.Model):
     csw_object_permission = models.ForeignKey(csw_object_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
 @receiver(signals.post_save, sender=group_object_permission)
@@ -346,7 +338,6 @@ class user_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Global permissions of users"
 
     def __unicode__(self):
@@ -395,7 +386,6 @@ class user_object_permission(models.Model):
         return u"Permission {} for user {}".format(self.csw_object_permission, self.user)
 
     class Meta:
-        app_label = "backbone"
         verbose_name = "Object permissions of users"
 
 
@@ -813,7 +803,6 @@ class user(models.Model):
     class Meta:
         db_table = u'user'
         ordering = ("login", "group__groupname")
-        app_label = "backbone"
         verbose_name = "User"
 
     def get_info(self):
@@ -989,7 +978,6 @@ class group(models.Model):
     class Meta:
         db_table = u'ggroup'
         ordering = ("groupname",)
-        app_label = "backbone"
         verbose_name = u"Group"
 
     def __unicode__(self):
@@ -1050,7 +1038,6 @@ class user_device_login(models.Model):
 
     class Meta:
         db_table = u'user_device_login'
-        app_label = "backbone"
 
 
 class user_variable(models.Model):
@@ -1094,7 +1081,6 @@ class user_variable(models.Model):
 
     class Meta:
         unique_together = [("name", "user"), ]
-        app_label = "backbone"
 
 
 class login_history(models.Model):
@@ -1170,15 +1156,9 @@ class quota_setting(models.Model):
 class user_quota_setting(quota_setting):
     user = models.ForeignKey("backbone.user")
 
-    class Meta:
-        app_label = "backbone"
-
 
 class group_quota_setting(quota_setting):
     group = models.ForeignKey("backbone.group")
-
-    class Meta:
-        app_label = "backbone"
 
 
 class user_scan_run(models.Model):
@@ -1193,9 +1173,6 @@ class user_scan_run(models.Model):
     run_time = models.IntegerField(default=0)
     # depth
     scan_depth = models.IntegerField(default=1)
-
-    class Meta:
-        app_label = "backbone"
 
 
 class user_scan_result(models.Model):
@@ -1219,7 +1196,6 @@ class user_scan_result(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        app_label = "backbone"
         ordering = ("idx",)
 
 

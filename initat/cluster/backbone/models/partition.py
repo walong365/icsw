@@ -21,13 +21,15 @@
 #
 """ model definitions, partitions """
 
+import re
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+
 from initat.cluster.backbone.models.functions import check_integer
 from initat.tools import logging_tools
-import re
 
 __all__ = [
     "partition_fs",

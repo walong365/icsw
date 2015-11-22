@@ -53,6 +53,7 @@ from initat.cluster.backbone.models.config import *  # @UnusedWildImport
 from initat.cluster.backbone.models.monitoring import *  # @UnusedWildImport
 from initat.cluster.backbone.models.network import *  # @UnusedWildImport
 from initat.cluster.backbone.models.package import *  # @UnusedWildImport
+from initat.cluster.backbone.models.inventory import *  # @UnusedWildImport
 from initat.cluster.backbone.models.user import *  # @UnusedWildImport
 from initat.cluster.backbone.models.background import *  # @UnusedWildImport
 from initat.cluster.backbone.models.hints import *  # @UnusedWildImport
@@ -220,17 +221,21 @@ class DeviceVariableManager(models.Manager):
             return None
 
     def get_device_variable_value(self, device, var_name, default_val=None):
-        """Returns variable considering inheritance."""
+        """ Returns variable considering inheritance. """
         var_value = default_val
         try:
             cur_var = device.device_variable_set.get(Q(name=var_name))
         except device_variable.DoesNotExist:
             try:
-                cur_var = device.device_group.device.device_variable_set.get(Q(name=var_name))
+                cur_var = device.device_group.device.device_variable_set.get(
+                    Q(name=var_name)
+                )
             except device_variable.DoesNotExist:
                 try:
-                    cur_var = device_variable.objects.get(Q(device__device_group__cluster_device_group=True) &
-                                                          Q(name=var_name))
+                    cur_var = device_variable.objects.get(
+                        Q(device__device_group__cluster_device_group=True) &
+                        Q(name=var_name)
+                    )
                 except device_variable.DoesNotExist:
                     cur_var = None
         if cur_var:
@@ -1249,9 +1254,6 @@ class quota_capable_blockdevice(models.Model):
     def __unicode__(self):
         return "qcb {} ({})".format(self.block_device_path, self.mount_path)
 
-    class Meta:
-        app_label = "backbone"
-
 
 class DeleteRequest(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1260,7 +1262,6 @@ class DeleteRequest(models.Model):
     delete_strategies = models.TextField(null=True, blank=True)
 
     class Meta:
-        app_label = "backbone"
         unique_together = ("obj_pk", "model")
 
 

@@ -28,14 +28,14 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import check_empty_string, \
-    check_integer
-from initat.cluster.backbone.signals import bootsettings_changed
-from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
-from initat.constants import GEN_CS_NAME
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
     NoMatchingNetworkDeviceTypeFoundError
+from initat.cluster.backbone.models.functions import check_empty_string, \
+    check_integer
+from initat.cluster.backbone.signals import bootsettings_changed
+from initat.constants import GEN_CS_NAME
+from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
 
 __all__ = [
     "network",
@@ -65,7 +65,6 @@ class network_device_type(models.Model):
 
     class Meta:
         db_table = u'network_device_type'
-        app_label = "backbone"
 
     def match(self, devname):
         if self.allow_virtual_interfaces and devname.count(":") == 1:
@@ -168,7 +167,6 @@ class network_type(models.Model):
 
     class Meta:
         db_table = u'network_type'
-        app_label = "backbone"
 
     def __unicode__(self):
         return u"{} ({})".format(
@@ -282,7 +280,6 @@ class network(models.Model):
 
     class Meta:
         db_table = u'network'
-        app_label = "backbone"
 
     def get_info(self):
         all_slaves = self.rel_master_network.all()
@@ -483,7 +480,6 @@ class net_ip(models.Model):
 
     class Meta:
         db_table = u"netip"
-        app_label = "backbone"
         verbose_name = "IP address"
 
 
@@ -701,7 +697,6 @@ class netdevice(models.Model):
     class Meta:
         db_table = u'netdevice'
         ordering = ("snmp_idx", "devname",)
-        app_label = "backbone"
         verbose_name = "Netdevice"
 
     def delete(self, *args, **kwargs):
@@ -862,7 +857,6 @@ class netdevice_speed(models.Model):
     class Meta:
         db_table = u'netdevice_speed'
         ordering = ("speed_bps", "full_duplex")
-        app_label = "backbone"
 
     def info_string(self):
         return unicode(self)
@@ -959,7 +953,6 @@ class peer_information(models.Model):
 
     class Meta:
         db_table = u'peer_information'
-        app_label = "backbone"
         verbose_name = "Peer information"
 
 
@@ -1010,5 +1003,3 @@ class snmp_network_type(models.Model):
     if_label = models.CharField(max_length=128, default="")
     date = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        app_label = "backbone"
