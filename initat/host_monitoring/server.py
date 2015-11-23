@@ -219,10 +219,13 @@ class server_code(ICSWBasePool, HMHRMixin):
                 ][0].split()[1]
             ) * 1024
             mem_to_map = mem_total * self.CC.CS["hm.hugepage.percentage"] / 100
-            self.log("memory to use for hugepages ({:d} %): {} (of {})".format(
-                global_config["HUGEPAGES"],
-                logging_tools.get_size_str(mem_to_map),
-                logging_tools.get_size_str(mem_total)))
+            self.log(
+                "memory to use for hugepages ({:d} %): {} (of {})".format(
+                    self.CC.CS["hm.hugepage.percentage"],
+                    logging_tools.get_size_str(mem_to_map),
+                    logging_tools.get_size_str(mem_total),
+                )
+            )
             if os.path.isdir(huge_dir):
                 for sub_dir in os.listdir(huge_dir):
                     if sub_dir.startswith("hugepages"):

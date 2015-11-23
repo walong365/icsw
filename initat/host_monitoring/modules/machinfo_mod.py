@@ -1550,9 +1550,9 @@ class load_command(hm_classes.hm_command):
 
     def __call__(self, srv_com, cur_ns):
         cur_load = self.module._load_int()
-        srv_com["load1"] = "%.2f" % (cur_load[0])
-        srv_com["load5"] = "%.2f" % (cur_load[1])
-        srv_com["load15"] = "%.2f" % (cur_load[2])
+        srv_com["load1"] = "{:.2f}".format(cur_load[0])
+        srv_com["load5"] = "{:.2f}".format(cur_load[1])
+        srv_com["load15"] = "{:.2f}".format(cur_load[2])
 
     def interpret(self, srv_com, cur_ns):
         load_1, load_5, load_15 = (

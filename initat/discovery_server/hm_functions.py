@@ -19,19 +19,24 @@
 #
 """ discovery-server, host monitoring functions """
 
+import time
+
 from django.db import transaction
 from django.db.models import Q
+import tempfile
+import commands
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
     NoMatchingNetworkFoundError
 from initat.cluster.backbone.models import partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
-    netdevice_speed, peer_information
+    netdevice_speed, peer_information, DeviceLogEntry
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.snmp.snmp_struct import ResultNode
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, net_tools, partition_tools, \
-    process_tools, server_command
+    process_tools, server_command, dmi_tools
+from .config import global_config
 
 # removed tun from list to enable adding of FWs from Madar, move to option?
 IGNORE_LIST = ["tap", "vnet"]
@@ -414,9 +419,21 @@ class HostMonitoringMixin(object):
         self.clear_scan(scan_dev)
         return res_node
 
+    def _read_dmiinfo(self, dmi_dump):
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            file(tmp_file.name, "w").write(dmi_dump)
+            _dmi_stat, dmi_result = commands.getstatusoutput(
+                "{} --from-dump {}".format(
+                    process_tools.find_file("dmidecode"),
+                    tmp_file.name,
+                )
+            )
+        return dmi_tools.parse_dmi_output(dmi_result.split("\n"))
+
     def scan_system_info(self, dev_com, scan_dev):
         hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         res_node = ResultNode()
+        s_time = time.time()
         self.get_route_to_devices([scan_dev])
         self.log(
             "scanning system for device '{}' ({:d}), scan_address is '{}'".format(
@@ -440,8 +457,40 @@ class HostMonitoringMixin(object):
             multi=True,
         )
         res_list = zmq_con.loop()
-        for _res in res_list:
-            print _res.pretty_print()
+        e_time = time.time()
+        for _idx, (_dev, _res) in enumerate(zip([scan_dev], res_list)):
+            if _res:
+                DeviceLogEntry.new(
+                    device=_dev,
+                    source=global_config["LOG_SOURCE_IDX"],
+                    level=logging_tools.LOG_LEVEL_OK,
+                    text="system scan took {}".format(
+                        logging_tools.get_diff_time_str(
+                            e_time - s_time,
+                        )
+                    ),
+                )
+                for _dt, _kwargs, _cbf in [
+                    ("lstopo_dump", {}, lambda x: x),
+                    ("dmi_dump", {}, self._read_dmiinfo),
+                    ("pci_dump", {"marshal": True}, lambda x: x),
+                ]:
+                    if _dt in _res:
+                        _data = _cbf(server_command.decompress(_res["*{}".format(_dt)], **_kwargs))
+                        # print _data
+                    else:
+                        self.log("missing {} in result".format(_dt), logging_tools.LOG_LEVEL_WARN)
+            else:
+                DeviceLogEntry.new(
+                    device=_dev,
+                    source=global_config["LOG_SOURCE_IDX"],
+                    level=logging_tools.LOG_LEVEL_ERROR,
+                    text="error scanning system (took {})".format(
+                        logging_tools.get_diff_time_str(
+                            e_time - s_time,
+                        )
+                    ),
+                )
 
         res_node.ok("system scanned")
         self.clear_scan(scan_dev)

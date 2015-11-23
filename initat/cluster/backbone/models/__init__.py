@@ -991,7 +991,7 @@ class DeviceLogEntry(models.Model):
             _dev = device.objects.get(Q(device_group__cluster_device_group=True))
 
         # must be a valid user object
-        _user = kwargs.get("user")
+        _user = kwargs.get("user", None)
         source = kwargs.get("source")
         if source is None:
             source = log_source_lookup("webfrontend")
