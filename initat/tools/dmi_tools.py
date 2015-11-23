@@ -18,9 +18,10 @@
 
 """ parse dmidecode output """
 
-import os
 import re
-import struct
+
+from lxml.builder import E
+
 from initat.tools import process_tools
 
 DMI_TYPES = {
@@ -142,6 +143,43 @@ def parse_dmi_output(lines):
         _struct["error"] = process_tools.get_except_info()
     else:
         _struct["valid"] = True
-    import pprint
-    pprint.pprint(_struct)
     return _struct
+
+
+def dmi_struct_to_xml(dmi_dict):
+    _main = E.dmi_tree(
+        valid="1" if dmi_dict["valid"] else "0",
+        version=dmi_dict.get("version", "0.0"),
+        num_lines="{:d}".format(dmi_dict.get("num_lines", 0)),
+        size="{:d}".format(dmi_dict.get("size", 0)),
+    )
+    _handles = E.handles()
+    _main.append(_handles)
+    for _hs in dmi_dict.get("handles", []):
+        _xml = E.handle(
+            dmi_type="{:d}".format(_hs["dmi_type"]),
+            header=_hs["header"],
+            length="{:d}".format(_hs["length"]),
+            handle="{:d}".format(_hs["handle"]),
+        )
+        if "error" in dmi_dict:
+            _xml.attrib["error"] = dmi_dict["error"]
+        if "values" in _hs:
+            _values = E.values()
+            _xml.append(_values)
+            for _key, _value in _hs["values"].iteritems():
+                if type(_value) == list:
+                    _values.append(
+                        E.value(
+                            *[
+                                E.single(_val) for _val in _value
+                            ],
+                            key=_key
+                        )
+                    )
+                else:
+                    _values.append(
+                        E.value(_value, key=_key)
+                    )
+        _handles.append(_xml)
+    return _main

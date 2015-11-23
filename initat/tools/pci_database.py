@@ -22,6 +22,8 @@ import os
 import re
 import struct
 
+from lxml.builder import E
+
 
 def get_pci_dicts(fname=None):
     vdict, cdict = ({}, {})
@@ -130,3 +132,26 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                         actd["subclassname"] = cdict[pclass][subclass]
                 pdict.setdefault(pcdomain, {}).setdefault(bus, {}).setdefault(bdev0, {})[bdev1] = actd
     return pdict
+
+
+def pci_struct_to_xml(pci_dict):
+    def sub_struct(_parent, _name, _id):
+        _new_el = getattr(E, _name)(id="{:d}".format(_id))
+        _parent.append(_new_el)
+        return _new_el
+
+    _main = E.pci_tree()
+    for _dom_id in sorted(pci_dict.iterkeys()):
+        _dom = sub_struct(_main, "dom", _dom_id)
+        for _bus_id in sorted(pci_dict[_dom_id].iterkeys()):
+            _bus = sub_struct(_dom, "bus", _bus_id)
+            for _slot_id in sorted(pci_dict[_dom_id][_bus_id].iterkeys()):
+                _slot = sub_struct(_bus, "slot", _slot_id)
+                for _func_id in sorted(pci_dict[_dom_id][_bus_id][_slot_id].iterkeys()):
+                    _func = sub_struct(_slot, "func", _func_id)
+                    _func_s = pci_dict[_dom_id][_bus_id][_slot_id][_func_id]
+                    for _key, _value in _func_s.iteritems():
+                        if type(_value) in [int, long]:
+                            _value = "{:d}".format(_value)
+                        _func.attrib[_key] = _value
+    return _main

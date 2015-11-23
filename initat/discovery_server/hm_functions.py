@@ -25,17 +25,18 @@ from django.db import transaction
 from django.db.models import Q
 import tempfile
 import commands
+from lxml import etree
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
     NoMatchingNetworkFoundError
 from initat.cluster.backbone.models import partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
-    netdevice_speed, peer_information, DeviceLogEntry
+    netdevice_speed, peer_information, DeviceLogEntry, DeviceInventory
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.snmp.snmp_struct import ResultNode
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, net_tools, partition_tools, \
-    process_tools, server_command, dmi_tools
+    process_tools, server_command, dmi_tools, pci_database
 from .config import global_config
 
 # removed tun from list to enable adding of FWs from Madar, move to option?
@@ -419,7 +420,10 @@ class HostMonitoringMixin(object):
         self.clear_scan(scan_dev)
         return res_node
 
-    def _read_dmiinfo(self, dmi_dump):
+    def _interpret_lstopo(self, lstopo_dump):
+        return etree.fromstring(lstopo_dump)
+
+    def _interpret_dmiinfo(self, dmi_dump):
         with tempfile.NamedTemporaryFile() as tmp_file:
             file(tmp_file.name, "w").write(dmi_dump)
             _dmi_stat, dmi_result = commands.getstatusoutput(
@@ -428,7 +432,13 @@ class HostMonitoringMixin(object):
                     tmp_file.name,
                 )
             )
-        return dmi_tools.parse_dmi_output(dmi_result.split("\n"))
+        _dict = dmi_tools.parse_dmi_output(dmi_result.split("\n"))
+        _xml = dmi_tools.dmi_struct_to_xml(_dict)
+        return _xml
+
+    def _interpret_pciinfo(self, pci_dump):
+        _xml = pci_database.pci_struct_to_xml(pci_dump)
+        return _xml
 
     def scan_system_info(self, dev_com, scan_dev):
         hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
@@ -460,26 +470,53 @@ class HostMonitoringMixin(object):
         e_time = time.time()
         for _idx, (_dev, _res) in enumerate(zip([scan_dev], res_list)):
             if _res:
+                _to_save = []
+                for _dt, _kwargs, _cbf in [
+                    ("lstopo_dump", {}, self._interpret_lstopo),
+                    ("dmi_dump", {}, self._interpret_dmiinfo),
+                    ("pci_dump", {"marshal": True}, self._interpret_pciinfo),
+                ]:
+                    if _dt in _res:
+                        _data = _cbf(server_command.decompress(_res["*{}".format(_dt)], **_kwargs))
+                        if _data is not None:
+                            _to_save.append((_dt.split("_")[0], _data))
+                    else:
+                        self.log("missing {} in result".format(_dt), logging_tools.LOG_LEVEL_WARN)
+                if _to_save:
+                    _highest_run = _dev.deviceinventory_set.all().order_by("-idx")
+                    if _highest_run.count():
+                        _highest_run = _highest_run[0].run_idx
+                    else:
+                        _highest_run = 0
+                    _highest_run += 1
+                    self.log(
+                        "{} trees to save ({}), run_idx is {:d}".format(
+                            logging_tools.get_plural("inventory tree", len(_to_save)),
+                            ", ".join(sorted([_tuple[0] for _tuple in _to_save])),
+                            _highest_run,
+                        )
+                    )
+                    for _name, _tree in _to_save:
+                        inv = DeviceInventory(
+                            device=_dev,
+                            inventory_type=_name,
+                            run_idx=_highest_run,
+                            value=etree.tostring(_tree)
+                        )
+                        inv.save()
+                else:
+                    self.log("no trees to save", logging_tools.LOG_LEVEL_WARN)
                 DeviceLogEntry.new(
                     device=_dev,
                     source=global_config["LOG_SOURCE_IDX"],
                     level=logging_tools.LOG_LEVEL_OK,
-                    text="system scan took {}".format(
+                    text="system scan took {}, {:d} trees".format(
                         logging_tools.get_diff_time_str(
                             e_time - s_time,
-                        )
+                        ),
+                        len(_to_save),
                     ),
                 )
-                for _dt, _kwargs, _cbf in [
-                    ("lstopo_dump", {}, lambda x: x),
-                    ("dmi_dump", {}, self._read_dmiinfo),
-                    ("pci_dump", {"marshal": True}, lambda x: x),
-                ]:
-                    if _dt in _res:
-                        _data = _cbf(server_command.decompress(_res["*{}".format(_dt)], **_kwargs))
-                        # print _data
-                    else:
-                        self.log("missing {} in result".format(_dt), logging_tools.LOG_LEVEL_WARN)
             else:
                 DeviceLogEntry.new(
                     device=_dev,
