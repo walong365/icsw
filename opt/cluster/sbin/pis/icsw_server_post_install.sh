@@ -128,6 +128,8 @@ fi
 
 chmod a+rwx ${WEBCACHE_DIR}
 
+RESTART=0
+
 if is_chroot ; then
     echo "running chrooted, skipping setup and restart"
 else
@@ -154,21 +156,33 @@ else
         [ -x ${ICSW_PIS}/sge_post_install.sh ] && ${ICSW_PIS}/sge_post_install.sh
 
         echo "Database is valid, restarting software"
-        # start / stop to force restart of all services
-        if [ ! -d /var/lib/meta-server/.srvstate ] ; then
-            NUM_RS=2
-        else
-            NUM_RS=1
-        fi
-
-        for idx in $(seq ${NUM_RS} ) ; do
-            echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (server)${OFF}\n"
-            ${ICSW_SBIN}/icsw service stop meta-server
-            ${ICSW_SBIN}/icsw service start meta-server
-        done
+        RESTART=1
     else
         echo ""
-        echo "Database is not valid, skipping restart"
-        echo ""
+        if ${ICSW_SBIN}/icsw cstore --store icsw.general --mode storeexists ; then
+            if [ "$(${ICSW_BIN}/icsw cstore --mode getkey --store icsw.general --key mode.is.slave)" = "True" ] ; then
+                echo "Node is Slave-node, restarting software"
+                RESTART=1
+            else
+                echo "Database is not valid and system is not slave, skipping restart"
+            fi
+        else
+            echo "icsw.general store not present and database not valid, skipping restart"
+        fi
     fi
+fi
+
+if [ "${RESTART}" = "1" ] ; then
+    # start / stop to force restart of all services
+    if [ ! -d /var/lib/meta-server/.srvstate ] ; then
+        NUM_RS=2
+    else
+        NUM_RS=1
+    fi
+
+    for idx in $(seq ${NUM_RS} ) ; do
+        echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (server)${OFF}\n"
+        ${ICSW_SBIN}/icsw service stop meta-server
+        ${ICSW_SBIN}/icsw service start meta-server
+    done
 fi
