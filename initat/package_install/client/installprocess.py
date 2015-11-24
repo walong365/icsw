@@ -31,6 +31,7 @@ from initat.client_version import VERSION_STRING
 from initat.tools import logging_tools, process_tools, threading_tools, config_store, server_command
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
+DEB_QUERY_FORMAT = "\${Package} \${Version}"
 
 
 def get_repo_str(_type, in_repo):
@@ -405,6 +406,32 @@ class DebianInstallProcess(InstallProcess):
             line.strip() for line in file(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
         ]
 
+    def build_command(self, cur_pdc):
+        # print etree.tostring(cur_pdc, pretty_print=True)
+        if cur_pdc.tag == "special_command":
+            if cur_pdc.attrib["command"] == "refresh":
+                cur_pdc.attrib["pre_command"] = "/usr/bin/aptitude clean ; /usr/bin/aptitude update"
+        else:
+            pack_xml = cur_pdc[0]
+            _pp_command = "/usr/bin/dpkg-query -W -f \"{}\" {}".format(
+                DEB_QUERY_FORMAT,
+                self.package_name(pack_xml),
+            )
+            if cur_pdc.attrib["target_state"] == "keep":
+                # check install state
+                cur_pdc.attrib["pre_command"] = _pp_command
+            else:
+                # yum_com = {"install" : "install",
+                #           "upgrade" : "update",
+                #           "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
+                # yum_com = "/usr/bin/yum -y %s %s-%s" % (
+                #    yum_com,
+                #    pack_xml.attrib["name"],
+                #    pack_xml.attrib["version"],
+                # )
+                cur_pdc.attrib["pre_command"] = _pp_command
+                cur_pdc.attrib["post_command"] = _pp_command
+
     def _handle_repo_list(self, in_com):
         # print etree.tostring(in_com.tree, pretty_print=True)
         # new code
@@ -450,6 +477,60 @@ class DebianInstallProcess(InstallProcess):
             file(f_name, "w").write("\n".join(new_repo_list + [""]))
             self.log("created {}".format(f_name))
             self._clear_cache()
+
+    def _pre_decide(self, hc_sc, cur_out):
+        cur_pdc = hc_sc.data
+        is_installed = False if cur_out.count("no packages found") else True
+        self.log(
+            "installed flag from '{}': {}".format(
+                cur_out,
+                str(is_installed),
+            )
+        )
+        pack_xml = cur_pdc[0]
+        deb_com = {
+            "install": "install",
+            "upgrade": "install",
+            "erase": "remove"
+        }.get(cur_pdc.attrib["target_state"])
+        options = {
+            "install": "-y --no-gui -q",
+            "upgrade": "-y --no-gui -q",
+            "erase": "-y --no-gui -q",
+        }.get(cur_pdc.attrib["target_state"])
+        package_name = self.package_name(pack_xml)
+        always_latest = self.get_always_latest(pack_xml)
+        if (is_installed and deb_com in ["install"]) or (not is_installed and deb_com in ["remove"]):
+            self.log("doing nothing, running post_command")
+            if is_installed:
+                cur_pdc.append(
+                    E.main_result(
+                        E.stdout("package {} is installed".format(package_name))
+                    )
+                )
+            else:
+                cur_pdc.append(
+                    E.main_result(
+                        E.stdout("package {} is not installed".format(package_name))
+                    )
+                )
+            return True
+        else:
+            self.log("starting action '{}'".format(deb_com))
+            deb_com = "/usr/bin/aptitude {} {} {}".format(
+                options,
+                deb_com,
+                package_name,
+            )
+            simple_command(
+                deb_com,
+                short_info="package",
+                done_func=self._command_done,
+                command_stage="main",
+                log_com=self.log,
+                info="handle package",
+                data=cur_pdc
+            )
 
 
 class YumInstallProcess(InstallProcess):

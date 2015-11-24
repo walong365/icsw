@@ -21,6 +21,8 @@
 #
 """ package definitions for ICSW """
 
+import time
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
@@ -505,6 +507,39 @@ class package_device_connection(models.Model):
                 else:
                     self.installed = "u"
                     self.install_time = 0
+        elif self.response_type == "debian_flat":
+            xml = etree.fromstring(self.response_str)
+            if xml.find("post_result/stdout") is not None:
+                pp_src, pp_text = ("post", xml.findtext("post_result/stdout"))
+            elif xml.find("pre_result/stdout") is not None:
+                pp_src, pp_text = ("pre", xml.findtext("pre_result/stdout"))
+            else:
+                pp_src = "main"
+            if pp_src == "main":
+                deb_stdout = xml.findtext("stdout")
+                if deb_stdout.count("no packages"):
+                    self.installed = "n"
+                    self.install_time = 0
+                else:
+                    self.installed = "y"
+                    self.install_time = int(time.time())
+                    _parts = deb_stdout.strip().split()
+                    if _parts[0].isdigit():
+                        _parts = _parts[1:]
+                    self.installed_name = _parts[0]
+                    self.installed_version, self.installed_release = _parts[1].split("-", 1)
+            else:
+                if pp_text.count("no packages"):
+                    self.installed = "n"
+                    self.install_time = 0
+                else:
+                    self.installed = "y"
+                    self.install_time = 0
+                    _parts = pp_text.strip().split()
+                    if _parts[0].isdigit():
+                        _parts = _parts[1:]
+                    self.installed_name = _parts[0]
+                    self.installed_version, self.installed_release = _parts[1].split("-", 1)
         else:
             self.installed = "u"
 

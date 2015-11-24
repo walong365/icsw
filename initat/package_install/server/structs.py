@@ -234,6 +234,9 @@ class RepoTypeDebDebian(RepoType):
     REPO_TYPE_STR = "deb"
     REPO_SUBTYPE_STR = "debian"
 
+    def search_package(self, s_string):
+        return "aptitude search -F '%p %V' --disable-columns {}".format(s_string)
+
     def _parse_url(self, url):
         _res = urlparse.urlparse(url)
         _netloc = _res.netloc
@@ -243,6 +246,45 @@ class RepoTypeDebDebian(RepoType):
         else:
             _user, _password = (None, None)
         return _res, _netloc, _user, _password
+
+    def search_result(self, s_struct):
+        cur_mode, _ln = (0, None)
+        found_packs = []
+        for line in s_struct.read().split("\n"):
+            found_packs.append(line.strip().split())
+        cur_search = s_struct.run_info["stuff"]
+        cur_search.current_state = "done"
+        _found = 0
+        cur_search.results = _found
+        cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
+        cur_search.save(update_fields=["last_search", "current_state", "results"])
+        # delete previous search results
+        cur_search.package_search_result_set.all().delete()
+        self.log("parsing results... ({:d} found)".format(len(found_packs)))
+        repo_dict = {_repo.name: _repo for _repo in package_repo.objects.all()}
+        for _parts in found_packs:
+            try:
+                p_name, p_ver = _parts
+                version, release = p_ver.split("-", 1)
+                _found += 1
+                new_sr = package_search_result(
+                    name=p_name,
+                    version="{}-{}".format(version, release),
+                    package_search=cur_search,
+                    copied=False,
+                )
+                new_sr.save()
+            except:
+                self.log(
+                    "cannot interpret line '{}': {}".format(
+                        _parts,
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+        cur_search.results = _found
+        cur_search.save(update_fields=["results"])
+        self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
 
     def rescan_repos(self, srv_com):
         def _read_file(f_name):
