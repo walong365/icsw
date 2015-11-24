@@ -277,6 +277,7 @@ class hm_module(object):
     def __init__(self, name, mod_obj):
         self.name = name
         self.obj = mod_obj
+        self.enabled = True
         self.__commands = {}
         self.base_init()
 
@@ -286,7 +287,7 @@ class hm_module(object):
                 com_name = com_name[:-8]
             new_co = call_obj(com_name)
             new_co.module = self
-            self.__commands[com_name] = new_co
+            new_co.flush_log_cache()
 
     @property
     def commands(self):
@@ -294,6 +295,8 @@ class hm_module(object):
 
     def register_server(self, main_proc):
         self.main_proc = main_proc
+        for _com_name, _com in self.__commands.iteritems():
+            _com.flush_log_cache()
 
     def base_init(self):
         # called directly after init (usefull for collclient)
@@ -306,7 +309,7 @@ class hm_module(object):
         pass
 
     def reload(self):
-        pass
+        return "N/A"
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.main_proc.log("[{}] {}".format(self.name, what), log_level)
@@ -319,6 +322,7 @@ class hm_command(object):
     info_str = ""
 
     def __init__(self, name, **kwargs):
+        self.__log_cache = []
         self.name = name
         # argument parser
         self.parser = argparse.ArgumentParser(
@@ -343,7 +347,16 @@ class hm_command(object):
         self.parser.error = self._parser_error
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.module.main_proc.log(u"[{}] {}".format(self.name, what), log_level)
+        if hasattr(self, "module"):
+            self.module.main_proc.log(u"[{}] {}".format(self.name, what), log_level)
+        else:
+            self.__log_cache.append((what, log_level))
+
+    def flush_log_cache(self):
+        if self.__log_cache:
+            for _what, _level in self.__log_cache:
+                self.log(_what, _level)
+                self.__log_cache = []
 
     def _parser_exit(self, status=0, message=None):
         raise ValueError(status, message)
@@ -411,7 +424,7 @@ class mvect_entry(object):
         if value is None:
             # unknown
             self.value = value
-        elif type(value) == type(self.default):
+        elif isinstance(value, type(self.default)):
             self.value = value
         else:
             try:
