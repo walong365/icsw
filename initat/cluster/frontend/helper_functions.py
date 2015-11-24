@@ -260,7 +260,9 @@ def contact_server(request, srv_type, send_com, **kwargs):
                     _log_lines,
                     "no bootserver for {}: {}".format(
                         logging_tools.get_plural("device", len(cur_router.no_bootserver_devices)),
-                        ", ".join(sorted([_v[1] for _v in cur_router.no_bootserver_devices])),
+                        ", ".join(
+                            sorted([_v[1] for _v in cur_router.no_bootserver_devices])
+                        ),
                     ),
                     logging_tools.LOG_LEVEL_WARN
                 )

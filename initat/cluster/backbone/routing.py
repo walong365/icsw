@@ -114,7 +114,7 @@ class srv_type_routing(object):
     def service_types(self):
         return [key for key in self._resolv_dict.keys() if not key.startswith("_")]
 
-    def get_connection_string(self, srv_type, server_id=None):
+    def get_server_address(self, srv_type, server_id=None):
         if srv_type in self:
             # server list
             _srv_list = self[srv_type]
@@ -125,10 +125,18 @@ class srv_type_routing(object):
                     self.logger.critical("no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type))
                     _found_srv = _srv_list
             else:
+                # no server id, take first one
                 _found_srv = _srv_list
-            # no server id, take first one
+            return _found_srv[0][1]
+        else:
+            self.logger.critical("no ServerType {} defined".format(srv_type))
+            return None
+
+    def get_connection_string(self, srv_type, server_id=None):
+        _srv_address = self.get_server_address(srv_type, server_id=server_id)
+        if _srv_address is not None:
             return "tcp://{}:{:d}".format(
-                _found_srv[0][1],
+                _srv_address,
                 _INSTANCE.get_port_dict(srv_type, command=True),
             )
         else:

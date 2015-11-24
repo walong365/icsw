@@ -22,12 +22,12 @@
 
 """ RMS views """
 
+import datetime
 import json
 import logging
 import sys
 import threading
 import time
-import datetime
 from collections import namedtuple
 
 from django.conf import settings
@@ -37,11 +37,13 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from lxml.builder import E
+
 from initat.cluster.backbone.models import device, user_variable, rms_job_run
 from initat.cluster.backbone.render import render_me
+from initat.cluster.backbone.routing import srv_type_routing
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools, server_command
 
 try:
@@ -49,8 +51,13 @@ try:
 except ImportError:
     sge_tools = None
 
-RMS_ADDON_KEYS = [key for key in sys.modules.keys() if key.startswith("initat.cluster.frontend.rms_addons.") and sys.modules[key]]
-RMS_ADDONS = [sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS if key.split(".")[-1] not in ["base"]]
+RMS_ADDON_KEYS = [
+    key for key in sys.modules.keys() if key.startswith("initat.cluster.frontend.rms_addons.") and sys.modules[key]
+]
+
+RMS_ADDONS = [
+    sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS if key.split(".")[-1] not in ["base"]
+]
 
 logger = logging.getLogger("cluster.rms")
 
@@ -58,10 +65,18 @@ if sge_tools:
     class tl_sge_info(sge_tools.sge_info):
         # sge_info object with thread lock layer
         def __init__(self):
+            _srv_type = "rms-server"
+            _routing = srv_type_routing()
             self.lock = threading.Lock()
+            if _srv_type not in _routing:
+                _routing = srv_type_routing(force=True)
+            if _srv_type in _routing:
+                _srv_address = _routing.get_server_address(_srv_type)
+            else:
+                _srv_address = "127.0.0.1"
             sge_tools.sge_info.__init__(
                 self,
-                server="127.0.0.1",
+                server=_srv_address,
                 source="server",
                 run_initial_update=False,
                 verbose=settings.DEBUG,
@@ -74,7 +89,7 @@ if sge_tools:
         def update(self):
             self.lock.acquire()
             try:
-                sge_tools.sge_info.update(self)  # , force_update=True)
+                sge_tools.sge_info.update(self)
                 sge_tools.sge_info.build_luts(self)
             finally:
                 self.lock.release()
@@ -105,9 +120,13 @@ def rms_overview(request, template):
         if len(_entry):
             for _header in _entry[0]:
                 _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
-    return render_me(request, template, {
-        "RMS_HEADERS": json.dumps(header_dict)
-    })()
+    return render_me(
+        request,
+        template,
+        {
+            "RMS_HEADERS": json.dumps(header_dict)
+        }
+    )()
 
 
 class overview(View):
