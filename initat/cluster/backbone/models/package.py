@@ -74,6 +74,9 @@ class package_repo(models.Model):
     service = models.ForeignKey(package_service, null=True, blank=True)
     publish_to_nodes = models.BooleanField(default=False, verbose_name="PublishFlag")
     priority = models.IntegerField(default=99)
+    deb_distribution = models.CharField(max_length=128, default="", blank=True)
+    # space separated list of components
+    deb_components = models.CharField(max_length=255, default="", blank=True)
     system_type = models.CharField(
         max_length=64,
         choices=[
@@ -109,6 +112,8 @@ class package_repo(models.Model):
             gpg_check="1" if self.gpg_check else "0",
             publish_to_nodes="1" if self.publish_to_nodes else "0",
             url=self.url,
+            deb_distribution=self.deb_distribution,
+            deb_components=self.deb_components,
         )
 
     def get_service_name(self):

@@ -30,7 +30,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import package_search
 from initat.tools import logging_tools, server_command, threading_tools
 from .config import global_config
-from .structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct
+from .structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct, RepoTypeDebDebian
 
 
 class RepoProcess(threading_tools.process_obj):
@@ -54,6 +54,8 @@ class RepoProcess(threading_tools.process_obj):
         # set repository type
         if os.path.isfile("/etc/centos-release") or os.path.isfile("/etc/redhat-release"):
             self.repo_type = RepoTypeRpmYum(self)
+        elif os.path.isfile("/etc/debian_version"):
+            self.repo_type = RepoTypeDebDebian(self)
         else:
             self.repo_type = RepoTypeRpmZypper(self)
 
@@ -113,17 +115,12 @@ class RepoProcess(threading_tools.process_obj):
             srv_com = server_command.srv_command(source=args[0])
         else:
             srv_com = None
-        self.log("rescan repositories")
-        self.__background_commands.append(
-            SubprocessStruct(
-                self,
-                srv_com,
-                self.repo_type.SCAN_REPOS,
-                start=True,
-                verbose=global_config["DEBUG"],
-                post_cb_func=self.repo_type.repo_scan_result
+        self.log("rescanning repositories")
+        _bg_com = self.repo_type.rescan_repos(srv_com)
+        if _bg_com:
+            self.__background_commands.append(
+                _bg_com,
             )
-        )
 
     def _search(self, s_string):
         self.log("searching for '{}'".format(s_string))

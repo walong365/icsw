@@ -23,13 +23,13 @@
 
 import os
 
+import zmq
 from django.db import connection
+
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import cluster_location, configfile, logging_tools, \
     config_tools, process_tools, server_command, server_mixins, threading_tools
-import zmq
 from initat.tools.server_mixins import RemoteCall
-from initat.icsw.service.instance import InstanceXML
-
 from .config import global_config
 from .repository_process import RepoProcess
 from .structs import Client

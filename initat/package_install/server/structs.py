@@ -19,23 +19,24 @@
 #
 """ package server, base structures """
 
-from lxml import etree  # @UnresolvedImport
 import commands
 import datetime
 import os
 import subprocess
 import time
+import urlparse
 
 from django.db.models import Q
+from lxml import etree
+from lxml.builder import E
+from rest_framework.renderers import XMLRenderer
+
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
     package_search_result, device_variable, device, package_device_connection, \
     package_service
 from initat.cluster.backbone.serializers import package_device_connection_wp_serializer, \
     package_repo_serializer
-from lxml.builder import E  # @UnresolvedImport
-from rest_framework.renderers import XMLRenderer
 from initat.tools import logging_tools, process_tools, server_command, config_store
-
 from .config import global_config
 from .constants import CLIENT_CS_NAME, PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
 
@@ -63,6 +64,11 @@ class RepoType(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[rt] {}".format(what), log_level)
 
+    def rescan_repos(self, srv_com):
+        # return None of BackgroundCommandStruct
+        self.log("dummy rescan repos call", logging_tools.LOG_LEVEL_WARN)
+        return None
+
     def init_search(self, s_struct):
         cur_search = s_struct.run_info["stuff"]
         cur_search.last_search_string = cur_search.search_string
@@ -81,6 +87,16 @@ class RepoTypeRpmYum(RepoType):
 
     def search_package(self, s_string):
         return "yum -v --showduplicates search {}".format(s_string)
+
+    def rescan_repos(self, srv_com):
+        return SubprocessStruct(
+            self.master_process,
+            srv_com,
+            self.SCAN_REPOS,
+            start=True,
+            verbose=global_config["DEBUG"],
+            post_cb_func=self.repo_scan_result
+        )
 
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
@@ -206,11 +222,100 @@ class RepoTypeRpmYum(RepoType):
                     version="{}-{}".format(version, release),
                     package_search=cur_search,
                     copied=False,
-                    package_repo=repo_dict.get(repo_name, None))
+                    package_repo=repo_dict.get(repo_name, None)
+                )
                 new_sr.save()
         cur_search.results = _found
         cur_search.save(update_fields=["results"])
         self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
+
+
+class RepoTypeDebDebian(RepoType):
+    REPO_TYPE_STR = "deb"
+    REPO_SUBTYPE_STR = "debian"
+
+    def _parse_url(self, url):
+        _res = urlparse.urlparse(url)
+        _netloc = _res.netloc
+        if _netloc.count("@"):
+            _upwd, _netloc = _netloc.split("@", 1)
+            _user, _password = _upwd.split(":", 1)
+        else:
+            _user, _password = (None, None)
+        return _res, _netloc, _user, _password
+
+    def rescan_repos(self, srv_com):
+        def _read_file(f_name):
+            return [
+                line.strip() for line in file(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+            ]
+        self.log("debian scan")
+        _src_list_dir = "/etc/apt"
+        _src_list = _read_file(os.path.join(_src_list_dir, "sources.list"))
+        _sub_dir = os.path.join(_src_list_dir, "sources.list.d")
+        if os.path.isdir(_sub_dir):
+            for entry in os.listdir(_sub_dir):
+                _path = os.path.join(_sub_dir, entry)
+                _src_list.extend(_read_file(_path))
+        self.log("src_list has {}".format(logging_tools.get_plural("line", len(_src_list))))
+        old_repos = set(package_repo.objects.all().values_list("name", flat=True))
+        new_repos = []
+        found_repos = []
+        for _line in _src_list:
+            _parts = _line.split()
+            if len(_parts) == 4:
+                if _parts[0] == "deb":
+                    parsed, netloc, user, password = self._parse_url(_parts[1])
+                    name = "{}{}".format(netloc, parsed.path)
+                    try:
+                        cur_repo = package_repo.objects.get(Q(name=name))
+                    except package_repo.DoesNotExist:
+                        cur_repo = package_repo(name=name)
+                        new_repos.append(cur_repo)
+                    old_repos -= {cur_repo.name}
+                    cur_repo.alias = ""
+                    cur_repo.deb_distribution = _parts[2]
+                    cur_repo.deb_components = _parts[3]
+                    cur_repo.repo_type = ""
+                    cur_repo.username = user or ""
+                    cur_repo.password = password or ""
+                    cur_repo.url = "{}://{}{}".format(
+                        parsed.scheme,
+                        netloc,
+                        parsed.path,
+                    )
+                    cur_repo.enabled = True
+                    cur_repo.priority = 0
+                    cur_repo.autorefresh = True
+                    cur_repo.gpg_check = False
+                    cur_repo.save()
+                else:
+                    self.log("skipping line with type {} ('{}')".format(_parts[0], _line), logging_tools.LOG_LEVEL_WARN)
+                pass
+            else:
+                self.log("unparseable line '{}'".format(_line), logging_tools.LOG_LEVEL_ERROR)
+        self.log("found {}".format(logging_tools.get_plural("new repository", len(new_repos))))
+        if old_repos:
+            self.log(
+                "found {}: {}".format(
+                    logging_tools.get_plural("old repository", len(old_repos)),
+                    ", ".join(sorted(old_repos))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            if global_config["DELETE_MISSING_REPOS"]:
+                self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
+                package_repo.objects.filter(Q(name__in=old_repos)).delete()
+        if srv_com is not None:
+            srv_com.set_result(
+                "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos)))
+            )
+            self.master_process.send_pool_message(
+                "remote_call_async_result",
+                unicode(srv_com),
+            )
+        # self.master_process._reload_searches()
+        return None
 
 
 class RepoTypeRpmZypper(RepoType):
@@ -223,6 +328,16 @@ class RepoTypeRpmZypper(RepoType):
 
     def search_package(self, s_string):
         return "zypper --xml search -s {}".format(s_string)
+
+    def rescan_repos(self, srv_com):
+        return SubprocessStruct(
+            self.master_process,
+            srv_com,
+            self.SCAN_REPOS,
+            start=True,
+            verbose=global_config["DEBUG"],
+            post_cb_func=self.repo_scan_result
+        )
 
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
@@ -298,7 +413,10 @@ class RepoTypeRpmZypper(RepoType):
             self.log(
                 "found {}: {}".format(
                     logging_tools.get_plural("old repository", len(old_repos)),
-                    ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
+                    ", ".join(sorted(old_repos))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             if global_config["DELETE_MISSING_REPOS"]:
                 self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
                 package_repo.objects.filter(Q(name__in=old_repos)).delete()
