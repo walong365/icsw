@@ -284,13 +284,13 @@ class ConfigTreeStruct(object):
                 ) for cur_node in sorted(node_list) if cur_node.parent_id == self.node.pk
             ]
         else:
-            self.wc_file = None
+            self.written_config_file = None
             self.childs = []
 
     def get_name(self):
         if self.node:
             return "{}{}".format(
-                self.wc_file.dest,
+                self.written_config_file.dest,
                 "/" if self.node.is_dir else ""
             )
         else:
@@ -313,7 +313,7 @@ class ConfigTreeStruct(object):
 
     def get_dict(self):
         return {
-            "data": serializers.WrittenConfigFileSerializer(self.wc_file).data,
+            "data": serializers.WrittenConfigFileSerializer(self.written_config_file).data,
             "sub_nodes": [sub_node.get_dict() for sub_node in self.childs],
             "name": self.get_name(),
             "depth": "{:d}".format(self.depth),
@@ -374,7 +374,7 @@ class generate_config(View):
                         # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                         cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                         # build tree
-                        cur_tree = ConfigTreeStruct(cur_dev, ConfigTreeNode.objects.filter(Q(device=cur_dev)).select_related("WrittenConfigFile"))
+                        cur_tree = ConfigTreeStruct(cur_dev, ConfigTreeNode.objects.filter(Q(device=cur_dev)).select_related("writtenconfigfile"))
                         res_node["config_tree"] = cur_tree.get_dict()
                 else:
                     # config server not running, return dummy entry

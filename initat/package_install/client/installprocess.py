@@ -20,6 +20,7 @@
 """ install process structures """
 
 from lxml import etree  # @UnresolvedImport
+import urlparse
 import os
 
 from lxml.builder import E
@@ -35,7 +36,17 @@ RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 def get_repo_str(_type, in_repo):
     def get_url(in_repo):
         _url = in_repo.findtext("url")
-        # FIXEME, add username / password
+        _username = in_repo.findtext("username")
+        _password = in_repo.findtext("password")
+        if _username:
+            _parsed = urlparse.urlparse(_url)
+            _url = "{}://{}:{}@{}{}".format(
+                _parsed.scheme,
+                _username,
+                _password,
+                _parsed.netloc,
+                _parsed.path,
+            )
         return _url
 
     if _type == "zypper":
@@ -54,12 +65,13 @@ def get_repo_str(_type, in_repo):
             _vf.append("service={}".format(in_repo.findtext("service_name")))
         else:
             _vf.append("keeppackages=0")
+        _vf.append("")
     elif _type == "deb":
         _vf = [
             "deb {} {} {}".format(
                 get_url(in_repo),
-                in_repo.find("deb_distribution"),
-                in_repo.find("deb_components"),
+                in_repo.findtext("deb_distribution"),
+                in_repo.findtext("deb_components"),
             )
         ]
     else:
@@ -78,7 +90,7 @@ def get_repo_str(_type, in_repo):
             _vf.append("service={}".format(in_repo.findtext("service_name")))
         else:
             _vf.append("keeppackages=0")
-    _vf.append("")
+        _vf.append("")
     return "\n".join(_vf)
 
 
@@ -404,13 +416,13 @@ class DebianInstallProcess(InstallProcess):
         self.log("handling repo_list ({})".format(logging_tools.get_plural("entry", len(in_repos))))
 
         _src_list_dir = "/etc/apt"
-        _f_list = os.path.join(_src_list_dir, "sources.list")
+        _f_list = [os.path.join(_src_list_dir, "sources.list")]
         _src_list = self._read_file(os.path.join(_src_list_dir, "sources.list"))
         _sub_dir = os.path.join(_src_list_dir, "sources.list.d")
         if os.path.isdir(_sub_dir):
             for entry in os.listdir(_sub_dir):
                 _path = os.path.join(_sub_dir, entry)
-                _f_list.append(_f_list)
+                _f_list.append(_path)
                 _src_list.extend(self._read_file(_path))
 
         self.log(
@@ -422,10 +434,8 @@ class DebianInstallProcess(InstallProcess):
 
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
-        new_repo_dict = {
-            in_repo.findtext("name").replace("/", "_"): get_repo_str("deb", in_repo) for in_repo in in_repos
-        }
-        rewrite_repos = False
+        new_repo_list = [get_repo_str("deb", in_repo) for in_repo in in_repos]
+        rewrite_repos = True
         if rewrite_repos and self.CS["pc.modify.repos"]:
             self.log("rewritting repo files")
             # remove old ones
@@ -437,7 +447,7 @@ class DebianInstallProcess(InstallProcess):
                 else:
                     self.log("removed {}".format(old_f_name))
             f_name = "/etc/apt/sources.list"
-            file(f_name, "w").write("\n".join(new_repo_dict.itervalues()))
+            file(f_name, "w").write("\n".join(new_repo_list + [""]))
             self.log("created {}".format(f_name))
             self._clear_cache()
 

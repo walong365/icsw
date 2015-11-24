@@ -61,8 +61,8 @@ class package_service(models.Model):
 class package_repo(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=128, default="", unique=True)
-    alias = models.CharField(max_length=128, default="")
-    repo_type = models.CharField(max_length=128, default="")
+    alias = models.CharField(max_length=128, default="", blank=True)
+    repo_type = models.CharField(max_length=128, default="", blank=True)
     enabled = models.BooleanField(default=True)
     autorefresh = models.BooleanField(default=True)
     gpg_check = models.BooleanField(default=True)

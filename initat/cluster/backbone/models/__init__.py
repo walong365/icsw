@@ -1191,9 +1191,9 @@ class ConfigTreeNode(models.Model):
 
     def __cmp__(self, other):
         if self.is_dir == other.is_dir:
-            if self.WrittenConfigFile.dest < other.WrittenConfigFile.dest:
+            if self.writtenconfigfile.dest < other.writtenconfigfile.dest:
                 return -1
-            elif self.WrittenConfigFile.dest > other.WrittenConfigFile.dest:
+            elif self.writtenconfigfile.dest > other.writtenconfigfile.dest:
                 return 1
             else:
                 return 0

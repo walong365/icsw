@@ -161,7 +161,8 @@ else
         echo ""
         if ${ICSW_SBIN}/icsw cstore --store icsw.general --mode storeexists ; then
             if [ "$(${ICSW_SBIN}/icsw cstore --mode getkey --store icsw.general --key mode.is.slave)" = "True" ] ; then
-                echo "Node is Slave-node, restarting software"
+                echo "Node is Slave-node, init webfrontend and restarting software"
+                ${ICSW_SBIN}/icsw setup --init-webfrontend
                 RESTART=1
             else
                 echo "Database is not valid and system is not slave, skipping restart"
