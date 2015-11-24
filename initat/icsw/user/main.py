@@ -315,10 +315,10 @@ def do_info(cur_opts, log_com):
         try:
             _cmd = "quota --show-mntpoint -wp -u {}".format(
                 _user.login,
-                # os.path.expanduser("~{}".format(_user.login)),
             )
             _res = subprocess.check_output(
                 _cmd.split(),
+                stderr=subprocess.STDOUT,
             )
         except subprocess.CalledProcessError as sb_exc:
             _res = sb_exc.output

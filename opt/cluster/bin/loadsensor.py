@@ -230,11 +230,11 @@ def main():
     except KeyboardInterrupt:
         log_template.warning("proc {:d}: got KeyboardInterrupt, exiting ...".format(my_pid))
     except term_error:
-        log_template.warning("proc %d: got term-signal, exiting ..." % (my_pid))
+        log_template.warning("proc {:d}: got term-signal, exiting ...".format(my_pid))
     except stop_error:
-        log_template.warning("proc %d: got stop-signal, exiting ..." % (my_pid))
+        log_template.warning("proc {:d}: got stop-signal, exiting ...".format(my_pid))
     except int_error:
-        log_template.warning("proc %d: got int-signal, exiting ..." % (my_pid))
+        log_template.warning("proc {:d}: got int-signal, exiting ...".format(my_pid))
     log_template.close()
     zmq_context.term()
     sys.exit(0)
