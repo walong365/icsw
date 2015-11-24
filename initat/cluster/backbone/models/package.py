@@ -516,6 +516,7 @@ class package_device_connection(models.Model):
             else:
                 pp_src = "main"
             if pp_src == "main":
+                self.installed_name, self.installed_release, self.installed_version = ("", "", "")
                 deb_stdout = xml.findtext("stdout")
                 if deb_stdout.count("no packages"):
                     self.installed = "n"
@@ -529,6 +530,7 @@ class package_device_connection(models.Model):
                     self.installed_name = _parts[0]
                     self.installed_version, self.installed_release = _parts[1].split("-", 1)
             else:
+                self.installed_name, self.installed_release, self.installed_version = ("", "", "")
                 if pp_text.count("no packages"):
                     self.installed = "n"
                     self.install_time = 0
