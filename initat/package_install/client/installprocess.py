@@ -54,6 +54,14 @@ def get_repo_str(_type, in_repo):
             _vf.append("service={}".format(in_repo.findtext("service_name")))
         else:
             _vf.append("keeppackages=0")
+    elif _type == "deb":
+        _vf = [
+            "deb {} {} {}".format(
+                get_url(in_repo),
+                in_repo.find("deb_distribution"),
+                in_repo.find("deb_components"),
+            )
+        ]
     else:
         # yum repository
         _vf = [
@@ -377,6 +385,63 @@ class InstallProcess(threading_tools.process_obj):
         self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
 
 
+class DebianInstallProcess(InstallProcess):
+    response_type = "debian_flat"
+
+    def _read_file(self, f_name):
+        return [
+            line.strip() for line in file(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+        ]
+
+    def _handle_repo_list(self, in_com):
+        # print etree.tostring(in_com.tree, pretty_print=True)
+        # new code
+        in_repos = in_com.xpath(".//ns:repo_list/root")
+        if not len(in_repos):
+            self.log("no repo_list found in srv_com, server too old ?", logging_tools.LOG_LEVEL_ERROR)
+            return
+        in_repos = in_repos[0]
+        self.log("handling repo_list ({})".format(logging_tools.get_plural("entry", len(in_repos))))
+
+        _src_list_dir = "/etc/apt"
+        _f_list = os.path.join(_src_list_dir, "sources.list")
+        _src_list = self._read_file(os.path.join(_src_list_dir, "sources.list"))
+        _sub_dir = os.path.join(_src_list_dir, "sources.list.d")
+        if os.path.isdir(_sub_dir):
+            for entry in os.listdir(_sub_dir):
+                _path = os.path.join(_sub_dir, entry)
+                _f_list.append(_f_list)
+                _src_list.extend(self._read_file(_path))
+
+        self.log(
+            "{} found in and below {}".format(
+                logging_tools.get_plural("repository", len(_src_list)),
+                _src_list_dir,
+            )
+        )
+
+        # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
+        _new_repo_names = in_repos.xpath(".//alias/text()")
+        new_repo_dict = {
+            in_repo.findtext("name").replace("/", "_"): get_repo_str("deb", in_repo) for in_repo in in_repos
+        }
+        rewrite_repos = False
+        if rewrite_repos and self.CS["pc.modify.repos"]:
+            self.log("rewritting repo files")
+            # remove old ones
+            for old_f_name in _f_list:
+                try:
+                    os.unlink(old_f_name)
+                except:
+                    self.log("cannot remove {}: {}".format(old_f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("removed {}".format(old_f_name))
+            f_name = "/etc/apt/sources.list"
+            file(f_name, "w").write("\n".join(new_repo_dict.itervalues()))
+            self.log("created {}".format(f_name))
+            self._clear_cache()
+
+
 class YumInstallProcess(InstallProcess):
     response_type = "yum_flat"
 
@@ -594,24 +659,6 @@ class ZypperInstallProcess(InstallProcess):
                 data=cur_pdc
             )
             return False
-            # return False, None
-#     def _post_decide(self, hc_sc, cur_out):
-#         _stage = hc_sc.command_stage
-#         cur_pdc = hc_sc.data
-#         print "***", cur_out, hc_sc.data.attrib
-#         # o already installed and cmd == in
-#         # o already installed and cmd == up and always_latest flag not set
-#         # o not installed and cmd == rm
-#         if False:
-#             # if is_installed:
-#             #    return True, E.stdout("package %s is installed" % (package_name))
-#             # else:
-#             #    return True, E.stdout("package %s is not installed" % (package_name))
-#             pass
-#         else:
-#             pass
-#             # flags: xml output, non-interactive
-#             # return False, None
 
     def _handle_repo_list(self, in_com):
         # print etree.tostring(in_com.tree, pretty_print=True)

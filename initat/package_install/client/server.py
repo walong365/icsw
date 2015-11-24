@@ -28,7 +28,7 @@ from initat.tools.server_mixins import RemoteCall
 import zmq
 
 from .config import global_config
-from .installprocess import YumInstallProcess, ZypperInstallProcess, get_srv_command
+from .installprocess import YumInstallProcess, ZypperInstallProcess, get_srv_command, DebianInstallProcess
 
 
 @server_mixins.RemoteCallProcess
@@ -61,6 +61,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self.register_func("send_to_server", self._send_to_server)
             if os.path.isfile("/etc/centos-release") or os.path.isfile("/etc/redhat-release"):
                 self.add_process(YumInstallProcess("install"), start=True)
+            elif os.path.isfile("/etc/debian_version"):
+                self.add_process(DebianInstallProcess("install"), start=True)
             else:
                 self.add_process(ZypperInstallProcess("install"), start=True)
         else:
