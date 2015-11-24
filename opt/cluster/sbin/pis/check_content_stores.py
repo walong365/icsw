@@ -143,16 +143,18 @@ def main():
             remove_file(AUTO_FLAG)
         else:
             new_store["db.auto.update"] = False
-    if os.path.exists(SATELLITE_FLAG):
-        new_store["mode.is.satellite"] = True
-        remove_file(SATELLITE_FLAG)
-    else:
-        new_store["mode.is.satellite"] = False
-    if os.path.exists(SLAVE_FLAG):
-        new_store["mode.is.slave"] = True
-        remove_file(SLAVE_FLAG)
-    else:
-        new_store["mode.is.slave"] = False
+    if "mode.is.satellite" not in new_store:
+        if os.path.exists(SATELLITE_FLAG):
+            new_store["mode.is.satellite"] = True
+            remove_file(SATELLITE_FLAG)
+        else:
+            new_store["mode.is.satellite"] = False
+    if "mode.is.slave" not in new_store:
+        if os.path.exists(SLAVE_FLAG):
+            new_store["mode.is.slave"] = True
+            remove_file(SLAVE_FLAG)
+        else:
+            new_store["mode.is.slave"] = False
     if "create.default.network" not in new_store:
         new_store["create.default.network"] = True
     if "create.network.device.types" not in new_store:

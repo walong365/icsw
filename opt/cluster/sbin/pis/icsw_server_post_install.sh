@@ -160,7 +160,7 @@ else
     else
         echo ""
         if ${ICSW_SBIN}/icsw cstore --store icsw.general --mode storeexists ; then
-            if [ "$(${ICSW_BIN}/icsw cstore --mode getkey --store icsw.general --key mode.is.slave)" = "True" ] ; then
+            if [ "$(${ICSW_SBIN}/icsw cstore --mode getkey --store icsw.general --key mode.is.slave)" = "True" ] ; then
                 echo "Node is Slave-node, restarting software"
                 RESTART=1
             else
