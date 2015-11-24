@@ -18,12 +18,14 @@
 """ checks for Supermicro Hardware (using SMCIPMITool and others) """
 
 import base64
-import json
 import bz2
+import re
+import json
+import commands
 
 from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools, process_tools, server_command
 from initat.host_monitoring.host_monitoring_struct import ExtReturn
+from initat.tools import logging_tools, process_tools, server_command
 
 SMCIPMI_BIN = "SMCIPMITool"
 
@@ -142,7 +144,7 @@ CMM IP address:
 ---------------
 CMM 1 IP: 192.168.248.175
 """,
-        },
+    },
     "sys2": {
         "system": """
 Blade Module (10/20)
@@ -433,6 +435,8 @@ MOCK_MODE = None  # "sys1"  # None  # "sys1"
 
 
 class SMCIpmiStruct(hm_classes.subprocess_struct):
+    g_error_cache = {}
+
     class Meta:
         max_usage = 128
         id_str = "supermicro"
@@ -459,6 +463,25 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
         else:
             output = MOCK_DICT[MOCK_MODE][self.__real_com]
         if output is not None:
+            if output.count("java.lang.NullPointerException"):
+                self.log(
+                    "call problem: {}".format(
+                        output,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                if self.__real_com in SMCIpmiStruct.g_error_cache:
+                    self.log("return last sane value", logging_tools.LOG_LEVEL_WARN)
+                    output = SMCIpmiStruct.g_error_cache[self.__real_com]
+            else:
+                # store to global error cache
+                SMCIpmiStruct.g_error_cache[self.__real_com] = output
+            # self.log(
+            #    "output has {:d} bytes: {}".format(
+            #        len(output),
+            #        re.sub("-+", "-", re.sub("\s+", " ", output)),
+            #    )
+            # )
             self.__hm_command.store_object(self.__real_com, output)
             self.srv_com["output"] = output
 
@@ -501,6 +524,48 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
         # self.parser.add_argument("--passive", default=False, action="store_true")
         self.parser.add_argument("--passive-check-prefix", type=str, default="-")
         self.__smcipmi_binary = process_tools.find_file(SMCIPMI_BIN)
+        self.__smcipmi_version = None
+        _KNOWN_VERSIONS = {2110, 2140}
+        _DEF_VERSION = 2110
+        if self.__smcipmi_binary:
+            self.log("found {} at {}".format(SMCIPMI_BIN, self.__smcipmi_binary))
+            _stat, _out = commands.getstatusoutput("{}".format(self.__smcipmi_binary))
+            vers_re = re.compile("^smc\s*ipmi\s*tool\s*(?P<version>v\d+[^(]+).*$", re.IGNORECASE)
+            for _line in _out.split("\n"):
+                _match = vers_re.match(_line.strip())
+                if _match:
+                    _vers_str = _match.group("version").replace("V", "")
+                    _vers_int = int(_vers_str.replace(".", ""))
+                    if _vers_int in _KNOWN_VERSIONS:
+                        self.log("found known version '{}' -> {:d}".format(_vers_str, _vers_int))
+                    else:
+                        self.log(
+                            "found unknown version '{}' -> {:d}, mapping to {:d}".format(
+                                _vers_str,
+                                _vers_int,
+                                _DEF_VERSION,
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
+                        _vers_int = _DEF_VERSION
+                    self.__smcipmi_version = _vers_int
+        else:
+            self.log("no SMCIPMI binary found", logging_tools.LOG_LEVEL_WARN)
+
+    def _map_command(self, in_com):
+        _com = {
+            "counter": "system",
+            "power": "power status",
+            "gigabit": "gigabit status",
+            "blade": "blade status",
+            "ib": "ib status",
+            "ibqdr": "ib status",
+            "ibfdr": "ib status",
+            "cmm": "cmm status",
+        }.get(in_com, in_com)
+        if self.__smcipmi_version > 2110:
+            _com = "superblade {}".format(_com)
+        return _com
 
     def __call__(self, srv_com, cur_ns):
         _mock = None
@@ -519,22 +584,15 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
             cur_smcc = None
         else:
             com = args[0]
-            real_com = {
-                "counter": "system",
-                "power": "power status",
-                "gigabit": "gigabit status",
-                "blade": "blade status",
-                "ib": "ib status",
-                "ibqdr": "ib status",
-                "ibfdr": "ib status",
-                "cmm": "cmm status",
-            }.get(com, com)
+            real_com = self._map_command(com)
             srv_com["orig_command"] = com
             srv_com["mapped_command"] = real_com
+            srv_com["version"] = "{:d}".format(self.__smcipmi_version)
             if self.cache_valid(real_com):
                 cur_smcc = None
                 srv_com["output"] = self.load_object(real_com)
             elif self.retrieval_pending(real_com):
+                self.log("{} (pend)".format(com))
                 cur_smcc = SMCRetrievePendingStruct(
                     srv_com,
                     real_com,
@@ -688,7 +746,12 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
                             obj_num,
                         )
                 else:
-                    return limits.nag_STATE_CRITICAL, "key {} not found in {}".format(
-                        obj_type,
-                        ", ".join(sorted(r_dict.keys())) or "EMPTY"
-                    )
+                    if r_dict:
+                        return limits.nag_STATE_CRITICAL, "key {} not found in {}".format(
+                            obj_type,
+                            ", ".join(sorted(r_dict.keys()))
+                        )
+                    else:
+                        return limits.nag_STATE_CRITICAL, "key {} not found, null result".format(
+                            obj_type,
+                        )
