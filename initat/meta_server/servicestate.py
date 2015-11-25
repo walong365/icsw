@@ -110,36 +110,6 @@ class ServiceActionState(object):
         return ServiceActionState.d_dict.get(_tuple, "keep")
 
 
-SERVICE_OK_DICT = {
-    constants.TARGET_STATE_RUNNING: {
-        constants.SERVICE_OK: (
-            constants.LIC_STATE_VALID,
-            constants.LIC_STATE_NOT_NEEDED,
-            constants.LIC_STATE_GRACE,
-        ),
-        constants.SERVICE_DEAD: (
-            constants.LIC_STATE_VIOLATED,
-            constants.LIC_STATE_EXPIRED,
-            constants.LIC_STATE_VALID_IN_FUTURE,
-            constants.LIC_STATE_NONE,
-            # constants.LIC_STATE_IP_MISMATCH,
-        ),
-        constants.SERVICE_INCOMPLETE: (),
-        constants.SERVICE_NOT_INSTALLED: (),
-        # changed from None to () due to not stopping services on boss (boku)
-        # NOT changed, we need process and db_target_state separated, TODO
-        constants.SERVICE_NOT_CONFIGURED: None,
-    },
-    constants.TARGET_STATE_STOPPED: {
-        constants.SERVICE_OK: (),
-        constants.SERVICE_DEAD: None,
-        constants.SERVICE_INCOMPLETE: (),
-        constants.SERVICE_NOT_INSTALLED: None,
-        constants.SERVICE_NOT_CONFIGURED: None,
-    }
-}
-
-
 class ServiceStateTranstaction(object):
     def __init__(self, name, action, trans_id):
         self.name = name

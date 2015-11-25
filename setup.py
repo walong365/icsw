@@ -22,6 +22,7 @@ setup(
         "initat.icsw.relay",
         "initat.icsw.image",
         "initat.icsw.job",
+        "initat.icsw.config",
         "initat.icsw.collectd",
         "initat.icsw.user",
         "initat.tools",
