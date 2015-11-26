@@ -42,14 +42,14 @@ class ZMQDiscovery(object):
     # discover 0mq ids
     __slots__ = [
         "port", "host", "raw_connect", "conn_str", "init_time",
-        "srv_com", "src_id", "xml_input", "socket",
+        "srv_com", "src_id", "xml_input", "socket", "hm_port",
     ]
 
     def __init__(self, srv_com, src_id, xml_input):
         self.port = int(srv_com["port"].text)
         self.host = srv_com["host"].text
         self.raw_connect = True if int(srv_com.get("raw_connect", "0")) else False
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        self.hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.conn_str = "tcp://{}:{:d}".format(
             self.host,
             self.port
@@ -146,7 +146,7 @@ class ZMQDiscovery(object):
                     self.log("0MQ id is {}".format(zmq_id))
                     ZMQDiscovery.set_mapping(self.conn_str, zmq_id)  # mapping[self.conn_str] = zmq_id
                     # reinject
-                    if self.port == self.__hm_port:
+                    if self.port == self.hm_port:
                         ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
                     else:
                         ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
