@@ -846,7 +846,7 @@ def user_perms_changed(sender, *args, **kwargs):
 def user_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        check_integer(cur_inst, "uid", min_val=100, max_val=65535)
+        check_integer(cur_inst, "uid", min_val=100, max_val=2147483647)
         check_empty_string(cur_inst, "login", strip=True)
         check_empty_string(cur_inst, "password")
         if not cur_inst.home:
@@ -991,7 +991,7 @@ def group_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         check_empty_string(cur_inst, "groupname")
-        check_integer(cur_inst, "gid", min_val=100, max_val=65535)
+        check_integer(cur_inst, "gid", min_val=100, max_val=2147483647)
         if cur_inst.homestart and not cur_inst.homestart.startswith("/"):
             raise ValidationError("homestart has to start with '/'")
         my_pk = cur_inst.pk
