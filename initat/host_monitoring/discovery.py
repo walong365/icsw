@@ -49,7 +49,6 @@ class ZMQDiscovery(object):
         self.port = int(srv_com["port"].text)
         self.host = srv_com["host"].text
         self.raw_connect = True if int(srv_com.get("raw_connect", "0")) else False
-        self.hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.conn_str = "tcp://{}:{:d}".format(
             self.host,
             self.port
