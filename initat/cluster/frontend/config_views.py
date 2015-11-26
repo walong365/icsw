@@ -273,7 +273,7 @@ class ConfigTreeStruct(object):
         else:
             self.node = node
         if self.node is not None:
-            self.written_config_file = self.node.WrittenConfigFile
+            self.written_config_file = self.node.writtenconfigfile
             self.childs = [
                 ConfigTreeStruct(
                     cur_dev,
