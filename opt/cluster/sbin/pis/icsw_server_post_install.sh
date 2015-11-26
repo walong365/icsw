@@ -129,6 +129,7 @@ fi
 chmod a+rwx ${WEBCACHE_DIR}
 
 RESTART=0
+RESTART_CAUSE="unknown"
 
 if is_chroot ; then
     echo "running chrooted, skipping setup and restart"
@@ -157,6 +158,7 @@ else
 
         echo "Database is valid, restarting software"
         RESTART=1
+        RESTART_CAUSE="database and software updated"
     else
         echo ""
         if ${ICSW_SBIN}/icsw cstore --store icsw.general --mode storeexists ; then
@@ -164,6 +166,7 @@ else
                 echo "Node is Slave-node, init webfrontend and restarting software"
                 ${ICSW_SBIN}/icsw setup --init-webfrontend
                 RESTART=1
+                RESTART_CAUSE="software updated"
             else
                 echo "Database is not valid and system is not slave, skipping restart"
             fi
@@ -181,8 +184,10 @@ if [ "${RESTART}" = "1" ] ; then
         NUM_RS=1
     fi
 
+    echo -e "\n${GREEN}restarting all ICSW related services (${RESTART_CAUSE}) (LC: ${NUM_RS})${OFF}\n"
+
     for idx in $(seq ${NUM_RS} ) ; do
-        echo -e "\n${GREEN}(${idx}) restarting all ICSW related services (server)${OFF}\n"
+        echo -e "${GREEN}(${idx}/${NUM_RS}) restarting all ICSW related services (server)${OFF}\n"
         ${ICSW_SBIN}/icsw service stop meta-server
         ${ICSW_SBIN}/icsw service start meta-server
     done
