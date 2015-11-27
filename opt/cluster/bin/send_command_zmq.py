@@ -62,7 +62,7 @@ class LocalParser(argparse.ArgumentParser):
 
     def parse(self):
         opts = self.parse_args()
-        if opts.port.isdigit():
+        if isinstance(opts.port, basestring) and opts.port.isdigit():
             opts.port = int(opts.port)
         else:
             opts.port = self.inst_xml.get_port_dict(opts.port, command=True)
