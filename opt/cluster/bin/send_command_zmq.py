@@ -40,7 +40,7 @@ class LocalParser(argparse.ArgumentParser):
         self.add_argument(
             "-p",
             help="port or instance/service [%(default)d]",
-            default=self.inst_xml.get_port_dict("host-monitoring", command=True),
+            default="{:d}".format(self.inst_xml.get_port_dict("host-monitoring", command=True)),
             dest="port",
             type=str
         )
@@ -65,7 +65,11 @@ class LocalParser(argparse.ArgumentParser):
         if isinstance(opts.port, basestring) and opts.port.isdigit():
             opts.port = int(opts.port)
         else:
-            opts.port = self.inst_xml.get_port_dict(opts.port, command=True)
+            if opts.port in self.inst_xml:
+                opts.port = self.inst_xml.get_port_dict(opts.port, command=True)
+            else:
+                print("Invalid service / instance name '{}'".format(opts.port))
+                sys.exit(-1)
         return opts
 
 

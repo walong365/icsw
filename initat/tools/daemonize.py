@@ -97,6 +97,8 @@ def main():
         if uid or gid:
             os.setgid(gid)
             os.setuid(uid)
+        if gids:
+            os.setgroups(gids)
     if opts.debug:
         abs_path = os.path.dirname(__file__)
         abs_path = os.path.split(os.path.split(abs_path)[0])[0]
