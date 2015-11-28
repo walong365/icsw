@@ -2538,7 +2538,7 @@
                 </fieldset>
             </uib-tab>
         </uib-tabset>
-        <alert type="warning" ng-show="!_current_dev.manual_address">Please enter or select an IP address</alert>
+        <uib-alert type="warning" ng-show="!_current_dev.manual_address">Please enter or select an IP address</uib-alert>
         <div class="form-actions">
             <input type="button" name="scan" value="scan" class="btn btn btn-sm btn-primary" id="button-id-scan" ng-click="fetch_device_network()" ng-disabled="!_current_dev.manual_address"></input> <input type="submit" name="cancel" value="cancel" class="btn btn-primary btn btn-sm btn-warning" id="submit-id-cancel"></input>
         </div>

@@ -1,7 +1,7 @@
 <script type="text/ng-template" id="icsw.device.location.overview">
     <h2>Device location for <ng-pluralize count="device_pks.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize></h2>
 
-    <alert type="warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</alert>
+    <uib-alert type="warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</uib-alert>
 
     <div class="row">
         <div class="col-md-6">

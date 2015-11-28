@@ -68,11 +68,11 @@
                             <div ng-switch on="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
                                 <div ng-switch-when="true">
                                     <!-- parameter exceeded -->
-                                    <alert type="danger" style="padding: 5px">
+                                    <uib-alert type="danger" style="padding: 5px">
                                         <i class="glyphicon glyphicon-exclamation-sign"></i>
                                         <strong>{{param_type}}</strong>: {{_state(lic.id).lic.parameters[param_type]}}
                                         (used: {{lic.parameter_usage[param_type]}})
-                                    </alert>
+                                    </uib-alert>
                                 </div>
                                 <div ng-switch-default>
                                     <!-- everything ok, parameter usage within limits -->
@@ -81,11 +81,11 @@
                                 </div>
                             </div>
                         </div>
-                        <alert type="danger" ng-show="!_state(lic.id).lic.parameters[param_type]" style="padding: 5px">
+                        <uib-alert type="danger" ng-show="!_state(lic.id).lic.parameters[param_type]" style="padding: 5px">
                             <!-- parameter used which is not present -->
                             <i class="glyphicon glyphicon-exclamation-sign"></i>
                             <strong>{{param_type}}</strong>: used: {{lic.parameter_usage[param_type]}}
-                        </alert>
+                        </uib-alert>
                     </div>
                 </td>
                 <td ng-class="get_license_state_bootstrap_class(_state(lic.id).state_id)">
@@ -97,8 +97,8 @@
                 <td>{{_state(lic.id).date_info}}</td>
                 <td>
                     <div ng-show="get_license_warning(lic)">
-                        <alert type="danger" ng-bind-html="get_license_warning(lic, true)" style="padding: 5px">
-                        </alert>
+                        <uib-alert type="danger" ng-bind-html="get_license_warning(lic, true)" style="padding: 5px">
+                        </uib-alert>
                     </div>
                 </td>
                 <td>{{_state(lic.id).package.type_name}}</td>

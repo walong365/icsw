@@ -61,9 +61,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.edit">
-    <alert type="warning" style="max-width: 500px" ng-if="locations.length == 0">
+    <uib-alert type="warning" style="max-width: 500px" ng-if="locations.length == 0">
         Please create locations in the tab 'Available locations'.
-    </alert>
+    </uib-alert>
 
     <h3 ng-show="locations.length">Map view, {{ locations.length }} locations</h3>
     <div class="row" ng-if="locations.length > 0">

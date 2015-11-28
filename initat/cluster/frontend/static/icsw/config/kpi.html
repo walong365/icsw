@@ -97,7 +97,7 @@
 
                             <div ng-show="kpi_result.kpi_error_report">
                                 <br />
-                                <alert type="danger" ng-bind-html="kpi_result.kpi_error_report"></alert>
+                                <uib-alert type="danger" ng-bind-html="kpi_result.kpi_error_report"></uib-alert>
                             </div>
                         </div>
                     </accordion-group>
@@ -181,10 +181,10 @@
 <script type="text/ng-template" id="icsw.config.kpi.configuration_table">
 
     <div ng-show="kpi.length == 0">
-        <alert type="info">
+        <uib-alert type="info">
             No KPIs defined.
             <span ng-show="acl_create(null, 'backbone.kpi.kpi')">Please define one using the 'create' button.</span>
-        </alert>
+        </uib-alert>
     </div>
     <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto" ng-show="kpi.length>0">
         <tr>
@@ -222,9 +222,9 @@
 
 <script type="text/ng-template" id="icsw.config.kpi.evaluation_table">
     <div ng-show="kpi.length == 0">
-        <alert type="info">
+        <uib-alert type="info">
             No KPIs defined.
-        </alert>
+        </uib-alert>
     </div>
     <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed icsw-table-striped-2-by-2" style="width: 1250px" ng-show="kpi.length>0">
         <tr>

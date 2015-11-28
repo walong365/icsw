@@ -1,6 +1,6 @@
 <script type="text/ng-template" id="icsw.rrd.graph.overview">
     <div ng-if="devsel_list.length == 0">
-        <alert type="warning">No device selected</alert>
+        <uib-alert type="warning">No device selected</uib-alert>
     </div>
     <p class="text-danger">{{ error_string }}</p>
     <h4 ng-show="vector_valid">

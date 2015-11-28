@@ -84,9 +84,9 @@
             Contents of category {{categoryName}}
         </div>
         <div class="panel-body">
-            <alert type="ok" ng-if="enabled && data_ready && category_contents.length == 0">
+            <uib-alert type="ok" ng-if="enabled && data_ready && category_contents.length == 0">
                 This category is empty.
-            </alert>
+            </uib-alert>
             <table st-table="entries" st-safe-src="category_contents" class="table table-condensed table-striped"
                    style="width: auto" ng-show="entries.length > 0">
                 <thead>

@@ -52,9 +52,9 @@
                                                ng-click="onRevert({'get_change_list': get_get_change_list(entry)}); onRevert._revision_applied = entry"></icsw-tools-button>
                         </div>
                         <div ng-show="onRevert._revision_applied == entry">
-                            <alert type="info">
+                            <uib-alert type="info">
                                 Data is reverted to this version in dialog. Click on 'Submit' if you want to save it.
-                            </alert>
+                            </uib-alert>
                         </div>
                     </div>
                     <div ng-repeat="(k, v) in entry.changes" ng-if="!entry.changes.full_dump">
