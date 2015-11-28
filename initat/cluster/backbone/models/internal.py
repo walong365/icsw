@@ -53,3 +53,15 @@ class ICSWVersion(models.Model):
     # to group version entries
     insert_idx = models.IntegerField(default=1)
     date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def get_latest_db_dict():
+        if ICSWVersion.objects.all().count():
+            _latest_idx = ICSWVersion.objects.all().order_by("-idx")[0].insert_idx
+            return {
+                _db.name: _db.version for _db in ICSWVersion.objects.filter(
+                    Q(insert_idx=_latest_idx)
+                )
+            }
+        else:
+            return {}

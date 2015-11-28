@@ -31,7 +31,8 @@ import netifaces
 from lxml.builder import E
 import psutil
 
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, config_store
+from initat.constants import VERSION_CS_NAME
 from .constants import *
 
 
@@ -153,7 +154,7 @@ class Service(object):
             else:
                 # result record already present, return
                 return
-        dev_config = []
+        dev_config, dev_config_error = ([], [])
         if config_tools is not None:
             if self.entry.find(".//config_names/config_name") is not None:
                 # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
@@ -173,6 +174,8 @@ class Service(object):
                     if _cr is not None:
                         if _cr.effective_device:
                             dev_config.append(_cr)
+                        else:
+                            dev_config_error.append(_cr.server_info_str)
         required_ips = set(list(self.entry.xpath(".//required-ips/required-ip/text()", smart_strings=True)))
         if required_ips:
             _found_ips = set(
@@ -216,7 +219,7 @@ class Service(object):
                         run_info.append("relayer mode")
                     else:
                         c_state = CONF_STATE_STOP
-                        run_info.append("not configured")
+                        run_info.append(", ".join(sorted(list(set(dev_config_error)))) or "not configured")
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -251,18 +254,9 @@ class Service(object):
         if self.entry.get("runs_on") in ["client", "server"] and act_state != SERVICE_NOT_INSTALLED:
             _result.attrib["version_ok"] = "0"
             try:
-                if "version_file" in self.attrib:
-                    _path = self.attrib["version_file"]
-                else:
-                    _path = "%{{INIT_BASE}}/{runs_on}_version.py".format(**self.attrib)
-                _path = _path.replace("%{INIT_BASE}", INIT_BASE)
-                _lines = file(_path, "r").read().split("\n")
-                _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
-                if _vers_lines:
-                    _result.attrib["version_ok"] = "1"
-                    _result.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
-                else:
-                    _result.attrib["version"] = "no version lines found in '{}'".format(_path)
+                _cs = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
+                _result.attrib["version_ok"] = "1"
+                _result.attrib["version"] = _cs["software"]
             except:
                 _result.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
 

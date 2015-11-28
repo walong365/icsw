@@ -37,10 +37,11 @@ import time
 import networkx
 from django.db.models import Q
 
+from initat.constants import VERSION_CS_NAME
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
     netdevice, peer_information, config_int, config_blob, config_str, config_bool, \
-    ICSWVersion
-from initat.tools import configfile, logging_tools, process_tools
+    ICSWVersion, VERSION_NAME_LIST
+from initat.tools import configfile, logging_tools, process_tools, config_store
 
 
 class router_object(object):
@@ -415,6 +416,18 @@ class server_check(object):
     def __init__(self, **kwargs):
         # server_type: name of server, no wildcards supported (!)
         self.__server_type = kwargs["server_type"]
+        if "db_version_dict" in kwargs:
+            self.__db_version_dict = kwargs["db_version_dict"]
+        else:
+            self.__db_version_dict = ICSWVersion.get_latest_db_dict()
+        if "sys_version_dict" in kwargs:
+            self.__sys_version_dict = kwargs["sys_version_dict"]
+        else:
+            _cs = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
+            self.__sys_version_dict = {
+                _name: _cs[_name] for _name in VERSION_NAME_LIST
+            }
+        # print ICSWVersion.object
         if "host_name" in kwargs:
             self.host_name = kwargs["host_name"]
             self.short_host_name = self.host_name.split(".")[0]
@@ -428,8 +441,6 @@ class server_check(object):
         self.__network_info_fetched = False
         # self.set_hopcount_cache()
         self._check(**kwargs)
-    # def set_hopcount_cache(self, in_cache=[]):
-        # self.__hc_cache = in_cache
 
     def _check(self, **kwargs):
         # src device, queried via name
@@ -467,7 +478,19 @@ class server_check(object):
         self.config_name = self.__server_type
         # config variable dict
         self.__config_vars = {}
-        self._db_check(**kwargs)
+        if self._vers_check():
+            self._db_check(**kwargs)
+
+    def _vers_check(self):
+        if not self.__db_version_dict:
+            # no database version found, continue
+            return True
+        else:
+            if self.__db_version_dict["database"] == self.__sys_version_dict["database"]:
+                return True
+            else:
+                self.server_info_str = "Database version mismatch"
+                return False
 
     def _db_check(self, **kwargs):
         if "device" in kwargs:
