@@ -28,6 +28,7 @@ import time
 
 from initat.constants import GEN_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
+from initat.cluster.backbone.models.version_functions import get_database_version, get_models_version
 from .constants import *
 from .service import Service
 
@@ -70,8 +71,7 @@ class ServiceContainer(object):
         self.__log_com = log_com
         self.__act_proc_dict = None
         self.__valid_licenses = None
-        self.__model_md5 = self.get_models_md5()
-        self.__models_changed = False
+        self.update_version_tuple()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SrvC] {}".format(what), log_level)
@@ -113,22 +113,25 @@ class ServiceContainer(object):
         else:
             self.__valid_licenses = None
 
-    def get_models_md5(self):
-        _dict = {}
-        if config_tools:
-            _mdir = os.path.normpath(os.path.join(os.path.dirname(config_tools.__file__), "..", "cluster", "backbone", "models"))
-            self.log("generating MD5s for models from dir {}".format(_mdir))
-            for _entry in os.listdir(_mdir):
-                if _entry.endswith(".py"):
-                    _md5 = hashlib.new("md5")
-                    _md5.update(file(os.path.join(_mdir, _entry)).read())
-                    _checksum = _md5.hexdigest()
-                    _dict[_entry] = _checksum
-        return _dict
+    def update_version_tuple(self):
+        _database_v = get_database_version()
+        _model_v = get_models_version()
+        if not hasattr(self, "model_version"):
+            self.model_version = _model_v
+            self.model_version_changed = False
+            self.log("Model version is {}".format(_model_v))
+        else:
+            if _model_v != self.model_version:
+                self.model_version_changed = True
+                self.log(
+                    "Model version changed from {} to {}".format(
+                        self.model_version,
+                        _model_v,
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
 
-    def check_service(self, entry, use_cache=True, refresh=True, models_changed=False):
-        if not hasattr(self, "_config_check_errors"):
-            self._config_check_errors = []
+    def check_service(self, entry, use_cache=True, refresh=True, version_changed=False):
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
             self.update_valid_licenses()
@@ -137,10 +140,8 @@ class ServiceContainer(object):
             refresh=refresh,
             config_tools=config_tools,
             valid_licenses=self.valid_licenses,
-            models_changed=models_changed,
+            version_changed=version_changed,
         )
-        if not entry.config_check_ok:
-            self._config_check_errors.append(entry.name)
 
     def apply_filter(self, service_list, instance_xml):
         check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
@@ -162,26 +163,23 @@ class ServiceContainer(object):
 
     # main entry point: check_system
     def check_system(self, opt_ns, instance_xml):
-        def _get_fp(in_dict):
-            # simple fingerprint
-            return ":".join([in_dict[_key] for _key in sorted(in_dict.iterkeys())])
         check_list = self.apply_filter(opt_ns.service, instance_xml)
         self.update_proc_dict()
         self.update_valid_licenses()
-        self._config_check_errors = []
+        self.update_version_tuple()
         for entry in check_list:
-            self.check_service(entry, use_cache=True, refresh=True, models_changed=self.__models_changed)
-        if self._config_check_errors:
-            self.log(
-                "{} not ok ({}), triggering model check".format(
-                    logging_tools.get_plural("config check", len(self._config_check_errors)),
-                    ", ".join(self._config_check_errors),
-                )
-            )
-            if self.__model_md5:
-                if _get_fp(self.__model_md5) != _get_fp(self.get_models_md5()):
-                    self.log("models have changed, forcing all services with DB-checks to state dead")
-                    self.__models_changed = True
+            self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_changed)
+        #if self._config_check_errors:
+        #    self.log(
+        #        "{} not ok ({}), triggering model check".format(
+        #            logging_tools.get_plural("config check", len(self._config_check_errors)),
+        #            ", ".join(self._config_check_errors),
+        #        )
+        #    )
+        #    if self.__model_md5:
+        #        if _get_fp(self.__model_md5) != _get_fp(self.get_models_md5()):
+        #            self.log("models have changed, forcing all services with DB-checks to state dead")
+        #            self.__models_changed = True
         return check_list
 
     def decide(self, subcom, service):

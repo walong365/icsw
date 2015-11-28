@@ -34,10 +34,11 @@ import netifaces
 import sys
 import time
 
+import networkx
 from django.db.models import Q
+
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
     netdevice, peer_information, config_int, config_blob, config_str, config_bool
-import networkx
 from initat.tools import configfile, logging_tools, process_tools
 
 

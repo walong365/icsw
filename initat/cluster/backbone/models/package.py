@@ -49,7 +49,7 @@ class package_service(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=128, blank=False)
     enabled = models.BooleanField(default=True)
-    alias = models.CharField(max_length=128, default=True)
+    alias = models.CharField(max_length=128, default="")
     autorefresh = models.BooleanField(default=True)
     url = models.CharField(max_length=256, default="")
     type = models.CharField(max_length=64, default="ris")

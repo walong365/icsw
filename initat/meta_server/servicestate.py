@@ -177,7 +177,7 @@ class ServiceState(object):
         )
         ServiceActionState(
             target=constants.TARGET_STATE_RUNNING,
-            configured=[constants.CONF_STATE_STOP, constants.CONF_STATE_IP_MISMATCH],
+            configured=[constants.CONF_STATE_STOP, constants.CONF_STATE_IP_MISMATCH, constants.CONF_STATE_MODELS_CHANGED],
             process=[constants.SERVICE_OK, constants.SERVICE_INCOMPLETE],
             action="stop",
         )

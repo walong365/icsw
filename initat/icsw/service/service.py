@@ -145,7 +145,7 @@ class Service(object):
             else:
                 return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, models_changed=False):
+    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, version_changed=False):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -198,12 +198,10 @@ class Service(object):
 
         run_info = []
         if self.attrib["runs_on"] == "server":
-            if models_changed:
+            if version_changed:
                 # force state to failed
-                # TODO, FIXME, OMG
-                print("*" * 50)
                 c_state = CONF_STATE_MODELS_CHANGED
-                run_info.append("models changed")
+                run_info.append("DB / models changed")
             else:
                 if dev_config:
                     run_info.append(
