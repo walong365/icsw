@@ -19,4 +19,4 @@
 
 """ simple interface to version cstore """
 
-from intat.tools.icsw_version_readout import *
+from initat.tools.icsw_version_readout import *
