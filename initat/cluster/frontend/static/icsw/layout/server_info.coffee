@@ -130,7 +130,7 @@ angular.module(
         get_state: (instance) ->
             _xml = @xml.find("status > instances > instance[name='#{instance}']")
             if _xml.length
-                _state_info = _xml.find("state_info")
+                _state_info = _xml.find("process_state_info")
                 if parseInt(_state_info.attr("state")) == 5
                     # not installed
                     return 3
@@ -156,7 +156,7 @@ angular.module(
                 # nothing found
                 return 0
         get_run_class: (instance) ->
-            _state_info = @xml.find("instance[name='#{instance}'] state_info")
+            _state_info = @xml.find("instance[name='#{instance}'] process_state_info")
             _diff = parseInt(_state_info.attr("num_diff"))
             if _diff
                 return "text-danger"
@@ -186,7 +186,7 @@ angular.module(
                 return false
         get_run_info: (instance) ->
             _xml = @xml.find("instance[name='#{instance}']")
-            _state_info = _xml.find("state_info")
+            _state_info = _xml.find("process_state_info")
             if _xml.attr("check_type") == "simple"
                 return _xml.find("pids > pid").length
             else
