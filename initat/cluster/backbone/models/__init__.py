@@ -47,6 +47,7 @@ import random
 import time
 import uuid
 
+from initat.cluster.backbone.models.internal import *
 from initat.cluster.backbone.models.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.models.config import *  # @UnusedWildImport

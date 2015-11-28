@@ -44,7 +44,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
     g_config.add_config_entries(init_list, database=True)
     if not kwargs.get("dummy_run", False):
         num_serv, serv_idx, _s_type, _s_str, _config_idx, real_config_name = is_server(
-            server_type.replace("%", ""),
+            server_type,
             True,
             False,
             host_name.split(".")[0]
@@ -197,7 +197,11 @@ class db_device_variable(object):
 
 def strip_description(descr):
     if descr:
-        descr = " ".join([entry for entry in descr.strip().split() if not entry.count("(default)")])
+        descr = " ".join(
+            [
+                entry for entry in descr.strip().split() if not entry.count("(default)")
+            ]
+        )
     return descr
 
 
@@ -338,12 +342,7 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
     _co = config.objects  # @UndefinedVariable
     # we dont check meta-settings (settings via group)
     server_idx, s_type, s_str, config_idx, real_server_name = (0, "unknown", "not configured", 0, server_type)
-    if server_type.count("%"):
-        dmatch_str = "name__icontains"
-        server_info_str = "%s (with wildcard)" % (server_type.replace("%", ""))
-    else:
-        dmatch_str = "name"
-        server_info_str = server_type
+    server_info_str = server_type
     if not short_host_name:
         short_host_name = socket.getfqdn(socket.gethostname()).split(".")[0]
     # old version
@@ -353,7 +352,7 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
         dev_pk = 0
     my_confs = _co.filter(
         Q(device_config__device__name=short_host_name) &
-        Q(**{dmatch_str: server_type})
+        Q(name=server_type)
     ).distinct().values_list(
         "device_config__device", "pk", "name"
     )
@@ -376,7 +375,7 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
         _local_ips = net_ip.objects.filter(Q(netdevice__device__name=short_host_name)).values_list("ip", flat=True)
         # get all ips for the given config
         my_confs = _co.filter(
-            Q(**{dmatch_str: server_type})
+            Q(name=server_type)
         ).values_list(
             "device_config__device",
             "pk",

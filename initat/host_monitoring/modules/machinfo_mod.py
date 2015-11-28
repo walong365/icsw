@@ -117,7 +117,13 @@ class _general(hm_classes.hm_module):
                             dev_name = entry.replace("!", "/")
                             valid_block_devs[dev_name] = major
                             valid_major_nums.setdefault(major, []).append(dev_name)
-                            self.log("   adding %-14s (major %3d, minor %3d) to block_device_list" % (dev_name, major, minor))
+                            self.log(
+                                "   adding %-14s (major %3d, minor %3d) to block_device_list" % (
+                                    dev_name,
+                                    major,
+                                    minor
+                                )
+                            )
                             # print dev_name, block_devs_dict[major], minor
         except:
             self.log("error in rescan_valid_disk_stuff: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)

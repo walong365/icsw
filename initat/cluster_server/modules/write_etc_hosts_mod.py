@@ -216,9 +216,11 @@ class write_etc_hosts(cs_base_class.server_com):
                 Q(device_group__enabled=True) &
                 Q(netdevice__net_ip__ip__contains=".")
             ).values_list(
-                "name", "device_group__name"
+                "name",
+                "device_group__name"
             ).order_by(
-                "device_group__name", "name"
+                "device_group__name",
+                "name"
             )
             dg_dict = {}
             for dev_name, dg_name in all_devs:
@@ -230,18 +232,15 @@ class write_etc_hosts(cs_base_class.server_com):
             "\n".join(
                 [
                     "### AEH-START-PRE insert pre-host lines below"
-                ] +
-                pre_host_lines +
+                ] + pre_host_lines +
                 [
                     "### AEH-END-PRE insert pre-host lines above",
                     ""
-                ] +
-                out_file +
+                ] + out_file +
                 [
                     "",
                     "### AEH-START-POST insert post-host lines below"
-                ] +
-                post_host_lines +
+                ] + post_host_lines +
                 [
                     "### AEH-END-POST insert post-host lines above",
                     ""

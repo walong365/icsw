@@ -197,11 +197,13 @@ class initat_formatter(object):
             var_list, info_lines = ([], [])
             request = inspect.trace()[-1][0].f_locals.get("request", None)
             if request:
-                info_lines.extend([
-                    "",
-                    "method is {}".format(request.method),
-                    "",
-                ])
+                info_lines.extend(
+                    [
+                        "",
+                        "method is {}".format(request.method),
+                        "",
+                    ]
+                )
                 # print get / post variables
                 v_dict = getattr(request, request.method, None)
                 if v_dict:

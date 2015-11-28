@@ -25,10 +25,11 @@ for password-types we need to add some encryption / message digest code via {alg
 """
 
 import os
+
 from lxml import etree
+from lxml.builder import E
 
 from initat.tools import process_tools, logging_tools
-from lxml.builder import E
 
 CS_NG = """
 <element name="config-store" xmlns="http://relaxng.org/ns/structure/1.0">
@@ -137,6 +138,7 @@ class ConfigVar(object):
 
 class ConfigStore(object):
     def __init__(self, name, log_com=None, read=True, quiet=False, prefix=None):
+        # do not move this to a property, otherwise the Makefile will no longer work
         self.file_name = ConfigStore.build_path(name)
         self.tree_valid = True
         # if prefix is set all keys starting with prefix will act as dictionary lookup keys

@@ -288,7 +288,8 @@ class progress_counter(object):
                 100. * (self.__sum_lc / float(max(1, self.__total_count))),
                 self.__start_count,
                 get_diff_time_str(time_to_go),
-                info_str)
+                info_str
+            )
             self.__lc = 0
         else:
             log_str = ""
@@ -597,7 +598,9 @@ class new_form_list(object):
             )
         if urwid:
             # add one for CR
-            urwid_rlc = [("", len(_line) + 1) for _line in out_lines]
+            urwid_rlc = [
+                ("", len(_line) + 1) for _line in out_lines
+            ]
             for line in self.__content:
                 _line = []
                 for _idx, (entry, max_len) in enumerate(zip(line, row_lens[:len(line)])):
@@ -815,9 +818,22 @@ class logfile(logging.handlers.BaseRotatingHandler):
                 try:
                     os.unlink(f_name)
                 except:
-                    my_syslog("cannot remove file '{}' ({:d} > {:d} days)".format(f_name, act_age, self.max_age), LOG_LEVEL_ERROR)
+                    my_syslog(
+                        "cannot remove file '{}' ({:d} > {:d} days)".format(
+                            f_name,
+                            act_age,
+                            self.max_age
+                        ),
+                        LOG_LEVEL_ERROR
+                    )
                 else:
-                    my_syslog("removed file '{}' ({:d} > {:d} days)".format(f_name, act_age, self.max_age))
+                    my_syslog(
+                        "removed file '{}' ({:d} > {:d} days)".format(
+                            f_name,
+                            act_age,
+                            self.max_age
+                        )
+                    )
 
     def doRollover(self):
         self._cleanup_old_logfiles()
@@ -834,7 +850,8 @@ class logfile(logging.handlers.BaseRotatingHandler):
             gz_file_name = "{}-{}.{}".format(
                 self.baseFilename,
                 act_postfix,
-                gz_postfix)
+                gz_postfix
+            )
             if os.path.isfile(gz_file_name):
                 act_idx += 1
             else:

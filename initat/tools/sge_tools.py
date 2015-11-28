@@ -555,7 +555,9 @@ class sge_info(object):
                     "{} (server {}) took {}".format(
                         ", ".join(server_update),
                         srv_name,
-                        logging_tools.get_diff_time_str(e_time - s_time)))
+                        logging_tools.get_diff_time_str(e_time - s_time)
+                    )
+                )
         if self.__verbose:
             self.log(
                 "before merge: tree size {:d}, memory usage {}".format(
@@ -998,20 +1000,29 @@ def get_running_headers(options):
         E.name(),
         E.granted_pe(),
         E.owner(),
-        E.state())
+        E.state()
+    )
     if options.show_memory:
         cur_job.extend(
-            [E.virtual_total(),
-             E.virtual_free()])
-    cur_job.extend([
-        getattr(E, "complex")(),
-        E.queue_name()])
+            [
+                E.virtual_total(),
+                E.virtual_free()
+            ]
+        )
+    cur_job.extend(
+        [
+            getattr(E, "complex")(),
+            E.queue_name()
+        ]
+    )
     if not options.suppress_times:
-        cur_job.extend([
-            E.start_time(),
-            E.run_time(),
-            E.left_time()
-        ])
+        cur_job.extend(
+            [
+                E.start_time(),
+                E.run_time(),
+                E.left_time()
+            ]
+        )
     cur_job.append(E.load()),
     if options.show_stdoutstderr:
         cur_job.extend(
@@ -1075,9 +1086,16 @@ def build_running_list(s_info, options, **kwargs):
     for cur_host in s_info.get_all_hosts():
         # print etree.tostring(cur_host, pretty_print=True)
         for cur_job in cur_host.xpath("job", smart_strings=False):
-            job_host_lut.setdefault(cur_job.attrib["full_id"], []).append(cur_host.attrib["short_name"])
-            job_host_pe_lut.setdefault(cur_job.attrib["full_id"], {}).setdefault(
-                cur_job.findtext("jobvalue[@name='pe_master']"), []
+            job_host_lut.setdefault(
+                cur_job.attrib["full_id"],
+                []
+            ).append(cur_host.attrib["short_name"])
+            job_host_pe_lut.setdefault(
+                cur_job.attrib["full_id"],
+                {}
+            ).setdefault(
+                cur_job.findtext("jobvalue[@name='pe_master']"),
+                []
             ).append(cur_host.attrib["short_name"])
     host_loads = {
         cur_host.attrib["short_name"]: _load_to_float(
@@ -1113,16 +1131,21 @@ def build_running_list(s_info, options, **kwargs):
                     E.virtual_free(master_h.findtext("resourcevalue[@name='virtual_free']"))
                 ]
             )
-        cur_job.extend([
-            getattr(E, "complex")(",".join(sorted(i_reqs)) or "---"),
-            E.queue_name(queue_name)])
+        cur_job.extend(
+            [
+                getattr(E, "complex")(",".join(sorted(i_reqs)) or "---"),
+                E.queue_name(queue_name)
+            ]
+        )
         if not options.suppress_times:
             start_time = datetime.datetime.fromtimestamp(int(act_job.attrib["start_time"]))
-            cur_job.extend([
-                E.start_time(logging_tools.get_relative_dt(start_time), raw=json.dumps(int(time.mktime(start_time.timetuple())))),
-                E.run_time(s_info.get_run_time(start_time)),
-                E.left_time(s_info.get_left_time(start_time, act_job.findtext("hard_request[@name='h_rt']")))
-            ])
+            cur_job.extend(
+                [
+                    E.start_time(logging_tools.get_relative_dt(start_time), raw=json.dumps(int(time.mktime(start_time.timetuple())))),
+                    E.run_time(s_info.get_run_time(start_time)),
+                    E.left_time(s_info.get_left_time(start_time, act_job.findtext("hard_request[@name='h_rt']")))
+                ]
+            )
         if act_job.attrib["full_id"] in job_host_lut:
             load_list = [host_loads[h_name] for h_name in job_host_lut[act_job.attrib["full_id"]]]
         else:
@@ -1202,17 +1225,21 @@ def get_waiting_headers(options):
         E.queue()
     )
     if not options.suppress_times:
-        cur_job.extend([
-            E.queue_time(),
-            E.wait_time(),
-            E.left_time(),
-            E.exec_time(),
-        ])
-    cur_job.extend([
-        E.prio(),
-        E.priority(),
-        E.depends()
-    ])
+        cur_job.extend(
+            [
+                E.queue_time(),
+                E.wait_time(),
+                E.left_time(),
+                E.exec_time(),
+            ]
+        )
+    cur_job.extend(
+        [
+            E.prio(),
+            E.priority(),
+            E.depends()
+        ]
+    )
     cur_job.append(E.action())
     return cur_job
 
@@ -1309,15 +1336,19 @@ def build_waiting_list(s_info, options, **kwargs):
 def get_node_headers(options):
     cur_node = E.node()
     if options.merge_node_queue:
-        cur_node.extend([
-            E.host(),
-            E.queues()
-        ])
+        cur_node.extend(
+            [
+                E.host(),
+                E.queues()
+            ]
+        )
     else:
-        cur_node.extend([
-            E.queue(),
-            E.host()
-        ])
+        cur_node.extend(
+            [
+                E.queue(),
+                E.host()
+            ]
+        )
     if options.show_seq:
         cur_node.append(E.seqno())
     if not options.suppress_status:
@@ -1329,21 +1360,27 @@ def get_node_headers(options):
     if options.show_pe:
         cur_node.append(E.pe_list())
     if options.show_memory:
-        cur_node.extend([
-            E.virtual_tot(),
-            E.virtual_free()
-        ])
-    cur_node.extend([
-        E.load(),
-        E.slots_used(span="2"),
-        E.slots_reserved(),
-        E.slots_total()
-    ])
+        cur_node.extend(
+            [
+                E.virtual_tot(),
+                E.virtual_free()
+            ]
+        )
+    cur_node.extend(
+        [
+            E.load(),
+            E.slots_used(span="2"),
+            E.slots_reserved(),
+            E.slots_total()
+        ]
+    )
     if options.show_acl:
-        cur_node.extend([
-            E.userlists(),
-            E.projects()
-        ])
+        cur_node.extend(
+            [
+                E.userlists(),
+                E.projects()
+            ]
+        )
     cur_node.append(E.jobs())
     return cur_node
 

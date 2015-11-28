@@ -46,6 +46,7 @@ __all__ = [
     "CONF_STATE_RUN",
     "CONF_STATE_STOP",
     "CONF_STATE_IP_MISMATCH",
+    # also valid for database change
     "CONF_STATE_MODELS_CHANGED",
     "INIT_BASE",
     "SERVERS_DIR",
