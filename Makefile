@@ -235,9 +235,7 @@ install:
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc
 	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
-	# create version files
-	./tools/create_version_file.py --mode=flat --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/client_version.py ; \
-	./tools/create_version_file.py --mode=flat --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${PYTHON_SITE}/initat/server_version.py ; \
+	# create version cstore
 	./tools/create_version_file.py --mode=cstore --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${ICSW_ETC}/cstores.d/icsw.sysversion_config.xml ; \
 
 clean:

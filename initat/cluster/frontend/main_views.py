@@ -22,16 +22,18 @@
 
 """ main views """
 
-import os
 import glob
 import json
 import logging
+import os
 
-from django.http.response import HttpResponse
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import background_job, device_variable
 from initat.cluster.backbone.render import render_me
@@ -68,6 +70,9 @@ class get_cluster_info(View):
         _info_dict = {
             "CLUSTER_NAME": "",
             "CLUSTER_ID": "",
+            "DATABASE_VERSION": settings.ICSW_DATABASE_VERSION,
+            "SOFTWARE_VERSION": settings.ICSW_SOFTWARE_VERSION,
+            "MODELS_VERSION": settings.ICSW_MODELS_VERSION,
         }
         for _key, _value in device_variable.objects.values_list("name", "val_str").filter(
             Q(name__in=["CLUSTER_NAME", "CLUSTER_ID"]) &

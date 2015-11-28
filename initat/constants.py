@@ -26,3 +26,4 @@ system-wide constants for the ICSW
 
 GEN_CS_NAME = "icsw.general"
 DB_ACCESS_CS_NAME = "icsw.db.access"
+VERSION_CS_NAME = "icsw.sysversion"

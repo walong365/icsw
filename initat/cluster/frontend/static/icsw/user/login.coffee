@@ -31,6 +31,7 @@ angular.module(
         $scope.CLUSTER_NAME = ""
         $scope.CLUSTER_ID = ""
         $scope.LOGIN_SCREEN_TYPE = "big"
+        $scope.DATABASE_VERSION = ""
         $scope.login_hints = []
         $scope.disabled = true
         style_dict = {
@@ -70,6 +71,9 @@ angular.module(
                     $scope.disabled = false
                     $scope.CLUSTER_NAME = data[1].CLUSTER_NAME
                     $scope.CLUSTER_ID = data[1].CLUSTER_ID
+                    $scope.DATABASE_VERSION = data[1].DATABASE_VERSION
+                    $scope.SOFTWARE_VERSION = data[1].SOFTWARE_VERSION
+                    $scope.MODELS_VERSION = data[1].MODELS_VERSION
                     if first_call
                         first_call = false
                         $scope.login_data.next_url = $(xml).find("value[name='next_url']").text()

@@ -22,10 +22,11 @@
 
 import argparse
 import datetime
+import importlib
 import os
 import sys
+
 from initat.tools import config_store
-import importlib
 
 
 def main():
@@ -33,34 +34,21 @@ def main():
     parser.add_argument("--version", type=str, help="Version [%(default)s]", default="1.0")
     parser.add_argument("--release", type=str, help="Release [%(default)s]", default="1")
     parser.add_argument("--target", type=str, help="version file target [%(default)s]", default="/tmp/version.py")
-    parser.add_argument("--mode", type=str, default="flat", choices=["flat", "cstore"], help="operation mode")
     opts = parser.parse_args()
     _now = datetime.datetime.now()
-    if opts.mode == "flat":
-        content = [
-            "# version file, created on {}".format(str(_now.strftime("%a, %d. %b %Y %H:%M:%S"))),
-            "",
-            "VERSION_STRING = \"{}-{}\"".format(opts.version, opts.release),
-            "VERSION_MAJOR = \"{}\"".format(opts.version),
-            "VERSION_RELEASE = \"{}\"".format(opts.release),
-            "",
-            "BUILD_TIME = \"{}\"".format(_now.strftime("%Y-%m-%d %H:%M:%S")),
-            "BUILD_MACHINE = \"{}\"".format(os.uname()[1]),
-            "",
-        ]
-        file(opts.target, "w").write("\n".join(content))
-    else:
-        cs_name = os.path.basename(opts.target).split("_")[0]
-        _new_s = config_store.ConfigStore(cs_name, quiet=True, read=False)
-        _new_s.file_name = opts.target
-        _new_s["software"] = "{}-{}".format(opts.version, opts.release)
-        _dir = os.path.dirname(__file__)
-        _dir = os.path.join(_dir, "..", "initat", "cluster", "backbone", "models")
-        sys.path.append(_dir)
-        _func_mod = importlib.import_module("version_functions")
-        _new_s["database"] = _func_mod.get_database_version()
-        _new_s["models"] = _func_mod.get_models_version()
-        _new_s.write()
+    cs_name = os.path.basename(opts.target).split("_")[0]
+    _new_s = config_store.ConfigStore(cs_name, quiet=True, read=False)
+    _new_s.file_name = opts.target
+    _new_s["software"] = "{}-{}".format(opts.version, opts.release)
+    _new_s["build.time"] = _now.strftime("%Y-%m-%d %H:%M:%S")
+    _new_s["build.machine"] = os.uname()[1]
+    _dir = os.path.dirname(__file__)
+    _dir = os.path.join(_dir, "..", "initat", "cluster", "backbone", "models")
+    sys.path.append(_dir)
+    _func_mod = importlib.import_module("version_functions")
+    _new_s["database"] = _func_mod.get_database_version()
+    _new_s["models"] = _func_mod.get_models_version()
+    _new_s.write()
     sys.exit(0)
 
 

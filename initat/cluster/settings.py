@@ -28,7 +28,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from initat.tools import logging_tools, config_store
-from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME
 from initat.icsw.service.instance import InstanceXML
 
 # set unified name
@@ -72,11 +72,19 @@ DATABASES = {
 DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
 
 # config stores
+# database config
 _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
 if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
     _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True)
 else:
     raise ImproperlyConfigured("DB-Access not configured (store not found)")
+
+# version config
+# TODO: check for local config when running in debug (development) mode
+_vers = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
+ICSW_DATABASE_VERSION = _vers["database"]
+ICSW_SOFTWARE_VERSION = _vers["software"]
+ICSW_MODELS_VERSION = _vers["models"]
 
 # validate settings
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
