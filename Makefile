@@ -236,7 +236,7 @@ install:
 	# remove pyc
 	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
 	# create version cstore
-	./tools/create_version_file.py --mode=cstore --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${ICSW_ETC}/cstores.d/icsw.sysversion_config.xml ; \
+	./tools/create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${ICSW_ETC}/cstores.d/icsw.sysversion_config.xml ; \
 
 clean:
 	rm -f gpxelinux.0
