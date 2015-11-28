@@ -55,6 +55,6 @@ def main():
         print("    {} is {}".format(_name, _v))
         ICSWVersion.objects.create(
             name=_name,
-            vesion=_v,
+            version=_v,
             insert_idx=insert_idx,
         )
