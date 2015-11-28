@@ -25,6 +25,10 @@ import hashlib
 import os
 
 
+def is_debug_run():
+    return True if not os.path.dirname(__file__).startswith("/opt") else False
+
+
 def get_models_version():
     _dir = os.path.dirname(__file__)
     while not _dir.endswith("models"):

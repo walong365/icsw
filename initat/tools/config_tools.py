@@ -38,7 +38,8 @@ import networkx
 from django.db.models import Q
 
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-    netdevice, peer_information, config_int, config_blob, config_str, config_bool
+    netdevice, peer_information, config_int, config_blob, config_str, config_bool, \
+    ICSWVersion
 from initat.tools import configfile, logging_tools, process_tools
 
 
@@ -414,8 +415,6 @@ class server_check(object):
     def __init__(self, **kwargs):
         # server_type: name of server, no wildcards supported (!)
         self.__server_type = kwargs["server_type"]
-        if self.__server_type.count("%"):
-            raise SyntaxError("no wildcards supported in server_check, use device_with_config")
         if "host_name" in kwargs:
             self.host_name = kwargs["host_name"]
             self.short_host_name = self.host_name.split(".")[0]

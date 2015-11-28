@@ -548,10 +548,15 @@ def migrate_db(opts):
 
 
 def call_update_funcs(opts):
+    create_version_entries()
     create_fixtures()
     call_manage(["create_cdg", "--name", opts.system_group_name])
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
+
+
+def create_version_entries():
+    call_manage(["create_version_entries"])
 
 
 def create_fixtures():

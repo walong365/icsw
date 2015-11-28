@@ -32,7 +32,11 @@ from initat.cluster.backbone.models.functions import check_integer, check_empty_
 
 __all__ = [
     "ICSWVersion",
+    "VERSION_NAME_LIST",
 ]
+
+
+VERSION_NAME_LIST = ["database", "software", "models"]
 
 
 class ICSWVersion(models.Model):
@@ -46,4 +50,6 @@ class ICSWVersion(models.Model):
         ]
     )
     version = models.CharField(max_length=128)
+    # to group version entries
+    insert_idx = models.IntegerField(default=1)
     date = models.DateTimeField(auto_now_add=True)

@@ -28,7 +28,8 @@ import time
 
 from initat.constants import GEN_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
-from initat.cluster.backbone.models.version_functions import get_database_version, get_models_version
+from initat.cluster.backbone.models.version_functions import get_database_version, \
+    get_models_version, is_debug_run
 from .constants import *
 from .service import Service
 
@@ -122,14 +123,25 @@ class ServiceContainer(object):
             self.log("Model version is {}".format(_model_v))
         else:
             if _model_v != self.model_version:
-                self.model_version_changed = True
-                self.log(
-                    "Model version changed from {} to {}".format(
-                        self.model_version,
-                        _model_v,
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
+                _cs = "Model version changed from {} to {}".format(
+                    self.model_version,
+                    _model_v,
                 )
+                if not is_debug_run():
+                    self.model_version_changed = True
+                    self.log(
+                        "{}".format(
+                            _cs
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    self.log(
+                        "{} (ignoring due to debug run)".format(
+                            _cs,
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
 
     def check_service(self, entry, use_cache=True, refresh=True, version_changed=False):
         if not use_cache or not self.__act_proc_dict:
@@ -169,7 +181,7 @@ class ServiceContainer(object):
         self.update_version_tuple()
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_changed)
-        #if self._config_check_errors:
+        # if self._config_check_errors:
         #    self.log(
         #        "{} not ok ({}), triggering model check".format(
         #            logging_tools.get_plural("config check", len(self._config_check_errors)),
