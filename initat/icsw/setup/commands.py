@@ -94,6 +94,7 @@ DB_CS_FILENAME = config_store.ConfigStore.build_path(DB_ACCESS_CS_NAME)
 
 def call_manage(args, **kwargs):
     _output = kwargs.get("output", False)
+    _show_output = kwargs.get("show_output", False)
     command = [os.path.join(ICSW_ROOT, "initat", "cluster", "manage.py")] + args
     com_str = " ".join(command)
     s_time = time.time()
@@ -128,7 +129,8 @@ def call_manage(args, **kwargs):
                 logging_tools.get_diff_time_str(e_time - s_time),
             )
         )
-        # print c_out
+        if _show_output:
+            print c_out
         if _output:
             return True, c_out
         else:
@@ -556,7 +558,7 @@ def call_update_funcs(opts):
 
 
 def create_version_entries():
-    call_manage(["create_version_entries"])
+    call_manage(["create_version_entries"], show_output=True)
 
 
 def create_fixtures():
