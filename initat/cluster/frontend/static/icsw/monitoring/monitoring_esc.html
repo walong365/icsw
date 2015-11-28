@@ -1,9 +1,9 @@
 
 <script type="text/ng-template" id="icsw.monitoring.escalation">
 
-    <tabset ng-cloack>
+    <uib-tabset ng-cloack>
 
-        <tab heading="Service escalation">
+        <uib-tab heading="Service escalation">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceEscalationService">
                 <h2>Service escalation templates ({{entries.length}} entries),
                     <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
@@ -53,9 +53,9 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Device escalation">
+        <uib-tab heading="Device escalation">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceEscalationService">
                 <h2>Device escalation templates ({{entries.length}} entries),
                     <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
@@ -105,8 +105,8 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-    </tabset>
+    </uib-tabset>
 
 </script>

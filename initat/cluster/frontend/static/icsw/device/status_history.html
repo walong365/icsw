@@ -83,11 +83,11 @@
     </div>
 
     <icsw-tools-ensure-device-selection dev-list="devicepks" list-ready="devlistReady">
-        <tabset>
-            <tab ng-repeat="device in devicepks" heading="{{devices_rest[device].full_name}}" select="enabled_device_lut[device] = device">
+        <uib-tabset>
+            <uib-tab ng-repeat="device in devicepks" heading="{{devices_rest[device].full_name}}" select="enabled_device_lut[device] = device">
                 <icsw-device-status-history-device deviceid="enabled_device_lut[device]"></icsw-device-status-history-device>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
     </icsw-tools-ensure-device-selection>
 
 </script>

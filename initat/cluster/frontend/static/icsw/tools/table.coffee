@@ -131,8 +131,8 @@ angular.module(
                 #    e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
     }
-]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", "icswTools", "icswToolsSimpleModalService", "toaster", "$timeout",
-    (Restangular, $parse, $injector, $compile, $templateCache, $modal, icswTools, icswToolsSimpleModalService, toaster, $timeout) ->
+]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$uibModal", "icswTools", "icswToolsSimpleModalService", "toaster", "$timeout",
+    (Restangular, $parse, $injector, $compile, $templateCache, $uibModal, icswTools, icswToolsSimpleModalService, toaster, $timeout) ->
         return {
             restrict: 'EA'
             scope: true

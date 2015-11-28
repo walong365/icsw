@@ -25,9 +25,9 @@ DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
 monitoring_build_info_module.controller("icswMonitoringBuildInfoCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-     "$q", "$modal", "icswAcessLevelService", "$timeout", "icswTools", "ICSW_URLS"
+     "$q", "$uibModal", "icswAcessLevelService", "$timeout", "icswTools", "ICSW_URLS"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
-     $q, $modal, icswAcessLevelService, $timeout, icswTools, ICSW_URLS) ->
+     $q, $uibModal, icswAcessLevelService, $timeout, icswTools, ICSW_URLS) ->
         icswAcessLevelService.install($scope)
         $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)
         $scope.masters = []

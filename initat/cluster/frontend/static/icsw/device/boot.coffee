@@ -53,8 +53,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "icswAcessLevelService", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, icswAcessLevelService, $timeout, msgbus, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, icswAcessLevelService, $timeout, msgbus, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
         icswAcessLevelService.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->

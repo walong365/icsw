@@ -140,8 +140,8 @@ angular.module(
         "get_device_lut": () ->
             return device_lut
     }
-]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswSimpleAjaxCall) ->
+]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswSimpleAjaxCall) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
         $scope.loaded = false
@@ -200,15 +200,15 @@ angular.module(
                 filter_re
             )
             $scope.devvar_tree.show_selected(false)
-]).directive("icswDeviceConfigurationVarOverview", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswDeviceConfigurationVarOverview", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
     return {
         scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.var.overview")
         controller: "icswConfigVarsCtrl"
     }
-]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$modal", "icswAcessLevelService", "msgbus", "icswTools", "ICSW_URLS", "icswDeviceConfigRestService", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $modal, icswAcessLevelService, msgbus, icswTools, ICSW_URLS, icswDeviceConfigRestService, $timeout) ->
+]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "msgbus", "icswTools", "ICSW_URLS", "icswDeviceConfigRestService", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, msgbus, icswTools, ICSW_URLS, icswDeviceConfigRestService, $timeout) ->
         icswAcessLevelService.install($scope)
         $scope.devices = []
         $scope.configs = []

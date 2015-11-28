@@ -3,7 +3,7 @@
         <ul class="nav navbar-nav">
             <li class="active" ng-if="num_gauges" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >
                 <div ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
-                    <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></progressbar>
+                    <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
                 </div>
             </li>
             <li class="active" ng-if="num_gauges == 0" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >

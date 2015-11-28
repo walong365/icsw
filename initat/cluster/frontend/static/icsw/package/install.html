@@ -201,8 +201,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.overview">
-    <tabset>
-        <tab heading="Package repositories">
+    <uib-tabset>
+        <uib-tab heading="Package repositories">
             <icsw-tools-rest-table target-list="entries.repos" config-service="icswPackageInstallRepositoryService">
                 <h3>Repositories ({{ entries.repos.length }} entries, {{ rest_data.service.length }} services),
                     <icsw-tools-button type="reload" value="rescan repos" ng-click="rescan_repos(reload)"></icsw-tools-button>
@@ -230,11 +230,11 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
-        <tab heading="Package search">
+        </uib-tab>
+        <uib-tab heading="Package search">
             <icsw-package-install-search-overview repositories="entries.repos"></icsw-package-install-search-overview>
-       </tab>
-        <tab heading="Install">
+       </uib-tab>
+        <uib-tab heading="Install">
             <h3>
                 <div class="form-inline">
                     ({{ devices.length }} devices, {{ entries.packages.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
@@ -304,6 +304,6 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
-    </tabset>
+        </uib-tab>
+    </uib-tabset>
 </script>

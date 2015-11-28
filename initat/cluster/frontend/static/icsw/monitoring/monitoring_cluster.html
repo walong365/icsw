@@ -1,8 +1,8 @@
 
 <script type="text/ng-template" id="icsw.monitoring.cluster">
-    <tabset ng-cloak>
+    <uib-tabset ng-cloak>
 
-        <tab heading="Host Clusters">
+        <uib-tab heading="Host Clusters">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostClusterService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
                 <h2>Host Cluster ({{entries_filtered.length}} entries),
@@ -51,9 +51,9 @@
                     </tbody>
                 </table>
                 </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Service Clusters">
+        <uib-tab heading="Service Clusters">
              <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceClusterService"
                  st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
                  <h2>Service Cluster ({{entries_filtered.length}} entries),
@@ -104,9 +104,9 @@
                      </tbody>
                  </table>
              </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Host dependency templates">
+        <uib-tab heading="Host dependency templates">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyTemplateService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
                 <h2>Host dependency templates ({{entries_filtered.length}} entries),
@@ -163,9 +163,9 @@
                      </tbody>
                  </table>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Service dependency templates">
+        <uib-tab heading="Service dependency templates">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyTemplateService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
                 <h2>Service dependency templates ({{entries_filtered.length}} entries),
@@ -226,9 +226,9 @@
                      </tbody>
                  </table>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Host dependencies">
+        <uib-tab heading="Host dependencies">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
                 <h2>Host dependencies ({{entries_filtered.length}} entries),
@@ -271,9 +271,9 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Service dependencies">
+        <uib-tab heading="Service dependencies">
             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyService"
                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
                 <h2>Service dependencies ({{entries_filtered.length}} entries),
@@ -319,7 +319,7 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-    </tabset>
+    </uib-tabset>
 </script>

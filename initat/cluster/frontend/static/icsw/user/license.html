@@ -109,8 +109,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.license.packages">
-    <tabset>
-        <tab ng-repeat="pack in license_packages | orderBy:package_order_fun:true" heading="{{pack.name}}">
+    <uib-tabset>
+        <uib-tab ng-repeat="pack in license_packages | orderBy:package_order_fun:true" heading="{{pack.name}}">
             <h4>{{pack.name}}</h4>
 
             <table class="table table-condensed table-hover" style="width: auto;">
@@ -170,8 +170,8 @@
                 </accordion-group>
             </accordion>
 
-        </tab>
+        </uib-tab>
 
 
-    </tabset>
+    </uib-tabset>
 </script>

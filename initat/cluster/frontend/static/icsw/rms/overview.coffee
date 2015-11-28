@@ -88,6 +88,15 @@ class io_struct
         @waiting = true
         @refresh = 0
         @update = true
+        @editorOptions = {
+            lineWrapping : false
+            lineNumbers : true
+            readOnly : true
+            styleActiveLine: true
+            indentUnit : 4
+            followTail : false
+            trackPosition : true
+        }
     get_name : () =>
         if @task_id
             return "#{@job_id}.#{@task_id} (#{@type})"
@@ -214,8 +223,8 @@ rms_module = angular.module(
         lineNumbers: true
         matchBrackets: true
     }
-}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, icswAcessLevelService, $timeout, $sce, ICSW_URLS, icswSimpleAjaxCall, $window) ->
+}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS, icswSimpleAjaxCall, $window) ->
         icswAcessLevelService.install($scope)
         $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
@@ -223,13 +232,6 @@ rms_module = angular.module(
         $scope.pagDone = paginatorSettings.get_paginator("done", $scope)
         $scope.pagNode = paginatorSettings.get_paginator("node", $scope)
         $scope.header_filter_set = false
-        $scope.editorOptions = {
-            lineWrapping : false
-            lineNumbers : true
-            readOnly : true
-            styleActiveLine: true
-            indentUnit : 4
-        }
         $scope.io_dict = {}
         $scope.io_list = []
         $scope.run_list = []
@@ -450,7 +452,6 @@ rms_module = angular.module(
                                     xml = $(xml)
                                     for _id in $scope.io_list
                                         $scope.io_dict[_id].feed(xml)
-                                    $scope.$digest()
                             )
             )
         $scope.get_io_link_class = (job, io_type) ->
@@ -843,7 +844,7 @@ rms_module = angular.module(
         scope:
             struct : "="
     }
-]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", ($compile, $templateCache, $modal, icswUserService, ICSW_URLS, icswSimpleAjaxCall) ->
+]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$uibModal", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", ($compile, $templateCache, $uibModal, icswUserService, ICSW_URLS, icswSimpleAjaxCall) ->
     return {
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
@@ -964,8 +965,8 @@ rms_module = angular.module(
             scope.change_display = (file_name) ->
                 scope.fis[file_name].show = !scope.fis[file_name].show
     }
-]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "icswAcessLevelService", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, icswAcessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall) ->
+]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, icswAcessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall) ->
         $scope.servers = []
         $scope.licenses = []
         $scope.lic_overview = []

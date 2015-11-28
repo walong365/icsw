@@ -166,17 +166,17 @@
 
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">
     <h3 ng-show="show_maps">{{ location_gfx_list.length }} Maps</h3>
-    <tabset ng-if="show_maps">
-        <tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
-            <tab-heading>
+    <uib-tabset ng-if="show_maps">
+        <uib-tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
+            <uib-tab-heading>
                 {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
-            </tab-heading>
+            </uib-tab-heading>
             <icsw-device-livestatus-location-map ls-filter="ls_filter" gfx="loc_gfx" gfx-size="gfx.size"}}></icsw-device-livestatus-location-map>
-        </tab>
-        <tab select="select_settings()">
-            <tab-heading>
+        </uib-tab>
+        <uib-tab select="select_settings()">
+            <uib-tab-heading>
                 Settings
-            </tab-heading>
+            </uib-tab-heading>
             <h4>Graph settings</h4>
             <div class="list-group" style="width:400px;">
                 <div class="list-group-item">
@@ -193,8 +193,8 @@
                     <icsw-tools-button type="enable" is-enable="autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
                 </div>
             </div>
-        </tab>
-    </tabset>
+        </uib-tab>
+    </uib-tabset>
     <h3 ng-show="!show_maps">No maps to show</h3>
 </script>
 

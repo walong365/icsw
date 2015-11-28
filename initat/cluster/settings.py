@@ -422,7 +422,7 @@ PIPELINE_JS = {
             "js/ui-bootstrap-tpls.min.js",
             "js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
-            "js/ui-codemirror.min.js",
+            "js/ui-codemirror.js",
             "js/angular-datetimepicker.js",
             # "js/angular-strap.min.js",
             # "js/angular-strap.tpl.min.js",

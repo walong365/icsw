@@ -65,8 +65,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "$timeout", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, toaster) ->
+).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$uibModal", "$timeout", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $uibModal, $timeout, icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, toaster) ->
         icswAcessLevelService.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"
@@ -268,7 +268,7 @@ angular.module(
         many_delete: true
         edit_template      : "network.device.type.form"
     }
-]).directive("monitoringhinttable", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("monitoringhinttable", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.hint.table")

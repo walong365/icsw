@@ -6,14 +6,14 @@
         <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
     </h2>
 
-    <tabset>
-        <tab heading="Evaluation">
+    <uib-tabset>
+        <uib-tab heading="Evaluation">
             <icsw-config-kpi-evaluation-table></icsw-config-kpi-evaluation-table>
-        </tab>
-        <tab heading="Configuration">
+        </uib-tab>
+        <uib-tab heading="Configuration">
             <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
-        </tab>
-    </tabset>
+        </uib-tab>
+    </uib-tabset>
 
 </script>
 
@@ -21,8 +21,8 @@
 
     <div style="font-size: 12px"> <!-- fix large font size from bootstrap dlg -->
 
-        <tabset>
-            <tab heading="Basic">
+        <uib-tabset>
+            <uib-tab heading="Basic">
                 <accordion close-others="false">
                     <accordion-group heading="Basic properties" is-open="true">
                         <form class="form-horizontal">
@@ -74,14 +74,14 @@
                         </form>
                     </accordion-group>
                 </accordion>
-            </tab>
-            <tab heading="Data source" select="on_data_source_tab_selected()">
+            </uib-tab>
+            <uib-tab heading="Data source" select="on_data_source_tab_selected()">
                 <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
 
                 <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
-            </tab>
+            </uib-tab>
 
-            <tab heading="KPI calculation">
+            <uib-tab heading="KPI calculation">
 
                 <accordion close-others="false">
                     <accordion-group heading="Formula" is-open="true">
@@ -101,8 +101,8 @@
                             </div>
                         </div>
                     </accordion-group>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
 
         <icsw-tools-button type="create" ng-show="mode == 'create'" ng-click="submit_kpi()"></icsw-tools-button>
         <icsw-tools-button type="modify" ng-show="mode != 'create'" ng-click="submit_kpi()"></icsw-tools-button>

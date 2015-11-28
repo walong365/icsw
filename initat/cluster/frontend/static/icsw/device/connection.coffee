@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswUserService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswUserService) ->
+).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswUserService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, blockUI, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswUserService) ->
         $scope.devsel_list = []
         # ac settings
         $scope.ac_type = "master"

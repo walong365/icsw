@@ -37,6 +37,8 @@ function uiCodemirrorDirective($timeout, uiCodemirrorConfig) {
 
     var codemirror = newCodemirrorEditor(iElement, codemirrorOptions);
 
+    scope.followTail = false;
+    scope.trackPosition = true;
     configOptionsWatcher(
       codemirror,
       iAttrs.uiCodemirror || iAttrs.uiCodemirrorOpts,
@@ -86,6 +88,11 @@ function uiCodemirrorDirective($timeout, uiCodemirrorConfig) {
     scope.$watch(uiCodemirrorAttr, updateOptions, true);
     function updateOptions(newValues, oldValue) {
       if (!angular.isObject(newValues)) { return; }
+      ["followTail", "trackPosition"].forEach(function(key) {
+        if (newValues.hasOwnProperty(key)) {
+          scope[key] = newValues[key];
+        };
+      });
       codemirrorDefaultsKeys.forEach(function(key) {
         if (newValues.hasOwnProperty(key)) {
 
@@ -119,7 +126,13 @@ function uiCodemirrorDirective($timeout, uiCodemirrorConfig) {
       //Code mirror expects a string so make sure it gets one
       //Although the formatter have already done this, it can be possible that another formatter returns undefined (for example the required directive)
       var safeViewValue = ngModel.$viewValue || '';
+      var cursor = codemirror.getCursor();
       codemirror.setValue(safeViewValue);
+      if (scope.followTail) {
+          codemirror.setCursor({line: codemirror.lastLine(), ch: 1});
+      } else if (scope.trackPosition) {
+          codemirror.setCursor({line: cursor.line, ch:cursor.ch});
+      };
     };
 
 

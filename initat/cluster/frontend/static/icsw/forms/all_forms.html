@@ -1,8 +1,8 @@
 <script type="text/ng-template" id="config.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
         <h2>Configuration '{{ edit_obj.name }}'</h2>
-        <tabset>
-            <tab heading="Basic setup">
+        <uib-tabset>
+            <uib-tab heading="Basic setup">
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div id="div_id_name" class="form-group ng-class:form_error('name')">
@@ -58,14 +58,14 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-            <tab heading="Categories">
+            </uib-tab>
+            <uib-tab heading="Categories">
                 <fieldset>
                     <legend>Categories</legend>
                     <div icsw-config-category-choice="" edit-obj="edit_obj" mode="conf"></div>
                 </fieldset>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
@@ -2058,8 +2058,8 @@
 <script type="text/ng-template" id="config.str.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
         <h2>String var '{{ edit_obj.name }}'</h2>
-        <tabset>
-            <tab heading="Settings">
+        <uib-tabset>
+            <uib-tab heading="Settings">
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div id="div_id_name" class="form-group  ng-class:form_error('name')">
@@ -2085,11 +2085,11 @@
                     </div>
                 </fieldset>
                 <div ng-bind-html="show_config_var_help()"></div>
-            </tab>
-            <tab heading="History">
+            </uib-tab>
+            <uib-tab heading="History">
                 <icsw-history-model-history style="config" model="'config_str'" object-id="edit_obj.idx"></icsw-history-model-history>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
@@ -2439,9 +2439,9 @@
                 </ul>
             </div>
         </fieldset>
-        <tabset>
-            <tab heading="BaseScan" select='set_scan_mode("base")' active="_current_dev.scan_base_active"></tab>
-            <tab ng-show='has_com_capability(_edit_obj, "hm")' heading="Hostmonitor" select='set_scan_mode("hm")' active="_current_dev.scan_hm_active">
+        <uib-tabset>
+            <uib-tab heading="BaseScan" select='set_scan_mode("base")' active="_current_dev.scan_base_active"></uib-tab>
+            <uib-tab ng-show='has_com_capability(_edit_obj, "hm")' heading="Hostmonitor" select='set_scan_mode("hm")' active="_current_dev.scan_hm_active">
                 <fieldset>
                     <legend>Flags</legend>
                     <div class="form-group">
@@ -2462,8 +2462,8 @@
                     <div class="alert alert-danger" ng-show="!_edit_obj.strict_mode && _edit_obj.modify_peering">attention: peers might get lost
                     </div>
                 </fieldset>
-            </tab>
-            <tab ng-show='has_com_capability(_edit_obj, "snmp")' heading="SNMP" select='set_scan_mode("snmp")' active="_current_dev.scan_snmp_active">
+            </uib-tab>
+            <uib-tab ng-show='has_com_capability(_edit_obj, "snmp")' heading="SNMP" select='set_scan_mode("snmp")' active="_current_dev.scan_snmp_active">
                 <fieldset>
                     <legend>SNMP Scan Settings</legend>
                     <div id="div_id_snmp_community" class="form-group">
@@ -2503,8 +2503,8 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-            <tab ng-show='has_com_capability(_edit_obj, "wmi")' heading="WMI" select='set_scan_mode("wmi")' active="_current_dev.scan_wmi_active">
+            </uib-tab>
+            <uib-tab ng-show='has_com_capability(_edit_obj, "wmi")' heading="WMI" select='set_scan_mode("wmi")' active="_current_dev.scan_wmi_active">
                 <fieldset>
                     <legend>WMI Scan Settings</legend>
                     <div id="div_id_wmi_username" class="form-group">
@@ -2536,8 +2536,8 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <alert type="warning" ng-show="!_current_dev.manual_address">Please enter or select an IP address</alert>
         <div class="form-actions">
             <input type="button" name="scan" value="scan" class="btn btn btn-sm btn-primary" id="button-id-scan" ng-click="fetch_device_network()" ng-disabled="!_current_dev.manual_address"></input> <input type="submit" name="cancel" value="cancel" class="btn btn-primary btn btn-sm btn-warning" id="submit-id-cancel"></input>
@@ -3096,8 +3096,8 @@
 <script type="text/ng-template" id="config.script.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
         <h2>Config script '{{ edit_obj.name }}'</h2>
-        <tabset>
-            <tab heading="Settings">
+        <uib-tabset>
+            <uib-tab heading="Settings">
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div id="div_id_name" class="form-group  ng-class:form_error('name')">
@@ -3141,11 +3141,11 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-            <tab heading="History">
+            </uib-tab>
+            <uib-tab heading="History">
                 <icsw-history-model-history on-revert="on_script_revert(edit_obj, get_change_list)" style="config" model="'config_script'" object-id="edit_obj.idx"></icsw-history-model-history>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
@@ -3860,8 +3860,8 @@
 <script type="text/ng-template" id="config.int.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
         <h2>Integer var '{{ edit_obj.name }}'</h2>
-        <tabset>
-            <tab heading="Settings">
+        <uib-tabset>
+            <uib-tab heading="Settings">
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div id="div_id_name" class="form-group  ng-class:form_error('name')">
@@ -3889,11 +3889,11 @@
                     </div>
                 </fieldset>
                 <div ng-bind-html="show_config_var_help()"></div>
-            </tab>
-            <tab heading="History">
+            </uib-tab>
+            <uib-tab heading="History">
                 <icsw-history-model-history style="config" model="'config_int'" object-id="edit_obj.idx"></icsw-history-model-history>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
@@ -4052,8 +4052,8 @@
 <script type="text/ng-template" id="config.bool.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
         <h2>Bool var '{{ edit_obj.name }}'</h2>
-        <tabset>
-            <tab heading="Settings">
+        <uib-tabset>
+            <uib-tab heading="Settings">
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div class="form-group  ng-class:form_error('name')">
@@ -4080,12 +4080,12 @@
                     </div>
                 </fieldset>
                 <div ng-bind-html="show_config_var_help()"></div>
-            </tab>
-            <tab heading="History">
+            </uib-tab>
+            <uib-tab heading="History">
                 <icsw-history-model-history style="config" model="'config_bool'" object-id="edit_obj.idx">
                 </icsw-history-model-history>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions">
             <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
         </div>

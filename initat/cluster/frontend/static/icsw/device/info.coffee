@@ -28,8 +28,8 @@ angular.module(
 ]).service(
     "DeviceOverviewService",
     [
-        "Restangular", "$rootScope", "$templateCache", "$compile", "$modal", "$q", "icswAcessLevelService", "msgbus",
-        (Restangular, $rootScope, $templateCache, $compile, $modal, $q, icswAcessLevelService, msgbus) ->
+        "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService", "msgbus",
+        (Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService, msgbus) ->
             return {
                 "NewSingleSelection" : (dev) ->
                     if dev.is_meta_device
@@ -144,8 +144,8 @@ angular.module(
                     else if name in ["config", "graphing", "device_variable"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
-]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$modal", "icswAcessLevelService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $modal, icswAcessLevelService, toaster) ->
+]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, toaster) ->
         icswAcessLevelService.install($scope)
         $scope.show_uuid = false
         $scope.image_url = ""
@@ -175,7 +175,7 @@ angular.module(
                     )
             else
                 toaster.pop("warning", "form validation problem", "", 0)
-]).directive("icswSimpleDeviceInfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
+]).directive("icswSimpleDeviceInfo", ["$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS) ->
     return {
         restrict : "EA"
         controller: "deviceinfo_ctrl"

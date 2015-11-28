@@ -7,24 +7,24 @@
 {% block content %}
 
 <div ng-controller="icswConfigCategoryLocationTopCtrl">
-    <tabset >
-        <tab heading="Device location" select="set_active_tab('loc')">
+    <uib-tabset >
+        <uib-tab heading="Device location" select="set_active_tab('loc')">
             <icsw-device-location-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
             </icsw-device-location-overview>
-        </tab>
-        <tab heading="Location configuration" select="set_active_tab('conf')">
+        </uib-tab>
+        <uib-tab heading="Location configuration" select="set_active_tab('conf')">
             <icsw-config-category-location-edit preview-gfx="preview_gfx" preview-close="close_preview">
             </icsw-config-category-location-edit>
             <hr ng-show="preview_gfx"/>
             <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview">
             </icsw-config-category-tree-map-enhance>
-        </tab>
-        <tab heading="Available locations" select="set_active_tab('avail')">
+        </uib-tab>
+        <uib-tab heading="Available locations" select="set_active_tab('avail')">
             <div ng-controller="icswConfigCategoryTreeCtrl">
                 <icsw-config-category-tree mode="location"></icsw-config-category-tree>
             </div>
-        </tab>
-    </tabset>
+        </uib-tab>
+    </uib-tabset>
 </div>
 
 {% endblock %}

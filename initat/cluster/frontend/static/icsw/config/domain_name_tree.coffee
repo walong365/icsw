@@ -79,8 +79,8 @@ angular.module(
             else
                 return load_data(client).promise
     }
-]).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "$q", "$modal", "icswAcessLevelService", "ICSW_URLS", "icswConfigDomainNameTreeService", "icswDomainNameService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, $q, $modal, icswAcessLevelService, ICSW_URLS, icswConfigDomainNameTreeService, icswDomainNameService) ->
+]).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "$q", "$uibModal", "icswAcessLevelService", "ICSW_URLS", "icswConfigDomainNameTreeService", "icswDomainNameService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, $q, $uibModal, icswAcessLevelService, ICSW_URLS, icswConfigDomainNameTreeService, icswDomainNameService) ->
         $scope.dnt = new icswConfigDomainNameTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("dtn_base", $scope)
         $scope.entries = []

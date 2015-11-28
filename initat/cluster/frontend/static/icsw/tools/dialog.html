@@ -42,8 +42,8 @@
             cascades.
             Please select actions for each of these devices.
 
-            <tabset>
-                <tab ng-repeat="(obj_pk, ref_list) in related_objects" heading="{{ get_object_by_idx(obj_pk).name }}">
+            <uib-tabset>
+                <uib-tab ng-repeat="(obj_pk, ref_list) in related_objects" heading="{{ get_object_by_idx(obj_pk).name }}">
                     <!-- obj_pk is string! -->
 
                     <div class="panel-body">
@@ -117,8 +117,8 @@
                         </div>
 
                     </div>
-                </tab>
-            </tabset>
+                </uib-tab>
+            </uib-tabset>
         </div>
     </div>
 </script>

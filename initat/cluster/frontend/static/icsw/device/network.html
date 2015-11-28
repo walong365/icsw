@@ -402,13 +402,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.total">
-    <tabset icsw-tools-add-acl-functions>
-        <tab heading="Device settings">
+    <uib-tabset icsw-tools-add-acl-functions>
+        <uib-tab heading="Device settings">
             <icsw-device-network-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d" show-copy-button="1">
             </icsw-device-network-overview>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Network topology">
+        <uib-tab heading="Network topology">
             <div ng-controller="icswDeviceNetworkGraphCtrl">
                 <h3>
                     Network topology for {{ devices.length }} devices
@@ -439,8 +439,8 @@
                 </form>
                 <icsw-device-network-graph ls-filter="ls_filter"></icsw-device-network-graph>
             </div>
-        </tab>
-        <tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')">
+        </uib-tab>
+        <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')">
             <div ng-controller="icswDeviceNetworkClusterCtrl">
                 <h3>
                     Network clusters ({{ clusters.length }}), <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
@@ -470,9 +470,9 @@
                     </tbody>
                 </table>
             </div>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Networks">
+        <uib-tab heading="Networks">
             <icsw-tools-rest-table target-list="entries" config-service="icswNetworkService">
                 <h3>
                     Networks ({{entries.length}} entries),
@@ -592,9 +592,9 @@
                     </table>
                 </div>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Network types">
+        <uib-tab heading="Network types">
             <icsw-tools-rest-table target-list="entries" config-service="icswNetworkTypeService">
                 <h3>Network types ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)" size="sm"/></h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
@@ -616,9 +616,9 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
+        </uib-tab>
 
-        <tab heading="Network device types">
+        <uib-tab heading="Network device types">
             <icsw-tools-rest-table target-list="entries" config-service="icswNetworkDeviceTypeService">
                 <h3>Network device types ({{entries.length}} entries), <icsw-tools-button type="create" ng-click="create($event)" size="sm"/></h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
@@ -655,8 +655,8 @@
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
-        </tab>
-    </tabset>
+        </uib-tab>
+    </uib-tabset>
 </script>
 
 <script type="text/ng-template" id="network.device.type.form">
@@ -724,8 +724,8 @@
 
 <script type="text/ng-template" id="netdevice.form">
     <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
-        <tabset>
-            <tab heading="Basic settings">
+        <uib-tabset>
+            <uib-tab heading="Basic settings">
                 <fieldset>
                     <div class="form-group  ng-class:form_error('devname')">
                         <label class="control-label col-sm-3 requiredField">
@@ -837,8 +837,8 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-            <tab heading="Bridge / Bond">
+            </uib-tab>
+            <uib-tab heading="Bridge / Bond">
                 <fieldset ng-show="!_edit_obj.vlan_id && !_edit_obj.bond_master && !_edit_obj.is_bond">
                     <legend>Bridge settings</legend>
                     <div class="form-group">
@@ -905,8 +905,8 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-            <tab heading="Hardware">
+            </uib-tab>
+            <uib-tab heading="Hardware">
                 <fieldset>
                     <div class="form-group">
                         <label class="control-label col-sm-3">
@@ -990,8 +990,8 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions">
             <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
         </div>
@@ -1000,8 +1000,8 @@
 
 <script type="text/ng-template" id="network.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <tabset>
-            <tab heading="Base data">
+        <uib-tabset>
+            <uib-tab heading="Base data">
                 <fieldset>
                     <legend>Base data</legend>
                     <div class="form-group ng-class:form_error('identifier')">
@@ -1082,8 +1082,8 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-            <tab heading="Flags / Range">
+            </uib-tab>
+            <uib-tab heading="Flags / Range">
                 <fieldset>
                     <legend>Flags and priority</legend>
                     <div class="form-group">
@@ -1175,8 +1175,8 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions">
             <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"/>
         </div>

@@ -1,8 +1,8 @@
 <script type="text/ng-template" id="icsw.device.partition.overview">
     <h2>Disk info for {{ devsel_list.length }} devices</h2>
     <icsw-tools-ensure-device-selection dev-list="devsel_list">
-        <tabset>
-            <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
+        <uib-tabset>
+            <uib-tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
                 <div ng-show="dev.act_partition_table">
                     <h4>
                         Partition table '{{ dev.act_partition_table.name}}',
@@ -48,7 +48,7 @@
                         <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
                     </h4>
                 </div>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
     </icsw-tools-ensure-device-selection>
 </script>

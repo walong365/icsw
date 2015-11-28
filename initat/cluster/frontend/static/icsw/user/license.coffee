@@ -24,10 +24,10 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "gettext",
     ]
 ).controller("icswUserLicenseCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal",
      "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService', 'icswUserLicenseDataService',
      "icswAcessLevelService", "icswCSRFService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal,
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal,
      ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
      icswAcessLevelService, icswCSRFService) ->
         $scope.uploader = new FileUploader(

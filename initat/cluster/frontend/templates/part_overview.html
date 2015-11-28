@@ -9,8 +9,8 @@
 {% verbatim %}
 
 <div ng-controller="icswConfigPartitionTableCtrl">
-    <tabset>
-        <tab heading="Partitions">
+    <uib-tabset>
+        <uib-tab heading="Partitions">
             <div class="col-sm-12">
                 <h2>Partition tables ({{entries.length}} entries),
                     <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/>&nbsp;
@@ -26,16 +26,16 @@
                     </tfoot>
                 </table>
             </div>
-        </tab>
-        <tab ng-repeat="part in edit_pts" active="part.tab_active">
-            <tab-heading>
+        </uib-tab>
+        <uib-tab ng-repeat="part in edit_pts" active="part.tab_active">
+            <uib-tab-heading>
                 <span class="glyphicon glyphicon-remove" ng-click="close_part(part)"></span>{{ part.name }}
-            </tab-heading>
+            </uib-tab-heading>
             <div>
                 <icsw-config-disk-layout partition_fs="partition_fs" part_table="part"></icsw-config-disk-layout>
             </div>
-        </tab>
-    </tabset>
+        </uib-tab>
+    </uib-tabset>
 </div>
 
 {% endverbatim %}

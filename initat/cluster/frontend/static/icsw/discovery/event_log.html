@@ -11,13 +11,13 @@
     </alert>
 
     <icsw-tools-ensure-device-selection dev-list="device_pks_ordered" list-ready="device_list_ready">
-        <tabset>
-            <tab ng-if="!error && no_device_with_logs_selected" heading="N/A" active="device_tab_active['no_device_tab']">
+        <uib-tabset>
+            <uib-tab ng-if="!error && no_device_with_logs_selected" heading="N/A" active="device_tab_active['no_device_tab']">
                 <alert type="warning">
                     No device with logs selected.
                 </alert>
-            </tab>
-            <tab ng-repeat="device_pk in [ALL_DEVICES_PK].concat(device_pks_ordered) track by device_pk"
+            </uib-tab>
+            <uib-tab ng-repeat="device_pk in [ALL_DEVICES_PK].concat(device_pks_ordered) track by device_pk"
                     heading="{{devices_rest[device_pk].name}} ({{devices_rest[device_pk].capabilities_description}})"
                     active="device_tab_active[device_pk]"
                     select="set_active(device_pk)"
@@ -84,8 +84,8 @@
                         </tbody>
                     </table>
                 </div>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
     </icsw-tools-ensure-device-selection>
 </script>
 

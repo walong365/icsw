@@ -293,11 +293,11 @@ angular.module(
                return true
         }
 ]).controller("icswDeviceLiveStatusCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "$timeout",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "$timeout",
      "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceLivestatusDataService",
      "icswCachingCall", "icswLivestatusFilterFactory", "icswDeviceTreeService", "icswLivestatusDevSelFactory", "$state",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
-     $q, $modal, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceLivestatusDataService,
+     $q, $uibModal, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceLivestatusDataService,
      icswCachingCall, icswLivestatusFilterFactory, icswDeviceTreeService, icswLivestatusDevSelFactory, $state) ->
         $scope.host_entries = []
         $scope.service_entries = []
@@ -1239,7 +1239,7 @@ angular.module(
                     scope.ls_filter.set_categories(new_sel)
                     scope.ls_filter.trigger()
         }
-]).directive("icswDeviceLivestatusLocationMap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswDeviceLivestatusLocationMap", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.livestatus.location.map")

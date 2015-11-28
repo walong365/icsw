@@ -228,7 +228,7 @@ angular.module(
         template: $templateCache.get("icsw.device.location.overview")
         controller: "icswDeviceLocationCtrl"
     }
-]).directive("icswDeviceLocationList", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
+]).directive("icswDeviceLocationList", ["$templateCache", "$compile", "$uibModal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $uibModal, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.location.list")
@@ -266,7 +266,7 @@ angular.module(
                 else
                     return "btn btn-sm btn-default"
     }
-]).directive("icswDeviceMonitoringLocationList", ["$templateCache", "$modal", "$q", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($templateCache, $modal, $q, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
+]).directive("icswDeviceMonitoringLocationList", ["$templateCache", "$uibModal", "$q", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($templateCache, $uibModal, $q, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
         restrict : "EA"
         template: $templateCache.get("icsw.device.monitoring.location.list")
         link : (scope, el, attrs) ->
@@ -338,7 +338,7 @@ angular.module(
                 dml = scope.set_lut[pk]
                 dml.locked = !dml.locked
                 dml.put()
-]).directive("icswDeviceLocationMap", ["d3_service", "$templateCache", "$compile", "$modal", "Restangular", (d3_service, $templateCache, $compile, $modal, Restangular) ->
+]).directive("icswDeviceLocationMap", ["d3_service", "$templateCache", "$compile", "$uibModal", "Restangular", (d3_service, $templateCache, $compile, $uibModal, Restangular) ->
     return {
         restrict : "EA"
         link : (scope, element, attrs) ->

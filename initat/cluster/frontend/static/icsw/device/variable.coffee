@@ -384,8 +384,8 @@ device_variable_module = angular.module(
                     scope.obj.device_variable_set.push(data)
                 )
     }
-]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "$q", "$modal", "blockUI", "icswTools", "icswDeviceVariableListService", "icswDeviceVariableRestService",
-    ($scope, $compile, $filter, $templateCache, $q, $modal, blockUI, icswTools, icswDeviceVariableListService, icswDeviceVariableRestService) ->
+]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "icswTools", "icswDeviceVariableListService", "icswDeviceVariableRestService",
+    ($scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, icswTools, icswDeviceVariableListService, icswDeviceVariableRestService) ->
         $scope.vars = {
             name_filter: ""
             hide_empty: false

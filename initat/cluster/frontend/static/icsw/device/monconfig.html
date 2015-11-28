@@ -19,8 +19,8 @@
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monconfig_open, 'glyphicon-chevron-right': !monconfig_open}"></i>
                     Monitoring config, {{ mc_tables.length }} tables shown,
                 </accordion-heading>
-                <tabset>
-                    <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
+                <uib-tabset>
+                    <uib-tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
                         <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3>
                         <table class="table table-condensed table-hover table-striped" style="width:auto;">
                             <thead>
@@ -49,8 +49,8 @@
                                 </tr>
                             </tbody>
                         </table>
-                    </tab>
-                </tabset>
+                    </uib-tab>
+                </uib-tabset>
             </accordion-group>
             <accordion-group is-open="monhint_open">
                 <accordion-heading>

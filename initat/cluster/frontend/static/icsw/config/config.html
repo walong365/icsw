@@ -1,27 +1,27 @@
 <script type="text/ng-template" id="icsw.config.overview">
-    <tabset>
-        <tab heading="Configurations">
+    <uib-tabset>
+        <uib-tab heading="Configurations">
             <icsw-config-config-table></icsw-config-config-table>
             <icsw-config-uploader></icsw-config-uploader>
             <icsw-config-generate-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-config-generate-config>
-        </tab>
-        <tab heading="Monitoring categories">
+        </uib-tab>
+        <uib-tab heading="Monitoring categories">
             <div ng-controller="icswConfigCategoryTreeCtrl">
                 <icsw-config-category-tree mode="mon"></icsw-config-category-tree>
             </div>
-        </tab>
-        <tab heading="Config categories">
+        </uib-tab>
+        <uib-tab heading="Config categories">
             <div ng-controller="icswConfigCategoryTreeCtrl">
                 <icsw-config-category-tree mode="config"></icsw-config-category-tree>
             </div>
-        </tab>
-        <tab heading="Catalogs">
+        </uib-tab>
+        <uib-tab heading="Catalogs">
             <icsw-config-catalog-table></icsw-config-catalog-table>
-        </tab>
-        <tab heading="Uploads ({{ num_cached_uploads }})" ng-show="num_cached_uploads">
+        </uib-tab>
+        <uib-tab heading="Uploads ({{ num_cached_uploads }})" ng-show="num_cached_uploads">
             <icsw-config-uploaded></icsw-config-uploaded>
-        </tab>
-    </tabset>
+        </uib-tab>
+    </uib-tabset>
 </script>
 
 <script type="text/ng-template" id="icsw.config.download">
@@ -441,8 +441,8 @@
             <!--for {{ dev_names() }}-->
         </span>
         <div ng-show="result_trees.length">
-            <tabset>
-                <tab ng-repeat="dev_conf in result_trees" heading="{{ dev_conf.name }}">
+            <uib-tabset>
+                <uib-tab ng-repeat="dev_conf in result_trees" heading="{{ dev_conf.name }}">
                     <h4><span ng-class="get_info_class(dev_conf)">{{ dev_conf.info_str }}</span></h4>
                     <div class="row">
                         <div class="col-md-5">
@@ -467,8 +467,8 @@
                             </div>
                         </div>
                     </div>
-                </tab>
-            </tabset>
+                </uib-tab>
+            </uib-tabset>
         </div>
     </div>
 </script>
@@ -476,8 +476,8 @@
 <script type="text/ng-template" id="mon.check.command.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
         <h2>Check command '{{ edit_obj.name }}'</h2>
-        <tabset>
-            <tab heading="Basic setup">
+        <uib-tabset>
+            <uib-tab heading="Basic setup">
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div id="div_id_name" class="form-group  ng-class:form_error('name')">
@@ -649,17 +649,17 @@
                         </div>
                     </div>
                 </fieldset>
-            </tab>
-            <tab heading="Categories">
+            </uib-tab>
+            <uib-tab heading="Categories">
                 <fieldset>
                     <legend>Categories</legend>
                     <div icsw-config-category-choice="" edit-obj="edit_obj" mode="mon"></div>
                 </fieldset>
-            </tab>
-            <tab heading="History">
+            </uib-tab>
+            <uib-tab heading="History">
                 <icsw-history-model-history style="config" model="'mon_check_command'" object-id="edit_obj.idx"></icsw-history-model-history>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
         <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" ng-value="action_string"></input></div>
     </form>
 </script>

@@ -1,7 +1,7 @@
 <script type="text/ng-template" id="icsw.layout.selection.modify">
     <div ng-controller="icswLayoutSelectionController">
-        <tabset>
-            <tab heading="current selection">
+        <uib-tabset>
+            <uib-tab heading="current selection">
                 <div class="input-group">
                     <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
                         <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search by name, IP or MAC" ng-change="update_search()"/>
@@ -56,9 +56,9 @@
                         </div>
                     </div>
                 </form>
-                <tabset>
-                    <tab select="activate_tab('d')" active="tabs['d']">
-                        <tab-heading>
+                <uib-tabset>
+                    <uib-tab select="activate_tab('d')" active="tabs['d']">
+                        <uib-tab-heading>
                             Device
                             <span ng-show="selection_dict['d']">
                                 ({{ selection_dict['d'] }})
@@ -66,13 +66,13 @@
                                      Clear
                                 </button>
                             </span>
-                        </tab-heading>
+                        </uib-tab-heading>
                         <!-- use tree for production or ntree for testing -->
                         <!-- add attribute max-heigth to limit used height -->
                         <tree treeconfig="tc_devices" single="true"></tree>
-                    </tab>
-                    <tab select="activate_tab('g')" active="tabs['g']">
-                        <tab-heading>
+                    </uib-tab>
+                    <uib-tab select="activate_tab('g')" active="tabs['g']">
+                        <uib-tab-heading>
                             Group
                             <span ng-show="selection_dict['g']">
                                 ({{ selection_dict['g'] }})
@@ -80,11 +80,11 @@
                                      Clear
                                 </button>
                             </span>
-                        </tab-heading>
+                        </uib-tab-heading>
                         <tree treeconfig="tc_groups"></tree>
-                    </tab>
-                    <tab select="activate_tab('c')" active="tabs['c']">
-                        <tab-heading>
+                    </uib-tab>
+                    <uib-tab select="activate_tab('c')" active="tabs['c']">
+                        <uib-tab-heading>
                             Category
                             <span ng-show="selection_dict['c']">
                                 ({{ selection_dict['c'] }})
@@ -92,12 +92,12 @@
                                      Clear
                                 </button>
                             </span>
-                        </tab-heading>
+                        </uib-tab-heading>
                         <tree treeconfig="tc_categories"></tree>
-                    </tab>
-                </tabset>
-            </tab>
-            <tab heading="saved selections" select="enable_saved_selections()">
+                    </uib-tab>
+                </uib-tabset>
+            </uib-tab>
+            <uib-tab heading="saved selections" select="enable_saved_selections()">
                 <form class="form-horizontal">
                     <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
                     <div ng-show="saved_selections.length">
@@ -136,7 +136,7 @@
                         </div>
                     </div>
                 </form>
-            </tab>
-        </tabset>
+            </uib-tab>
+        </uib-tabset>
     </div>
 </script>

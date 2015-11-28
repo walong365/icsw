@@ -27,8 +27,8 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.partition.overview")
         link : (scope, el, attrs) ->
-        controller: ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
-        ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->
+        controller: ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
+        ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->
             $scope.entries = []
             $scope.active_dev = undefined
             $scope.devsel_list = []

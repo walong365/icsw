@@ -568,8 +568,8 @@ config_module = angular.module(
                 scope.use_catalog = scope.config_catalogs[0].idx
             )
     }
-]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService", "msgbus", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall", "icswCachedConfigRestService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService, msgbus, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall, icswCachedConfigRestService) ->
+]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService", "msgbus", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall", "icswCachedConfigRestService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService, msgbus, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall, icswCachedConfigRestService) ->
         $scope.selected_objects = []
         $scope.num_cached_uploads = 0
         $scope.$watch(
@@ -1128,7 +1128,7 @@ config_module = angular.module(
         }
         replace : true
     }
-]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "blockUI", "$modal", "Restangular", "ICSW_URLS", "icswConfigRestService", "icswCachedConfigRestService", "icswSimpleAjaxCall", "icswConfigListService", ($templateCache, $compile, blockUI, $modal, Restangular, ICSW_URLS, icswConfigRestService, icswCachedConfigRestService, icswSimpleAjaxCall, icswConfigListService) ->
+]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "blockUI", "$uibModal", "Restangular", "ICSW_URLS", "icswConfigRestService", "icswCachedConfigRestService", "icswSimpleAjaxCall", "icswConfigListService", ($templateCache, $compile, blockUI, $uibModal, Restangular, ICSW_URLS, icswConfigRestService, icswCachedConfigRestService, icswSimpleAjaxCall, icswConfigListService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.cached.upload")
