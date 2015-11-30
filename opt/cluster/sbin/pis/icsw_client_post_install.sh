@@ -101,4 +101,4 @@ if [ -f /etc/debian_version ] ; then
     done
 fi
 
-restart_sofware "client"
+restart_software "client"
