@@ -55,7 +55,7 @@ class write_nameserver_config(cs_base_class.server_com):
         act_conf_dict = config_tools.get_config_var_list(
             cur_config,
             device.objects.get(Q(pk=self.server_idx))
-            )
+        )
         # get domain of server (to be used in SOA records of reverse maps)
         top_level_name = device.objects.get(Q(pk=self.server_idx)).domain_tree_node.full_name
         # get user/group id

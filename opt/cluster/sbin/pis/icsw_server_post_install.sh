@@ -19,24 +19,7 @@
 
 source $(dirname $0)/icsw_pis_tools.sh
 
-ICSW_BASE=/opt/cluster
-ICSW_BIN=${ICSW_BASE}/bin
-ICSW_SBIN=${ICSW_BASE}/sbin
-ICSW_SGE=${ICSW_BASE}/sge
-ICSW_PIS=${ICSW_SBIN}/pis
-ICSW_ETC=${ICSW_BASE}/etc
-ICSW_SHARE=${ICSW_BASE}/share
-ICSW_SYSCONF=${SYSCONF}/cluster
-ICSW_TFTP=${ICSW_BASE}/system/tftpboot
-ICSW_MOTHER=${ICSW_SHARE}/mother
-
 export PREFIX_INIT=/opt/python-init/lib/python/site-packages
-
-USRSBIN=/usr/sbin
-USRBIN=/usr/bin
-INIT=/etc/init.d
-
-MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
 
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static
@@ -177,18 +160,5 @@ else
 fi
 
 if [ "${RESTART}" = "1" ] ; then
-    # start / stop to force restart of all services
-    if [ ! -d /var/lib/meta-server/.srvstate ] ; then
-        NUM_RS=2
-    else
-        NUM_RS=1
-    fi
-
-    echo -e "\n${GREEN}restarting all ICSW related services (${RESTART_CAUSE}) (LC: ${NUM_RS})${OFF}\n"
-
-    for idx in $(seq ${NUM_RS} ) ; do
-        echo -e "${GREEN}(${idx}/${NUM_RS}) restarting all ICSW related services (server)${OFF}\n"
-        ${ICSW_SBIN}/icsw service stop meta-server
-        ${ICSW_SBIN}/icsw service start meta-server
-    done
+    restart_software "server"
 fi

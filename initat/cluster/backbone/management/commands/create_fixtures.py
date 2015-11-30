@@ -457,6 +457,12 @@ class Command(BaseCommand):
             hard_control=False,
         )
         factories.SensorActionFactory(
+            name="poweroff (software)",
+            description="tries to poweroff the devices via software",
+            action="poweroff",
+            hard_control=False,
+        )
+        factories.SensorActionFactory(
             name="reboot (software)",
             description="tries to reboot the devices via software",
             action="reboot",
