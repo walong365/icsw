@@ -23,12 +23,13 @@
 
 import os
 
+import psutil
 from django.db import connection
+
 from initat.logcheck_server.config import global_config
-from initat.logcheck_server.logcheck_struct import machine
+from initat.logcheck_server.logcheck_struct import Machine
 from initat.tools import cluster_location, server_mixins, configfile, logging_tools, \
     process_tools, threading_tools
-import psutil
 
 
 class server_process(server_mixins.ICSWBasePool):
@@ -50,7 +51,7 @@ class server_process(server_mixins.ICSWBasePool):
         # enable syslog_config
         self._enable_syslog_config()
         self.__options = options
-        machine.setup(self)
+        Machine.setup(self)
         self.register_timer(self._sync_machines, 3600, instant=True)
         self.register_timer(self._rotate_logs, 3600 * 12, instant=True)
 
@@ -89,11 +90,11 @@ class server_process(server_mixins.ICSWBasePool):
 
     def _sync_machines(self):
         connection.close()
-        machine.db_sync()
+        Machine.db_sync()
 
     def _rotate_logs(self):
         connection.close()
-        machine.rotate_logs()
+        Machine.rotate_logs()
 
     def process_start(self, src_process, src_pid):
         mult = 2
@@ -124,7 +125,9 @@ class server_process(server_mixins.ICSWBasePool):
 
     # syslog stuff
     def _enable_syslog_config(self):
-        syslog_exe_dict = {value.pid: value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
+        syslog_exe_dict = {
+            value.pid: value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")
+        }
         syslog_type = None
         for key, value in syslog_exe_dict.iteritems():
             self.log("syslog process found: {}".format(key))

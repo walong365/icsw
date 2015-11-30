@@ -82,6 +82,10 @@ else:
 # version config
 # TODO: check for local config when running in debug (development) mode
 _vers = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
+_DEF_NAMES = ["database", "software", "models"]
+ICSW_VERSION_DICT = {
+    _name: _vers[_name] for _name in _DEF_NAMES
+}
 ICSW_DATABASE_VERSION = _vers["database"]
 ICSW_SOFTWARE_VERSION = _vers["software"]
 ICSW_MODELS_VERSION = _vers["models"]

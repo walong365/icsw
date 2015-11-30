@@ -39,6 +39,7 @@ class Parser(object):
         self._add_debug_parser(child_parser)
         self._add_reload_parser(child_parser)
         self._add_state_parser(child_parser)
+        self._add_version_parser(child_parser)
         return parser
 
     def _add_status_parser(self, sub_parser):
@@ -63,6 +64,10 @@ class Parser(object):
         _act.set_defaults(childcom="start")
         _act.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
         self._add_iccs_sel(_act)
+
+    def _add_version_parser(self, sub_parser):
+        _act = sub_parser.add_parser("version", help="show version info")
+        _act.set_defaults(childcom="version")
 
     def _add_debug_parser(self, sub_parser):
         _act = sub_parser.add_parser("debug", help="debug service")

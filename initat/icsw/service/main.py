@@ -104,6 +104,25 @@ def _state_overview(opt_ns, result):
                 )
 
 
+def version_command(opt_ns):
+    from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
+    from django.conf import settings
+    print("ICSW Version info")
+    _vers = {
+        "db": ICSWVersion.get_latest_db_dict(),
+        "sys": settings.ICSW_VERSION_DICT,
+    }
+    for _key in sorted(_vers.keys()):
+        for _vn in VERSION_NAME_LIST:
+            print(
+                "  {:<3} {:<10}: {}".format(
+                    _key,
+                    _vn,
+                    _vers[_key][_vn],
+                )
+            )
+
+
 def main(opt_ns):
     log_com = logging.get_logger(opt_ns.logger)
     if os.getuid():
@@ -112,7 +131,9 @@ def main(opt_ns):
     inst_xml = instance.InstanceXML(log_com).tree
     cur_c = container.ServiceContainer(log_com)
 
-    if opt_ns.childcom == "status":
+    if opt_ns.childcom == "version":
+        version_command(opt_ns)
+    elif opt_ns.childcom == "status":
         if opt_ns.interactive:
             from . import console
             console.main(opt_ns, cur_c, inst_xml)

@@ -24,54 +24,49 @@
 
 import os
 import shutil
-import time
 import subprocess
+import time
 
 from initat.cluster.backbone.models import device
 from initat.logcheck_server.config import global_config
-
 from initat.tools import logging_tools, process_tools
 
 
-class machine(object):
+class Machine(object):
     # def __init__(self, name, idx, ips={}, log_queue=None):
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        machine.srv_proc.log("[m] %s" % (what), log_level)
+        Machine.srv_proc.log("[m] {}".format(what), log_level)
 
     @staticmethod
     def setup(srv_proc):
-        machine.c_binary = process_tools.find_file(global_config["COMPRESS_BINARY"])
-        machine.srv_proc = srv_proc
-        machine.g_log("init")
-        if machine.c_binary:
-            machine.g_log("compression binary to use: {}".format(machine.c_binary))
-        else:
-            machine.g_log("no compression binary found ({})".format(global_config["COMPRESS_BINARY"]), logging_tools.LOG_LEVEL_ERROR)
-        machine.dev_dict = {}
+        Machine.c_binary = "/opt/cluster/bin/lbzip2"
+        Machine.srv_proc = srv_proc
+        Machine.g_log("init, compression binary to use: {}".format(Machine.c_binary))
+        Machine.dev_dict = {}
 
     @staticmethod
     def rotate_logs():
-        machine.g_log("starting log rotation")
+        Machine.g_log("starting log rotation")
         s_time = time.time()
         compress_list = []
-        for dev in machine.dev_dict.itervalues():
+        for dev in Machine.dev_dict.itervalues():
             compress_list.extend(dev._rotate_logs())
-        machine.g_log(
+        Machine.g_log(
             "rotated in {}, {} to compress".format(
                 logging_tools.get_diff_time_str(time.time() - s_time),
                 logging_tools.get_plural("file", len(compress_list)),
             )
         )
-        if compress_list and machine.c_binary:
+        if compress_list and Machine.c_binary:
             start_time = time.time()
             for _c_file in compress_list:
-                _bin = "{} {}".format(machine.c_binary, _c_file)
+                _bin = "{} {}".format(Machine.c_binary, _c_file)
                 retcode = subprocess.call(_bin, shell=True)
                 if retcode:
-                    machine.g_log("'{}' returned {:d}".format(_bin, retcode), logging_tools.LOG_LEVEL_WARN)
+                    Machine.g_log("'{}' returned {:d}".format(_bin, retcode), logging_tools.LOG_LEVEL_WARN)
             end_time = time.time()
-            machine.g_log(
+            Machine.g_log(
                 "compressed {} in {} (per item: {})".format(
                     logging_tools.get_plural("file", len(compress_list)),
                     logging_tools.get_diff_time_str(end_time - start_time),
@@ -81,7 +76,7 @@ class machine(object):
 
     @staticmethod
     def db_sync():
-        machine.g_log("start sync")
+        Machine.g_log("start sync")
         s_time = time.time()
         all_devs = device.objects.all().prefetch_related(
             "netdevice_set",
@@ -90,22 +85,22 @@ class machine(object):
             "netdevice_set__net_ip_set__network__network_type",
         )
         for cur_dev in all_devs:
-            if cur_dev.name in machine.dev_dict:
-                cur_mach = machine.dev_dict[cur_dev.name]
+            if cur_dev.name in Machine.dev_dict:
+                cur_mach = Machine.dev_dict[cur_dev.name]
             else:
-                cur_mach = machine(cur_dev)
+                cur_mach = Machine(cur_dev)
             cur_mach.add_ips(cur_dev)
-        machine.g_log("synced in {}".format(logging_tools.get_diff_time_str(time.time() - s_time)))
+        Machine.g_log("synced in {}".format(logging_tools.get_diff_time_str(time.time() - s_time)))
 
     def __init__(self, cur_dev):
         self.device = cur_dev
         self.name = cur_dev.name
-        machine.dev_dict[self.name] = self
+        Machine.dev_dict[self.name] = self
         self.log("Added to dict")
         self.__ip_dict = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        machine.srv_proc.log(
+        Machine.srv_proc.log(
             "[{}] {}".format(
                 self.name,
                 what
