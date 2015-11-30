@@ -22,14 +22,14 @@
 
 import time
 
-from initat.tools import logging_tools, process_tools, server_command
+from django.core.mail import send_mail
+from django.db.models import Q
+
 from initat.cluster.backbone.models import SensorThreshold, \
     SensorThresholdAction, device
-from initat.tools.bgnotify.create import create_bg_job, notify_command
-from django.db.models import Q
 from initat.icsw.service import clusterid
-from django.core.mail import send_mail
-
+from initat.tools import logging_tools, process_tools, server_command
+from initat.tools.bgnotify.create import create_bg_job, notify_command
 from .config import global_config
 
 
@@ -179,7 +179,7 @@ class Threshold(object):
                 str(triggered),
             )
         )
-        # create actionentry
+        # create action entry
         if _action is not None and (_enabled or triggered):
             self.log("create SensorThresholdAction entry")
             new_sta = SensorThresholdAction(

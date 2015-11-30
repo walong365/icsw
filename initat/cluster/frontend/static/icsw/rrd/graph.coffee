@@ -700,7 +700,9 @@ angular.module(
                     sensor.thresholds = (entry for entry in sensor.thresholds when entry.idx != th.idx)
             )
         sub_scope.trigger_threshold = (sensor, th, lu_switch) ->
-            icswToolsSimpleModalService("Really trigger Threshold ?").then(
+            act_str = "trigger"
+            info_str = "action will be triggered"
+            icswToolsSimpleModalService("Really #{act_str} Threshold (#{info_str}) ?").then(
                 (res) ->
                     icswSimpleAjaxCall(
                         {

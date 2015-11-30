@@ -23,18 +23,19 @@
 
 from django.db import connection
 from django.db.models import Q
+
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
 from initat.snmp.sink import SNMPSink
-from .config import global_config
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
+from .config import global_config
 
 
-class hc_command(object):
+class HardControlCommand(object):
     def __init__(self, user_id, xml_struct, router_obj, snmp_sink):
-        hc_command.hc_id += 1
-        self.cur_id = hc_command.hc_id
+        HardControlCommand.hc_id += 1
+        self.cur_id = HardControlCommand.hc_id
         cur_cd = cd_connection.objects.select_related(
             "child",
             "parent"
@@ -129,7 +130,7 @@ class hc_command(object):
                         dev=self.cd_obj.child,
                     )
                 else:
-                    hc_command.register(self)
+                    HardControlCommand.register(self)
                     # snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout
                     self.process.send_pool_message(
                         "fetch_snmp",
@@ -208,7 +209,7 @@ class hc_command(object):
     def get_ip_to_host(self, dev_struct, router_obj):
         all_paths = sorted(
             router_obj.get_ndl_ndl_pathes(
-                hc_command.process.sc.netdevice_idx_list,
+                HardControlCommand.process.sc.netdevice_idx_list,
                 list(dev_struct.netdevice_set.all().values_list("pk", flat=True)),
                 only_endpoints=True,
                 add_penalty=True,
@@ -224,35 +225,35 @@ class hc_command(object):
         return com_ip
 
     def snmp_finished(self, *args):
-        hc_command.unregister(self)
+        HardControlCommand.unregister(self)
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        hc_command.process.log("[hc] {}".format(what), log_level)
+        HardControlCommand.process.log("[hc] {}".format(what), log_level)
 
     @staticmethod
     def register(cur_hc):
-        hc_command.g_log("registered {:d}".format(cur_hc.cur_id))
-        hc_command.hc_lut[cur_hc.cur_id] = cur_hc
+        HardControlCommand.g_log("registered {:d}".format(cur_hc.cur_id))
+        HardControlCommand.hc_lut[cur_hc.cur_id] = cur_hc
 
     @staticmethod
     def unregister(cur_hc):
-        hc_command.g_log("unregistered {:d}".format(cur_hc.cur_id))
-        del hc_command.hc_lut[cur_hc.cur_id]
+        HardControlCommand.g_log("unregistered {:d}".format(cur_hc.cur_id))
+        del HardControlCommand.hc_lut[cur_hc.cur_id]
 
     @staticmethod
     def setup(proc):
-        hc_command.process = proc
-        hc_command.hc_lut = {}
-        hc_command.g_log("init hc_command")
-        hc_command.hc_id = 0
+        HardControlCommand.process = proc
+        HardControlCommand.hc_lut = {}
+        HardControlCommand.g_log("init hc_command")
+        HardControlCommand.hc_id = 0
 
     @staticmethod
     def feed_snmp_result(*args):
-        if args[0] in hc_command.hc_lut:
-            hc_command.hc_lut[args[0]].snmp_finished(*args)
+        if args[0] in HardControlCommand.hc_lut:
+            HardControlCommand.hc_lut[args[0]].snmp_finished(*args)
         else:
-            hc_command.g_log(
+            HardControlCommand.g_log(
                 "unknown id '{}' for snmp_result ({})".format(
                     args[0],
                     str(args),
@@ -261,7 +262,7 @@ class hc_command(object):
             )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dev=None):
-        hc_command.process.log("[hc] {}".format(what), log_level)
+        HardControlCommand.process.log("[hc] {}".format(what), log_level)
         if dev is not None:
             DeviceLogEntry.new(
                 device=dev,
@@ -290,7 +291,7 @@ class ExternalCommandProcess(threading_tools.process_obj):
         self.register_func("hard_control", self._hard_control)
         self.register_func("snmp_finished", self._snmp_finished)
         self.register_timer(self._check_commands, 10)
-        hc_command.setup(self)
+        HardControlCommand.setup(self)
         self.send_pool_message("register_return", "command", target="snmp_process")
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -314,8 +315,11 @@ class ExternalCommandProcess(threading_tools.process_obj):
             self.register_timer(self._check_commands, 1)
         in_com = server_command.srv_command(source=in_com)
         self.router_obj.check_for_update()
-        for cur_dev in in_com.xpath(".//ns:device", smart_strings=False):
-            hc_command(in_com.get("user_id", None), cur_dev, self.router_obj, self.snmp_sink)
+        if len(in_com.xpath(".//ns:device", smart_strings=False)):
+            for cur_dev in in_com.xpath(".//ns:device", smart_strings=False):
+                HardControlCommand(in_com.get("user_id", None), cur_dev, self.router_obj, self.snmp_sink)
+        else:
+            self.log("no devices in command found (hard_control)", logging_tools.LOG_LEVEL_ERROR)
         in_com.set_result("ok handled hc command")
         self.send_pool_message("remote_call_async_result", unicode(in_com))
 
@@ -327,4 +331,4 @@ class ExternalCommandProcess(threading_tools.process_obj):
             self.log("   - {}".format(_line))
 
     def _snmp_finished(self, *args, **kwargs):
-        hc_command.feed_snmp_result(*args)
+        HardControlCommand.feed_snmp_result(*args)

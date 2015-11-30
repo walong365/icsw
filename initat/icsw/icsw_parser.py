@@ -76,11 +76,15 @@ class ICSWParser(object):
         except:
             pass
         else:
-            _parser_module.Parser().link(
-                self.sub_parser,
-                server_mode=server_mode,
-                instance_xml=inst_xml,
-            )
+            try:
+                _parser_module.Parser().link(
+                    self.sub_parser,
+                    server_mode=server_mode,
+                    instance_xml=inst_xml,
+                )
+            except TypeError:
+                # can happen when old parsers are still in the path
+                pass
 
     def _populate_all(self, server_mode, inst_xml):
         if not self.fully_populated:

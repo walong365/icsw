@@ -198,6 +198,7 @@ class SensorAction(models.Model):
             ("none", "do nothing"),
             ("reboot", "restart device"),
             ("halt", "halt device"),
+            ("poweroff", "poweroff device"),
             ("poweron", "turn on device"),
         ]
     )
@@ -221,7 +222,8 @@ class SensorAction(models.Model):
                 # map to hoststatus command, see hoststatus_zmq.c:266
                 _cmd = {
                     "reboot": "reboot",
-                    "halt": "poweroff",
+                    "halt": "halt",
+                    "poweroff": "poweroff",
                     "poweron": None
                 }[self.action]
                 if _cmd is not None:

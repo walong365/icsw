@@ -126,5 +126,8 @@ class trigger_sensor_threshold(View):
     def post(self, request):
         _pk = int(request.POST["pk"])
         srv_com = server_command.srv_command(command="trigger_sensor_threshold")
-        srv_com["sensor_threshold"] = E.sensor_threshold(pk="{:d}".format(_pk), type=request.POST["type"])
+        srv_com["sensor_threshold"] = E.sensor_threshold(
+            pk="{:d}".format(_pk),
+            type=request.POST["type"],
+        )
         _result = contact_server(request, "collectd-server", srv_com, timeout=30)

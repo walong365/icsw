@@ -72,7 +72,7 @@ function restart_software() {
             echo -e "\n${GREEN}restarting all ICSW related services (${RESTART_CAUSE}) (LC: ${NUM_RS})${OFF}\n"
 
             for idx in $(seq ${NUM_RS} ) ; do
-                echo -e "${GREEN}(${idx}/${NUM_RS}) restarting all ICSW related services (client)${OFF}\n"
+                echo -e "${GREEN}(${idx}/${NUM_RS}) restarting all ICSW related services (mode=${mode})${OFF}\n"
                 ${ICSW_SBIN}/icsw service stop meta-server
                 ${ICSW_SBIN}/icsw service start meta-server
             done

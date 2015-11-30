@@ -19,15 +19,14 @@
 
 import commands
 import time
-import pprint
-from lxml import etree
-from lxml.builder import E
+
 from django.db.models import Q
+from lxml.builder import E
 
 from initat.cluster.backbone.models import device
 from initat.cluster_server.capabilities.base import bg_stuff
-from initat.tools import process_tools, logging_tools
 from initat.host_monitoring import hm_classes
+from initat.tools import process_tools, logging_tools
 
 
 def rewrite_key(key):

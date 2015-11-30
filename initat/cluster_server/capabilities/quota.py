@@ -558,10 +558,14 @@ class quota_stuff(bg_stuff):
         qcb_ids = [_value.pk for _value in qcb_dict.itervalues()]
         qs_dict = {
             "user": {
-                (uqs.user_id, uqs.quota_capable_blockdevice_id): uqs for uqs in user_quota_setting.objects.filter(Q(quota_capable_blockdevice__in=qcb_ids))
-                },
+                (uqs.user_id, uqs.quota_capable_blockdevice_id): uqs for uqs in user_quota_setting.objects.filter(
+                    Q(quota_capable_blockdevice__in=qcb_ids)
+                )
+            },
             "group": {
-                (gqs.group_id, gqs.quota_capable_blockdevice_id): gqs for gqs in group_quota_setting.objects.filter(Q(quota_capable_blockdevice__in=qcb_ids))
+                (gqs.group_id, gqs.quota_capable_blockdevice_id): gqs for gqs in group_quota_setting.objects.filter(
+                    Q(quota_capable_blockdevice__in=qcb_ids)
+                )
             }
         }
         # pprint.pprint(qs_dict)
