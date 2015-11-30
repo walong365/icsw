@@ -713,7 +713,7 @@ angular.module(
             buttons: [
                 {
                      icon: "glyphicon glyphicon-ok"
-                     cssClass: "btn-warning"
+                     cssClass: "btn-success"
                      label: "Yes"
                      action: (dialog) ->
                         dialog.close()
@@ -722,7 +722,7 @@ angular.module(
                 {
                     icon: "glyphicon glyphicon-remove"
                     label: "No"
-                    cssClass: "btn-success"
+                    cssClass: "btn-danger"
                     action: (dialog) ->
                         dialog.close()
                         d.reject()
