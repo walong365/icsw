@@ -8,7 +8,7 @@
                 <icsw-login-form></icsw-login-form>
                 <p class="text-right">{{ initProduct.family }} ({{ initProduct.version }}) on Django {{ django_version }}</p>
                 <p class="text-right" ng-show="CLUSTER_ID">ClusterID is {{ CLUSTER_ID }}</p>
-                <p class="text-right" ng-show="DATABASE_VERSION">Version info is {{ DATABASE_VERSION }} / {{ SOFTWARE_VERSION }} / {{ MODELS_VERSION }}</p>
+                <p class="text-right" ng-show="DATABASE_VERSION">Version info is {{ DATABASE_VERSION }}[D] {{ SOFTWARE_VERSION }}[S] {{ MODELS_VERSION }}[M]</p>
                 <uib-alert ng-show="lds.license_packages.length == 0 && lds.state_valid" style="font-size: larger">
                     You are running an <strong>unlicensed version</strong>.<br />
                     Please contact <strong>support@init.at</strong> in order to obtain a license.
