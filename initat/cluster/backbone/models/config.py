@@ -26,7 +26,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from enum import enum
+import enum
 
 from initat.cluster.backbone.models.functions import check_integer, check_empty_string
 

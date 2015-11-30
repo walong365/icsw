@@ -19,8 +19,8 @@
 #
 """ database definitions for monitoring """
 
+import enum
 from django.db import models
-from enum import enum
 
 __all__ = [
     "snmp_scheme_vendor",
