@@ -72,7 +72,7 @@
             graph #{{ graph.num }}
         </span>&nbsp;
         <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
-        <input type="button" class="btn btn-xs btn-primary" ng-show="graph.num_sensors && graph.src" value="Sensors" ng-click="modify_sensors()"/>
+        <input type="button" class="btn btn-xs btn-primary" ng-show="graph.src && graph.num_sensors" value="Sensors" ng-click="modify_sensors()"/>
     </h4>
 </script>
 

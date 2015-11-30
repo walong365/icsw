@@ -27,12 +27,13 @@ class Sensor
         @cfs = {}
         _value = 0.0
         _num_value = 0
-        for _cf in @xml.find("cfs cf")
-            _cf = $(_cf)
-            @cfs[_cf.attr("cf")] = _cf.text()
-            if _cf.attr("cf") != "TOTAL"
-                _value += parseFloat(_cf.text())
-                _num_value++
+        if not parseInt(@xml.attr("nan"))
+            for _cf in @xml.find("cfs cf")
+                _cf = $(_cf)
+                @cfs[_cf.attr("cf")] = _cf.text()
+                if _cf.attr("cf") != "TOTAL"
+                    _value += parseFloat(_cf.text())
+                    _num_value++
         @cf_list = _.keys(@cfs).sort()
         if _num_value
             @mean_value = _value / _num_value
@@ -82,6 +83,7 @@ class DisplayGraph
         @sensors = []
         for gv in @xml.find("graph_values graph_value")
             if $(gv).attr("db_key").match(/\d+\.\d+/)
+                # only a valid sensor when the db-idx has a device (no compound displays)
                 @num_sensors++
                 @sensors.push(new Sensor(@, $(gv), sth_dict))
         @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
@@ -482,6 +484,16 @@ angular.module(
                                 if !(graph_key of graph_mat)
                                     graph_mat[graph_key] = {}
                                 num_graph++
+                                #console.log graph[0]
+                                #idx_list = (parseInt($(el).attr("pk")) for el in graph.find("devices > device"))
+                                #console.log "*", idx_list
+                                #$scope.g_tree.iter(
+                                #    (entry) ->
+                                #        for _idx of idx_list
+                                #            console.log _idx, idx_list, entry
+                                #            if _idx of entry._idx_list
+                                #                console.log entry
+                                #)
                                 cur_graph = new DisplayGraph(num_graph, graph, $scope.sensor_action_list, $scope.user_list, $scope.selection_list, sth_dict)
                                 graph_mat[graph_key][dev_key] = cur_graph
                                 graph_list.push(cur_graph)

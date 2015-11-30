@@ -617,16 +617,23 @@ class GraphTarget(object):
             for _var in self.vars.itervalues():
                 if _var.draw_result:
                     for _val, _v_xml in _var.draw_result.itervalues():
-                        if not _v_xml.text.count("nan"):
-                            _mvs_id, _mvv_id = (_v_xml.get("mvs_id"), _v_xml.get("mvv_id"))
-                            # unset keys will be transformed to the empty string
-                            _mvs_id = "" if _mvs_id == "None" else _mvs_id
-                            _mvv_id = "" if _mvv_id == "None" else _mvv_id
-                            _full_key = "{}{}".format(
-                                _v_xml.get("mvs_key"),
-                                ".{}".format(_v_xml.get("mvv_key")) if _v_xml.get("mvv_key") else "",
-                            )
-                            _var_dict.setdefault(("{}.{}".format(_mvs_id, _mvv_id), _full_key, int(_v_xml.get("device"))), {})[_v_xml.get("cf")] = _v_xml.text
+                        _mvs_id, _mvv_id = (_v_xml.get("mvs_id"), _v_xml.get("mvv_id"))
+                        # unset keys will be transformed to the empty string
+                        _mvs_id = "" if _mvs_id == "None" else _mvs_id
+                        _mvv_id = "" if _mvv_id == "None" else _mvv_id
+                        _full_key = "{}{}".format(
+                            _v_xml.get("mvs_key"),
+                            ".{}".format(_v_xml.get("mvv_key")) if _v_xml.get("mvv_key") else "",
+                        )
+                        _var_dict.setdefault(
+                            (
+                                "{}.{}".format(_mvs_id, _mvv_id),
+                                _full_key,
+                                int(_v_xml.get("device")),
+                                _v_xml.text.count("nan"),
+                            ),
+                            {}
+                        )[_v_xml.get("cf")] = _v_xml.text
             if _var_dict:
                 _xml.append(
                     E.graph_values(
@@ -643,6 +650,7 @@ class GraphTarget(object):
                                 db_key=_key[0],
                                 mv_key=_key[1],
                                 device="{:d}".format(_key[2]),
+                                nan="1" if _key[3] else "0",
                             ) for _key, _value in _var_dict.iteritems()
                         ]
                     )
