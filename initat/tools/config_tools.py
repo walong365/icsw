@@ -488,8 +488,8 @@ class server_check(object):
 
     def _vers_check(self):
         if not self.__db_version_dict:
-            # no database version found, continue
-            return True
+            # no database version found, stop service
+            return False
         else:
             if self.__db_version_dict["database"] == self.__sys_version_dict["database"]:
                 return True

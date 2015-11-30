@@ -23,6 +23,8 @@
 
 from django.db import models
 from django.db.models import Q
+from django.db.utils import ProgrammingError
+
 
 __all__ = [
     "ICSWVersion",
@@ -50,12 +52,16 @@ class ICSWVersion(models.Model):
 
     @staticmethod
     def get_latest_db_dict():
-        if ICSWVersion.objects.all().count():
-            _latest_idx = ICSWVersion.objects.all().order_by("-idx")[0].insert_idx
-            return {
-                _db.name: _db.version for _db in ICSWVersion.objects.filter(
-                    Q(insert_idx=_latest_idx)
-                )
-            }
-        else:
+        try:
+            if ICSWVersion.objects.all().count():
+                _latest_idx = ICSWVersion.objects.all().order_by("-idx")[0].insert_idx
+                return {
+                    _db.name: _db.version for _db in ICSWVersion.objects.filter(
+                        Q(insert_idx=_latest_idx)
+                    )
+                }
+            else:
+                return {}
+        except ProgrammingError:
+            # model not defined
             return {}
