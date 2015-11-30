@@ -37,11 +37,16 @@ import time
 import networkx
 from django.db.models import Q
 
-from initat.constants import VERSION_CS_NAME
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-    netdevice, peer_information, config_int, config_blob, config_str, config_bool, \
-    ICSWVersion, VERSION_NAME_LIST
+    netdevice, peer_information, config_int, config_blob, config_str, config_bool
+from initat.constants import VERSION_CS_NAME
 from initat.tools import configfile, logging_tools, process_tools, config_store
+
+try:
+    from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
+except ImportError:
+    # when doing an update from an ICSW-Version without ICSWVersion model
+    pass
 
 
 class router_object(object):
