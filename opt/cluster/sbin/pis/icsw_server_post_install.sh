@@ -111,7 +111,8 @@ fi
 
 chmod a+rwx ${WEBCACHE_DIR}
 
-RESTART=0
+# restart because we are server (or valid slave)
+RESTART_SRV=0
 RESTART_CAUSE="unknown"
 
 if is_chroot ; then
@@ -140,7 +141,7 @@ else
         [ -x ${ICSW_PIS}/sge_post_install.sh ] && ${ICSW_PIS}/sge_post_install.sh
 
         echo "Database is valid, restarting software"
-        RESTART=1
+        RESTART_SRV=1
         RESTART_CAUSE="database and software updated"
     else
         echo ""
@@ -148,7 +149,7 @@ else
             if [ "$(${ICSW_SBIN}/icsw cstore --mode getkey --store icsw.general --key mode.is.slave)" = "True" ] ; then
                 echo "Node is Slave-node, init webfrontend and restarting software"
                 ${ICSW_SBIN}/icsw setup --init-webfrontend
-                RESTART=1
+                RESTART_SRV=1
                 RESTART_CAUSE="software updated"
             else
                 echo "Database is not valid and system is not slave, skipping restart"
@@ -159,6 +160,6 @@ else
     fi
 fi
 
-if [ "${RESTART}" = "1" ] ; then
+if [ "${RESTART_SRV}" = "1" ] ; then
     restart_software "server"
 fi
